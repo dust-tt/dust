@@ -9,11 +9,12 @@ import type { InferGetServerSidePropsType } from "next";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
+import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import { getSignUpUrl } from "@app/lib/signup";
+import { getSignInUrl } from "@app/lib/signup";
 import type { LightWorkspaceType } from "@app/types";
 
 /**
@@ -44,9 +45,9 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
 })<{
   baseUrl: string;
-  invitationEmail: string | null;
   onboardingType: OnboardingType;
-  signUpCallbackUrl: string;
+  signInUrl: string;
+  userExists: boolean;
   workspace: LightWorkspaceType;
 }>(async (context) => {
   const wId = context.query.wId as string;
@@ -103,7 +104,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       if (res.isErr()) {
         return {
           redirect: {
-            destination: `/api/auth/logout?returnTo=/login-error${encodeURIComponent(`?type=email-invite&reason=${res.error.code}`)}`,
+            destination: `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=email-invite&reason=${res.error.code}`)}`,
             permanent: false,
           },
         };
@@ -124,28 +125,32 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       };
   }
 
+  const users = await fetchUsersFromWorkOSWithEmails([invitationEmail ?? ""]);
+  const userExists = users.length > 0;
+
+  const signInUrl = getSignInUrl({
+    signupCallbackUrl: signUpCallbackUrl,
+    invitationEmail: invitationEmail ?? undefined,
+    userExists,
+  });
+
   return {
     props: {
       baseUrl: config.getClientFacingUrl(),
-      invitationEmail,
+      signInUrl,
+      userExists,
       onboardingType,
-      signUpCallbackUrl,
       workspace,
     },
   };
 });
 
 export default function Join({
-  invitationEmail,
   onboardingType,
-  signUpCallbackUrl,
+  signInUrl,
+  userExists,
   workspace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const signUpUrl = getSignUpUrl({
-    signupCallbackUrl: signUpCallbackUrl,
-    invitationEmail: invitationEmail ?? undefined,
-  });
-
   return (
     <OnboardingLayout
       owner={workspace}
@@ -154,9 +159,9 @@ export default function Join({
         <Button
           variant="ghost"
           size="sm"
-          label="Sign up"
+          label={userExists ? "Sign in" : "Sign up"}
           icon={LoginIcon}
-          onClick={() => (window.location.href = signUpUrl)}
+          onClick={() => (window.location.href = signInUrl)}
         />
       }
     >
@@ -200,9 +205,9 @@ export default function Join({
           <Button
             variant="primary"
             size="sm"
-            label="Sign up"
+            label={userExists ? "Sign in" : "Sign up"}
             icon={LoginIcon}
-            onClick={() => (window.location.href = signUpUrl)}
+            onClick={() => (window.location.href = signInUrl)}
           />
         </div>
         <div className="flex flex-col gap-3 pb-20">

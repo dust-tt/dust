@@ -16,7 +16,8 @@ const {
   purgeConversationsBatchActivity,
   purgeAgentConversationsBatchActivity,
 } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "15 minutes",
+  startToCloseTimeout: "30 minutes",
+  heartbeatTimeout: "5 minutes",
 });
 
 export async function dataRetentionWorkflow(): Promise<void> {

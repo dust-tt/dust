@@ -44,42 +44,90 @@ class MyDocument extends Document {
                d=o.createElement(u);d.async=1;d.src=n
                n=o.getElementsByTagName(u)[0];n.parentNode.insertBefore(d,n)
              })(window,document,'script','https://www.datadoghq-browser-agent.com/eu1/v6/datadog-rum.js','DD_RUM')
-             '${process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN || ""}' && window.DD_RUM.onReady(function() {
+             '${
+               // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+               process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN || ""
+             }' && window.DD_RUM.onReady(function() {
                window.DD_RUM.init({
                  clientToken: '${process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN}',
                  applicationId: '5e9735e7-87c8-4093-b09f-49d708816bfd',
                  site: 'datadoghq.eu',
-                 service: '${process.env.NEXT_PUBLIC_DATADOG_SERVICE}-browser',
+                 service: '${
+                   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                   process.env.NEXT_PUBLIC_DATADOG_SERVICE || "front"
+                 }-browser',
                  env: '${process.env.NODE_ENV === "production" ? "prod" : "dev"}',
-                 version: '${process.env.NEXT_PUBLIC_COMMIT_HASH || ""}',
+                 version: '${
+                   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                   process.env.NEXT_PUBLIC_COMMIT_HASH || ""
+                 }',
                  allowedTracingUrls: [
-                  "https://dust.tt",
-                  "https://eu.dust.tt",
-                  "https://front-edge.dust.tt",
-                  "https://eu.front-edge.dust.tt",
+                   "https://dust.tt",
+                   "https://eu.dust.tt",
+                   "https://front-edge.dust.tt",
+                   "https://eu.front-edge.dust.tt",
                  ],
                  traceSampleRate: 5,
                  traceContextInjection: 'sampled',
-                 sessionSampleRate: 100,
+                 sessionSampleRate: 20,
                  sessionReplaySampleRate: 5,
-                 defaultPrivacyLevel: 'mask',
-                 beforeSend: (event) => {
-                  if (event.type === 'action' && event.action && event.action.target && event.action.target.name && event.action.target.name.includes('@')) {
-                    const el = event._dd && event._dd.target; // Get the actual DOM element from Datadog's internal properties
-                    if (el) {
-                      var selector = el.tagName.toLowerCase();
-                      if (el.id) selector += '#' + el.id;
-                      if (el.className) selector += '.' + el.className.trim().replace(/\\s+/g, '.');
-                      event.action.target.name = selector;
-                    } else {
-                      event.action.target.name = '[redacted]';
-                    }
-                  }
-                  return true;
-                }
+                 defaultPrivacyLevel: 'mask-user-input',
+                 beforeSend: function (event) {
+                   if (event.type === "action" && event.action && event.action.target && event.action.type === "click") {
+                     if (event._dd && event._dd.action && event._dd.action.name_source === "text_content") {
+                       var elSelector = event._dd.action.target && event._dd.action.target.selector;
+                       if (elSelector && typeof elSelector === "string") {
+                         try {
+                           var el = document.querySelector(elSelector);
+                           if (el) {
+                             var parentWithPrivacyMask = el.closest(".dd-privacy-mask");
+                             if (parentWithPrivacyMask) {
+                               // Initially redact with a generic string
+                               event.action.target.name = "[text element within dd-privacy-mask]";
+                               // Now attempt to provide a better, less generic name, still respecting privacy
+                               var buttonParent = el.closest("button");
+                               if (buttonParent) {
+                                 var ariaLabel = buttonParent.getAttribute("aria-label");
+                                 if (ariaLabel) {
+                                   event.action.target.name = ariaLabel;  // More specific, but still protecting privacy
+                                 }
+                               }
+                             }
+                           }
+                         } catch (error) {
+                           // Invalid selector - silently ignore
+                         }
+                       }
+                     }
+                   }
+                   return true;
+                 }
                });
              })
            `}
+          </Script>
+          {/* Privacy mask initialization script */}
+          <Script id="privacy-mask-init" strategy="beforeInteractive">
+            {`
+              (function() {
+                // Initialize privacy mask state from localStorage on page load.
+                function initPrivacyMask() {
+                  const stored = localStorage.getItem('privacy-mask');
+                  const isEnabled = stored === 'true';
+                  
+                  if (isEnabled) {
+                    document.body.classList.add('privacy-mask-enabled');
+                  }
+                }
+                
+                // Run on DOM ready.
+                if (document.readyState === 'loading') {
+                  document.addEventListener('DOMContentLoaded', initPrivacyMask);
+                } else {
+                  initPrivacyMask();
+                }
+              })();
+            `}
           </Script>
         </body>
       </Html>

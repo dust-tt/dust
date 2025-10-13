@@ -71,6 +71,7 @@ export function MCPServerSettings({
     useState<MCPOAuthUseCase | null>();
 
   const useCase = useMemo(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     () => (selectedUseCase || mcpServerView.oAuthUseCase) as MCPOAuthUseCase,
     [selectedUseCase, mcpServerView.oAuthUseCase]
   );
@@ -84,7 +85,6 @@ export function MCPServerSettings({
         isOpen={isConnectDialogOpen}
         setIsOpen={setIsConnectDialogOpen}
       />
-      <div className="heading-lg">Server Settings</div>
       <div className="space-y-2">
         <div className="heading-base">Authentication</div>
         <div className="flex space-x-2">

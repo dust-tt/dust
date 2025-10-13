@@ -1,6 +1,7 @@
 import * as t from "io-ts";
 
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 
 export const OAUTH_USE_CASES = [
   "connection",
@@ -23,6 +24,7 @@ export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
 
 export const OAUTH_PROVIDERS = [
   "confluence",
+  "confluence_tools",
   "freshservice",
   "github",
   "google_drive",
@@ -38,11 +40,13 @@ export const OAUTH_PROVIDERS = [
   "zendesk",
   "salesforce",
   "hubspot",
-  "mcp", // MCP is a special provider for MCP servers
+  "mcp", // MCP is a special provider for MCP servers.
+  "mcp_static", // MCP static is a special provider for MCP servers requiring static OAuth credentials.
 ] as const;
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
+  confluence_tools: "Confluence Tools",
   freshservice: "Freshservice",
   github: "GitHub",
   gmail: "Gmail",
@@ -59,6 +63,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   salesforce: "Salesforce",
   hubspot: "Hubspot",
   mcp: "MCP",
+  mcp_static: "MCP",
 };
 
 const SUPPORTED_OAUTH_CREDENTIALS = [
@@ -68,6 +73,8 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "code_verifier",
   "code_challenge",
   "scope",
+  "token_endpoint",
+  "authorization_endpoint",
   "freshservice_domain",
   "freshworks_org_url",
 ] as const;
@@ -179,11 +186,49 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "monday":
     case "notion":
     case "confluence":
+    case "confluence_tools":
     case "github":
     case "google_drive":
     case "intercom":
     case "jira":
     case "mcp":
+      return null;
+    case "mcp_static":
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
+        const result: OAuthCredentialInputs = {
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage: "The client ID from your MCP server.",
+            validator: isValidClientIdOrSecret,
+          },
+          client_secret: {
+            label: "OAuth Client Secret",
+            value: undefined,
+            helpMessage: "The client secret from your MCP server.",
+            validator: isValidClientIdOrSecret,
+          },
+          token_endpoint: {
+            label: "OAuth Token Endpoint",
+            value: undefined,
+            helpMessage: "The token endpoint from your MCP server.",
+            validator: isValidUrl,
+          },
+          authorization_endpoint: {
+            label: "OAuth Authorization Endpoint",
+            value: undefined,
+            helpMessage: "The authorization endpoint from your MCP server.",
+            validator: isValidUrl,
+          },
+          scope: {
+            label: "OAuth Scope(s)",
+            value: undefined,
+            helpMessage: "The scope(s) to request (space separated list).",
+            validator: isValidScope,
+          },
+        };
+        return result;
+      }
       return null;
     default:
       assertNever(provider);
@@ -238,6 +283,10 @@ export function isValidSalesforceDomain(s: unknown): s is string {
 
 export function isValidClientIdOrSecret(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0;
+}
+
+export function isValidUrl(s: unknown): s is string {
+  return typeof s === "string" && validateUrl(s).valid;
 }
 
 // Credentials Providers
@@ -386,61 +435,10 @@ export type ConnectionCredentials =
   | LinearCredentials
   | NotionCredentials;
 
-export function isSnowflakeCredentials(
-  credentials: ConnectionCredentials
-): credentials is SnowflakeCredentials {
-  return (
-    "username" in credentials &&
-    "account" in credentials &&
-    "role" in credentials &&
-    "warehouse" in credentials &&
-    (("password" in credentials &&
-      (!("auth_type" in credentials) ||
-        credentials.auth_type === "password")) ||
-      ("auth_type" in credentials &&
-        credentials.auth_type === "keypair" &&
-        "private_key" in credentials))
-  );
-}
-
 export function isModjoCredentials(
   credentials: ConnectionCredentials
 ): credentials is ModjoCredentials {
   return "api_key" in credentials;
-}
-
-export function isHubspotCredentials(
-  credentials: ConnectionCredentials
-): credentials is HubspotCredentials {
-  return "accessToken" in credentials && "portalId" in credentials;
-}
-
-export function isLinearCredentials(
-  credentials: ConnectionCredentials
-): credentials is LinearCredentials {
-  return "api_key" in credentials;
-}
-
-export function isBigQueryWithLocationCredentials(
-  credentials: ConnectionCredentials
-): credentials is BigQueryCredentialsWithLocation {
-  return (
-    "type" in credentials &&
-    "project_id" in credentials &&
-    "location" in credentials
-  );
-}
-
-export function isSalesforceCredentials(
-  credentials: ConnectionCredentials
-): credentials is SalesforceCredentials {
-  return "client_id" in credentials && "client_secret" in credentials;
-}
-
-export function isNotionCredentials(
-  credentials: ConnectionCredentials
-): credentials is NotionCredentials {
-  return "integration_token" in credentials;
 }
 
 export type OauthAPIPostCredentialsResponse = {

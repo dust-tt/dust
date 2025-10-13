@@ -17,12 +17,14 @@ import { classNames } from "@app/lib/utils";
 import { appendUTMParams } from "@app/lib/utils/utm";
 
 export function MainNavigation() {
+  const [nav, setNav] = React.useState("");
+
   return (
-    <NavigationMenu className="mr-4 hidden xl:flex">
+    <NavigationMenu className="mr-4 hidden xl:flex" onValueChange={setNav}>
       <NavigationMenuList>
         {menuConfig.mainNav.map((item, index) => {
           return (
-            <NavigationMenuItem key={index}>
+            <NavigationMenuItem key={index} value={item.title}>
               {item.href ? (
                 <Link
                   href={
@@ -39,7 +41,14 @@ export function MainNavigation() {
               ) : (
                 <React.Fragment key={index}>
                   <NavigationMenuTrigger>{item.title}</NavigationMenuTrigger>
-                  <NavigationMenuContent>
+                  <NavigationMenuContent
+                    forceMount
+                    className={classNames(
+                      nav === item.title
+                        ? "block h-auto opacity-100"
+                        : "hidden h-0 opacity-0"
+                    )}
+                  >
                     <div className="flex flex-col gap-4 p-6 pb-8">
                       <H4 className="text-muted-foreground" mono>
                         {item.label}
@@ -51,9 +60,9 @@ export function MainNavigation() {
                         )}
                       >
                         {item.items &&
-                          item.items.map((item) => (
+                          item.items.map((item, itemIndex) => (
                             <ListItem
-                              key={item.title}
+                              key={item.title || `spacer-${itemIndex}`}
                               title={item.title}
                               href={item.href}
                               isExternal={item.isExternal}

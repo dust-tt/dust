@@ -1,6 +1,7 @@
 import {
   BarChartIcon,
   Button,
+  MagicIcon,
   ScrollArea,
   SidebarRightCloseIcon,
   SidebarRightOpenIcon,
@@ -11,17 +12,20 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
+import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 
-type AgentBuilderRightPanelTabType = "testing" | "performance";
+type AgentBuilderRightPanelTabType = "testing" | "performance" | "template";
 
 interface PanelHeaderProps {
   isPreviewPanelOpen: boolean;
   selectedTab: AgentBuilderRightPanelTabType;
   onTogglePanel: () => void;
   onTabChange: (tab: AgentBuilderRightPanelTabType) => void;
+  hasTemplate: boolean;
 }
 
 function PanelHeader({
@@ -29,11 +33,12 @@ function PanelHeader({
   selectedTab,
   onTogglePanel,
   onTabChange,
+  hasTemplate,
 }: PanelHeaderProps) {
   return (
     <div className="flex h-16 items-end">
       {isPreviewPanelOpen ? (
-        <div className="flex w-full items-center px-6">
+        <div className="flex w-full items-center">
           <ScrollArea aria-orientation="horizontal" className="flex-1">
             <Tabs value={selectedTab} className="w-full">
               <TabsList>
@@ -56,12 +61,20 @@ function PanelHeader({
                   icon={BarChartIcon}
                   onClick={() => onTabChange("performance")}
                 />
+                {hasTemplate && (
+                  <TabsTrigger
+                    value="template"
+                    label="Template"
+                    icon={MagicIcon}
+                    onClick={() => onTabChange("template")}
+                  />
+                )}
               </TabsList>
             </Tabs>
           </ScrollArea>
         </div>
       ) : (
-        <div className="flex h-full w-full items-end justify-center">
+        <div className="flex h-full w-full items-end justify-center pb-3.5">
           <Button
             icon={SidebarRightOpenIcon}
             size="sm"
@@ -77,9 +90,10 @@ function PanelHeader({
 
 interface CollapsedTabsProps {
   onTabSelect: (tab: AgentBuilderRightPanelTabType) => void;
+  hasTemplate: boolean;
 }
 
-function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
+function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
       <Button
@@ -96,6 +110,15 @@ function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
         tooltip="Performance"
         onClick={() => onTabSelect("performance")}
       />
+      {hasTemplate && (
+        <Button
+          icon={MagicIcon}
+          variant="ghost"
+          size="sm"
+          tooltip="Template"
+          onClick={() => onTabSelect("template")}
+        />
+      )}
     </div>
   );
 }
@@ -109,14 +132,22 @@ function ExpandedContent({
   selectedTab,
   agentConfigurationSId,
 }: ExpandedContentProps) {
+  const { assistantTemplate, setPresetActionToAdd } = useAgentBuilderContext();
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {selectedTab === "template" && assistantTemplate && (
+        <AgentBuilderTemplate
+          assistantTemplate={assistantTemplate}
+          onAddPresetAction={setPresetActionToAdd}
+        />
+      )}
       {selectedTab === "testing" && (
         <div className="min-h-0 flex-1">
           <AgentBuilderPreview />
         </div>
       )}
-      {selectedTab === "performance" && agentConfigurationSId && (
+      {selectedTab === "performance" && (
         <div className="flex-1 overflow-y-auto p-4">
           <AgentBuilderPerformance
             agentConfigurationSId={agentConfigurationSId}
@@ -136,8 +167,13 @@ export function AgentBuilderRightPanel({
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
-  const [selectedTab, setSelectedTab] =
-    useState<AgentBuilderRightPanelTabType>("testing");
+  const { assistantTemplate } = useAgentBuilderContext();
+
+  const hasTemplate = !!assistantTemplate;
+
+  const [selectedTab, setSelectedTab] = useState<AgentBuilderRightPanelTabType>(
+    hasTemplate ? "template" : "testing"
+  );
 
   const handleTogglePanel = () => {
     setIsPreviewPanelOpen(!isPreviewPanelOpen);
@@ -154,19 +190,25 @@ export function AgentBuilderRightPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <PanelHeader
-        isPreviewPanelOpen={isPreviewPanelOpen}
-        selectedTab={selectedTab}
-        onTogglePanel={handleTogglePanel}
-        onTabChange={handleTabChange}
-      />
+      <div className="mx-4">
+        <PanelHeader
+          isPreviewPanelOpen={isPreviewPanelOpen}
+          selectedTab={selectedTab}
+          onTogglePanel={handleTogglePanel}
+          onTabChange={handleTabChange}
+          hasTemplate={hasTemplate}
+        />
+      </div>
       {isPreviewPanelOpen ? (
         <ExpandedContent
           selectedTab={selectedTab}
           agentConfigurationSId={agentConfigurationSId}
         />
       ) : (
-        <CollapsedTabs onTabSelect={handleTabSelect} />
+        <CollapsedTabs
+          onTabSelect={handleTabSelect}
+          hasTemplate={hasTemplate}
+        />
       )}
     </div>
   );

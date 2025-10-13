@@ -9,9 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
   Label,
+  LoadingBlock,
   LockIcon,
   Page,
-  Spinner,
 } from "@dust-tt/sparkle";
 import type { Organization } from "@workos-inc/node";
 import React from "react";
@@ -74,11 +74,20 @@ export default function WorkOSSSOConnection({
             provisioning via WorkOS.
           </Page.P>
         </div>
-        {isLoadingSSO ? (
-          <Spinner size="lg" />
-        ) : (
-          <div className="flex justify-end">
-            {isSSOConfigured ? (
+        <div className="flex justify-end gap-2">
+          {isLoadingSSO ? (
+            <LoadingBlock className="h-8 w-32 rounded-xl" />
+          ) : isSSOConfigured ? (
+            <>
+              <Button
+                label="Configure SSO"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  window.open(ssoStatus?.setupLink, "_blank");
+                }}
+              />
+
               <Button
                 label="De-activate SSO"
                 size="sm"
@@ -87,30 +96,28 @@ export default function WorkOSSSOConnection({
                   setShowDisableWorkOSSSOConnectionModal(true);
                 }}
               />
-            ) : (
-              <Button
-                label="Activate SSO"
-                size="sm"
-                variant="primary"
-                tooltip={
-                  domains.length === 0
-                    ? "Add a domain to enable SSO"
-                    : undefined
+            </>
+          ) : (
+            <Button
+              label="Activate SSO"
+              size="sm"
+              variant="primary"
+              tooltip={
+                domains.length === 0 ? "Add a domain to enable SSO" : undefined
+              }
+              disabled={
+                isSSOConfigured || !domains.length || !ssoStatus?.setupLink
+              }
+              onClick={() => {
+                if (!isUpgraded(plan)) {
+                  setShowUpgradePlanDialog(true);
+                } else {
+                  window.open(ssoStatus?.setupLink, "_blank");
                 }
-                disabled={
-                  isSSOConfigured || !domains.length || !ssoStatus?.setupLink
-                }
-                onClick={() => {
-                  if (!isUpgraded(plan)) {
-                    setShowUpgradePlanDialog(true);
-                  } else {
-                    window.open(ssoStatus?.setupLink, "_blank");
-                  }
-                }}
-              />
-            )}
-          </div>
-        )}
+              }}
+            />
+          )}
+        </div>
       </div>
       {/* TODO(workos): Remove this once we have a clear way to enforce SSO with workos */}
       {isSSOConfigured ? (

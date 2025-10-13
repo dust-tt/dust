@@ -1,44 +1,71 @@
 import {
+  Avatar,
+  BracesIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
   Checkbox,
-  ClockIcon,
+  ContactsRobotIcon,
+  DocumentIcon,
+  DotIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuSearchbar,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  ExclamationCircleIcon,
   Icon,
-  InformationCircleIcon,
   Label,
   ListCheckIcon,
+  MagicIcon,
   MoreIcon,
   NavigationList,
   NavigationListItem,
+  NavigationListItemAction,
   NavigationListLabel,
+  PencilSquareIcon,
   PlusIcon,
-  RobotIcon,
   SearchInput,
+  Spinner,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import moment from "moment";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
-import React, { useCallback, useContext, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useInView } from "react-intersection-observer";
 
-import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
+import {
+  ConversationMenu,
+  useConversationMenu,
+} from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useConversations,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
+import { getAgentBuilderRoute, getAgentRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
 
@@ -58,6 +85,26 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   const router = useRouter();
   const { conversationsNavigationRef } = useConversationsNavigation();
 
+  const agentsSearchInputRef = useRef<HTMLInputElement>(null);
+  const [searchText, setSearchText] = useState("");
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "list",
+  });
+  const editableAgents = useMemo(
+    () => agentConfigurations.filter((agent) => agent.canEdit),
+    [agentConfigurations]
+  );
+  const filteredAgents = useMemo(
+    () =>
+      editableAgents
+        .filter((agent) =>
+          agent.name.toLowerCase().includes(searchText.toLowerCase().trim())
+        )
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [editableAgents, searchText]
+  );
+
   const { setSidebarOpen } = useContext(SidebarContext);
   const { conversations, isConversationsError } = useConversations({
     workspaceId: owner.sId,
@@ -68,7 +115,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   >([]);
   const doDelete = useDeleteConversation(owner);
 
-  const { featureFlags } = useFeatureFlags({
+  const { featureFlags, hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
@@ -81,6 +128,9 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [titleFilter, setTitleFilter] = useState<string>("");
+  const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
+    owner,
+  });
   const sendNotification = useSendNotification();
 
   const toggleMultiSelect = useCallback(() => {
@@ -101,37 +151,75 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   const deleteSelection = useCallback(async () => {
     setIsDeleting(true);
-    if (selectedConversations.length > 0) {
+    const total = selectedConversations.length;
+    let successCount = 0;
+    if (total > 0) {
       for (const conversation of selectedConversations) {
-        await doDelete(conversation);
+        const ok = await doDelete(conversation);
+        if (ok) {
+          successCount += 1;
+        }
       }
       toggleMultiSelect();
     }
     setIsDeleting(false);
     setShowDeleteDialog(null);
-    sendNotification({
-      type: "success",
-      title: "Conversations successfully deleted",
-      description:
-        selectedConversations.length > 1
-          ? `${selectedConversations.length} conversations have been deleted.`
-          : `${selectedConversations.length} conversation has been deleted.`,
-    });
+    if (!total) {
+      return;
+    }
+    if (successCount === total) {
+      sendNotification({
+        type: "success",
+        title: "Conversations successfully deleted",
+        description: `${total} conversation${total > 1 ? "s" : ""} have been deleted.`,
+      });
+    } else if (successCount === 0) {
+      sendNotification({
+        type: "error",
+        title: "Failed to delete conversations",
+        description: `Could not delete the selected ${total > 1 ? "conversations" : "conversation"}.`,
+      });
+    } else {
+      sendNotification({
+        type: "error",
+        title: "Some conversations couldn’t be deleted",
+        description: `Deleted ${successCount} of ${total} conversations.`,
+      });
+    }
   }, [doDelete, selectedConversations, sendNotification, toggleMultiSelect]);
 
   const deleteAll = useCallback(async () => {
     setIsDeleting(true);
+    const total = conversations.length;
+    let successCount = 0;
     for (const conversation of conversations) {
-      await doDelete(conversation);
+      const ok = await doDelete(conversation);
+      if (ok) {
+        successCount += 1;
+      }
     }
-    sendNotification({
-      type: "success",
-      title: "Conversations successfully deleted",
-      description:
-        conversations.length > 1
-          ? `${conversations.length} conversations have been deleted.`
-          : `${conversations.length} conversation has been deleted.`,
-    });
+    if (!total) {
+      return;
+    }
+    if (successCount === total) {
+      sendNotification({
+        type: "success",
+        title: "Conversations successfully deleted",
+        description: `${total} conversation${total > 1 ? "s" : ""} have been deleted.`,
+      });
+    } else if (successCount === 0) {
+      sendNotification({
+        type: "error",
+        title: "Failed to delete conversations",
+        description: "Could not delete conversation history.",
+      });
+    } else {
+      sendNotification({
+        type: "error",
+        title: "Some conversations couldn’t be deleted",
+        description: `Deleted ${successCount} of ${total} conversations.`,
+      });
+    }
     setIsDeleting(false);
     setShowDeleteDialog(null);
   }, [conversations, doDelete, sendNotification]);
@@ -184,8 +272,45 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     return groups;
   };
 
+  // Handle "infinite" scroll
+  // We only start with 10 conversations shown (no need more on mobile) and load more until we fill the parent container.
+  // We use an intersection observer to detect when the bottom of the list is visible and load more conversations.
+  // That way, the list starts lightweight and only show more conversations when needed.
+  const CONVERSATIONS_PER_PAGE = 10;
+
+  const [conversationsPage, setConversationsPage] = useState(0);
+
+  const nextPage = useCallback(() => {
+    setConversationsPage(conversationsPage + 1);
+  }, [setConversationsPage, conversationsPage]);
+
+  const previousEntry = useRef<IntersectionObserverEntry | undefined>(
+    undefined
+  );
+
+  const { ref, inView, entry } = useInView({
+    root: conversationsNavigationRef.current,
+    threshold: 0,
+  });
+
+  useEffect(() => {
+    if (
+      // The observer is in view.
+      inView &&
+      // We have more conversations to show.
+      conversations.length > conversationsPage * CONVERSATIONS_PER_PAGE &&
+      // The entry is different from the previous one to avoid multiple calls for the same intersection.
+      entry != previousEntry.current
+    ) {
+      previousEntry.current = entry;
+      nextPage();
+    }
+  }, [inView, nextPage, entry, conversations.length, conversationsPage]);
+
   const conversationsByDate = conversations.length
-    ? groupConversationsByDate(conversations)
+    ? groupConversationsByDate(
+        conversations.slice(0, (conversationsPage + 1) * CONVERSATIONS_PER_PAGE)
+      )
     : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
 
   const { setAnimate } = useContext(InputBarContext);
@@ -194,12 +319,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     setSidebarOpen(false);
     const { cId } = router.query;
     const isNewConversation =
-      router.pathname === "/w/[wId]/assistant/[cId]" &&
+      router.pathname === "/w/[wId]/agent/[cId]" &&
       typeof cId === "string" &&
       cId === "new";
     if (isNewConversation) {
       setAnimate(true);
-      document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
     }
   }, [setSidebarOpen, router, setAnimate]);
 
@@ -210,6 +334,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         isDeleting={isDeleting}
         onClose={() => setShowDeleteDialog(null)}
         onDelete={showDeleteDialog === "all" ? deleteAll : deleteSelection}
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         type={showDeleteDialog || "all"}
         selectedCount={selectedConversations.length}
       />
@@ -242,36 +367,121 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 />
                 <Button
                   label="New"
-                  href={`/w/${owner.sId}/assistant/new`}
+                  href={getAgentRoute(owner.sId)}
                   icon={ChatBubbleBottomCenterTextIcon}
                   className="shrink"
                   tooltip="Create a new conversation"
                   onClick={handleNewClick}
                 />
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" icon={MoreIcon} variant="outline" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     {!isRestrictedFromAgentCreation && (
                       <>
-                        <DropdownMenuLabel>Agent</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          href={`/w/${owner.sId}/builder/assistants/create`}
-                          icon={PlusIcon}
-                          label="Create new agent"
-                          data-gtm-label="assistantCreationButton"
-                          data-gtm-location="sidebarMenu"
-                        />
+                        <DropdownMenuLabel>Agents</DropdownMenuLabel>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger
+                            icon={PlusIcon}
+                            label="New agent"
+                          />
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent className="pointer-events-auto">
+                              <DropdownMenuItem
+                                href={getAgentBuilderRoute(owner.sId, "new")}
+                                icon={DocumentIcon}
+                                label="From scratch"
+                                data-gtm-label="assistantCreationButton"
+                                data-gtm-location="sidebarMenu"
+                                onClick={withTracking(
+                                  TRACKING_AREAS.BUILDER,
+                                  "create_from_scratch"
+                                )}
+                              />
+                              <DropdownMenuItem
+                                href={getAgentBuilderRoute(owner.sId, "create")}
+                                icon={MagicIcon}
+                                label="From template"
+                                data-gtm-label="assistantCreationButton"
+                                data-gtm-location="sidebarMenu"
+                                onClick={withTracking(
+                                  TRACKING_AREAS.BUILDER,
+                                  "create_from_template"
+                                )}
+                              />
+                              {hasFeature("agent_to_yaml") && (
+                                <DropdownMenuItem
+                                  icon={
+                                    isUploadingYAML ? (
+                                      <Spinner size="xs" />
+                                    ) : (
+                                      BracesIcon
+                                    )
+                                  }
+                                  label={
+                                    isUploadingYAML
+                                      ? "Uploading..."
+                                      : "From YAML"
+                                  }
+                                  disabled={isUploadingYAML}
+                                  onClick={triggerYAMLUpload}
+                                  data-gtm-label="yamlUploadButton"
+                                  data-gtm-location="sidebarMenu"
+                                />
+                              )}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
+                        {editableAgents.length > 0 && (
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger
+                              icon={PencilSquareIcon}
+                              label="Edit agent"
+                            />
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent className="pointer-events-auto">
+                                <DropdownMenuSearchbar
+                                  ref={agentsSearchInputRef}
+                                  name="search"
+                                  value={searchText}
+                                  onChange={setSearchText}
+                                  placeholder="Search"
+                                />
+                                {filteredAgents.map((agent) => (
+                                  <DropdownMenuItem
+                                    key={agent.sId}
+                                    href={getAgentBuilderRoute(
+                                      owner.sId,
+                                      agent.sId
+                                    )}
+                                    truncateText
+                                    label={agent.name}
+                                    icon={() => (
+                                      <Avatar
+                                        size="sm"
+                                        visual={agent.pictureUrl}
+                                      />
+                                    )}
+                                  />
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
+                        )}
                       </>
                     )}
                     {isBuilder(owner) && (
                       <DropdownMenuItem
-                        href={`/w/${owner.sId}/builder/assistants`}
-                        icon={RobotIcon}
+                        href={getAgentBuilderRoute(owner.sId, "manage")}
+                        icon={ContactsRobotIcon}
                         label="Manage agents"
                         data-gtm-label="assistantManagementButton"
                         data-gtm-location="sidebarMenu"
+                        onClick={withTracking(
+                          TRACKING_AREAS.BUILDER,
+                          "manage_agents"
+                        )}
                       />
                     )}
                     <DropdownMenuLabel>Conversations</DropdownMenuLabel>
@@ -297,22 +507,36 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </Label>
             )}
             <NavigationList
-              className="w-full px-3"
-              ref={conversationsNavigationRef}
+              className="dd-privacy-mask h-full w-full px-3"
+              viewportRef={conversationsNavigationRef}
             >
-              {conversationsByDate &&
-                Object.keys(conversationsByDate).map((dateLabel) => (
-                  <RenderConversations
-                    key={dateLabel}
-                    conversations={conversationsByDate[dateLabel as GroupLabel]}
-                    dateLabel={dateLabel}
-                    isMultiSelect={isMultiSelect}
-                    selectedConversations={selectedConversations}
-                    toggleConversationSelection={toggleConversationSelection}
-                    router={router}
-                    owner={owner}
-                  />
-                ))}
+              {conversationsByDate && conversations.length > 0 && (
+                <>
+                  {Object.keys(conversationsByDate).map((dateLabel) => (
+                    <RenderConversations
+                      key={dateLabel}
+                      conversations={
+                        conversationsByDate[dateLabel as GroupLabel]
+                      }
+                      dateLabel={dateLabel}
+                      isMultiSelect={isMultiSelect}
+                      selectedConversations={selectedConversations}
+                      toggleConversationSelection={toggleConversationSelection}
+                      router={router}
+                      owner={owner}
+                    />
+                  ))}
+                  {conversationsNavigationRef.current && (
+                    <div
+                      // Change the key each page to force a re-render and get a new entry
+                      key={`infinite-scroll-conversation-${conversationsPage}`}
+                      id="infinite-scroll-conversations"
+                      ref={ref}
+                      style={{ height: "2px" }}
+                    />
+                  )}
+                </>
+              )}
             </NavigationList>
           </div>
         </div>
@@ -371,14 +595,23 @@ const RenderConversation = ({
   router: NextRouter;
   owner: WorkspaceType;
 }) => {
+  const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
+  const {
+    isMenuOpen,
+    menuTriggerPosition,
+    handleRightClick,
+    handleMenuOpenChange,
+  } = useConversationMenu();
+
   const conversationLabel =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     conversation.title ||
     (moment(conversation.created).isSame(moment(), "day")
       ? "New Conversation"
       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
-  const ActionRequiredIcon = () => (
-    <Icon visual={InformationCircleIcon} className="text-golden-700" />
+  const UnreadIcon = () => (
+    <Icon visual={DotIcon} className="-ml-1 -mr-2 text-highlight" />
   );
 
   return (
@@ -403,14 +636,40 @@ const RenderConversation = ({
           selected={router.query.cId === conversation.sId}
           icon={
             conversation.actionRequired
-              ? ActionRequiredIcon
+              ? ExclamationCircleIcon
               : conversation.unread
-                ? ClockIcon
+                ? UnreadIcon
                 : undefined
           }
           label={conversationLabel}
-          href={`/w/${owner.sId}/assistant/${conversation.sId}`}
-          shallow
+          moreMenu={
+            <ConversationMenu
+              activeConversationId={conversation.sId}
+              conversation={conversation}
+              owner={owner}
+              trigger={<NavigationListItemAction />}
+              isConversationDisplayed={router.query.cId === conversation.sId}
+              isOpen={isMenuOpen}
+              onOpenChange={handleMenuOpenChange}
+              triggerPosition={menuTriggerPosition}
+            />
+          }
+          onContextMenu={handleRightClick}
+          onClick={async () => {
+            // Side bar is the floating sidebar that appears when the screen is small.
+            if (sidebarOpen) {
+              setSidebarOpen(false);
+              // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
+              await new Promise((resolve) => setTimeout(resolve, 600));
+            }
+            await router.push(
+              getAgentRoute(owner.sId, conversation.sId),
+              undefined,
+              {
+                shallow: true,
+              }
+            );
+          }}
         />
       )}
     </>

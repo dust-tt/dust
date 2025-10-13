@@ -108,6 +108,7 @@ async function handler(
         : null;
 
       let formData: Record<string, any>;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const contentType = req.headers["content-type"] || "";
 
       if (contentType.includes("application/json")) {

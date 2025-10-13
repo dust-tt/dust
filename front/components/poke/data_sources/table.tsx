@@ -16,13 +16,18 @@ function prepareDataSourceForDisplay(dataSources: DataSourceType[]) {
 
 interface DataSourceDataTableProps {
   owner: WorkspaceType;
+  loadOnInit?: boolean;
 }
 
-export function DataSourceDataTable({ owner }: DataSourceDataTableProps) {
+export function DataSourceDataTable({
+  owner,
+  loadOnInit,
+}: DataSourceDataTableProps) {
   return (
     <PokeDataTableConditionalFetch
       header="Data Sources"
       owner={owner}
+      loadOnInit={loadOnInit}
       useSWRHook={usePokeDataSources}
     >
       {(data) => (

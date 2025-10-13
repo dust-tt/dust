@@ -23,6 +23,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -85,7 +86,7 @@ const MAX_CONVERSATION_DEPTH = 4;
  *                 example: false
  *               blocking:
  *                 type: boolean
- *                 description: Whether to wait for the agent to generate the initial message (if false, you will need to use streaming events to get the messages, defaults to false).
+ *                 description: Whether to wait for the agent to generate the initial message. If true the query will wait for the agent's answer. If false (default), the API will return a conversation ID directly and you will need to use streaming events to get the messages.
  *                 example: true
  *     responses:
  *       200:
@@ -207,6 +208,20 @@ async function handler(
             });
           }
         }
+
+        const isRunAgent =
+          message.context.origin === "run_agent" ||
+          message.context.origin === "agent_handover";
+        if (isRunAgent && !auth.isSystemKey()) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Messages from run_agent or agent_handover must come from a system key.",
+            },
+          });
+        }
       }
 
       if (depth && depth >= MAX_CONVERSATION_DEPTH) {
@@ -297,7 +312,7 @@ async function handler(
             {
               username: context?.username ?? null,
               fullName: context?.fullName ?? null,
-              email: context?.email ?? null,
+              email: context?.email?.toLowerCase() ?? null,
               profilePictureUrl: context?.profilePictureUrl ?? null,
             }
           );
@@ -340,13 +355,37 @@ async function handler(
       if (message) {
         const ctx: UserMessageContext = {
           clientSideMCPServerIds: message.context.clientSideMCPServerIds ?? [],
-          email: message.context.email ?? null,
+          email: message.context.email?.toLowerCase() ?? null,
           fullName: message.context.fullName ?? null,
           origin: message.context.origin ?? "api",
           profilePictureUrl: message.context.profilePictureUrl ?? null,
           timezone: message.context.timezone,
           username: message.context.username,
+          originMessageId: message.context.originMessageId ?? null,
         };
+
+        // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
+        if (message.context.selectedMCPServerViewIds) {
+          const mcpServerViews = await MCPServerViewResource.fetchByIds(
+            auth,
+            message.context.selectedMCPServerViewIds
+          );
+
+          const r = await ConversationResource.upsertMCPServerViews(auth, {
+            conversation,
+            mcpServerViews,
+            enabled: true,
+          });
+          if (r.isErr()) {
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "Failed to add MCP server views to conversation",
+              },
+            });
+          }
+        }
 
         // If a message was provided we do await for the message to be created before returning the
         // conversation along with the message. `postUserMessage` returns as soon as the user message
@@ -376,6 +415,7 @@ async function handler(
         newMessage = messageRes.value.userMessage;
       }
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (newContentFragment || newMessage) {
         // If we created a user message or a content fragment (or both) we retrieve the
         // conversation. If a user message was posted, we know that the agent messages have been

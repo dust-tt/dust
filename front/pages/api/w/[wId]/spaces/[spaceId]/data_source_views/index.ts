@@ -83,7 +83,7 @@ async function handler(
 
         if (space.isSystem()) {
           // In case of system space, we want to reflect the usage by datasources themselves so we
-          // get usage accross all spaces.
+          // get usage across all spaces.
           const usagesByDataSources = await getDataSourcesUsageByCategory({
             auth,
             category,
@@ -117,6 +117,7 @@ async function handler(
                     fetchConnectorError: false,
                     fetchConnectorErrorMessage: null,
                   },
+                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   usage: usages[dataSourceView.id] || {
                     count: 0,
                     agents: [],
@@ -129,6 +130,7 @@ async function handler(
               return {
                 ...dataSourceView,
                 dataSource: augmentedDataSource,
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 usage: usages[dataSourceView.id] || {
                   count: 0,
                   agents: [],

@@ -1,7 +1,7 @@
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Counter,
@@ -18,6 +18,8 @@ import {
 import { SpinnerProps } from "@sparkle/components/Spinner";
 import { ChevronDownIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+
+const PULSE_ANIMATION_DURATION = 1;
 
 export const BUTTON_VARIANTS = [
   "primary",
@@ -36,7 +38,7 @@ export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 // Define button styling with cva
 const buttonVariants = cva(
   cn(
-    "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-ring-offset-background s-transition-colors s-ring-inset",
+    "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-ring-offset-background s-transition-colors s-ring-inset s-select-none",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-0",
     "dark:focus-visible:s-ring-0 dark:focus-visible:s-ring-offset-1"
   ),
@@ -98,16 +100,25 @@ const buttonVariants = cva(
         ),
       },
       size: {
-        xmini: "s-h-6 s-w-6 s-rounded-lg s-label-xs s-gap-1 s-shrink-0",
-        mini: "s-h-7 s-w-7 s-rounded-lg s-label-xs s-gap-1.5 s-shrink-0",
-        xs: "s-h-7 s-px-2.5 s-rounded-lg s-label-xs s-gap-1.5 s-shrink-0",
-        sm: "s-h-9 s-px-3 s-rounded-xl s-label-sm s-gap-2 s-shrink-0",
-        md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-label-base s-gap-2.5 s-shrink-0",
+        xmini: "s-h-6 s-w-6 s-label-xs s-gap-1 s-shrink-0",
+        mini: "s-h-7 s-w-7 s-label-xs s-gap-1.5 s-shrink-0",
+        xs: "s-h-7 s-px-2.5 s-label-xs s-gap-1.5 s-shrink-0",
+        sm: "s-h-9 s-px-3 s-label-sm s-gap-2 s-shrink-0",
+        md: "s-h-12 s-px-4 s-py-2 s-label-base s-gap-2.5 s-shrink-0",
+      },
+      rounded: {
+        xmini: "s-rounded-lg",
+        mini: "s-rounded-lg",
+        xs: "s-rounded-lg",
+        sm: "s-rounded-xl",
+        md: "s-rounded-2xl",
+        full: "s-rounded-full",
       },
     },
     defaultVariants: {
       variant: "primary",
       size: "sm",
+      rounded: "sm",
     },
   }
 );
@@ -151,14 +162,30 @@ export interface MetaButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  isRounded?: boolean;
 }
 
 const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
-  ({ className, asChild = false, variant, size, children, ...props }, ref) => {
+  (
+    {
+      className,
+      asChild = false,
+      variant,
+      size,
+      isRounded,
+      children,
+      ...props
+    },
+    ref
+  ) => {
     const Comp = asChild ? Slot : "button";
+
+    // Determine rounded variant based on isRounded prop
+    const rounded = isRounded ? "full" : size;
+
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, size, rounded, className }))}
         ref={ref}
         {...props}
       >
@@ -193,9 +220,11 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isSelect?: boolean;
     isLoading?: boolean;
     isPulsing?: boolean;
+    briefPulse?: boolean;
     tooltip?: string;
     isCounter?: boolean;
     counterValue?: string;
+    isRounded?: boolean;
   };
 
 export type MiniButtonProps = CommonButtonProps & {
@@ -223,9 +252,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       tooltip,
       isSelect = false,
       isPulsing = false,
+      briefPulse = false,
       isCounter = false,
       counterValue,
       size = "sm",
+      isRounded = false,
       href,
       target,
       rel,
@@ -238,6 +269,22 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const iconSize = ICON_SIZE_MAP[size];
     const counterSize = COUNTER_SIZE_MAP[size];
+
+    const [isPulsingBriefly, setIsPulsingBriefly] = useState(false);
+
+    useEffect(() => {
+      if (!briefPulse) {
+        return;
+      }
+      const startPulse = () => {
+        setIsPulsingBriefly(true);
+        setTimeout(
+          () => setIsPulsingBriefly(false),
+          PULSE_ANIMATION_DURATION * 3000
+        );
+      };
+      startPulse();
+    }, [briefPulse]);
 
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
       <Icon visual={visual} size={iconSize} className={cn(extraClass)} />
@@ -318,13 +365,17 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         size={size}
         variant={variant}
+        isRounded={isRounded}
         disabled={isLoading || props.disabled}
-        className={cn(isPulsing && "s-animate-pulse", className)}
+        className={cn(
+          (isPulsing || isPulsingBriefly) && "s-animate-pulse",
+          className
+        )}
         aria-label={ariaLabel || tooltip || label}
         style={
           {
             "--pulse-color": "#93C5FD",
-            "--duration": "1.5s",
+            "--duration": `${PULSE_ANIMATION_DURATION}s`,
           } as React.CSSProperties
         }
         asChild={shouldUseSlot}

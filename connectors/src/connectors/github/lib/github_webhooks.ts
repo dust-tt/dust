@@ -132,7 +132,7 @@ const PullRequestPayloadSchema = t.intersection([
       organization: OrganizationSchema,
     }),
     t.type({
-      user: UserSchema,
+      sender: UserSchema,
     }),
   ]),
 ]);

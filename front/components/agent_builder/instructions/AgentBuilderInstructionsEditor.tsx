@@ -1,52 +1,38 @@
-import { cn } from "@dust-tt/sparkle";
+import { cn, markdownStyles } from "@dust-tt/sparkle";
+import type { Editor as CoreEditor } from "@tiptap/core";
 import { CharacterCount } from "@tiptap/extension-character-count";
-import Document from "@tiptap/extension-document";
-import { History } from "@tiptap/extension-history";
-import { ListItem } from "@tiptap/extension-list-item";
-import Text from "@tiptap/extension-text";
+import Placeholder from "@tiptap/extension-placeholder";
+import type { Editor as ReactEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
-import React, { useEffect, useMemo } from "react";
-import { useController, useWatch } from "react-hook-form";
+import debounce from "lodash/debounce";
+import React, { useEffect, useMemo, useRef } from "react";
+import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AgentBuilderInstructionsAutoCompleteExtension } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsAutoCompleteExtension";
-import { AgentInstructionDiffExtension } from "@app/components/agent_builder/instructions/AgentInstructionDiffExtension";
-import { InstructionBlockExtension } from "@app/components/agent_builder/instructions/InstructionBlockExtension";
+import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
+import { AgentInstructionDiffExtension } from "@app/components/agent_builder/instructions/extensions/AgentInstructionDiffExtension";
+import { BlockInsertExtension } from "@app/components/agent_builder/instructions/extensions/BlockInsertExtension";
+import { HeadingExtension } from "@app/components/agent_builder/instructions/extensions/HeadingExtension";
+import { InstructionBlockExtension } from "@app/components/agent_builder/instructions/extensions/InstructionBlockExtension";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
+import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
 } from "@app/lib/client/agent_builder/instructions";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightAgentConfigurationType } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
-/**
- * Converts watched form data to the minimal format needed by the auto-complete extension.
- * Only extracts the fields actually used by the autocomplete API calls.
- */
-function createBuilderStateFromWatchedFields(
-  agentName: string | undefined,
-  agentDescription: string | undefined,
-  actions: any[]
-) {
-  return {
-    handle: agentName || null,
-    description: agentDescription || null,
-    actions: (actions || []).map((action) => ({
-      name: action.name,
-      description: action.description,
-    })),
-  };
-}
+export const BLUR_EVENT_NAME = "agent:instructions:blur";
 
 const editorVariants = cva(
   [
-    "overflow-auto border rounded-xl p-2 resize-y min-h-60 h-125",
+    "overflow-auto border rounded-xl p-2 resize-y min-h-60 max-h-[1024px]",
     "transition-all duration-200",
     "bg-muted-background dark:bg-muted-background-night",
   ],
@@ -87,71 +73,95 @@ export function AgentBuilderInstructionsEditor({
     name: "instructions",
   });
 
-  // Watch specific form fields needed for autocomplete
-  const agentName = useWatch<AgentBuilderFormData, "agentSettings.name">({
-    name: "agentSettings.name",
-  });
-  const agentDescription = useWatch<
-    AgentBuilderFormData,
-    "agentSettings.description"
-  >({
-    name: "agentSettings.description",
-  });
-  const actions = useWatch<AgentBuilderFormData, "actions">({
-    name: "actions",
-  });
-
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const editorRef = useRef<ReactEditor | null>(null);
+  const blockDropdown = useBlockInsertDropdown(editorRef);
+  const suggestionHandler = blockDropdown.suggestionOptions;
 
   const extensions = useMemo(() => {
-    const baseExtensions = [
-      ListItem,
-      Document,
-      Text,
+    return [
+      StarterKit.configure({
+        paragraph: false, // We use custom ParagraphExtension
+        heading: false,
+        bulletList: false,
+        orderedList: false,
+        listItem: false,
+        blockquote: false,
+        horizontalRule: false,
+        bold: false,
+        italic: false,
+        strike: false,
+        history: {
+          depth: 100,
+        },
+        codeBlock: {
+          HTMLAttributes: {
+            class: markdownStyles.code(),
+          },
+        },
+      }),
       ParagraphExtension,
-      History,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
+      BlockInsertExtension.configure({
+        suggestion: suggestionHandler,
+      }),
+      Placeholder.configure({
+        placeholder:
+          "What does this agent do? How should it behave? What should it avoid doing?",
+        emptyNodeClass:
+          "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
+      }),
       CharacterCount.configure({
         limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
       }),
+      HeadingExtension.configure({
+        levels: [1, 2, 3, 4, 5, 6],
+        HTMLAttributes: {
+          class: "mt-4 mb-3",
+        },
+      }),
     ];
+  }, [suggestionHandler]);
 
-    if (featureFlags.includes("agent_builder_instructions_autocomplete")) {
-      const autoCompleteExtension =
-        AgentBuilderInstructionsAutoCompleteExtension.configure({
-          owner,
-          suggestionDebounce: 700,
-          getBuilderState: () =>
-            createBuilderStateFromWatchedFields(
-              agentName,
-              agentDescription,
-              actions
-            ),
-        });
-
-      return [...baseExtensions, autoCompleteExtension];
-    }
-
-    return baseExtensions;
-  }, [featureFlags, owner, agentName, agentDescription, actions]);
+  // Debounce serialization to prevent performance issues
+  const debouncedUpdate = useMemo(
+    () =>
+      debounce((editor: CoreEditor | ReactEditor) => {
+        if (!isInstructionDiffMode && !editor.isDestroyed) {
+          const json = editor.getJSON();
+          const plainText = plainTextFromTipTapContent(json);
+          field.onChange(plainText);
+        }
+      }, 250),
+    [field, isInstructionDiffMode]
+  );
 
   const editor = useEditor(
     {
       extensions,
       content: tipTapContentFromPlainText(field.value),
-      onUpdate: ({ editor }) => {
-        if (!isInstructionDiffMode) {
-          const json = editor.getJSON();
-          const plainText = plainTextFromTipTapContent(json);
-          field.onChange(plainText);
+      onUpdate: ({ editor, transaction }) => {
+        if (transaction.docChanged) {
+          debouncedUpdate(editor);
         }
+      },
+      onBlur: () => {
+        window.dispatchEvent(new CustomEvent(BLUR_EVENT_NAME));
+        return false;
       },
     },
     [extensions]
   );
+
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
+
+  useEffect(() => {
+    return () => {
+      debouncedUpdate.cancel();
+    };
+  }, [debouncedUpdate]);
 
   const currentCharacterCount =
     editor?.storage.characterCount.characters() || 0;
@@ -177,9 +187,18 @@ export function AgentBuilderInstructionsEditor({
       return;
     }
 
+    if (editor.isFocused) {
+      return;
+    }
     const currentContent = plainTextFromTipTapContent(editor.getJSON());
     if (currentContent !== field.value) {
-      editor.commands.setContent(tipTapContentFromPlainText(field.value));
+      // Use setTimeout to ensure this runs after any diff mode changes
+      setTimeout(() => {
+        editor.commands.setContent(
+          tipTapContentFromPlainText(field.value),
+          false
+        );
+      }, 0);
     }
   }, [editor, field.value]);
 
@@ -194,6 +213,7 @@ export function AgentBuilderInstructionsEditor({
       }
 
       const currentText = plainTextFromTipTapContent(editor.getJSON());
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const compareText = compareVersion.instructions || "";
 
       editor.commands.applyDiff(compareText, currentText);
@@ -220,6 +240,7 @@ export function AgentBuilderInstructionsEditor({
           maxCount={INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT}
         />
       )}
+      <BlockInsertDropdown blockDropdownState={blockDropdown} />
     </div>
   );
 }

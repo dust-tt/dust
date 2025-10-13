@@ -25,6 +25,9 @@ const GetContentNodesOrChildrenRequestBody = t.type({
   viewType: ContentNodesViewTypeCodec,
   sorting: t.union([SortingParamsCodec, t.undefined]),
 });
+export type GetContentNodesOrChildrenRequestBodyType = t.TypeOf<
+  typeof GetContentNodesOrChildrenRequestBody
+>;
 
 export type GetDataSourceViewContentNodes = {
   nodes: DataSourceViewContentNode[];

@@ -55,7 +55,7 @@ export const useAuthHook = () => {
 
   const handleRefreshToken = useCallback(async () => {
     // Call getAccessToken, it will refresh the token if needed.
-    const newAccessToken = await platform.auth.getAccessToken();
+    const newAccessToken = await platform.auth.getAccessToken(true);
     if (!newAccessToken) {
       setAuthError(
         new AuthError("not_authenticated", "No access token received.")
@@ -147,7 +147,6 @@ export const useAuthHook = () => {
       workspaceId: workspace.sId,
     });
     if (!isValidEnterpriseConnection(updatedUser, workspace)) {
-      await redirectToSSOLogin(workspace);
       return;
     }
 

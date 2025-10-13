@@ -203,15 +203,11 @@ export class KeyResource extends BaseResource<KeyModel> {
     throw new Error("Method not implemented.");
   }
 
-  static async deleteAllForWorkspace(
-    workspace: LightWorkspaceType,
-    transaction?: Transaction
-  ) {
+  static async deleteAllForWorkspace(auth: Authenticator) {
     return this.model.destroy({
       where: {
-        workspaceId: workspace.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
-      transaction,
     });
   }
 

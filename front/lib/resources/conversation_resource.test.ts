@@ -3,7 +3,6 @@ import { assert, describe, expect, it } from "vitest";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types";
@@ -13,7 +12,6 @@ describe("ConversationResource", () => {
     it("should fetch all MCP server views for a conversation", async () => {
       const { workspace, authenticator, globalSpace } =
         await createResourceTest({ role: "admin" });
-      await FeatureFlagFactory.basic("jit_tools", workspace);
 
       const conversation = await ConversationFactory.create({
         auth: authenticator,
@@ -77,7 +75,6 @@ describe("ConversationResource", () => {
     it("should filter by enabled status when onlyEnabled=true", async () => {
       const { workspace, authenticator, globalSpace } =
         await createResourceTest({ role: "admin" });
-      await FeatureFlagFactory.basic("jit_tools", workspace);
 
       const conversation = await ConversationFactory.create({
         auth: authenticator,

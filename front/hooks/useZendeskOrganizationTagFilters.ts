@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useConnectorConfig } from "@app/lib/swr/connectors";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
+import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 
 export function useZendeskOrganizationTagFilters({

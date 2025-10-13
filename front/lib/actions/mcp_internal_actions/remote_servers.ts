@@ -1,6 +1,5 @@
+import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPOAuthUseCase } from "@app/types";
-
-import type { InternalAllowedIconType } from "../mcp_icons";
 
 export type DefaultRemoteMCPServerConfig = {
   id: number;
@@ -10,7 +9,7 @@ export type DefaultRemoteMCPServerConfig = {
   icon: InternalAllowedIconType;
   documentationUrl?: string;
   connectionInstructions?: string;
-  authMethod: "bearer" | "oauth" | null;
+  authMethod: "bearer" | "oauth-dynamic" | null;
   supportedOAuthUseCases?: MCPOAuthUseCase[];
   toolStakes?: Record<string, "high" | "low" | "never_ask">;
 };
@@ -57,10 +56,10 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     id: 10001,
     name: "Linear",
     description: "Linear tools for project management and issue tracking.",
-    url: "https://mcp.linear.app/sse",
+    url: "https://mcp.linear.app/mcp",
     icon: "LinearLogo",
     documentationUrl: "https://linear.app/docs",
-    authMethod: "oauth",
+    authMethod: "oauth-dynamic",
     toolStakes: {
       search_documentation: "never_ask",
       list_comments: "never_ask",
@@ -86,10 +85,63 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       update_project: "high",
     },
   },
+  {
+    id: 10002,
+    name: "Asana",
+    description: "Asana tools for project management and issue tracking.",
+    url: "https://mcp.asana.com/sse",
+    icon: "AsanaLogo",
+    documentationUrl:
+      "https://developers.asana.com/docs/using-asanas-mcp-server",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      asana_get_attachment: "never_ask",
+      asana_get_attachments_for_object: "never_ask",
+      asana_get_goals: "never_ask",
+      asana_get_goal: "never_ask",
+      asana_create_goal: "low",
+      asana_get_parent_goals_for_goal: "never_ask",
+      asana_update_goal: "low",
+      asana_get_portfolio: "never_ask",
+      asana_get_portfolios: "never_ask",
+      asana_get_items_for_portfolio: "never_ask",
+      asana_get_project: "never_ask",
+      asana_get_project_sections: "never_ask",
+      asana_get_projects: "never_ask",
+      asana_get_project_status: "never_ask",
+      asana_get_project_statuses: "never_ask",
+      asana_create_project_status: "low",
+      asana_get_project_task_counts: "never_ask",
+      asana_get_projects_for_team: "never_ask",
+      asana_get_projects_for_workspace: "never_ask",
+      asana_create_project: "low",
+      asana_search_tasks: "never_ask",
+      asana_get_task: "never_ask",
+      asana_create_task: "low",
+      asana_update_task: "low",
+      asana_get_stories_for_task: "never_ask",
+      asana_create_task_story: "low",
+      asana_set_task_dependencies: "low",
+      asana_set_task_dependents: "low",
+      asana_set_parent_for_task: "low",
+      asana_get_tasks: "never_ask",
+      asana_delete_task: "low",
+      asana_add_task_followers: "low",
+      asana_remove_task_followers: "low",
+      asana_get_teams_for_workspace: "never_ask",
+      asana_get_teams_for_user: "never_ask",
+      asana_get_time_period: "never_ask",
+      asana_get_time_periods: "never_ask",
+      asana_typeahead_search: "never_ask",
+      asana_get_user: "never_ask",
+      asana_get_team_users: "never_ask",
+      asana_get_workspace_users: "never_ask",
+      asana_list_workspaces: "never_ask",
+    },
+  },
   //Removed temporaly see https://dust4ai.slack.com/archives/C050SM8NSPK/p1754397289272209
   /*
   {
-    id: 10002,
     name: "Datadog",
     description:
       "Datadog tools for monitoring and observability (Region: US1).",
@@ -117,7 +169,6 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
-    id: 10003,
     name: "Datadog Europe",
     description:
       "Datadog tools for monitoring and observability (Region: EU1).",
@@ -155,6 +206,7 @@ export const getDefaultRemoteMCPServerByURL = (
   url: string | undefined
 ): DefaultRemoteMCPServerConfig | null => {
   return (
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     DEFAULT_REMOTE_MCP_SERVERS.find((server) => server.url === url) || null
   );
 };
@@ -162,6 +214,7 @@ export const getDefaultRemoteMCPServerByURL = (
 export const getDefaultRemoteMCPServerById = (
   id: number
 ): DefaultRemoteMCPServerConfig | null => {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return DEFAULT_REMOTE_MCP_SERVERS.find((server) => server.id === id) || null;
 };
 
@@ -169,6 +222,7 @@ export const getDefaultRemoteMCPServerByName = (
   name: string
 ): DefaultRemoteMCPServerConfig | null => {
   return (
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     DEFAULT_REMOTE_MCP_SERVERS.find((server) => server.name === name) || null
   );
 };

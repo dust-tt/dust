@@ -61,6 +61,7 @@ export const ParagraphExtension = Paragraph.extend({
 export interface EditorMention {
   id: string;
   label: string;
+  description?: string;
 }
 
 function getTextAndMentionsFromNode(node?: JSONContent) {
@@ -91,6 +92,12 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
     textContent += "\n";
   }
 
+  if (node.type === "pastedAttachment") {
+    const title = node.attrs?.title ?? "";
+    const fileId = node.attrs?.fileId ?? "";
+    textContent += `:pasted_attachment[${title}]{fileId=${fileId}}`;
+  }
+
   // If the node has content, recursively get text and mentions from each child node
   if (node.content) {
     node.content.forEach((childNode) => {
@@ -116,7 +123,15 @@ const useEditorService = (editor: Editor | null) => {
     // Return the service object with utility functions.
     return {
       // Insert mention helper function.
-      insertMention: ({ id, label }: { id: string; label: string }) => {
+      insertMention: ({
+        id,
+        label,
+        description,
+      }: {
+        id: string;
+        label: string;
+        description?: string;
+      }) => {
         const shouldAddSpaceBeforeMention =
           !editor?.isEmpty &&
           editor?.getText()[editor?.getText().length - 1] !== " ";
@@ -126,7 +141,7 @@ const useEditorService = (editor: Editor | null) => {
           .insertContent(shouldAddSpaceBeforeMention ? " " : "") // Add an extra space before the mention.
           .insertContent({
             type: "mention",
-            attrs: { id, label },
+            attrs: { id, label, description },
           })
           .insertContent(" ") // Add an extra space after the mention.
           .run();
@@ -268,7 +283,7 @@ const useCustomEditor = ({
       suggestion: suggestionHandler,
     }),
     Placeholder.configure({
-      placeholder: "Ask a question or get some @help",
+      placeholder: "Ask an @agent a question, or get some @help",
       emptyNodeClass:
         "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
     }),

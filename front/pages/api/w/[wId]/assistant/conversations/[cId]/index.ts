@@ -4,7 +4,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
-  deleteConversation,
+  deleteOrLeaveConversation,
   updateConversationTitle,
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -16,23 +16,40 @@ import type {
   ConversationWithoutContentType,
   WithAPIErrorResponse,
 } from "@app/types";
+import { isString } from "@app/types";
 
-export const PatchConversationsRequestBodySchema = t.type({
-  title: t.string,
-});
+const PatchConversationsRequestBodySchema = t.union([
+  t.type({
+    title: t.string,
+  }),
+  t.type({
+    read: t.literal(true),
+  }),
+]);
 
-export type GetConversationsResponseBody = {
+export type PatchConversationsRequestBody = t.TypeOf<
+  typeof PatchConversationsRequestBodySchema
+>;
+
+export type GetConversationResponseBody = {
   conversation: ConversationWithoutContentType;
+};
+
+export type PatchConversationResponseBody = {
+  success: boolean;
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetConversationsResponseBody | void>
+    WithAPIErrorResponse<
+      GetConversationResponseBody | PatchConversationResponseBody | void
+    >
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!(typeof req.query.cId === "string")) {
+  const { cId } = req.query;
+  if (!isString(cId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -42,26 +59,23 @@ async function handler(
     });
   }
 
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      req.query.cId
-    );
-
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
-
-  const conversation = conversationRes.value;
-
   switch (req.method) {
-    case "GET":
+    case "GET": {
+      const conversationRes =
+        await ConversationResource.fetchConversationWithoutContent(auth, cId);
+
+      if (conversationRes.isErr()) {
+        return apiErrorForConversation(req, res, conversationRes.error);
+      }
+
+      const conversation = conversationRes.value;
       res.status(200).json({ conversation });
       return;
+    }
 
     case "DELETE": {
-      const result = await deleteConversation(auth, {
-        conversationId: conversation.sId,
+      const result = await deleteOrLeaveConversation(auth, {
+        conversationId: cId,
       });
       if (result.isErr()) {
         return apiErrorForConversation(req, res, result.error);
@@ -71,37 +85,61 @@ async function handler(
       return;
     }
 
-    case "PATCH": {
-      const bodyValidation = PatchConversationsRequestBodySchema.decode(
-        req.body
-      );
+    case "PATCH":
+      {
+        const conversationRes =
+          await ConversationResource.fetchConversationWithoutContent(auth, cId);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        if (conversationRes.isErr()) {
+          return apiErrorForConversation(req, res, conversationRes.error);
+        }
 
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
-          },
-        });
+        const conversation = conversationRes.value;
+        const bodyValidation = PatchConversationsRequestBodySchema.decode(
+          req.body
+        );
+
+        if (isLeft(bodyValidation)) {
+          const pathError = reporter.formatValidationErrors(
+            bodyValidation.left
+          );
+
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid request body: ${pathError}`,
+            },
+          });
+        }
+
+        if ("title" in bodyValidation.right) {
+          const result = await updateConversationTitle(auth, {
+            conversationId: conversation.sId,
+            title: bodyValidation.right.title,
+          });
+
+          if (result.isErr()) {
+            return apiErrorForConversation(req, res, result.error);
+          }
+          return res.status(200).json({ success: true });
+        } else if ("read" in bodyValidation.right) {
+          await ConversationResource.markAsRead(auth, {
+            conversation,
+          });
+
+          return res.status(200).json({ success: true });
+        } else {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid request body",
+            },
+          });
+        }
       }
-
-      const { title } = bodyValidation.right;
-
-      const result = await updateConversationTitle(auth, {
-        conversationId: conversation.sId,
-        title,
-      });
-
-      if (result.isErr()) {
-        return apiErrorForConversation(req, res, result.error);
-      }
-
-      res.status(200).json({ conversation: result.value });
-      return;
-    }
+      break;
 
     default:
       return apiError(req, res, {

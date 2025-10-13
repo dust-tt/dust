@@ -25,8 +25,9 @@ import type { Control } from "react-hook-form";
 import { useFieldArray, useForm } from "react-hook-form";
 import { MultiSelect } from "react-multi-select-component";
 
-import { makeUrlForEmojiAndBackground } from "@app/components/assistant_builder/avatar_picker/utils";
+import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 import {
   PokeForm,
   PokeFormControl,
@@ -49,10 +50,9 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
 import type { CreateTemplateFormType, TemplateTagCodeType } from "@app/types";
 import {
-  ASSISTANT_CREATIVITY_LEVELS,
+  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CreateTemplateFormSchema,
   generateTailwindBackgroundColors,
-  GPT_4_TURBO_MODEL_CONFIG,
   MULTI_ACTION_PRESETS,
   removeNulls,
   TEMPLATE_VISIBILITIES,
@@ -554,8 +554,7 @@ function TemplatesPage({
       description: "",
       handle: "",
       presetInstructions: "",
-      presetModelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-      presetTemperature: "balanced",
+      presetModelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       helpInstructions: "",
       helpActions: "",
       emoji: "black_cat/1f408-200d-2b1b", // 🐈‍⬛.
@@ -576,7 +575,7 @@ function TemplatesPage({
 
   if (isSubmitting) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-primary-50 dark:bg-primary-50-night">
+      <div className="min-h-dvh flex items-center justify-center bg-primary-50 dark:bg-primary-50-night">
         <div className="text-primary-900">Creating/Updating template...</div>
       </div>
     );
@@ -624,7 +623,13 @@ function TemplatesPage({
                       }}
                       labelledBy="Select"
                       hasSelectAll={false}
-                      className="dark:bg-primary-50-night dark:text-white [&_.dropdown-content]:dark:bg-primary-50-night [&_.dropdown-content]:dark:text-white [&_.dropdown-heading]:dark:bg-primary-50-night [&_.dropdown-heading]:dark:text-white [&_.select-item]:hover:bg-primary-100 [&_.select-item]:dark:hover:bg-primary-100-night [&_.select-panel]:dark:bg-primary-50-night [&_.select-panel]:dark:text-white"
+                      className={cn(
+                        "dark:bg-primary-50-night dark:text-white",
+                        "[&_.dropdown-content]:dark:bg-primary-50-night [&_.dropdown-content]:dark:text-white",
+                        "[&_.dropdown-heading]:dark:bg-primary-50-night [&_.dropdown-heading]:dark:text-white",
+                        "[&_.select-item]:hover:bg-primary-100 [&_.select-item]:dark:hover:bg-primary-100-night",
+                        "[&_.select-panel]:dark:bg-primary-50-night [&_.select-panel]:dark:text-white"
+                      )}
                       ItemRenderer={({
                         checked,
                         option,
@@ -646,7 +651,7 @@ function TemplatesPage({
                             type="checkbox"
                             onChange={() => {}}
                             checked={checked}
-                            className="mr-2 accent-primary"
+                            className="mr-2 accent-primary dark:accent-primary-night"
                           />
                           <span>{option.label}</span>
                         </div>
@@ -666,14 +671,6 @@ function TemplatesPage({
               options={USED_MODEL_CONFIGS.map((config) => ({
                 value: config.modelId,
                 display: config.displayName,
-              }))}
-            />
-            <SelectField
-              control={form.control}
-              name="presetTemperature"
-              title="Preset Temperature"
-              options={ASSISTANT_CREATIVITY_LEVELS.map((acl) => ({
-                value: acl,
               }))}
             />
           </div>

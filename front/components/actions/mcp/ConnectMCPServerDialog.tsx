@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
+  getMcpServerDisplayName,
   getMcpServerViewDisplayName,
   getServerTypeAndIdFromSId,
   isRemoteMCPServerType,
@@ -81,7 +82,12 @@ export function ConnectMCPServerDialog({
         ) {
           setIsLoading(true);
           const discoverOAuthMetadataRes = await discoverOAuthMetadata(
-            mcpServerView.server.url
+            mcpServerView.server.url,
+            mcpServerView.server.customHeaders
+              ? Object.entries(mcpServerView.server.customHeaders).map(
+                  ([key, value]) => ({ key, value: String(value) })
+                )
+              : undefined
           );
 
           if (
@@ -169,7 +175,8 @@ export function ConnectMCPServerDialog({
     // Then associate connection.
     await createMCPServerConnection({
       connectionId: cRes.value.connection_id,
-      mcpServer: mcpServerView.server,
+      mcpServerId: mcpServerView.server.sId,
+      mcpServerDisplayName: getMcpServerDisplayName(mcpServerView.server),
       provider: authorization.provider,
     });
 
@@ -222,7 +229,7 @@ export function ConnectMCPServerDialog({
           rightButtonProps={{
             isLoading: isLoading,
             label: authorization ? "Setup connection" : "",
-            variant: "highlight",
+            variant: "primary",
             onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
               e.preventDefault();
               e.stopPropagation();
@@ -230,6 +237,7 @@ export function ConnectMCPServerDialog({
                 void handleSave();
               }
             },
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             disabled: !isFormValid || (authorization && !useCase) || isLoading,
           }}
         />

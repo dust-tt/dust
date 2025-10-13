@@ -7,16 +7,24 @@ import {
   NavigationListItem,
   NavigationListLabel,
   PlusIcon,
+  ToolsIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type { ReturnTypeOf } from "@octokit/core/types";
-import { sortBy, uniqBy } from "lodash";
+import sortBy from "lodash/sortBy";
+import uniqBy from "lodash/uniqBy";
 import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
+import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
+import { useSpaceSidebarItemFocus } from "@app/hooks/useSpaceSidebarItemFocus";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -39,7 +47,9 @@ import {
   useSpaces,
   useSpacesAsAdmin,
 } from "@app/lib/swr/spaces";
+import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type {
   AppType,
   DataSourceViewCategory,
@@ -48,6 +58,7 @@ import type {
   DataSourceViewType,
   LightWorkspaceType,
   SpaceType,
+  WhitelistableFeature,
 } from "@app/types";
 import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@app/types";
 
@@ -228,18 +239,29 @@ const getSpaceSectionDetails = (
 
 // System space.
 
-const SYSTEM_SPACE_ITEMS = [
+const SYSTEM_SPACE_ITEMS: {
+  label: string;
+  visual: IconType;
+  category: DataSourceViewCategory;
+  flag: WhitelistableFeature | null;
+}[] = [
   {
     label: "Connections",
     visual: CloudArrowLeftRightIcon,
-    category: "managed" as DataSourceViewCategory,
+    category: "managed",
     flag: null,
   },
   {
     label: "Tools",
-    visual: BoltIcon,
-    category: "actions" as DataSourceViewCategory,
+    visual: ToolsIcon,
+    category: "actions",
     flag: null,
+  },
+  {
+    label: "Triggers",
+    visual: BoltIcon,
+    category: "triggers",
+    flag: "hootl_webhooks",
   },
 ];
 
@@ -260,6 +282,7 @@ const SystemSpaceMenu = ({
             return null;
           }
         }
+
         return (
           <SystemSpaceItem
             category={item.category as DataSourceViewCategoryWithoutApps}
@@ -349,18 +372,10 @@ const SpaceMenuItem = ({
 }) => {
   const router = useRouter();
   const { setNavigationSelection } = usePersistedNavigationSelection();
-
   const spacePath = `/w/${owner.sId}/spaces/${space.sId}`;
-  const isAncestorToCurrentPage =
-    router.asPath.startsWith(spacePath + "/") || router.asPath === spacePath;
-
-  // Unfold the space if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(false);
-  useEffect(() => {
-    if (isAncestorToCurrentPage) {
-      setIsExpanded(isAncestorToCurrentPage);
-    }
-  }, [isAncestorToCurrentPage]);
+  const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
+    path: spacePath,
+  });
 
   const { spaceInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -380,8 +395,8 @@ const SpaceMenuItem = ({
         });
         void router.push(spacePath);
       }}
-      isSelected={router.asPath === spacePath}
-      onChevronClick={() => setIsExpanded(!isExpanded)}
+      isSelected={isSelected}
+      onChevronClick={toggleExpanded}
       visual={getSpaceIcon(space)}
       tailwindIconTextColor={isMember ? undefined : "text-warning-400"}
       areActionsFading={false}
@@ -411,6 +426,10 @@ const SpaceMenuItem = ({
                     owner={owner}
                     space={space}
                   />
+                );
+              } else if (c === "triggers") {
+                return (
+                  <SpaceTriggersSubMenu key={c} owner={owner} space={space} />
                 );
               } else {
                 return (
@@ -504,6 +523,7 @@ const SpaceDataSourceViewItem = ({
   return (
     <Tree.Item
       isNavigatable
+      className="dd-privacy-mask"
       type={isEmpty ? "leaf" : "node"}
       isSelected={router.asPath === dataSourceViewPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
@@ -561,17 +581,9 @@ const SpaceDataSourceViewSubMenu = ({
   const router = useRouter();
 
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
-  const isAncestorToCurrentPage =
-    router.asPath.startsWith(spaceCategoryPath + "/") ||
-    router.asPath === spaceCategoryPath;
-
-  // Unfold the space's category if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(false);
-  useEffect(() => {
-    if (isAncestorToCurrentPage) {
-      setIsExpanded(isAncestorToCurrentPage);
-    }
-  }, [isAncestorToCurrentPage]);
+  const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
+    path: spaceCategoryPath,
+  });
 
   const categoryDetails = CATEGORY_DETAILS[category];
   const { isSpaceDataSourceViewsLoading, spaceDataSourceViews } =
@@ -598,8 +610,8 @@ const SpaceDataSourceViewSubMenu = ({
         });
         void router.push(spaceCategoryPath);
       }}
-      isSelected={router.asPath === spaceCategoryPath}
-      onChevronClick={() => setIsExpanded(!isExpanded)}
+      isSelected={isSelected}
+      onChevronClick={toggleExpanded}
       visual={categoryDetails.icon}
       areActionsFading={false}
       type={
@@ -686,19 +698,10 @@ const SpaceAppSubMenu = ({
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useRouter();
-
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
-  const isAncestorToCurrentPage =
-    router.asPath.startsWith(spaceCategoryPath + "/") ||
-    router.asPath === spaceCategoryPath;
-
-  // Unfold the space's category if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(false);
-  useEffect(() => {
-    if (isAncestorToCurrentPage) {
-      setIsExpanded(isAncestorToCurrentPage);
-    }
-  }, [isAncestorToCurrentPage]);
+  const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
+    path: spaceCategoryPath,
+  });
 
   const categoryDetails = CATEGORY_DETAILS[category];
 
@@ -719,8 +722,8 @@ const SpaceAppSubMenu = ({
         });
         void router.push(spaceCategoryPath);
       }}
-      isSelected={router.asPath === spaceCategoryPath}
-      onChevronClick={() => setIsExpanded(!isExpanded)}
+      isSelected={isSelected}
+      onChevronClick={toggleExpanded}
       visual={categoryDetails.icon}
       areActionsFading={false}
       type={isAppsLoading || apps.length > 0 ? "node" : "leaf"}
@@ -747,19 +750,10 @@ const SpaceActionsSubMenu = ({
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useRouter();
-
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
-  const isAncestorToCurrentPage =
-    router.asPath.startsWith(spaceCategoryPath + "/") ||
-    router.asPath === spaceCategoryPath;
-
-  // Unfold the space's category if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(false);
-  useEffect(() => {
-    if (isAncestorToCurrentPage) {
-      setIsExpanded(isAncestorToCurrentPage);
-    }
-  }, [isAncestorToCurrentPage]);
+  const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
+    path: spaceCategoryPath,
+  });
 
   const categoryDetails = CATEGORY_DETAILS[category];
 
@@ -780,8 +774,8 @@ const SpaceActionsSubMenu = ({
         });
         void router.push(spaceCategoryPath);
       }}
-      isSelected={router.asPath === spaceCategoryPath}
-      onChevronClick={() => setIsExpanded(!isExpanded)}
+      isSelected={isSelected}
+      onChevronClick={toggleExpanded}
       visual={categoryDetails.icon}
       areActionsFading={false}
       type={isMCPServerViewsLoading || serverViews.length > 0 ? "node" : "leaf"}
@@ -793,6 +787,83 @@ const SpaceActionsSubMenu = ({
               action={serverView}
               key={serverView.server.name}
               owner={owner}
+            />
+          ))}
+        </Tree>
+      )}
+    </Tree.Item>
+  );
+};
+
+const SpaceTriggerItem = ({
+  label,
+  icon,
+}: {
+  label: string;
+  icon: InternalAllowedIconType | CustomResourceIconType | null | undefined;
+}): ReactElement => {
+  return (
+    <Tree.Item
+      type="leaf"
+      label={label}
+      visual={() => getAvatarFromIcon(normalizeWebhookIcon(icon), "xs")}
+    />
+  );
+};
+
+const TRIGGERS_CATEGORY: DataSourceViewCategory = "triggers";
+
+const SpaceTriggersSubMenu = ({
+  owner,
+  space,
+}: {
+  owner: LightWorkspaceType;
+  space: SpaceType;
+}) => {
+  const { setNavigationSelection } = usePersistedNavigationSelection();
+  const router = useRouter();
+  const spaceTriggersPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${TRIGGERS_CATEGORY}`;
+  const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
+    path: spaceTriggersPath,
+  });
+  const triggersCategoryDetails = CATEGORY_DETAILS[TRIGGERS_CATEGORY];
+
+  const { webhookSourceViews, isWebhookSourceViewsLoading } =
+    useWebhookSourceViews({
+      owner,
+      space,
+      disabled: !isSelected,
+    });
+
+  return (
+    <Tree.Item
+      isNavigatable
+      label={triggersCategoryDetails.label}
+      collapsed={!isExpanded}
+      onItemClick={async () => {
+        await setNavigationSelection({
+          lastSpaceId: space.sId,
+          lastSpaceCategory: TRIGGERS_CATEGORY,
+        });
+        void router.push(spaceTriggersPath);
+      }}
+      isSelected={isSelected}
+      onChevronClick={toggleExpanded}
+      visual={triggersCategoryDetails.icon}
+      areActionsFading={false}
+      type={
+        isWebhookSourceViewsLoading || webhookSourceViews.length > 0
+          ? "node"
+          : "leaf"
+      }
+    >
+      {isExpanded && (
+        <Tree isLoading={isWebhookSourceViewsLoading}>
+          {webhookSourceViews.map((webhookView) => (
+            <SpaceTriggerItem
+              label={webhookView.customName ?? webhookView.webhookSource.name}
+              icon={webhookView.icon}
+              key={webhookView.sId}
             />
           ))}
         </Tree>

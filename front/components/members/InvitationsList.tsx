@@ -1,9 +1,11 @@
 import {
   Avatar,
+  Button,
   ChevronRightIcon,
   Chip,
   classNames,
   DataTable,
+  MovingMailIcon,
   Page,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
@@ -11,8 +13,12 @@ import React, { useMemo, useState } from "react";
 
 import { EditInvitationModal } from "@app/components/members/EditInvitationModal";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType, WorkspaceType } from "@app/types";
+
+import { isInvitationExpired } from "./utils";
 
 type RowData = MembershipInvitationType & {
   onClick: () => void;
@@ -28,6 +34,7 @@ export function InvitationsList({
   const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
   const [selectedInvite, setSelectedInvite] =
     useState<MembershipInvitationType | null>(null);
+  const sendNotification = useSendNotification();
 
   const filteredInvitations = useMemo(
     () =>
@@ -56,11 +63,37 @@ export function InvitationsList({
       id: "inviteEmail",
       header: "Invitation Email",
       accessorKey: "inviteEmail",
-      cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent>
-          <span>{info.row.original.inviteEmail}</span>
-        </DataTable.CellContent>
-      ),
+      cell: (info: CellContext<RowData, string>) => {
+        const isExpired = isInvitationExpired(info.row.original.createdAt);
+        return (
+          <DataTable.CellContent>
+            <div className="flex items-center gap-2">
+              <span>{info.row.original.inviteEmail}</span>
+              {isExpired && (
+                <>
+                  <span className="text-red-500">(expired)</span>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    icon={MovingMailIcon}
+                    label="Resend"
+                    onClick={async (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      await sendInvitations({
+                        owner,
+                        emails: [info.row.original.inviteEmail],
+                        invitationRole: info.row.original.initialRole,
+                        sendNotification,
+                        isNewInvitation: false,
+                      });
+                    }}
+                  />
+                </>
+              )}
+            </div>
+          </DataTable.CellContent>
+        );
+      },
     },
     {
       id: "initialRole",

@@ -114,6 +114,19 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     );
   }
 
+  static async findChannelWithAutoRespond(
+    connectorId: ModelId,
+    slackChannelId: string
+  ): Promise<SlackChannel | null> {
+    return SlackChannel.findOne({
+      where: {
+        connectorId,
+        slackChannelId,
+        autoRespondWithoutMention: true,
+      },
+    });
+  }
+
   static async fetchByActiveBot(slackTeamId: string) {
     const blob = await this.model.findOne({
       where: {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
 import type {
@@ -9,12 +9,16 @@ import {
   emptyArray,
   fetcher,
   fetcherWithBody,
+  useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
 import type { PostTagSearchBody } from "@app/pages/api/w/[wId]/data_source_views/tags/search";
-import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
+import type {
+  GetContentNodesOrChildrenRequestBodyType,
+  GetDataSourceViewContentNodes,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/configuration";
 import type {
   ContentNodesViewType,
@@ -196,6 +200,30 @@ export function useMultipleDataSourceViewsContentNodes({
   );
 }
 
+type FetchDataSourceViewContentNodesOptions = {
+  owner: LightWorkspaceType;
+  dataSourceView?: DataSourceViewType;
+  internalIds?: string[];
+  parentId?: string;
+  pagination?: CursorPaginationParams;
+  viewType?: ContentNodesViewType;
+  sorting?: SortingParams;
+  disabled?: boolean;
+  swrOptions?: SWRConfiguration;
+};
+
+const makeURLDataSourceViewContentNodes = (
+  {
+    owner,
+    dataSourceView,
+  }: Required<
+    Pick<FetchDataSourceViewContentNodesOptions, "owner" | "dataSourceView">
+  >,
+  searchParams: URLSearchParams
+): string => {
+  return `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${searchParams}`;
+};
+
 export function useDataSourceViewContentNodes({
   owner,
   dataSourceView,
@@ -206,17 +234,7 @@ export function useDataSourceViewContentNodes({
   sorting,
   disabled = false,
   swrOptions,
-}: {
-  owner: LightWorkspaceType;
-  dataSourceView?: DataSourceViewType;
-  internalIds?: string[];
-  parentId?: string;
-  pagination?: CursorPaginationParams;
-  viewType?: ContentNodesViewType;
-  sorting?: SortingParams;
-  disabled?: boolean;
-  swrOptions?: SWRConfiguration;
-}): {
+}: FetchDataSourceViewContentNodesOptions): {
   isNodesError: boolean;
   isNodesLoading: boolean;
   isNodesValidating: boolean;
@@ -234,9 +252,8 @@ export function useDataSourceViewContentNodes({
   if (pagination?.limit) {
     params.append("limit", pagination.limit.toString());
   }
-
   const url = dataSourceView
-    ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
+    ? makeURLDataSourceViewContentNodes({ owner, dataSourceView }, params)
     : null;
 
   const body = {
@@ -246,7 +263,7 @@ export function useDataSourceViewContentNodes({
     sorting,
   };
 
-  const fetchKey = JSON.stringify([url + "?" + params.toString(), body]);
+  const fetchKey = JSON.stringify([url, body]);
 
   const { data, error, mutate, isValidating, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
@@ -279,6 +296,84 @@ export function useDataSourceViewContentNodes({
     totalNodesCount: data ? data.total : 0,
     totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
     nextPageCursor: data?.nextPageCursor || null,
+  };
+}
+
+export function useInfiniteDataSourceViewContentNodes({
+  owner,
+  dataSourceView,
+  pagination,
+  internalIds,
+  parentId,
+  viewType,
+  sorting,
+  swrOptions,
+}: FetchDataSourceViewContentNodesOptions) {
+  const { data, error, isLoading, size, setSize, mutate, isValidating } =
+    useSWRInfiniteWithDefaults<
+      [string, GetContentNodesOrChildrenRequestBodyType] | null,
+      GetDataSourceViewContentNodes
+    >(
+      (_pageIndex, previousPageData) => {
+        // If we reached the end, stop fetching
+        if (
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          (previousPageData && !previousPageData.nextPageCursor) ||
+          !dataSourceView
+        ) {
+          return null;
+        }
+
+        const params = new URLSearchParams();
+        if (previousPageData?.nextPageCursor) {
+          params.append("cursor", previousPageData.nextPageCursor);
+        }
+
+        if (pagination?.limit) {
+          params.append("limit", pagination.limit.toString());
+        }
+
+        const body: GetContentNodesOrChildrenRequestBodyType = {
+          internalIds,
+          parentId,
+          viewType: viewType ?? "all",
+          sorting,
+        };
+
+        return [
+          makeURLDataSourceViewContentNodes({ owner, dataSourceView }, params),
+          body,
+        ];
+      },
+      async ([url, body]) => {
+        return fetcherWithBody([url, body, "POST"]);
+      },
+      swrOptions
+    );
+
+  const nodes = data?.flatMap((page) => page.nodes) ?? emptyArray();
+  const lastPage = data?.[data.length - 1];
+  const hasNextPage =
+    lastPage?.nextPageCursor !== null && lastPage?.nextPageCursor !== undefined;
+
+  const loadMore = useCallback(() => setSize((s) => s + 1), [setSize]);
+
+  return {
+    isNodesLoading: isLoading && !data,
+    isNodesValidating: isValidating,
+    nodesError: error,
+    nodes,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    nextPageCursor: lastPage?.nextPageCursor || null,
+    hasNextPage,
+    loadMore,
+    mutate,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    totalNodesCount: lastPage?.total || 0,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    totalNodesCountIsAccurate: lastPage?.totalIsAccurate || true,
+    isLoadingMore:
+      isLoading || (size > 0 && data && typeof data[size - 1] === "undefined"),
   };
 }
 

@@ -29,6 +29,7 @@ import {
   AgentConfiguration,
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
+import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -37,6 +38,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { normalizeArrays } from "@app/lib/utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -177,7 +180,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
       throw new Error("Unexpected `auth` without `workspace`.");
     }
     if (!auth.isUser()) {
-      throw new Error("Unexpected `auth` without `user`.");
+      throw new Error("Unexpected `auth` without `user` permissions.");
     }
 
     const globalAgentIds = agentIds.filter(isGlobalAgentId);
@@ -401,6 +404,7 @@ export async function createAgentConfiguration(
         userFavorite = userRelation?.favorite ?? false;
       }
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const sId = agentConfigurationId || generateRandomModelSId();
 
       // Create Agent config.
@@ -478,6 +482,7 @@ export async function createAgentConfiguration(
             agentConfigurationInstance,
             { transaction: t }
           );
+          await auth.refresh({ transaction: t });
           await group.setMembers(auth, editors, { transaction: t });
         } else {
           const group = await GroupResource.fetchByAgentConfiguration({
@@ -504,7 +509,19 @@ export async function createAgentConfiguration(
             );
             throw result.error;
           }
-          await group.setMembers(auth, editors, { transaction: t });
+          const setMembersRes = await group.setMembers(auth, editors, {
+            transaction: t,
+          });
+          if (setMembersRes.isErr()) {
+            logger.error(
+              {
+                workspaceId: owner.sId,
+                agentConfigurationId: existingAgent.sId,
+              },
+              `Error setting members to agent ${existingAgent.sId}: ${setMembersRes.error}`
+            );
+            throw setMembersRes.error;
+          }
         }
       }
 
@@ -898,6 +915,26 @@ export async function archiveAgentConfiguration(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
+  // Disable all triggers for this agent before archiving
+  const triggers = await TriggerResource.listByAgentConfigurationId(
+    auth,
+    agentConfigurationId
+  );
+  for (const trigger of triggers) {
+    const disableResult = await trigger.disable(auth);
+    if (disableResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: owner.sId,
+          agentConfigurationId,
+          triggerId: trigger.sId,
+          error: disableResult.error,
+        },
+        `Failed to disable trigger ${trigger.sId} when archiving agent ${agentConfigurationId}`
+      );
+    }
+  }
+
   const updated = await AgentConfiguration.update(
     { status: "archived" },
     {
@@ -943,6 +980,45 @@ export async function restoreAgentConfiguration(
     }
   );
 
+  // Re-enable all triggers for this agent after restoring
+  if (updated[0] > 0) {
+    const triggers = await TriggerResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId
+    );
+    for (const trigger of triggers) {
+      const editor = await UserResource.fetchByModelId(trigger.editor);
+      if (!editor) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId,
+            triggerId: trigger.sId,
+          },
+          `Could not find editor ${trigger.editor} for trigger ${trigger.sId} when restoring agent ${agentConfigurationId}`
+        );
+        continue;
+      }
+
+      const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        editor.sId,
+        auth.getNonNullableWorkspace().sId
+      );
+      const enableResult = await trigger.enable(editorAuth);
+      if (enableResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId,
+            triggerId: trigger.sId,
+            error: enableResult.error,
+          },
+          `Failed to enable trigger ${trigger.sId} when restoring agent ${agentConfigurationId}`
+        );
+      }
+    }
+  }
+
   const affectedCount = updated[0];
   return affectedCount > 0;
 }
@@ -950,11 +1026,27 @@ export async function restoreAgentConfiguration(
 // Should only be called when we need to clean up the agent configuration
 // right after creating it due to an error.
 export async function unsafeHardDeleteAgentConfiguration(
+  auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType
 ): Promise<void> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+
+  await TagAgentModel.destroy({
+    where: {
+      agentConfigurationId: agentConfiguration.id,
+      workspaceId,
+    },
+  });
+  await GroupAgentModel.destroy({
+    where: {
+      agentConfigurationId: agentConfiguration.id,
+      workspaceId,
+    },
+  });
   await AgentConfiguration.destroy({
     where: {
       id: agentConfiguration.id,
+      workspaceId,
     },
   });
 }

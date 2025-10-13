@@ -23,6 +23,7 @@ const PatchUserBodySchema = t.type({
   firstName: t.string,
   lastName: t.string,
   jobType: t.union([t.string, t.undefined]),
+  imageUrl: t.union([t.string, t.null, t.undefined]),
 });
 
 export type GetUserResponseBody = {
@@ -103,6 +104,7 @@ async function handler(
       const firstName = bodyValidation.right.firstName.trim();
       const lastName = bodyValidation.right.lastName.trim();
       const jobType = bodyValidation.right.jobType?.trim();
+      const imageUrl = bodyValidation.right.imageUrl;
 
       // Update user's name
       if (firstName.length === 0 || lastName.length === 0) {
@@ -115,7 +117,24 @@ async function handler(
         });
       }
 
-      await u.updateName(firstName, lastName);
+      if (firstName !== user.firstName || lastName !== user.lastName) {
+        // Provisioned users cannot update their name.
+        if (user.origin === "provisioned") {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Cannot update name for provisioned users.",
+            },
+          });
+        }
+
+        await u.updateName(firstName, lastName);
+      }
+
+      if (imageUrl && imageUrl !== user.image) {
+        await u.updateImage(imageUrl);
+      }
 
       // Update user's jobType
       if (jobType !== undefined && !isJobType(jobType)) {

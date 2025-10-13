@@ -1,3 +1,5 @@
+/* eslint-disable dust/enforce-client-types-in-public-api */
+// This endpoint only returns void as it is used only for deletion, so no need to use @dust-tt/client types.
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";

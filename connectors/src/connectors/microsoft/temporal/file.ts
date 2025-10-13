@@ -52,6 +52,7 @@ import {
   cacheWithRedis,
   concurrentExecutor,
   INTERNAL_MIME_TYPES,
+  WithRetriesError,
 } from "@connectors/types";
 
 const PARENT_SYNC_CACHE_TTL_MS = 30 * 60 * 1000;
@@ -120,7 +121,7 @@ export async function syncOneFile({
       startSyncTs,
     })
   ) {
-    return true;
+    return false;
   }
 
   if (fileResource?.skipReason) {
@@ -132,6 +133,7 @@ export async function syncOneFile({
   }
 
   localLogger.info("Syncing file");
+  await heartbeat();
 
   const client = await getClient(connector.connectionId);
   const { itemAPIPath } = typeAndPathFromInternalId(documentId);
@@ -382,26 +384,60 @@ export async function syncOneFile({
           })),
         ];
 
-        await upsertDataSourceDocument({
-          dataSourceConfig,
-          documentId,
-          documentContent: content,
-          documentUrl: file.webUrl ?? undefined,
-          timestampMs: upsertTimestampMs,
-          tags,
-          parents,
-          parentId: parents[1] || null,
-          upsertContext: {
-            sync_type: isBatchSync ? "batch" : "incremental",
-          },
-          title: file.name ?? "",
-          mimeType: file.file.mimeType ?? "application/octet-stream",
-          async: true,
-        });
+        try {
+          await upsertDataSourceDocument({
+            dataSourceConfig,
+            documentId,
+            documentContent: content,
+            documentUrl: file.webUrl ?? undefined,
+            timestampMs: upsertTimestampMs,
+            tags,
+            parents,
+            parentId: parents[1] || null,
+            upsertContext: {
+              sync_type: isBatchSync ? "batch" : "incremental",
+            },
+            title: file.name ?? "",
+            mimeType: file.file.mimeType ?? "application/octet-stream",
+            async: true,
+          });
 
-        resourceBlob.lastUpsertedTs = upsertTimestampMs
-          ? new Date(upsertTimestampMs)
-          : null;
+          resourceBlob.lastUpsertedTs = upsertTimestampMs
+            ? new Date(upsertTimestampMs)
+            : null;
+        } catch (error) {
+          if (
+            error instanceof WithRetriesError &&
+            error.errors.every(
+              ({ error }) =>
+                axios.isAxiosError(error) && error.response?.status === 413
+            )
+          ) {
+            localLogger.info(
+              {
+                status: 413,
+                fileName: file.name,
+                internalId: documentId,
+                webUrl: file.webUrl,
+                documentLen: documentLength,
+              },
+              "Document too large for upsert, marking as skipped"
+            );
+
+            resourceBlob.skipReason = "payload_too_large";
+
+            if (fileResource) {
+              await fileResource.update(resourceBlob);
+            } else {
+              await MicrosoftNodeResource.makeNew(resourceBlob);
+            }
+
+            return false;
+          }
+
+          // Re-throw other errors
+          throw error;
+        }
       } else {
         localLogger.info(
           {
@@ -495,6 +531,10 @@ export async function deleteFolder({
     internalId
   );
 
+  if (!folder) {
+    return false;
+  }
+
   logger.info(
     {
       connectorId,
@@ -541,7 +581,7 @@ export async function deleteFile({
   );
 
   if (!file) {
-    return;
+    return false;
   }
 
   logger.info({ connectorId, file }, `Deleting Microsoft file.`);
@@ -560,7 +600,10 @@ export async function deleteFile({
   } else {
     await deleteDataSourceDocument(dataSourceConfig, internalId);
   }
-  return file.delete();
+
+  const deletedRes = await file.delete();
+
+  return deletedRes.isOk();
 }
 
 export function isAlreadySeenItem({

@@ -28,6 +28,7 @@ import { DustError } from "@app/lib/error";
 import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
@@ -126,16 +127,14 @@ export class InternalMCPServerInMemoryResource {
       useCase: MCPOAuthUseCase | null;
     }
   ) {
-    const canAdministrate =
-      await SpaceResource.canAdministrateSystemSpace(auth);
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
-    if (!canAdministrate) {
+    if (!systemSpace.canAdministrate(auth)) {
       throw new DustError(
         "unauthorized",
         "The user is not authorized to create an internal MCP server"
       );
     }
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
     let sid: string | null = null;
 
@@ -257,15 +256,24 @@ export class InternalMCPServerInMemoryResource {
       },
     });
 
+    await RemoteMCPServerToolMetadataModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        internalMCPServerId: this.id,
+      },
+    });
+
     return new Ok(1);
   }
 
-  static async fetchById(auth: Authenticator, id: string) {
+  static async fetchById(
+    auth: Authenticator,
+    id: string,
+    systemSpace: SpaceResource
+  ) {
     // Fast path : Do not check for default internal MCP servers as they are always available.
     const availability = getAvailabilityOfInternalMCPServerById(id);
     if (availability === "manual") {
-      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-
       const server = await MCPServerViewModel.findOne({
         attributes: ["internalMCPServerId"],
         where: {

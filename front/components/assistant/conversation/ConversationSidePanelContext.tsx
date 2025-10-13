@@ -1,8 +1,8 @@
-import { assertNever } from "@dust-tt/client";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect } from "react";
+import type { ImperativePanelHandle } from "react-resizable-panels";
 
 import { useHashParam } from "@app/hooks/useHashParams";
-import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
+import { assertNever } from "@app/types";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
@@ -15,34 +15,26 @@ type OpenPanelParams =
   | {
       type: "actions";
       messageId: string;
-      metadata: AgentActionState;
     }
   | {
-      type: "content";
+      type: "interactive_content";
       fileId: string;
       timestamp?: string;
-      metadata?: never;
     };
-
-interface AgentActionState {
-  actionProgress: ActionProgressState;
-  isActing: boolean;
-  messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
-}
-
-type SidePanelMetadata = OpenPanelParams["metadata"] | undefined;
 
 const isSupportedPanelType = (
   type: string | undefined
 ): type is ConversationSidePanelType =>
-  type === "actions" || type === "content";
+  type === "actions" || type === "interactive_content";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
   openPanel: (params: OpenPanelParams) => void;
   closePanel: () => void;
+  onPanelClosed: () => void;
+  setPanelRef: (ref: ImperativePanelHandle | null) => void;
+  panelRef: React.MutableRefObject<ImperativePanelHandle | null>;
   data: string | undefined;
-  metadata: SidePanelMetadata;
 }
 
 const ConversationSidePanelContext = React.createContext<
@@ -71,58 +63,67 @@ export function ConversationSidePanelProvider({
   const [currentPanel, setCurrentPanel] = useHashParam(
     SIDE_PANEL_TYPE_HASH_PARAM
   );
-  const [metadata, setMetadata] = useState<SidePanelMetadata>(undefined);
 
-  const openPanel = (params: OpenPanelParams) => {
-    setCurrentPanel(params.type);
+  const panelRef = React.useRef<ImperativePanelHandle | null>(null);
 
-    switch (params.type) {
-      case AGENT_ACTIONS_SIDE_PANEL_TYPE:
-        /**
-         * If the panel is already open for the same messageId,
-         * we close it.
-         */
-        if (params.messageId === data) {
-          closePanel();
-          return;
-        }
-        setData(params.messageId);
-        setMetadata(params.metadata);
-        break;
-      case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
-        params.timestamp
-          ? setData(`${params.fileId}@${params.timestamp}`)
-          : setData(params.fileId);
-        setMetadata(undefined);
-        break;
-      default:
-        assertNever(params);
+  const setPanelRef = useCallback(
+    (ref: ImperativePanelHandle | null) => {
+      panelRef.current = ref;
+    },
+    [panelRef]
+  );
+
+  const closePanel = useCallback(() => {
+    if (panelRef && panelRef.current) {
+      panelRef.current.collapse();
     }
-  };
+  }, [panelRef]);
 
-  const closePanel = () => {
+  const openPanel = useCallback(
+    (params: OpenPanelParams) => {
+      setCurrentPanel(params.type);
+
+      switch (params.type) {
+        case AGENT_ACTIONS_SIDE_PANEL_TYPE: {
+          /**
+           * If the panel is already open for the same messageId,
+           * we close it.
+           */
+          if (params.messageId === data) {
+            closePanel();
+            return;
+          }
+
+          setData(params.messageId);
+          break;
+        }
+
+        case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
+          params.timestamp
+            ? setData(`${params.fileId}@${params.timestamp}`)
+            : setData(params.fileId);
+          break;
+
+        default:
+          assertNever(params);
+      }
+    },
+    [setCurrentPanel, setData, data, closePanel]
+  );
+
+  const onPanelClosed = useCallback(() => {
     setData(undefined);
-    setMetadata(undefined);
     setCurrentPanel(undefined);
-  };
+  }, [setData, setCurrentPanel]);
 
   // Initialize panel state from URL hash parameters
   useEffect(() => {
     if (data && currentPanel) {
       setCurrentPanel(currentPanel);
-
-      // Set default metadata for actions panel when opened from URL
-      if (currentPanel === "actions" && !metadata) {
-        setMetadata({
-          actionProgress: new Map(),
-          isActing: false,
-          messageStatus: "succeeded",
-        });
-      }
     } else if (!data) {
-      setCurrentPanel(undefined);
+      closePanel();
     }
-  }, [data, currentPanel, setCurrentPanel, metadata]);
+  }, [data, currentPanel, setCurrentPanel, closePanel]);
 
   return (
     <ConversationSidePanelContext.Provider
@@ -132,8 +133,10 @@ export function ConversationSidePanelProvider({
           : undefined,
         openPanel,
         closePanel,
+        onPanelClosed,
+        setPanelRef,
+        panelRef,
         data,
-        metadata,
       }}
     >
       {children}

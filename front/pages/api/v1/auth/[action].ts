@@ -1,3 +1,5 @@
+/* eslint-disable dust/enforce-client-types-in-public-api */
+// Pass through to workOS, do not enforce return types.
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
@@ -103,6 +105,7 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         Origin: req.headers.origin || "",
       },
       credentials: "include",

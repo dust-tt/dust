@@ -1,6 +1,7 @@
 export { default as ActionArmchairIcon } from "./Armchair";
 export { default as ActionArrowDownOnSquareIcon } from "./ArrowDownOnSquare";
 export { default as ActionArrowUpOnSquareIcon } from "./ArrowUpOnSquare";
+export { default as ActionAtomIcon } from "./Atom";
 export { default as ActionAttachmentIcon } from "./Attachment";
 export { default as ActionBankIcon } from "./Bank";
 export { default as ActionBarcodeIcon } from "./Barcode";
@@ -51,6 +52,7 @@ export { default as ActionFlightTakeoffIcon } from "./FlightTakeoff";
 export { default as ActionFolderIcon } from "./Folder";
 export { default as ActionFolderAddIcon } from "./FolderAdd";
 export { default as ActionFolderOpenIcon } from "./FolderOpen";
+export { default as ActionFrameIcon } from "./Frame";
 export { default as ActionFullscreenIcon } from "./Fullscreen";
 export { default as ActionFullscreenExitIcon } from "./FullscreenExit";
 export { default as ActionGamepadIcon } from "./Gamepad";

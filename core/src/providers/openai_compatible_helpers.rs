@@ -100,10 +100,18 @@ type ResponseFormat = serde_json::Map<String, serde_json::Value>;
 // Outputs types.
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UsageDetails {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cached_tokens: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
     pub prompt_tokens: u64,
     pub completion_tokens: Option<u64>,
     pub total_tokens: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt_tokens_details: Option<UsageDetails>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -749,6 +757,9 @@ pub async fn openai_compatible_chat_completion(
         usage: c.usage.map(|usage| LLMTokenUsage {
             prompt_tokens: usage.prompt_tokens,
             completion_tokens: usage.completion_tokens.unwrap_or(0),
+            cached_tokens: usage
+                .prompt_tokens_details
+                .and_then(|details| details.cached_tokens),
             reasoning_tokens: None,
         }),
         provider_request_id: request_id,
@@ -978,7 +989,10 @@ async fn streamed_chat_completion(
         body["tool_choice"] = json!(tool_choice);
     }
     if let Some(response_format) = response_format {
-        body["response_format"] = json!(response_format);
+        // Guard against empty object response_format (must include a string "type").
+        if let Some(Value::String(_)) = response_format.get("type") {
+            body["response_format"] = json!(response_format);
+        }
     }
     if let Some(reasoning_effort) = reasoning_effort {
         body["reasoning_effort"] = json!(reasoning_effort);
@@ -1414,7 +1428,10 @@ async fn chat_completion(
     }
 
     if let Some(response_format) = response_format {
-        body["response_format"] = json!(response_format)
+        // Guard against empty object response_format (must include a string "type").
+        if let Some(Value::String(_)) = response_format.get("type") {
+            body["response_format"] = json!(response_format);
+        }
     }
     if tools.len() > 0 {
         body["tools"] = json!(tools);

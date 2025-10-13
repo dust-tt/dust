@@ -17,6 +17,7 @@ import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { getAgentRoute } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
   ModelId,
@@ -116,51 +117,48 @@ export async function unsafeGetUsageData(
   // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const results = await readReplica.query<WorkspaceUsageQueryResult>(
     `
-      SELECT
-        TO_CHAR(m."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
-        c."id" AS "conversationInternalId",
-        m."sId" AS "messageId",
-        p."sId" AS "parentMessageId",
-        CASE
-          WHEN um."id" IS NOT NULL THEN 'user'
-          WHEN am."id" IS NOT NULL THEN 'assistant'
-          WHEN cf."id" IS NOT NULL THEN 'content_fragment'
-        END AS "messageType",
-        um."userContextFullName" AS "userFullName",
-        um."userContextEmail" AS "userEmail",
-        COALESCE(ac."sId", am."agentConfigurationId") AS "assistantId",
-        COALESCE(ac."name", am."agentConfigurationId") AS "assistantName",
-        msv."internalMCPServerId" AS "actionType",
-        um."userContextOrigin" AS "source"
-    FROM
-        "messages" m
-    JOIN
-        "conversations" c ON m."conversationId" = c."id"
-    JOIN
-        "workspaces" w ON c."workspaceId" = w."id"
-    LEFT JOIN
-        "user_messages" um ON m."userMessageId" = um."id"
-    LEFT JOIN
-        "users" u ON um."userId" = u."id"
-    LEFT JOIN
-        "agent_messages" am ON m."agentMessageId" = am."id"
-    LEFT JOIN
-        "content_fragments" cf ON m."contentFragmentId" = cf."id"
-    LEFT JOIN
-        "agent_configurations" ac ON am."agentConfigurationId" = ac."sId" AND am."agentConfigurationVersion" = ac."version"
-    LEFT JOIN
-        "agent_mcp_server_configurations" amsc ON ac."id" = amsc."agentConfigurationId"
-    LEFT JOIN
-        "mcp_server_views" msv ON amsc."mcpServerViewId" = msv."id"
-    LEFT JOIN
-        "messages" p ON m."parentId" = p."id"
-    WHERE
-        w."sId" = :wId AND
-        m."createdAt" >= :startDate AND m."createdAt" <= :endDate
-    GROUP BY
-        m."id", c."id", um."id", am."id", cf."id", ac."id", p."id", msv."internalMCPServerId"
-    ORDER BY
-        m."createdAt" DESC
+      SELECT TO_CHAR(m."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
+             c."id"                                                     AS "conversationInternalId",
+             m."sId"                                                    AS "messageId",
+             p."sId"                                                    AS "parentMessageId",
+             CASE
+               WHEN um."id" IS NOT NULL THEN 'user'
+               WHEN am."id" IS NOT NULL THEN 'assistant'
+               WHEN cf."id" IS NOT NULL THEN 'content_fragment'
+               END                                                      AS "messageType",
+             um."userContextFullName"                                   AS "userFullName",
+             LOWER(um."userContextEmail")                               AS "userEmail",
+             COALESCE(ac."sId", am."agentConfigurationId")              AS "assistantId",
+             COALESCE(ac."name", am."agentConfigurationId")             AS "assistantName",
+             msv."internalMCPServerId"                                  AS "actionType",
+             um."userContextOrigin"                                     AS "source"
+      FROM "messages" m
+             JOIN
+           "conversations" c ON m."conversationId" = c."id"
+             JOIN
+           "workspaces" w ON c."workspaceId" = w."id"
+             LEFT JOIN
+           "user_messages" um ON m."userMessageId" = um."id"
+             LEFT JOIN
+           "users" u ON um."userId" = u."id"
+             LEFT JOIN
+           "agent_messages" am ON m."agentMessageId" = am."id"
+             LEFT JOIN
+           "content_fragments" cf ON m."contentFragmentId" = cf."id"
+             LEFT JOIN
+           "agent_configurations" ac
+           ON am."agentConfigurationId" = ac."sId" AND am."agentConfigurationVersion" = ac."version"
+             LEFT JOIN
+           "agent_mcp_server_configurations" amsc ON ac."id" = amsc."agentConfigurationId"
+             LEFT JOIN
+           "mcp_server_views" msv ON amsc."mcpServerViewId" = msv."id"
+             LEFT JOIN
+           "messages" p ON m."parentId" = p."id"
+      WHERE w."sId" = :wId
+        AND m."createdAt" >= :startDate
+        AND m."createdAt" <= :endDate
+      GROUP BY m."id", c."id", um."id", am."id", cf."id", ac."id", p."id", msv."internalMCPServerId"
+      ORDER BY m."createdAt" DESC
     `,
     {
       replacements: {
@@ -207,40 +205,38 @@ export async function getMessageUsageData(
   // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const results = await readReplica.query<MessageUsageQueryResult>(
     `
-      SELECT
-        am."id" AS "message_id",
-        TO_CHAR(am."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
-        COALESCE(ac."sId", am."agentConfigurationId") AS "assistant_id",
-        COALESCE(ac."name", am."agentConfigurationId") AS "assistant_name",
-        CASE
-          WHEN ac."scope" = 'visible' THEN 'published'
-          WHEN ac."scope" = 'hidden' THEN 'unpublished'
-          ELSE 'unknown'
-        END AS "assistant_settings",
-        w."id" AS "workspace_id",
-        w."name" AS "workspace_name",
-        c."id" AS "conversation_id",
-        m."parentId" AS "parent_message_id",
-        um."id" AS "user_message_id",
-        um."userId" AS "user_id",
-        um."userContextEmail" AS "user_email",
-        um."userContextOrigin" AS "source"
-      FROM
-        "agent_messages" am
-      JOIN
-        "messages" m ON am."id" = m."agentMessageId"
-      JOIN
-        "conversations" c ON m."conversationId" = c."id"
-      JOIN
-        "workspaces" w ON c."workspaceId" = w."id"
-      LEFT JOIN
-        "agent_configurations" ac ON am."agentConfigurationId" = ac."sId" AND am."agentConfigurationVersion" = ac."version"
-      LEFT JOIN
-        "messages" m2 on m."parentId" = m2."id"
-      LEFT JOIN
-        "user_messages" um on m2."userMessageId" = um."id"
-      WHERE
-        am."status" = 'succeeded'
+      SELECT am."id"                                                     AS "message_id",
+             TO_CHAR(am."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
+             COALESCE(ac."sId", am."agentConfigurationId")               AS "assistant_id",
+             COALESCE(ac."name", am."agentConfigurationId")              AS "assistant_name",
+             CASE
+               WHEN ac."scope" = 'visible' THEN 'published'
+               WHEN ac."scope" = 'hidden' THEN 'unpublished'
+               ELSE 'unknown'
+               END                                                       AS "assistant_settings",
+             w."id"                                                      AS "workspace_id",
+             w."name"                                                    AS "workspace_name",
+             c."id"                                                      AS "conversation_id",
+             m."parentId"                                                AS "parent_message_id",
+             um."id"                                                     AS "user_message_id",
+             um."userId"                                                 AS "user_id",
+             LOWER(um."userContextEmail")                                AS "user_email",
+             um."userContextOrigin"                                      AS "source"
+      FROM "agent_messages" am
+             JOIN
+           "messages" m ON am."id" = m."agentMessageId"
+             JOIN
+           "conversations" c ON m."conversationId" = c."id"
+             JOIN
+           "workspaces" w ON c."workspaceId" = w."id"
+             LEFT JOIN
+           "agent_configurations" ac
+           ON am."agentConfigurationId" = ac."sId" AND am."agentConfigurationVersion" = ac."version"
+             LEFT JOIN
+           "messages" m2 on m."parentId" = m2."id"
+             LEFT JOIN
+           "user_messages" um on m2."userMessageId" = um."id"
+      WHERE am."status" = 'succeeded'
         AND w."id" = :wId
         AND am."createdAt" BETWEEN :startDate AND :endDate
     `,
@@ -341,8 +337,20 @@ export async function getUserUsageData(
       return Message.findAll({
         attributes: [
           "userMessage.userId",
-          "userMessage.userContextFullName",
-          "userMessage.userContextEmail",
+          [
+            Sequelize.fn(
+              "MAX",
+              Sequelize.col("userMessage.userContextFullName")
+            ),
+            "userContextFullName",
+          ],
+          [
+            Sequelize.fn(
+              "LOWER",
+              Sequelize.col("userMessage.userContextEmail")
+            ),
+            "userContextEmail",
+          ],
           "userMessage.userContextOrigin",
           [Sequelize.fn("COUNT", Sequelize.col("userMessage.id")), "count"],
           [
@@ -394,8 +402,7 @@ export async function getUserUsageData(
         ],
         group: [
           "userMessage.userId",
-          "userMessage.userContextFullName",
-          "userMessage.userContextEmail",
+          Sequelize.fn("LOWER", Sequelize.col("userMessage.userContextEmail")),
           "userMessage.userContextOrigin",
         ],
         order: [["count", "DESC"]],
@@ -417,14 +424,18 @@ export async function getUserUsageData(
 
   const userGroupsMap = await getUserGroupMemberships(wId, startDate, endDate);
 
-  const userUsage: UserUsageQueryResult[] = userMessages.map((result) => {
+  const userAggregates = new Map<string, UserUsageQueryResult>();
+
+  userMessages.forEach((result) => {
     const userId = String((result as unknown as { userId: number }).userId);
-    return {
+    const userEmail = (result as unknown as { userContextEmail: string })
+      .userContextEmail;
+    const existing = userAggregates.get(userEmail);
+    const current = {
       userId,
       userName: (result as unknown as { userContextFullName: string })
         .userContextFullName,
-      userEmail: (result as unknown as { userContextEmail: string })
-        .userContextEmail,
+      userEmail,
       messageCount: (result as unknown as { count: number }).count,
       lastMessageSent: (result as unknown as { lastMessageSent: string })
         .lastMessageSent,
@@ -432,7 +443,30 @@ export async function getUserUsageData(
         .activeDaysCount,
       groups: userGroupsMap[userId] || "",
     };
+
+    if (existing) {
+      userAggregates.set(userEmail, {
+        ...existing,
+        userName: current.userName,
+        messageCount: existing.messageCount + current.messageCount,
+        lastMessageSent:
+          current.lastMessageSent > existing.lastMessageSent
+            ? current.lastMessageSent
+            : existing.lastMessageSent,
+        activeDaysCount: Math.max(
+          existing.activeDaysCount,
+          current.activeDaysCount
+        ),
+      });
+    } else {
+      userAggregates.set(userEmail, current);
+    }
   });
+
+  const userUsage = Array.from(userAggregates.values()).sort(
+    (a, b) => b.messageCount - a.messageCount
+  );
+
   if (!userUsage.length) {
     return "No data available for the selected period.";
   }
@@ -536,14 +570,13 @@ export async function getAssistantUsageData(
   // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const mentions = await readReplica.query<{ messages: number }>(
     `
-    SELECT COUNT(a."id") AS "messages"
-    FROM "agent_messages" a
-    JOIN "agent_configurations" ac ON a."agentConfigurationId" = ac."sId"
-    WHERE
-      a."createdAt" BETWEEN :startDate AND :endDate
-      AND ac."workspaceId" = :wId
-      AND ac."status" = 'active'
-      AND ac."sId" = :agentConfigurationId
+      SELECT COUNT(a."id") AS "messages"
+      FROM "agent_messages" a
+             JOIN "agent_configurations" ac ON a."agentConfigurationId" = ac."sId"
+      WHERE a."createdAt" BETWEEN :startDate AND :endDate
+        AND ac."workspaceId" = :wId
+        AND ac."status" = 'active'
+        AND ac."sId" = :agentConfigurationId
     `,
     {
       type: QueryTypes.SELECT,
@@ -572,42 +605,39 @@ export async function getAssistantsUsageData(
   // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const mentions = await readReplica.query<AgentUsageQueryResult>(
     `
-    SELECT
-      ac."name",
-      ac."description",
-      ac."modelId",
-      ac."providerId",
-      CASE
-        WHEN ac."scope" = 'visible' THEN 'published'
-        WHEN ac."scope" = 'hidden' THEN 'unpublished'
-        ELSE 'unknown'
-      END AS "settings",
-      ARRAY_AGG(DISTINCT aut."email") AS "authorEmails",
-      COUNT(a."id") AS "messages",
-      COUNT(DISTINCT u."id") AS "distinctUsersReached",
-      COUNT(DISTINCT m."conversationId") AS "distinctConversations",
-      MAX(CAST(ac."createdAt" AS DATE)) AS "lastEdit"
-    FROM
-      "agent_messages" a
-      JOIN "messages" m ON a."id" = m."agentMessageId"
-      JOIN "messages" parent ON m."parentId" = parent."id"
-      JOIN "user_messages" um ON um."id" = parent."userMessageId"
-      JOIN "users" u ON um."userId" = u."id"
-      JOIN "agent_configurations" ac ON a."agentConfigurationId" = ac."sId"
-      JOIN "users" aut ON ac."authorId" = aut."id"
-    WHERE
-      a."createdAt" BETWEEN :startDate AND :endDate
-      AND ac."workspaceId" = :wId
-      AND ac."status" = 'active'
-      AND ac."scope" != 'hidden'
-    GROUP BY
-      ac."name",
-      ac."description",
-      ac."scope",
-      ac."modelId",
-      ac."providerId"
-    ORDER BY
-      "messages" DESC;
+      SELECT ac."name",
+             ac."description",
+             ac."modelId",
+             ac."providerId",
+             CASE
+               WHEN ac."scope" = 'visible' THEN 'published'
+               WHEN ac."scope" = 'hidden' THEN 'unpublished'
+               ELSE 'unknown'
+               END                              AS "settings",
+             ARRAY_AGG(DISTINCT aut."email")    AS "authorEmails",
+             COUNT(a."id")                      AS "messages",
+             COUNT(DISTINCT u."id")             AS "distinctUsersReached",
+             COUNT(DISTINCT m."conversationId") AS "distinctConversations",
+             MAX(CAST(ac."createdAt" AS DATE))  AS "lastEdit"
+      FROM "agent_messages" a
+             JOIN "messages" m ON a."id" = m."agentMessageId"
+             JOIN "messages" parent ON m."parentId" = parent."id"
+             JOIN "user_messages" um ON um."id" = parent."userMessageId"
+             JOIN "users" u ON um."userId" = u."id"
+             JOIN "agent_configurations" ac ON a."agentConfigurationId" = ac."sId"
+             JOIN "users" aut ON ac."authorId" = aut."id"
+      WHERE a."createdAt" BETWEEN :startDate AND :endDate
+        AND ac."workspaceId" = :wId
+        AND ac."status" = 'active'
+        AND ac."scope" != 'hidden'
+      GROUP BY
+        ac."name",
+        ac."description",
+        ac."scope",
+        ac."modelId",
+        ac."providerId"
+      ORDER BY
+        "messages" DESC;
     `,
     {
       type: QueryTypes.SELECT,
@@ -654,6 +684,7 @@ export async function getFeedbackUsageData(
       agentConfigurationId: jsonFeedback.agentConfigurationId,
       agentConfigurationVersion: jsonFeedback.agentConfigurationVersion,
       thumb: jsonFeedback.thumbDirection,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       content: jsonFeedback.content?.replace(/\r?\n/g, "\\n") || null,
       conversationUrl:
         jsonFeedback.conversationId && jsonFeedback.isConversationShared
@@ -668,7 +699,11 @@ function reconstructConversationUrl(
   workspace: WorkspaceType,
   conversationId: string
 ) {
-  return `${config.getClientFacingUrl()}/w/${workspace.sId}/assistant/${conversationId}`;
+  return getAgentRoute(
+    workspace.sId,
+    conversationId,
+    config.getClientFacingUrl()
+  );
 }
 
 function generateCsvFromQueryResult(
@@ -721,5 +756,6 @@ export async function checkWorkspaceActivity(auth: Authenticator) {
     },
   });
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return hasDataSource || hasCreatedAssistant || hasRecentConversation;
 }

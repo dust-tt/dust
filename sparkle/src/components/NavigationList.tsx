@@ -3,7 +3,6 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import {
-  Icon,
   LinkWrapper,
   LinkWrapperProps,
   ScrollArea,
@@ -20,16 +19,16 @@ const NavigationListItemStyles = cva(
     "data-[disabled]:s-pointer-events-none",
     "data-[disabled]:s-text-muted-foreground dark:data-[disabled]:s-text-muted-foreground-night",
     "hover:s-text-foreground dark:hover:s-text-foreground-night",
-    "hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night"
+    "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
   ),
   {
     variants: {
       state: {
-        active: "active:s-bg-primary-150 dark:active:s-bg-primary-150-night",
+        active: "active:s-bg-primary-150 dark:active:s-bg-primary-200-night",
         selected: cn(
           "s-text-foreground dark:s-text-foreground-night",
           "s-font-medium",
-          "s-bg-primary-100 dark:s-bg-primary-100-night"
+          "s-bg-primary-100 dark:s-bg-primary-200-night"
         ),
         unselected:
           "s-text-muted-foreground dark:s-text-muted-foreground-night",
@@ -41,13 +40,18 @@ const NavigationListItemStyles = cva(
   }
 );
 
+interface NavigationListProps {
+  viewportRef?: React.RefObject<HTMLDivElement>;
+}
 const NavigationList = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
->(({ className, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> &
+    NavigationListProps
+>(({ className, children, viewportRef, ...props }, ref) => {
   return (
     <ScrollArea
       ref={ref}
+      viewportRef={viewportRef}
       className={cn(className, "s-transition-all s-duration-300")}
       {...props}
     >
@@ -65,6 +69,7 @@ interface NavigationListItemProps
   label?: string;
   icon?: React.ComponentType;
   moreMenu?: React.ReactNode;
+  status?: "idle" | "unread" | "blocked";
 }
 
 const NavigationListItem = React.forwardRef<
@@ -76,13 +81,13 @@ const NavigationListItem = React.forwardRef<
       className,
       selected,
       label,
-      icon,
       href,
       target,
       rel,
       replace,
       shallow,
       moreMenu,
+      status = "idle",
       ...props
     },
     ref
@@ -94,6 +99,19 @@ const NavigationListItem = React.forwardRef<
         setIsPressed(true);
       }
     };
+
+    const getStatusDotColor = () => {
+      switch (status) {
+        case "unread":
+          return "s-bg-highlight-500 dark:s-bg-highlight-500-night";
+        case "blocked":
+          return "s-bg-golden-500 dark:s-bg-golden-500-night";
+        default:
+          return "";
+      }
+    };
+
+    const shouldShowStatusDot = status !== "idle";
 
     return (
       <div
@@ -127,7 +145,14 @@ const NavigationListItem = React.forwardRef<
             onMouseDown={handleMouseDown}
             onMouseUp={() => setIsPressed(false)}
           >
-            {icon && <Icon visual={icon} size="sm" />}
+            {shouldShowStatusDot && (
+              <div
+                className={cn(
+                  "s-h-2 s-w-2 s-flex-shrink-0 s-rounded-full",
+                  getStatusDotColor()
+                )}
+              />
+            )}
             {label && (
               <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8">
                 {label}
@@ -176,7 +201,7 @@ const variantStyles = cva("", {
     },
     isSticky: {
       true: cn(
-        "s-sticky s-top-0 s-z-10 s-border-b s-bg-background dark:s-bg-background-night",
+        "s-sticky s-top-0 s-z-10 s-border-b s-bg-background dark:s-bg-muted-background-night",
         "s-border-border dark:s-border-border-night"
       ),
     },
@@ -188,7 +213,7 @@ const variantStyles = cva("", {
 });
 
 const labelStyles = cva(
-  "s-font-semibold s-pt-4 s-pb-2 s-text-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
+  "s-pt-4 s-pb-2 s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
 );
 
 interface NavigationListLabelProps

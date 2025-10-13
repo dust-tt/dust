@@ -32,12 +32,12 @@ describe("MCPServerViewResource", () => {
       await FeatureFlagFactory.basic("dev_mcp_actions", workspace1);
       await FeatureFlagFactory.basic("dev_mcp_actions", workspace2);
 
-      // Mock the INTERNAL_MCP_SERVERS to override the "think" server config
+      // Mock the INTERNAL_MCP_SERVERS to override the "primitive_types_debugger" server config
       // so that the test passes even if we edit the server config.
-      const originalThinkConfig = INTERNAL_MCP_SERVERS["think"];
-      Object.defineProperty(INTERNAL_MCP_SERVERS, "think", {
+      const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
+      Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
         value: {
-          ...originalThinkConfig,
+          ...originalConfig,
           availability: "auto",
           isRestricted: ({
             featureFlags,
@@ -52,7 +52,9 @@ describe("MCPServerViewResource", () => {
         configurable: true,
       });
 
-      expect(INTERNAL_MCP_SERVERS["think"].availability).toBe("auto");
+      expect(
+        INTERNAL_MCP_SERVERS["primitive_types_debugger"].availability
+      ).toBe("auto");
 
       // Get auth for workspace1
       const auth1 = await Authenticator.internalAdminForWorkspace(
@@ -68,7 +70,7 @@ describe("MCPServerViewResource", () => {
       const internalServer1 = await InternalMCPServerInMemoryResource.makeNew(
         auth1,
         {
-          name: "think",
+          name: "primitive_types_debugger",
           useCase: null,
         }
       );
@@ -76,7 +78,7 @@ describe("MCPServerViewResource", () => {
       const internalServer2 = await InternalMCPServerInMemoryResource.makeNew(
         auth2,
         {
-          name: "think",
+          name: "primitive_types_debugger",
           useCase: null,
         }
       );

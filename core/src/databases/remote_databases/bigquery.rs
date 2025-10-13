@@ -9,9 +9,7 @@ use gcp_bigquery_client::{
     model::{
         field_type::FieldType, get_query_results_parameters::GetQueryResultsParameters, job::Job,
         job_configuration::JobConfiguration, job_configuration_query::JobConfigurationQuery,
-        job_reference::JobReference, query_parameter::QueryParameter,
-        query_parameter_type::QueryParameterType, query_parameter_value::QueryParameterValue,
-        query_request::QueryRequest, table_row::TableRow,
+        job_reference::JobReference, table_row::TableRow,
     },
     yup_oauth2::ServiceAccountKey,
     Client,
@@ -330,9 +328,9 @@ impl BigQueryRemoteDatabase {
         allowed_tables: &HashSet<String>,
         forbidden_tables: &Vec<String>,
     ) -> Result<(), QueryDatabaseError> {
-        // This query will allow us to check if all forbidden tables are part of allowed views's sub-tables.
-        // If they are, we can return the allowed tables.
-        // If they are not, we return an error.
+        // Check if all forbidden tables are accessible through allowed views (including view chains).
+        // This leverages BigQuery's native query planning to authoritatively determine
+        // which underlying tables each view can access, handling transitive dependencies correctly.
 
         let mut dataset_details = HashMap::<String, DatasetCheckDetails>::new();
 
@@ -360,10 +358,6 @@ impl BigQueryRemoteDatabase {
             .iter()
             .map(|t| t.clone())
             .collect::<HashSet<_>>();
-        let forbidden_table_names = forbidden_tables
-            .iter()
-            .map(|t| t.split('.').last().unwrap_or("invalid table name"))
-            .collect::<HashSet<_>>();
 
         for (dataset_key, dataset) in dataset_details.iter() {
             // Skip if there are no longer any forbidden tables remaining.
@@ -371,132 +365,15 @@ impl BigQueryRemoteDatabase {
                 break;
             }
 
-            // This query will return the view definitions for all specified tables in the dataset, if they are views.
-            let query = format!(
-                r#"SELECT table_name as view_name, view_definition
-                FROM `{dataset_key}`.INFORMATION_SCHEMA.VIEWS
-                WHERE table_name IN UNNEST(@view_names)"#
-            );
+            // Check all allowed views with dry-run queries to resolve transitive dependencies.
+            // This approach leverages BigQuery's native dependency resolution instead of error-prone text matching.
+            for view_name in &dataset.allowed_table_names {
+                // Do a simple SELECT to check the query plan of the view and get the affected tables.
+                // Do not use the view definition as if the view is an authorized view, it might use tables unauthorized directly for the service account.
+                let query = format!("SELECT * FROM `{dataset_key}`.`{view_name}`");
 
-            // Create query parameters to get proper escaping of the view names.
-            let mut query_parameters = Vec::<QueryParameter>::new();
-
-            query_parameters.push(QueryParameter {
-                name: Some("view_names".to_string()),
-                parameter_type: Some(QueryParameterType {
-                    array_type: Some(Box::new(QueryParameterType {
-                        r#type: "STRING".to_string(),
-                        ..Default::default()
-                    })),
-                    r#type: "ARRAY".to_string(),
-                    ..Default::default()
-                }),
-                parameter_value: Some(QueryParameterValue {
-                    array_values: Some(
-                        dataset
-                            .allowed_table_names
-                            .iter()
-                            .map(|name| QueryParameterValue {
-                                value: Some(name.clone()),
-                                ..Default::default()
-                            })
-                            .collect(),
-                    ),
-                    ..Default::default()
-                }),
-            });
-
-            let request = QueryRequest {
-                query: query.clone(),
-                parameter_mode: Some("NAMED".to_string()),
-                query_parameters: Some(query_parameters),
-                use_legacy_sql: false,
-                location: Some(self.location.clone()),
-                ..Default::default()
-            };
-
-            let result = self
-                .client
-                .job()
-                .query(&self.project_id, request)
-                .await
-                .map_err(|e| {
-                    QueryDatabaseError::GenericError(anyhow!(
-                        "Error executing views check query {} dataset_key {}, allowed_tables: {:?}, forbidden_tables: {:?}, remaining_forbidden_tables: {:?}, error: {}",
-                        query,
-                        dataset_key,
-                        dataset
-                            .allowed_table_names
-                            .iter()
-                            .map(|name| name.clone())
-                            .collect::<Vec<_>>(),
-                        forbidden_tables
-                            .iter()
-                            .map(|name| name.clone())
-                            .collect::<Vec<_>>(),
-                        remaining_forbidden_tables
-                            .iter()
-                            .map(|name| name.clone())
-                            .collect::<Vec<_>>(),
-                        e
-                    ))
-                })?;
-
-            // Turn the result into a list of view_name, view definitions.
-            if let Some(rows) = result.rows {
-                let fields = match &result.schema {
-                    Some(s) => match &s.fields {
-                        Some(f) => f,
-                        None => Err(QueryDatabaseError::GenericError(anyhow!(
-                            "Schema not found"
-                        )))?,
-                    },
-                    None => Err(QueryDatabaseError::GenericError(anyhow!(
-                        "Schema not found"
-                    )))?,
-                };
-
-                let mut views_to_check: HashSet<String> = HashSet::new();
-
-                for row in &rows {
-                    let mut view_name = None;
-                    let mut view_definition = None;
-
-                    for (column, field) in row
-                        .columns
-                        .as_ref()
-                        .unwrap_or(&Vec::new())
-                        .iter()
-                        .zip(fields)
-                    {
-                        if field.name == "view_name" {
-                            if let Some(Value::String(name)) = &column.value {
-                                view_name = Some(name.clone());
-                            }
-                        } else if field.name == "view_definition" {
-                            if let Some(Value::String(definition)) = &column.value {
-                                view_definition = Some(definition.clone());
-                            }
-                        }
-                    }
-
-                    if let (Some(name), Some(definition)) = (view_name, view_definition) {
-                        // Only include views that are using forbidden table names.
-                        if forbidden_table_names
-                            .iter()
-                            .any(|table_name| definition.contains(table_name))
-                        {
-                            views_to_check.insert(name);
-                        }
-                    }
-                }
-
-                for view_name in views_to_check {
-                    // Do a simple SELECT to check the query plan of the view and get the affected tables.
-                    // Do not use the view definition as if the view is an authorized view, it might use tables unauthorized directly for the service account.
-                    let query = format!("SELECT * FROM `{dataset_key}`.`{view_name}`");
-                    let plan = self.get_query_plan(query.as_str()).await?;
-
+                // Use dry-run to get the query plan - this will work for both tables and views
+                if let Ok(plan) = self.get_query_plan(query.as_str()).await {
                     // Remove all affected tables from the remaining forbidden tables.
                     remaining_forbidden_tables.retain(|table| {
                         !plan
@@ -506,7 +383,7 @@ impl BigQueryRemoteDatabase {
                     });
 
                     if remaining_forbidden_tables.is_empty() {
-                        // Skip the rest of the view definitions as there are no remaining forbidden tables.
+                        // Skip the rest of the views as there are no remaining forbidden tables.
                         break;
                     }
                 }

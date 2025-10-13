@@ -64,7 +64,7 @@ function checkDeployPlanSection() {
   const match = PRDescription.match(deployPlanSectionRegex);
   if (!match || match[1].trim().length < 20) {
     fail(
-      "Please include a detailed Deploy Plan section in your PR description."
+      "Please include a detailed Deploy Plan section in your PR description, at least 20 characters long."
     );
   }
 }
@@ -103,7 +103,7 @@ function checkDocumentationLabel() {
 function failDocumentationAck() {
   fail(
     "Files in `**/api/v1/` have been modified. " +
-      `Please add the \`${documentationAckLabel}\` label to acknowlegde that if anything changes 
+      `Please add the \`${documentationAckLabel}\` label to acknowledge that if anything changes 
       in a public endpoint, you need to edit the JSDoc comment 
       above the handler definition and/or the swagger_schemas.ts file and regenerate the documentation using \`npm run docs\``
   );
@@ -213,6 +213,17 @@ async function checkRawSqlRegistry(filePaths: string[]) {
   }
 }
 
+/**
+ * Triggers related checks based on modified files
+ */
+async function warnTriggersWorkflowChanges() {
+  warn(
+    `Files in \`front/temporal/agent_schedules/\` have been modified.
+    Be careful modifying workflows/activities signatures.
+    This may break running schedules. If so, soft reset them from prodbox.`
+  );
+}
+
 async function checkDiffFiles() {
   const diffFiles = danger.git.modified_files
     .concat(danger.git.created_files)
@@ -283,6 +294,14 @@ async function checkDiffFiles() {
 
   if (modifiedPackageJsonFiles.length > 0) {
     await checkSparkleVersionConsistency();
+  }
+
+  // Triggers workflow files
+  const modifiedWorkflowFiles = diffFiles.filter((path) => {
+    return path.startsWith("front/temporal/agent_schedules/");
+  });
+  if (modifiedWorkflowFiles.length > 0) {
+    await warnTriggersWorkflowChanges();
   }
 }
 

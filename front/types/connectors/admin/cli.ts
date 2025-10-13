@@ -172,6 +172,7 @@ export const GithubCommandSchema = t.type({
   majorCommand: t.literal("github"),
   command: t.union([
     t.literal("resync-repo"),
+    t.literal("resync-repo-code"),
     t.literal("code-sync"),
     t.literal("sync-issue"),
     t.literal("force-daily-code-sync"),
@@ -366,6 +367,8 @@ export const MicrosoftCommandSchema = t.type({
     t.literal("skip-file"),
     t.literal("sync-node"),
     t.literal("get-parents"),
+    t.literal("update-parent-in-node-table"),
+    t.literal("update-core-parents"),
   ]),
   args: t.record(
     t.string,

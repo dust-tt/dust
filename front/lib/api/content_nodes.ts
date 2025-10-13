@@ -1,3 +1,5 @@
+// Public Api types are okay to use here as it's about internal types between connector and front.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 import { SPREADSHEET_INTERNAL_MIME_TYPES } from "@app/lib/content_nodes";
@@ -79,9 +81,9 @@ function isExpandable(
   return (
     !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
     node.children_count > 0 &&
-    // if we aren't in tables/all view, spreadsheets are not expandable
+    // if we aren't in tables/data_warehouse/all view, spreadsheets are not expandable
     !(
-      !["table", "all"].includes(viewType) &&
+      !["table", "data_warehouse", "all"].includes(viewType) &&
       SPREADSHEET_INTERNAL_MIME_TYPES.includes(node.mime_type)
     )
   );
@@ -106,8 +108,11 @@ export function getContentNodeFromCoreNode(
     expandable: isExpandable(coreNode, viewType),
     mimeType: coreNode.mime_type,
     preventSelection:
-      FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(coreNode.mime_type) ||
-      (viewType === "table" && coreNode.node_type !== "table"),
+      // In data_warehouse view, all nodes are selectable (databases, schemas, tables)
+      viewType === "data_warehouse"
+        ? false
+        : FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(coreNode.mime_type) ||
+          (viewType === "table" && coreNode.node_type !== "table"),
     parentTitle: coreNode.parent_title,
   };
 }

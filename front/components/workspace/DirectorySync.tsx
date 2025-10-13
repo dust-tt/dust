@@ -7,6 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  LoadingBlock,
   Page,
   Separator,
   Sheet,
@@ -91,11 +92,7 @@ function DirectorySyncStatus({
   onSetupClick,
 }: DirectorySyncStatusProps) {
   if (isLoadingDSync || !dsyncStatus) {
-    return (
-      <div className="flex justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <LoadingBlock className="h-16 w-full rounded-xl" />;
   }
 
   switch (dsyncStatus.status) {
@@ -113,7 +110,13 @@ function DirectorySyncStatus({
                 {dsyncStatus.connection?.type}
               </Page.P>
             </div>
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <Button
+                label="Configure Directory sync"
+                size="sm"
+                variant="outline"
+                onClick={onSetupClick}
+              />
               <Button
                 label="De-activate Directory sync"
                 size="sm"

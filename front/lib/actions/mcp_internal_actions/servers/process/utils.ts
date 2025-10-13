@@ -16,6 +16,7 @@ export function getExtractFileTitle({
   schema: JSONSchema | null;
 }): string {
   const schemaNames = Object.keys(schema?.properties ?? {}).join("_");
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const title = schema?.title || schemaNames || "extract_results";
   // Make sure title is truncated to 100 characters
   return `${title.substring(0, 100)}.json`;

@@ -6,6 +6,7 @@ import type {
   RelatedCredential,
 } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence";
+import { ConfluenceToolsOAuthProvider } from "@app/lib/api/oauth/providers/confluence_tools";
 import { FreshserviceOAuthProvider } from "@app/lib/api/oauth/providers/freshservice";
 import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
 import { GmailOAuthProvider } from "@app/lib/api/oauth/providers/gmail";
@@ -15,6 +16,7 @@ import { HubspotOAuthProvider } from "@app/lib/api/oauth/providers/hubspot";
 import { IntercomOAuthProvider } from "@app/lib/api/oauth/providers/intercom";
 import { JiraOAuthProvider } from "@app/lib/api/oauth/providers/jira";
 import { MCPOAuthProvider } from "@app/lib/api/oauth/providers/mcp";
+import { MCPOAuthStaticOAuthProvider } from "@app/lib/api/oauth/providers/mcp_static";
 import { MicrosoftOAuthProvider } from "@app/lib/api/oauth/providers/microsoft";
 import { MicrosoftToolsOAuthProvider } from "@app/lib/api/oauth/providers/microsoft_tools";
 import { MondayOAuthProvider } from "@app/lib/api/oauth/providers/monday";
@@ -47,6 +49,7 @@ export type OAuthError = {
 // DO NOT USE THIS DIRECTLY, USE getProviderStrategy instead.
 const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   confluence: new ConfluenceOAuthProvider(),
+  confluence_tools: new ConfluenceToolsOAuthProvider(),
   freshservice: new FreshserviceOAuthProvider(),
   github: new GithubOAuthProvider(),
   gmail: new GmailOAuthProvider(),
@@ -56,6 +59,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   intercom: new IntercomOAuthProvider(),
   jira: new JiraOAuthProvider(),
   mcp: new MCPOAuthProvider(),
+  mcp_static: new MCPOAuthStaticOAuthProvider(),
   microsoft: new MicrosoftOAuthProvider(),
   microsoft_tools: new MicrosoftToolsOAuthProvider(),
   monday: new MondayOAuthProvider(),

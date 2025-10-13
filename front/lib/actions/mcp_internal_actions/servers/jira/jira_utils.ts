@@ -1,3 +1,5 @@
+import { markdownToAdf } from "marklassian";
+
 import type {
   SearchFilter,
   SearchFilterField,
@@ -7,16 +9,19 @@ import { FIELD_MAPPINGS } from "@app/lib/actions/mcp_internal_actions/servers/ji
 
 // Helper function to escape JQL values that contain spaces or special characters
 export const escapeJQLValue = (value: string): string => {
-  // If the value contains spaces, special characters, or reserved words, wrap it in quotes
-  if (
-    /[\s"'\\]/.test(value) ||
+  // JQL special characters that need quoting: space, quotes, backslash, forward slash,
+  const hasSpecialChars = /[\s"'\\/]/.test(value);
+
+  // JQL reserved words that need quoting
+  const isReservedWord =
     /^(and|or|not|in|is|was|from|to|on|by|during|before|after|empty|null|order|asc|desc|changed|was|in|not|to|from|by|before|after|on|during)$/i.test(
       value
-    )
-  ) {
-    // Escape any existing quotes in the value
+    );
+
+  if (hasSpecialChars || isReservedWord) {
     return `"${value.replace(/"/g, '\\"')}"`;
   }
+
   return value;
 };
 
@@ -86,36 +91,71 @@ export function createJQLFromSearchFilters(
   return jql;
 }
 
-// Converts plain text to Atlassian Document Format (ADF)
-// Based on: https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/
+/**
+ * Determines if a field should be converted to ADF format.
+ *
+ * Based on Atlassian documentation: "The Atlassian Document Format (ADF) represents
+ * rich text stored in Atlassian products. For example, in Jira Cloud platform,
+ * the text in issue comments and in textarea custom fields is stored as ADF."
+ *
+ * @param fieldKey - The field key (e.g., "customfield_10033")
+ * @param fieldValue - The field value to be processed
+ * @param fieldMetadata - Optional field metadata from Jira API containing schema information
+ * @returns true if the field should be converted to ADF, false otherwise
+ */
+export function shouldConvertToADF(
+  fieldKey: string,
+  fieldValue: unknown,
+  fieldMetadata?: {
+    schema?: {
+      type?: string;
+      custom?: string;
+    };
+  }
+): boolean {
+  // Only process string values - if it's already an object (like ADF), leave it alone
+  if (typeof fieldValue !== "string") {
+    return false;
+  }
 
-export function textToADF(text: string): {
-  type: "doc";
-  version: 1;
-  content: Array<{
-    type: "paragraph";
-    content: Array<{
-      type: "text";
-      text: string;
-    }>;
-  }>;
-} {
-  // Split text by newlines to create multiple paragraphs
-  const lines = text.split("\n");
+  // Description field should always be converted to ADF (it's a rich text field)
+  if (fieldKey === "description") {
+    return true;
+  }
 
-  const content = lines.map((line) => ({
-    type: "paragraph" as const,
-    content: [
-      {
-        type: "text" as const,
-        text: line || "", // Handle empty lines
-      },
-    ],
-  }));
+  // Only custom fields can be converted to ADF (specifically textarea custom fields)
+  if (!fieldKey.startsWith("customfield_")) {
+    return false;
+  }
 
-  return {
-    type: "doc",
-    version: 1,
-    content,
-  };
+  if (fieldMetadata?.schema?.custom) {
+    const customFieldType = fieldMetadata.schema.custom;
+
+    // Only textarea custom fields require ADF according to Atlassian docs
+    return customFieldType.includes("textarea");
+  }
+
+  return false;
+}
+
+export function processFieldsForJira(
+  fields: Record<string, unknown>,
+  fieldsMetadata?: Record<
+    string,
+    {
+      schema?: { type?: string; custom?: string };
+    }
+  >
+): Record<string, unknown> {
+  const processedFields = { ...fields };
+
+  for (const [fieldKey, fieldValue] of Object.entries(processedFields)) {
+    const fieldMetadata = fieldsMetadata?.[fieldKey];
+
+    if (shouldConvertToADF(fieldKey, fieldValue, fieldMetadata)) {
+      processedFields[fieldKey] = markdownToAdf(fieldValue as string);
+    }
+  }
+
+  return processedFields;
 }

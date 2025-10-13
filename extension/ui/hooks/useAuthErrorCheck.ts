@@ -27,7 +27,7 @@ export const useAuthErrorCheck = (error: any, mutate: () => any) => {
 
           case "expired_oauth_token_error":
             // Attempt to get the access token, it will refresh the token if needed.
-            const accesToken = await platform.auth.getAccessToken();
+            const accesToken = await platform.auth.getAccessToken(true);
             if (!accesToken) {
               // If we still don't have an access token, we need to logout.
               setAuthError(error);

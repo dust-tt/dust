@@ -656,9 +656,12 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       status: this.status ?? "active",
       trialing: this.trialing === true,
       sId: this.sId || null,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       stripeSubscriptionId: this.stripeSubscriptionId || null,
       startDate: this.startDate?.getTime() || null,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       endDate: this.endDate?.getTime() || null,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       paymentFailingSince: this.paymentFailingSince?.getTime() || null,
       plan: this.getPlan(),
       requestCancelAt: this.requestCancelAt?.getTime() ?? null,

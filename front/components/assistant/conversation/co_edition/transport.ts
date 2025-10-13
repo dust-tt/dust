@@ -1,10 +1,9 @@
-import type {
-  HeartbeatMCPResponseType,
-  LightWorkspaceType,
-} from "@dust-tt/client";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
+
+import type { HeartbeatMCPResponseType } from "@app/pages/api/w/[wId]/mcp/heartbeat";
+import type { LightWorkspaceType } from "@app/types";
 
 const logger = console;
 
@@ -143,6 +142,7 @@ export class CoEditionTransport implements Transport {
 
     const params = new URLSearchParams();
     params.set("serverId", this.serverId);
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     params.set("lastEventId", this.lastEventId || "");
 
     this.eventSource = new EventSource(

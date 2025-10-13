@@ -3,15 +3,15 @@ import type { ParsedUrlQuery } from "querystring";
 
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
-import type { BuilderFlow } from "@app/components/assistant_builder/types";
-import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
+import type { BuilderFlow } from "@app/components/agent_builder/types";
+import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
-import { getFeatureFlags, isRestrictedFromAgentCreation } from "@app/lib/auth";
+import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationType,
@@ -44,18 +44,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
   baseUrl: string;
   templateId: string | null;
+  duplicateAgentId: string | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
   if (!owner || !plan || !auth.isUser() || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("agent_builder_v2") || !auth.isBuilder()) {
     return {
       notFound: true,
     };
@@ -80,6 +74,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const { duplicate, templateId } = getDuplicateAndTemplateIdFromQuery(
     context.query
   );
+
+  await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+
   if (duplicate) {
     configuration = await getAgentConfiguration(auth, {
       agentId: duplicate,
@@ -94,19 +91,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     // We reset the scope according to the current flow. This ensures that cloning a workspace
     // agent with flow `personal_assistants` will initialize the agent as private.
     configuration.scope = flow === "personal_assistants" ? "hidden" : "visible";
-  } else if (templateId) {
-    const agentConfigRes = await generateMockAgentConfigurationFromTemplate(
-      templateId,
-      flow
-    );
-
-    if (agentConfigRes.isErr()) {
-      return {
-        notFound: true,
-      };
-    }
-
-    configuration = agentConfigRes.value;
   }
 
   const user = auth.getNonNullableUser().toJSON();
@@ -120,6 +104,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       subscription,
       templateId,
+      duplicateAgentId: duplicate,
       user,
     },
   };
@@ -130,6 +115,7 @@ export default function CreateAgent({
   owner,
   user,
   templateId,
+  duplicateAgentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({ templateId });
 
@@ -142,8 +128,19 @@ export default function CreateAgent({
   }
 
   return (
-    <AgentBuilderProvider owner={owner} user={user}>
-      <AgentBuilder />
+    <AgentBuilderProvider
+      owner={owner}
+      user={user}
+      assistantTemplate={assistantTemplate}
+    >
+      <AgentBuilder
+        agentConfiguration={
+          agentConfiguration && "sId" in agentConfiguration
+            ? agentConfiguration
+            : undefined
+        }
+        duplicateAgentId={duplicateAgentId}
+      />
     </AgentBuilderProvider>
   );
 }

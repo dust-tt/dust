@@ -1,4 +1,4 @@
-import { isPlainObject } from "lodash";
+import isPlainObject from "lodash/isPlainObject";
 
 import type { RegionType } from "@app/lib/api/regions/config";
 import type {
@@ -28,7 +28,8 @@ export interface ReadTableChunkParams {
 }
 
 export const CORE_API_CONCURRENCY_LIMIT = 48;
-export const CORE_API_LIST_NODES_BATCH_SIZE = 8;
+export const CORE_API_LIST_NODES_BATCH_SIZE = 64;
+export const CORE_API_LIST_TABLES_BATCH_SIZE = 8;
 
 // Core.
 
@@ -89,5 +90,11 @@ export function isStringTooLongError(
     err !== null &&
     "code" in err &&
     err.code === "ERR_STRING_TOO_LONG"
+  );
+}
+
+export function isJSONStringifyRangeError(err: unknown): err is RangeError {
+  return (
+    err instanceof RangeError && err.message.includes("Invalid string length")
   );
 }

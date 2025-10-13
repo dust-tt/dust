@@ -25,7 +25,7 @@ type UnderscoreToDash<T extends string> = T extends `${infer A}_${infer B}`
  */
 function generateConnectorRelativeMimeTypes<
   P extends ConnectorProvider,
-  T extends Uppercase<string>[]
+  T extends Uppercase<string>[],
 >({
   provider,
   resourceTypes,
@@ -55,16 +55,22 @@ function generateConnectorRelativeMimeTypes<
 // Mime type that represents a datasource.
 export const DATA_SOURCE_MIME_TYPE = "application/vnd.dust.datasource" as const;
 
+// Mime type that represents a data warehouse, like Snowflake or BigQuery.
+export const DATA_WAREHOUSE_MIME_TYPE =
+  "application/vnd.dust.data-warehouse" as const;
+
 export const DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE =
   "application/vnd.dust.folder.spreadsheet" as const;
 export type DataSourceFolderSpreadsheetMimeType =
   typeof DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE;
 
 type DataSourceMimeType = typeof DATA_SOURCE_MIME_TYPE;
+type DataWarehouseMimeType = typeof DATA_WAREHOUSE_MIME_TYPE;
 
 export const CONTENT_NODE_MIME_TYPES = {
   GENERIC: {
     DATA_SOURCE: DATA_SOURCE_MIME_TYPE,
+    DATA_WAREHOUSE: DATA_WAREHOUSE_MIME_TYPE,
   },
   FOLDER: {
     SPREADSHEET: DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE,
@@ -187,7 +193,7 @@ export const INCLUDABLE_INTERNAL_CONTENT_NODE_MIME_TYPES = {
 
 function generateToolMimeTypes<
   P extends Uppercase<string>,
-  T extends Uppercase<string>[]
+  T extends Uppercase<string>[],
 >({
   category,
   resourceTypes,
@@ -219,21 +225,25 @@ const TOOL_MIME_TYPES = {
     category: "TOOL_INPUT",
     resourceTypes: [
       "DATA_SOURCE",
+      "DATA_WAREHOUSE",
       "TABLE",
       "AGENT",
       "STRING",
       "NUMBER",
       "BOOLEAN",
       "ENUM",
+      "LIST",
       "REASONING_MODEL",
       "DUST_APP",
-      "NULLABLE_TIME_FRAME",
+      "TIME_FRAME",
       "JSON_SCHEMA",
+      "SECRET",
     ],
   }),
   TOOL_OUTPUT: generateToolMimeTypes({
     category: "TOOL_OUTPUT",
     resourceTypes: [
+      "AGENT_PAUSE_TOOL_OUTPUT",
       "BROWSE_RESULT",
       "DATA_SOURCE_SEARCH_QUERY",
       "DATA_SOURCE_SEARCH_RESULT",
@@ -261,9 +271,12 @@ const TOOL_MIME_TYPES = {
       "WEBSEARCH_QUERY",
       "WEBSEARCH_RESULT",
       "RUN_AGENT_RESULT",
+      "RUN_AGENT_HANDOVER",
       "RUN_AGENT_QUERY",
       "WARNING",
       "AGENT_CREATION_RESULT",
+      "TOOLSET_LIST_RESULT",
+      "TOOLSET_DESCRIBE_RESULT",
       // Legacy, kept for backwards compatibility.
       "GET_DATABASE_SCHEMA_MARKER",
       "EXECUTE_TABLES_QUERY_MARKER",
@@ -344,6 +357,7 @@ export type DustMimeType =
   | SalesforceMimeType
   | GongMimeType
   | DataSourceMimeType
+  | DataWarehouseMimeType
   | DataSourceFolderSpreadsheetMimeType;
 
 export function isDustMimeType(mimeType: string): mimeType is DustMimeType {

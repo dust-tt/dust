@@ -6,7 +6,7 @@ import { H3, P } from "../../ContentComponents";
 
 export function ValuePropSection() {
   return (
-    <div className="w-full">
+    <div className="container mx-auto px-4 sm:px-6">
       <div className="mb-8">
         {/* <H2>Amplify your team's performance</H2>*/}
         {/* <P size="lg" className="mt-6 text-muted-foreground">
@@ -48,7 +48,7 @@ export function ValuePropSection() {
           <div className="order-1 w-full md:order-2 md:w-1/2">
             <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-2xl bg-blue-50">
               <img
-                src="/static/landing/code/code.svg"
+                src="/static/landing/code/code.png"
                 alt="Platform Integration"
                 className="h-full w-full object-contain"
               />
@@ -77,7 +77,7 @@ export function ValuePropSection() {
           <div className="order-1 w-full md:order-1 md:w-1/2">
             <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-2xl bg-rose-50">
               <img
-                src="/static/landing/analysis/analysis.svg"
+                src="/static/landing/analysis/analysis.png"
                 alt="Analysis"
                 className="h-full w-full object-contain"
               />

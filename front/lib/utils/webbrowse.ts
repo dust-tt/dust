@@ -1,4 +1,8 @@
-import type { ScrapeResponse } from "@mendable/firecrawl-js";
+import type {
+  ErrorResponse,
+  ScrapeParams,
+  ScrapeResponse,
+} from "@mendable/firecrawl-js";
 import FirecrawlApp from "@mendable/firecrawl-js";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -7,13 +11,19 @@ import { dustManagedCredentials, errorToString } from "@app/types";
 
 const credentials = dustManagedCredentials();
 
+// Firecrawl scrape options we use locally: require formats only
+type ScrapeOptionsMinimal = Required<Pick<ScrapeParams, "formats">>;
+
 type BrowserScrapeMetadata = {
   status: number;
   url: string;
 };
 
 export type BrowseScrapeSuccessResponse = BrowserScrapeMetadata & {
-  markdown: string;
+  markdown?: string;
+  html?: string;
+  screenshots?: string[];
+  links?: string[];
   title: string | undefined;
   description: string | undefined;
 };
@@ -25,14 +35,19 @@ export type BrowseScrapeErrorResponse = BrowserScrapeMetadata & {
 export function isBrowseScrapeSuccessResponse(
   response: BrowseScrapeSuccessResponse | BrowseScrapeErrorResponse
 ): response is BrowseScrapeSuccessResponse {
-  return "markdown" in response;
+  return "markdown" in response || "html" in response;
 }
 
 /**
- * Fetches the content of a URL and returns it as markdown using Firecrawl
+ * Fetches the content of a URL and returns it as markdown, HTML, or extracted data using Firecrawl
  */
 export const browseUrl = async (
-  url: string
+  url: string,
+  format: "markdown" | "html" = "markdown",
+  options?: {
+    screenshotMode?: "none" | "viewport" | "fullPage";
+    links?: boolean;
+  }
 ): Promise<BrowseScrapeSuccessResponse | BrowseScrapeErrorResponse> => {
   if (!credentials.FIRECRAWL_API_KEY) {
     throw new Error(
@@ -44,11 +59,32 @@ export const browseUrl = async (
     apiKey: credentials.FIRECRAWL_API_KEY,
   });
 
-  let scrapeResult: ScrapeResponse;
+  let scrapeResult: ScrapeResponse | ErrorResponse;
   try {
-    scrapeResult = (await fc.scrapeUrl(url, {
-      formats: ["markdown"],
-    })) as ScrapeResponse;
+    const formats: ScrapeOptionsMinimal["formats"] = [];
+
+    if (format === "html") {
+      formats.push("rawHtml");
+    } else {
+      formats.push("markdown");
+    }
+
+    if (options?.screenshotMode && options.screenshotMode !== "none") {
+      // Firecrawl requires choosing exactly one screenshot format
+      if (options.screenshotMode === "fullPage") {
+        formats.push("screenshot@fullPage");
+      } else {
+        formats.push("screenshot");
+      }
+    }
+
+    if (options?.links) {
+      formats.push("links");
+    }
+
+    const scrapeOptions: ScrapeOptionsMinimal = { formats };
+
+    scrapeResult = await fc.scrapeUrl(url, scrapeOptions);
   } catch (error) {
     logger.error(
       {
@@ -66,21 +102,87 @@ export const browseUrl = async (
 
   if (!scrapeResult.success) {
     const errorMessage = scrapeResult.error || "Unknown error.";
+    logger.error(
+      {
+        url,
+        format,
+        error: errorMessage,
+      },
+      "[Firecrawl] Scrape request failed"
+    );
     return {
       error: errorMessage,
-      status: scrapeResult.metadata?.statusCode || 500,
+      status: 500,
       url: url,
     };
   }
 
-  if (scrapeResult.markdown) {
+  let actionsScreenshots: string[] | undefined = undefined;
+  if (
+    scrapeResult.actions &&
+    typeof scrapeResult.actions === "object" &&
+    "screenshots" in (scrapeResult.actions as Record<string, unknown>)
+  ) {
+    const v = (scrapeResult.actions as { screenshots?: unknown }).screenshots;
+    if (Array.isArray(v) && v.every((x) => typeof x === "string")) {
+      actionsScreenshots = v as string[];
+    }
+  }
+
+  if (format === "html" && scrapeResult.rawHtml) {
+    const screenshots: string[] = [];
+    if (typeof scrapeResult.screenshot === "string") {
+      screenshots.push(scrapeResult.screenshot);
+    }
+    if (Array.isArray(actionsScreenshots)) {
+      screenshots.push(...actionsScreenshots);
+    }
     return {
-      markdown: scrapeResult.markdown,
+      html: scrapeResult.rawHtml,
+      screenshots: screenshots.length ? screenshots : undefined,
+      links: scrapeResult.links,
       title: scrapeResult.metadata?.title,
       description: scrapeResult.metadata?.description,
       status: scrapeResult.metadata?.statusCode ?? 200,
       url: url,
     };
+  } else if (format === "markdown" && scrapeResult.markdown) {
+    const screenshots: string[] = [];
+    if (typeof scrapeResult.screenshot === "string") {
+      screenshots.push(scrapeResult.screenshot);
+    }
+    if (Array.isArray(actionsScreenshots)) {
+      screenshots.push(...actionsScreenshots);
+    }
+    return {
+      markdown: scrapeResult.markdown,
+      screenshots: screenshots.length ? screenshots : undefined,
+      links: scrapeResult.links,
+      title: scrapeResult.metadata?.title,
+      description: scrapeResult.metadata?.description,
+      status: scrapeResult.metadata?.statusCode ?? 200,
+      url: url,
+    };
+  }
+
+  // If no primary format matched, but we asked for screenshots, still return them if present
+  if (options?.screenshotMode && options.screenshotMode !== "none") {
+    const screenshots: string[] = [];
+    if (typeof scrapeResult.screenshot === "string") {
+      screenshots.push(scrapeResult.screenshot);
+    }
+    if (Array.isArray(actionsScreenshots)) {
+      screenshots.push(...actionsScreenshots);
+    }
+    if (screenshots.length) {
+      return {
+        screenshots,
+        title: scrapeResult.metadata?.title,
+        description: scrapeResult.metadata?.description,
+        status: scrapeResult.metadata?.statusCode ?? 200,
+        url,
+      };
+    }
   }
 
   return {
@@ -95,12 +197,17 @@ export const browseUrl = async (
  */
 export const browseUrls = async (
   urls: string[],
-  chunkSize = 8
+  chunkSize = 8,
+  format: "markdown" | "html" = "markdown",
+  options?: {
+    screenshotMode?: "none" | "viewport" | "fullPage";
+    links?: boolean;
+  }
 ): Promise<Array<BrowseScrapeSuccessResponse | BrowseScrapeErrorResponse>> => {
   const results = await concurrentExecutor(
     urls,
     async (url) => {
-      return browseUrl(url);
+      return browseUrl(url, format, options);
     },
     { concurrency: chunkSize }
   );

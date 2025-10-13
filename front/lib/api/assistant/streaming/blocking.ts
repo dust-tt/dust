@@ -41,7 +41,7 @@ async function waitForAgentCompletion(
     return [];
   }
 
-  return new Promise((resolve) => {
+  return new Promise<AgentMessageType[]>((resolve) => {
     const completedMessages: AgentMessageType[] = [];
     const expectedMessageIds = new Set(agentMessages.map((m) => m.sId));
     const subscriptions: (() => void)[] = [];
@@ -85,8 +85,20 @@ async function waitForAgentCompletion(
               const parsedEvent =
                 event === "close" ? "close" : JSON.parse(event.message.payload);
 
+              if (parsedEvent.type === "agent_message_success") {
+                // Use the complete message from the success event.
+                completedMessages.push(parsedEvent.message);
+              }
+
               if (parsedEvent === "close" || isEndOfStreamEvent(parsedEvent)) {
-                completedMessages.push(agentMessage);
+                // If we somehow get close without success, use original.
+                if (
+                  expectedMessageIds.has(agentMessage.sId) &&
+                  !completedMessages.some((m) => m.sId === agentMessage.sId)
+                ) {
+                  completedMessages.push(agentMessage);
+                }
+
                 expectedMessageIds.delete(agentMessage.sId);
                 checkCompletion();
               }
@@ -129,16 +141,16 @@ async function waitForAgentCompletion(
 export async function postUserMessageAndWaitForCompletion(
   auth: Authenticator,
   {
-    conversation,
     content,
-    mentions,
     context,
+    conversation,
+    mentions,
     skipToolsValidation,
   }: {
-    conversation: ConversationType;
     content: string;
-    mentions: MentionType[];
     context: UserMessageContext;
+    conversation: ConversationType;
+    mentions: MentionType[];
     skipToolsValidation: boolean;
   }
 ): Promise<
@@ -151,10 +163,10 @@ export async function postUserMessageAndWaitForCompletion(
   >
 > {
   const postResult = await postUserMessage(auth, {
-    conversation,
     content,
-    mentions,
     context,
+    conversation,
+    mentions,
     skipToolsValidation,
   });
 

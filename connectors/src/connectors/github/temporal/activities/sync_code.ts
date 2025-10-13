@@ -108,13 +108,14 @@ export async function githubExtractToGcsActivity({
   });
 
   if (repoInfoRes.isErr()) {
-    throw repoInfoRes.error;
+    logger.error({ err: repoInfoRes.error }, "Failed to get repository info");
+    return null;
   }
 
   const repoInfo = repoInfoRes.value;
 
   // If repo is too large, simply return null, to be handled by the caller.
-  if (isRepoTooLarge(repoInfo)) {
+  if (isRepoTooLarge(repoInfo, connector)) {
     return null;
   }
 

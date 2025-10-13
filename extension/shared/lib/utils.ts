@@ -2,6 +2,7 @@
  * Utils to generate PKCE code verifier and challenge.
  */
 
+import { GLOBAL_AGENTS_SID } from "@app/shared/lib/global_agents";
 import type {
   DataSourceViewContentNodeType,
   LightAgentConfigurationType,
@@ -185,38 +186,49 @@ export function compareAgentsForSort(
   a: LightAgentConfigurationType,
   b: LightAgentConfigurationType
 ) {
-  // Place favorites first
   if (a.userFavorite && !b.userFavorite) {
     return -1;
   }
   if (b.userFavorite && !a.userFavorite) {
     return 1;
   }
-  // Check for 'dust'
-  if (a.sId === "dust") {
+
+  if (a.sId === GLOBAL_AGENTS_SID.DUST) {
     return -1;
   }
-  if (b.sId === "dust") {
+  if (b.sId === GLOBAL_AGENTS_SID.DUST) {
     return 1;
   }
 
-  // Check for 'claude-3'
-  if (a.sId === "claude-3-sonnet") {
+  if (a.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return -1;
   }
-  if (b.sId === "claude-3-sonnet") {
+  if (b.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return 1;
   }
 
-  // Check for 'gpt4'
-  if (a.sId === "gpt-4") {
+  if (a.sId === GLOBAL_AGENTS_SID.CLAUDE_4_SONNET) {
     return -1;
   }
-  if (b.sId === "gpt-4") {
+  if (b.sId === GLOBAL_AGENTS_SID.CLAUDE_4_SONNET) {
     return 1;
   }
 
-  // Check for agents with non-global 'scope'
+  if (a.sId === GLOBAL_AGENTS_SID.GPT5) {
+    return -1;
+  }
+  if (b.sId === GLOBAL_AGENTS_SID.GPT5) {
+    return 1;
+  }
+
+  if (a.sId === GLOBAL_AGENTS_SID.GPT4) {
+    return -1;
+  }
+  if (b.sId === GLOBAL_AGENTS_SID.GPT4) {
+    return 1;
+  }
+
+  // Check for agents with non-global 'scope'.
   if (a.scope !== "global" && b.scope === "global") {
     return -1;
   }
@@ -224,9 +236,18 @@ export function compareAgentsForSort(
     return 1;
   }
 
-  // default: sort alphabetically
+  // Default: sort alphabetically.
   return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
 }
+
+export const formatTimestring = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString("en-US", {
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
 export function getWeekBoundaries(date: Date): {
   startDate: Date;

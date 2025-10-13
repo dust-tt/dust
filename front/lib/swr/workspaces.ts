@@ -80,14 +80,14 @@ export function useWorkspaceActiveSubscription({
   owner,
   disabled,
 }: {
-  owner: LightWorkspaceType;
+  owner: LightWorkspaceType | undefined;
   disabled?: boolean;
 }) {
   const workspaceSubscriptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
     fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/subscriptions`,
+    owner ? `/api/w/${owner.sId}/subscriptions` : null,
     workspaceSubscriptionsFetcher,
     {
       disabled,
@@ -126,6 +126,7 @@ export function useFeatureFlags({
     featureFlagsFetcher,
     {
       disabled,
+      focusThrottleInterval: 30 * 60 * 1000, // 30 minutes
     }
   );
 

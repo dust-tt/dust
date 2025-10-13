@@ -3,39 +3,40 @@ import type { JSONContent } from "@tiptap/react";
 import {
   createInstructionBlockNode,
   splitTextAroundBlocks,
-  textToParagraphNodes,
+  textToBlockNodes,
 } from "@app/lib/client/agent_builder/instructionBlockUtils";
 
 function serializeNodeToText(node: JSONContent): string {
-  if (node.type === "instructionBlock") {
-    const type = node.attrs?.type as string;
-    const tagName = type?.toUpperCase() || "INFO";
-
-    // Serialize content inside the block
+  if (node.type === "heading") {
+    // Preserve the original heading level in markdown (support H1–H6)
+    const level = node.attrs?.level || 1;
+    const safeLevel = Math.max(1, Math.min(level, 6));
+    const prefix = "#".repeat(safeLevel) + " ";
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const content = node.content?.map(serializeNodeToText).join("") || "";
-
-    return `<${tagName}>\n${content}</${tagName}>\n`;
+    return `${prefix}${content}\n`;
   }
 
   if (node.type === "paragraph") {
-    if (!node.content || !node.content.length) {
-      return "\n";
-    }
-
-    if (node.content.length === 1 && node.content[0].type === "text") {
-      return `${node.content[0].text}\n`;
-    }
-
-    // Handle multiple nodes in paragraph
-    const text = node.content.map(serializeNodeToText).join("");
-    return text ? `${text}\n` : "\n";
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    const text = node.content?.map(serializeNodeToText).join("") || "";
+    return `${text}\n`;
   }
 
   if (node.type === "text") {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return node.text || "";
   }
 
-  // Handle other node types by recursing into their content
+  if (node.type === "codeBlock") {
+    // Convert code blocks to markdown format with triple backticks
+    const language = node.attrs?.language || "";
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    const code = node.content?.map(serializeNodeToText).join("") || "";
+    // Code blocks should have exactly one newline before the closing backticks
+    return `\`\`\`${language}\n${code}\n\`\`\`\n`;
+  }
+
   if (node.content) {
     return node.content.map(serializeNodeToText).join("");
   }
@@ -57,11 +58,9 @@ function parseInstructionBlocks(text: string): JSONContent[] {
 
   segments.forEach((segment) => {
     if (segment.type === "text") {
-      // Add text as paragraphs
-      const paragraphs = textToParagraphNodes(segment.content);
-      content.push(...paragraphs);
+      const nodes = textToBlockNodes(segment.content);
+      content.push(...nodes);
     } else if (segment.type === "block" && segment.blockType) {
-      // Add instruction block
       const blockNode = createInstructionBlockNode(
         segment.blockType,
         segment.content

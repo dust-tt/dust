@@ -1,3 +1,5 @@
+// Okay to use public API types because it's front/connectors communication.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpenIcon,
@@ -409,7 +411,8 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                     type="password"
                     value={
                       "private_key_passphrase" in credentials
-                        ? credentials.private_key_passphrase || ""
+                        ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                          credentials.private_key_passphrase || ""
                         : ""
                     }
                     placeholder="Leave empty if key is not encrypted"
@@ -417,7 +420,8 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                       setCredentials({
                         ...credentials,
                         auth_type: "keypair",
-                        private_key_passphrase: e.target.value || undefined,
+                        // Preserve empty string to support empty passphrases on encrypted keys
+                        private_key_passphrase: e.target.value,
                       } as SnowflakeCredentials);
                       setError(null);
                     }}

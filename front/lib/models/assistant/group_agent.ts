@@ -60,6 +60,7 @@ GroupAgentModel.init(
         fields: ["groupId", "agentConfigurationId"],
       },
       { fields: ["agentConfigurationId"] },
+      { fields: ["workspaceId"], concurrently: true },
     ],
   }
 );

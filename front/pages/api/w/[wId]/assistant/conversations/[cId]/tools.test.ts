@@ -5,7 +5,6 @@ import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -22,8 +21,6 @@ async function setupTest(
       role,
       method,
     });
-
-  await FeatureFlagFactory.basic("jit_tools", workspace);
 
   const conversation = await ConversationFactory.create({
     auth: authenticator,

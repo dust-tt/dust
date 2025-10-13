@@ -1,11 +1,13 @@
 use crate::oauth::{
     encryption::{seal_str, unseal_str},
     providers::{
-        confluence::ConfluenceConnectionProvider, freshservice::FreshserviceConnectionProvider,
-        github::GithubConnectionProvider, gmail::GmailConnectionProvider,
-        gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
-        hubspot::HubspotConnectionProvider, intercom::IntercomConnectionProvider,
-        jira::JiraConnectionProvider, mcp::MCPConnectionProvider,
+        confluence::ConfluenceConnectionProvider,
+        confluence_tools::ConfluenceToolsConnectionProvider, discord::DiscordConnectionProvider,
+        freshservice::FreshserviceConnectionProvider, github::GithubConnectionProvider,
+        gmail::GmailConnectionProvider, gong::GongConnectionProvider,
+        google_drive::GoogleDriveConnectionProvider, hubspot::HubspotConnectionProvider,
+        intercom::IntercomConnectionProvider, jira::JiraConnectionProvider,
+        mcp::MCPConnectionProvider, mcp_static::MCPStaticConnectionProvider,
         microsoft::MicrosoftConnectionProvider, microsoft_tools::MicrosoftToolsConnectionProvider,
         mock::MockConnectionProvider, monday::MondayConnectionProvider,
         notion::NotionConnectionProvider, salesforce::SalesforceConnectionProvider,
@@ -91,6 +93,8 @@ impl std::error::Error for ConnectionError {}
 #[serde(rename_all = "snake_case")]
 pub enum ConnectionProvider {
     Confluence,
+    ConfluenceTools,
+    Discord,
     Freshservice,
     Github,
     Gong,
@@ -108,6 +112,7 @@ pub enum ConnectionProvider {
     Salesforce,
     Hubspot,
     Mcp,
+    McpStatic,
 }
 
 impl FromStr for ConnectionProvider {
@@ -231,6 +236,8 @@ pub trait Provider {
 pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
     match t {
         ConnectionProvider::Confluence => Box::new(ConfluenceConnectionProvider::new()),
+        ConnectionProvider::ConfluenceTools => Box::new(ConfluenceToolsConnectionProvider::new()),
+        ConnectionProvider::Discord => Box::new(DiscordConnectionProvider::new()),
         ConnectionProvider::Freshservice => Box::new(FreshserviceConnectionProvider::new()),
         ConnectionProvider::Github => Box::new(GithubConnectionProvider::new()),
         ConnectionProvider::Gong => Box::new(GongConnectionProvider::new()),
@@ -248,6 +255,8 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Salesforce => Box::new(SalesforceConnectionProvider::new()),
         ConnectionProvider::Hubspot => Box::new(HubspotConnectionProvider::new()),
         ConnectionProvider::Mcp => Box::new(MCPConnectionProvider::new()),
+        // MCP Static is the same as MCP but does not require the discovery process on the front end.
+        ConnectionProvider::McpStatic => Box::new(MCPStaticConnectionProvider::new()),
     }
 }
 

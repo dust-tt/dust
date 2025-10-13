@@ -41,9 +41,14 @@ const getPrettyJsonPreference = () => {
     const prettyJsonPreference = localStorage.getItem(
       PRETTY_JSON_PREFERENCE_KEY
     );
+    // Default to Pretty view when preference is not yet set.
+    if (prettyJsonPreference === null) {
+      return true;
+    }
     return prettyJsonPreference === "true";
   } catch {
-    return false;
+    // If localStorage is unavailable, default to Pretty view.
+    return true;
   }
 };
 
@@ -446,6 +451,8 @@ export function CodeBlockWithExtendedSupport({
     <ContentBlockWrapper
       content={validChildrenContent}
       getContentToDownload={getContentToDownload}
+      buttonDisplay="inside"
+      displayActions="hover"
     >
       <CodeBlock className={className} inline={inline}>
         {children}

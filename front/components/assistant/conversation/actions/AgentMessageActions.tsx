@@ -1,102 +1,124 @@
-import { TOOL_RUNNING_LABEL } from "@dust-tt/client";
-import { Button, Chip, CommandLineIcon } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import {
+  AnimatedText,
+  Card,
+  cn,
+  ContentMessage,
+  Markdown,
+  Spinner,
+} from "@dust-tt/sparkle";
+import { useEffect, useRef } from "react";
 
+import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
-import type { AgentStateClassification } from "@app/lib/assistant/state/messageReducer";
-import type { LightAgentMessageType } from "@app/types";
-import { assertNever } from "@app/types";
+import type {
+  ActionProgressState,
+  AgentStateClassification,
+} from "@app/components/assistant/conversation/types";
+import type {
+  LightAgentMessageType,
+  LightAgentMessageWithActionsType,
+  LightWorkspaceType,
+} from "@app/types";
+import { isLightAgentMessageWithActionsType } from "@app/types";
 
 interface AgentMessageActionsProps {
-  agentMessage: LightAgentMessageType;
+  agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
   lastAgentStateClassification: AgentStateClassification;
   actionProgress: ActionProgressState;
+  owner: LightWorkspaceType;
 }
 
 export function AgentMessageActions({
   agentMessage,
   lastAgentStateClassification,
   actionProgress,
+  owner,
 }: AgentMessageActionsProps) {
-  const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
-  const { openPanel } = useConversationSidePanelContext();
+  const { openPanel, currentPanel, data } = useConversationSidePanelContext();
+
+  const isAgentMessageWithActions =
+    isLightAgentMessageWithActionsType(agentMessage);
+  const lastAction = isAgentMessageWithActions
+    ? agentMessage.actions[agentMessage.actions.length - 1]
+    : null;
+
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+  const chainOfThought = agentMessage.chainOfThought || "";
+
+  const firstRender = useRef<boolean>(true);
+  const onClick = () => {
+    openPanel({
+      type: "actions",
+      messageId: agentMessage.sId,
+    });
+  };
 
   useEffect(() => {
-    switch (lastAgentStateClassification) {
-      case "thinking":
-        setChipLabel("Thinking");
-        break;
-      case "acting":
-        if (agentMessage.actions && agentMessage.actions.length > 0) {
-          setChipLabel(TOOL_RUNNING_LABEL);
-        }
-        break;
-      case "done":
-        setChipLabel(undefined);
-        break;
-      default:
-        assertNever(lastAgentStateClassification);
+    // Only if we are in the first rendering, message is empty and panel is open on another message.
+    if (
+      currentPanel === "actions" &&
+      data !== agentMessage.sId &&
+      agentMessage.content === null &&
+      firstRender.current
+    ) {
+      openPanel({
+        type: "actions",
+        messageId: agentMessage.sId,
+      });
     }
-  }, [lastAgentStateClassification, agentMessage.actions]);
+    firstRender.current = false;
+  }, [agentMessage, currentPanel, data, openPanel]);
 
-  const isThinkingOrActing = useMemo(
-    () => agentMessage.status === "created",
-    [agentMessage.status]
-  );
+  const lastNotification = lastAction
+    ? actionProgress.get(lastAction.id)?.progress ?? null
+    : null;
 
-  return (
-    <div className="flex flex-col items-start gap-y-4">
-      <ActionDetails
-        hasActions={agentMessage.actions.length > 0}
-        isActionStepDone={!isThinkingOrActing}
-        label={chipLabel}
-        onClick={() =>
-          openPanel({
-            type: "actions",
-            messageId: agentMessage.sId,
-            metadata: {
-              actionProgress,
-              isActing: lastAgentStateClassification === "acting",
-              messageStatus: agentMessage.status,
-            },
-          })
-        }
-      />
-    </div>
-  );
-}
+  const showMessageBreakdownButton =
+    lastAgentStateClassification === "done" || agentMessage.status === "failed";
 
-function ActionDetails({
-  hasActions,
-  label,
-  isActionStepDone,
-  onClick,
-}: {
-  hasActions: boolean;
-  label?: string;
-  isActionStepDone: boolean;
-  onClick: () => void;
-}) {
-  if (!label && (!isActionStepDone || !hasActions)) {
-    return null;
-  }
-
-  return label ? (
+  return !showMessageBreakdownButton ? (
     <div
-      key={label}
-      onClick={hasActions ? onClick : undefined}
-      className={hasActions ? "cursor-pointer" : ""}
-    >
-      <Chip size="sm" isBusy label={label} />
-    </div>
-  ) : (
-    <Button
-      size="sm"
-      label="Tools inspection"
-      icon={CommandLineIcon}
-      variant="outline"
       onClick={onClick}
-    />
-  );
+      className={cn(
+        "flex flex-col gap-y-4",
+        lastAction ? "cursor-pointer" : ""
+      )}
+    >
+      {lastAction && lastAgentStateClassification === "acting" ? (
+        <Card variant="secondary" size="sm">
+          <MCPActionDetails
+            viewType="conversation"
+            action={lastAction}
+            owner={owner}
+            lastNotification={lastNotification}
+            messageStatus={agentMessage.status}
+          />
+        </Card>
+      ) : (
+        <div>
+          <ContentMessage variant="primary" className="max-w-[1000px] p-3">
+            <div className="flex w-full flex-row">
+              {!chainOfThought ? (
+                <AnimatedText variant="primary">Thinking...</AnimatedText>
+              ) : (
+                <Markdown
+                  content={chainOfThought}
+                  isStreaming={false}
+                  forcedTextSize="text-sm"
+                  textColor="text-muted-foreground dark:text-muted-foreground-night"
+                  isLastMessage={false}
+                />
+              )}
+              <span className="flex-grow"></span>
+              <div className="w-8 self-start pl-4 pt-0.5">
+                {lastAgentStateClassification === "thinking" && (
+                  <Spinner size="xs" />
+                )}
+              </div>
+            </div>
+          </ContentMessage>
+        </div>
+      )}
+    </div>
+  ) : null;
 }

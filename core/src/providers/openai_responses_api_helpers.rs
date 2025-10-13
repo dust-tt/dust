@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
-use tracing::info;
+use tracing::{info, warn};
 
 use super::{
     chat_messages::{
@@ -29,11 +29,45 @@ use super::{
 // OpenAI Responses API types
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum OpenAIResponsesInputContentType {
+    InputText,
+    InputImage,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIResponsesInputTextContent {
+    pub r#type: OpenAIResponsesInputContentType,
+    pub text: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIResponsesInputImageContent {
+    pub r#type: OpenAIResponsesInputContentType,
+    pub image_url: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[serde(untagged)]
+pub enum OpenAIResponsesInputContentBlock {
+    TextContent(OpenAIResponsesInputTextContent),
+    ImageContent(OpenAIResponsesInputImageContent),
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(untagged)]
+pub enum OpenAIResponsesMessageContent {
+    String(String),
+    Structured(Vec<OpenAIResponsesInputContentBlock>),
+}
+
+// Input items for the input array format
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum OpenAIResponseInputItem {
     Message {
         role: OpenAIChatMessageRole,
-        content: String,
+        content: OpenAIResponsesMessageContent,
     },
     Reasoning {
         id: String,
@@ -77,6 +111,8 @@ pub struct OpenAIResponseAPITool {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strict: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -102,6 +138,8 @@ pub struct OpenAIResponsesRequest {
     pub include: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub previous_response_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_tier: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -174,9 +212,15 @@ pub struct OpenAIResponsesResponse {
 
 // OpenAI Responses API conversion functions
 
+/// Strips literal Unicode escape sequences like \u0000 and \u0004 from strings
+fn strip_null_chars(s: &str) -> String {
+    s.replace("\\u0000", "").replace("\\u0004", "")
+}
+
 fn responses_api_input_from_chat_messages(
     messages: &Vec<ChatMessage>,
     transform_system_messages: TransformSystemMessages,
+    use_openai_eu_host: bool,
 ) -> Result<Vec<OpenAIResponseInputItem>> {
     let mut input_items = Vec::new();
 
@@ -184,15 +228,31 @@ fn responses_api_input_from_chat_messages(
         match message {
             ChatMessage::User(user_msg) => {
                 let content = match &user_msg.content {
-                    ContentBlock::Text(text) => text.clone(),
-                    ContentBlock::Mixed(mixed_contents) => mixed_contents
-                        .iter()
-                        .map(|c| match c {
-                            MixedContent::TextContent(tc) => tc.text.clone(),
-                            MixedContent::ImageContent(ic) => ic.image_url.url.clone(),
-                        })
-                        .collect::<Vec<String>>()
-                        .join("\n"),
+                    ContentBlock::Text(text) => OpenAIResponsesMessageContent::String(text.clone()),
+                    ContentBlock::Mixed(mixed_contents) => {
+                        let content_blocks: Vec<OpenAIResponsesInputContentBlock> = mixed_contents
+                            .iter()
+                            .map(|c| match c {
+                                MixedContent::TextContent(tc) => {
+                                    OpenAIResponsesInputContentBlock::TextContent(
+                                        OpenAIResponsesInputTextContent {
+                                            r#type: OpenAIResponsesInputContentType::InputText,
+                                            text: tc.text.clone(),
+                                        },
+                                    )
+                                }
+                                MixedContent::ImageContent(ic) => {
+                                    OpenAIResponsesInputContentBlock::ImageContent(
+                                        OpenAIResponsesInputImageContent {
+                                            r#type: OpenAIResponsesInputContentType::InputImage,
+                                            image_url: ic.image_url.url.clone(),
+                                        },
+                                    )
+                                }
+                            })
+                            .collect();
+                        OpenAIResponsesMessageContent::Structured(content_blocks)
+                    }
                 };
                 input_items.push(OpenAIResponseInputItem::Message {
                     role: OpenAIChatMessageRole::User,
@@ -208,13 +268,35 @@ fn responses_api_input_from_chat_messages(
                     };
                 input_items.push(OpenAIResponseInputItem::Message {
                     role,
-                    content: system_msg.content.clone(),
+                    content: OpenAIResponsesMessageContent::String(system_msg.content.clone()),
                 });
             }
             ChatMessage::Assistant(assistant_msg) => {
                 for item in assistant_msg.contents.as_ref().unwrap_or(&vec![]) {
                     match item {
                         AssistantContentItem::Reasoning { value } => {
+                            // The encrypted content is only usable if it was generated in the same region
+                            // as the one being used to call the API, since OpenAI uses different keys per region.
+                            // So if we find a mismatch, we skip adding this reasoning item to the input.
+                            // This might degrade the quality, but it's better than blowing up.
+                            let region = value.region.as_deref();
+                            let is_mismatch = match (use_openai_eu_host, region) {
+                                // We treat no region as US
+                                (true, Some("us")) | (true, None) => true,
+                                (false, Some("eu")) => true,
+                                _ => false,
+                            };
+
+                            if is_mismatch {
+                                warn!(
+                                    region,
+                                    use_openai_eu_host,
+                                    model = assistant_msg.name.as_deref().unwrap_or("unknown"),
+                                    "Skipping reasoning metadata due to region mismatch. This is expected if a conversation was started with OpenAI US and is now being continued with OpenAI EU, or vice versa."
+                                );
+                                continue;
+                            }
+
                             // Parse metadata JSON to extract ID and encrypted content
                             let metadata: Value =
                                 serde_json::from_str(&value.metadata).map_err(|e| {
@@ -258,7 +340,7 @@ fn responses_api_input_from_chat_messages(
                         AssistantContentItem::TextContent { value } => {
                             input_items.push(OpenAIResponseInputItem::Message {
                                 role: OpenAIChatMessageRole::Assistant,
-                                content: value.clone(),
+                                content: OpenAIResponsesMessageContent::String(value.clone()),
                             });
                         }
                     }
@@ -317,6 +399,7 @@ fn assistant_chat_message_from_responses_api_output(
                     value: ReasoningContent {
                         reasoning,
                         metadata: metadata.to_string(),
+                        region: None,
                     },
                 });
             }
@@ -348,7 +431,7 @@ fn assistant_chat_message_from_responses_api_output(
                 let fc = ChatFunctionCall {
                     id: call_id,
                     name,
-                    arguments,
+                    arguments: strip_null_chars(&arguments),
                 };
                 function_calls.push(fc.clone());
                 contents.push(AssistantContentItem::FunctionCall { value: fc });
@@ -386,9 +469,12 @@ pub async fn openai_responses_api_completion(
     event_sender: Option<UnboundedSender<Value>>,
     transform_system_messages: TransformSystemMessages,
     provider_name: String,
+    use_openai_eu_host: bool,
 ) -> Result<LLMChatGeneration> {
-    let is_reasoning_model =
-        model_id.starts_with("o3") || model_id.starts_with("o1") || model_id.starts_with("o4");
+    let is_reasoning_model = model_id.starts_with("o3")
+        || model_id.starts_with("o1")
+        || model_id.starts_with("o4")
+        || model_id.starts_with("gpt-5");
 
     let (openai_org_id, instructions, reasoning_effort, store) = match &extras {
         None => (None, None, None, true),
@@ -402,7 +488,13 @@ pub async fn openai_responses_api_completion(
                 _ => None,
             },
             match v.get("reasoning_effort") {
-                Some(Value::String(r)) => Some(r.to_string()),
+                Some(Value::String(r)) => {
+                    if r == "light" {
+                        Some("low".to_string())
+                    } else {
+                        Some(r.to_string())
+                    }
+                }
                 _ => {
                     if model_id.starts_with("gpt-5") {
                         Some("minimal".to_string())
@@ -420,7 +512,11 @@ pub async fn openai_responses_api_completion(
         ),
     };
 
-    let input = responses_api_input_from_chat_messages(messages, transform_system_messages)?;
+    let input = responses_api_input_from_chat_messages(
+        messages,
+        transform_system_messages,
+        use_openai_eu_host,
+    )?;
 
     let tools: Vec<OpenAIResponseAPITool> = functions
         .iter()
@@ -429,6 +525,7 @@ pub async fn openai_responses_api_completion(
             name: f.name.clone(),
             description: f.description.clone(),
             parameters: f.parameters.clone(),
+            strict: Some(false),
         })
         .collect();
 
@@ -444,6 +541,13 @@ pub async fn openai_responses_api_completion(
         (None, None)
     };
 
+    // TODO(gpt-5): remove this once we have a proper service tier system
+    let service_tier = if model_id.starts_with("gpt-5") {
+        Some("priority".to_string())
+    } else {
+        None
+    };
+
     let request = OpenAIResponsesRequest {
         model: model_id.clone(),
         input: Some(input),
@@ -456,6 +560,7 @@ pub async fn openai_responses_api_completion(
         store: Some(store),
         include,
         previous_response_id: None,
+        service_tier,
     };
 
     let (response, request_id) = if event_sender.is_some() {
@@ -484,6 +589,9 @@ pub async fn openai_responses_api_completion(
         usage: response.usage.map(|usage| LLMTokenUsage {
             prompt_tokens: usage.input_tokens,
             completion_tokens: usage.output_tokens,
+            cached_tokens: usage
+                .input_tokens_details
+                .and_then(|details| details.cached_tokens),
             reasoning_tokens: usage
                 .output_tokens_details
                 .and_then(|details| details.reasoning_tokens),
@@ -782,7 +890,7 @@ async fn streamed_responses_api_completion(
                             handle_response_completed(&mut state, event_data, &event_sender)?;
                             break 'stream;
                         }
-                        "response.error" | "response.failed" => {
+                        "response.failed" | "response.incomplete" => {
                             handle_response_error(event_data, &provider_name, &request_id)?;
                             break 'stream;
                         }
@@ -974,16 +1082,16 @@ fn handle_output_item_done(
                     }
                     "function_call" => {
                         // Parse as function call item.
-                        if let Ok(fc_item) =
+                        if let Ok(mut fc_item) =
                             serde_json::from_value::<OpenAIResponseOutputItem>(item)
                         {
                             if let OpenAIResponseOutputItem::FunctionCall {
-                                id: _,
-                                name: _,
-                                arguments: _,
-                                call_id: _,
-                            } = &fc_item
+                                ref mut arguments,
+                                ..
+                            } = &mut fc_item
                             {
+                                // Strip null characters from arguments
+                                *arguments = strip_null_chars(arguments);
                                 // Add to state.
                                 state.output_items.push(fc_item);
                             }
@@ -1058,12 +1166,32 @@ fn handle_response_error(
     provider_name: &str,
     request_id: &Option<String>,
 ) -> Result<()> {
-    let error_msg = if let Some(error) = event.error {
-        format!("Response error: {:?}", error)
-    } else if let Some(reason) = event.reason {
-        format!("Response failed: {}", reason)
-    } else {
-        "Unknown error in response".to_string()
+    let response = match event.response {
+        Some(response) => response,
+        None => {
+            info!("Missing response in error event: {:?}", event);
+            Err(anyhow!("Missing response in error event"))?
+        }
+    };
+
+    let error_msg = {
+        // Check for error field (response.failed event)
+        if let Some(error) = response.get("error") {
+            match error.get("message").and_then(|m| m.as_str()) {
+                Some(message) => format!("Response failed: {}", message),
+                None => format!("Response failed: {:?}", error),
+            }
+        }
+        // Check for incomplete_details (response.incomplete event)
+        else if let Some(incomplete) = response.get("incomplete_details") {
+            match incomplete.get("reason").and_then(|r| r.as_str()) {
+                Some(reason) => format!("Response incomplete: {}", reason),
+                None => format!("Response incomplete: {:?}", incomplete),
+            }
+        } else {
+            info!("Unknown error in OpenAI Responses API: {:?}", response);
+            "Unknown error in response".to_string()
+        }
     };
 
     Err(ModelError {
@@ -1071,4 +1199,265 @@ fn handle_response_error(
         message: format!("{}: {}", provider_name, error_msg),
         retryable: None,
     })?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::providers::chat_messages::{
+        ImageContent, ImageContentType, ImageUrlContent, SystemChatMessage, TextContent,
+        TextContentType, UserChatMessage,
+    };
+    use crate::providers::llm::ChatMessageRole;
+
+    #[test]
+    fn test_simple_text_input() {
+        // Simple case: single user message with text should produce array with one message
+        let user_message = ChatMessage::User(UserChatMessage {
+            content: ContentBlock::Text("Tell me a bedtime story".to_string()),
+            name: None,
+            role: ChatMessageRole::User,
+        });
+
+        let messages = vec![user_message];
+        let result =
+            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep, false)
+                .unwrap();
+
+        assert_eq!(result.len(), 1);
+        if let OpenAIResponseInputItem::Message { role, content } = &result[0] {
+            assert_eq!(*role, OpenAIChatMessageRole::User);
+            if let OpenAIResponsesMessageContent::String(text) = content {
+                assert_eq!(text, "Tell me a bedtime story");
+            } else {
+                panic!("Expected string content");
+            }
+        } else {
+            panic!("Expected message input item");
+        }
+    }
+
+    #[test]
+    fn test_mixed_content_with_image() {
+        // Mixed content with image should produce message array format
+        let user_message = ChatMessage::User(UserChatMessage {
+            content: ContentBlock::Mixed(vec![
+                MixedContent::TextContent(TextContent {
+                    r#type: TextContentType::Text,
+                    text: "what is in this image?".to_string(),
+                }),
+                MixedContent::ImageContent(ImageContent {
+                    r#type: ImageContentType::ImageUrl,
+                    image_url: ImageUrlContent {
+                        url: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg".to_string(),
+                    },
+                }),
+            ]),
+            name: None,
+            role: ChatMessageRole::User,
+        });
+
+        let messages = vec![user_message];
+        let result =
+            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep, false)
+                .unwrap();
+
+        assert_eq!(result.len(), 1);
+
+        if let OpenAIResponseInputItem::Message { role, content } = &result[0] {
+            assert_eq!(*role, OpenAIChatMessageRole::User);
+
+            if let OpenAIResponsesMessageContent::Structured(blocks) = content {
+                assert_eq!(blocks.len(), 2);
+
+                // Check text content
+                if let OpenAIResponsesInputContentBlock::TextContent(text_block) = &blocks[0] {
+                    assert_eq!(text_block.text, "what is in this image?");
+                    assert_eq!(
+                        text_block.r#type,
+                        OpenAIResponsesInputContentType::InputText
+                    );
+                } else {
+                    panic!("Expected text content block");
+                }
+
+                // Check image content
+                if let OpenAIResponsesInputContentBlock::ImageContent(image_block) = &blocks[1] {
+                    assert_eq!(image_block.image_url, "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg");
+                    assert_eq!(
+                        image_block.r#type,
+                        OpenAIResponsesInputContentType::InputImage
+                    );
+                } else {
+                    panic!("Expected image content block");
+                }
+            } else {
+                panic!("Expected structured content");
+            }
+        } else {
+            panic!("Expected message input item");
+        }
+    }
+
+    #[test]
+    fn test_multiple_messages_produces_array() {
+        // Multiple messages should always produce array format, even if all text
+        let messages = vec![
+            ChatMessage::System(SystemChatMessage {
+                content: "You are a helpful assistant.".to_string(),
+                role: ChatMessageRole::System,
+            }),
+            ChatMessage::User(UserChatMessage {
+                content: ContentBlock::Text("Hello!".to_string()),
+                name: None,
+                role: ChatMessageRole::User,
+            }),
+        ];
+
+        let result =
+            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep, false)
+                .unwrap();
+
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_input_image_serialization() {
+        // Test that the serialization produces the expected JSON format for input_image
+        let image_content = OpenAIResponsesInputImageContent {
+            r#type: OpenAIResponsesInputContentType::InputImage,
+            image_url: "https://example.com/image.jpg".to_string(),
+        };
+
+        let json = serde_json::to_value(&image_content).unwrap();
+
+        // Verify the JSON structure matches Responses API format
+        assert_eq!(json["type"], "input_image");
+        assert_eq!(json["image_url"], "https://example.com/image.jpg");
+
+        // Verify it's different from Chat API format (which would have nested image_url object)
+        assert!(json["image_url"].is_string()); // Direct string, not object
+    }
+
+    #[test]
+    fn test_input_text_serialization() {
+        // Test that the serialization produces the expected JSON format for input_text
+        let text_content = OpenAIResponsesInputTextContent {
+            r#type: OpenAIResponsesInputContentType::InputText,
+            text: "Hello world".to_string(),
+        };
+
+        let json = serde_json::to_value(&text_content).unwrap();
+
+        // Verify the JSON structure matches Responses API format
+        assert_eq!(json["type"], "input_text");
+        assert_eq!(json["text"], "Hello world");
+    }
+
+    // Macro to generate parameterized region mismatch/match tests
+    macro_rules! region_test {
+        (
+            $test_name:ident,
+            region: $region:expr,
+            use_eu_host: $use_eu_host:literal,
+            expected_len: $expected_len:literal,
+            $description:expr
+        ) => {
+            #[test]
+            fn $test_name() {
+                let assistant_message = ChatMessage::Assistant(AssistantChatMessage {
+                    content: None,
+                    role: ChatMessageRole::Assistant,
+                    name: Some("test-model".to_string()),
+                    function_call: None,
+                    function_calls: None,
+                    contents: Some(vec![AssistantContentItem::Reasoning {
+                        value: ReasoningContent {
+                            reasoning: Some("This is reasoning content".to_string()),
+                            metadata: r#"{"id": "reasoning_123", "encrypted_content": "encrypted_data"}"#
+                                .to_string(),
+                            region: $region,
+                        },
+                    }]),
+                });
+
+                let messages = vec![assistant_message];
+                let result = responses_api_input_from_chat_messages(
+                    &messages,
+                    TransformSystemMessages::Keep,
+                    $use_eu_host,
+                )
+                .unwrap();
+
+                assert_eq!(result.len(), $expected_len, $description);
+
+                // If we expect content to pass through, validate it
+                if $expected_len == 1 {
+                    if let OpenAIResponseInputItem::Reasoning {
+                        id,
+                        encrypted_content,
+                        summary,
+                    } = &result[0]
+                    {
+                        assert_eq!(id, "reasoning_123");
+                        assert_eq!(encrypted_content, "encrypted_data");
+                        assert_eq!(summary.len(), 1);
+                        assert_eq!(summary[0].text, "This is reasoning content");
+                    } else {
+                        panic!("Expected reasoning input item");
+                    }
+                }
+            }
+        };
+    }
+
+    // Region mismatch tests (should be filtered out)
+    region_test!(
+        test_reasoning_region_mismatch_us_host_eu_region,
+        region: Some("eu".to_string()),
+        use_eu_host: false,
+        expected_len: 0,
+        "US host with EU region reasoning content should be filtered out due to region mismatch"
+    );
+
+    region_test!(
+        test_reasoning_region_mismatch_eu_host_us_region,
+        region: Some("us".to_string()),
+        use_eu_host: true,
+        expected_len: 0,
+        "EU host with US region reasoning content should be filtered out due to region mismatch"
+    );
+
+    region_test!(
+        test_reasoning_region_mismatch_eu_host_no_region,
+        region: None,
+        use_eu_host: true,
+        expected_len: 0,
+        "EU host with no region reasoning content should be filtered out (no region defaults to US)"
+    );
+
+    // Region match tests (should pass through)
+    region_test!(
+        test_reasoning_region_match_us_host_us_region,
+        region: Some("us".to_string()),
+        use_eu_host: false,
+        expected_len: 1,
+        "US host with US region reasoning content should pass through"
+    );
+
+    region_test!(
+        test_reasoning_region_match_eu_host_eu_region,
+        region: Some("eu".to_string()),
+        use_eu_host: true,
+        expected_len: 1,
+        "EU host with EU region reasoning content should pass through"
+    );
+
+    region_test!(
+        test_reasoning_region_match_us_host_no_region,
+        region: None,
+        use_eu_host: false,
+        expected_len: 1,
+        "US host with no region reasoning content should pass through (no region defaults to US)"
+    );
 }

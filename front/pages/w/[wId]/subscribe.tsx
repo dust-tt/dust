@@ -13,6 +13,7 @@ import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { BillingPeriod, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
@@ -98,19 +99,8 @@ export default function Subscribe({
         rightActions={
           <>
             <div className="flex flex-row items-center">
-              {user && user.workspaces.length > 1 && (
-                <WorkspacePicker
-                  user={user}
-                  workspace={owner}
-                  onWorkspaceUpdate={(workspace) => {
-                    const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-                    if (workspace.id !== owner.id) {
-                      void router
-                        .push(assistantRoute)
-                        .then(() => router.reload());
-                    }
-                  }}
-                />
+              {user?.organizations && user.organizations.length > 1 && (
+                <WorkspacePicker user={user} workspace={owner} />
               )}
               <div>
                 {user && (
@@ -203,9 +193,17 @@ export default function Subscribe({
                   }
                   icon={CreditCardIcon}
                   size="sm"
-                  onClick={() => {
-                    void handleSubscribePlan(billingPeriod);
-                  }}
+                  onClick={withTracking(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_start",
+                    () => {
+                      void handleSubscribePlan(billingPeriod);
+                    },
+                    {
+                      billing_period: billingPeriod,
+                      is_trial: noPreviousSubscription ? "true" : "false",
+                    }
+                  )}
                 />
               </Page.Vertical>
               <Page.Horizontal sizing="grow">

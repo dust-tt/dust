@@ -14,6 +14,7 @@ export interface PopoverContentProps
   fullWidth?: boolean;
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
+  preventAutoFocusOnClose?: boolean;
 }
 
 const PopoverContent = React.forwardRef<
@@ -28,10 +29,21 @@ const PopoverContent = React.forwardRef<
       mountPortal = true,
       mountPortalContainer,
       fullWidth = false,
+      preventAutoFocusOnClose = true,
+      onCloseAutoFocus,
       ...props
     },
     ref
   ) => {
+    const handleCloseAutoFocus = React.useCallback(
+      (event: Event) => {
+        if (preventAutoFocusOnClose) {
+          event.preventDefault();
+        }
+        onCloseAutoFocus?.(event);
+      },
+      [preventAutoFocusOnClose, onCloseAutoFocus]
+    );
     const content = (
       <PopoverPrimitive.Content
         ref={ref}
@@ -51,6 +63,7 @@ const PopoverContent = React.forwardRef<
           fullWidth ? "s-grow" : "s-w-72 s-p-4",
           className
         )}
+        onCloseAutoFocus={handleCloseAutoFocus}
         {...props}
       />
     );

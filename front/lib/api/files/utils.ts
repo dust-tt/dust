@@ -1,9 +1,9 @@
 import type { File } from "formidable";
 import { IncomingForm } from "formidable";
 import type { IncomingMessage } from "http";
-import { Writable } from "stream";
-import { pipeline } from "stream/promises";
+import type { Writable } from "stream";
 
+import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type {
@@ -85,44 +85,42 @@ export const parseUploadRequest = async (
   }
 };
 
-class MemoryWritable extends Writable {
-  private chunks: string[];
-
-  constructor() {
-    super();
-    this.chunks = [];
-  }
-
-  _write(
-    chunk: any,
-    encoding: BufferEncoding,
-    callback: (error?: Error | null) => void
-  ) {
-    this.chunks.push(chunk.toString());
-    callback();
-  }
-
-  getContent() {
-    return this.chunks.join("");
-  }
-}
-
 export async function getFileContent(
   auth: Authenticator,
   file: FileResource,
   version: FileVersion = "processed"
 ): Promise<string | null> {
-  // Create a stream to hold the content of the file
-  const writableStream = new MemoryWritable();
+  const readStream = file.getReadStream({ auth, version });
+  const bufferResult = await streamToBuffer(readStream);
 
-  // Read from the processed file
-  await pipeline(file.getReadStream({ auth, version }), writableStream);
-
-  const content = writableStream.getContent();
-
-  if (!content) {
+  if (bufferResult.isErr()) {
     return null;
   }
 
-  return content;
+  return bufferResult.value.toString("utf-8");
+}
+
+export function getUpdatedContentAndOccurrences({
+  oldString,
+  newString,
+  currentContent,
+}: {
+  oldString: string;
+  newString: string;
+  currentContent: string;
+}) {
+  // Count occurrences of oldString.
+  const regex = new RegExp(
+    oldString.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+    "g"
+  );
+  const matches = currentContent.match(regex);
+  const occurrences = matches ? matches.length : 0;
+
+  const updatedContent = currentContent.replace(regex, newString);
+
+  return {
+    occurrences,
+    updatedContent,
+  };
 }

@@ -127,20 +127,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "assistant-v2-query-tables": {
-    app: {
-      appId: "b4f205e453",
-      appHash:
-        "b4b51a1910a4f52e1c89c6b8cbb1d56e3ce155ce6c043f9ffd39fd7489399b52",
-    },
-    config: {
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        use_cache: false,
-        function_call: "execute_query",
-      },
-    },
-  },
   "assistant-v2-websearch": {
     app: {
       appId: "098b515f8e",
@@ -327,6 +313,39 @@ export const BaseDustProdActionRegistry = {
     config: {
       CREATE_SUGGESTIONS: {
         function_call: "send_tags",
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
+  "assistant-builder-cron-timezone-generator": {
+    app: {
+      appId: "T454vmSliN",
+      appHash:
+        "a7183268ee1d99e56774a5c93e6d715eb684bbfab9d34da99e0b92d299bfbde7",
+    },
+    config: {
+      CREATE_CRON: {
+        function_call: "set_schedule",
+        use_cache: false,
+        use_stream: true,
+      },
+      CREATE_TZ: {
+        function_call: "set_tz",
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
+  "voice-find-agent-and-tools": {
+    app: {
+      appId: "F15zoc9d8a",
+      appHash:
+        "ce806cd503d298c64ae97a8f786a60be62d81aa000fca02c363efec51356926f",
+    },
+    config: {
+      GET_AUGMENTED_MESSAGE: {
+        function_call: "find_agents_and_tools",
         use_cache: false,
         use_stream: true,
       },

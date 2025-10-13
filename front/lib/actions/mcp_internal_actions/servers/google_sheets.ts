@@ -1,31 +1,23 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { google } from "googleapis";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
+  makeInternalMCPServer,
   makeMCPToolJSONSuccess,
-  makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "google_sheets",
-  version: "1.0.0",
-  description: "Tools for managing Google Sheets spreadsheets and data.",
-  authorization: {
-    provider: "gmail",
-    supported_use_cases: ["personal_actions"] as const,
-    scope:
-      "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly" as const,
-  },
-  icon: "GoogleSpreadsheetLogo",
-  documentationUrl: "https://docs.dust.tt/docs/google-sheets",
-};
+// We use a single tool name for monitoring given the high granularity (can be revisited).
+const GOOGLE_SHEET_TOOL_NAME = "google_sheets";
 
-const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo);
+const createServer = (auth: Authenticator): McpServer => {
+  const server = makeInternalMCPServer("google_sheets");
 
   async function getSheetsClient(authInfo?: AuthInfo) {
     const accessToken = authInfo?.token;
@@ -71,37 +63,47 @@ const createServer = (): McpServer => {
         .optional()
         .describe("Maximum number of spreadsheets to return (max 1000)."),
     },
-    async ({ nameFilter, pageToken, pageSize }, { authInfo }) => {
-      const drive = await getDriveClient(authInfo);
-      if (!drive) {
-        return makeMCPToolTextError("Failed to authenticate with Google Drive");
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      async ({ nameFilter, pageToken, pageSize }, { authInfo }) => {
+        const drive = await getDriveClient(authInfo);
+        if (!drive) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Drive")
+          );
+        }
+
+        try {
+          const query = nameFilter
+            ? `mimeType='application/vnd.google-apps.spreadsheet' and name contains '${nameFilter}'`
+            : "mimeType='application/vnd.google-apps.spreadsheet'";
+
+          const res = await drive.files.list({
+            q: query,
+            pageToken,
+            pageSize: pageSize ? Math.min(pageSize, 1000) : undefined,
+            fields:
+              "nextPageToken, files(id, name, createdTime, modifiedTime, owners, webViewLink)",
+            includeItemsFromAllDrives: true,
+            supportsAllDrives: true,
+            corpora: "allDrives",
+          });
+
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to list spreadsheets"
+            )
+          );
+        }
       }
-
-      try {
-        const query = nameFilter
-          ? `mimeType='application/vnd.google-apps.spreadsheet' and name contains '${nameFilter}'`
-          : "mimeType='application/vnd.google-apps.spreadsheet'";
-
-        const res = await drive.files.list({
-          q: query,
-          pageToken,
-          pageSize: pageSize ? Math.min(pageSize, 1000) : undefined,
-          fields:
-            "nextPageToken, files(id, name, createdTime, modifiedTime, owners, webViewLink)",
-          includeItemsFromAllDrives: true,
-          supportsAllDrives: true,
-          corpora: "allDrives",
-        });
-
-        return makeMCPToolJSONSuccess({
-          result: res.data,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to list spreadsheets"
-        );
-      }
-    }
+    )
   );
 
   server.tool(
@@ -116,29 +118,37 @@ const createServer = (): McpServer => {
         .default(false)
         .describe("Whether to include grid data in the response."),
     },
-    async ({ spreadsheetId, includeGridData }, { authInfo }) => {
-      const sheets = await getSheetsClient(authInfo);
-      if (!sheets) {
-        return makeMCPToolTextError(
-          "Failed to authenticate with Google Sheets"
-        );
-      }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      async ({ spreadsheetId, includeGridData }, { authInfo }) => {
+        const sheets = await getSheetsClient(authInfo);
+        if (!sheets) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
+        }
 
-      try {
-        const res = await sheets.spreadsheets.get({
-          spreadsheetId,
-          includeGridData,
-        });
+        try {
+          const res = await sheets.spreadsheets.get({
+            spreadsheetId,
+            includeGridData,
+          });
 
-        return makeMCPToolJSONSuccess({
-          result: res.data,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to get spreadsheet"
-        );
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to get spreadsheet"
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -160,34 +170,42 @@ const createServer = (): McpServer => {
         .default("FORMATTED_VALUE")
         .describe("How values should be represented in the output."),
     },
-    async (
-      { spreadsheetId, range, majorDimension, valueRenderOption },
-      { authInfo }
-    ) => {
-      const sheets = await getSheetsClient(authInfo);
-      if (!sheets) {
-        return makeMCPToolTextError(
-          "Failed to authenticate with Google Sheets"
-        );
-      }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      async (
+        { spreadsheetId, range, majorDimension, valueRenderOption },
+        { authInfo }
+      ) => {
+        const sheets = await getSheetsClient(authInfo);
+        if (!sheets) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
+        }
 
-      try {
-        const res = await sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range,
-          majorDimension,
-          valueRenderOption,
-        });
+        try {
+          const res = await sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range,
+            majorDimension,
+            valueRenderOption,
+          });
 
-        return makeMCPToolJSONSuccess({
-          result: res.data,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to get worksheet data"
-        );
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to get worksheet data"
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -212,37 +230,45 @@ const createServer = (): McpServer => {
         .default("USER_ENTERED")
         .describe("How the input data should be interpreted."),
     },
-    async (
-      { spreadsheetId, range, values, majorDimension, valueInputOption },
-      { authInfo }
-    ) => {
-      const sheets = await getSheetsClient(authInfo);
-      if (!sheets) {
-        return makeMCPToolTextError(
-          "Failed to authenticate with Google Sheets"
-        );
-      }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      async (
+        { spreadsheetId, range, values, majorDimension, valueInputOption },
+        { authInfo }
+      ) => {
+        const sheets = await getSheetsClient(authInfo);
+        if (!sheets) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
+        }
 
-      try {
-        const res = await sheets.spreadsheets.values.update({
-          spreadsheetId,
-          range,
-          valueInputOption,
-          requestBody: {
-            values,
-            majorDimension,
-          },
-        });
+        try {
+          const res = await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range,
+            valueInputOption,
+            requestBody: {
+              values,
+              majorDimension,
+            },
+          });
 
-        return makeMCPToolJSONSuccess({
-          result: res.data,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to update cells"
-        );
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to update cells"
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -271,45 +297,51 @@ const createServer = (): McpServer => {
         .default("INSERT_ROWS")
         .describe("How the input data should be inserted."),
     },
-    async (
-      {
-        spreadsheetId,
-        range,
-        values,
-        majorDimension,
-        valueInputOption,
-        insertDataOption,
-      },
-      { authInfo }
-    ) => {
-      const sheets = await getSheetsClient(authInfo);
-      if (!sheets) {
-        return makeMCPToolTextError(
-          "Failed to authenticate with Google Sheets"
-        );
-      }
-
-      try {
-        const res = await sheets.spreadsheets.values.append({
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      async (
+        {
           spreadsheetId,
           range,
+          values,
+          majorDimension,
           valueInputOption,
           insertDataOption,
-          requestBody: {
-            values,
-            majorDimension,
-          },
-        });
+        },
+        { authInfo }
+      ) => {
+        const sheets = await getSheetsClient(authInfo);
+        if (!sheets) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
+        }
 
-        return makeMCPToolJSONSuccess({
-          result: res.data,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to append data"
-        );
+        try {
+          const res = await sheets.spreadsheets.values.append({
+            spreadsheetId,
+            range,
+            valueInputOption,
+            insertDataOption,
+            requestBody: {
+              values,
+              majorDimension,
+            },
+          });
+
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
+        } catch (err) {
+          return new Err(
+            new MCPError(normalizeError(err).message || "Failed to append data")
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -323,29 +355,35 @@ const createServer = (): McpServer => {
           "The A1 notation of the range to clear (e.g., 'Sheet1!A1:D10')."
         ),
     },
-    async ({ spreadsheetId, range }, { authInfo }) => {
-      const sheets = await getSheetsClient(authInfo);
-      if (!sheets) {
-        return makeMCPToolTextError(
-          "Failed to authenticate with Google Sheets"
-        );
-      }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      async ({ spreadsheetId, range }, { authInfo }) => {
+        const sheets = await getSheetsClient(authInfo);
+        if (!sheets) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
+        }
 
-      try {
-        const res = await sheets.spreadsheets.values.clear({
-          spreadsheetId,
-          range,
-        });
+        try {
+          const res = await sheets.spreadsheets.values.clear({
+            spreadsheetId,
+            range,
+          });
 
-        return makeMCPToolJSONSuccess({
-          result: res.data,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to clear range"
-        );
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
+        } catch (err) {
+          return new Err(
+            new MCPError(normalizeError(err).message || "Failed to clear range")
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -360,35 +398,44 @@ const createServer = (): McpServer => {
           "Titles for initial sheets. If not provided, creates one sheet with default title."
         ),
     },
-    async ({ title, sheetTitles }, { authInfo }) => {
-      const sheets = await getSheetsClient(authInfo);
-      if (!sheets) {
-        return makeMCPToolTextError(
-          "Failed to authenticate with Google Sheets"
-        );
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      async ({ title, sheetTitles }, { authInfo }) => {
+        const sheets = await getSheetsClient(authInfo);
+        if (!sheets) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
+        }
+
+        try {
+          const sheetsToCreate = sheetTitles?.map((sheetTitle) => ({
+            properties: { title: sheetTitle },
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          })) || [{ properties: { title: "Sheet1" } }];
+
+          const res = await sheets.spreadsheets.create({
+            requestBody: {
+              properties: { title },
+              sheets: sheetsToCreate,
+            },
+          });
+
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to create spreadsheet"
+            )
+          );
+        }
       }
-
-      try {
-        const sheetsToCreate = sheetTitles?.map((sheetTitle) => ({
-          properties: { title: sheetTitle },
-        })) || [{ properties: { title: "Sheet1" } }];
-
-        const res = await sheets.spreadsheets.create({
-          requestBody: {
-            properties: { title },
-            sheets: sheetsToCreate,
-          },
-        });
-
-        return makeMCPToolJSONSuccess({
-          result: res.data,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to create spreadsheet"
-        );
-      }
-    }
+    )
   );
 
   server.tool(
@@ -406,43 +453,51 @@ const createServer = (): McpServer => {
         .optional()
         .describe("Number of columns in the new worksheet."),
     },
-    async ({ spreadsheetId, title, rowCount, columnCount }, { authInfo }) => {
-      const sheets = await getSheetsClient(authInfo);
-      if (!sheets) {
-        return makeMCPToolTextError(
-          "Failed to authenticate with Google Sheets"
-        );
-      }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      async ({ spreadsheetId, title, rowCount, columnCount }, { authInfo }) => {
+        const sheets = await getSheetsClient(authInfo);
+        if (!sheets) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
+        }
 
-      try {
-        const res = await sheets.spreadsheets.batchUpdate({
-          spreadsheetId,
-          requestBody: {
-            requests: [
-              {
-                addSheet: {
-                  properties: {
-                    title,
-                    gridProperties: {
-                      rowCount,
-                      columnCount,
+        try {
+          const res = await sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            requestBody: {
+              requests: [
+                {
+                  addSheet: {
+                    properties: {
+                      title,
+                      gridProperties: {
+                        rowCount,
+                        columnCount,
+                      },
                     },
                   },
                 },
-              },
-            ],
-          },
-        });
+              ],
+            },
+          });
 
-        return makeMCPToolJSONSuccess({
-          result: res.data,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to add worksheet"
-        );
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to add worksheet"
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -452,37 +507,45 @@ const createServer = (): McpServer => {
       spreadsheetId: z.string().describe("The ID of the spreadsheet."),
       sheetId: z.number().describe("The ID of the worksheet to delete."),
     },
-    async ({ spreadsheetId, sheetId }, { authInfo }) => {
-      const sheets = await getSheetsClient(authInfo);
-      if (!sheets) {
-        return makeMCPToolTextError(
-          "Failed to authenticate with Google Sheets"
-        );
-      }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      async ({ spreadsheetId, sheetId }, { authInfo }) => {
+        const sheets = await getSheetsClient(authInfo);
+        if (!sheets) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
+        }
 
-      try {
-        const res = await sheets.spreadsheets.batchUpdate({
-          spreadsheetId,
-          requestBody: {
-            requests: [
-              {
-                deleteSheet: {
-                  sheetId,
+        try {
+          const res = await sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            requestBody: {
+              requests: [
+                {
+                  deleteSheet: {
+                    sheetId,
+                  },
                 },
-              },
-            ],
-          },
-        });
+              ],
+            },
+          });
 
-        return makeMCPToolJSONSuccess({
-          result: res.data,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to delete worksheet"
-        );
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to delete worksheet"
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -522,58 +585,66 @@ const createServer = (): McpServer => {
         })
         .describe("Formatting options to apply."),
     },
-    async (
-      {
-        spreadsheetId,
-        sheetId,
-        startRowIndex,
-        endRowIndex,
-        startColumnIndex,
-        endColumnIndex,
-        format,
-      },
-      { authInfo }
-    ) => {
-      const sheets = await getSheetsClient(authInfo);
-      if (!sheets) {
-        return makeMCPToolTextError(
-          "Failed to authenticate with Google Sheets"
-        );
-      }
-
-      try {
-        const res = await sheets.spreadsheets.batchUpdate({
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      async (
+        {
           spreadsheetId,
-          requestBody: {
-            requests: [
-              {
-                repeatCell: {
-                  range: {
-                    sheetId,
-                    startRowIndex,
-                    endRowIndex,
-                    startColumnIndex,
-                    endColumnIndex,
-                  },
-                  cell: {
-                    userEnteredFormat: format,
-                  },
-                  fields: "userEnteredFormat",
-                },
-              },
-            ],
-          },
-        });
+          sheetId,
+          startRowIndex,
+          endRowIndex,
+          startColumnIndex,
+          endColumnIndex,
+          format,
+        },
+        { authInfo }
+      ) => {
+        const sheets = await getSheetsClient(authInfo);
+        if (!sheets) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
+        }
 
-        return makeMCPToolJSONSuccess({
-          result: res.data,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to format cells"
-        );
+        try {
+          const res = await sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            requestBody: {
+              requests: [
+                {
+                  repeatCell: {
+                    range: {
+                      sheetId,
+                      startRowIndex,
+                      endRowIndex,
+                      startColumnIndex,
+                      endColumnIndex,
+                    },
+                    cell: {
+                      userEnteredFormat: format,
+                    },
+                    fields: "userEnteredFormat",
+                  },
+                },
+              ],
+            },
+          });
+
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to format cells"
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -594,35 +665,152 @@ const createServer = (): McpServer => {
           "The ID of the destination spreadsheet where the sheet will be copied."
         ),
     },
-    async (
-      { sourceSpreadsheetId, sheetId, destinationSpreadsheetId },
-      { authInfo }
-    ) => {
-      const sheets = await getSheetsClient(authInfo);
-      if (!sheets) {
-        return makeMCPToolTextError(
-          "Failed to authenticate with Google Sheets"
-        );
-      }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      async (
+        { sourceSpreadsheetId, sheetId, destinationSpreadsheetId },
+        { authInfo }
+      ) => {
+        const sheets = await getSheetsClient(authInfo);
+        if (!sheets) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
+        }
 
-      try {
-        const res = await sheets.spreadsheets.sheets.copyTo({
-          spreadsheetId: sourceSpreadsheetId,
-          sheetId: sheetId,
-          requestBody: {
-            destinationSpreadsheetId: destinationSpreadsheetId,
-          },
-        });
+        try {
+          const res = await sheets.spreadsheets.sheets.copyTo({
+            spreadsheetId: sourceSpreadsheetId,
+            sheetId: sheetId,
+            requestBody: {
+              destinationSpreadsheetId: destinationSpreadsheetId,
+            },
+          });
 
-        return makeMCPToolJSONSuccess({
-          result: res.data,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to copy sheet"
-        );
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
+        } catch (err) {
+          return new Err(
+            new MCPError(normalizeError(err).message || "Failed to copy sheet")
+          );
+        }
       }
-    }
+    )
+  );
+
+  server.tool(
+    "rename_worksheet",
+    "Rename a worksheet in a Google Sheets spreadsheet.",
+    {
+      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
+      sheetId: z.number().describe("The ID of the worksheet to rename."),
+      newTitle: z.string().describe("The new title for the worksheet."),
+    },
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      async ({ spreadsheetId, sheetId, newTitle }, { authInfo }) => {
+        const sheets = await getSheetsClient(authInfo);
+        if (!sheets) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
+        }
+
+        try {
+          const res = await sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            requestBody: {
+              requests: [
+                {
+                  updateSheetProperties: {
+                    properties: {
+                      sheetId,
+                      title: newTitle,
+                    },
+                    fields: "title",
+                  },
+                },
+              ],
+            },
+          });
+
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to rename worksheet"
+            )
+          );
+        }
+      }
+    )
+  );
+
+  server.tool(
+    "move_worksheet",
+    "Move a worksheet to a new position in a Google Sheets spreadsheet.",
+    {
+      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
+      sheetId: z.number().describe("The ID of the worksheet to move."),
+      newIndex: z
+        .number()
+        .min(0)
+        .describe(
+          "The new zero-based index position for the worksheet. 0 = first position, 1 = second position, etc."
+        ),
+    },
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      async ({ spreadsheetId, sheetId, newIndex }, { authInfo }) => {
+        const sheets = await getSheetsClient(authInfo);
+        if (!sheets) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
+        }
+
+        try {
+          const res = await sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            requestBody: {
+              requests: [
+                {
+                  updateSheetProperties: {
+                    properties: {
+                      sheetId,
+                      index: newIndex,
+                    },
+                    fields: "index",
+                  },
+                },
+              ],
+            },
+          });
+
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to move worksheet"
+            )
+          );
+        }
+      }
+    )
   );
 
   return server;

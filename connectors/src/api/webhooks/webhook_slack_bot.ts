@@ -10,6 +10,7 @@ import type {
 } from "@connectors/api/webhooks/slack/utils";
 import {
   handleChatBot,
+  isAppMentionMessage,
   isSlackWebhookEventReqBody,
   withTrace,
 } from "@connectors/api/webhooks/slack/utils";
@@ -70,7 +71,7 @@ const _webhookSlackBotAPIHandler = async (
           type: "connector_configuration_not_found",
           message: `Slack configuration not found for teamId ${teamId}`,
         },
-        status_code: 404,
+        status_code: 421,
       });
     }
 
@@ -116,7 +117,7 @@ const _webhookSlackBotAPIHandler = async (
                   type: "connector_configuration_not_found",
                   message: `Slack configuration not found for teamId ${teamId}. Are you sure the bot is not enabled?`,
                 },
-                status_code: 404,
+                status_code: 421,
               });
             }
             const connector = await ConnectorResource.fetchById(
@@ -147,6 +148,51 @@ const _webhookSlackBotAPIHandler = async (
               "slack.team_id": teamId,
               "slack.app": "slack_bot",
             })(handleChatBot)(req, res, logger);
+          } else if (event.channel_type === "channel") {
+            if (
+              !event.bot_id &&
+              event.channel &&
+              event.ts &&
+              event.user &&
+              !event.subtype
+            ) {
+              const slackConfig =
+                await SlackConfigurationResource.fetchByActiveBot(teamId);
+              if (slackConfig) {
+                // Check if the channel has an enhanced default agent configured
+                const channel =
+                  await SlackConfigurationResource.findChannelWithAutoRespond(
+                    slackConfig.connectorId,
+                    event.channel
+                  );
+
+                if (channel && channel.agentConfigurationId) {
+                  logger.info(
+                    {
+                      slackChannelId: event.channel,
+                      agentConfigurationId: channel.agentConfigurationId,
+                      autoRespondWithoutMention:
+                        channel.autoRespondWithoutMention,
+                    },
+                    "Found enhanced default agent for channel - processing message"
+                  );
+
+                  // Avoid double processing since we already handle app mention events
+                  const isAppMention = await isAppMentionMessage(
+                    event.text,
+                    teamId
+                  );
+                  if (isAppMention) {
+                    return res.status(200).send();
+                  }
+
+                  await withTrace({
+                    "slack.team_id": teamId,
+                    "slack.app": "slack_bot",
+                  })(handleChatBot)(req, res, logger);
+                }
+              }
+            }
           }
           break;
         }

@@ -3,14 +3,23 @@ import type { NodeType } from "@tiptap/pm/model";
 import type { JSONContent } from "@tiptap/react";
 
 /**
- * Regex pattern for matching XML-style instruction blocks
+ * Tag name pattern (XML-like, simplified): start with letter/_ then [A-Za-z0-9._:-]*
  */
-export const INSTRUCTION_BLOCK_REGEX = /<(\w+)>([\s\S]*?)<\/\1>/g;
+export const TAG_NAME_PATTERN = "[A-Za-z_][A-Za-z0-9._:-]*";
 
 /**
- * Regex pattern for matching opening XML tags
+ * Regex pattern for matching XML-style instruction blocks
  */
-export const OPENING_TAG_REGEX = /<(\w+)>$/;
+export const INSTRUCTION_BLOCK_REGEX = new RegExp(
+  `<(${TAG_NAME_PATTERN})>([\\s\\S]*?)<\\/\\1>`,
+  "g"
+);
+
+/**
+ * Regex pattern for matching opening/closing XML tags (including empty <> when typing).
+ */
+export const OPENING_TAG_REGEX = new RegExp(`<(${TAG_NAME_PATTERN})?>$`);
+export const CLOSING_TAG_REGEX = new RegExp(`^</(${TAG_NAME_PATTERN})?>$`);
 
 /**
  * Interface for parsed instruction block match
@@ -61,6 +70,72 @@ export function textToParagraphNodes(content: string): JSONContent[] {
 }
 
 /**
+ * Convert text content to block nodes (paragraphs, headings, and code blocks)
+ */
+export function textToBlockNodes(content: string): JSONContent[] {
+  const nodes: JSONContent[] = [];
+
+  for (const segment of splitContentByCodeFences(content)) {
+    if (segment.type === "code") {
+      const language = extractLanguageFromInfo(segment.info);
+      nodes.push({
+        type: "codeBlock",
+        attrs: { language },
+        content: segment.content
+          ? [{ type: "text", text: segment.content }]
+          : [],
+      });
+      continue;
+    }
+
+    const lines = segment.content.split("\n");
+    let lastWasEmpty = false;
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i];
+      const line = raw.trim();
+      if (!line) {
+        // Only emit an empty paragraph if between content and not consecutive
+        const isNotFirst = i > 0;
+        const isNotLast = i < lines.length - 1;
+        const prevLineHasContent = i > 0 && lines[i - 1].trim();
+        const nextLineHasContent = i < lines.length - 1 && lines[i + 1].trim();
+        if (
+          isNotFirst &&
+          isNotLast &&
+          (prevLineHasContent || nextLineHasContent) &&
+          !lastWasEmpty
+        ) {
+          nodes.push({ type: "paragraph", content: [] });
+          lastWasEmpty = true;
+        }
+        continue;
+      }
+
+      lastWasEmpty = false;
+      const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        const headingContent = headingMatch[2].trim();
+        nodes.push({
+          type: "heading",
+          attrs: { level },
+          content: headingContent
+            ? [{ type: "text", text: headingContent }]
+            : [],
+        });
+      } else {
+        nodes.push({
+          type: "paragraph",
+          content: [{ type: "text", text: line }],
+        });
+      }
+    }
+  }
+
+  return nodes;
+}
+
+/**
  * Convert text content to ProseMirror paragraph nodes
  */
 export function textToProseMirrorParagraphs(
@@ -78,21 +153,148 @@ export function textToProseMirrorParagraphs(
 }
 
 /**
+ * Convert text content to ProseMirror block nodes (paragraphs, headings, and code blocks)
+ */
+export function textToProseMirrorBlocks(
+  content: string,
+  schema: Schema
+): ProseMirrorNode[] {
+  const nodes: ProseMirrorNode[] = [];
+
+  for (const segment of splitContentByCodeFences(content)) {
+    if (segment.type === "code") {
+      if (schema.nodes.codeBlock) {
+        const language = extractLanguageFromInfo(segment.info);
+        nodes.push(
+          schema.nodes.codeBlock.create(
+            { language },
+            segment.content ? [schema.text(segment.content)] : []
+          )
+        );
+      }
+      continue;
+    }
+
+    const lines = segment.content.split("\n");
+    let lastWasEmpty = false;
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i];
+      const line = raw.trim();
+      if (!line) {
+        const isNotFirst = i > 0;
+        const isNotLast = i < lines.length - 1;
+        const prevLineHasContent = i > 0 && lines[i - 1].trim();
+        const nextLineHasContent = i < lines.length - 1 && lines[i + 1].trim();
+        if (
+          isNotFirst &&
+          isNotLast &&
+          (prevLineHasContent || nextLineHasContent) &&
+          !lastWasEmpty
+        ) {
+          nodes.push(schema.nodes.paragraph.create());
+          lastWasEmpty = true;
+        }
+        continue;
+      }
+
+      lastWasEmpty = false;
+      const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+      if (headingMatch && schema.nodes.heading) {
+        const level = headingMatch[1].length;
+        const headingContent = headingMatch[2].trim();
+        nodes.push(
+          schema.nodes.heading.create(
+            { level },
+            headingContent ? [schema.text(headingContent)] : []
+          )
+        );
+      } else {
+        nodes.push(schema.nodes.paragraph.create({}, [schema.text(line)]));
+      }
+    }
+  }
+
+  return nodes;
+}
+
+/**
  * Create instruction block JSONContent
  */
 export function createInstructionBlockNode(
   type: string,
   content: string
 ): JSONContent {
-  const paragraphs = textToParagraphNodes(content);
-  const blockContent =
-    paragraphs.length > 0 ? paragraphs : [{ type: "paragraph", content: [] }];
+  const blocks = textToBlockNodes(content);
+
+  // Add opening and closing tags as paragraphs
+  const blockContent: JSONContent[] = [
+    {
+      type: "paragraph",
+      content: [{ type: "text", text: `<${type}>` }],
+    },
+    ...(blocks.length > 0 ? blocks : [{ type: "paragraph", content: [] }]),
+    {
+      type: "paragraph",
+      content: [{ type: "text", text: `</${type}>` }],
+    },
+  ];
 
   return {
     type: "instructionBlock",
     attrs: { type },
     content: blockContent,
   };
+}
+
+/**
+ * Split content into segments preserving fenced code blocks.
+ * Supports info strings and languages with symbols (e.g., c++, objective-c).
+ */
+export function splitContentByCodeFences(
+  content: string
+): Array<{ type: "code" | "text"; content: string; info?: string }> {
+  const codeBlockRegex = /```([^\n]*)\n([\s\S]*?)```/g;
+  const segments: Array<{
+    type: "code" | "text";
+    content: string;
+    info?: string;
+  }> = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = codeBlockRegex.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({
+        type: "text",
+        content: content.slice(lastIndex, match.index),
+      });
+    }
+    let codeContent = match[2];
+    if (codeContent && codeContent.endsWith("\n")) {
+      codeContent = codeContent.slice(0, -1);
+    }
+    segments.push({ type: "code", info: match[1] || "", content: codeContent });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < content.length) {
+    segments.push({ type: "text", content: content.slice(lastIndex) });
+  }
+
+  return segments;
+}
+
+/** Extract first token (language) from a fenced code info string. */
+function extractLanguageFromInfo(info?: string): string {
+  if (typeof info !== "string") {
+    return "";
+  }
+  const trimmed = info.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const [language] = trimmed.split(/\s+/);
+  return language || "";
 }
 
 /**
@@ -104,9 +306,14 @@ export function createProseMirrorInstructionBlock(
   nodeType: NodeType,
   schema: Schema
 ): ProseMirrorNode {
-  const paragraphs = textToProseMirrorParagraphs(content, schema);
-  const blockContent =
-    paragraphs.length > 0 ? paragraphs : [schema.nodes.paragraph.create()];
+  const blocks = textToProseMirrorBlocks(content, schema);
+
+  // Add opening and closing tags as paragraphs
+  const blockContent = [
+    schema.nodes.paragraph.create({}, [schema.text(`<${type}>`)]),
+    ...(blocks.length > 0 ? blocks : [schema.nodes.paragraph.create()]),
+    schema.nodes.paragraph.create({}, [schema.text(`</${type}>`)]),
+  ];
 
   return nodeType.create({ type }, blockContent);
 }

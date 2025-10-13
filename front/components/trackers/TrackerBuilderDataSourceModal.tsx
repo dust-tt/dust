@@ -13,6 +13,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import {
+  isRemoteDatabase,
   supportsDocumentsData,
   supportsStructuredData,
 } from "@app/lib/data_sources";
@@ -68,6 +69,11 @@ export default function TrackerBuilderDataSourceModal({
       case "table":
         return dataSourceViews.filter((dsv) =>
           supportsStructuredData(dsv.dataSource)
+        );
+      case "data_warehouse":
+        // For data_warehouse view, filter for remote databases.
+        return dataSourceViews.filter((dsv) =>
+          isRemoteDatabase(dsv.dataSource)
         );
       case "document":
         return dataSourceViews.filter((dsv) =>

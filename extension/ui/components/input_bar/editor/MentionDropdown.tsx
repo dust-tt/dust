@@ -1,12 +1,12 @@
 import type { EditorSuggestion } from "@app/ui/components/input_bar/editor/suggestion";
 import {
   Avatar,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  Spinner,
 } from "@dust-tt/sparkle";
-import { Spinner } from "@dust-tt/sparkle";
-import { cn } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 interface MentionDropdownProps {
@@ -80,13 +80,10 @@ export const MentionDropdown = ({
         ) : suggestions.length > 0 ? (
           <div className="flex flex-col gap-y-1 p-1">
             {suggestions.map((suggestion, index) => (
-              <div
-                key={suggestion.id}
-                className="flex flex-initial items-center gap-x-2 px-2 py-1"
-              >
-                <Avatar size="xs" visual={suggestion.pictureUrl} />
+              <div key={suggestion.id}>
                 <button
                   className={cn(
+                    "flex items-center gap-x-2 px-2 py-1",
                     "flex-initial cursor-pointer text-left text-sm font-semibold",
                     index === selectedIndex
                       ? "text-highlight-500"
@@ -95,7 +92,10 @@ export const MentionDropdown = ({
                   onClick={() => onSelect(suggestion)}
                   onMouseEnter={() => onSelectedIndexChange(index)}
                 >
-                  {suggestion.label}
+                  <Avatar size="xs" visual={suggestion.pictureUrl} />
+                  <span className="truncate" title={suggestion.label}>
+                    {suggestion.label}
+                  </span>
                 </button>
               </div>
             ))}

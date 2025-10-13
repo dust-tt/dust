@@ -1,19 +1,31 @@
 import { createParser } from "eventsource-parser";
 import { z } from "zod";
 
-import type {
+import { normalizeError } from "./error_utils";
+import {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentConfigurationViewType,
   AgentErrorEvent,
+  AgentGenerationCancelledEvent,
+  AgentMessageDoneEvent,
   AgentMessagePublicType,
   AgentMessageSuccessEvent,
   APIError,
+  APIErrorSchema,
   AppsCheckRequestType,
+  AppsCheckResponseSchema,
+  BlockedActionsResponseSchema,
+  BlockedActionsResponseType,
   CancelMessageGenerationRequestType,
+  CancelMessageGenerationResponseSchema,
   ConversationPublicType,
+  CreateConversationResponseSchema,
   CreateConversationResponseType,
+  CreateGenericAgentConfigurationResponseSchema,
+  DataSourceViewResponseSchema,
   DataSourceViewType,
+  DeleteFolderResponseSchema,
   DustAPICredentials,
   DustAppConfigType,
   DustAppRunBlockExecutionEvent,
@@ -26,35 +38,10 @@ import type {
   DustAppRunReasoningTokensEvent,
   DustAppRunRunStatusEvent,
   DustAppRunTokensEvent,
-  FileUploadUrlRequestType,
-  GenerationTokensEvent,
-  HeartbeatMCPResponseType,
-  LoggerInterface,
-  PatchDataSourceViewRequestType,
-  PostMCPResultsResponseType,
-  PublicHeartbeatMCPRequestBody,
-  PublicPostContentFragmentRequestBody,
-  PublicPostConversationsRequestBody,
-  PublicPostMCPResultsRequestBody,
-  PublicPostMessageFeedbackRequestBody,
-  PublicPostMessagesRequestBody,
-  PublicRegisterMCPRequestBody,
-  RegisterMCPResponseType,
-  SearchRequestBodyType,
-  UserMessageErrorEvent,
-  ValidateActionRequestBodyType,
-  ValidateActionResponseType,
-} from "./types";
-import {
-  APIErrorSchema,
-  AppsCheckResponseSchema,
-  CancelMessageGenerationResponseSchema,
-  CreateConversationResponseSchema,
-  CreateGenericAgentConfigurationResponseSchema,
-  DataSourceViewResponseSchema,
-  DeleteFolderResponseSchema,
   Err,
   FileUploadRequestResponseSchema,
+  FileUploadUrlRequestType,
+  GenerationTokensEvent,
   GetActiveMemberEmailsInWorkspaceResponseSchema,
   GetAgentConfigurationsResponseSchema,
   GetAppsResponseSchema,
@@ -62,26 +49,48 @@ import {
   GetConversationsResponseSchema,
   GetDataSourcesResponseSchema,
   GetFeedbacksResponseSchema,
+  GetMCPServerViewsResponseSchema,
   GetSpacesResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
   HeartbeatMCPResponseSchema,
+  HeartbeatMCPResponseType,
+  LoggerInterface,
   MeResponseSchema,
   Ok,
+  PatchConversationRequestType,
+  PatchConversationResponseSchema,
+  PatchDataSourceViewRequestType,
   PostContentFragmentResponseSchema,
   PostMCPResultsResponseSchema,
+  PostMCPResultsResponseType,
   PostMessageFeedbackResponseSchema,
   PostUserMessageResponseSchema,
   PostWorkspaceSearchResponseBodySchema,
+  PublicHeartbeatMCPRequestBody,
+  PublicPostContentFragmentRequestBody,
+  PublicPostConversationsRequestBody,
+  PublicPostMCPResultsRequestBody,
+  PublicPostMessageFeedbackRequestBody,
+  PublicPostMessagesRequestBody,
+  PublicRegisterMCPRequestBody,
   RegisterMCPResponseSchema,
+  RegisterMCPResponseType,
   Result,
+  RetryMessageResponseSchema,
   RunAppResponseSchema,
   SearchDataSourceViewsResponseSchema,
+  SearchRequestBodyType,
   TokenizeResponseSchema,
+  ToolErrorEvent,
   UpsertFolderResponseSchema,
+  UserMessageErrorEvent,
+  ValidateActionRequestBodyType,
   ValidateActionResponseSchema,
+  ValidateActionResponseType,
 } from "./types";
 
+export * from "./error_utils";
 export * from "./internal_mime_types";
 export * from "./mcp_transport";
 export * from "./output_schemas";
@@ -94,17 +103,52 @@ interface DustResponse {
   body: ReadableStream<Uint8Array> | string;
 }
 
+// Detects whether an error corresponds to a terminated/aborted stream.
+function isStreamTerminationError(e: unknown): boolean {
+  if (!e) {
+    return false;
+  }
+  const err = normalizeError(e);
+  const msg = err.message;
+  const name = err.name || "";
+
+  // Common patterns from undici/fetch when a stream is cut or aborted.
+  const patterns = [
+    /terminated/i,
+    /aborted/i,
+    /The operation was aborted/i,
+    /network.*(error|changed|lost)/i,
+    /socket hang up/i,
+  ];
+
+  if (name === "AbortError") {
+    return true;
+  }
+  if (name === "TypeError" && /terminated|aborted/i.test(msg)) {
+    return true;
+  }
+  return patterns.some((p) => p.test(msg));
+}
+
+function isTransientHttpStatus(status: number): boolean {
+  // Only retry on explicit transient statuses; do NOT retry on 5xx.
+  return status === 408 || status === 429;
+}
+
 // Copied from front/hooks/useEventSource.ts
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
 const DEFAULT_RECONNECT_DELAY = 5000;
 
 type AgentEvent =
-  | UserMessageErrorEvent
-  | AgentErrorEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent
-  | GenerationTokensEvent
+  | AgentErrorEvent
+  | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
-  | AgentActionSpecificEvent;
+  | AgentMessageDoneEvent
+  | GenerationTokensEvent
+  | UserMessageErrorEvent
+  | ToolErrorEvent;
 
 const textFromResponse = async (response: DustResponse): Promise<string> => {
   if (typeof response.body === "string") {
@@ -692,12 +736,16 @@ export class DustAPI {
     contentFragments,
     blocking = false,
     skipToolsValidation = false,
-  }: PublicPostConversationsRequestBody): Promise<
-    Result<CreateConversationResponseType, APIError>
-  > {
+    params,
+  }: PublicPostConversationsRequestBody & {
+    params?: Record<string, string>;
+  }): Promise<Result<CreateConversationResponseType, APIError>> {
+    const queryParams = new URLSearchParams(params);
+
     const res = await this.request({
       method: "POST",
       path: "assistant/conversations",
+      query: queryParams.toString() ? queryParams : undefined,
       body: {
         title,
         visibility,
@@ -820,6 +868,7 @@ export class DustAPI {
     const terminalEventTypes: AgentEvent["type"][] = [
       "agent_message_success",
       "agent_error",
+      "agent_generation_cancelled",
       "user_message_error",
     ];
 
@@ -850,11 +899,35 @@ export class DustAPI {
         const res = await createRequest(lastEventId);
 
         if (res.isErr()) {
+          // Treat request errors as transient and apply reconnection policy when enabled.
+          if (autoReconnect) {
+            reconnectAttempts += 1;
+            if (reconnectAttempts >= maxReconnectAttempts) {
+              throw new Error(
+                `Exceeded maximum reconnection attempts (request error): ${res.error.message}`
+              );
+            }
+            await new Promise((resolve) => setTimeout(resolve, reconnectDelay));
+            continue;
+          }
           const error = res.error;
           throw new Error(`Error requesting event stream: ${error.message}`);
         }
 
         if (!res.value.response.ok || !res.value.response.body) {
+          if (
+            autoReconnect &&
+            isTransientHttpStatus(res.value.response.status)
+          ) {
+            reconnectAttempts += 1;
+            if (reconnectAttempts >= maxReconnectAttempts) {
+              throw new Error(
+                `Exceeded maximum reconnection attempts (http ${res.value.response.status})`
+              );
+            }
+            await new Promise((resolve) => setTimeout(resolve, reconnectDelay));
+            continue;
+          }
           throw new Error(
             `Error requesting event stream: status_code=${res.value.response.status}`
           );
@@ -915,7 +988,15 @@ export class DustAPI {
           }
         } catch (e) {
           logger.error({ error: e }, "Failed processing event stream");
-          throw new Error(`Error processing event stream: ${e}`);
+          // Respect caller-initiated aborts.
+          if (signal?.aborted) {
+            return;
+          }
+          // Apply reconnection policy on stream termination/abort; otherwise propagate.
+          if (!isStreamTerminationError(e)) {
+            throw new Error(`Error processing event stream: ${e}`);
+          }
+          // Do not throw; flow continues to reconnection block below.
         } finally {
           reader.releaseLock();
         }
@@ -965,6 +1046,25 @@ export class DustAPI {
     } else {
       return new Ok(r.value);
     }
+  }
+
+  async markAsRead({ conversationId }: { conversationId: string }) {
+    const res = await this.request({
+      method: "PATCH",
+      path: `assistant/conversations/${conversationId}`,
+      body: {
+        read: true,
+      } as PatchConversationRequestType,
+    });
+
+    const r = await this._resultFromResponse(
+      PatchConversationResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.success);
   }
 
   async getConversations() {
@@ -1039,11 +1139,16 @@ export class DustAPI {
     return this._resultFromResponse(PostMessageFeedbackResponseSchema, res);
   }
 
-  async tokenize(text: string, dataSourceId: string) {
+  async tokenize(
+    text: string,
+    dataSourceId: string,
+    opts?: { signal?: AbortSignal }
+  ) {
     const res = await this.request({
       method: "POST",
       path: `data_sources/${dataSourceId}/tokenize`,
       body: { text },
+      signal: opts?.signal,
     });
 
     const r = await this._resultFromResponse(TokenizeResponseSchema, res);
@@ -1323,6 +1428,24 @@ export class DustAPI {
     return new Ok(r.value.spaces);
   }
 
+  async getMCPServerViews(spaceId: string, includeAuto = false) {
+    const res = await this.request({
+      method: "GET",
+      path: `spaces/${spaceId}/mcp_server_views`,
+      query: new URLSearchParams({ includeAuto: includeAuto.toString() }),
+    });
+
+    const r = await this._resultFromResponse(
+      GetMCPServerViewsResponseSchema,
+      res
+    );
+
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.serverViews);
+  }
+
   async searchNodes(searchParams: SearchRequestBodyType) {
     const res = await this.request({
       method: "POST",
@@ -1340,62 +1463,46 @@ export class DustAPI {
     return new Ok(r.value.nodes);
   }
 
-  private async _fetchWithError(
-    url: string,
-    {
-      method = "GET",
-      headers = {},
-      body,
-      signal,
-      stream = false,
-    }: {
-      method?: RequestMethod;
-      headers?: HeadersInit;
-      body?: string;
-      signal?: AbortSignal;
-      stream?: boolean;
-    } = {}
-  ): Promise<Result<{ response: DustResponse; duration: number }, APIError>> {
-    const now = Date.now();
-    try {
-      const res = await fetch(url, {
-        method,
-        headers,
-        body,
-        signal,
-      });
+  async retryMessage({
+    conversationId,
+    messageId,
+    blockedOnly = false,
+  }: {
+    conversationId: string;
+    messageId: string;
+    blockedOnly?: boolean;
+  }) {
+    const query = blockedOnly
+      ? new URLSearchParams({ blocked_only: "true" })
+      : undefined;
 
-      const responseBody = stream && res.body ? res.body : await res.text();
+    const res = await this.request({
+      method: "POST",
+      path: `assistant/conversations/${conversationId}/messages/${messageId}/retry`,
+      query,
+    });
 
-      const response: DustResponse = {
-        status: res.status,
-        url: res.url,
-        body: responseBody,
-        ok: res.ok,
-      };
-
-      return new Ok({ response, duration: Date.now() - now });
-    } catch (e) {
-      const duration = Date.now() - now;
-      const err: APIError = {
-        type: "unexpected_network_error",
-        message: `Unexpected network error from DustAPI: ${e}`,
-      };
-      this._logger.error(
-        {
-          dustError: err,
-          url,
-          duration,
-          connectorsError: err,
-          error: e,
-        },
-        "DustAPI error"
-      );
-      return new Err(err);
+    const r = await this._resultFromResponse(RetryMessageResponseSchema, res);
+    if (r.isErr()) {
+      return r;
     }
+    return new Ok(r.value.message);
   }
 
   // MCP Related.
+
+  async getBlockedActions({
+    conversationId,
+  }: {
+    conversationId: string;
+  }): Promise<Result<BlockedActionsResponseType, APIError>> {
+    const res = await this.request({
+      method: "GET",
+      path: `assistant/conversations/${conversationId}/actions/blocked`,
+    });
+
+    return this._resultFromResponse(BlockedActionsResponseSchema, res);
+  }
 
   async validateAction({
     conversationId,
@@ -1495,6 +1602,61 @@ export class DustAPI {
       url: `${url}?${params.toString()}`,
       headers,
     });
+  }
+
+  private async _fetchWithError(
+    url: string,
+    {
+      method = "GET",
+      headers = {},
+      body,
+      signal,
+      stream = false,
+    }: {
+      method?: RequestMethod;
+      headers?: HeadersInit;
+      body?: string;
+      signal?: AbortSignal;
+      stream?: boolean;
+    } = {}
+  ): Promise<Result<{ response: DustResponse; duration: number }, APIError>> {
+    const now = Date.now();
+    try {
+      const res = await fetch(url, {
+        method,
+        headers,
+        body,
+        signal,
+      });
+
+      const responseBody = stream && res.body ? res.body : await res.text();
+
+      const response: DustResponse = {
+        status: res.status,
+        url: res.url,
+        body: responseBody,
+        ok: res.ok,
+      };
+
+      return new Ok({ response, duration: Date.now() - now });
+    } catch (e) {
+      const duration = Date.now() - now;
+      const err: APIError = {
+        type: "unexpected_network_error",
+        message: `Unexpected network error from DustAPI: ${e}`,
+      };
+      this._logger.error(
+        {
+          dustError: err,
+          url,
+          duration,
+          connectorsError: err,
+          error: e,
+        },
+        "DustAPI error"
+      );
+      return new Err(err);
+    }
   }
 
   private async _resultFromResponse<T extends z.ZodTypeAny>(

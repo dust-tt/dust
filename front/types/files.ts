@@ -28,13 +28,11 @@ export type FileUseCaseMetadata = {
   conversationId?: string;
   spaceId?: string;
   generatedTables?: string[];
+  lastEditedByAgentConfigurationId?: string;
 };
 
-export const fileShareScopeSchema = z.enum([
-  "conversation_participants",
-  "workspace",
-  "public",
-]);
+export const fileShareScopeSchema = z.enum(["workspace", "public"]);
+
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 
 export interface FileType {
@@ -53,7 +51,16 @@ export interface FileType {
 
 export type FileTypeWithUploadUrl = FileType & { uploadUrl: string };
 
-export type FileFormatCategory = "image" | "data" | "code" | "delimited";
+export type FileTypeWithMetadata = FileType & {
+  useCaseMetadata: FileUseCaseMetadata;
+};
+
+export type FileFormatCategory =
+  | "image"
+  | "data"
+  | "code"
+  | "delimited"
+  | "audio";
 
 // Define max sizes for each category.
 export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
@@ -61,6 +68,7 @@ export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
   code: 50 * 1024 * 1024, // 50MB.
   delimited: 50 * 1024 * 1024, // 50MB.
   image: 5 * 1024 * 1024, // 5 MB
+  audio: 100 * 1024 * 1024, // 100 MB, audio files can be large, ex transcript of meetings
 };
 
 export function fileSizeToHumanReadable(size: number, decimals = 0) {
@@ -127,6 +135,7 @@ type FileFormat = {
    * Unsafe file types include:
    * - HTML and XML files
    * - Script files (js, ts, py, etc.)
+   * - Audio files (mp4, ogg, etc.)
    * - Any file type that could contain executable code
    */
   isSafeToDisplay: boolean;
@@ -190,6 +199,12 @@ export const FILE_FORMATS = {
   "text/markdown": {
     cat: "data",
     exts: [".md", ".markdown"],
+    isSafeToDisplay: true,
+  },
+  // Internal content type for pasted text attachments in conversations.
+  "text/vnd.dust.attachment.pasted": {
+    cat: "data",
+    exts: [".txt"],
     isSafeToDisplay: true,
   },
   "text/vnd.dust.attachment.slack.thread": {
@@ -300,6 +315,23 @@ export const FILE_FORMATS = {
     isSafeToDisplay: false,
   },
 
+  // Audio
+  "audio/mpeg": {
+    cat: "audio",
+    exts: [".mp3", ".mp4"],
+    isSafeToDisplay: true,
+  },
+  // In theory deprecated => https://mimetype.io/audio/x-m4a
+  // But apple voice recordings use it.
+  "audio/x-m4a": {
+    cat: "audio",
+    exts: [".m4a", ".mp4"],
+    isSafeToDisplay: true,
+  },
+  "audio/wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: true },
+  "audio/ogg": { cat: "audio", exts: [".ogg"], isSafeToDisplay: true },
+  "audio/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: true },
+
   // Unknown.
   "application/octet-stream": {
     cat: "data",
@@ -314,37 +346,36 @@ export const FILE_FORMATS = {
 // Define a type that is the list of all keys from FILE_FORMATS.
 export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 
-export const clientExecutableContentType =
-  "application/vnd.dust.client-executable";
+export const frameContentType = "application/vnd.dust.frame";
 
-// Interactive MIME types for specialized use cases (not exposed via APIs).
-export const INTERACTIVE_FILE_FORMATS = {
-  // Custom for client-executable code files managed by interactive_content MCP server.
+// Interactive Content MIME types for specialized use cases (not exposed via APIs).
+export const INTERACTIVE_CONTENT_FILE_FORMATS = {
+  // Custom for frame code files managed by interactive_content MCP server.
   // These files are internal-only and should not be exposed via APIs.
   // Limited to JavaScript/TypeScript files that can run in the browser.
-  [clientExecutableContentType]: {
+  [frameContentType]: {
     cat: "code",
     exts: [".js", ".jsx", ".ts", ".tsx"],
     isSafeToDisplay: true,
   },
 } as const satisfies Record<string, FileFormat>;
 
-export function isInteractiveContentType(contentType: string): boolean {
-  return contentType === clientExecutableContentType;
+export function isInteractiveContentContentType(contentType: string): boolean {
+  return Object.keys(INTERACTIVE_CONTENT_FILE_FORMATS).includes(contentType);
 }
 
-// Define a type for interactive file content types.
-export type InteractiveFileContentType = keyof typeof INTERACTIVE_FILE_FORMATS;
+// Define a type for Interactive Content file content types.
+export type InteractiveContentFileContentType =
+  keyof typeof INTERACTIVE_CONTENT_FILE_FORMATS;
 
 export const ALL_FILE_FORMATS = {
+  ...INTERACTIVE_CONTENT_FILE_FORMATS,
   ...FILE_FORMATS,
-  ...INTERACTIVE_FILE_FORMATS,
 };
-
-// Union type for all supported content types (public + interactive).
+// Union type for all supported content types (public + Interactive Content).
 export type AllSupportedFileContentType =
-  | SupportedFileContentType
-  | InteractiveFileContentType;
+  | InteractiveContentFileContentType
+  | SupportedFileContentType;
 
 export type SupportedImageContentType = {
   [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
@@ -370,6 +401,14 @@ export type SupportedNonImageContentType = {
     : K;
 }[keyof typeof FILE_FORMATS];
 
+export type SupportedAudioContentType = {
+  [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
+    cat: "audio";
+  }
+    ? K
+    : never;
+}[keyof typeof FILE_FORMATS];
+
 // All the ones listed above
 export const supportedUploadableContentType = Object.keys(FILE_FORMATS);
 
@@ -382,18 +421,20 @@ export function isSupportedFileContentType(
   return !!FILE_FORMATS[contentType as SupportedFileContentType];
 }
 
-export function isInteractiveFileContentType(
+export function isInteractiveContentFileContentType(
   contentType: string
-): contentType is InteractiveFileContentType {
-  return !!INTERACTIVE_FILE_FORMATS[contentType as InteractiveFileContentType];
+): contentType is InteractiveContentFileContentType {
+  return !!INTERACTIVE_CONTENT_FILE_FORMATS[
+    contentType as InteractiveContentFileContentType
+  ];
 }
 
 export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
-    isSupportedFileContentType(contentType) ||
-    isInteractiveFileContentType(contentType)
+    isInteractiveContentFileContentType(contentType) ||
+    isSupportedFileContentType(contentType)
   );
 }
 
@@ -423,6 +464,18 @@ export function isSupportedDelimitedTextContentType(
 
   if (format) {
     return format.cat === "delimited";
+  }
+
+  return false;
+}
+
+export function isSupportedAudioContentType(
+  contentType: string
+): contentType is SupportedAudioContentType {
+  const format = getFileFormat(contentType);
+
+  if (format) {
+    return format.cat === "audio";
   }
 
   return false;

@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Octokit } from "@octokit/core";
 import type {
   RequestInfo as UndiciRequestInfo,
@@ -7,14 +7,15 @@ import type {
 import { fetch as undiciFetch, ProxyAgent } from "undici";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
-  makeMCPToolTextError,
+  makeInternalMCPServer,
   makeMCPToolTextSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
-import { EnvironmentConfig, normalizeError } from "@app/types";
+import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
 
 const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
 
@@ -47,20 +48,8 @@ const createOctokit = async (
   });
 };
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "github",
-  version: "1.0.0",
-  description: "GitHub tools to manage issues and pull requests.",
-  authorization: {
-    provider: "github" as const,
-    supported_use_cases: ["platform_actions"] as const,
-  },
-  icon: "GithubLogo",
-  documentationUrl: null,
-};
-
 const createServer = (auth: Authenticator): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("github");
 
   server.tool(
     "create_issue",
@@ -83,33 +72,41 @@ const createServer = (auth: Authenticator): McpServer => {
         .optional()
         .describe("Labels to associate with this issue."),
     },
-    async ({ owner, repo, title, body, assignees, labels }, { authInfo }) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
-
-      try {
-        const { data: issue } = await octokit.request(
-          "POST /repos/{owner}/{repo}/issues",
-          {
-            owner,
-            repo,
-            title,
-            body,
-            assignees,
-            labels,
-          }
-        );
-
-        return makeMCPToolTextSuccess({
-          message: `Issue created: #${issue.number}`,
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "github" },
+      async ({ owner, repo, title, body, assignees, labels }, { authInfo }) => {
+        const octokit = await createOctokit(auth, {
+          accessToken: authInfo?.token,
         });
-      } catch (e) {
-        return makeMCPToolTextError(
-          `Error creating GitHub issue: ${normalizeError(e).message}`
-        );
+
+        try {
+          const { data: issue } = await octokit.request(
+            "POST /repos/{owner}/{repo}/issues",
+            {
+              owner,
+              repo,
+              title,
+              body,
+              assignees,
+              labels,
+            }
+          );
+
+          return new Ok(
+            makeMCPToolTextSuccess({
+              message: `Issue created: #${issue.number}`,
+            }).content
+          );
+        } catch (e) {
+          return new Err(
+            new MCPError(
+              `Error creating GitHub issue: ${normalizeError(e).message}`
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -125,13 +122,16 @@ const createServer = (auth: Authenticator): McpServer => {
       repo: z.string().describe("The name of the repository."),
       pullNumber: z.number().describe("The pull request number."),
     },
-    async ({ owner, repo, pullNumber }, { authInfo }) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "github" },
+      async ({ owner, repo, pullNumber }, { authInfo }) => {
+        const octokit = await createOctokit(auth, {
+          accessToken: authInfo?.token,
+        });
 
-      try {
-        const query = `
+        try {
+          const query = `
           query($owner: String!, $repo: String!, $pullNumber: Int!) {
             repository(owner: $owner, name: $repo) {
               pullRequest(number: $pullNumber) {
@@ -180,214 +180,221 @@ const createServer = (auth: Authenticator): McpServer => {
             }
           }`;
 
-        // Get the PR description and base/head commit
-        const pull = (await octokit.graphql(query, {
-          owner,
-          repo,
-          pullNumber,
-        })) as {
-          repository: {
-            pullRequest: {
-              title: string;
-              body: string;
-              commits: {
-                nodes: {
-                  commit: {
-                    oid: string;
-                    message: string;
-                    author: {
-                      user: {
-                        login: string;
+          // Get the PR description and base/head commit
+          const pull = (await octokit.graphql(query, {
+            owner,
+            repo,
+            pullNumber,
+          })) as {
+            repository: {
+              pullRequest: {
+                title: string;
+                body: string;
+                commits: {
+                  nodes: {
+                    commit: {
+                      oid: string;
+                      message: string;
+                      author: {
+                        user: {
+                          login: string;
+                        };
                       };
                     };
-                  };
-                }[];
-              };
-              comments: {
-                nodes: {
-                  author: {
-                    login: string;
-                  };
-                  body: string;
-                  createdAt: string;
-                }[];
-              };
-              reviews: {
-                nodes: {
-                  author: {
-                    login: string;
-                  };
-                  body: string;
-                  state: string;
-                  createdAt: string;
-                  comments: {
-                    nodes: {
-                      body: string;
-                      path: string;
-                      line: number;
-                    }[];
-                  };
-                }[];
+                  }[];
+                };
+                comments: {
+                  nodes: {
+                    author: {
+                      login: string;
+                    };
+                    body: string;
+                    createdAt: string;
+                  }[];
+                };
+                reviews: {
+                  nodes: {
+                    author: {
+                      login: string;
+                    };
+                    body: string;
+                    state: string;
+                    createdAt: string;
+                    comments: {
+                      nodes: {
+                        body: string;
+                        path: string;
+                        line: number;
+                      }[];
+                    };
+                  }[];
+                };
               };
             };
           };
-        };
 
-        const pullTitle = pull.repository.pullRequest.title;
-        const pullBody = pull.repository.pullRequest.body;
-        const pullCommits = pull.repository.pullRequest.commits.nodes.map(
-          (n) => {
-            return {
-              sha: n.commit.oid,
-              message: n.commit.message,
-              author: n.commit.author.user?.login || "unknown",
-            };
-          }
-        );
-        const pullComments = pull.repository.pullRequest.comments.nodes.map(
-          (n) => {
-            return {
-              createdAt: new Date(n.createdAt).getTime(),
-              author: n.author?.login || "unknown",
-              body: n.body,
-            };
-          }
-        );
-        const pullReviews = pull.repository.pullRequest.reviews.nodes.map(
-          (n) => {
-            return {
-              createdAt: new Date(n.createdAt).getTime(),
-              author: n.author?.login || "unknown",
-              body: n.body,
-              state: n.state,
-              comments: n.comments.nodes.map((c) => {
-                return {
-                  body: c.body,
-                  path: c.path,
-                  line: c.line,
-                };
-              }),
-            };
-          }
-        );
-
-        // Transforms the diff to inject positions for each lines in the sense of the github pull
-        // request review comments definition.
-        const diffWithPositions = (diff: string) => {
-          const lines = diff.split("\n");
-
-          // First pass: calculate global max position
-          let currentFile = null;
-          let position = 0;
-          let globalMaxPosition = 0;
-
-          for (const line of lines) {
-            if (line.startsWith("diff --git")) {
-              currentFile = null;
-              position = 0;
-              continue;
+          const pullTitle = pull.repository.pullRequest.title;
+          const pullBody = pull.repository.pullRequest.body;
+          const pullCommits = pull.repository.pullRequest.commits.nodes.map(
+            (n) => {
+              return {
+                sha: n.commit.oid,
+                message: n.commit.message,
+                author: n.commit.author.user?.login || "unknown",
+              };
             }
-
-            if (line.startsWith("@@")) {
-              position = 0;
-              continue;
+          );
+          const pullComments = pull.repository.pullRequest.comments.nodes.map(
+            (n) => {
+              return {
+                createdAt: new Date(n.createdAt).getTime(),
+                author: n.author?.login || "unknown",
+                body: n.body,
+              };
             }
-
-            if (currentFile !== null) {
-              position++;
-              globalMaxPosition = Math.max(position, globalMaxPosition);
-            } else if (line.startsWith("+++")) {
-              currentFile = line.substring(4).trim();
+          );
+          const pullReviews = pull.repository.pullRequest.reviews.nodes.map(
+            (n) => {
+              return {
+                createdAt: new Date(n.createdAt).getTime(),
+                author: n.author?.login || "unknown",
+                body: n.body,
+                state: n.state,
+                comments: n.comments.nodes.map((c) => {
+                  return {
+                    body: c.body,
+                    path: c.path,
+                    line: c.line,
+                  };
+                }),
+              };
             }
-          }
+          );
 
-          // Second pass: add positions with consistent space padding
-          const result = [];
-          currentFile = null;
-          position = 0;
-          const digits = globalMaxPosition.toString().length;
+          // Transforms the diff to inject positions for each lines in the sense of the github pull
+          // request review comments definition.
+          const diffWithPositions = (diff: string) => {
+            const lines = diff.split("\n");
 
-          for (const line of lines) {
-            if (line.startsWith("diff --git")) {
-              currentFile = null;
-              position = 0;
-              result.push(line);
-              continue;
-            }
+            // First pass: calculate global max position
+            let currentFile = null;
+            let position = 0;
+            let globalMaxPosition = 0;
 
-            if (currentFile !== null) {
-              const paddedPosition = position.toString().padStart(digits, " ");
-              if (line.startsWith("@@")) {
-                result.push(line);
-              } else {
-                result.push(`[${paddedPosition}] ${line}`);
+            for (const line of lines) {
+              if (line.startsWith("diff --git")) {
+                currentFile = null;
+                position = 0;
+                continue;
               }
-              position++;
-            } else {
-              result.push(line);
-              if (line.startsWith("+++")) {
+
+              if (line.startsWith("@@")) {
+                position = 0;
+                continue;
+              }
+
+              if (currentFile !== null) {
+                position++;
+                globalMaxPosition = Math.max(position, globalMaxPosition);
+              } else if (line.startsWith("+++")) {
                 currentFile = line.substring(4).trim();
               }
             }
-          }
 
-          return result.join("\n");
-        };
+            // Second pass: add positions with consistent space padding
+            const result = [];
+            currentFile = null;
+            position = 0;
+            const digits = globalMaxPosition.toString().length;
 
-        // Get the actual diff using REST API (not available in GraphQL)
-        const diff = await octokit.request(
-          "GET /repos/{owner}/{repo}/pulls/{pull_number}",
-          {
-            owner,
-            repo,
-            pull_number: pullNumber,
-            headers: {
-              Accept: "application/vnd.github.v3.diff",
-            },
-          }
-        );
-        // @ts-expect-error - data is a string when mediatType.format is `diff` (wrongly typed as
-        // their defauilt response type)
-        const pullDiff = diffWithPositions(diff.data as string);
+            for (const line of lines) {
+              if (line.startsWith("diff --git")) {
+                currentFile = null;
+                position = 0;
+                result.push(line);
+                continue;
+              }
 
-        const content =
-          `TITLE: ${pullTitle}\n\n` +
-          `BODY:\n` +
-          `${pullBody}\n\n` +
-          `COMMITS:\n` +
-          `${(pullCommits || [])
-            .map((c) => `${c.sha} ${c.author}: ${c.message}`)
-            .join("\n")}\n\n` +
-          `DIFF (lines are prepended by diff file positions):\n` +
-          `${pullDiff}\n\n` +
-          `COMMENTS:\n` +
-          `${(pullComments || [])
-            .map((c) => {
-              return `${c.author} [${new Date(c.createdAt).toISOString()}]:\n${c.body}`;
-            })
-            .join("\n")}\n\n` +
-          `REVIEWS:\n` +
-          `${(pullReviews || [])
-            .map(
-              (r) =>
-                `${r.author} [${new Date(r.createdAt).toISOString()}]:\n(${r.state})\n${r.body}\n${(
-                  r.comments || []
-                )
-                  .map((c) => ` - ${c.path}:${c.line}:\n${c.body}`)
-                  .join("\n")}`
+              if (currentFile !== null) {
+                const paddedPosition = position
+                  .toString()
+                  .padStart(digits, " ");
+                if (line.startsWith("@@")) {
+                  result.push(line);
+                } else {
+                  result.push(`[${paddedPosition}] ${line}`);
+                }
+                position++;
+              } else {
+                result.push(line);
+                if (line.startsWith("+++")) {
+                  currentFile = line.substring(4).trim();
+                }
+              }
+            }
+
+            return result.join("\n");
+          };
+
+          // Get the actual diff using REST API (not available in GraphQL)
+          const diff = await octokit.request(
+            "GET /repos/{owner}/{repo}/pulls/{pull_number}",
+            {
+              owner,
+              repo,
+              pull_number: pullNumber,
+              headers: {
+                Accept: "application/vnd.github.v3.diff",
+              },
+            }
+          );
+          // @ts-expect-error - data is a string when mediatType.format is `diff` (wrongly typed as
+          // their defauilt response type)
+          const pullDiff = diffWithPositions(diff.data as string);
+
+          const content =
+            `TITLE: ${pullTitle}\n\n` +
+            `BODY:\n` +
+            `${pullBody}\n\n` +
+            `COMMITS:\n` +
+            `${(pullCommits || [])
+              .map((c) => `${c.sha} ${c.author}: ${c.message}`)
+              .join("\n")}\n\n` +
+            `DIFF (lines are prepended by diff file positions):\n` +
+            `${pullDiff}\n\n` +
+            `COMMENTS:\n` +
+            `${(pullComments || [])
+              .map((c) => {
+                return `${c.author} [${new Date(c.createdAt).toISOString()}]:\n${c.body}`;
+              })
+              .join("\n")}\n\n` +
+            `REVIEWS:\n` +
+            `${(pullReviews || [])
+              .map(
+                (r) =>
+                  `${r.author} [${new Date(r.createdAt).toISOString()}]:\n(${r.state})\n${r.body}\n${(
+                    r.comments || []
+                  )
+                    .map((c) => ` - ${c.path}:${c.line}:\n${c.body}`)
+                    .join("\n")}`
+              )
+              .join("\n")}`;
+
+          return new Ok(
+            makeMCPToolTextSuccess({
+              message: `Retrieved pull request #${pullNumber}`,
+              result: content,
+            }).content
+          );
+        } catch (e) {
+          return new Err(
+            new MCPError(
+              `Error retrieving GitHub pull request: ${normalizeError(e).message}`
             )
-            .join("\n")}`;
-
-        return makeMCPToolTextSuccess({
-          message: `Retrieved pull request #${pullNumber}`,
-          result: content,
-        });
-      } catch (e) {
-        return makeMCPToolTextError(
-          `Error retrieving GitHub pull request: ${normalizeError(e).message}`
-        );
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -430,36 +437,44 @@ const createServer = (auth: Authenticator): McpServer => {
         .describe("File comments to leave as part of the review.")
         .optional(),
     },
-    async (
-      { owner, repo, pullNumber, body, event, comments = [] },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
-
-      try {
-        const { data: review } = await octokit.request(
-          "POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
-          {
-            owner,
-            repo,
-            pull_number: pullNumber,
-            body,
-            event,
-            comments,
-          }
-        );
-
-        return makeMCPToolTextSuccess({
-          message: `Review created with ID ${review.id}`,
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "github" },
+      async (
+        { owner, repo, pullNumber, body, event, comments = [] },
+        { authInfo }
+      ) => {
+        const octokit = await createOctokit(auth, {
+          accessToken: authInfo?.token,
         });
-      } catch (e) {
-        return makeMCPToolTextError(
-          `Error reviewing GitHub pull request: ${normalizeError(e).message}`
-        );
+
+        try {
+          const { data: review } = await octokit.request(
+            "POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
+            {
+              owner,
+              repo,
+              pull_number: pullNumber,
+              body,
+              event,
+              comments,
+            }
+          );
+
+          return new Ok(
+            makeMCPToolTextSuccess({
+              message: `Review created with ID ${review.id}`,
+            }).content
+          );
+        } catch (e) {
+          return new Err(
+            new MCPError(
+              `Error reviewing GitHub pull request: ${normalizeError(e).message}`
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -472,13 +487,16 @@ const createServer = (auth: Authenticator): McpServer => {
           "The owner of the repository (account or organization name)."
         ),
     },
-    async ({ owner }, { authInfo }) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "github" },
+      async ({ owner }, { authInfo }) => {
+        const octokit = await createOctokit(auth, {
+          accessToken: authInfo?.token,
+        });
 
-      try {
-        const projectsQuery = `
+        try {
+          const projectsQuery = `
         query($owner: String!) {
           organization(login: $owner) {
             projectsV2(first: 100) {
@@ -505,71 +523,78 @@ const createServer = (auth: Authenticator): McpServer => {
           }
         }`;
 
-        const results = (await octokit.graphql(projectsQuery, {
-          owner,
-        })) as {
-          organization: {
-            projectsV2: {
-              nodes: {
-                id: string;
-                title: string;
-                shortDescription: string | null;
-                url: string;
-                closed: boolean;
-                fields: {
-                  nodes: {
-                    id: string;
-                    name: string;
-                    options: {
+          const results = (await octokit.graphql(projectsQuery, {
+            owner,
+          })) as {
+            organization: {
+              projectsV2: {
+                nodes: {
+                  id: string;
+                  title: string;
+                  shortDescription: string | null;
+                  url: string;
+                  closed: boolean;
+                  fields: {
+                    nodes: {
                       id: string;
                       name: string;
+                      options: {
+                        id: string;
+                        name: string;
+                      }[];
                     }[];
-                  }[];
-                };
-              }[];
+                  };
+                }[];
+              };
             };
           };
-        };
 
-        const projects = results.organization.projectsV2.nodes
-          .filter((project: any) => !project.closed)
-          .map((project) => ({
-            ...project,
-            fields: {
-              nodes: project.fields.nodes.filter((n) => n.id),
-            },
-          }));
+          const projects = results.organization.projectsV2.nodes
+            .filter((project: any) => !project.closed)
+            .map((project) => ({
+              ...project,
+              fields: {
+                nodes: project.fields.nodes.filter((n) => n.id),
+              },
+            }));
 
-        let content = "";
-        projects.forEach((project) => {
-          content +=
-            `project='${project.title}' node_id=${project.id} ` +
-            `description='${project.shortDescription}'\n`;
-          project.fields.nodes.forEach((field) => {
-            content += `  field='${field.name}' node_id=${field.id}\n`;
-            field.options.forEach((o) => {
-              content += `    option='${o.name}' node_id=${o.id}\n`;
+          let content = "";
+          projects.forEach((project) => {
+            content +=
+              `project='${project.title}' node_id=${project.id} ` +
+              `description='${project.shortDescription}'\n`;
+            project.fields.nodes.forEach((field) => {
+              content += `  field='${field.name}' node_id=${field.id}\n`;
+              field.options.forEach((o) => {
+                content += `    option='${o.name}' node_id=${o.id}\n`;
+              });
             });
+            content += "\n";
           });
-          content += "\n";
-        });
 
-        if (!content) {
-          return makeMCPToolTextSuccess({
-            message: "No open projects found",
-          });
+          if (!content) {
+            return new Ok(
+              makeMCPToolTextSuccess({
+                message: "No open projects found",
+              }).content
+            );
+          }
+
+          return new Ok(
+            makeMCPToolTextSuccess({
+              message: `Retrieved ${projects.length} open projects`,
+              result: content,
+            }).content
+          );
+        } catch (e) {
+          return new Err(
+            new MCPError(
+              `Error retrieving GitHub repository projects: ${normalizeError(e).message}`
+            )
+          );
         }
-
-        return makeMCPToolTextSuccess({
-          message: `Retrieved ${projects.length} open projects`,
-          result: content,
-        });
-      } catch (e) {
-        return makeMCPToolTextError(
-          `Error retrieving GitHub repository projects: ${normalizeError(e).message}`
-        );
       }
-    }
+    )
   );
 
   server.tool(
@@ -604,14 +629,17 @@ const createServer = (auth: Authenticator): McpServer => {
           "Optional field configuration with both fieldId and optionId required if provided."
         ),
     },
-    async ({ owner, repo, issueNumber, projectId, field }, { authInfo }) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "github" },
+      async ({ owner, repo, issueNumber, projectId, field }, { authInfo }) => {
+        const octokit = await createOctokit(auth, {
+          accessToken: authInfo?.token,
+        });
 
-      try {
-        // First, get the issue's node ID using GraphQL.
-        const issueQuery = `
+        try {
+          // First, get the issue's node ID using GraphQL.
+          const issueQuery = `
         query($owner: String!, $repo: String!, $issueNumber: Int!) {
           repository(owner: $owner, name: $repo) {
             issue(number: $issueNumber) {
@@ -620,20 +648,20 @@ const createServer = (auth: Authenticator): McpServer => {
           }
         }`;
 
-        const issue = (await octokit.graphql(issueQuery, {
-          owner,
-          repo,
-          issueNumber,
-        })) as {
-          repository: {
-            issue: {
-              id: string;
+          const issue = (await octokit.graphql(issueQuery, {
+            owner,
+            repo,
+            issueNumber,
+          })) as {
+            repository: {
+              issue: {
+                id: string;
+              };
             };
           };
-        };
 
-        // Add the issue to the project using GraphQL mutation.
-        const addToProjectMutation = `
+          // Add the issue to the project using GraphQL mutation.
+          const addToProjectMutation = `
           mutation($projectId: ID!, $contentId: ID!) {
             addProjectV2ItemById(input: {
               projectId: $projectId
@@ -645,20 +673,20 @@ const createServer = (auth: Authenticator): McpServer => {
             }
           }`;
 
-        const item = (await octokit.graphql(addToProjectMutation, {
-          projectId,
-          contentId: issue.repository.issue.id,
-        })) as {
-          addProjectV2ItemById: {
-            item: {
-              id: string;
+          const item = (await octokit.graphql(addToProjectMutation, {
+            projectId,
+            contentId: issue.repository.issue.id,
+          })) as {
+            addProjectV2ItemById: {
+              item: {
+                id: string;
+              };
             };
           };
-        };
 
-        if (field) {
-          // Mutation to update the field value to specified option.
-          const updateFieldMutation = `
+          if (field) {
+            // Mutation to update the field value to specified option.
+            const updateFieldMutation = `
           mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String) {
             updateProjectV2ItemFieldValue(input: {
               projectId: $projectId,
@@ -674,23 +702,28 @@ const createServer = (auth: Authenticator): McpServer => {
             }
           }`;
 
-          await octokit.graphql(updateFieldMutation, {
-            projectId,
-            itemId: item.addProjectV2ItemById.item.id,
-            fieldId: field.fieldId,
-            optionId: field.optionId,
-          });
-        }
+            await octokit.graphql(updateFieldMutation, {
+              projectId,
+              itemId: item.addProjectV2ItemById.item.id,
+              fieldId: field.fieldId,
+              optionId: field.optionId,
+            });
+          }
 
-        return makeMCPToolTextSuccess({
-          message: `Issue #${issueNumber} added to project`,
-        });
-      } catch (e) {
-        return makeMCPToolTextError(
-          `Error adding GitHub issue to project: ${normalizeError(e).message}`
-        );
+          return new Ok(
+            makeMCPToolTextSuccess({
+              message: `Issue #${issueNumber} added to project`,
+            }).content
+          );
+        } catch (e) {
+          return new Err(
+            new MCPError(
+              `Error adding GitHub issue to project: ${normalizeError(e).message}`
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -708,31 +741,39 @@ const createServer = (auth: Authenticator): McpServer => {
         .string()
         .describe("The contents of the comment (GitHub markdown)."),
     },
-    async ({ owner, repo, issueNumber, body }, { authInfo }) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
-
-      try {
-        const { data: comment } = await octokit.request(
-          "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
-          {
-            owner,
-            repo,
-            issue_number: issueNumber,
-            body,
-          }
-        );
-
-        return makeMCPToolTextSuccess({
-          message: `Comment added to issue #${issueNumber} with ID ${comment.id}`,
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "github" },
+      async ({ owner, repo, issueNumber, body }, { authInfo }) => {
+        const octokit = await createOctokit(auth, {
+          accessToken: authInfo?.token,
         });
-      } catch (e) {
-        return makeMCPToolTextError(
-          `Error commenting on GitHub issue: ${normalizeError(e).message}`
-        );
+
+        try {
+          const { data: comment } = await octokit.request(
+            "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
+            {
+              owner,
+              repo,
+              issue_number: issueNumber,
+              body,
+            }
+          );
+
+          return new Ok(
+            makeMCPToolTextSuccess({
+              message: `Comment added to issue #${issueNumber} with ID ${comment.id}`,
+            }).content
+          );
+        } catch (e) {
+          return new Err(
+            new MCPError(
+              `Error commenting on GitHub issue: ${normalizeError(e).message}`
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -747,13 +788,16 @@ const createServer = (auth: Authenticator): McpServer => {
       repo: z.string().describe("The name of the repository."),
       issueNumber: z.number().describe("The issue number."),
     },
-    async ({ owner, repo, issueNumber }, { authInfo }) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "github" },
+      async ({ owner, repo, issueNumber }, { authInfo }) => {
+        const octokit = await createOctokit(auth, {
+          accessToken: authInfo?.token,
+        });
 
-      try {
-        const query = `
+        try {
+          const query = `
           query($owner: String!, $repo: String!, $issueNumber: Int!) {
             repository(owner: $owner, name: $repo) {
               issue(number: $issueNumber) {
@@ -789,77 +833,82 @@ const createServer = (auth: Authenticator): McpServer => {
             }
           }`;
 
-        const issue = (await octokit.graphql(query, {
-          owner,
-          repo,
-          issueNumber,
-        })) as {
-          repository: {
-            issue: {
-              title: string;
-              body: string;
-              state: string;
-              createdAt: string;
-              updatedAt: string;
-              author: {
-                login: string;
-              };
-              labels: {
-                nodes: {
-                  name: string;
-                  color: string;
-                }[];
-              };
-              assignees: {
-                nodes: {
+          const issue = (await octokit.graphql(query, {
+            owner,
+            repo,
+            issueNumber,
+          })) as {
+            repository: {
+              issue: {
+                title: string;
+                body: string;
+                state: string;
+                createdAt: string;
+                updatedAt: string;
+                author: {
                   login: string;
-                }[];
-              };
-              comments: {
-                nodes: {
-                  author: {
+                };
+                labels: {
+                  nodes: {
+                    name: string;
+                    color: string;
+                  }[];
+                };
+                assignees: {
+                  nodes: {
                     login: string;
-                  };
-                  body: string;
-                  createdAt: string;
-                }[];
+                  }[];
+                };
+                comments: {
+                  nodes: {
+                    author: {
+                      login: string;
+                    };
+                    body: string;
+                    createdAt: string;
+                  }[];
+                };
               };
             };
           };
-        };
 
-        const issueData = issue.repository.issue;
-        const formattedIssue = {
-          title: issueData.title,
-          body: issueData.body,
-          state: issueData.state,
-          createdAt: issueData.createdAt,
-          updatedAt: issueData.updatedAt,
-          author: issueData.author.login,
-          labels: issueData.labels.nodes.map((label) => ({
-            name: label.name,
-            color: label.color,
-          })),
-          assignees: issueData.assignees.nodes.map(
-            (assignee) => assignee.login
-          ),
-          comments: issueData.comments.nodes.map((comment) => ({
-            author: comment.author.login,
-            body: comment.body,
-            createdAt: comment.createdAt,
-          })),
-        };
+          const issueData = issue.repository.issue;
+          const formattedIssue = {
+            title: issueData.title,
+            body: issueData.body,
+            state: issueData.state,
+            createdAt: issueData.createdAt,
+            updatedAt: issueData.updatedAt,
+            author: issueData.author.login,
+            labels: issueData.labels.nodes.map((label) => ({
+              name: label.name,
+              color: label.color,
+            })),
+            assignees: issueData.assignees.nodes.map(
+              (assignee) => assignee.login
+            ),
+            comments: issueData.comments.nodes.map((comment) => ({
+              author: comment.author.login,
+              body: comment.body,
+              createdAt: comment.createdAt,
+            })),
+          };
 
-        return makeMCPToolTextSuccess({
-          message: `Retrieved issue #${issueNumber}`,
-          result: JSON.stringify(formattedIssue, null, 2),
-        });
-      } catch (e) {
-        return makeMCPToolTextError(
-          `Error retrieving GitHub issue: ${normalizeError(e).message}`
-        );
+          return new Ok(
+            makeMCPToolTextSuccess({
+              message: `Retrieved issue #${issueNumber}`,
+              result: JSON.stringify(formattedIssue, null, 2),
+            }).content
+          );
+        } catch (e) {
+          return new Err(
+            new MCPError(
+              `Error retrieving GitHub issue: ${normalizeError(e).message}`
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -895,24 +944,27 @@ const createServer = (auth: Authenticator): McpServer => {
         .optional()
         .describe("Results per page. Defaults to 30, max 100."),
     },
-    async (
-      {
-        owner,
-        repo,
-        state = "OPEN",
-        labels,
-        sort = "CREATED_AT",
-        direction = "DESC",
-        perPage = 30,
-      },
-      { authInfo }
-    ) => {
-      const octokit = await createOctokit(auth, {
-        accessToken: authInfo?.token,
-      });
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "github" },
+      async (
+        {
+          owner,
+          repo,
+          state = "OPEN",
+          labels,
+          sort = "CREATED_AT",
+          direction = "DESC",
+          perPage = 30,
+        },
+        { authInfo }
+      ) => {
+        const octokit = await createOctokit(auth, {
+          accessToken: authInfo?.token,
+        });
 
-      try {
-        const query = `
+        try {
+          const query = `
           query($owner: String!, $repo: String!, $first: Int!, $orderBy: IssueOrder, $states: [IssueState!], $labels: [String!]) {
             repository(owner: $owner, name: $repo) {
               issues(first: $first, orderBy: $orderBy, states: $states, labels: $labels) {
@@ -944,72 +996,318 @@ const createServer = (auth: Authenticator): McpServer => {
             }
           }`;
 
-        const issues = (await octokit.graphql(query, {
-          owner,
-          repo,
-          first: perPage,
-          orderBy: {
-            field: sort,
-            direction: direction,
-          },
-          states: state === "ALL" ? undefined : [state],
-          labels: labels,
-        })) as {
-          repository: {
-            issues: {
-              nodes: {
-                number: number;
-                title: string;
-                state: string;
-                createdAt: string;
-                updatedAt: string;
-                author: {
-                  login: string;
-                };
-                labels: {
-                  nodes: {
-                    name: string;
-                    color: string;
-                  }[];
-                };
-                assignees: {
-                  nodes: {
+          const issues = (await octokit.graphql(query, {
+            owner,
+            repo,
+            first: perPage,
+            orderBy: {
+              field: sort,
+              direction: direction,
+            },
+            states: state === "ALL" ? undefined : [state],
+            labels: labels,
+          })) as {
+            repository: {
+              issues: {
+                nodes: {
+                  number: number;
+                  title: string;
+                  state: string;
+                  createdAt: string;
+                  updatedAt: string;
+                  author: {
                     login: string;
-                  }[];
-                };
-                comments: {
-                  totalCount: number;
-                };
-              }[];
+                  };
+                  labels: {
+                    nodes: {
+                      name: string;
+                      color: string;
+                    }[];
+                  };
+                  assignees: {
+                    nodes: {
+                      login: string;
+                    }[];
+                  };
+                  comments: {
+                    totalCount: number;
+                  };
+                }[];
+              };
             };
           };
-        };
 
-        const formattedIssues = issues.repository.issues.nodes.map((issue) => ({
-          number: issue.number,
-          title: issue.title,
-          state: issue.state,
-          createdAt: issue.createdAt,
-          updatedAt: issue.updatedAt,
-          author: issue.author.login,
-          labels: issue.labels.nodes.map((label) => ({
-            name: label.name,
-            color: label.color,
-          })),
-          assignees: issue.assignees.nodes.map((assignee) => assignee.login),
-          commentCount: issue.comments.totalCount,
-        }));
+          const formattedIssues = issues.repository.issues.nodes.map(
+            (issue) => ({
+              number: issue.number,
+              title: issue.title,
+              state: issue.state,
+              createdAt: issue.createdAt,
+              updatedAt: issue.updatedAt,
+              author: issue.author.login,
+              labels: issue.labels.nodes.map((label) => ({
+                name: label.name,
+                color: label.color,
+              })),
+              assignees: issue.assignees.nodes.map(
+                (assignee) => assignee.login
+              ),
+              commentCount: issue.comments.totalCount,
+            })
+          );
 
-        return makeMCPToolTextSuccess({
-          message: `Retrieved ${formattedIssues.length} issues`,
-          result: JSON.stringify(formattedIssues, null, 2),
-        });
-      } catch (e) {
-        return makeMCPToolTextError(
-          `Error listing GitHub issues: ${normalizeError(e).message}`
-        );
+          return new Ok(
+            makeMCPToolTextSuccess({
+              message: `Retrieved ${formattedIssues.length} issues`,
+              result: JSON.stringify(formattedIssues, null, 2),
+            }).content
+          );
+        } catch (e) {
+          return new Err(
+            new MCPError(
+              `Error listing GitHub issues: ${normalizeError(e).message}`
+            )
+          );
+        }
       }
-    }
+    )
+  );
+
+  server.tool(
+    "list_pull_requests",
+    "List pull requests from a specified GitHub repository with optional filtering.",
+    {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the repository (account or organization name)."
+        ),
+      repo: z.string().describe("The name of the repository."),
+      state: z
+        .enum(["OPEN", "CLOSED", "MERGED", "ALL"])
+        .optional()
+        .describe("Filter pull requests by state. Defaults to OPEN."),
+      sort: z
+        .enum(["CREATED_AT", "UPDATED_AT"])
+        .optional()
+        .describe("What to sort results by. Defaults to CREATED_AT."),
+      direction: z
+        .enum(["ASC", "DESC"])
+        .optional()
+        .describe("The direction of the sort. Defaults to DESC."),
+      perPage: z
+        .number()
+        .min(1)
+        .max(65)
+        .optional()
+        .describe("Results per page. Defaults to 30, max 65."),
+      after: z.string().optional().describe("The cursor to start after."),
+      before: z.string().optional().describe("The cursor to start before."),
+    },
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "github" },
+      async (
+        {
+          owner,
+          repo,
+          state = "OPEN",
+          sort = "CREATED_AT",
+          direction = "DESC",
+          perPage = 30,
+          after,
+          before,
+        },
+        { authInfo }
+      ) => {
+        const octokit = await createOctokit(auth, {
+          accessToken: authInfo?.token,
+        });
+
+        try {
+          const query = `
+          query($owner: String!, $repo: String!, $first: Int!, $orderBy: IssueOrder, $states: [PullRequestState!], $after: String, $before: String) {
+            repository(owner: $owner, name: $repo) {
+              pullRequests(first: $first, orderBy: $orderBy, states: $states, after: $after, before: $before) {
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                  startCursor
+                  hasPreviousPage
+                }
+                nodes {
+                  number
+                  title
+                  state
+                  createdAt
+                  updatedAt
+                  mergedAt
+                  closedAt
+                  author {
+                    login
+                  }
+                  baseRefName
+                  headRefName
+                  additions
+                  deletions
+                  changedFiles
+                  labels(first: 10) {
+                    nodes {
+                      name
+                      color
+                    }
+                  }
+                  assignees(first: 10) {
+                    nodes {
+                      login
+                    }
+                  }
+                  reviewRequests(first: 10) {
+                    nodes {
+                      requestedReviewer {
+                        ... on User {
+                          login
+                        }
+                      }
+                    }
+                  }
+                  comments {
+                    totalCount
+                  }
+                  reviews {
+                    totalCount
+                  }
+                }
+              }
+            }
+          }`;
+
+          // Map our enum values to GitHub's GraphQL enum values
+          let graphqlStates;
+          if (state === "ALL") {
+            graphqlStates = undefined;
+          } else if (state === "OPEN") {
+            graphqlStates = ["OPEN"];
+          } else if (state === "CLOSED") {
+            graphqlStates = ["CLOSED"];
+          } else if (state === "MERGED") {
+            graphqlStates = ["MERGED"];
+          }
+
+          const pullRequests = (await octokit.graphql(query, {
+            owner,
+            repo,
+            before,
+            after,
+            first: perPage,
+            orderBy: {
+              field: sort,
+              direction: direction,
+            },
+            states: graphqlStates,
+          })) as {
+            repository: {
+              pullRequests: {
+                pageInfo: {
+                  hasNextPage: boolean;
+                  endCursor: string | null;
+                  startCursor: string | null;
+                  hasPreviousPage: boolean;
+                };
+                nodes: {
+                  number: number;
+                  title: string;
+                  state: string;
+                  createdAt: string;
+                  updatedAt: string;
+                  mergedAt: string | null;
+                  closedAt: string | null;
+                  author: {
+                    login: string;
+                  };
+                  baseRefName: string;
+                  headRefName: string;
+                  additions: number;
+                  deletions: number;
+                  changedFiles: number;
+                  labels: {
+                    nodes: {
+                      name: string;
+                      color: string;
+                    }[];
+                  };
+                  assignees: {
+                    nodes: {
+                      login: string;
+                    }[];
+                  };
+                  reviewRequests: {
+                    nodes: {
+                      requestedReviewer: {
+                        login: string;
+                      };
+                    }[];
+                  };
+                  comments: {
+                    totalCount: number;
+                  };
+                  reviews: {
+                    totalCount: number;
+                  };
+                }[];
+              };
+            };
+          };
+
+          const formattedPullRequests =
+            pullRequests.repository.pullRequests.nodes.map((pr) => ({
+              number: pr.number,
+              title: pr.title,
+              state: pr.state,
+              createdAt: pr.createdAt,
+              updatedAt: pr.updatedAt,
+              mergedAt: pr.mergedAt,
+              closedAt: pr.closedAt,
+              author: pr.author.login,
+              baseRefName: pr.baseRefName,
+              headRefName: pr.headRefName,
+              additions: pr.additions,
+              deletions: pr.deletions,
+              changedFiles: pr.changedFiles,
+              labels: pr.labels.nodes.map((label) => ({
+                name: label.name,
+                color: label.color,
+              })),
+              assignees: pr.assignees.nodes.map((assignee) => assignee.login),
+              reviewRequests: pr.reviewRequests.nodes.map(
+                (request) => request.requestedReviewer.login
+              ),
+              commentCount: pr.comments.totalCount,
+              reviewCount: pr.reviews.totalCount,
+            }));
+
+          return new Ok(
+            makeMCPToolTextSuccess({
+              message: `Retrieved ${formattedPullRequests.length} pull requests`,
+              result: JSON.stringify(
+                {
+                  pullRequests: formattedPullRequests,
+                  pageInfo: pullRequests.repository.pullRequests.pageInfo,
+                },
+                null,
+                2
+              ),
+            }).content
+          );
+        } catch (e) {
+          return new Err(
+            new MCPError(
+              `Error listing GitHub pull requests: ${normalizeError(e).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   return server;

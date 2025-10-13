@@ -2,10 +2,12 @@ import {
   ArrowPathIcon,
   Button,
   ContextItem,
+  DocumentTextIcon,
+  GlobeAltIcon,
   Input,
+  MicIcon,
   Page,
   PencilSquareIcon,
-  PlanetIcon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -17,6 +19,7 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
+import type { ReactElement } from "react";
 import { useCallback, useEffect, useState } from "react";
 
 import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
@@ -25,7 +28,9 @@ import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
+import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useVoiceTranscriptionToggle } from "@app/hooks/useVoiceTranscriptionToggle";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -50,7 +55,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   isSlackDataSourceBotEnabled: boolean;
   slackBotDataSource: DataSourceType | null;
   systemSpace: SpaceType;
-}>(async (context, auth) => {
+}>(async (_, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
   if (!owner || !auth.isAdmin() || !subscription) {
@@ -148,7 +153,7 @@ export default function WorkspaceAdmin({
       setUpdating(false);
     } else {
       setIsSheetOpen(false);
-      // We perform a full refresh so that the Workspace name updates and we get a fresh owner
+      // We perform a full refresh so that the Workspace name updates, and we get a fresh owner
       // object so that the formValidation logic keeps working.
       window.location.reload();
     }
@@ -167,7 +172,7 @@ export default function WorkspaceAdmin({
       subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
     >
       <Page.Vertical align="stretch" gap="xl">
-        <Page.Header title="Workspace Settings" icon={PlanetIcon} />
+        <Page.Header title="Workspace Settings" icon={GlobeAltIcon} />
         <Page.Vertical align="stretch" gap="md">
           <div className="flex items-center justify-between">
             <div className="flex-1">
@@ -228,6 +233,14 @@ export default function WorkspaceAdmin({
             </div>
             <ProviderManagementModal owner={owner} plan={subscription.plan} />
           </div>
+        </Page.Vertical>
+        <Page.Vertical align="stretch" gap="md">
+          <Page.H variant="h4">Capabilities</Page.H>
+          <ContextItem.List>
+            <div className="h-full border-b border-border dark:border-border-night" />
+            <InteractiveContentSharingToggle owner={owner} />
+            <VoiceTranscriptionToggle owner={owner} />
+          </ContextItem.List>
         </Page.Vertical>
         {!isSlackDataSourceBotEnabled && (
           <Page.Vertical align="stretch" gap="md">
@@ -400,6 +413,48 @@ function SlackBotToggle({
   );
 }
 
-WorkspaceAdmin.getLayout = (page: React.ReactElement) => {
+function InteractiveContentSharingToggle({ owner }: { owner: WorkspaceType }) {
+  const { isEnabled, isChanging, doToggleInteractiveContentSharing } =
+    useFrameSharingToggle({ owner });
+
+  return (
+    <ContextItem
+      title="Public Frame sharing"
+      subElement="Allow Frames to be shared publicly via links"
+      visual={<DocumentTextIcon className="h-6 w-6" />}
+      hasSeparatorIfLast={true}
+      action={
+        <SliderToggle
+          selected={isEnabled}
+          disabled={isChanging}
+          onClick={doToggleInteractiveContentSharing}
+        />
+      }
+    />
+  );
+}
+
+function VoiceTranscriptionToggle({ owner }: { owner: WorkspaceType }) {
+  const { isEnabled, isChanging, doToggleVoiceTranscription } =
+    useVoiceTranscriptionToggle({ owner });
+
+  return (
+    <ContextItem
+      title="Voice transcription"
+      subElement="Allow voice transcription in Dust conversations"
+      visual={<MicIcon className="h-6 w-6" />}
+      hasSeparatorIfLast={true}
+      action={
+        <SliderToggle
+          selected={isEnabled}
+          disabled={isChanging}
+          onClick={doToggleVoiceTranscription}
+        />
+      }
+    />
+  );
+}
+
+WorkspaceAdmin.getLayout = (page: ReactElement) => {
   return <AppRootLayout>{page}</AppRootLayout>;
 };

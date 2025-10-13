@@ -1,118 +1,258 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import set from "lodash/set";
 import { useRouter } from "next/router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AdditionalConfigurationInBuilderType,
+  AgentBuilderFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
+import {
+  AgentBuilderFormContext,
+  agentBuilderFormSchema,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import {
+  PersonalConnectionRequiredDialog,
+  useAwaitableDialog,
+} from "@app/components/agent_builder/PersonalConnectionRequiredDialog";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
   getDefaultAgentFormData,
   transformAgentConfigurationToFormData,
+  transformDuplicateAgentToFormData,
+  transformTemplateToFormData,
 } from "@app/components/agent_builder/transformAgentConfiguration";
+import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import type { AssistantBuilderMCPConfigurationWithId } from "@app/components/assistant_builder/types";
+import { getDataVisualizationActionConfiguration } from "@app/components/assistant_builder/types";
+import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
+import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
+import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useEditors } from "@app/lib/swr/editors";
-import logger from "@app/logger/logger";
+import { emptyArray } from "@app/lib/swr/swr";
+import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types";
+import { isBuilder, removeNulls } from "@app/types";
+import { normalizeError } from "@app/types";
+
+function processActionsFromStorage(
+  actions: AssistantBuilderMCPConfigurationWithId[],
+  visualizationEnabled: boolean
+): AgentBuilderAction[] {
+  const visualizationAction = visualizationEnabled
+    ? [getDataVisualizationActionConfiguration()]
+    : [];
+  return [
+    ...visualizationAction,
+    ...actions.map((action) => {
+      if (action.type === "MCP") {
+        return {
+          ...action,
+          configuration: {
+            ...action.configuration,
+            additionalConfiguration: processAdditionalConfigurationFromStorage(
+              action.configuration.additionalConfiguration
+            ),
+          },
+        };
+      }
+      return action;
+    }),
+  ];
+}
+
+function processAdditionalConfigurationFromStorage(
+  config: AdditionalConfigurationType
+): AdditionalConfigurationInBuilderType {
+  const additionalConfig: AdditionalConfigurationInBuilderType = {};
+
+  for (const [key, value] of Object.entries(config)) {
+    set(additionalConfig, key, value);
+  }
+
+  return additionalConfig;
+}
 
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
+  duplicateAgentId?: string | null;
 }
 
 export default function AgentBuilder({
   agentConfiguration,
+  duplicateAgentId,
 }: AgentBuilderProps) {
-  const { owner, user } = useAgentBuilderContext();
+  const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
+  const { mcpServerViews } = useMCPServerViewsContext();
+
   const router = useRouter();
-  const sendNotification = useSendNotification();
+  const sendNotification = useSendNotification(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   const { actions, isActionsLoading } = useAgentConfigurationActions(
     owner.sId,
-    agentConfiguration?.sId ?? null
+    duplicateAgentId ?? agentConfiguration?.sId ?? null
   );
+
+  const { triggers, isTriggersLoading, mutateTriggers } = useAgentTriggers({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+  });
 
   const { editors } = useEditors({
     owner,
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
 
-  const defaultValues = useMemo((): AgentBuilderFormData => {
-    if (agentConfiguration) {
-      return transformAgentConfigurationToFormData(agentConfiguration);
-    }
-    return getDefaultAgentFormData(user);
-  }, [agentConfiguration, user]);
+  const { slackChannels: slackChannelsLinkedWithAgent } =
+    useSlackChannelsLinkedWithAgent({
+      workspaceId: owner.sId,
+      disabled: !agentConfiguration || !isBuilder(owner),
+    });
 
-  // Create values object that includes async data (actions and editors)
-  const formValues = useMemo((): AgentBuilderFormData | undefined => {
-    const hasActions = actions && actions.length > 0;
-    const hasEditors = editors && editors.length > 0;
-
-    // Determine Slack provider based on supported data source views
-    const slackProvider = supportedDataSourceViews.find(
+  const slackProvider = useMemo(() => {
+    const slackBotProvider = supportedDataSourceViews.find(
       (dsv) => dsv.dataSource.connectorProvider === "slack_bot"
-    )
-      ? "slack_bot"
-      : supportedDataSourceViews.find(
-            (dsv) => dsv.dataSource.connectorProvider === "slack"
-          )
-        ? "slack"
-        : defaultValues.agentSettings.slackProvider;
-
-    if (
-      !hasActions &&
-      !hasEditors &&
-      slackProvider === defaultValues.agentSettings.slackProvider
-    ) {
-      return undefined; // Let defaultValues handle initial state
+    );
+    if (slackBotProvider) {
+      return "slack_bot";
     }
 
-    const updatedValues = { ...defaultValues };
+    const slackProvider = supportedDataSourceViews.find(
+      (dsv) => dsv.dataSource.connectorProvider === "slack"
+    );
+    return slackProvider ? "slack" : null;
+  }, [supportedDataSourceViews]);
 
-    if (hasActions) {
-      updatedValues.actions = actions;
+  const processedActions = useMemo(() => {
+    return processActionsFromStorage(
+      actions ?? emptyArray(),
+      agentConfiguration?.visualizationEnabled ?? false
+    );
+  }, [actions, agentConfiguration?.visualizationEnabled]);
+
+  const agentSlackChannels = useMemo(() => {
+    if (!agentConfiguration || !slackChannelsLinkedWithAgent.length) {
+      return [];
     }
 
-    if (hasEditors) {
-      updatedValues.agentSettings = {
-        ...updatedValues.agentSettings,
-        editors,
-      };
+    return slackChannelsLinkedWithAgent
+      .filter(
+        (channel) => channel.agentConfigurationId === agentConfiguration.sId
+      )
+      .map((channel) => ({
+        slackChannelId: channel.slackChannelId,
+        slackChannelName: channel.slackChannelName,
+        autoRespondWithoutMention: channel.autoRespondWithoutMention,
+      }));
+  }, [agentConfiguration, slackChannelsLinkedWithAgent]);
+
+  const formValues = useMemo((): AgentBuilderFormData => {
+    let baseValues: AgentBuilderFormData;
+
+    if (duplicateAgentId && agentConfiguration) {
+      // Handle agent duplication case
+      baseValues = transformDuplicateAgentToFormData(agentConfiguration, user);
+    } else if (agentConfiguration) {
+      baseValues = transformAgentConfigurationToFormData(agentConfiguration);
+    } else if (assistantTemplate) {
+      baseValues = transformTemplateToFormData(assistantTemplate, user);
+    } else {
+      baseValues = getDefaultAgentFormData(user);
     }
 
-    if (slackProvider !== defaultValues.agentSettings.slackProvider) {
-      updatedValues.agentSettings = {
-        ...updatedValues.agentSettings,
+    return {
+      ...baseValues,
+      actions: processedActions,
+      triggersToCreate: duplicateAgentId
+        ? triggers.map((trigger) => ({
+            ...trigger,
+            editor: user.id,
+          }))
+        : emptyArray(),
+      triggersToUpdate: duplicateAgentId
+        ? emptyArray()
+        : triggers ?? emptyArray(),
+      triggersToDelete: [],
+
+      agentSettings: {
+        ...baseValues.agentSettings,
         slackProvider,
-      };
-    }
-
-    return updatedValues;
-  }, [defaultValues, actions, editors, supportedDataSourceViews]);
+        editors: duplicateAgentId
+          ? [user]
+          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            agentConfiguration || editors.length > 0
+            ? editors
+            : [user],
+        slackChannels: agentSlackChannels,
+      },
+    };
+  }, [
+    agentConfiguration,
+    assistantTemplate,
+    user,
+    duplicateAgentId,
+    processedActions,
+    slackProvider,
+    editors,
+    triggers,
+    agentSlackChannels,
+  ]);
 
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
-    defaultValues,
-    values: formValues, // Reactive updates when actions are loaded
+    values: formValues,
+    resetOptions: {
+      keepDirtyValues: true,
+      keepErrors: true,
+    },
+  });
+
+  const { showDialog, ...dialogProps } = useAwaitableDialog({
+    owner,
+    mcpServerViewToCheckIds: removeNulls(
+      form
+        .getValues("actions")
+        .map((a) => (a.type === "MCP" ? a.configuration.mcpServerViewId : null))
+    ),
+    mcpServerViews,
   });
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {
+      setIsSaving(true);
+      const confirmed = await showDialog();
+      if (!confirmed) {
+        setIsSaving(false);
+        return;
+      }
+
       const result = await submitAgentBuilderForm({
+        user,
         formData,
         owner,
         isDraft: false,
-        agentConfigurationId: agentConfiguration?.sId || null,
+        agentConfigurationId: duplicateAgentId
+          ? null
+          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            agentConfiguration?.sId || null,
+        areSlackChannelsChanged: form.getFieldState(
+          "agentSettings.slackChannels"
+        ).isDirty,
       });
 
       if (!result.isOk()) {
@@ -123,65 +263,157 @@ export default function AgentBuilder({
           description: result.error.message,
           type: "error",
         });
-      } else {
-        const createdAgent = result.value;
+        setIsSaving(false);
+        return;
+      }
+
+      const createdAgent = result.value;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      const isCreatingNew = duplicateAgentId || !agentConfiguration;
+
+      // Check if there's a warning about Slack channel linking
+      if (
+        "_warning" in createdAgent &&
+        createdAgent._warning === "slack_channel_linking_in_progress"
+      ) {
         sendNotification({
-          title: agentConfiguration ? "Agent saved" : "Agent created",
-          description: agentConfiguration
-            ? "Your agent has been successfully saved"
-            : "Your agent has been successfully created",
+          title: isCreatingNew ? "Agent created" : "Agent saved",
+          description:
+            "The agent has been saved successfully. Some channels are currently being linked, the operation will complete shortly.",
+          type: "info",
+        });
+      } else {
+        sendNotification({
+          title: isCreatingNew ? "Agent created" : "Agent saved",
+          description: isCreatingNew
+            ? "Your agent has been successfully created"
+            : "Your agent has been successfully saved",
           type: "success",
         });
-
-        // If this was a new agent creation, update URL without re-rendering
-        if (!agentConfiguration && createdAgent.sId) {
-          const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
-          window.history.replaceState(null, "", newUrl);
-        }
       }
+
+      // Mutate triggers to refresh from backend (ensures newly created triggers have sIds)
+      await mutateTriggers();
+
+      if (isCreatingNew && createdAgent.sId) {
+        const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
+        await router.replace(newUrl, undefined, { shallow: true });
+      } else {
+        // For existing agents, just reset form state
+        form.reset(form.getValues(), {
+          keepValues: true,
+        });
+      }
+
+      setIsSaving(false);
     } catch (error) {
-      logger.error("Unexpected error:", error);
+      datadogLogger.error("Unexpected error:", {
+        error: normalizeError(error),
+      });
+      setIsSaving(false);
     }
   };
 
-  const handleSave = () => {
-    void form.handleSubmit(handleSubmit)();
+  const handleFormErrors = (errors: Record<string, any>) => {
+    const getFirstErrorMessage = (errorObj: Record<string, any>): string => {
+      for (const key in errorObj) {
+        if (errorObj[key]) {
+          if (typeof errorObj[key] === "string") {
+            return errorObj[key];
+          }
+          if (errorObj[key].message) {
+            return errorObj[key].message;
+          }
+          if (typeof errorObj[key] === "object") {
+            const nestedError = getFirstErrorMessage(errorObj[key]);
+            if (nestedError) {
+              return nestedError;
+            }
+          }
+        }
+      }
+      return "Unknown error";
+    };
+    const errorMessage = getFirstErrorMessage(errors);
+    datadogLogger.error(
+      {
+        errorMessage,
+        agentConfigurationId: agentConfiguration?.sId,
+      },
+      "[Agent builder] - Form validation error"
+    );
+    sendNotification({
+      title: `Agent ${agentConfiguration ? "edition" : "creation"} failed.`,
+      description: "There was an error validating the form.",
+      type: "error",
+    });
+    setIsSaving(false);
   };
 
-  // Subscribe to form state changes by destructuring before render
+  const handleSave = () => {
+    void form.handleSubmit(handleSubmit, handleFormErrors)();
+  };
+
+  const handleCancel = async () => {
+    await appLayoutBack(owner, router);
+  };
+
   const { isDirty, isSubmitting } = form.formState;
 
+  // Disable navigation lock during save process for new agents
+  useNavigationLock((isDirty || !!duplicateAgentId) && !isSaving);
+
+  const isSaveDisabled = duplicateAgentId
+    ? false
+    : isSubmitting || isActionsLoading || isTriggersLoading;
+
+  const saveLabel = isSubmitting ? "Saving..." : "Save";
+
+  const title = agentConfiguration
+    ? duplicateAgentId
+      ? `Duplicate @${agentConfiguration.name}`
+      : `Edit agent @${agentConfiguration.name}`
+    : "Create new agent";
+
   return (
-    <FormProvider form={form}>
-      <AgentBuilderLayout
-        leftPanel={
-          <AgentBuilderLeftPanel
-            title={
-              agentConfiguration
-                ? `Edit agent ${agentConfiguration.name}`
-                : "Create new agent"
-            }
-            onCancel={async () => {
-              await appLayoutBack(owner, router);
-            }}
-            saveButtonProps={{
-              size: "sm",
-              label: isSubmitting ? "Saving..." : "Save",
-              variant: "primary",
-              onClick: handleSave,
-              disabled: !isDirty || isSubmitting || isActionsLoading,
-            }}
-            agentConfigurationId={agentConfiguration?.sId || null}
-          />
-        }
-        rightPanel={
-          <ConversationSidePanelProvider>
-            <AgentBuilderRightPanel
-              agentConfigurationSId={agentConfiguration?.sId}
+    <AgentBuilderFormContext.Provider value={form}>
+      <FormProvider form={form}>
+        <PersonalConnectionRequiredDialog
+          owner={owner}
+          mcpServerViewsWithPersonalConnections={
+            dialogProps.mcpServerViewsWithPersonalConnections
+          }
+          isOpen={dialogProps.isOpen}
+          onCancel={dialogProps.onCancel}
+          onClose={dialogProps.onClose}
+        />
+        <AgentBuilderLayout
+          leftPanel={
+            <AgentBuilderLeftPanel
+              title={title}
+              onCancel={handleCancel}
+              saveButtonProps={{
+                size: "sm",
+                label: saveLabel,
+                variant: "highlight",
+                onClick: handleSave,
+                disabled: isSaveDisabled,
+              }}
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              agentConfigurationId={agentConfiguration?.sId || null}
+              isActionsLoading={isActionsLoading}
+              isTriggersLoading={isTriggersLoading}
             />
-          </ConversationSidePanelProvider>
-        }
-      />
-    </FormProvider>
+          }
+          rightPanel={
+            <ConversationSidePanelProvider>
+              <AgentBuilderRightPanel
+                agentConfigurationSId={agentConfiguration?.sId}
+              />
+            </ConversationSidePanelProvider>
+          }
+        />
+      </FormProvider>
+    </AgentBuilderFormContext.Provider>
   );
 }

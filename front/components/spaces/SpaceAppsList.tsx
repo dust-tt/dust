@@ -6,8 +6,10 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { sortBy } from "lodash";
+import sortBy from "lodash/sortBy";
 import Link from "next/link";
+import { useRouter } from "next/router";
+import type { ParsedUrlQuery } from "querystring";
 import type { ComponentType } from "react";
 import * as React from "react";
 import { useState } from "react";
@@ -19,12 +21,14 @@ import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
+import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type {
   AppType,
   LightWorkspaceType,
   SpaceType,
   WorkspaceType,
 } from "@app/types";
+import { isString } from "@app/types";
 
 type RowData = {
   app: AppType;
@@ -143,6 +147,11 @@ const AppHashChecker = ({ owner, app, registryApp }: AppHashCheckerProps) => {
   return "";
 };
 
+const hasAppsModalQuery = (
+  query: ParsedUrlQuery
+): query is ParsedUrlQuery & { modal: string } =>
+  isString(query.modal) && query.modal === "apps";
+
 interface SpaceAppsListProps {
   isBuilder: boolean;
   onSelect: (sId: string) => void;
@@ -158,9 +167,11 @@ export const SpaceAppsList = ({
   onSelect,
   registryApps,
 }: SpaceAppsListProps) => {
+  const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
   const { q: searchParam } = useQueryParams(["q"]);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const searchTerm = searchParam.value || "";
 
   const { apps, isAppsLoading } = useApps({ owner, space });
@@ -183,6 +194,19 @@ export const SpaceAppsList = ({
       })) || [],
     [apps, onSelect, owner]
   );
+
+  React.useEffect(() => {
+    // Extract modal=apps query param to open modal on first render and remove it from URL
+    if (!router.isReady || !isBuilder) {
+      return;
+    }
+    const { query } = router;
+    if (!hasAppsModalQuery(query)) {
+      return;
+    }
+    setIsCreateAppModalOpened(true);
+    void removeParamFromRouter(router, "modal");
+  }, [router.isReady, router.query.modal, isBuilder, router]);
 
   const { portalToHeader } = useActionButtonsPortal({
     containerId: ACTION_BUTTONS_CONTAINER_ID,

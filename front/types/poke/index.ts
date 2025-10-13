@@ -42,11 +42,12 @@ export type PokeMCPServerViewType = MCPServerViewType &
     space: PokeSpaceType;
   };
 
-type PokeAgentActionType = AgentMessageType["actions"][0] & {
+type PokeAgentActionType = AgentMessageType["actions"][number] & {
   runId?: string | null;
   appWorkspaceId?: string | null;
   appSpaceId?: string | null;
   appId?: string | null;
+  created?: number;
   mcpIO?: {
     params: Record<string, unknown>;
     output: CallToolResult["content"] | null;

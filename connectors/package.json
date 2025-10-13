@@ -23,12 +23,12 @@
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@microsoft/microsoft-graph-types": "^2.40.0",
     "@notionhq/client": "^2.2.15",
-    "@slack/web-api": "^7.9.3",
-    "@temporalio/activity": "^1.11.8",
-    "@temporalio/client": "^1.11.8",
-    "@temporalio/common": "^1.11.8",
-    "@temporalio/worker": "^1.11.8",
-    "@temporalio/workflow": "^1.11.8",
+    "@slack/web-api": "^7.10.0",
+    "@temporalio/activity": "^1.12.1",
+    "@temporalio/client": "^1.12.1",
+    "@temporalio/common": "^1.12.1",
+    "@temporalio/worker": "^1.12.1",
+    "@temporalio/workflow": "^1.12.1",
     "@types/cls-hooked": "^4.3.9",
     "@types/express": "^4.17.17",
     "@types/fs-extra": "^11.0.1",
@@ -73,6 +73,7 @@
     "tar": "^6.2.0",
     "tar-stream": "^3.1.7",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
+    "tweetnacl": "^1.0.3",
     "turndown": "^7.1.2",
     "undici": "^6.21.1",
     "uuid": "^9.0.0",
@@ -99,6 +100,15 @@
     "tsx": "^4.10.2",
     "typescript": "^5.4.5",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.0.8"
+    "vitest": "^3.0.8",
+    "lint-staged": "^16.1.6"
+  },
+  "lint-staged": {
+    "**/*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}": [
+      "prettier --check"
+    ],
+    "**/*.{js,jsx,ts,tsx}": [
+      "eslint"
+    ]
   }
 }

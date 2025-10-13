@@ -24,11 +24,13 @@ export async function runNotionWorker() {
     maxConcurrentActivityTaskExecutions: 24,
     maxCachedWorkflows: 200,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
-        },
-        () => new NotionCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "notion"),
+        }),
+        () => ({
+          inbound: new NotionCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {
@@ -57,11 +59,13 @@ export async function runNotionGarbageCollectWorker() {
     maxConcurrentActivityTaskExecutions: 24,
     maxCachedWorkflows: 200,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
-        },
-        () => new NotionCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "notion"),
+        }),
+        () => ({
+          inbound: new NotionCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {

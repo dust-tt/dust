@@ -33,6 +33,7 @@ export interface SearchMembersPaginationParams {
 }
 
 const USER_METADATA_COMMA_SEPARATOR = ",";
+const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -192,6 +193,12 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  async updateImage(imageUrl: string | null) {
+    return this.update({
+      imageUrl,
+    });
+  }
+
   async updateInfo(
     username: string,
     firstName: string,
@@ -294,23 +301,43 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
-  async appendToMetadata(key: string, value: string) {
-    const metadata = await UserMetadataModel.findOne({
-      where: {
-        userId: this.id,
-        key,
-      },
-    });
+  async getMetadataAsArray(key: string): Promise<string[]> {
+    const metadata = await this.getMetadata(key);
+    if (!metadata) {
+      return [];
+    }
+
+    return metadata.value
+      .split(USER_METADATA_COMMA_SEPARATOR)
+      .map((v) => v.replaceAll(USER_METADATA_COMMA_REPLACEMENT, ","));
+  }
+
+  async upsertMetadataArray(key: string, value: string) {
+    const valueWithCommaReplaced = value.replaceAll(
+      ",",
+      USER_METADATA_COMMA_REPLACEMENT
+    );
+    const metadata = await this.getMetadata(key);
     if (!metadata) {
       await UserMetadataModel.create({
         userId: this.id,
         key,
-        value,
+        value: valueWithCommaReplaced,
       });
       return;
     }
-    const newValue = `${metadata.value}${USER_METADATA_COMMA_SEPARATOR}${value}`;
-    await metadata.update({ value: newValue });
+
+    const metadataArray = metadata.value
+      .split(USER_METADATA_COMMA_SEPARATOR)
+      .map((v) => v.replace(USER_METADATA_COMMA_REPLACEMENT, ","));
+
+    if (!metadataArray.includes(valueWithCommaReplaced)) {
+      metadataArray.push(valueWithCommaReplaced);
+    }
+
+    await metadata.update({
+      value: metadataArray.join(USER_METADATA_COMMA_SEPARATOR),
+    });
   }
 
   async deleteAllMetadata() {
@@ -318,6 +345,29 @@ export class UserResource extends BaseResource<UserModel> {
       where: {
         userId: this.id,
       },
+    });
+  }
+
+  async getToolValidations(): Promise<
+    { mcpServerId: string; toolNames: string[] }[]
+  > {
+    const metadata = await UserMetadataModel.findAll({
+      where: {
+        userId: this.id,
+        key: {
+          [Op.like]: "toolsValidations:%",
+        },
+      },
+    });
+
+    return metadata.map((m) => {
+      const mcpServerId = m.key.replace("toolsValidations:", "");
+      const toolNames = m.value
+        .split(USER_METADATA_COMMA_SEPARATOR)
+        .map((v) => v.replaceAll(USER_METADATA_COMMA_REPLACEMENT, ","))
+        .filter((name) => name.length > 0);
+
+      return { mcpServerId, toolNames };
     });
   }
 
@@ -373,12 +423,31 @@ export class UserResource extends BaseResource<UserModel> {
     },
     paginationParams: SearchMembersPaginationParams
   ): Promise<{ users: UserResource[]; total: number }> {
-    const userWhereClause: any = {};
+    const userWhereClause: WhereOptions<UserModel> = {};
     if (options.email) {
       userWhereClause.email = {
         [Op.iLike]: `%${options.email}%`,
       };
     }
+
+    const memberships = await MembershipModel.findAll({
+      where: {
+        workspaceId: owner.id,
+        startAt: { [Op.lte]: new Date() },
+        endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+      },
+    });
+    userWhereClause.id = {
+      [Op.in]: memberships.map((m) => m.userId),
+    };
+
+    // Create a map of userId to membership for consistent lookup.
+    const membershipsByUserId = new Map<number, MembershipModel>();
+    memberships.forEach((membership) => {
+      if (!membershipsByUserId.has(membership.userId)) {
+        membershipsByUserId.set(membership.userId, membership);
+      }
+    });
 
     const { count, rows: users } = await UserModel.findAndCountAll({
       where: userWhereClause,
@@ -387,11 +456,10 @@ export class UserResource extends BaseResource<UserModel> {
           model: MembershipModel,
           as: "memberships",
           where: {
-            workspaceId: owner.id,
-            startAt: { [Op.lte]: new Date() },
-            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+            id: {
+              [Op.in]: memberships.map((m) => m.id),
+            },
           },
-          required: true,
         },
       ],
       order: [[paginationParams.orderColumn, paginationParams.orderDirection]],
@@ -400,7 +468,16 @@ export class UserResource extends BaseResource<UserModel> {
     });
 
     return {
-      users: users.map((u) => new UserResource(UserModel, u.get())),
+      users: users.map((u) => {
+        const userBlob = u.get();
+        const membership = membershipsByUserId.get(u.id);
+
+        // Augment user with their membership in the workspace.
+        return new UserResource(UserModel, {
+          ...userBlob,
+          ...(membership && { memberships: [membership] }),
+        });
+      }),
       total: count,
     };
   }

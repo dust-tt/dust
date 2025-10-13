@@ -1064,6 +1064,7 @@ impl LLM for MistralAILLM {
             usage: c.usage.map(|u| LLMTokenUsage {
                 completion_tokens: u.completion_tokens.unwrap_or(0),
                 prompt_tokens: u.prompt_tokens,
+                cached_tokens: None,
                 reasoning_tokens: None,
             }),
             provider_request_id: request_id,

@@ -3,7 +3,10 @@ import {
   globalAgentGuidelines,
   globalAgentWebSearchGuidelines,
 } from "@app/lib/api/assistant/global_agents/guidelines";
-import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";
+import {
+  _getDefaultWebActionsForGlobalAgent,
+  _getInteractiveContentToolConfiguration,
+} from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -15,7 +18,9 @@ import {
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
+  GPT_5_MINI_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
+  GPT_5_NANO_MODEL_CONFIG,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
@@ -33,9 +38,11 @@ import {
 export function _getGPT35TurboGlobalAgent({
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "active";
 
@@ -65,9 +72,13 @@ export function _getGPT35TurboGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -80,10 +91,12 @@ export function _getGPT4GlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
 
@@ -120,9 +133,13 @@ export function _getGPT4GlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -135,10 +152,12 @@ export function _getGPT5GlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
 
@@ -160,7 +179,81 @@ export function _getGPT5GlobalAgent({
     versionAuthorId: null,
     name: metadata.name,
     description: metadata.description,
-    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    instructions:
+      `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}\n` +
+      "Keep the search depth low and aim to provide an answer quickly, with a maximum of 3 steps of tool use.",
+    pictureUrl: metadata.pictureUrl,
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: GPT_5_MODEL_CONFIG.providerId,
+      modelId: GPT_5_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+      /**
+       * WARNING: Because the default in ChatGPT is no reasoning, we do the same
+       */
+      reasoningEffort: "none",
+    },
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
+    ],
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    visualizationEnabled: false,
+    templateId: null,
+    requestedGroupIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+}
+
+/**
+ * GPT5 thinking, is gpt5 with reasoning enabled
+ * In chatGPT the default is no reasoning, so we do the same!
+ */
+export function _getGPT5ThinkingGlobalAgent({
+  auth,
+  settings,
+  webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
+}): AgentConfigurationType {
+  let status: AgentConfigurationStatus = "active";
+
+  if (settings) {
+    status = settings.status;
+  }
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  const sId = GLOBAL_AGENTS_SID.GPT5_THINKING;
+  const metadata = getGlobalAgentMetadata(sId);
+
+  return {
+    id: -1,
+    sId,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: metadata.name,
+    description: metadata.description,
+    instructions:
+      `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}\n` +
+      "Unless the user explicitly requests deeper research, keep the search depth low and" +
+      " aim to provide an answer quickly, with a maximum of 3 steps of tool use.",
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
@@ -176,9 +269,142 @@ export function _getGPT5GlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
+    templateId: null,
+    requestedGroupIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+}
+
+export function _getGPT5MiniGlobalAgent({
+  auth,
+  settings,
+  webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
+}): AgentConfigurationType {
+  let status: AgentConfigurationStatus = "active";
+
+  if (settings) {
+    status = settings.status;
+  }
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  const sId = GLOBAL_AGENTS_SID.GPT5_MINI;
+  const metadata = getGlobalAgentMetadata(sId);
+
+  return {
+    id: -1,
+    sId,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: metadata.name,
+    description: metadata.description,
+    instructions:
+      `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}\n` +
+      "Unless the user explicitly requests deeper research, keep the search depth low and" +
+      " aim to provide an answer quickly, with a maximum of 3 steps of tool use.",
+    pictureUrl: metadata.pictureUrl,
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+      modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+      reasoningEffort: GPT_5_MINI_MODEL_CONFIG.defaultReasoningEffort,
+    },
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
+    ],
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    visualizationEnabled: false,
+    templateId: null,
+    requestedGroupIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+}
+export function _getGPT5NanoGlobalAgent({
+  auth,
+  settings,
+  webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
+}): AgentConfigurationType {
+  let status: AgentConfigurationStatus = "active";
+
+  if (settings) {
+    status = settings.status;
+  }
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  const sId = GLOBAL_AGENTS_SID.GPT5_NANO;
+  const metadata = getGlobalAgentMetadata(sId);
+
+  return {
+    id: -1,
+    sId,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: metadata.name,
+    description: metadata.description,
+    instructions:
+      `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}\n` +
+      "Unless the user explicitly requests deeper research, keep the search depth low and" +
+      " aim to provide an answer quickly, with a maximum of 3 steps of tool use.",
+    pictureUrl: metadata.pictureUrl,
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: GPT_5_NANO_MODEL_CONFIG.providerId,
+      modelId: GPT_5_NANO_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+      reasoningEffort: GPT_5_NANO_MODEL_CONFIG.defaultReasoningEffort,
+    },
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
+    ],
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -191,10 +417,12 @@ export function _getO3MiniGlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
 
@@ -232,9 +460,13 @@ export function _getO3MiniGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -247,10 +479,12 @@ export function _getO1GlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -282,6 +516,10 @@ export function _getO1GlobalAgent({
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
+      }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -342,10 +580,12 @@ export function _getO1HighReasoningGlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -379,6 +619,10 @@ export function _getO1HighReasoningGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: false,
@@ -394,10 +638,12 @@ export function _getO3GlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -430,9 +676,13 @@ export function _getO3GlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],

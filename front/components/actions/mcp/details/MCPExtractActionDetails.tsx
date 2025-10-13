@@ -11,8 +11,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
-import type { MCPActionType } from "@app/lib/actions/mcp";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   isExtractQueryResourceType,
   isExtractResultResourceType,
@@ -20,7 +19,7 @@ import {
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 
 interface MCPExtractActionQueryProps {
-  action: MCPActionType;
+  toolParams: Record<string, unknown>;
   queryResource?: {
     text: string;
     mimeType: string;
@@ -41,23 +40,26 @@ interface MCPExtractActionResultsProps {
 }
 
 export function MCPExtractActionDetails({
-  action,
-  defaultOpen,
-}: MCPActionDetailsProps) {
-  const queryResource = action.output
+  toolParams,
+  toolOutput,
+  viewType,
+}: ToolExecutionDetailsProps) {
+  const queryResource = toolOutput
     ?.filter(isExtractQueryResourceType)
     .map((o) => o.resource)?.[0];
 
-  const resultResource = action.output
+  const resultResource = toolOutput
     ?.filter(isExtractResultResourceType)
     .map((o) => o.resource)?.[0];
 
-  const jsonSchema = action.params?.jsonSchema as JSONSchema | undefined;
+  const jsonSchema = toolParams?.jsonSchema as JSONSchema | undefined;
 
   return (
     <ActionDetailsWrapper
-      actionName="Extract data"
-      defaultOpen={defaultOpen}
+      viewType={viewType}
+      actionName={
+        viewType === "conversation" ? "Extracting data" : "Extract data"
+      }
       visual={ScanIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
@@ -66,7 +68,7 @@ export function MCPExtractActionDetails({
             Query
           </span>
           <MCPExtractActionQuery
-            action={action}
+            toolParams={toolParams}
             queryResource={queryResource}
           />
         </div>
@@ -94,29 +96,31 @@ export function MCPExtractActionDetails({
           </div>
         )}
 
-        <div>
-          <CollapsibleComponent
-            rootProps={{ defaultOpen }}
-            triggerChildren={
-              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                Results
-              </span>
-            }
-            contentChildren={
-              <MCPExtractActionResults resultResource={resultResource} />
-            }
-          />
-        </div>
+        {viewType === "sidebar" && (
+          <div>
+            <CollapsibleComponent
+              rootProps={{ defaultOpen: true }}
+              triggerChildren={
+                <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                  Results
+                </span>
+              }
+              contentChildren={
+                <MCPExtractActionResults resultResource={resultResource} />
+              }
+            />
+          </div>
+        )}
       </div>
     </ActionDetailsWrapper>
   );
 }
 
 function MCPExtractActionQuery({
-  action,
+  toolParams,
   queryResource,
 }: MCPExtractActionQueryProps) {
-  const timeFrameParam = action.params?.timeFrame;
+  const timeFrameParam = toolParams?.timeFrame;
 
   if (queryResource) {
     return (

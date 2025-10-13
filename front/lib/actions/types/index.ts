@@ -1,7 +1,7 @@
 import type {
   ClientSideMCPServerConfigurationType,
+  LightMCPToolConfigurationType,
   MCPServerConfigurationType,
-  MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type {
   AgentConfigurationType,
@@ -11,9 +11,10 @@ import type {
 } from "@app/types";
 
 export type StepContext = {
-  retrievalTopK: number;
-  citationsOffset: number;
   citationsCount: number;
+  citationsOffset: number;
+  resumeState: Record<string, unknown> | null;
+  retrievalTopK: number;
   websearchResultCount: number;
 };
 
@@ -22,15 +23,16 @@ export type ActionGeneratedFileType = {
   title: string;
   contentType: AllSupportedFileContentType;
   snippet: string | null;
+  hidden?: boolean;
 };
 
 export type AgentLoopRunContextType = {
   agentConfiguration: AgentConfigurationType;
-  actionConfiguration: MCPToolConfigurationType;
+  agentMessage: AgentMessageType;
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
   conversation: ConversationType;
-  agentMessage: AgentMessageType;
   stepContext: StepContext;
+  toolConfiguration: LightMCPToolConfigurationType;
 };
 
 export type AgentLoopListToolsContextType = {

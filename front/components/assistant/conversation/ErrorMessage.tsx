@@ -9,11 +9,11 @@ import {
 } from "@dust-tt/sparkle";
 
 import { useSubmitFunction } from "@app/lib/client/utils";
-import type { ErrorContent } from "@app/types";
+import type { GenericErrorContent } from "@app/types";
 import { isAgentErrorCategory } from "@app/types";
 
 interface ErrorMessageProps {
-  error: ErrorContent;
+  error: GenericErrorContent;
   retryHandler: () => void;
 }
 
@@ -36,6 +36,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
 
   return (
     <ContentMessage
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       title={`${error.metadata?.errorTitle || "Agent error"}`}
       variant={errorIsRetryable ? "golden" : "warning"}
       className="flex flex-col gap-3"

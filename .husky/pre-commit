@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Check if the current branch is 'main'
-current_branch=$(git symbolic-ref --short HEAD)
+current_branch=$(git rev-parse --abbrev-ref HEAD)
 if [ "$current_branch" = "main" ]; then
     # Check if the flag is set
     if [ -z "$ALLOW_MAIN_COMMIT" ]; then
@@ -37,8 +37,8 @@ directories=("front" "connectors")
 for directory in "${directories[@]}"; do
     if git diff --cached --name-only | grep -qE "^$directory/"; then
         # Run the linter on root_path concatenated with the directory
-        if ! npm run lint --if-present --prefix $root_path/$directory; then
-            echo "Linting failed. Please fix the issues before committing."
+        if ! npm run lint:test-filenames --if-present --prefix $root_path/$directory; then
+            echo "Linting test-filenames failed. Please fix the issues before committing."
             exit 1
         fi
         if ! npm run tsc --if-present --prefix $root_path/$directory; then
@@ -56,7 +56,7 @@ for directory in "${directories[@]}"; do
             fi
         fi
 
-        if ! npm run format:check --if-present --prefix $root_path/$directory; then
+        if ! npx lint-staged; then
             echo "Formatting check failed. Please fix the issues before committing."
             exit 1
         fi

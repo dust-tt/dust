@@ -12,7 +12,7 @@ import {
   TextArea,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { capitalize } from "lodash";
+import capitalize from "lodash/capitalize";
 import { LockIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useContext, useMemo, useState } from "react";
@@ -28,6 +28,7 @@ import TrackerBuilderDataSourceModal from "@app/components/trackers/TrackerBuild
 import { TrackerDataSourceSelectedTree } from "@app/components/trackers/TrackerDataSourceSelectedTree";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isConnectorTypeTrackable } from "@app/lib/connector_providers";
+import { useModels } from "@app/lib/swr/models";
 import { isEmailValid } from "@app/lib/utils";
 import type {
   APIError,
@@ -60,6 +61,7 @@ export const TrackerBuilder = ({
   initialTrackerId: string | null;
 }) => {
   const router = useRouter();
+  const { models } = useModels({ owner });
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
 
@@ -361,7 +363,7 @@ export const TrackerBuilder = ({
                   setEdited(true);
                 }
               }}
-              models={[]}
+              models={models}
             />
             {initialTrackerId && (
               <Button
@@ -390,6 +392,7 @@ export const TrackerBuilder = ({
             <div className="md:col-span-1">
               <Input
                 label="Name"
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 value={tracker.name || ""}
                 onChange={(e) => {
                   setTracker((t) => ({
@@ -410,6 +413,7 @@ export const TrackerBuilder = ({
             <div className="md:col-span-2">
               <Input
                 label="Description"
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 value={tracker.description || ""}
                 onChange={(e) => {
                   setTracker((t) => ({
@@ -451,6 +455,7 @@ export const TrackerBuilder = ({
                       label={
                         TRACKER_FREQUENCIES.find(
                           (f) => f.value === tracker.frequency
+                          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                         )?.label || "Select Frequency"
                       }
                       variant="outline"
@@ -541,6 +546,7 @@ export const TrackerBuilder = ({
             <Label className="mb-1">Instructions</Label>
             <TextArea
               placeholder="Describe what changes or updates you want to track (be as specific as possible)."
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               value={tracker.prompt || ""}
               onChange={(e) => {
                 setTracker((t) => ({

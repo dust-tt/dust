@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dust",
-  "version": "0.0.22",
+  "version": "0.0.27",
   "description": "Get more done, faster, with the power of your agents at your fingertips.",
   "icons": {
     "16": "images/dust16.png",

@@ -30,6 +30,14 @@ import type { WithAPIErrorResponse } from "@app/types";
  *         description: ID of the agent configuration
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: variant
+ *         required: false
+ *         description: Configuration variant to retrieve. 'light' returns basic config without actions, 'full' includes complete actions/tools configuration
+ *         schema:
+ *           type: string
+ *           enum: [light, full]
+ *           default: light
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -109,7 +117,7 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const { sId } = req.query;
+  const { sId, variant } = req.query;
 
   if (typeof sId !== "string") {
     return apiError(req, res, {
@@ -121,9 +129,15 @@ async function handler(
     });
   }
 
+  // Validate variant parameter if provided
+  const configVariant =
+    typeof variant === "string" && (variant === "light" || variant === "full")
+      ? variant
+      : "light";
+
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: sId,
-    variant: "light",
+    variant: configVariant,
   });
 
   if (!agentConfiguration) {

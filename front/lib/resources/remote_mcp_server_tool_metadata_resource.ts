@@ -6,6 +6,7 @@ import type {
 } from "sequelize";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
@@ -84,14 +85,16 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
 
   static async fetchByServerId(
     auth: Authenticator,
-    serverId: number,
+    serverSId: string,
     options?: ResourceFindOptions<RemoteMCPServerToolMetadataModel>
   ): Promise<RemoteMCPServerToolMetadataResource[]> {
+    const { serverType, id: serverId } = getServerTypeAndIdFromSId(serverSId);
     return this.baseFetch(auth, {
       ...options,
-      where: {
-        remoteMCPServerId: serverId,
-      },
+      where:
+        serverType === "remote"
+          ? { remoteMCPServerId: serverId }
+          : { internalMCPServerId: serverSId },
     });
   }
 
@@ -126,12 +129,12 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
   static async updateOrCreateSettings(
     auth: Authenticator,
     {
-      serverId,
+      serverSId,
       toolName,
       permission,
       enabled,
     }: {
-      serverId: number;
+      serverSId: string;
       toolName: string;
       permission: MCPToolStakeLevelType;
       enabled: boolean;
@@ -147,8 +150,11 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
       );
     }
 
+    const { serverType, id: serverId } = getServerTypeAndIdFromSId(serverSId);
     const [toolMetadata] = await this.model.upsert({
-      remoteMCPServerId: serverId,
+      ...(serverType === "remote"
+        ? { remoteMCPServerId: serverId }
+        : { internalMCPServerId: serverSId }),
       toolName,
       permission,
       enabled,
@@ -192,13 +198,15 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
   // toJSON
 
   toJSON(): {
-    remoteMCPServerId: number;
+    remoteMCPServerId?: number;
+    internalMCPServerId?: string;
     toolName: string;
     permission: MCPToolStakeLevelType;
     enabled: boolean;
   } {
     return {
       remoteMCPServerId: this.remoteMCPServerId,
+      internalMCPServerId: this.internalMCPServerId,
       toolName: this.toolName,
       permission: this.permission,
       enabled: this.enabled,

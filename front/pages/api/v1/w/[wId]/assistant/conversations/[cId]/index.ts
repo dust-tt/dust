@@ -1,11 +1,14 @@
 import type { GetConversationResponseType } from "@dust-tt/client";
+import { PatchConversationRequestSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { PatchConversationResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type { WithAPIErrorResponse } from "@app/types";
 
 /**
@@ -48,11 +51,64 @@ import type { WithAPIErrorResponse } from "@app/types";
  *         description: Method not supported. Only GET is expected.
  *       500:
  *         description: Internal Server Error.
+ *   patch:
+ *     summary: Mark a conversation as read
+ *     description: Mark a conversation as read in the workspace identified by {wId}.
+ *     tags:
+ *       - Conversations
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               read:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Conversation marked as read successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       400:
+ *         description: Bad Request. Invalid or missing parameters.
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ *       404:
+ *         description: Conversation not found.
+ *       405:
+ *         description: Method not supported. Only GET or PATCH is expected.
+ *       500:
+ *         description: Internal Server Error.
  */
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetConversationResponseType>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      GetConversationResponseType | PatchConversationResponseBody
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
   const { cId } = req.query;
@@ -76,8 +132,27 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      res.status(200).json({ conversation });
-      return;
+      return res.status(200).json({ conversation });
+    }
+
+    case "PATCH": {
+      const r = PatchConversationRequestSchema.safeParse(req.body);
+      if (!r.success) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${r.error.message}`,
+          },
+        });
+      }
+      const { read } = r.data;
+      if (read) {
+        await ConversationResource.markAsRead(auth, {
+          conversation,
+        });
+      }
+      return res.status(200).json({ success: true });
     }
 
     default:
@@ -92,5 +167,5 @@ async function handler(
 }
 
 export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { GET: "read:conversation" },
+  requiredScopes: { GET: "read:conversation", PATCH: "update:conversation" },
 });

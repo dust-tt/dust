@@ -30,6 +30,7 @@ async function handler(
       const { role, kind } = req.query;
 
       if (
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         (role && typeof role !== "string") ||
         (kind && typeof kind !== "string")
       ) {

@@ -14,14 +14,15 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ProviderWorkflowError } from "@connectors/lib/error";
 import { SlackChannel } from "@connectors/lib/models/slack";
+import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { ConnectorPermission } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
+import type { ConnectorPermission, ModelId } from "@connectors/types";
 import {
   cacheWithRedis,
   INTERNAL_MIME_TYPES,
+  normalizeError,
   withRetries,
 } from "@connectors/types";
 
@@ -254,6 +255,36 @@ export async function joinChannel(
   }
 }
 
+export async function joinChannelWithRetries(
+  connectorId: ModelId,
+  slackChannelId: string
+): Promise<
+  Result<
+    { result: "ok" | "already_joined" | "is_archived"; channel: Channel },
+    Error
+  >
+> {
+  try {
+    return await withRetries(
+      logger,
+      async (connectorId: ModelId, slackChannelId: string) => {
+        const result = await joinChannel(connectorId, slackChannelId);
+        if (result.isErr()) {
+          // Retry on any error, not just rate limit errors
+          throw result.error; // This will trigger a retry
+        }
+        return result;
+      },
+      {
+        retries: 3,
+        delayBetweenRetriesMs: 10000, // 10 seconds between retries
+      }
+    )(connectorId, slackChannelId);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
 /**
  * Slack API rate limit TLDR:
  * Slack has different rate limits for different endpoints.
@@ -265,7 +296,7 @@ export async function joinChannel(
  */
 
 /**
- *  Call cached to avoid rate limits
+ *  Call cache to avoid rate limits
  *  ON RATE LIMIT ERRORS PERTAINING TO THIS FUNCTION:
  * - the next step will be to paginate (overkill at time of writing)
  * - see issue https://github.com/dust-tt/tasks/issues/1655
@@ -281,6 +312,90 @@ export const getChannels = cacheWithRedis(
     ttlMs: 5 * 60 * 1000,
   }
 );
+
+/**
+ * Fetch channels that the bot is a member of using users.conversations API.
+ * This is more efficient than getChannels for bot connectors as it only fetches
+ * channels the bot has joined, avoiding rate limits from fetching all workspace channels.
+ *
+ * @param slackClient
+ * @param connectorId
+ * @returns Promise<Channel[]> Array of channels the bot is a member of
+ */
+export const getJoinedChannels = cacheWithRedis(
+  _getJoinedChannelsUncached,
+  (slackClient, connectorId) => `slack-joined-channels-${connectorId}`,
+  {
+    ttlMs: 5 * 60 * 1000,
+  }
+);
+
+export async function getAllChannels(
+  slackClient: WebClient,
+  connectorId: ModelId
+): Promise<Channel[]> {
+  return getChannels(slackClient, connectorId, false);
+}
+
+async function _getJoinedChannelsUncached(
+  slackClient: WebClient,
+  connectorId: ModelId
+): Promise<Channel[]> {
+  const allChannels = [];
+  let nextCursor: string | undefined = undefined;
+  let nbCalls = 0;
+
+  do {
+    reportSlackUsage({
+      connectorId,
+      method: "users.conversations",
+      useCase: "bot",
+    });
+
+    const response = await withSlackErrorHandling(() =>
+      slackClient.users.conversations({
+        types: "public_channel,private_channel",
+        exclude_archived: true,
+        limit: 999, // Maximum allowed by Slack API
+        cursor: nextCursor,
+      })
+    );
+
+    nbCalls++;
+
+    logger.info(
+      {
+        connectorId,
+        returnedChannels: allChannels.length,
+        currentCursor: nextCursor,
+        nbCalls,
+      },
+      `[Slack] users.conversations called for getJoinedChannels (${nbCalls} calls)`
+    );
+
+    nextCursor = response?.response_metadata?.next_cursor;
+
+    if (response.error) {
+      throw new Error(`Failed to fetch joined channels: ${response.error}`);
+    }
+
+    if (response.channels === undefined) {
+      throw new Error(
+        "The channels list was undefined." +
+          response?.response_metadata?.next_cursor +
+          ""
+      );
+    }
+
+    for (const channel of response.channels) {
+      if (channel && channel.id) {
+        allChannels.push(channel);
+      }
+    }
+  } while (nextCursor);
+
+  return allChannels;
+}
 
 async function _getChannelsUncached(
   slackClient: WebClient,
@@ -370,7 +485,7 @@ export async function getChannelsToSync(
   connectorId: number
 ) {
   const [remoteChannels, localChannels] = await Promise.all([
-    getChannels(slackClient, connectorId, true),
+    getJoinedChannels(slackClient, connectorId),
     SlackChannel.findAll({
       where: {
         connectorId,
@@ -440,7 +555,7 @@ export async function migrateChannelsFromLegacyBotToNewBot(
 
   // Fetch all channels that the deprecated bot is a member of.
   const channels = await withSlackErrorHandling(() =>
-    getChannels(slackClient, slackConnector.id, true)
+    getJoinedChannels(slackClient, slackConnector.id)
   );
   const publicChannels = channels.filter((c) => !c.is_private);
 
@@ -457,6 +572,8 @@ export async function migrateChannelsFromLegacyBotToNewBot(
       continue;
     }
 
+    await heartbeat();
+
     childLogger.info(
       {
         channelId: channel.id,
@@ -467,21 +584,10 @@ export async function migrateChannelsFromLegacyBotToNewBot(
     const { id: channelId } = channel;
 
     // Join the new bot to the channel. Wrap with retries to handle rate limits.
-    const joinRes = await withRetries(
-      childLogger,
-      async (slackBotConnectorId: ModelId, channelId: string) => {
-        const joinRes = await joinChannel(slackBotConnectorId, channelId);
-        if (joinRes.isErr()) {
-          throw joinRes.error;
-        }
-
-        return joinRes;
-      },
-      {
-        retries: 10,
-        delayBetweenRetriesMs: 10000,
-      }
-    )(slackBotConnector.id, channelId);
+    const joinRes = await joinChannelWithRetries(
+      slackBotConnector.id,
+      channelId
+    );
 
     if (joinRes.isErr()) {
       childLogger.error(

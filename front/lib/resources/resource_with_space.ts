@@ -106,6 +106,7 @@ export abstract class ResourceWithSpace<
             throw new Error("Unreachable: space not found.");
           }
 
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const includedResults = (includes || []).reduce<IncludeType>(
             (acc, current) => {
               if (
@@ -119,6 +120,10 @@ export abstract class ResourceWithSpace<
                   const includedModel = b[key as keyof typeof b];
                   if (includedModel instanceof Model) {
                     acc[key] = includedModel.get();
+                  } else if (Array.isArray(includedModel)) {
+                    acc[key] = includedModel.map((m) =>
+                      m.get()
+                    ) as IncludeType[keyof IncludeType];
                   }
                 }
               }

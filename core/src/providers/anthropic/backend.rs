@@ -97,6 +97,7 @@ impl AnthropicBackend for DirectAnthropicBackend {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VertexSupportedModel {
     Claude4Sonnet20250514,
+    Claude45Sonnet20250929,
 }
 
 impl FromStr for VertexSupportedModel {
@@ -105,6 +106,7 @@ impl FromStr for VertexSupportedModel {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "claude-4-sonnet-20250514" => Ok(Self::Claude4Sonnet20250514),
+            "claude-sonnet-4-5-20250929" => Ok(Self::Claude45Sonnet20250929),
             _ => Err(anyhow::anyhow!("Model {} not supported on Vertex AI", s)),
         }
     }
@@ -114,6 +116,7 @@ impl VertexSupportedModel {
     pub fn vertex_model_name(self) -> &'static str {
         match self {
             Self::Claude4Sonnet20250514 => "claude-sonnet-4@20250514",
+            Self::Claude45Sonnet20250929 => "claude-sonnet-4-5@20250929",
         }
     }
 }
@@ -168,12 +171,10 @@ impl AnthropicBackend for VertexAnthropicBackend {
 
         let location = match credentials.get("GOOGLE_CLOUD_LOCATION") {
             Some(location) => location.clone(),
-            None => match tokio::task::spawn_blocking(|| std::env::var("GOOGLE_CLOUD_LOCATION"))
+            None => tokio::task::spawn_blocking(|| std::env::var("GOOGLE_CLOUD_LOCATION"))
                 .await?
-            {
-                Ok(location) => location,
-                Err(_) => "us-east5".to_string(), // Default fallback region.
-            },
+                // Default region our credits are allocated on.
+                .unwrap_or_else(|_| "us-south1".to_string()),
         };
 
         self.api_key = Some(api_key.clone());
@@ -203,9 +204,14 @@ impl AnthropicBackend for VertexAnthropicBackend {
             "Fallback to Vertex Anthropic"
         );
 
+        let base_url = match location.as_str() {
+            "global" => "https://aiplatform.googleapis.com".to_string(),
+            _ => format!("https://{}-aiplatform.googleapis.com", location),
+        };
+
         let uri = format!(
-            "https://{}-aiplatform.googleapis.com/v1/projects/{}/locations/{}/publishers/anthropic/models/{}:streamRawPredict",
-            location, project_id, location, vertex_model_id
+            "{}/v1/projects/{}/locations/{}/publishers/anthropic/models/{}:streamRawPredict",
+            base_url, project_id, location, vertex_model_id
         );
         Ok(uri.parse()?)
     }

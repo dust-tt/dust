@@ -21,6 +21,9 @@ jobs:
           node-version: 20.13.0
           cache: "npm"
           cache-dependency-path: ./extension/package-lock.json
+      - name: Build SDK/JS
+        working-directory: sdks/js
+        run: npm install && npm run build
       - working-directory: extension
         run: npm install && npm run lint && npm run format:check && npm run package:chrome:production
         env:

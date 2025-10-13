@@ -89,8 +89,10 @@ async function handler(
       "zendeskTicketTagsToExclude",
       "zendeskOrganizationTagsToInclude",
       "zendeskOrganizationTagsToExclude",
+      "zendeskCustomFieldsConfig",
       "gongRetentionPeriodDays",
       "gongTrackersEnabled",
+      "gongAccountsEnabled",
       "privateIntegrationCredentialId",
     ].includes(configKey)
   ) {

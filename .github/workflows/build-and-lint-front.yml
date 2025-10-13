@@ -13,7 +13,7 @@ permissions:
   checks: write
 
 jobs:
-  all-checks:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -28,9 +28,9 @@ jobs:
       - name: Build SDK/JS
         working-directory: sdks/js
         run: npm install && npm run build
-      - name: Typecheck and Lint
+      - name: Build Front
         working-directory: front
-        run: npm ci && npx tsc --version && npm run tsc && npm run lint && npm run format:check && npm run docs:check
+        run: npm ci
       - name: Install Redis
         uses: chenjuneking/redis-setup-action@v1
         with:
@@ -62,3 +62,48 @@ jobs:
           flaky_summary: true
           group_suite: true
           check_name: Tests Report
+  tsc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20.13.0
+          cache: "npm"
+          cache-dependency-path: |
+            ./front/package-lock.json
+            ./types/package-lock.json
+            ./sdks/js/package-lock.json
+      - name: Build SDK/JS
+        working-directory: sdks/js
+        run: npm install && npm run build
+      - name: Build Front
+        working-directory: front
+        run: npm ci
+      - name: Typecheck
+        working-directory: front
+        run: npx tsc --version && npm run tsc
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20.13.0
+          cache: "npm"
+          cache-dependency-path: |
+            ./front/package-lock.json
+            ./types/package-lock.json
+            ./sdks/js/package-lock.json
+      - name: Install SDK/JS
+        working-directory: sdks/js
+        run: npm install
+      - name: Install Front
+        working-directory: front
+        run: npm install
+      - name: Lint
+        working-directory: front
+        run: npm run lint && npm run format:check
+      # - name: Validate API Doc
+      #   working-directory: front
+      #   run: npm run docs

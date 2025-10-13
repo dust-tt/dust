@@ -1,4 +1,4 @@
-import { createContext, useState } from "react";
+import { createContext, useCallback, useState } from "react";
 
 import type { AgentMention } from "@app/types";
 
@@ -6,9 +6,7 @@ export const InputBarContext = createContext<{
   animate: boolean;
   selectedAssistant: AgentMention | null;
   setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
-  setSelectedAssistant: React.Dispatch<
-    React.SetStateAction<AgentMention | null>
-  >;
+  setSelectedAssistant: (agentMention: AgentMention | null) => void;
 }>({
   animate: false,
   selectedAssistant: null,
@@ -23,13 +21,25 @@ export function InputBarProvider({ children }: { children: React.ReactNode }) {
   const [selectedAssistant, setSelectedAssistant] =
     useState<AgentMention | null>(null);
 
+  const setSelectedAssistantOuter = useCallback(
+    (agentMention: AgentMention | null) => {
+      if (agentMention) {
+        setAnimate(true);
+      } else {
+        setAnimate(false);
+      }
+      setSelectedAssistant(agentMention);
+    },
+    [setSelectedAssistant]
+  );
+
   return (
     <InputBarContext.Provider
       value={{
         animate,
         setAnimate,
         selectedAssistant,
-        setSelectedAssistant,
+        setSelectedAssistant: setSelectedAssistantOuter,
       }}
     >
       {children}

@@ -17,8 +17,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Activates the advanced search option: browse selected data like a file system",
     stage: "on_demand",
   },
-  agent_builder_v2: {
-    description: "Version 2 of the agent builder interface (wip)",
+  agent_to_yaml: {
+    description: "Export and Import agents to/from YAML format",
     stage: "dust_only",
   },
   agent_builder_instructions_autocomplete: {
@@ -32,6 +32,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   co_edition: {
     description: "Collaborative editing features",
     stage: "dust_only",
+  },
+  confluence_tool: {
+    description: "Confluence MCP tool",
+    stage: "on_demand",
   },
   deepseek_feature: {
     description:
@@ -55,15 +59,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Prevent users from creating agents, allowing only admins and builders",
     stage: "on_demand",
   },
-  exploded_tables_query: {
-    description: "Enhanced table querying with exploded views",
-    stage: "on_demand",
-  },
-  interactive_content_server: {
-    description:
-      "Interactive content MCP server - gives access to the new visualization layout",
-    stage: "on_demand",
-  },
   google_ai_studio_experimental_models_feature: {
     description: "Access to experimental Google AI Studio models",
     stage: "on_demand",
@@ -76,17 +71,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Allow indexing of private Slack channels",
     stage: "on_demand",
   },
-  jira_tool: {
-    description: "Jira MCP tool",
-    stage: "rolling_out",
-  },
   labs_mcp_actions_dashboard: {
     description: "MCP actions dashboard in Labs section",
     stage: "on_demand",
   },
   labs_trackers: {
-    description: "Tracker feature (Labs)",
-    stage: "on_demand",
+    description:
+      "Tracker feature. Check with Henry or eng oncall before activating to a new workspace.",
+    stage: "rolling_out",
   },
   labs_transcripts: {
     description: "Transcript feature (Labs)",
@@ -106,6 +98,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   openai_o1_high_reasoning_feature: {
     description: "Access to OpenAI o1 high reasoning model",
+    stage: "on_demand",
+  },
+  openai_usage_mcp: {
+    description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
   },
   salesforce_synced_queries: {
@@ -130,6 +126,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
   },
+  noop_model_feature: {
+    description: "Access to noop model in the agent builder",
+    stage: "dust_only",
+  },
   monday_tool: {
     description: "Monday MCP tool",
     stage: "rolling_out",
@@ -138,21 +138,59 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Freshservice MCP tool",
     stage: "rolling_out",
   },
-  async_loop: {
-    description: "Asynchronous loop for conversation processing",
-    stage: "dust_only",
-  },
   agent_management_tool: {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",
   },
-  jit_tools: {
-    description: "Allow users to add tools to conversations",
+  research_agent: {
+    description: "Activate @deepDive agent.",
+    stage: "rolling_out",
+  },
+  deep_research_as_a_tool: {
+    description: "Activate Deep Dive tool",
     stage: "dust_only",
   },
-  research_agent: {
-    description: "Activate @research agent.",
+  hootl_subscriptions: {
+    description: "Subscription feature for Schedule & Triggers.",
     stage: "dust_only",
+  },
+  hootl_dev_webhooks: {
+    description: "GitHub webhooks for Human Out Of The Loop (aka Triggers)",
+    stage: "dust_only",
+  },
+  slack_enhanced_default_agent: {
+    description:
+      "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
+    stage: "on_demand",
+  },
+  slideshow: {
+    description: "Slideshow MCP tool",
+    stage: "dust_only",
+  },
+  slack_message_splitting: {
+    description:
+      "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
+    stage: "dust_only",
+  },
+  hootl_webhooks: {
+    description: "Webhooks for Human Out Of The Loop (aka Triggers) / webhooks",
+    stage: "dust_only",
+  },
+  slack_bot_mcp: {
+    description: "Slack bot MCP server for workspace-level Slack integration",
+    stage: "on_demand",
+  },
+  slack_semantic_search: {
+    description: "Slack semantic search feature",
+    stage: "on_demand",
+  },
+  web_summarization: {
+    description: "AI-powered web page summarization in the web browser tool",
+    stage: "on_demand",
+  },
+  elevenlabs_tool: {
+    description: "Elevenlabs MCP tool for voice synthesis",
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

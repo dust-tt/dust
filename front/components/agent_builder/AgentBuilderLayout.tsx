@@ -11,6 +11,7 @@ import type { ImperativePanelHandle } from "react-resizable-panels";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 
 const COLLAPSED_RIGHT_PANEL_SIZE = 3;
 const MIN_EXPANDED_RIGHT_PANEL_SIZE = 20;
@@ -25,6 +26,7 @@ export function AgentBuilderLayout({
   leftPanel,
   rightPanel,
 }: AgentBuilderLayoutProps) {
+  const isMobile = useIsMobile();
   const { owner } = useAgentBuilderContext();
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
@@ -55,7 +57,7 @@ export function AgentBuilderLayout({
   };
 
   return (
-    <div className="flex h-screen flex-row">
+    <div className="h-dvh flex flex-row">
       <Head>
         <title>{`Dust - ${owner.name}`}</title>
       </Head>
@@ -69,47 +71,52 @@ export function AgentBuilderLayout({
         <main className="flex h-full w-full flex-col items-center">
           {loaded && (
             <div className="flex h-full w-full">
-              <ResizablePanelGroup
-                id="agent-builder-layout"
-                autoSaveId="agent-builder-layout"
-                direction="horizontal"
-                className="h-full w-full"
-              >
-                <ResizablePanel defaultSize={70} minSize={30}>
-                  <div className="h-full w-full overflow-y-auto px-6">
-                    {leftPanel}
-                  </div>
-                </ResizablePanel>
-
-                <ResizableHandle
-                  disabled={!isPreviewPanelOpen}
-                  onDragging={(isDragging) => setIsResizing(isDragging)}
-                />
-
-                <ResizablePanel
-                  ref={previewPanelRef}
-                  id="preview-panel"
-                  defaultSize={DEFAULT_RIGHT_PANEL_SIZE}
-                  minSize={
-                    isPreviewPanelOpen
-                      ? MIN_EXPANDED_RIGHT_PANEL_SIZE
-                      : COLLAPSED_RIGHT_PANEL_SIZE
-                  }
-                  collapsedSize={COLLAPSED_RIGHT_PANEL_SIZE}
-                  collapsible={true}
-                  onCollapse={handlePanelCollapse}
-                  onExpand={handlePanelExpand}
-                  className={
-                    !isResizing
-                      ? "overflow-hidden transition-all duration-300 ease-in-out"
-                      : "overflow-hidden"
-                  }
+              {isMobile ? (
+                leftPanel
+              ) : (
+                <ResizablePanelGroup
+                  id="agent-builder-layout"
+                  autoSaveId="agent-builder-layout"
+                  direction="horizontal"
+                  className="h-full w-full"
                 >
-                  <div className="h-full w-full overflow-y-auto">
-                    {rightPanel}
-                  </div>
-                </ResizablePanel>
-              </ResizablePanelGroup>
+                  <ResizablePanel defaultSize={70} minSize={30}>
+                    <div className="h-full w-full overflow-y-auto">
+                      {leftPanel}
+                    </div>
+                  </ResizablePanel>
+
+                  <ResizableHandle
+                    withHandle={isPreviewPanelOpen}
+                    disabled={!isPreviewPanelOpen}
+                    onDragging={(isDragging) => setIsResizing(isDragging)}
+                  />
+
+                  <ResizablePanel
+                    ref={previewPanelRef}
+                    id="preview-panel"
+                    defaultSize={DEFAULT_RIGHT_PANEL_SIZE}
+                    minSize={
+                      isPreviewPanelOpen
+                        ? MIN_EXPANDED_RIGHT_PANEL_SIZE
+                        : COLLAPSED_RIGHT_PANEL_SIZE
+                    }
+                    collapsedSize={COLLAPSED_RIGHT_PANEL_SIZE}
+                    collapsible={true}
+                    onCollapse={handlePanelCollapse}
+                    onExpand={handlePanelExpand}
+                    className={
+                      !isResizing
+                        ? "overflow-hidden transition-all duration-300 ease-in-out"
+                        : "overflow-hidden"
+                    }
+                  >
+                    <div className="h-full w-full overflow-y-auto">
+                      {rightPanel}
+                    </div>
+                  </ResizablePanel>
+                </ResizablePanelGroup>
+              )}
             </div>
           )}
         </main>

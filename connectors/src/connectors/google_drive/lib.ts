@@ -29,7 +29,6 @@ import {
   GoogleDriveSheet,
 } from "@connectors/lib/models/google_drive";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import { sequelizeConnection } from "@connectors/resources/storage";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ContentNodesViewType } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
@@ -41,6 +40,7 @@ import {
   INTERNAL_MIME_TYPES,
   isGoogleSheetContentNodeInternalId,
 } from "@connectors/types";
+import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
 
 export async function isDriveObjectExpandable({
   objectId,
@@ -152,7 +152,7 @@ export async function internalDeleteFile(
     },
   });
 
-  await sequelizeConnection.transaction(async (t) => {
+  await withTransaction(async (t) => {
     if (folder) {
       await folder.destroy({ transaction: t });
     }

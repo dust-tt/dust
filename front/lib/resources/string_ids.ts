@@ -37,6 +37,11 @@ const RESOURCES_PREFIX = {
   agent_step_content: "asc",
   agent_memory: "amm",
 
+  // Resource relative to triggers.
+  trigger: "trg",
+  webhook_source: "whs",
+  webhook_sources_view: "wsv",
+
   // Action (used for tool approval currently).
   mcp_action: "act",
 
@@ -56,6 +61,10 @@ const ALL_RESOURCES_PREFIXES = Object.values(RESOURCES_PREFIX);
 type ResourceNameType = keyof typeof RESOURCES_PREFIX;
 
 const sIdCache = new Map<string, string>();
+
+export function getResourcePrefix(resourceName: ResourceNameType): string {
+  return RESOURCES_PREFIX[resourceName];
+}
 
 export function dangerouslyMakeSIdWithCustomFirstPrefix(
   resourceName: "internal_mcp_server",
@@ -225,6 +234,20 @@ export function generateRandomModelSId(prefix?: string): string {
   }
 
   return sId;
+}
+
+/**
+ * Generates a long, secure, non-guessable secret composed of
+ * URL-safe alphanumeric characters.
+ *
+ * length: number of characters to return (default 64).
+ */
+export function generateSecureSecret(length = 64): string {
+  const digest = blake3(uuidv4(), { length });
+  return Buffer.from(digest)
+    .map(uniformByteToCode62)
+    .map(alphanumFromCode62)
+    .toString();
 }
 
 /**

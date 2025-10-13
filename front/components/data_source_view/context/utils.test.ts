@@ -1,17 +1,32 @@
 import { describe, expect, it } from "vitest";
 
+import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import {
   addNodeToTree,
   isNodeSelected,
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
 
+// Helper function to create tree items
+const createTreeItem = (
+  path: string,
+  name?: string
+): DataSourceBuilderTreeItemType => ({
+  path,
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+  name: name || path.split("/").pop() || path,
+  type: "root",
+});
+
 describe("DataSourceBuilder utilities", () => {
   describe("addNodeToTree", () => {
     it("should add a node to an empty tree", () => {
-      const result = addNodeToTree({ in: [], notIn: [] }, ["root", "a"]);
+      const result = addNodeToTree(
+        { in: [], notIn: [] },
+        { path: "root/a", name: "a", type: "root" }
+      );
       expect(result).toEqual({
-        in: ["root.a"],
+        in: [{ path: "root/a", name: "a", type: "root" }],
         notIn: [],
       });
     });
@@ -19,9 +34,13 @@ describe("DataSourceBuilder utilities", () => {
     it("should remove node from notIn when adding it", () => {
       const tree = {
         in: [],
-        notIn: ["root.a"],
+        notIn: [createTreeItem("root/a")],
       };
-      const result = addNodeToTree(tree, ["root", "a"]);
+      const result = addNodeToTree(tree, {
+        path: "root/a",
+        name: "a",
+        type: "root",
+      });
       expect(result).toEqual({
         in: [],
         notIn: [],
@@ -30,74 +49,98 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should not duplicate paths in in array", () => {
       const tree = {
-        in: ["root.a"],
+        in: [createTreeItem("root/a")],
         notIn: [],
       };
-      const result = addNodeToTree(tree, ["root", "a"]);
+      const result = addNodeToTree(tree, {
+        path: "root/a",
+        name: "a",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root.a"],
+        in: [createTreeItem("root/a")],
         notIn: [],
       });
     });
 
     it("should block partial path additions when parent is already selected", () => {
       const tree = {
-        in: ["root"],
+        in: [createTreeItem("root")],
         notIn: [],
       };
-      const result = addNodeToTree(tree, ["root", "a", "b"]);
+      const result = addNodeToTree(tree, {
+        path: "root/a/b",
+        name: "b",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root"],
+        in: [createTreeItem("root")],
         notIn: [],
       });
     });
 
-    it("should add a nested path without removing the exluded parent", () => {
+    it("should add a nested path without removing the excluded parent", () => {
       const tree = {
         in: [],
-        notIn: ["a"],
+        notIn: [createTreeItem("a")],
       };
 
-      const result = addNodeToTree(tree, ["a", "b", "c"]);
+      const result = addNodeToTree(tree, {
+        path: "a/b/c",
+        name: "c",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["a.b.c"],
-        notIn: ["a"],
+        in: [createTreeItem("a/b/c", "c")],
+        notIn: [createTreeItem("a")],
       });
     });
 
     it("should add a nested path that is notIn, when its parent is in", () => {
       const tree = {
-        in: ["root.a"],
-        notIn: ["root.a.b.c"],
+        in: [createTreeItem("root/a")],
+        notIn: [createTreeItem("root/a/b/c")],
       };
 
-      const result = addNodeToTree(tree, ["root", "a", "b", "c"]);
+      const result = addNodeToTree(tree, {
+        path: "root/a/b/c",
+        name: "c",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root.a"],
+        in: [createTreeItem("root/a")],
         notIn: [],
       });
     });
 
     it("should handle adding multiple levels deep when grandparent is included", () => {
       const tree = {
-        in: ["root"],
+        in: [createTreeItem("root")],
         notIn: [],
       };
-      const result = addNodeToTree(tree, ["root", "a", "b", "c", "d"]);
+      const result = addNodeToTree(tree, {
+        path: "root/a/b/c/d",
+        name: "d",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root"],
+        in: [createTreeItem("root")],
         notIn: [],
       });
     });
 
     it("should add sibling paths independently", () => {
       const tree = {
-        in: ["root.a"],
+        in: [createTreeItem("root/a")],
         notIn: [],
       };
-      const result = addNodeToTree(tree, ["root", "b"]);
+      const result = addNodeToTree(tree, {
+        path: "root/b",
+        name: "b",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root.a", "root.b"],
+        in: [createTreeItem("root/a"), createTreeItem("root/b", "b")],
         notIn: [],
       });
     });
@@ -105,57 +148,85 @@ describe("DataSourceBuilder utilities", () => {
     it("should handle adding root level paths", () => {
       const tree = {
         in: [],
-        notIn: ["other"],
+        notIn: [createTreeItem("other")],
       };
-      const result = addNodeToTree(tree, ["root"]);
+      const result = addNodeToTree(tree, {
+        path: "root",
+        name: "root",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root"],
-        notIn: ["other"],
+        in: [createTreeItem("root", "root")],
+        notIn: [createTreeItem("other")],
       });
     });
 
     it("should remove multiple child exclusions when adding parent", () => {
       const tree = {
         in: [],
-        notIn: ["root.a.b", "root.a.c", "root.a.d"],
+        notIn: [
+          createTreeItem("root/a/b"),
+          createTreeItem("root/a/c"),
+          createTreeItem("root/a/d"),
+        ],
       };
-      const result = addNodeToTree(tree, ["root", "a"]);
+      const result = addNodeToTree(tree, {
+        path: "root/a",
+        name: "a",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root.a"],
+        in: [createTreeItem("root/a", "a")],
         notIn: [],
       });
     });
 
     it("should handle adding when parent is in notIn but has excluded children", () => {
       const tree = {
-        in: ["root.b"],
-        notIn: ["root.a", "root.a.x"],
+        in: [createTreeItem("root/b")],
+        notIn: [createTreeItem("root/a"), createTreeItem("root/a/x")],
       };
-      const result = addNodeToTree(tree, ["root", "a", "y"]);
+      const result = addNodeToTree(tree, {
+        path: "root/a/y",
+        name: "y",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root.b", "root.a.y"],
-        notIn: ["root.a", "root.a.x"],
+        in: [createTreeItem("root/b"), createTreeItem("root/a/y", "y")],
+        notIn: [createTreeItem("root/a"), createTreeItem("root/a/x")],
       });
     });
 
     it("should handle complex mixed scenario with multiple branches", () => {
       const tree = {
-        in: ["root.a", "root.c"],
-        notIn: ["root.b", "root.d.x"],
+        in: [createTreeItem("root/a"), createTreeItem("root/c")],
+        notIn: [createTreeItem("root/b"), createTreeItem("root/d/x")],
       };
-      const result = addNodeToTree(tree, ["root", "d"]);
+      const result = addNodeToTree(tree, {
+        path: "root/d",
+        name: "d",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root.a", "root.c", "root.d"],
-        notIn: ["root.b"],
+        in: [
+          createTreeItem("root/a"),
+          createTreeItem("root/c"),
+          createTreeItem("root/d", "d"),
+        ],
+        notIn: [createTreeItem("root/b")],
       });
     });
 
     it("should handle single character paths", () => {
       const tree = {
         in: [],
-        notIn: ["a"],
+        notIn: [createTreeItem("a")],
       };
-      const result = addNodeToTree(tree, ["a"]);
+      const result = addNodeToTree(tree, {
+        path: "a",
+        name: "a",
+        type: "root",
+      });
       expect(result).toEqual({
         in: [],
         notIn: [],
@@ -164,13 +235,35 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should preserve unrelated exclusions when adding", () => {
       const tree = {
-        in: ["docs"],
-        notIn: ["temp.cache", "logs.old"],
+        in: [createTreeItem("docs")],
+        notIn: [createTreeItem("temp/cache"), createTreeItem("logs/old")],
       };
-      const result = addNodeToTree(tree, ["src", "main"]);
+      const result = addNodeToTree(tree, {
+        path: "src/main",
+        name: "main",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["docs", "src.main"],
-        notIn: ["temp.cache", "logs.old"],
+        in: [createTreeItem("docs"), createTreeItem("src/main", "main")],
+        notIn: [createTreeItem("temp/cache"), createTreeItem("logs/old")],
+      });
+    });
+
+    it("should remove child in when adding its parent", () => {
+      const tree = {
+        in: [createTreeItem("root/a/b", "a.b")],
+        notIn: [],
+      };
+
+      const result = addNodeToTree(tree, {
+        path: "root/a",
+        name: "a",
+        type: "root",
+      });
+
+      expect(result).toEqual({
+        in: [createTreeItem("root/a", "a")],
+        notIn: [],
       });
     });
   });
@@ -181,7 +274,11 @@ describe("DataSourceBuilder utilities", () => {
         in: [],
         notIn: [],
       };
-      const result = removeNodeFromTree(tree, ["root", "a"]);
+      const result = removeNodeFromTree(tree, {
+        path: "root/a",
+        name: "a",
+        type: "root",
+      });
       expect(result).toEqual({
         in: [],
         notIn: [],
@@ -190,10 +287,14 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should remove node from in when excluding it", () => {
       const tree = {
-        in: ["root.a"],
+        in: [createTreeItem("root/a")],
         notIn: [],
       };
-      const result = removeNodeFromTree(tree, ["root", "a"]);
+      const result = removeNodeFromTree(tree, {
+        path: "root/a",
+        name: "a",
+        type: "root",
+      });
       expect(result).toEqual({
         in: [],
         notIn: [],
@@ -203,70 +304,106 @@ describe("DataSourceBuilder utilities", () => {
     it("should not duplicate paths in notIn array", () => {
       const tree = {
         in: [],
-        notIn: ["root.a"],
+        notIn: [createTreeItem("root/a")],
       };
-      const result = removeNodeFromTree(tree, ["root", "a"]);
+      const result = removeNodeFromTree(tree, {
+        path: "root/a",
+        name: "a",
+        type: "root",
+      });
       expect(result).toEqual({
         in: [],
-        notIn: ["root.a"],
+        notIn: [createTreeItem("root/a")],
       });
     });
 
     it("should handle removing nested paths", () => {
       const tree = {
-        in: ["root.a.b"],
+        in: [createTreeItem("root/a/b")],
         notIn: [],
       };
-      const result = removeNodeFromTree(tree, ["root", "a", "b", "c"]);
+      const result = removeNodeFromTree(tree, {
+        path: "root/a/b/c",
+        name: "c",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root.a.b"],
-        notIn: ["root.a.b.c"],
+        in: [createTreeItem("root/a/b")],
+        notIn: [createTreeItem("root/a/b/c", "c")],
       });
     });
 
     it("should remove child paths when removing parent", () => {
       const tree = {
-        in: ["root.a.b", "root.a.c", "root.b"],
+        in: [
+          createTreeItem("root/a/b"),
+          createTreeItem("root/a/c"),
+          createTreeItem("root/b"),
+        ],
         notIn: [],
       };
-      const result = removeNodeFromTree(tree, ["root", "a"]);
+      const result = removeNodeFromTree(tree, {
+        path: "root/a",
+        name: "a",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root.b"],
+        in: [createTreeItem("root/b")],
         notIn: [],
       });
     });
 
     it("should not affect unrelated paths", () => {
       const tree = {
-        in: ["root", "other.a.b", "root.x.y"],
+        in: [
+          createTreeItem("root"),
+          createTreeItem("other/a/b"),
+          createTreeItem("root/x/y"),
+        ],
         notIn: [],
       };
-      const result = removeNodeFromTree(tree, ["root", "a"]);
+      const result = removeNodeFromTree(tree, {
+        path: "root/a",
+        name: "a",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root", "other.a.b", "root.x.y"],
-        notIn: ["root.a"],
+        in: [
+          createTreeItem("root"),
+          createTreeItem("other/a/b"),
+          createTreeItem("root/x/y"),
+        ],
+        notIn: [createTreeItem("root/a", "a")],
       });
     });
 
     it("should remove child notIn", () => {
       const tree = {
-        in: ["root.a"],
-        notIn: ["root.b.c"],
+        in: [createTreeItem("root/a")],
+        notIn: [createTreeItem("root/b/c")],
       };
 
-      const result = removeNodeFromTree(tree, ["root", "b"]);
+      const result = removeNodeFromTree(tree, {
+        path: "root/b",
+        name: "b",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root.a"],
-        notIn: ["root.b"],
+        in: [createTreeItem("root/a")],
+        notIn: [createTreeItem("root/b", "b")],
       });
     });
 
     it("should handle removing deeply nested paths with multiple levels", () => {
       const tree = {
-        in: ["root.a.b.c.d.e"],
+        in: [createTreeItem("root/a/b/c/d/e")],
         notIn: [],
       };
-      const result = removeNodeFromTree(tree, ["root", "a", "b"]);
+      const result = removeNodeFromTree(tree, {
+        path: "root/a/b",
+        name: "b",
+        type: "root",
+      });
       expect(result).toEqual({
         in: [],
         notIn: [],
@@ -275,85 +412,149 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should remove multiple siblings when removing their parent", () => {
       const tree = {
-        in: ["root.a.x", "root.a.y", "root.a.z", "root.b"],
+        in: [
+          createTreeItem("root/a/x"),
+          createTreeItem("root/a/y"),
+          createTreeItem("root/a/z"),
+          createTreeItem("root/b"),
+        ],
         notIn: [],
       };
-      const result = removeNodeFromTree(tree, ["root", "a"]);
+      const result = removeNodeFromTree(tree, {
+        path: "root/a",
+        name: "a",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root.b"],
+        in: [createTreeItem("root/b")],
         notIn: [],
       });
     });
 
     it("should handle removing when there are multiple exclusions at different levels", () => {
       const tree = {
-        in: ["root"],
-        notIn: ["root.a.x", "root.b.y", "root.c"],
+        in: [createTreeItem("root")],
+        notIn: [
+          createTreeItem("root/a/x"),
+          createTreeItem("root/b/y"),
+          createTreeItem("root/c"),
+        ],
       };
-      const result = removeNodeFromTree(tree, ["root", "a"]);
+      const result = removeNodeFromTree(tree, {
+        path: "root/a",
+        name: "a",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root"],
-        notIn: ["root.b.y", "root.c", "root.a"],
+        in: [createTreeItem("root")],
+        notIn: [
+          createTreeItem("root/b/y"),
+          createTreeItem("root/c"),
+          createTreeItem("root/a", "a"),
+        ],
       });
     });
 
     it("should handle removing root path with many children", () => {
       const tree = {
-        in: ["root", "other.x"],
-        notIn: ["root.excluded"],
+        in: [createTreeItem("root"), createTreeItem("other/x")],
+        notIn: [createTreeItem("root/excluded")],
       };
-      const result = removeNodeFromTree(tree, ["root"]);
+      const result = removeNodeFromTree(tree, {
+        path: "root",
+        name: "root",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["other.x"],
+        in: [createTreeItem("other/x")],
         notIn: [],
       });
     });
 
     it("should handle removing when path has both included and excluded children", () => {
       const tree = {
-        in: ["root.a.included1", "root.a.included2"],
-        notIn: ["root.a.excluded1", "root.a.excluded2"],
+        in: [
+          createTreeItem("root/a/included1"),
+          createTreeItem("root/a/included2"),
+        ],
+        notIn: [
+          createTreeItem("root/a/excluded1"),
+          createTreeItem("root/a/excluded2"),
+        ],
       };
-      const result = removeNodeFromTree(tree, ["root", "a"]);
+      const result = removeNodeFromTree(tree, {
+        path: "root/a",
+        name: "a",
+        type: "root",
+      });
       expect(result).toEqual({
         in: [],
-        notIn: ["root.a"],
+        notIn: [createTreeItem("root/a", "a")],
       });
     });
 
     it("should preserve complex exclusion hierarchy when removing unrelated path", () => {
       const tree = {
-        in: ["root", "other.branch"],
-        notIn: ["root.a.b.c", "root.x.y", "root.z"],
+        in: [createTreeItem("root"), createTreeItem("other/branch")],
+        notIn: [
+          createTreeItem("root/a/b/c"),
+          createTreeItem("root/x/y"),
+          createTreeItem("root/z"),
+        ],
       };
-      const result = removeNodeFromTree(tree, ["other", "branch"]);
+      const result = removeNodeFromTree(tree, {
+        path: "other/branch",
+        name: "branch",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root"],
-        notIn: ["root.a.b.c", "root.x.y", "root.z"],
+        in: [createTreeItem("root")],
+        notIn: [
+          createTreeItem("root/a/b/c"),
+          createTreeItem("root/x/y"),
+          createTreeItem("root/z"),
+        ],
       });
     });
 
     it("should consolidate exclusions when removing parent of multiple excluded children", () => {
       const tree = {
-        in: ["root"],
-        notIn: ["root.a.x.1", "root.a.x.2", "root.a.y.1", "root.a.y.2"],
+        in: [createTreeItem("root")],
+        notIn: [
+          createTreeItem("root/a/x/1"),
+          createTreeItem("root/a/x/2"),
+          createTreeItem("root/a/y/1"),
+          createTreeItem("root/a/y/2"),
+        ],
       };
-      const result = removeNodeFromTree(tree, ["root", "a", "x"]);
+      const result = removeNodeFromTree(tree, {
+        path: "root/a/x",
+        name: "x",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root"],
-        notIn: ["root.a.y.1", "root.a.y.2", "root.a.x"],
+        in: [createTreeItem("root")],
+        notIn: [
+          createTreeItem("root/a/y/1"),
+          createTreeItem("root/a/y/2"),
+          createTreeItem("root/a/x", "x"),
+        ],
       });
     });
 
     it("should handle removing path that would create redundant exclusion", () => {
       const tree = {
-        in: ["root"],
-        notIn: ["root.a"],
+        in: [createTreeItem("root")],
+        notIn: [createTreeItem("root/a")],
       };
-      const result = removeNodeFromTree(tree, ["root", "a", "b"]);
+      const result = removeNodeFromTree(tree, {
+        path: "root/a/b",
+        name: "b",
+        type: "root",
+      });
       expect(result).toEqual({
-        in: ["root"],
-        notIn: ["root.a"],
+        in: [createTreeItem("root")],
+        notIn: [createTreeItem("root/a")],
       });
     });
   });
@@ -361,7 +562,7 @@ describe("DataSourceBuilder utilities", () => {
   describe("isNodeSelected", () => {
     it("should return true for explicitly included node", () => {
       const tree = {
-        in: ["root.a"],
+        in: [createTreeItem("root/a")],
         notIn: [],
       };
       expect(isNodeSelected(tree, ["root", "a"])).toBe(true);
@@ -370,14 +571,14 @@ describe("DataSourceBuilder utilities", () => {
     it("should return false for excluded node", () => {
       const tree = {
         in: [],
-        notIn: ["root.a"],
+        notIn: [createTreeItem("root/a")],
       };
       expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
     });
 
     it("should return true for child of included parent", () => {
       const tree = {
-        in: ["root"],
+        in: [createTreeItem("root")],
         notIn: [],
       };
       expect(isNodeSelected(tree, ["root", "a"])).toBe(true);
@@ -387,14 +588,14 @@ describe("DataSourceBuilder utilities", () => {
     it("should return false for child of excluded parent", () => {
       const tree = {
         in: [],
-        notIn: ["root"],
+        notIn: [createTreeItem("root")],
       };
       expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
     });
 
     it("should handle partial path matches", () => {
       const tree = {
-        in: ["root.a"],
+        in: [createTreeItem("root/a")],
         notIn: [],
       };
       expect(isNodeSelected(tree, ["root", "a", "b"])).toBe(true);
@@ -403,8 +604,8 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should prioritize notIn over in for exact matches", () => {
       const tree = {
-        in: ["root"],
-        notIn: ["root.a"],
+        in: [createTreeItem("root")],
+        notIn: [createTreeItem("root/a")],
       };
       expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
       expect(isNodeSelected(tree, ["root", "b"])).toBe(true);
@@ -412,7 +613,7 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should handle deeply nested paths", () => {
       const tree = {
-        in: ["a.b.c"],
+        in: [createTreeItem("a/b/c")],
         notIn: [],
       };
       expect(isNodeSelected(tree, ["a", "b", "c"])).toBe(true);
@@ -421,8 +622,8 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should handle complex inclusion/exclusion scenarios", () => {
       const tree = {
-        in: ["root"],
-        notIn: ["root.a", "root.b.c"],
+        in: [createTreeItem("root")],
+        notIn: [createTreeItem("root/a"), createTreeItem("root/b/c")],
       };
       expect(isNodeSelected(tree, ["root"])).toBe("partial");
       expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
@@ -433,8 +634,8 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should return 'partial' when parent has mixed children", () => {
       const tree = {
-        in: ["root.a", "root.c"],
-        notIn: ["root.b"],
+        in: [createTreeItem("root/a"), createTreeItem("root/c")],
+        notIn: [createTreeItem("root/b")],
       };
       expect(isNodeSelected(tree, ["root"])).toBe("partial");
       expect(isNodeSelected(tree, ["root", "a"])).toBe(true);
@@ -444,8 +645,8 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should return 'partial' when included parent has excluded children", () => {
       const tree = {
-        in: ["root"],
-        notIn: ["root.a"],
+        in: [createTreeItem("root")],
+        notIn: [createTreeItem("root/a")],
       };
       expect(isNodeSelected(tree, ["root"])).toBe("partial");
       expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
@@ -454,7 +655,7 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should return true when all children are included", () => {
       const tree = {
-        in: ["root"],
+        in: [createTreeItem("root")],
         notIn: [],
       };
       expect(isNodeSelected(tree, ["root"])).toBe(true);
@@ -464,7 +665,7 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should return 'partial' for parent with some included children", () => {
       const tree = {
-        in: ["root.a.b"],
+        in: [createTreeItem("root/a/b")],
         notIn: [],
       };
       expect(isNodeSelected(tree, ["root"])).toBe("partial");
@@ -475,7 +676,7 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should return false for paths not matching any included pattern", () => {
       const tree = {
-        in: ["root.a"],
+        in: [createTreeItem("root/a")],
         notIn: [],
       };
       expect(isNodeSelected(tree, ["other"])).toBe(false);
@@ -494,7 +695,7 @@ describe("DataSourceBuilder utilities", () => {
     it("should handle tree with only exclusions", () => {
       const tree = {
         in: [],
-        notIn: ["root.a", "docs.temp"],
+        notIn: [createTreeItem("root/a"), createTreeItem("docs/temp")],
       };
       expect(isNodeSelected(tree, ["root"])).toBe(false);
       expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
@@ -504,7 +705,11 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should handle multiple root level paths", () => {
       const tree = {
-        in: ["root", "docs", "src"],
+        in: [
+          createTreeItem("root"),
+          createTreeItem("docs"),
+          createTreeItem("src"),
+        ],
         notIn: [],
       };
       expect(isNodeSelected(tree, ["root"])).toBe(true);
@@ -515,8 +720,8 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should handle deeply nested exclusions", () => {
       const tree = {
-        in: ["root"],
-        notIn: ["root.a.b.c.d.e"],
+        in: [createTreeItem("root")],
+        notIn: [createTreeItem("root/a/b/c/d/e")],
       };
       expect(isNodeSelected(tree, ["root"])).toBe("partial");
       expect(isNodeSelected(tree, ["root", "a"])).toBe("partial");
@@ -535,8 +740,8 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should handle multiple siblings with mixed states", () => {
       const tree = {
-        in: ["root.a", "root.c"],
-        notIn: ["root.b", "root.d"],
+        in: [createTreeItem("root/a"), createTreeItem("root/c")],
+        notIn: [createTreeItem("root/b"), createTreeItem("root/d")],
       };
       expect(isNodeSelected(tree, ["root"])).toBe("partial");
       expect(isNodeSelected(tree, ["root", "a"])).toBe(true);
@@ -548,8 +753,8 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should handle cross-branch scenarios", () => {
       const tree = {
-        in: ["docs.api", "src.components"],
-        notIn: ["docs.temp", "src.tests"],
+        in: [createTreeItem("docs/api"), createTreeItem("src/components")],
+        notIn: [createTreeItem("docs/temp"), createTreeItem("src/tests")],
       };
       expect(isNodeSelected(tree, ["docs"])).toBe("partial");
       expect(isNodeSelected(tree, ["docs", "api"])).toBe(true);
@@ -561,13 +766,26 @@ describe("DataSourceBuilder utilities", () => {
       expect(isNodeSelected(tree, ["src", "utils"])).toBe(false);
     });
 
+    it("should handle single character path segments", () => {
+      const tree = {
+        in: [createTreeItem("a")],
+        notIn: [createTreeItem("b/c")],
+      };
+      expect(isNodeSelected(tree, ["a"])).toBe(true);
+      expect(isNodeSelected(tree, ["a", "x"])).toBe(true);
+      expect(isNodeSelected(tree, ["b"])).toBe(false);
+      expect(isNodeSelected(tree, ["b", "c"])).toBe(false);
+      expect(isNodeSelected(tree, ["b", "d"])).toBe(false);
+      expect(isNodeSelected(tree, ["c"])).toBe(false);
+    });
+
     it("should handle complex nested inclusion with partial exclusions", () => {
       const tree = {
-        in: ["root", "other.branch"],
+        in: [createTreeItem("root"), createTreeItem("other/branch")],
         notIn: [
-          "root.excluded.deeply.nested",
-          "root.temp",
-          "other.branch.cache",
+          createTreeItem("root/excluded/deeply/nested"),
+          createTreeItem("root/temp"),
+          createTreeItem("other/branch/cache"),
         ],
       };
       expect(isNodeSelected(tree, ["root"])).toBe("partial");
@@ -589,8 +807,8 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should handle edge case with parent and child both in arrays", () => {
       const tree = {
-        in: ["root", "root.a"],
-        notIn: ["root.b"],
+        in: [createTreeItem("root"), createTreeItem("root/a")],
+        notIn: [createTreeItem("root/b")],
       };
       expect(isNodeSelected(tree, ["root"])).toBe("partial");
       expect(isNodeSelected(tree, ["root", "a"])).toBe(true);
@@ -600,8 +818,8 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should handle conflicting parent-child relationships", () => {
       const tree = {
-        in: ["root.a.b"],
-        notIn: ["root.a"],
+        in: [createTreeItem("root/a/b")],
+        notIn: [createTreeItem("root/a")],
       };
       expect(isNodeSelected(tree, ["root"])).toBe("partial");
       expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
@@ -611,7 +829,7 @@ describe("DataSourceBuilder utilities", () => {
 
     it("should handle multiple levels of partial selection", () => {
       const tree = {
-        in: ["a.b.c.d", "a.x.y.z"],
+        in: [createTreeItem("a/b/c/d"), createTreeItem("a/x/y/z")],
         notIn: [],
       };
       expect(isNodeSelected(tree, ["a"])).toBe("partial");
@@ -623,6 +841,30 @@ describe("DataSourceBuilder utilities", () => {
       expect(isNodeSelected(tree, ["a", "x", "y"])).toBe("partial");
       expect(isNodeSelected(tree, ["a", "x", "y", "z"])).toBe(true);
       expect(isNodeSelected(tree, ["a", "m"])).toBe(false);
+    });
+
+    it("should handle large tree with many branches", () => {
+      const tree = {
+        in: [createTreeItem("app"), createTreeItem("docs/guides")],
+        notIn: [
+          createTreeItem("app/cache"),
+          createTreeItem("app/temp/logs"),
+          createTreeItem("docs/temp"),
+          createTreeItem("config/secrets"),
+        ],
+      };
+      expect(isNodeSelected(tree, ["app"])).toBe("partial");
+      expect(isNodeSelected(tree, ["app", "src"])).toBe(true);
+      expect(isNodeSelected(tree, ["app", "cache"])).toBe(false);
+      expect(isNodeSelected(tree, ["app", "temp"])).toBe("partial");
+      expect(isNodeSelected(tree, ["app", "temp", "logs"])).toBe(false);
+      expect(isNodeSelected(tree, ["app", "temp", "other"])).toBe(true);
+      expect(isNodeSelected(tree, ["docs"])).toBe("partial");
+      expect(isNodeSelected(tree, ["docs", "guides"])).toBe(true);
+      expect(isNodeSelected(tree, ["docs", "temp"])).toBe(false);
+      expect(isNodeSelected(tree, ["config"])).toBe(false);
+      expect(isNodeSelected(tree, ["config", "secrets"])).toBe(false);
+      expect(isNodeSelected(tree, ["config", "app"])).toBe(false);
     });
   });
 });

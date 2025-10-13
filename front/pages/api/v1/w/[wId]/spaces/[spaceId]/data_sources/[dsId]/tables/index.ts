@@ -323,8 +323,10 @@ async function handler(
         ?.substring(6)
         ?.trim();
       const title =
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         r.data.title?.trim() || titleInTags || name.trim() || UNTITLED_TITLE;
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const tableId = maybeTableId || generateRandomModelSId();
 
       // Prohibit passing parents when not coming from connectors.
@@ -392,8 +394,10 @@ async function handler(
         name,
         description,
         timestamp: cleanTimestamp(timestamp),
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         tags: tags || [],
         // Table is a parent of itself by default.
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         parents: parents || [tableId],
         parentId: parentId ?? null,
         remoteDatabaseTableId: remoteDatabaseTableId ?? null,

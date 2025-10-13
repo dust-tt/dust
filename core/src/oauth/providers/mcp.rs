@@ -24,6 +24,7 @@ pub struct MCPConnectionMetadata {
     pub authorization_endpoint: String,
     pub code_verifier: String,
     pub code_challenge: String,
+    pub scope: Option<String>,
 }
 
 pub struct MCPConnectionProvider {}
@@ -43,9 +44,9 @@ impl MCPConnectionProvider {
         let provider = credentials.provider();
 
         // Fetch credential
-        if provider != CredentialProvider::Mcp {
+        if provider != CredentialProvider::Mcp && provider != CredentialProvider::McpStatic {
             return Err(anyhow!(
-                "Invalid credential provider: {:?}, expected MCP",
+                "Invalid credential provider: {:?}, expected MCP or McpStatic",
                 provider
             ));
         }
@@ -128,7 +129,10 @@ impl Provider for MCPConnectionProvider {
                 Some(n) => n,
                 None => Err(anyhow!("Invalid `expires_in` in response from MCP"))?,
             },
-            _ => Err(anyhow!("Missing `expires_in` in response from MCP"))?,
+            _ => {
+                info!("Missing `expires_in` in response from MCP, using default value of 3600 seconds");
+                3600
+            }
         };
 
         // Some MCP servers do not return a refresh token when finalizing an access token.
@@ -199,9 +203,10 @@ impl Provider for MCPConnectionProvider {
             _ => Err(anyhow!("Missing `expires_in` in response from MCP"))?,
         };
 
-        match raw_json["scope"].as_str() {
-            Some(_) => (),
-            None => Err(anyhow!("Missing `scope` in response from MCP"))?,
+        // The scope should be available in the response, if not it could be available in the connection metadata.
+        let scope = match raw_json["scope"].as_str() {
+            Some(scope) => Some(scope.to_string()),
+            None => metadata.scope,
         };
 
         match raw_json["token_type"].as_str() {
@@ -227,11 +232,15 @@ impl Provider for MCPConnectionProvider {
             None => (),
         };
 
-        // We checked above the presence of each of these fields in raw_json.
+        // We checked above the presence of each of these fields in raw_json or the metadata.
         merged_raw_json["access_token"] = raw_json["access_token"].clone();
         merged_raw_json["expires_in"] = raw_json["expires_in"].clone();
         merged_raw_json["token_type"] = raw_json["token_type"].clone();
-        merged_raw_json["scope"] = raw_json["scope"].clone();
+
+        // If we have a scope, we add it to the merged raw_json.
+        if let Some(scope) = scope {
+            merged_raw_json["scope"] = serde_json::Value::String(scope);
+        }
 
         Ok(RefreshResult {
             access_token: access_token.to_string(),

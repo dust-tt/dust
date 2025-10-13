@@ -1,13 +1,13 @@
-import { cloneDeep } from "lodash";
+import cloneDeep from "lodash/cloneDeep";
 
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
   AgentMessageNewEvent,
-  AgentMessageWithRankType,
+  AgentMessageType,
   FetchConversationMessagesResponse,
   UserMessageNewEvent,
-  UserMessageWithRankType,
+  UserMessageType,
 } from "@app/types";
 import { isAgentMessageType, isUserMessageType } from "@app/types";
 
@@ -18,7 +18,7 @@ import { isAgentMessageType, isUserMessageType } from "@app/types";
  */
 export function updateMessagePagesWithOptimisticData(
   currentMessagePages: FetchConversationMessagesResponse[] | undefined,
-  messageOrPlaceholder: AgentMessageWithRankType | UserMessageWithRankType
+  messageOrPlaceholder: AgentMessageType | UserMessageType
 ): FetchConversationMessagesResponse[] {
   const m = isAgentMessageType(messageOrPlaceholder)
     ? {
@@ -98,9 +98,11 @@ export function getUpdatedParticipantsFromEvent(
       return participants;
     } else {
       participants.participants.users.push({
+        sId: user.sId,
         username: user.username,
         fullName: user.fullName,
         pictureUrl: user.image,
+        action: "posted",
       });
     }
   } else if (isAgentMessageType(message)) {

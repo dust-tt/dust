@@ -8,6 +8,7 @@ import {
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
@@ -27,15 +28,17 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     const { user_scopes, bot_scopes } = (() => {
       switch (useCase) {
         case "personal_actions":
-        case "platform_actions":
           return {
             user_scopes: [
-              "chat:write",
-              "search:read",
-              "users:read",
               "channels:read",
+              "chat:write",
+              "groups:read",
               "reactions:read",
               "reactions:write",
+              "search:read.private",
+              "search:read.public",
+              "search:read",
+              "users:read",
             ],
             bot_scopes: [],
           };
@@ -63,28 +66,35 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
             ],
           };
         }
-        case "bot": {
+        case "bot":
+        case "platform_actions":
+          const scopes = [
+            "app_mentions:read",
+            "channels:history",
+            "channels:join",
+            "channels:read",
+            "chat:write",
+            "files:read",
+            "groups:history",
+            "groups:read",
+            "im:history",
+            "mpim:history",
+            "mpim:read",
+            "team:read",
+            "im:read",
+            "users:read",
+            "users:read.email",
+          ];
+
+          // TODO: This is temporary until our Slack app scope is approved.
+          if (extraConfig?.slack_bot_mcp_feature_flag) {
+            scopes.push("reactions:read", "reactions:write");
+          }
+
           return {
             user_scopes: [],
-            bot_scopes: [
-              "app_mentions:read",
-              "channels:history",
-              "channels:join",
-              "channels:read",
-              "chat:write",
-              "files:read",
-              "groups:history",
-              "groups:read",
-              "im:history",
-              "mpim:history",
-              "mpim:read",
-              "team:read",
-              "im:read",
-              "users:read",
-              "users:read.email",
-            ],
+            bot_scopes: scopes,
           };
-        }
         case "labs_transcripts":
           assert(
             "Unreachable provider `labs_transcripts` in SlackOAuthProvider"
@@ -101,14 +111,13 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     const clientId = (() => {
       switch (useCase) {
         case "personal_actions":
-        case "platform_actions":
           return config.getOAuthSlackToolsClientId();
         case "connection": {
           return config.getOAuthSlackClientId();
         }
-        case "bot": {
+        case "bot":
+        case "platform_actions":
           return config.getOAuthSlackBotClientId();
-        }
         case "labs_transcripts":
           assert(
             "Unreachable provider `labs_transcripts` in SlackOAuthProvider"
@@ -201,6 +210,15 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
           requested_team_name: teamName,
         };
       }
+    } else if (useCase === "platform_actions") {
+      const feature_flags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      const config = { ...extraConfig };
+      if (feature_flags.includes("slack_bot_mcp")) {
+        config.slack_bot_mcp_feature_flag = "true";
+      }
+      return config;
     }
 
     return extraConfig;

@@ -20,6 +20,7 @@ import {
   useAgentConfigurationHistory,
 } from "@app/lib/swr/assistants";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
+import { getAgentRoute } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
@@ -262,7 +263,12 @@ function FeedbackCard({ owner, feedback, className }: FeedbackCardProps) {
     // IMPORTANT: We need to check if the conversation is shared before displaying it.
     // This check is redundant: the conversationId is null if the conversation is not shared.
     feedback.isConversationShared
-      ? `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/assistant/${feedback.conversationId}?messageId=${feedback.messageId}`
+      ? getAgentRoute(
+          owner.sId,
+          feedback.conversationId,
+          `messageId=${feedback.messageId}`,
+          process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+        )
       : null;
 
   const timeSinceFeedback = timeAgoFrom(

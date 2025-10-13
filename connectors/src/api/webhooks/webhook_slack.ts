@@ -1,4 +1,4 @@
-import { removeNulls } from "@dust-tt/client";
+import { DustAPI, removeNulls } from "@dust-tt/client";
 import { JSON } from "@jsonjoy.com/util/lib/json-brand";
 import type { Request, Response } from "express";
 
@@ -6,15 +6,12 @@ import {
   isChannelCreatedEvent,
   onChannelCreation,
 } from "@connectors/api/webhooks/slack/created_channel";
+import { handleDeprecatedChatBot } from "@connectors/api/webhooks/slack/deprecated_bot";
 import type {
   SlackWebhookReqBody,
   SlackWebhookResBody,
 } from "@connectors/api/webhooks/slack/utils";
-import {
-  handleChatBot,
-  isSlackWebhookEventReqBody,
-  withTrace,
-} from "@connectors/api/webhooks/slack/utils";
+import { isSlackWebhookEventReqBody } from "@connectors/api/webhooks/slack/utils";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
 import {
@@ -30,6 +27,7 @@ import {
   launchSlackSyncOneMessageWorkflow,
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
+import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
@@ -109,10 +107,7 @@ const _webhookSlackAPIHandler = async (
     try {
       switch (event.type) {
         case "app_mention": {
-          await withTrace({
-            "slack.team_id": teamId,
-            "slack.app": "slack",
-          })(handleChatBot)(req, res, logger);
+          await handleDeprecatedChatBot(req, res, logger);
           break;
         }
         /**
@@ -163,10 +158,7 @@ const _webhookSlackAPIHandler = async (
               return res.status(200).send();
             }
             // Message from an actual user (a human)
-            await withTrace({
-              "slack.team_id": teamId,
-              "slack.app": "slack",
-            })(handleChatBot)(req, res, logger);
+            await handleDeprecatedChatBot(req, res, logger);
             break;
           } else if (event.channel_type === "channel") {
             if (!event.channel) {
@@ -223,6 +215,50 @@ const _webhookSlackAPIHandler = async (
                       permission: slackChannel.permission,
                     },
                     "Ignoring message because channel permission is not read or read_write"
+                  );
+                  return null;
+                }
+
+                // Check if workspace is in maintenance mode
+                const connector = await ConnectorResource.fetchById(
+                  c.connectorId
+                );
+                if (!connector) {
+                  logger.info(
+                    {
+                      connectorId: c.connectorId,
+                      slackChannelId: channel,
+                    },
+                    "Skipping webhook: Connector not found"
+                  );
+                  return null;
+                }
+
+                const dataSourceConfig =
+                  dataSourceConfigFromConnector(connector);
+                const dustAPI = new DustAPI(
+                  {
+                    url: apiConfig.getDustFrontAPIUrl(),
+                  },
+                  {
+                    apiKey: dataSourceConfig.workspaceAPIKey,
+                    workspaceId: dataSourceConfig.workspaceId,
+                  },
+                  logger
+                );
+
+                // Make a simple API call to check if workspace is accessible
+                const spacesRes = await dustAPI.getSpaces();
+                if (spacesRes.isErr()) {
+                  logger.info(
+                    {
+                      connectorId: connector.id,
+                      slackTeamId: teamId,
+                      slackChannelId: channel,
+                      workspaceId: dataSourceConfig.workspaceId,
+                      error: spacesRes.error.message,
+                    },
+                    "Skipping webhook: workspace is unavailable (likely in maintenance)"
                   );
                   return null;
                 }

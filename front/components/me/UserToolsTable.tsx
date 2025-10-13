@@ -1,6 +1,6 @@
 import { Chip, DataTable, Label, SearchInput, Spinner } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { keyBy } from "lodash";
+import keyBy from "lodash/keyBy";
 import { useCallback, useMemo, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -11,13 +11,13 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
-import { useRemoteMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
+import { useManualMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import {
   useDeleteMCPServerConnection,
   useMCPServerConnections,
 } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { useDeleteMetadata } from "@app/lib/swr/user";
+import { useDeleteMetadata, useUserApprovals } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -27,9 +27,8 @@ interface UserTableRow {
   description: string;
   serverView: MCPServerViewType;
   connection: MCPServerConnectionType | undefined;
-  visual: React.ReactNode;
+  visual: React.JSX.Element;
   onClick?: () => void;
-  moreMenuItems?: any[];
 }
 
 interface UserToolsTableProps {
@@ -42,31 +41,35 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
 
   const { spaces } = useSpaces({ workspaceId: owner.sId });
   const { serverViews, isLoading: isMCPServerViewsLoading } =
-    useRemoteMCPServerViewsFromSpaces(owner, spaces);
+    useManualMCPServerViewsFromSpaces(owner, spaces);
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
     connectionType: "personal",
   });
+  const { approvals, isApprovalsLoading, mutateApprovals } =
+    useUserApprovals(owner);
   const { deleteMetadata } = useDeleteMetadata();
 
   const handleDeleteToolMetadata = useCallback(
     async (mcpServerId: string) => {
-      try {
-        await deleteMetadata(`toolsValidations:${mcpServerId}`);
-        sendNotification({
-          title: "Success!",
-          description: "Tool approbation history deleted.",
-          type: "success",
-        });
-      } catch (error) {
+      const response = await deleteMetadata(`toolsValidations:${mcpServerId}`);
+      if (response && !response.ok) {
         sendNotification({
           title: "Error",
           description: "Failed to delete tool approbation history.",
           type: "error",
         });
+        return;
       }
+
+      await mutateApprovals();
+      sendNotification({
+        title: "Success!",
+        description: "Tool approbation history deleted.",
+        type: "success",
+      });
     },
-    [sendNotification, deleteMetadata]
+    [sendNotification, deleteMetadata, mutateApprovals]
   );
 
   const { deleteMCPServerConnection } = useDeleteMCPServerConnection({
@@ -84,7 +87,17 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
       (c) => c.internalMCPServerId ?? `${c.remoteMCPServerId}`
     );
 
+    const approvalServerIds = new Set(
+      approvals.map((approval) => approval.mcpServerId)
+    );
+
     return serverViews
+      .filter((serverView) => {
+        // Only include servers that have approvals OR have connections
+        const hasConnection = !!connectionsByServerId[serverView.server.sId];
+        const hasApproval = approvalServerIds.has(serverView.server.sId);
+        return hasConnection || hasApproval;
+      })
       .filter(
         (serverView) =>
           (serverView.name ?? serverView.server.name)
@@ -102,9 +115,8 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         connection: connectionsByServerId[serverView.server.sId],
         visual: getAvatar(serverView.server),
         onClick: () => {},
-        moreMenuItems: [],
       }));
-  }, [serverViews, connections, searchQuery]);
+  }, [serverViews, connections, approvals, searchQuery]);
 
   // Define columns for the actions table
   const actionColumns = useMemo<ColumnDef<UserTableRow>[]>(
@@ -149,7 +161,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
           <DataTable.MoreButton
             menuItems={[
               {
-                label: "Delete confirmation preferences",
+                label: "Clear confirmation preferences",
                 onClick: () =>
                   handleDeleteToolMetadata(row.original.serverView.server.sId),
                 kind: "item",
@@ -180,7 +192,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
 
   return (
     <>
-      <div className="relative mb-4">
+      <div className="relative my-4">
         <SearchInput
           name="search"
           placeholder="Search tools"
@@ -189,7 +201,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         />
       </div>
 
-      {isMCPServerViewsLoading || isConnectionsLoading ? (
+      {isMCPServerViewsLoading || isConnectionsLoading || isApprovalsLoading ? (
         <div className="flex justify-center p-6">
           <Spinner />
         </div>
@@ -201,7 +213,9 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         />
       ) : (
         <Label>
-          {searchQuery ? "No matching tools found" : "No tools available"}
+          {searchQuery
+            ? "No matching tools found"
+            : "You don't have any tool-specific settings yet."}
         </Label>
       )}
     </>

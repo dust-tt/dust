@@ -1,5 +1,5 @@
 import { INTERNAL_MIME_TYPES, removeNulls } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import _ from "lodash";
@@ -11,20 +11,19 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  FIND_TAGS_TOOL_NAME,
+  PROCESS_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   ConfigurableToolInputSchemas,
   JsonSchemaSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import {
-  findTagsSchema,
-  makeFindTagsDescription,
-  makeFindTagsTool,
-} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
-import {
-  getDataSourceConfiguration,
-  shouldAutoGenerateTags,
-} from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
+import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
+import { getDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
@@ -32,16 +31,16 @@ import type {
   AgentLoopContextType,
 } from "@app/lib/actions/types";
 import {
+  isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
-  isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -49,8 +48,7 @@ import type {
   TimeFrame,
   UserMessageType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
-import { isUserMessageType, timeFrameFromNow } from "@app/types";
+import { Err, isUserMessageType, Ok, timeFrameFromNow } from "@app/types";
 
 import { applyDataSourceFilters, getExtractFileTitle } from "./utils";
 
@@ -58,15 +56,6 @@ import { applyDataSourceFilters, getExtractFileTitle } from "./utils";
 type ProcessActionOutputsType = {
   data: unknown[];
   total_documents?: number;
-};
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "extract_data",
-  version: "1.0.0",
-  description: "Structured extraction",
-  icon: "ActionScanIcon",
-  authorization: null,
-  documentationUrl: null,
 };
 
 const EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION =
@@ -98,7 +87,7 @@ function makeExtractInformationFromDocumentsTool(
 ) {
   return withToolLogging(
     auth,
-    { toolName: "extract_information_from_documents", agentLoopContext },
+    { toolNameForMonitoring: PROCESS_TOOL_NAME, agentLoopContext },
     async ({
       dataSources,
       objective,
@@ -110,14 +99,14 @@ function makeExtractInformationFromDocumentsTool(
       dataSources: DataSourcesToolConfigurationType[number][];
       objective: string;
       jsonSchema: JSONSchema;
-      timeFrame: TimeFrame | null;
+      timeFrame?: TimeFrame;
       tagsIn?: string[];
       tagsNot?: string[];
     }) => {
       // Unwrap and prepare variables.
       assert(
         agentLoopContext?.runContext,
-        "agentLoopContext is required where the tool is called."
+        "agentLoopContext is required to run the extract_data tool"
       );
       const { agentConfiguration, conversation } = agentLoopContext.runContext;
       const { model } = agentConfiguration;
@@ -146,8 +135,10 @@ function makeExtractInformationFromDocumentsTool(
         auth,
         model,
         dataSources,
-        timeFrame,
+        timeFrame: timeFrame ?? null,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         tagsIn: tagsIn || undefined,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         tagsNot: tagsNot || undefined,
       });
 
@@ -181,6 +172,13 @@ function makeExtractInformationFromDocumentsTool(
       let outputs: ProcessActionOutputsType | null = null;
       for await (const event of res.value.eventStream) {
         if (event.type === "error") {
+          logger.error(
+            {
+              error: event.content.message,
+              dustRunId: res.value.dustRunId,
+            },
+            "[Extract MCP Server] Received an error while streaming dust app"
+          );
           return new Err(
             new MCPError(
               `"Error running extract data action": ${event.content.message ?? "Unknown error from event stream."}`
@@ -191,6 +189,15 @@ function makeExtractInformationFromDocumentsTool(
         if (event.type === "block_execution") {
           const e = event.content.execution[0][0];
           if (e.error) {
+            logger.error(
+              {
+                error: e.error,
+                blockName: event.content.block_name,
+                dustRunId: res.value.dustRunId,
+              },
+              "[Extract MCP Server] Get a block execution error while streaming dust app"
+            );
+
             return new Err(
               new MCPError(
                 `"Error running extract data action": ${e.error ?? "An unknown error occurred during block execution."}`
@@ -210,7 +217,7 @@ function makeExtractInformationFromDocumentsTool(
         conversation,
         outputs,
         jsonSchema,
-        timeFrame,
+        timeFrame: timeFrame ?? null,
         objective,
       });
       // Upload the file to the conversation data source.
@@ -225,13 +232,11 @@ function makeExtractInformationFromDocumentsTool(
   );
 }
 
-const PROCESS_TOOL_NAME = "extract_information_from_documents";
-
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("extract_data");
 
   const isJsonSchemaConfigured =
     (agentLoopContext?.listToolsContext &&
@@ -239,12 +244,13 @@ function createServer(
         agentLoopContext.listToolsContext.agentActionConfiguration
       ) &&
       agentLoopContext.listToolsContext.agentActionConfiguration.jsonSchema !==
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         null) ||
     (agentLoopContext?.runContext &&
-      isServerSideMCPToolConfiguration(
-        agentLoopContext.runContext.actionConfiguration
+      isLightServerSideMCPToolConfiguration(
+        agentLoopContext.runContext.toolConfiguration
       ) &&
-      agentLoopContext.runContext.actionConfiguration.jsonSchema !== null);
+      agentLoopContext.runContext.toolConfiguration.jsonSchema !== null);
 
   const isTimeFrameConfigured =
     (agentLoopContext?.listToolsContext &&
@@ -252,12 +258,13 @@ function createServer(
         agentLoopContext.listToolsContext.agentActionConfiguration
       ) &&
       agentLoopContext.listToolsContext.agentActionConfiguration.timeFrame !==
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         null) ||
     (agentLoopContext?.runContext &&
-      isServerSideMCPToolConfiguration(
-        agentLoopContext.runContext.actionConfiguration
+      isLightServerSideMCPToolConfiguration(
+        agentLoopContext.runContext.toolConfiguration
       ) &&
-      agentLoopContext.runContext.actionConfiguration.timeFrame !== null);
+      agentLoopContext.runContext.toolConfiguration.timeFrame !== null);
 
   const areTagsDynamic = agentLoopContext
     ? shouldAutoGenerateTags(agentLoopContext)
@@ -298,8 +305,8 @@ function createServer(
         ),
     timeFrame: isTimeFrameConfigured
       ? ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
-        ]
+          INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+        ].optional()
       : z
           .object({
             duration: z.number(),
@@ -308,8 +315,7 @@ function createServer(
           .describe(
             "The time frame to use for documents retrieval (e.g. last 7 days, last 2 months). Leave null to search all documents regardless of time."
           )
-          .nullable()
-          .default(null),
+          .optional(),
   };
 
   const toolDescription =
@@ -334,12 +340,10 @@ function createServer(
       toolImplementation
     );
 
-    server.tool(
-      "find_tags",
-      makeFindTagsDescription(PROCESS_TOOL_NAME),
-      findTagsSchema,
-      makeFindTagsTool(auth)
-    );
+    registerFindTagsTool(auth, server, agentLoopContext, {
+      name: FIND_TAGS_TOOL_NAME,
+      extraDescription: `This tool is meant to be used before the ${PROCESS_TOOL_NAME} tool.`,
+    });
   } else {
     server.tool(
       PROCESS_TOOL_NAME,
@@ -393,7 +397,9 @@ async function getConfigForProcessDustApp({
     config,
     dataSourceConfigurations,
     dataSourceViewsMap,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     tagsIn || null,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     tagsNot || null
   );
 

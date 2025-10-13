@@ -11,16 +11,17 @@ import { useEffect, useRef } from "react";
 import { useSWRConfig } from "swr";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { isAgentCreationResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
 export function MCPAgentManagementActionDetails({
-  action,
-  defaultOpen,
+  toolOutput,
+  toolParams,
+  viewType,
   owner,
   messageStatus,
-}: MCPActionDetailsProps) {
-  const creationResult = action.output?.find(isAgentCreationResultResourceType);
+}: ToolExecutionDetailsProps) {
+  const creationResult = toolOutput?.find(isAgentCreationResultResourceType);
   const { mutate } = useSWRConfig();
   const hasRefreshed = useRef(false);
 
@@ -52,16 +53,19 @@ export function MCPAgentManagementActionDetails({
     // Fallback to showing the raw output if no structured data
     return (
       <ActionDetailsWrapper
-        actionName="Create Agent"
-        defaultOpen={defaultOpen}
+        viewType={viewType}
+        actionName={
+          viewType === "conversation" ? "Creating agent" : "Create Agent"
+        }
         visual={ActionRobotIcon}
       >
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <ContentMessage variant="primary" size="lg">
             <Markdown
               content={
-                action.output
+                toolOutput
                   ?.map((o) => (o.type === "text" ? o.text : ""))
+                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   .join("\n") || "Agent creation completed."
               }
             />
@@ -75,8 +79,8 @@ export function MCPAgentManagementActionDetails({
 
   return (
     <ActionDetailsWrapper
+      viewType={viewType}
       actionName="Create Agent"
-      defaultOpen={defaultOpen}
       visual={ActionRobotIcon}
     >
       <div className="flex flex-col gap-6 pl-6 pt-4">
@@ -106,7 +110,7 @@ export function MCPAgentManagementActionDetails({
             </ul>
           </div>
 
-          {typeof action.params.instructions === "string" ? (
+          {typeof toolParams.instructions === "string" ? (
             <CollapsibleComponent
               triggerChildren={
                 <span className="text-sm font-medium text-foreground dark:text-foreground-night">
@@ -116,7 +120,7 @@ export function MCPAgentManagementActionDetails({
               contentChildren={
                 <div className="mt-2">
                   <ContentMessage variant="primary" size="sm">
-                    <Markdown content={action.params.instructions} />
+                    <Markdown content={toolParams.instructions} />
                   </ContentMessage>
                 </div>
               }
@@ -162,7 +166,7 @@ export function MCPAgentManagementActionDetails({
                 </p>
               </div>
 
-              {typeof action.params.sub_agent_instructions === "string" ? (
+              {typeof toolParams.sub_agent_instructions === "string" ? (
                 <CollapsibleComponent
                   triggerChildren={
                     <span className="text-sm font-medium text-foreground dark:text-foreground-night">
@@ -172,9 +176,7 @@ export function MCPAgentManagementActionDetails({
                   contentChildren={
                     <div className="mt-2">
                       <ContentMessage variant="primary" size="sm">
-                        <Markdown
-                          content={action.params.sub_agent_instructions}
-                        />
+                        <Markdown content={toolParams.sub_agent_instructions} />
                       </ContentMessage>
                     </div>
                   }

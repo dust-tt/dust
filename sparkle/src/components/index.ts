@@ -35,7 +35,11 @@ export {
 } from "./Collapsible";
 export { default as ConfettiBackground } from "./ConfettiBackground";
 export { Container } from "./Container";
-export { ContentMessage } from "./ContentMessage";
+export {
+  ContentMessage,
+  ContentMessageAction,
+  ContentMessageInline,
+} from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
 export {
   ConversationContainer,
@@ -89,6 +93,7 @@ export { default as DropzoneOverlay } from "./DropzoneOverlay";
 export type { EmojiMartData } from "./EmojiPicker";
 export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
 export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
+export { FaviconIcon } from "./FaviconIcon";
 export { FilterChips } from "./FilterChips";
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
@@ -102,6 +107,7 @@ export { LinkWrapper } from "./LinkWrapper";
 export { LoadingBlock } from "./LoadingBlock";
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
+export { MessageCard } from "./MessageCard";
 export type {
   MultiPageDialogFooterProps,
   MultiPageDialogPage,
@@ -125,6 +131,7 @@ export {
 export * from "./NavigationList";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
+export { NotificationButton } from "./NotificationButton";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";
@@ -168,6 +175,7 @@ export { default as Spinner } from "./Spinner";
 export { FlexSplitButton, SplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
+export { ToolCard } from "./ToolCard";
 export {
   Tooltip,
   TooltipContent,

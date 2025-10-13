@@ -19,10 +19,7 @@ interface FormidableFile {
 }
 
 // Helper type to infer the correct TypeScript type from SupportedArgType.
-type InferArgType<
-  T extends PluginArgDefinition["type"],
-  V = never,
-> = T extends "string"
+type InferArgType<T extends PluginArgDefinition["type"]> = T extends "string"
   ? string
   : T extends "text"
     ? string
@@ -33,41 +30,32 @@ type InferArgType<
         : T extends "file"
           ? FormidableFile
           : T extends "enum"
-            ? V
+            ? string[]
             : never;
 
-// Helper type to extract string values from enum values
-type ExtractEnumValue<T> = T extends { value: infer V }
-  ? V extends string
-    ? V
-    : never
-  : never;
-
 // Helper type to map field types to their async value types
-type AsyncValueType<T extends PluginArgDefinition> = T["type"] extends "enum"
-  ? EnumValue[] // Only enums return arrays (options to choose from)
-  : T["type"] extends "string"
-    ? string
-    : T["type"] extends "number"
-      ? number
-      : T["type"] extends "boolean"
-        ? boolean
-        : T["type"] extends "text"
-          ? string
-          : never;
+type AsyncValueTypeAtPopulate<T extends PluginArgDefinition> =
+  T["type"] extends "enum"
+    ? EnumValue[] // Only enums return arrays (options to choose from)
+    : T["type"] extends "string"
+      ? string
+      : T["type"] extends "number"
+        ? number
+        : T["type"] extends "boolean"
+          ? boolean
+          : T["type"] extends "text"
+            ? string
+            : never;
 
 // Type for async args that maps each field to its correct async value type
 export type AsyncArgsType<T extends PluginArgs> = {
-  [K in keyof T]?: T[K] extends { async: true } ? AsyncValueType<T[K]> : never;
+  [K in keyof T]?: T[K] extends { async: true }
+    ? AsyncValueTypeAtPopulate<T[K]>
+    : never;
 };
 
-export type InferPluginArgs<T extends PluginArgs> = {
-  [K in keyof T]: InferArgType<
-    T[K]["type"],
-    T[K] extends { values: readonly any[] }
-      ? ExtractEnumValue<T[K]["values"][number]>
-      : never
-  >;
+export type InferPluginArgsAtExecution<T extends PluginArgs> = {
+  [K in keyof T]: InferArgType<T[K]["type"]>;
 };
 
 export type PluginResponse =
@@ -85,7 +73,7 @@ interface BasePlugin<
   execute: (
     auth: Authenticator,
     resource: ResourceTypeMap[R] | null,
-    args: InferPluginArgs<T>
+    args: InferPluginArgsAtExecution<T>
   ) => Promise<Result<PluginResponse, Error>>;
   isApplicableTo: (
     auth: Authenticator,
@@ -138,7 +126,7 @@ export function createPlugin<
   execute: (
     auth: Authenticator,
     resource: ResourceTypeMap[R] | null,
-    args: InferPluginArgs<T>
+    args: InferPluginArgsAtExecution<T>
   ) => Promise<Result<PluginResponse, Error>>;
   isApplicableTo?: (
     auth: Authenticator,

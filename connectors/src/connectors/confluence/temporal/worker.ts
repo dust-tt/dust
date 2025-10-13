@@ -25,11 +25,13 @@ export async function runConfluenceWorker() {
     reuseV8Context: true,
     namespace,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
-        },
-        () => new ConfluenceCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "confluence"),
+        }),
+        () => ({
+          inbound: new ConfluenceCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {

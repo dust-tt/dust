@@ -1,6 +1,11 @@
 import { assertNever } from "@dust-tt/client";
 import { Storage } from "@google-cloud/storage";
-import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
+import {
+  APIResponseError,
+  isFullBlock,
+  isFullPage,
+  isNotionClientError,
+} from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
 import { chunk } from "lodash";
@@ -70,31 +75,61 @@ import {
   NotionDatabase,
   NotionPage,
 } from "@connectors/lib/models/notion";
-import { redisClient } from "@connectors/lib/redis";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
+  DataSourceConfig,
+  ModelId,
   PageObjectProperties,
   ParsedNotionBlock,
 } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
 import {
   getNotionDatabaseTableId,
   INTERNAL_MIME_TYPES,
   isDevelopment,
   slugify,
 } from "@connectors/types";
+import { redisClient } from "@connectors/types/shared/redis_client";
 import { sha256 } from "@connectors/types/shared/utils/hashing";
 
 const logger = mainLogger.child({ provider: "notion" });
 
 // Connector ID hashes for which deletion should be skipped during garbage collection.
 const SKIP_DELETION_CONNECTOR_ID_HASHES = new Set<string>([
-  "vket28uPYFZqPX/Vo2+BlXmOKEizaBldml0g4AfFmgw=",
+  "pDddXWMzWYw4oN/acYfLiOwxB3tlp51IH6MuMYD3YXQ=",
 ]);
+
+const wrapWithErrorCheck = async <T>(
+  callback: () => Promise<T>,
+  loggerArgs: Record<string, string | number>
+) => {
+  try {
+    return await callback();
+  } catch (e) {
+    if (APIResponseError.isAPIResponseError(e)) {
+      if (
+        (e.code === "internal_server_error" && e.status === 500) ||
+        (e.code === "service_unavailable" && e.status === 503)
+      ) {
+        if (Context.current().info.attempt > 20) {
+          logger.error(
+            {
+              ...loggerArgs,
+              error: e,
+              attempt: Context.current().info.attempt,
+            },
+            "Failed to get make notion call. Giving up and moving on"
+          );
+          return null;
+        }
+      }
+    }
+
+    throw e;
+  }
+};
 
 export async function fetchDatabaseChildPages({
   connectorId,
@@ -149,44 +184,19 @@ export async function fetchDatabaseChildPages({
   };
   const localLogger = logger.child(localLoggerArgs);
 
-  let res;
-  try {
-    res = await retrieveDatabaseChildrenResultPage({
-      accessToken,
+  const res = await wrapWithErrorCheck(
+    () =>
+      retrieveDatabaseChildrenResultPage({
+        accessToken,
+        databaseId,
+        loggerArgs: localLoggerArgs,
+        cursor,
+      }),
+    {
+      ...loggerArgs,
       databaseId,
-      loggerArgs: localLoggerArgs,
-      cursor,
-    });
-  } catch (e) {
-    // Sometimes a cursor will consistently fail with 500.
-    // In this case, there is not much we can do, so we just give up and move on.
-    // Notion workspaces are resynced daily so nothing is lost forever.
-    const potentialNotionError = e as {
-      body: unknown;
-      code: string;
-      status: number;
-    };
-    if (
-      potentialNotionError.code === "internal_server_error" &&
-      potentialNotionError.status === 500
-    ) {
-      if (Context.current().info.attempt > 20) {
-        localLogger.error(
-          {
-            error: potentialNotionError,
-            attempt: Context.current().info.attempt,
-          },
-          "Failed to get Notion database children result page with cursor. Giving up and moving on"
-        );
-        return {
-          pageIds: [],
-          nextCursor: null,
-        };
-      }
     }
-
-    throw e;
-  }
+  );
 
   if (!res) {
     return {
@@ -221,7 +231,7 @@ export async function fetchDatabaseChildPages({
     returnUpToDatePageIdsForExistingDatabase ||
     // If the database is new (either we never seen it before, or the first time we saw it was
     // during this run), we return all the pages.
-    isExistingDatabase
+    !isExistingDatabase
   ) {
     return {
       pageIds: pages.map((p) => p.id),
@@ -496,7 +506,13 @@ export async function upsertDatabaseInConnectorsDb({
     "notionUpsertDatabaseActivity: Upserting notion database in DB."
   );
 
-  const parsedDb = await getParsedDatabase(accessToken, databaseId, loggerArgs);
+  const parsedDb = await wrapWithErrorCheck(
+    () => getParsedDatabase(accessToken, databaseId, loggerArgs),
+    {
+      ...loggerArgs,
+      databaseId,
+    }
+  );
 
   let parentType: NotionConnectorPageCacheEntry["parentType"] | undefined =
     parsedDb?.parentType;
@@ -951,13 +967,16 @@ export async function completeGarbageCollectionRun(
   connectorId: ModelId,
   nbOfBatches: number
 ) {
-  const redisCli = await redisClient({ origin: "notion_gc" });
   const redisKey = redisGarbageCollectorKey(connectorId);
-  await redisCli.del(`${redisKey}-pages`);
-  await redisCli.del(`${redisKey}-databases`);
+  // Generate all the keys
+  const keysToDelete = [`${redisKey}-pages`, `${redisKey}-databases`];
   for (let i = 0; i < nbOfBatches; i++) {
-    await redisCli.del(`${redisKey}-resources-not-seen-batch-${i}`);
+    keysToDelete.push(`${redisKey}-resources-not-seen-batch-${i}`);
   }
+
+  const redisCli = await redisClient({ origin: "notion_gc" });
+  // Delete all keys in one DEL command
+  await redisCli.del(keysToDelete);
 
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -2020,6 +2039,7 @@ export async function renderAndUpsertPageFromCache({
   let renderedPageSection = await renderPageSection({
     dsConfig,
     blocksByParentId,
+    localLogger,
   });
 
   // add a newline to separate the page from the metadata above (title, author...)
@@ -2310,7 +2330,13 @@ export async function clearWorkflowCache({
     dataSourceId: connector.dataSourceId,
   });
 
-  localLogger.info("notionClearConnectorCacheActivity: Clearing cache.");
+  localLogger.info(
+    {
+      connectorId: connector.id,
+      workflowId: topLevelWorkflowId,
+    },
+    "notionClearConnectorCacheActivity: Clearing cache."
+  );
   await NotionConnectorPageCacheEntry.destroy({
     where: {
       connectorId: connector.id,
@@ -2417,6 +2443,8 @@ export async function getDiscoveredResourcesFromCache({
   };
 }
 
+const LONG_RENDER_BLOCK_SECTION_TIME_MS = 120000;
+
 /** Render page sections according to Notion structure:
  * - the natural nesting of blocks is used as structure,
  * - H1, H2 & H3 blocks add a level of nesting in addition to the "natural"
@@ -2428,9 +2456,11 @@ export async function getDiscoveredResourcesFromCache({
 async function renderPageSection({
   dsConfig,
   blocksByParentId,
+  localLogger,
 }: {
   dsConfig: DataSourceConfig;
   blocksByParentId: Record<string, NotionConnectorBlockCacheEntry[]>;
+  localLogger: Logger;
 }): Promise<CoreAPIDataSourceDocumentSection> {
   const renderedPageSection: CoreAPIDataSourceDocumentSection = {
     prefix: null,
@@ -2441,7 +2471,17 @@ async function renderPageSection({
   // Change block parents so that H1/H2/H3 blocks are treated as nesting
   // for that we need to traverse with a topological sort, leafs treated first
   const orderedParentIds: string[] = [];
+  const visitedNodes = new Set<string>();
   const addNode = (nodeId: string) => {
+    // Prevent infinite recursion on circular references
+    if (visitedNodes.has(nodeId)) {
+      localLogger.warn(
+        `Circular reference detected in block hierarchy at node: ${nodeId}`
+      );
+      return;
+    }
+    visitedNodes.add(nodeId);
+
     const children = blocksByParentId[nodeId];
     if (!children) {
       return;
@@ -2451,8 +2491,14 @@ async function renderPageSection({
       addNode(child.notionBlockId);
     }
   };
+
   addNode("root");
   orderedParentIds.reverse();
+
+  localLogger.info(
+    { pagesCount: visitedNodes.size },
+    "Rendered page sections."
+  );
 
   const adaptedBlocksByParentId: Record<
     string,
@@ -2511,11 +2557,27 @@ async function renderPageSection({
     }
   }
 
+  const renderingStack = new Set<string>();
+
   const renderBlockSection = async (
     b: NotionConnectorBlockCacheEntry,
     depth: number,
     indent = ""
   ): Promise<CoreAPIDataSourceDocumentSection> => {
+    // Prevent infinite recursion on circular references
+    if (renderingStack.has(b.notionBlockId)) {
+      localLogger.warn(
+        `Circular reference detected while rendering block: ${b.notionBlockId} at depth ${depth}`
+      );
+      return {
+        prefix: null,
+        content: `[Circular reference detected for block ${b.notionBlockId}]\n`,
+        sections: [],
+      };
+    }
+    renderingStack.add(b.notionBlockId);
+
+    const startTime = Date.now();
     // Initial rendering (remove base64 images from rendered block)
     let renderedBlock = b.blockText ? `${indent}${b.blockText}` : "";
     renderedBlock = renderedBlock
@@ -2558,6 +2620,23 @@ async function renderPageSection({
         await renderBlockSection(child, depth + 1, indent)
       );
     }
+
+    // Remove from rendering stack after processing
+    renderingStack.delete(b.notionBlockId);
+    const elapsedTime = Date.now() - startTime;
+    if (elapsedTime > LONG_RENDER_BLOCK_SECTION_TIME_MS) {
+      localLogger.info(
+        {
+          elapsedTime,
+          blockId: b.notionBlockId,
+          blockType: b.blockType,
+          depth,
+          indent,
+        },
+        "Long renderBlockSection time."
+      );
+    }
+    await heartbeat();
     return blockSection;
   };
 
@@ -2566,6 +2645,12 @@ async function renderPageSection({
   for (const block of topLevelBlocks) {
     renderedPageSection.sections.push(await renderBlockSection(block, 0));
   }
+
+  localLogger.info(
+    { blocksCount: topLevelBlocks.length },
+    "Rendered block sections."
+  );
+
   return renderedPageSection;
 }
 

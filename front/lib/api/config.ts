@@ -1,4 +1,4 @@
-import { EnvironmentConfig } from "@app/types";
+import { EnvironmentConfig, isDevelopment } from "@app/types";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
 
@@ -112,6 +112,7 @@ const config = {
         EnvironmentConfig.getOptionalEnvVariable("DUST_PROD_API") ??
         PRODUCTION_DUST_API,
       nodeEnv:
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         EnvironmentConfig.getOptionalEnvVariable("NODE_ENV") || "development",
     };
   },
@@ -144,6 +145,11 @@ const config = {
       "OAUTH_GITHUB_APP_PLATFORM_ACTIONS"
     );
   },
+  getOAuthGithubAppPersonalActions: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID"
+    );
+  },
   getOAuthNotionClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_NOTION_CLIENT_ID");
   },
@@ -154,6 +160,9 @@ const config = {
   },
   getOAuthConfluenceClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_CONFLUENCE_CLIENT_ID");
+  },
+  getOAuthConfluenceToolsClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_CONFLUENCE_TOOLS_CLIENT_ID");
   },
   getOAuthGoogleDriveClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GOOGLE_DRIVE_CLIENT_ID");
@@ -243,10 +252,14 @@ const config = {
   getWorkOSActionSigningSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_ACTION_SIGNING_SECRET");
   },
+  getWorkOSSessionCookieDomain: (): string | undefined => {
+    return isDevelopment()
+      ? undefined
+      : EnvironmentConfig.getEnvVariable("WORKOS_SESSION_COOKIE_DOMAIN");
+  },
   getWorkOSEnvironmentId: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_ENVIRONMENT_ID");
   },
-
   // Profiler.
   getProfilerSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
@@ -261,9 +274,6 @@ const config = {
     return EnvironmentConfig.getOptionalEnvVariable(
       "UNTRUSTED_EGRESS_PROXY_PORT"
     );
-  },
-  getFileShareSecret: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_FILE_SHARE_SECRET");
   },
 };
 

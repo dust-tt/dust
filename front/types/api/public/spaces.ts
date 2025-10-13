@@ -37,6 +37,7 @@ export const DATA_SOURCE_VIEW_CATEGORIES = [
   "website",
   "apps",
   "actions",
+  "triggers",
 ] as const;
 
 export type DataSourceViewCategory =
@@ -60,6 +61,7 @@ export function isDataSourceViewCategoryWithoutApps(
 ): category is DataSourceViewCategoryWithoutApps {
   return (
     isValidDataSourceViewCategory(category) &&
+    category !== "triggers" &&
     category !== "apps" &&
     category !== "actions"
   );

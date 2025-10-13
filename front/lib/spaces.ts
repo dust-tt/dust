@@ -1,4 +1,5 @@
 import {
+  BoltIcon,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
   CompanyIcon,
@@ -8,7 +9,7 @@ import {
   PlanetIcon,
   ServerIcon,
 } from "@dust-tt/sparkle";
-import { groupBy } from "lodash";
+import groupBy from "lodash/groupBy";
 import type React from "react";
 
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
@@ -130,6 +131,11 @@ export const CATEGORY_DETAILS: {
   actions: {
     label: "Tools",
     icon: MCP_SPECIFICATION.cardIcon,
+  },
+  triggers: {
+    label: "Triggers",
+    icon: BoltIcon,
+    flag: "hootl_webhooks",
   },
 };
 

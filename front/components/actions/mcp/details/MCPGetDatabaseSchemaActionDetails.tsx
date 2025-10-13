@@ -1,7 +1,7 @@
 import { CodeBlock, CollapsibleComponent, TableIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import type {
   DatabaseSchemaResourceType,
   ExampleRowsResourceType,
@@ -12,31 +12,36 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
 export function MCPGetDatabaseSchemaActionDetails({
-  action,
-  defaultOpen,
-}: MCPActionDetailsProps) {
-  const { output } = action;
-
+  toolOutput,
+  viewType,
+}: ToolExecutionDetailsProps) {
   // Extract different types of outputs
   const schemaBlocks =
-    output?.filter(isDatabaseSchemaResourceType).map((o) => o.resource) ?? [];
+    toolOutput?.filter(isDatabaseSchemaResourceType).map((o) => o.resource) ??
+    [];
   const exampleRowsBlocks =
-    output?.filter(isExampleRowsResourceType).map((o) => o.resource) ?? [];
+    toolOutput?.filter(isExampleRowsResourceType).map((o) => o.resource) ?? [];
 
   return (
     <ActionDetailsWrapper
-      actionName="Get database schema"
-      defaultOpen={defaultOpen}
+      viewType={viewType}
+      actionName={
+        viewType === "conversation"
+          ? "Getting database schema"
+          : "Get database schema"
+      }
       visual={TableIcon}
     >
-      <div className="flex flex-col gap-4 pl-6 pt-4">
-        <>
-          <DatabaseSchemaSection schemas={schemaBlocks} />
-          {exampleRowsBlocks.length > 0 && (
-            <ExampleRowsSection examples={exampleRowsBlocks} />
-          )}
-        </>
-      </div>
+      {viewType === "sidebar" && (
+        <div className="flex flex-col gap-4 pl-6 pt-4">
+          <>
+            <DatabaseSchemaSection schemas={schemaBlocks} />
+            {exampleRowsBlocks.length > 0 && (
+              <ExampleRowsSection examples={exampleRowsBlocks} />
+            )}
+          </>
+        </div>
+      )}
     </ActionDetailsWrapper>
   );
 }

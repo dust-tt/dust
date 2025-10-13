@@ -77,6 +77,7 @@ export const ListItemExample = () => (
       <ContextItem
         title="Slack"
         visual={<ContextItem.Visual visual={SlackLogo} />}
+        hoverAction
         action={
           <div className="s-flex s-gap-1">
             <Button icon={TrashIcon} variant="warning" label="Remove" />

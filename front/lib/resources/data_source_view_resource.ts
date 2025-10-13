@@ -2,7 +2,7 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 import assert from "assert";
-import { keyBy } from "lodash";
+import keyBy from "lodash/keyBy";
 import type {
   Attributes,
   CreationAttributes,
@@ -37,7 +37,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
-  ConversationType,
+  ConversationWithoutContentType,
   DataSourceViewCategory,
   DataSourceViewType,
   ModelId,
@@ -329,6 +329,27 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     });
   }
 
+  static async listAllInGlobalGroup(auth: Authenticator) {
+    const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    assert(globalGroup.isOk(), "Failed to fetch global group");
+
+    const spaces = await SpaceResource.listForGroups(auth, [globalGroup.value]);
+
+    return this.baseFetch(auth, undefined, {
+      includes: [
+        {
+          model: DataSourceModel,
+          as: "dataSourceForView",
+          required: true,
+        },
+      ],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: spaces.map((s) => s.id),
+      },
+    });
+  }
+
   static async listForDataSourcesInSpace(
     auth: Authenticator,
     dataSources: DataSourceResource[],
@@ -421,7 +442,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
   static async fetchByConversation(
     auth: Authenticator,
-    conversation: ConversationType
+    conversation: ConversationWithoutContentType
   ): Promise<DataSourceViewResource | null> {
     // Fetch the data source view associated with the datasource that is associated with the conversation.
     const dataSource = await DataSourceResource.fetchByConversation(
@@ -467,10 +488,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         switch (key) {
           case "dataSourceId":
           case "vaultId":
-            const vaultModelId = getResourceIdFromSId(value);
+            const resourceModelId = getResourceIdFromSId(value);
 
-            if (vaultModelId) {
-              whereClause[key] = vaultModelId;
+            if (resourceModelId) {
+              whereClause[key] = resourceModelId;
+            } else {
+              return [];
             }
             break;
 
@@ -527,6 +550,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     parentsToAdd: string[] = [],
     parentsToRemove: string[] = []
   ): Promise<Result<undefined, Error>> {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const currentParents = this.parentsIn || [];
 
     if (this.kind === "default") {
@@ -580,9 +604,48 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       (parent) => !parentsToRemove.includes(parent)
     );
 
-    await this.update({ parentsIn: updatedParents });
+    const filteredParents =
+      DataSourceViewResource.removeChildrenIfEnclosedBy(updatedParents);
+
+    await this.update({ parentsIn: filteredParents });
 
     return new Ok(undefined);
+  }
+
+  static removeChildrenIfEnclosedBy(parentsIn: string[]): string[] {
+    // Parents paths are specified using dot syntax.
+    // Clean-up the list so no children are left if they have enclosing parents already in the list.
+    // Important: Sort by length asc so we start with the potential enclosing parents first.
+    const sortedByLength = [...parentsIn].sort((a, b) => a.length - b.length);
+    const filteredParents: string[] = [];
+    for (const parent of sortedByLength) {
+      let enclosingParentFound = false;
+
+      // No need to check if the parent has no dots, it's a root node.
+      if (parent.indexOf(".") !== -1) {
+        const parts = parent.split(".");
+
+        let potentialEnclosingParentPath = "";
+        for (const part of parts) {
+          potentialEnclosingParentPath += part + ".";
+          const pathWithoutDot = potentialEnclosingParentPath.substring(
+            0,
+            potentialEnclosingParentPath.length - 1
+          );
+          if (filteredParents.some((p) => p === pathWithoutDot)) {
+            // Found an enclosing parent, so we don't add this parent to the list
+            enclosingParentFound = true;
+            break;
+          }
+        }
+      }
+      if (!enclosingParentFound) {
+        // If the parent is not a child of any other parent, add it to the list
+        filteredParents.push(parent);
+      }
+    }
+
+    return filteredParents;
   }
 
   async setParents(

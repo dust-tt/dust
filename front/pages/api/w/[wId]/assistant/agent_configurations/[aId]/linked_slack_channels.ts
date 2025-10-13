@@ -7,6 +7,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -20,6 +21,7 @@ export type PatchLinkedSlackChannelsResponseBody = {
 export const PatchLinkedSlackChannelsRequestBodySchema = t.type({
   slack_channel_internal_ids: t.array(t.string),
   provider: t.union([t.literal("slack"), t.literal("slack_bot")]),
+  auto_respond_without_mention: t.union([t.boolean, t.undefined]),
 });
 
 async function handler(
@@ -38,6 +40,27 @@ async function handler(
           "Only the users that are `builders` for the current workspace can access an agent.",
       },
     });
+  }
+
+  const bodyValidationResult = PatchLinkedSlackChannelsRequestBodySchema.decode(
+    req.body
+  );
+  if (
+    bodyValidationResult._tag === "Right" &&
+    bodyValidationResult.right.auto_respond_without_mention
+  ) {
+    const owner = auth.getNonNullableWorkspace();
+    const featureFlags = await getFeatureFlags(owner);
+    if (!featureFlags.includes("slack_enhanced_default_agent")) {
+      return apiError(req, res, {
+        status_code: 403,
+        api_error: {
+          type: "feature_flag_not_found",
+          message:
+            "The auto respond without mention feature is not enabled for this workspace.",
+        },
+      });
+    }
   }
 
   if (req.method !== "PATCH") {
@@ -121,9 +144,26 @@ async function handler(
     connectorId: connectorId.toString(),
     agentConfigurationId: agentConfiguration.sId,
     slackChannelInternalIds: bodyValidation.right.slack_channel_internal_ids,
+    autoRespondWithoutMention:
+      bodyValidation.right.auto_respond_without_mention,
   });
 
   if (connectorsApiRes.isErr()) {
+    // Check if the error is specifically about operation already in progress
+    if (connectorsApiRes.error.type === "connector_operation_in_progress") {
+      logger.info(
+        connectorsApiRes.error,
+        "Slack channel linking already in progress."
+      );
+      return apiError(req, res, {
+        status_code: 409,
+        api_error: {
+          type: "connector_operation_in_progress",
+          message: connectorsApiRes.error.message,
+        },
+      });
+    }
+
     logger.error(
       connectorsApiRes.error,
       "An error occurred while linking Slack channels."

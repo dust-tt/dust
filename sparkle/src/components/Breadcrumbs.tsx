@@ -105,6 +105,8 @@ function BreadcrumbItem({
     isLast ? LABEL_TRUNCATE_LENGTH_END : LABEL_TRUNCATE_LENGTH_MIDDLE
   );
 
+  const isLabelTruncated = truncatedLabel !== item.label;
+
   if (isLinkItem(item)) {
     return (
       <Button
@@ -113,7 +115,7 @@ function BreadcrumbItem({
         className={commonClassName}
         variant="ghost"
         label={truncatedLabel}
-        tooltip={item.label}
+        tooltip={isLabelTruncated ? item.label : undefined}
         size={size}
       />
     );
@@ -127,7 +129,7 @@ function BreadcrumbItem({
         className={commonClassName}
         variant="ghost"
         label={truncatedLabel}
-        tooltip={item.label}
+        tooltip={isLabelTruncated ? item.label : undefined}
         size={size}
       />
     );

@@ -68,8 +68,9 @@ declare module "@tanstack/react-table" {
 
 interface TBaseData {
   onClick?: () => void;
-  moreMenuItems?: DropdownMenuItemProps[];
+  onDoubleClick?: () => void;
   dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
+  menuItems?: MenuItem[];
 }
 
 interface ColumnBreakpoint {
@@ -112,6 +113,7 @@ interface DataTableProps<TData extends TBaseData> {
   setRowSelection?: (rowSelection: RowSelectionState) => void;
   enableRowSelection?: boolean | ((row: Row<TData>) => boolean);
   enableMultiRowSelection?: boolean;
+  enableSortingRemoval?: boolean;
 }
 
 export function DataTable<TData extends TBaseData>({
@@ -135,6 +137,7 @@ export function DataTable<TData extends TBaseData>({
   enableRowSelection = false,
   enableMultiRowSelection = true,
   getRowId,
+  enableSortingRemoval = true,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -180,6 +183,7 @@ export function DataTable<TData extends TBaseData>({
     ...(isServerSideSorting && {
       onSortingChange: onSortingChange,
     }),
+    enableSortingRemoval,
     getCoreRowModel: getCoreRowModel(),
     ...(!isServerSideSorting && {
       getSortedRowModel: getSortedRowModel(),
@@ -232,9 +236,13 @@ export function DataTable<TData extends TBaseData>({
                   <DataTable.Head
                     column={header.column}
                     key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
+                    onClick={
+                      header.column.getCanSort()
+                        ? header.column.getToggleSortingHandler()
+                        : undefined
+                    }
                     className={cn(
-                      header.column.getCanSort() ? "s-cursor-pointer" : ""
+                      header.column.getCanSort() && "s-cursor-pointer"
                     )}
                   >
                     <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
@@ -247,9 +255,7 @@ export function DataTable<TData extends TBaseData>({
                           visual={
                             header.column.getIsSorted() === "asc"
                               ? ArrowUpIcon
-                              : header.column.getIsSorted() === "desc"
-                                ? ArrowDownIcon
-                                : ArrowDownIcon
+                              : ArrowDownIcon
                           }
                           size="xs"
                           className={cn(
@@ -268,31 +274,47 @@ export function DataTable<TData extends TBaseData>({
           ))}
         </DataTable.Header>
         <DataTable.Body>
-          {table.getRowModel().rows.map((row) => (
-            <DataTable.Row
-              widthClassName={widthClassName}
-              key={row.id}
-              onClick={row.original.onClick}
-              {...(enableRowSelection && {
-                "data-selected": row.getIsSelected(),
-              })}
-            >
-              {row.getVisibleCells().map((cell) => {
-                const breakpoint = columnsBreakpoints[cell.column.id];
-                if (
-                  !windowSize.width ||
-                  !shouldRenderColumn(windowSize.width, breakpoint)
-                ) {
-                  return null;
+          {table.getRowModel().rows.map((row) => {
+            const handleRowClick = () => {
+              if (enableRowSelection && row.getCanSelect()) {
+                row.toggleSelected(!enableMultiRowSelection ? true : undefined);
+              }
+              row.original.onClick?.();
+            };
+
+            return (
+              <DataTable.Row
+                widthClassName={widthClassName}
+                key={row.id}
+                onClick={
+                  enableRowSelection ? handleRowClick : row.original.onClick
                 }
-                return (
-                  <DataTable.Cell column={cell.column} key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </DataTable.Cell>
-                );
-              })}
-            </DataTable.Row>
-          ))}
+                onDoubleClick={row.original.onDoubleClick}
+                rowData={row.original}
+                {...(enableRowSelection && {
+                  "data-selected": row.getIsSelected(),
+                })}
+              >
+                {row.getVisibleCells().map((cell) => {
+                  const breakpoint = columnsBreakpoints[cell.column.id];
+                  if (
+                    !windowSize.width ||
+                    !shouldRenderColumn(windowSize.width, breakpoint)
+                  ) {
+                    return null;
+                  }
+                  return (
+                    <DataTable.Cell column={cell.column} key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </DataTable.Cell>
+                  );
+                })}
+              </DataTable.Row>
+            );
+          })}
         </DataTable.Body>
       </DataTable.Root>
       {pagination && (
@@ -313,9 +335,10 @@ export function DataTable<TData extends TBaseData>({
 
 export interface ScrollableDataTableProps<TData extends TBaseData>
   extends DataTableProps<TData> {
-  maxHeight?: string;
+  maxHeight?: string | boolean;
   onLoadMore?: () => void;
   isLoading?: boolean;
+  containerRef?: React.Ref<HTMLDivElement>;
 }
 
 // cellHeight in pixels
@@ -329,19 +352,38 @@ export function ScrollableDataTable<TData extends TBaseData>({
   className,
   widthClassName = "s-w-full",
   columnsBreakpoints = {},
-  maxHeight = "s-h-100",
+  maxHeight,
   onLoadMore,
+  sorting,
+  setSorting,
   isLoading = false,
   rowSelection,
   setRowSelection,
   enableRowSelection,
   enableMultiRowSelection = true,
   getRowId,
+  containerRef,
 }: ScrollableDataTableProps<TData>) {
   const windowSize = useWindowSize();
-  const tableContainerRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [tableWidth, setTableWidth] = useState(0);
+  const tableContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const isSorting = !!setSorting;
+
+  // Handle container ref
+  const setRef = (element: HTMLDivElement | null) => {
+    tableContainerRef.current = element;
+    if (containerRef) {
+      if (typeof containerRef === "function") {
+        containerRef(element);
+      } else if ("current" in containerRef) {
+        (
+          containerRef as React.MutableRefObject<HTMLDivElement | null>
+        ).current = element;
+      }
+    }
+  };
 
   // Monitor table width changes
   useEffect(() => {
@@ -361,6 +403,15 @@ export function ScrollableDataTable<TData extends TBaseData>({
       resizeObserver.disconnect();
     };
   }, []);
+
+  const onSortingChange =
+    sorting && setSorting
+      ? (updater: Updater<SortingState>) => {
+          const newValue =
+            typeof updater === "function" ? updater(sorting) : updater;
+          setSorting(newValue);
+        }
+      : undefined;
 
   const onRowSelectionChange =
     rowSelection && setRowSelection
@@ -382,7 +433,15 @@ export function ScrollableDataTable<TData extends TBaseData>({
     }),
     state: {
       ...(enableRowSelection && { rowSelection }),
+      ...(isSorting && {
+        sorting,
+      }),
     },
+    manualSorting: isSorting,
+    ...(isSorting && {
+      onSortingChange: onSortingChange,
+    }),
+    enableSortingRemoval: true,
     enableRowSelection,
     enableMultiRowSelection,
     getRowId,
@@ -466,24 +525,123 @@ export function ScrollableDataTable<TData extends TBaseData>({
   }, [onLoadMore, isLoading]);
 
   return (
-    <div className={cn("s-flex s-flex-col s-gap-2", className, widthClassName)}>
-      <div
-        className={cn(
-          "s-relative s-overflow-y-auto s-overflow-x-hidden",
-          maxHeight
-        )}
-        ref={tableContainerRef}
-      >
-        <div className="s-relative">
-          <DataTable.Root className="s-w-full s-table-fixed">
-            <DataTable.Header className="s-sticky s-top-0 s-z-20 s-bg-white s-shadow-sm dark:s-bg-background-night">
-              {table.getHeaderGroups().map((headerGroup) => (
+    <div
+      className={cn(
+        "s-relative s-overflow-y-auto s-overflow-x-hidden",
+        className,
+        widthClassName,
+        maxHeight === true
+          ? "s-flex-1"
+          : typeof maxHeight === "string"
+            ? maxHeight
+            : "s-max-h-100"
+      )}
+      ref={setRef}
+    >
+      <div className="s-relative">
+        <DataTable.Root className="s-w-full s-table-fixed">
+          <DataTable.Header className="s-sticky s-top-0 s-z-20 s-bg-white s-shadow-sm dark:s-bg-background-night">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <DataTable.Row
+                key={headerGroup.id}
+                widthClassName={widthClassName}
+              >
+                {headerGroup.headers.map((header) => {
+                  const breakpoint = columnsBreakpoints[header.id];
+                  if (
+                    !windowSize.width ||
+                    !shouldRenderColumn(windowSize.width, breakpoint)
+                  ) {
+                    return null;
+                  }
+
+                  return (
+                    <DataTable.Head
+                      column={header.column}
+                      key={header.id}
+                      onClick={
+                        isSorting && header.column.getCanSort()
+                          ? header.column.getToggleSortingHandler()
+                          : undefined
+                      }
+                      className={cn(
+                        "s-max-w-0",
+                        header.column.getCanSort() &&
+                          isSorting &&
+                          "s-cursor-pointer"
+                      )}
+                      style={{
+                        width: columnSizing[header.id],
+                        minWidth: columnSizing[header.id],
+                      }}
+                    >
+                      <div className="s-flex s-w-full s-items-center s-space-x-1 s-whitespace-nowrap">
+                        <span className="s-truncate">
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                        </span>
+                        {isSorting && header.column.getCanSort() && (
+                          <Icon
+                            visual={
+                              header.column.getIsSorted() === "asc"
+                                ? ArrowUpIcon
+                                : ArrowDownIcon
+                            }
+                            size="xs"
+                            className={cn(
+                              "s-ml-1",
+                              header.column.getIsSorted()
+                                ? "s-opacity-100"
+                                : "s-opacity-0"
+                            )}
+                          />
+                        )}
+                      </div>
+                    </DataTable.Head>
+                  );
+                })}
+              </DataTable.Row>
+            ))}
+          </DataTable.Header>
+          <DataTable.Body
+            className="s-relative s-w-full"
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const row = rows[virtualRow.index];
+              const handleRowClick = () => {
+                if (enableRowSelection && row.getCanSelect()) {
+                  row.toggleSelected(
+                    !enableMultiRowSelection ? true : undefined
+                  );
+                }
+                row.original.onClick?.();
+              };
+
+              return (
                 <DataTable.Row
-                  key={headerGroup.id}
+                  key={row.id}
+                  id={row.id}
                   widthClassName={widthClassName}
+                  onClick={
+                    enableRowSelection ? handleRowClick : row.original.onClick
+                  }
+                  onDoubleClick={row.original.onDoubleClick}
+                  rowData={row.original}
+                  className="s-absolute s-w-full"
+                  {...(enableRowSelection && {
+                    "data-selected": row.getIsSelected(),
+                  })}
+                  style={{
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
                 >
-                  {headerGroup.headers.map((header) => {
-                    const breakpoint = columnsBreakpoints[header.id];
+                  {row.getVisibleCells().map((cell) => {
+                    const breakpoint = columnsBreakpoints[cell.column.id];
                     if (
                       !windowSize.width ||
                       !shouldRenderColumn(windowSize.width, breakpoint)
@@ -492,103 +650,47 @@ export function ScrollableDataTable<TData extends TBaseData>({
                     }
 
                     return (
-                      <DataTable.Head
-                        column={header.column}
-                        key={header.id}
+                      <DataTable.Cell
+                        column={cell.column}
+                        key={cell.id}
+                        id={cell.id}
                         className="s-max-w-0"
                         style={{
-                          width: columnSizing[header.id],
-                          minWidth: columnSizing[header.id],
+                          width: columnSizing[cell.column.id],
+                          minWidth: columnSizing[cell.column.id],
                         }}
                       >
-                        <div className="s-flex s-w-full s-items-center s-space-x-1">
+                        <div className="s-flex s-items-center s-space-x-1">
                           <span className="s-truncate">
                             {flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
+                              cell.column.columnDef.cell,
+                              cell.getContext()
                             )}
                           </span>
                         </div>
-                      </DataTable.Head>
+                      </DataTable.Cell>
                     );
                   })}
                 </DataTable.Row>
-              ))}
-            </DataTable.Header>
-            <DataTable.Body
-              className="s-relative s-w-full"
-              style={{
-                height: `${rowVirtualizer.getTotalSize()}px`,
-              }}
-            >
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const row = rows[virtualRow.index];
-                return (
-                  <DataTable.Row
-                    key={row.id}
-                    id={row.id}
-                    widthClassName={widthClassName}
-                    onClick={row.original.onClick}
-                    className="s-absolute s-w-full"
-                    {...(enableRowSelection && {
-                      "data-selected": row.getIsSelected(),
-                    })}
-                    style={{
-                      transform: `translateY(${virtualRow.start}px)`,
-                    }}
-                  >
-                    {row.getVisibleCells().map((cell) => {
-                      const breakpoint = columnsBreakpoints[cell.column.id];
-                      if (
-                        !windowSize.width ||
-                        !shouldRenderColumn(windowSize.width, breakpoint)
-                      ) {
-                        return null;
-                      }
-
-                      return (
-                        <DataTable.Cell
-                          column={cell.column}
-                          key={cell.id}
-                          id={cell.id}
-                          className="s-max-w-0"
-                          style={{
-                            width: columnSizing[cell.column.id],
-                            minWidth: columnSizing[cell.column.id],
-                          }}
-                        >
-                          <div className="s-flex s-items-center s-space-x-1">
-                            <span className="s-truncate">
-                              {flexRender(
-                                cell.column.columnDef.cell,
-                                cell.getContext()
-                              )}
-                            </span>
-                          </div>
-                        </DataTable.Cell>
-                      );
-                    })}
-                  </DataTable.Row>
-                );
-              })}
-            </DataTable.Body>
-          </DataTable.Root>
-          {/*sentinel div used for the intersection observer*/}
-          <div
-            ref={loadMoreRef}
-            className="s-absolute s-bottom-0 s-h-1 s-w-full"
-          />
-        </div>
-
-        {isLoading && (
-          <div className="s-sticky s-bottom-0 s-left-0 s-right-0 s-flex s-justify-center s-bg-white/80 s-py-2 s-backdrop-blur-sm dark:s-bg-background-night/80">
-            <div className="s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground">
-              <Spinner size="xs" />
-              <span>Loading more data...</span>
-            </div>
-          </div>
-        )}
+              );
+            })}
+          </DataTable.Body>
+        </DataTable.Root>
+        {/*sentinel div used for the intersection observer*/}
+        <div
+          ref={loadMoreRef}
+          className="s-absolute s-bottom-0 s-h-1 s-w-full"
+        />
       </div>
+
+      {isLoading && (
+        <div className="s-sticky s-bottom-0 s-left-0 s-right-0 s-flex s-justify-center s-bg-white/80 s-py-2 s-backdrop-blur-sm dark:s-bg-background-night/80">
+          <div className="s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground">
+            <Spinner size="xs" />
+            <span>Loading more data...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -651,7 +753,7 @@ DataTable.Head = function Head({
   return (
     <th
       className={cn(
-        "s-py-2 s-pl-2 s-pr-3 s-text-left s-text-xs s-font-semibold s-capitalize",
+        "s-heading-xs s-py-2 s-pl-2 s-pr-3 s-text-left s-capitalize",
         "s-text-foreground dark:s-text-foreground-night",
         column.columnDef.meta?.className,
         className
@@ -682,34 +784,83 @@ DataTable.Body = function Body({
 interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   onClick?: () => void;
+  onDoubleClick?: () => void;
   widthClassName: string;
   "data-selected"?: boolean;
+  rowData?: TBaseData;
 }
 
 DataTable.Row = function Row({
   children,
   className,
   onClick,
+  onDoubleClick,
   widthClassName,
+  rowData,
   ...props
 }: RowProps) {
+  const [contextMenuPosition, setContextMenuPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const handleContextMenu = (event: React.MouseEvent) => {
+    if (!rowData?.menuItems?.length) {
+      return;
+    }
+
+    event.preventDefault();
+    setContextMenuPosition({ x: event.clientX, y: event.clientY });
+  };
+
   return (
-    <tr
-      className={cn(
-        "s-group/dt s-justify-center s-border-b s-transition-colors s-duration-300 s-ease-out",
-        "s-border-separator dark:s-border-separator-night",
-        onClick
-          ? "s-cursor-pointer hover:s-bg-muted dark:hover:s-bg-muted-night"
-          : "",
-        props["data-selected"] && "s-bg-muted/50 dark:s-bg-muted/50",
-        widthClassName,
-        className
+    <>
+      <tr
+        className={cn(
+          "s-group/dt-row s-justify-center s-border-b s-transition-colors s-duration-300 s-ease-out",
+          "s-border-separator dark:s-border-separator-night",
+          (onClick || onDoubleClick) &&
+            "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-night",
+          props["data-selected"] && "s-bg-muted/50 dark:s-bg-muted/50",
+          widthClassName,
+          className
+        )}
+        onClick={onClick || undefined}
+        onDoubleClick={onDoubleClick || undefined}
+        onContextMenu={handleContextMenu}
+        {...props}
+      >
+        {children}
+      </tr>
+
+      {contextMenuPosition && rowData?.menuItems?.length && (
+        <DropdownMenu
+          open={!!contextMenuPosition}
+          onOpenChange={(open) => !open && setContextMenuPosition(null)}
+          modal
+        >
+          <DropdownMenuPortal>
+            <DropdownMenuContent
+              align="start"
+              className="s-whitespace-nowrap"
+              style={{
+                position: "fixed",
+                left: contextMenuPosition?.x || 0,
+                top: contextMenuPosition?.y || 0,
+              }}
+            >
+              <DropdownMenuGroup>
+                {rowData?.menuItems?.map((item, index) =>
+                  renderMenuItem(item, index, () =>
+                    setContextMenuPosition(null)
+                  )
+                )}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenu>
       )}
-      onClick={onClick ? onClick : undefined}
-      {...props}
-    >
-      {children}
-    </tr>
+    </>
   );
 };
 
@@ -738,6 +889,71 @@ interface SubmenuMenuItem extends BaseMenuItem {
 
 export type MenuItem = RegularMenuItem | SubmenuMenuItem;
 
+// Shared menu rendering functions
+const renderSubmenuItem = (
+  item: SubmenuMenuItem,
+  index: number,
+  onItemClick?: () => void
+) => (
+  <DropdownMenuSub key={`${item.label}-${index}`}>
+    <DropdownMenuSubTrigger label={item.label} disabled={item.disabled} />
+    <DropdownMenuPortal>
+      <DropdownMenuSubContent>
+        <ScrollArea
+          className="s-min-w-24 s-flex s-max-h-72 s-flex-col"
+          hideScrollBar
+        >
+          {item.items.map((subItem) => (
+            <DropdownMenuItem
+              key={subItem.id}
+              label={subItem.name}
+              onClick={(event) => {
+                event.stopPropagation();
+                item.onSelect(subItem.id);
+                onItemClick?.();
+              }}
+            />
+          ))}
+          <ScrollBar className="s-py-0" />
+        </ScrollArea>
+      </DropdownMenuSubContent>
+    </DropdownMenuPortal>
+  </DropdownMenuSub>
+);
+
+const renderRegularItem = (
+  item: RegularMenuItem,
+  index: number,
+  onItemClick?: () => void
+) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { kind, ...itemProps } = item;
+  return (
+    <DropdownMenuItem
+      key={`item-${index}`}
+      {...itemProps}
+      onClick={(event) => {
+        event.stopPropagation();
+        itemProps.onClick?.(event);
+        onItemClick?.();
+      }}
+    />
+  );
+};
+
+const renderMenuItem = (
+  item: MenuItem,
+  index: number,
+  onItemClick?: () => void
+) => {
+  switch (item.kind) {
+    case "submenu":
+      return renderSubmenuItem(item, index, onItemClick);
+    case "item":
+      return renderRegularItem(item, index, onItemClick);
+  }
+};
+
 export interface DataTableMoreButtonProps {
   className?: string;
   menuItems?: MenuItem[];
@@ -745,66 +961,18 @@ export interface DataTableMoreButtonProps {
     React.ComponentPropsWithoutRef<typeof DropdownMenu>,
     "modal"
   >;
+  disabled?: boolean;
 }
 
 DataTable.MoreButton = function MoreButton({
   className,
   menuItems,
   dropdownMenuProps,
+  disabled,
 }: DataTableMoreButtonProps) {
   if (!menuItems?.length) {
     return null;
   }
-
-  const renderSubmenuItem = (item: SubmenuMenuItem, index: number) => (
-    <DropdownMenuSub key={`${item.label}-${index}`}>
-      <DropdownMenuSubTrigger label={item.label} disabled={item.disabled} />
-      <DropdownMenuPortal>
-        <DropdownMenuSubContent>
-          <ScrollArea
-            className="s-min-w-24 s-flex s-max-h-72 s-flex-col"
-            hideScrollBar
-          >
-            {item.items.map((subItem) => (
-              <DropdownMenuItem
-                key={subItem.id}
-                label={subItem.name}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  item.onSelect(subItem.id);
-                }}
-              />
-            ))}
-            <ScrollBar className="s-py-0" />
-          </ScrollArea>
-        </DropdownMenuSubContent>
-      </DropdownMenuPortal>
-    </DropdownMenuSub>
-  );
-
-  const renderRegularItem = (item: RegularMenuItem, index: number) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { kind, ...itemProps } = item;
-    return (
-      <DropdownMenuItem
-        key={`item-${index}`}
-        {...itemProps}
-        onClick={(event) => {
-          event.stopPropagation();
-          itemProps.onClick?.(event);
-        }}
-      />
-    );
-  };
-
-  const renderMenuItem = (item: MenuItem, index: number) => {
-    switch (item.kind) {
-      case "submenu":
-        return renderSubmenuItem(item, index);
-      case "item":
-        return renderRegularItem(item, index);
-    }
-  };
 
   return (
     <DropdownMenu modal={false} {...dropdownMenuProps}>
@@ -818,12 +986,18 @@ DataTable.MoreButton = function MoreButton({
           icon={MoreIcon}
           size="mini"
           variant="ghost-secondary"
-          className={cn(className)}
+          disabled={disabled}
+          className={cn(
+            disabled && "s-cursor-not-allowed s-opacity-50",
+            className
+          )}
         />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end">
-        <DropdownMenuGroup>{menuItems.map(renderMenuItem)}</DropdownMenuGroup>
+      <DropdownMenuContent align="end" hidden={disabled}>
+        <DropdownMenuGroup>
+          {menuItems.map((item, index) => renderMenuItem(item, index))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -864,6 +1038,11 @@ interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
   description?: string;
   grow?: boolean;
+  disabled?: boolean;
+  avatarStack?: {
+    items: { name: string; visual?: string | React.ReactNode }[];
+    nbVisibleItems?: number;
+  };
 }
 
 DataTable.CellContent = function CellContent({
@@ -876,6 +1055,8 @@ DataTable.CellContent = function CellContent({
   iconClassName,
   description,
   grow = false,
+  disabled,
+  avatarStack,
   ...props
 }: CellContentProps) {
   return (
@@ -883,8 +1064,10 @@ DataTable.CellContent = function CellContent({
       className={cn(
         "s-flex s-items-center",
         grow ? "s-flex-grow" : "",
+        disabled && "s-cursor-not-allowed s-opacity-50",
         className
       )}
+      aria-disabled={disabled || undefined}
       {...props}
     >
       {avatarUrl && avatarTooltipLabel && (
@@ -905,6 +1088,14 @@ DataTable.CellContent = function CellContent({
           visual={avatarUrl}
           size="xs"
           className="s-mr-2"
+          isRounded={roundedAvatar ?? false}
+        />
+      )}
+      {avatarStack && (
+        <Avatar.Stack
+          avatars={avatarStack.items}
+          nbVisibleItems={avatarStack.nbVisibleItems}
+          size="xs"
           isRounded={roundedAvatar ?? false}
         />
       )}
@@ -949,6 +1140,7 @@ interface BasicCellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   label: string | number;
   tooltip?: string | number;
   textToCopy?: string | number;
+  disabled?: boolean;
 }
 
 DataTable.BasicCellContent = function BasicCellContent({
@@ -956,6 +1148,7 @@ DataTable.BasicCellContent = function BasicCellContent({
   tooltip,
   className,
   textToCopy,
+  disabled,
   ...props
 }: BasicCellContentProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
@@ -982,8 +1175,10 @@ DataTable.BasicCellContent = function BasicCellContent({
                 cellHeight,
                 "s-group s-flex s-items-center s-gap-2 s-text-sm",
                 "s-text-muted-foreground dark:s-text-muted-foreground-night",
+                disabled && "s-cursor-not-allowed s-opacity-50",
                 className
               )}
+              aria-disabled={disabled || undefined}
               {...props}
             >
               <span className="s-truncate">{label}</span>
@@ -1009,8 +1204,10 @@ DataTable.BasicCellContent = function BasicCellContent({
             cellHeight,
             "s-group s-flex s-items-center s-gap-2 s-text-sm",
             "s-text-muted-foreground dark:s-text-muted-foreground-night",
+            disabled && "s-cursor-not-allowed s-opacity-50",
             className
           )}
+          aria-disabled={disabled || undefined}
           {...props}
         >
           <span className="s-truncate">{label}</span>
@@ -1135,24 +1332,19 @@ export function createRadioSelectionColumn<TData>(): ColumnDef<TData> {
     header: () => null,
     cell: ({ row }) => (
       <div className="s-flex s-h-full s-w-full s-items-center">
-        <button
-          type="button"
+        <div
           className={cn(
             radioStyles({ size: "xs" }),
             row.getIsSelected() && "s-bg-muted/50 dark:s-bg-muted/50",
-            row.getCanSelect() && "s-cursor-pointer"
+            !row.getCanSelect() && "s-cursor-not-allowed s-opacity-50"
           )}
-          onClick={() =>
-            row.getCanSelect() && row.toggleSelected(!row.getIsSelected())
-          }
-          disabled={!row.getCanSelect()}
           aria-checked={row.getIsSelected()}
           role="radio"
         >
           {row.getIsSelected() && (
             <div className={radioIndicatorStyles({ size: "xs" })} />
           )}
-        </button>
+        </div>
       </div>
     ),
     meta: {

@@ -21,18 +21,20 @@ async function updateMembershipOriginsForWorkspace(
     return;
   }
 
-  const { memberships } = await MembershipResource.getMembershipsForWorkspace({
+  const { memberships } = await MembershipResource.getActiveMemberships({
     workspace,
-    includeUser: true,
   });
 
-  let m: OrganizationMembership[] = [];
+  let workOSMemberships: OrganizationMembership[] = [];
   while (true) {
     const curr = await getWorkOS().userManagement.listOrganizationMemberships({
       organizationId: workspace.workOSOrganizationId,
       statuses: ["active"],
       limit: 100,
-      after: m.length > 0 ? m[m.length - 1].id : undefined,
+      after:
+        workOSMemberships.length > 0
+          ? workOSMemberships[workOSMemberships.length - 1].id
+          : undefined,
     });
 
     logger.info(
@@ -41,7 +43,7 @@ async function updateMembershipOriginsForWorkspace(
       workspace.sId
     );
 
-    m = m.concat(curr.data);
+    workOSMemberships = workOSMemberships.concat(curr.data);
     if (curr.data.length < 100) {
       break;
     }
@@ -49,7 +51,7 @@ async function updateMembershipOriginsForWorkspace(
 
   logger.info(
     "Found %d active WorkOS memberships for workspace %s",
-    m.length,
+    workOSMemberships.length,
     workspace.sId
   );
 
@@ -61,7 +63,7 @@ async function updateMembershipOriginsForWorkspace(
       continue;
     }
 
-    const existingMembership = m.find(
+    const existingMembership = workOSMemberships.find(
       (mem) => mem.userId === user.workOSUserId
     );
     if (
@@ -134,8 +136,35 @@ async function updateMembershipOriginsForWorkspace(
       }
     } else {
       workspaceLogger.info(
-        `Would set WorkOS membership for user ${user.email} for workspace ${workspace.sId} - ${workspace.name}`
+        `Would set WorkOS membership for user ${user.email} for workspace ${workspace.sId} - ${workspace.name} with role ${membership.role}`
       );
+    }
+  }
+  for (const workOSMembership of workOSMemberships) {
+    if (
+      workOSMembership.status !== "active" ||
+      workOSMembership.role.slug === "member"
+    ) {
+      // Ignore inactive memberships and members
+      continue;
+    }
+
+    const existingMembership = memberships.find(
+      (m) => m.user?.workOSUserId === workOSMembership.userId
+    );
+    if (!existingMembership) {
+      if (execute) {
+        await getWorkOS().userManagement.deleteOrganizationMembership(
+          workOSMembership.id
+        );
+        workspaceLogger.info(
+          `Deleted WorkOS membership for user ${workOSMembership.userId} for workspace ${workspace.sId} - ${workspace.name}`
+        );
+      } else {
+        workspaceLogger.info(
+          `Would delete WorkOS membership for user ${workOSMembership.userId} for workspace ${workspace.sId} - ${workspace.name}`
+        );
+      }
     }
   }
 }

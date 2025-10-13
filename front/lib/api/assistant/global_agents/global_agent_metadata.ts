@@ -1,4 +1,8 @@
 import {
+  DEEP_DIVE_DESC,
+  DEEP_DIVE_NAME,
+} from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import {
   assertNever,
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -11,7 +15,9 @@ import {
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
+  GPT_5_MINI_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
+  GPT_5_NANO_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
@@ -56,7 +62,28 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.GPT5,
         name: "gpt5",
         description: GPT_5_MODEL_CONFIG.description,
-        pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
+        pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.GPT5_THINKING:
+      return {
+        sId: GLOBAL_AGENTS_SID.GPT5_THINKING,
+        name: "gpt5-thinking",
+        description: GPT_5_MINI_MODEL_CONFIG.description,
+        pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.GPT5_NANO:
+      return {
+        sId: GLOBAL_AGENTS_SID.GPT5_NANO,
+        name: "gpt5-nano",
+        description: GPT_5_NANO_MODEL_CONFIG.description,
+        pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.GPT5_MINI:
+      return {
+        sId: GLOBAL_AGENTS_SID.GPT5_MINI,
+        name: "gpt5-mini",
+        description: GPT_5_MINI_MODEL_CONFIG.description,
+        pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.O1:
       return {
@@ -236,13 +263,45 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "An agent with context on your company data.",
         pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
       };
-    case GLOBAL_AGENTS_SID.RESEARCH:
+    case GLOBAL_AGENTS_SID.DEEP_DIVE:
       return {
-        sId: GLOBAL_AGENTS_SID.RESEARCH,
-        name: "research",
-        description: "An agent that can do deep research on your company data.",
+        sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
+        name: DEEP_DIVE_NAME,
+        description: DEEP_DIVE_DESC,
+        pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.DUST_TASK:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_TASK,
+        name: "dust-task",
+        description:
+          "Task sub-agent for focused research using company data, web search, browsing, and data warehouses.",
         pictureUrl:
-          "https://dust.tt/static/systemavatar/research_avatar_full.png",
+          "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
+        name: "dust-browser-summary",
+        description: "A agent that summarizes web page content.",
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.DUST_PLANNING:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_PLANNING,
+        name: "dust-planning",
+        description: "A agent that plans research tasks.",
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.NOOP:
+      return {
+        sId: GLOBAL_AGENTS_SID.NOOP,
+        name: "noop",
+        description: "A no-op agent that does nothing.",
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
       };
     default:
       assertNever(sId);

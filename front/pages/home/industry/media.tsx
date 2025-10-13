@@ -13,7 +13,7 @@ export async function getStaticProps() {
 }
 
 export default function Media() {
-  return <IndustryTemplate config={mediaConfig} />;
+  return <IndustryTemplate config={mediaConfig} trackingPrefix="media" />;
 }
 
 Media.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {

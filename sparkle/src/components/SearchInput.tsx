@@ -52,7 +52,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     };
 
     return (
-      <div className={cn("s-relative s-flex-grow", className)}>
+      <div className={cn("s-relative", className)}>
         <Input
           type="text"
           name={name}

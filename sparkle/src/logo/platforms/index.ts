@@ -1,5 +1,6 @@
 export { default as Ai21Logo } from "./Ai21";
 export { default as AnthropicLogo } from "./Anthropic";
+export { default as AsanaLogo } from "./Asana";
 export { default as BigQueryLogo } from "./BigQuery";
 export { default as ChromeLogo } from "./Chrome";
 export { default as ClaudeLogo } from "./Claude";
@@ -7,6 +8,7 @@ export { default as CohereLogo } from "./Cohere";
 export { default as ConfluenceLogo } from "./Confluence";
 export { default as DatadogLogo } from "./Datadog";
 export { default as DeepseekLogo } from "./Deepseek";
+export { default as DiscordLogo } from "./Discord";
 export { default as DriveLogo } from "./Drive";
 export { default as FigmaLogo } from "./Figma";
 export { default as FireworksLogo } from "./Fireworks";

@@ -12,7 +12,6 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -75,14 +74,6 @@ async function handler(
 
       const { title, visibility, message, contentFragments } =
         bodyValidation.right;
-
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
-      );
-      const hasAsyncLoopFeature = featureFlags.includes("async_loop");
-      const forceAsynchronousLoop =
-        req.query.async === "true" ||
-        (req.query.async !== "false" && hasAsyncLoopFeature);
 
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
@@ -172,10 +163,7 @@ async function handler(
 
       if (message) {
         // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
-        if (
-          message.context.selectedMCPServerViewIds &&
-          featureFlags.includes("jit_tools")
-        ) {
+        if (message.context.selectedMCPServerViewIds) {
           const mcpServerViews = await MCPServerViewResource.fetchByIds(
             auth,
             message.context.selectedMCPServerViewIds
@@ -215,7 +203,6 @@ async function handler(
           },
           // For now we never skip tools when interacting with agents from the web client.
           skipToolsValidation: false,
-          forceAsynchronousLoop,
         });
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);

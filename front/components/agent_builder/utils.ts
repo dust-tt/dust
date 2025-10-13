@@ -1,3 +1,6 @@
+import { useController } from "react-hook-form";
+
+import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { dataSourceConfigurationSchema } from "@app/components/agent_builder/types";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { AssistantTemplateListType } from "@app/pages/api/templates";
@@ -34,4 +37,12 @@ export function validateDataSourceConfiguration(
   } catch (error) {
     return new Err(normalizeError(error));
   }
+}
+
+/**
+ * Helper hook to access the `sources`.
+ * As a single `useController` can be use to access a given attribute.
+ */
+export function useSourcesFormController() {
+  return useController<CapabilityFormData, "sources">({ name: "sources" });
 }

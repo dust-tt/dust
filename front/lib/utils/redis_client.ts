@@ -18,10 +18,10 @@ export async function redisClient({
   });
   client.on("error", (err) => console.log("Redis Client Error", err));
   client.on("connect", () => {
-    statsDClient.increment("redis.connection.count", 1, [origin]);
+    statsDClient.increment("redis.connection.count", 1, [`origin:${origin}`]);
   });
   client.on("end", () => {
-    statsDClient.decrement("redis.connection.count", 1, [origin]);
+    statsDClient.decrement("redis.connection.count", 1, [`origin:${origin}`]);
   });
 
   await client.connect();

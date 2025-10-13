@@ -9,6 +9,7 @@ import type {
 import { Op } from "sequelize";
 
 import { getWorkOS } from "@app/lib/api/workos/client";
+import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
@@ -450,10 +451,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
-  static async deleteAllForWorkspace(
-    workspace: LightWorkspaceType,
-    transaction?: Transaction
-  ) {
+  static async deleteAllForWorkspace(auth: Authenticator) {
+    const workspace = auth.getNonNullableWorkspace();
+
     if (workspace.workOSOrganizationId) {
       try {
         const workos = getWorkOS();
@@ -485,7 +485,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     return this.model.destroy({
       where: { workspaceId: workspace.id },
-      transaction,
     });
   }
 
@@ -537,26 +536,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       { transaction }
     );
 
-    if (workspace.workOSOrganizationId && user.workOSUserId) {
-      try {
-        const workos = getWorkOS();
-
-        await workos.userManagement.createOrganizationMembership({
-          userId: user.workOSUserId,
-          organizationId: workspace.workOSOrganizationId,
-          roleSlug: role,
-        });
-      } catch (error) {
-        logger.error(
-          {
-            workspaceId: workspace.id,
-            userId: user.id,
-            error,
-          },
-          "Failed to create WorkOS membership"
-        );
-      }
-    }
+    await this.updateWorkOSMembershipRole({
+      user,
+      workspace,
+      newRole: role,
+    });
 
     return new MembershipResource(MembershipModel, newMembership.get());
   }
@@ -731,39 +715,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         { where: { id: membership.id }, transaction }
       );
 
-      if (workspace.workOSOrganizationId && user.workOSUserId) {
-        try {
-          const workos = getWorkOS();
-          const workOSMemberships =
-            await workos.userManagement.listOrganizationMemberships({
-              organizationId: workspace.workOSOrganizationId,
-              userId: user.workOSUserId,
-            });
-          if (workOSMemberships.data.length > 0) {
-            await workos.userManagement.updateOrganizationMembership(
-              workOSMemberships.data[0].id,
-              {
-                roleSlug: newRole,
-              }
-            );
-          } else {
-            await workos.userManagement.createOrganizationMembership({
-              userId: user.workOSUserId,
-              organizationId: workspace.workOSOrganizationId,
-              roleSlug: newRole,
-            });
-          }
-        } catch (error) {
-          logger.error(
-            {
-              workspaceId: workspace.id,
-              userId: user.id,
-              error,
-            },
-            "Failed to udpate WorkOS membership"
-          );
-        }
-      }
+      await this.updateWorkOSMembershipRole({
+        user,
+        workspace,
+        newRole,
+      });
     } else {
       // If the last membership was terminated, we create a new membership with the new role.
       // Preserve the origin from the previous membership.
@@ -787,6 +743,52 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       "Membership role updated"
     );
     return new Ok({ previousRole, newRole });
+  }
+
+  static async updateWorkOSMembershipRole({
+    user,
+    workspace,
+    newRole,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    newRole: Exclude<MembershipRoleType, "revoked">;
+  }): Promise<void> {
+    if (workspace.workOSOrganizationId && user.workOSUserId) {
+      try {
+        const workos = getWorkOS();
+        const workOSMemberships =
+          await workos.userManagement.listOrganizationMemberships({
+            organizationId: workspace.workOSOrganizationId,
+            userId: user.workOSUserId,
+          });
+        if (workOSMemberships.data.length > 0) {
+          await workos.userManagement.updateOrganizationMembership(
+            workOSMemberships.data[0].id,
+            {
+              roleSlug: newRole,
+            }
+          );
+        } else {
+          await workos.userManagement.createOrganizationMembership({
+            userId: user.workOSUserId,
+            organizationId: workspace.workOSOrganizationId,
+            roleSlug: newRole,
+          });
+        }
+
+        await invalidateWorkOSOrganizationsCacheForUserId(user.workOSUserId);
+      } catch (error) {
+        logger.error(
+          {
+            workspaceId: workspace.id,
+            userId: user.id,
+            error,
+          },
+          "Failed to udpate WorkOS membership"
+        );
+      }
+    }
   }
 
   /**
@@ -845,6 +847,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
               workOSMemberships.data[0].id
             );
           }
+
+          await invalidateWorkOSOrganizationsCacheForUserId(u.workOSUserId);
         } catch (error) {
           logger.error(
             {

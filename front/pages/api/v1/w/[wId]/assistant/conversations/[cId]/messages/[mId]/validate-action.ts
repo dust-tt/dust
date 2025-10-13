@@ -2,13 +2,11 @@ import type { ValidateActionResponseType } from "@dust-tt/client";
 import { ValidateActionRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { MCPActionType } from "@app/lib/actions/mcp";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -122,48 +120,47 @@ async function handler(
 
   const { actionId, approved } = parseResult.data;
 
-  // Temporary code to be backwards compatible with the old actionId format.
-  // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
-  let actionIdString: string;
-  if (typeof actionId === "string") {
-    actionIdString = actionId;
-  } else {
-    actionIdString = MCPActionType.modelIdToSId({
-      id: actionId,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    });
+  const result = await validateAction(auth, conversationRes.value, {
+    actionId,
+    approvalState: approved,
+    messageId: mId,
+  });
+
+  if (result.isErr()) {
+    switch (result.error.code) {
+      case "action_not_blocked":
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "action_not_blocked",
+            message: "Action not blocked.",
+          },
+        });
+      case "action_not_found":
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "action_not_found",
+            message: "Action not found.",
+          },
+        });
+      default:
+        return apiError(
+          req,
+          res,
+          {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to validate action",
+            },
+          },
+          result.error
+        );
+    }
   }
 
-  try {
-    const result = await validateAction({
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      conversationId: cId,
-      messageId: mId,
-      actionId: actionIdString,
-      approved,
-    });
-
-    res.status(200).json(result);
-  } catch (error) {
-    logger.error(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        conversationId: cId,
-        messageId: mId,
-        actionId,
-        error,
-      },
-      "Error publishing action validation event"
-    );
-
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to publish action validation event",
-      },
-    });
-  }
+  res.status(200).json({ success: true });
 }
 
 export default withPublicAPIAuthentication(handler, {

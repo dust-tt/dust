@@ -1,6 +1,14 @@
 /** @type {import('tailwindcss').Config} */
-const colors = require("tailwindcss/colors"); // eslint-disable-line @typescript-eslint/no-var-requires
+let colors = require("tailwindcss/colors"); // eslint-disable-line @typescript-eslint/no-var-requires
 const plugin = require("tailwindcss/plugin"); // eslint-disable-line @typescript-eslint/no-var-requires
+
+// Remove unused deprecated colors that just generate noise
+// See here for the hack: https://github.com/tailwindlabs/tailwindcss/discussions/15127
+delete colors.lightBlue;
+delete colors.warmGray;
+delete colors.trueGray;
+delete colors.coolGray;
+delete colors.blueGray;
 
 const safeColorsArray = [
   "gray",
@@ -34,6 +42,7 @@ const customColors = {
   gray: {
     950: "#111418",
     900: "#1C222D",
+    850: "#232A37",
     800: "#2A3241",
     700: "#364153",
     600: "#545D6C",
@@ -229,6 +238,9 @@ const colorNames = Object.keys(colors).filter(
 );
 
 module.exports = {
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
     screens: {
       xxs: "384px",
@@ -532,6 +544,11 @@ module.exports = {
           "0%": { transform: "translate3d(0, 0, 0)" },
           "100%": { transform: "translate3d(-50%, 0, 0)" },
         },
+        "navigation-fade-in": {
+          to: {
+            opacity: "1",
+          },
+        },
       },
       animation: {
         "move-square": "move-square 4s ease-out infinite",
@@ -542,6 +559,8 @@ module.exports = {
         reload: "reload 1000ms ease-out",
         fadeout: "fadeout 500ms ease-out",
         marquee: "marquee 25s linear infinite",
+        "navigation-loader":
+          "navigation-fade-in 0.2s ease-in-out 0.5s forwards",
       },
       colors: {
         // Creates night shades for all colors
@@ -656,10 +675,10 @@ module.exports = {
             night: colors.rose[800],
           },
         },
-        background: { DEFAULT: colors.white, night: colors.black },
+        background: { DEFAULT: colors.white, night: colors.gray[950] },
         foreground: {
           DEFAULT: colors.gray[950],
-          night: colors.gray[50],
+          night: colors.gray[200],
           warning: {
             DEFAULT: colors.rose[500],
             night: colors.rose[500],
@@ -674,7 +693,7 @@ module.exports = {
           },
           background: {
             DEFAULT: colors.gray[50],
-            night: colors.gray[950],
+            night: colors.gray[900],
           },
         },
         faint: {
@@ -1045,6 +1064,9 @@ module.exports = {
     },
     {
       pattern: /^grid-rows-/,
+    },
+    {
+      pattern: /^cursor-/,
     },
     // Add copy classes to safelist
     "copy-xs",

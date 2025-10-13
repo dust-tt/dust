@@ -3,6 +3,7 @@ import {
   Button,
   DocumentTextIcon,
   PlayIcon,
+  StopIcon,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -24,7 +25,7 @@ import {
   moveBlockDown,
   moveBlockUp,
 } from "@app/lib/specification";
-import { useSavedRunStatus } from "@app/lib/swr/apps";
+import { useCancelRun, useSavedRunStatus } from "@app/lib/swr/apps";
 import type {
   APIErrorResponse,
   AppType,
@@ -157,15 +158,18 @@ export default function AppView({
   const { mutate } = useSWRConfig();
 
   const [spec, setSpec] = useState(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     JSON.parse(app.savedSpecification || `[]`) as SpecificationType
   );
 
   const [config, setConfig] = useState(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     extractConfig(JSON.parse(app.savedSpecification || `{}`))
   );
   const [runnable, setRunnable] = useState(isRunnable(readOnly, spec, config));
   const [runRequested, setRunRequested] = useState(false);
   const [runError, setRunError] = useState(null as null | CoreAPIError);
+  const [cancelRequested, setCancelRequested] = useState(false);
 
   const { run } = useSavedRunStatus(owner, app, (data) => {
     if (data && data.run) {
@@ -180,6 +184,12 @@ export default function AppView({
   });
 
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Check if run has been running for more than 1 hour
+  const showCancelButton =
+    run?.status.run === "running" &&
+    run?.created &&
+    Date.now() - run.created > 60 * 60 * 1000; // 1 hour in milliseconds
 
   const saveState = async (spec: SpecificationType, config: BlockRunConfig) => {
     if (saveTimeout) {
@@ -220,6 +230,7 @@ export default function AppView({
     idx: number | null,
     blockType: BlockType | "map_reduce" | "while_end"
   ) => {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const s = addBlock(spec, idx === null ? spec.length - 1 : idx, blockType);
     await update(s);
     if (idx === null) {
@@ -319,6 +330,52 @@ export default function AppView({
     }, 0);
   };
 
+  const { doCancel } = useCancelRun({ owner, app });
+
+  const handleCancelRun = async () => {
+    if (!run?.run_id || cancelRequested) {
+      return;
+    }
+
+    setCancelRequested(true);
+    setRunError(null);
+
+    try {
+      const success = await doCancel(run.run_id);
+
+      if (success) {
+        // Clear the cached run status
+        await mutate(
+          `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/saved/status`,
+          { run: null },
+          false
+        );
+        // Then revalidate to get fresh data
+        await mutate(
+          `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/saved/status`
+        );
+
+        // Mutate all blocks to trigger a refresh
+        if (run?.run_id) {
+          await Promise.all(
+            spec.map(async (block) => {
+              return mutate(
+                `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${run.run_id}/blocks/${block.type}/${block.name}`
+              );
+            })
+          );
+        }
+      } else {
+        setRunError({
+          code: "cancel_error",
+          message: "Failed to cancel the run",
+        } as CoreAPIError);
+      }
+    } finally {
+      setCancelRequested(false);
+    }
+  };
+
   const router = useRouter();
 
   return (
@@ -338,15 +395,27 @@ export default function AppView({
             spec={spec}
             small={false}
           />
-          <Button
-            variant="outline"
-            disabled={!runnable || runRequested || run?.status.run == "running"}
-            label={
-              runRequested || run?.status.run == "running" ? "Running" : "Run"
-            }
-            onClick={() => handleRun()}
-            icon={PlayIcon}
-          />
+          {run?.status.run === "running" && showCancelButton ? (
+            <Button
+              variant="outline"
+              disabled={cancelRequested}
+              label={cancelRequested ? "Canceling..." : "Cancel"}
+              onClick={() => handleCancelRun()}
+              icon={StopIcon}
+            />
+          ) : (
+            <Button
+              variant="outline"
+              disabled={
+                !runnable || runRequested || run?.status.run == "running"
+              }
+              label={
+                runRequested || run?.status.run == "running" ? "Running" : "Run"
+              }
+              onClick={() => handleRun()}
+              icon={PlayIcon}
+            />
+          )}
           {runError ? (
             <div className="flex-initial px-2 text-sm font-bold text-warning">
               {(() => {
@@ -444,19 +513,29 @@ export default function AppView({
               />
             </div>
             <div className="flex">
-              <Button
-                variant="outline"
-                disabled={
-                  !runnable || runRequested || run?.status.run == "running"
-                }
-                label={
-                  runRequested || run?.status.run == "running"
-                    ? "Running"
-                    : "Run"
-                }
-                onClick={() => handleRun()}
-                icon={PlayIcon}
-              />
+              {run?.status.run === "running" && showCancelButton ? (
+                <Button
+                  variant="outline"
+                  disabled={cancelRequested}
+                  label={cancelRequested ? "Canceling..." : "Cancel"}
+                  onClick={() => handleCancelRun()}
+                  icon={StopIcon}
+                />
+              ) : (
+                <Button
+                  variant="outline"
+                  disabled={
+                    !runnable || runRequested || run?.status.run == "running"
+                  }
+                  label={
+                    runRequested || run?.status.run == "running"
+                      ? "Running"
+                      : "Run"
+                  }
+                  onClick={() => handleRun()}
+                  icon={PlayIcon}
+                />
+              )}
             </div>
             {runError ? (
               <div className="flex px-2 text-sm font-bold text-warning">

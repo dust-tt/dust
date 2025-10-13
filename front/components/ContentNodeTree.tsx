@@ -3,12 +3,9 @@ import {
   BracesIcon,
   Button,
   ExternalLinkIcon,
-  HistoryIcon,
-  Icon,
   IconButton,
   ListCheckIcon,
   SearchInput,
-  Tooltip,
   Tree,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
@@ -16,7 +13,7 @@ import React, { useCallback, useContext, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
 import type { APIError, ContentNode } from "@app/types";
 
 const unselectedChildren = (
@@ -200,11 +197,12 @@ function ContentNodeTreeChildren({
 
   const tree = (
     <Tree isLoading={isResourcesLoading} isBoxed={isRoundedBackground}>
-      {filteredNodes &&
+      {!isResourcesLoading &&
+        filteredNodes &&
         filteredNodes.length === 0 &&
-        (emptyComponent || <Tree.Empty label="No documents" />)}
+        (emptyComponent ?? <Tree.Empty label="No documents" />)}
 
-      {filteredNodes.map((n, i) => {
+      {filteredNodes.map((n) => {
         const checkedState = getCheckedState(n);
         return (
           <Tree.Item
@@ -228,6 +226,7 @@ function ContentNodeTreeChildren({
               (n.preventSelection !== true || checkedState === "partial") &&
               selectedNodes
                 ? {
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                     disabled: parentIsSelected || !setSelectedNodes,
                     checked: checkedState,
                     onCheckedChange: (v) => {
@@ -262,22 +261,6 @@ function ContentNodeTreeChildren({
                     variant="outline"
                   />
                 )}
-                {n.lastUpdatedAt ? (
-                  <Tooltip
-                    label={
-                      <span>{new Date(n.lastUpdatedAt).toLocaleString()}</span>
-                    }
-                    side={i === 0 ? "bottom" : "top"}
-                    trigger={
-                      <div className="flex flex-row gap-1 text-gray-600">
-                        <Icon visual={HistoryIcon} size="xs" />
-                        <span className="text-xs">
-                          {timeAgoFrom(n.lastUpdatedAt)} ago
-                        </span>
-                      </div>
-                    }
-                  />
-                ) : null}
                 {onDocumentViewClick && (
                   <IconButton
                     size="xs"
@@ -331,30 +314,29 @@ function ContentNodeTreeChildren({
               />
             </div>
 
-            {filter.trim().length > 0 && (
-              <Button
-                icon={ListCheckIcon}
-                label={selectAllClicked ? "Unselect All" : "Select All"}
-                size="sm"
-                className="m-1"
-                variant="ghost"
-                onClick={() => {
-                  const isSelected = !selectAllClicked;
-                  setSelectAllClicked(isSelected);
-                  setSelectedNodes((prev) => {
-                    const newState = { ...prev };
-                    filteredNodes.forEach((n) => {
-                      newState[n.internalId] = {
-                        isSelected,
-                        node: n,
-                        parents: isSelected ? parentIds : [],
-                      };
-                    });
-                    return newState;
+            <Button
+              icon={ListCheckIcon}
+              label={selectAllClicked ? "Unselect All" : "Select All"}
+              size="sm"
+              className="m-1"
+              variant="ghost"
+              disabled={filteredNodes.length === 0}
+              onClick={() => {
+                const isSelected = !selectAllClicked;
+                setSelectAllClicked(isSelected);
+                setSelectedNodes((prev) => {
+                  const newState = { ...prev };
+                  filteredNodes.forEach((n) => {
+                    newState[n.internalId] = {
+                      isSelected,
+                      node: n,
+                      parents: isSelected ? parentIds : [],
+                    };
                   });
-                }}
-              />
-            )}
+                  return newState;
+                });
+              }}
+            />
           </div>
         </>
       )}

@@ -1,4 +1,3 @@
-import { removeNulls } from "@dust-tt/client";
 import {
   Button,
   ChevronLeftIcon,
@@ -23,11 +22,13 @@ import { UserContentMark } from "@app/components/assistant/conversation/co_editi
 import { insertNodes } from "@app/components/assistant/conversation/co_edition/tools/editor/utils";
 import { submitMessage } from "@app/components/assistant/conversation/lib";
 import { useConversationParticipants } from "@app/lib/swr/conversations";
+import { emptyArray } from "@app/lib/swr/swr";
 import type {
   ConversationType,
   LightWorkspaceType,
   UserType,
 } from "@app/types";
+import { removeNulls } from "@app/types";
 
 interface CoEditionContainerProps {
   conversation: ConversationType | null;
@@ -111,7 +112,7 @@ export function CoEditionContainer({
             // This is best-effort, we mentions all agents participating in the conversation.
             conversationParticipants?.agents.map((a) => ({
               configurationId: a.configurationId,
-            })) ?? [],
+            })) ?? emptyArray(),
         };
 
         const result = await submitMessage({

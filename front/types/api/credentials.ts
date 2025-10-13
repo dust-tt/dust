@@ -15,6 +15,8 @@ const {
   DUST_MANAGED_FIREWORKS_API_KEY = "",
   DUST_MANAGED_XAI_API_KEY = "",
   DUST_MANAGED_FIRECRAWL_API_KEY = "",
+  DUST_MANAGED_ELEVENLABS_API_KEY = "",
+  DUST_REGION = "",
 } = process.env;
 
 export const credentialsFromProviders = (
@@ -90,6 +92,8 @@ export const dustManagedCredentials = (): CredentialsType => {
     AZURE_OPENAI_ENDPOINT: DUST_MANAGED_AZURE_OPENAI_ENDPOINT,
     MISTRAL_API_KEY: DUST_MANAGED_MISTRAL_API_KEY,
     OPENAI_API_KEY: DUST_MANAGED_OPENAI_API_KEY,
+    // In Core this will determine the openai endpoint we use (EU vs US).
+    OPENAI_USE_EU_ENDPOINT: DUST_REGION === "europe-west1" ? "true" : "false",
     TEXTSYNTH_API_KEY: DUST_MANAGED_TEXTSYNTH_API_KEY,
     GOOGLE_AI_STUDIO_API_KEY: DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY,
     SERP_API_KEY: DUST_MANAGED_SERP_API_KEY,
@@ -99,5 +103,6 @@ export const dustManagedCredentials = (): CredentialsType => {
     FIREWORKS_API_KEY: DUST_MANAGED_FIREWORKS_API_KEY,
     XAI_API_KEY: DUST_MANAGED_XAI_API_KEY,
     FIRECRAWL_API_KEY: DUST_MANAGED_FIRECRAWL_API_KEY,
+    ELEVENLABS_API_KEY: DUST_MANAGED_ELEVENLABS_API_KEY,
   };
 };

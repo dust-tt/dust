@@ -1,3 +1,4 @@
+import { GLOBAL_AGENTS_SID } from "@app/shared/lib/global_agents";
 import { compareForFuzzySort, subFilter } from "@app/shared/lib/utils";
 
 export interface EditorSuggestion {
@@ -5,6 +6,7 @@ export interface EditorSuggestion {
   label: string;
   pictureUrl: string;
   userFavorite: boolean;
+  description: string;
 }
 
 export interface EditorSuggestions {
@@ -14,6 +16,11 @@ export interface EditorSuggestions {
 }
 
 const SUGGESTION_DISPLAY_LIMIT = 7;
+
+const SUGGESTION_PRIORITY: Record<string, number> = {
+  [GLOBAL_AGENTS_SID.DUST]: 1,
+  [GLOBAL_AGENTS_SID.DEEP_DIVE]: 2,
+};
 
 function filterAndSortSuggestions(
   lowerCaseQuery: string,
@@ -27,7 +34,13 @@ function filterAndSortSuggestions(
         a.label.toLocaleLowerCase(),
         b.label.toLocaleLowerCase()
       )
-    );
+    )
+    .sort((a, b) => {
+      // If within SUGGESTION_DISPLAY_LIMIT there's one from AGENT_PRIORITY, we move it to the top.
+      const aPriority = SUGGESTION_PRIORITY[a.id] ?? Number.MAX_SAFE_INTEGER;
+      const bPriority = SUGGESTION_PRIORITY[b.id] ?? Number.MAX_SAFE_INTEGER;
+      return aPriority - bPriority;
+    });
 }
 export function filterSuggestions(
   query: string,

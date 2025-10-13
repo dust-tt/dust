@@ -10,6 +10,8 @@ import type { PokeListPluginsForScopeResponseBody } from "@app/pages/api/poke/pl
 import type { PokeGetPluginAsyncArgsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/async-args";
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
 import type { PokeRunPluginResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/run";
+import type { PokeListPluginRunsResponseBody } from "@app/pages/api/poke/plugins/runs";
+import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { PluginResourceTarget, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -173,4 +175,26 @@ export function useRunPokePlugin({
   };
 
   return { doRunPlugin };
+}
+
+export function usePokePluginRuns({
+  disabled,
+  owner,
+}: PokeConditionalFetchProps) {
+  const pluginRunsFetcher: Fetcher<PokeListPluginRunsResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/poke/plugins/runs?workspaceId=${owner.sId}`,
+    pluginRunsFetcher,
+    {
+      disabled,
+    }
+  );
+
+  return {
+    data: data?.pluginRuns ?? emptyArray(),
+    isError: error,
+    isLoading: !error && !data && !disabled,
+    mutate,
+  };
 }

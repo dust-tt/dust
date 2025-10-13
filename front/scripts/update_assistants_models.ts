@@ -10,11 +10,23 @@ async function updateWorkspaceAssistants(
   workspaceId: ModelId,
   fromModel: string,
   toModel: SupportedModelIds,
-  execute: boolean
+  execute: boolean,
+  onlyActive: boolean
 ) {
+  const whereClause: any = { workspaceId, modelId: fromModel };
+  if (onlyActive) {
+    whereClause.status = "active";
+  }
+
   const agentConfigurations = await AgentConfiguration.findAll({
-    where: { workspaceId, modelId: fromModel },
+    where: whereClause,
   });
+
+  console.log(
+    `Found ${agentConfigurations.length} ${
+      onlyActive ? "active " : ""
+    }agent configurations with model ${fromModel} in workspace ${workspaceId}`
+  );
 
   for (const agent of agentConfigurations) {
     if (!isSupportedModel({ modelId: toModel, providerId: agent.providerId })) {
@@ -54,8 +66,14 @@ makeScript(
       description:
         "List of workspace identifiers, separated by a space, for which the feature flag should be toggled.",
     },
+    onlyActive: {
+      type: "boolean",
+      demandOption: false,
+      default: false,
+      description: "Only update active agent configurations.",
+    },
   },
-  async ({ fromModel, toModel, workspaceIds, execute }) => {
+  async ({ fromModel, toModel, workspaceIds, execute, onlyActive }) => {
     const whereClause = workspaceIds.length > 0 ? { sId: workspaceIds } : {};
     const workspaces = await WorkspaceModel.findAll({
       attributes: ["id", "name", "sId"],
@@ -67,7 +85,8 @@ makeScript(
         workspace.id,
         fromModel,
         toModel as SupportedModelIds,
-        execute
+        execute,
+        onlyActive
       );
     }
   }

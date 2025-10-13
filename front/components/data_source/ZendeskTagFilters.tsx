@@ -204,7 +204,7 @@ export function ZendeskTagFilters({
           )}
 
           {!hasTags && (
-            <p className="mb-4 text-sm text-muted-foreground">
+            <p className="mb-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
               No tag filters configured.
             </p>
           )}

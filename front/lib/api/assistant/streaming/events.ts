@@ -7,17 +7,36 @@ import type {
   AgentMessageEvents,
   ConversationEvents,
 } from "@app/lib/api/assistant/streaming/types";
+import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type {
   AgentMessageNewEvent,
-  AgentMessageWithRankType,
+  AgentMessageType,
   ConversationType,
   UserMessageNewEvent,
-  UserMessageWithRankType,
+  UserMessageType,
 } from "@app/types";
 import { assertNever } from "@app/types";
 
-async function publishConversationEvent(
+/**
+ * Generic event publication interface.
+ */
+export async function publishEvent({
+  origin,
+  channel,
+  event,
+}: {
+  origin: RedisUsageTagsType;
+  channel: string;
+  event: string;
+}) {
+  await getRedisHybridManager().publish(channel, event, origin);
+}
+
+/**
+ * Conversation event publication interface.
+ */
+export async function publishConversationEvent(
   event: ConversationEvents,
   {
     conversationId,
@@ -32,18 +51,31 @@ async function publishConversationEvent(
   await redisHybridManager.publish(
     conversationChannel,
     JSON.stringify(event),
-    "user_message_events"
+    "user_message_events",
+    // Conversation & message initial states are setup before starting to listen to events so we really care about getting new events.
+    // We are setting a low value to accommodate for reconnections to the event stream.
+    5
   );
 }
 
-async function publishMessageEvent(event: AgentMessageEvents) {
+/**
+ * Message event publication interface.
+ */
+async function publishMessageEvent(
+  event: AgentMessageEvents,
+  {
+    step,
+  }: {
+    step: number;
+  }
+) {
   const redisHybridManager = getRedisHybridManager();
 
   const messageChannel = getEventMessageChannelId(event);
 
   await redisHybridManager.publish(
     messageChannel,
-    JSON.stringify(event),
+    JSON.stringify({ ...event, step }),
     "user_message_events"
   );
 
@@ -56,19 +88,26 @@ async function publishMessageEvent(event: AgentMessageEvents) {
   }
 }
 
-export async function publishConversationRelatedEvent(
-  event: AgentMessageEvents | ConversationEvents,
-  {
-    conversationId,
-  }: {
-    conversationId: string;
-  }
-) {
-  switch (event.type) {
-    case "user_message_new":
-    case "agent_message_new":
-      return publishConversationEvent(event, { conversationId });
+interface ConversationEventParams {
+  conversationId: string;
+  event: ConversationEvents;
+}
 
+interface MessageEventParams {
+  conversationId: string;
+  event: AgentMessageEvents;
+  step: number;
+}
+
+type ConversationRelatedEventParams =
+  | ConversationEventParams
+  | MessageEventParams;
+
+function isMessageEventParams(
+  params: ConversationRelatedEventParams,
+  eventType: AgentMessageEvents["type"] | ConversationEvents["type"]
+): params is MessageEventParams {
+  switch (eventType) {
     case "agent_action_success":
     case "agent_error":
     case "tool_error":
@@ -78,17 +117,35 @@ export async function publishConversationRelatedEvent(
     case "tool_approve_execution":
     case "tool_notification":
     case "tool_params":
-      return publishMessageEvent(event);
-
+      return true;
+    case "user_message_new":
+    case "agent_message_new":
+    case "agent_message_done":
+    case "conversation_title":
+      return false;
     default:
-      assertNever(event);
+      assertNever(eventType);
+  }
+}
+
+export async function publishConversationRelatedEvent(
+  a: ConversationRelatedEventParams
+) {
+  if (isMessageEventParams(a, a.event.type)) {
+    return publishMessageEvent(a.event, {
+      step: a.step,
+    });
+  } else {
+    return publishConversationEvent(a.event, {
+      conversationId: a.conversationId,
+    });
   }
 }
 
 export async function publishMessageEventsOnMessagePostOrEdit(
   conversation: ConversationType,
-  userMessage: UserMessageWithRankType,
-  agentMessages: AgentMessageWithRankType[]
+  userMessage: UserMessageType,
+  agentMessages: AgentMessageType[]
 ) {
   const userMessageEvent: UserMessageNewEvent = {
     type: "user_message_new",
@@ -110,11 +167,13 @@ export async function publishMessageEventsOnMessagePostOrEdit(
   );
 
   return Promise.all([
-    publishConversationRelatedEvent(userMessageEvent, {
+    publishConversationRelatedEvent({
+      event: userMessageEvent,
       conversationId: conversation.sId,
     }),
     ...agentMessageEvents.map((event) =>
-      publishConversationRelatedEvent(event, {
+      publishConversationRelatedEvent({
+        event,
         conversationId: conversation.sId,
       })
     ),
@@ -123,7 +182,7 @@ export async function publishMessageEventsOnMessagePostOrEdit(
 
 export async function publishAgentMessageEventOnMessageRetry(
   conversation: ConversationType,
-  agentMessage: AgentMessageWithRankType
+  agentMessage: AgentMessageType
 ) {
   const agentMessageEvent: AgentMessageNewEvent = {
     type: "agent_message_new",
@@ -133,7 +192,8 @@ export async function publishAgentMessageEventOnMessageRetry(
     message: agentMessage,
   };
 
-  return publishConversationRelatedEvent(agentMessageEvent, {
+  return publishConversationRelatedEvent({
+    event: agentMessageEvent,
     conversationId: conversation.sId,
   });
 }

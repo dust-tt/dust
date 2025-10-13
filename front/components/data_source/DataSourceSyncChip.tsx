@@ -27,6 +27,7 @@ export default function ConnectorSyncingChip({
     dataSource,
   });
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const connector = refreshedConnector || initialState;
   if (!connector) {
     if (isConnectorError) {
@@ -146,10 +147,6 @@ export default function ConnectorSyncingChip({
       </Chip>
     );
   } else {
-    return (
-      <Chip>
-        Last Sync ~ {timeAgoFrom(connector.lastSyncSuccessfulTime)} ago
-      </Chip>
-    );
+    return <Chip>{timeAgoFrom(connector.lastSyncSuccessfulTime)} ago</Chip>;
   }
 }

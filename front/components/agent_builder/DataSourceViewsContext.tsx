@@ -2,7 +2,10 @@ import type { ReactNode } from "react";
 import React, { createContext, useContext, useEffect, useMemo } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { supportsDocumentsData } from "@app/lib/data_sources";
+import {
+  supportsDocumentsData,
+  supportsStructuredData,
+} from "@app/lib/data_sources";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { DataSourceViewType, LightWorkspaceType } from "@app/types";
@@ -13,11 +16,9 @@ interface DataSourceViewsContextType {
   isDataSourceViewsError: boolean;
 }
 
-const DataSourceViewsContext = createContext<DataSourceViewsContextType>({
-  supportedDataSourceViews: [],
-  isDataSourceViewsLoading: false,
-  isDataSourceViewsError: false,
-});
+const DataSourceViewsContext = createContext<
+  DataSourceViewsContextType | undefined
+>(undefined);
 
 export const useDataSourceViewsContext = () => {
   const context = useContext(DataSourceViewsContext);
@@ -55,10 +56,11 @@ export const DataSourceViewsProvider = ({
     }
   }, [isDataSourceViewsError, sendNotification]);
 
-  // Filter data sources for document search (excluding table-only sources)
   const supportedDataSourceViews = useMemo(() => {
-    return dataSourceViews.filter((dsv) =>
-      supportsDocumentsData(dsv.dataSource, featureFlags)
+    return dataSourceViews.filter(
+      (dsv) =>
+        supportsDocumentsData(dsv.dataSource, featureFlags) ||
+        supportsStructuredData(dsv.dataSource)
     );
   }, [dataSourceViews, featureFlags]);
 

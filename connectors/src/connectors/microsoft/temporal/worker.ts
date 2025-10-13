@@ -26,11 +26,13 @@ export async function runMicrosoftWorker() {
     reuseV8Context: true,
     namespace,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
-        },
-        () => new MicrosoftCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "microsoft"),
+        }),
+        () => ({
+          inbound: new MicrosoftCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {

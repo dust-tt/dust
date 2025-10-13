@@ -1,4 +1,5 @@
 import { useDustAPI } from "@app/shared/lib/dust_api";
+import { GLOBAL_AGENTS_SID } from "@app/shared/lib/global_agents";
 import { AssistantPicker } from "@app/ui/components/assistants/AssistantPicker";
 import { usePublicAgentConfigurations } from "@app/ui/components/assistants/usePublicAgentConfigurations";
 import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
@@ -128,17 +129,24 @@ function sortAgents(
   a: LightAgentConfigurationType,
   b: LightAgentConfigurationType
 ) {
-  // Place favorites first
   if (a.userFavorite && !b.userFavorite) {
     return -1;
   }
   if (b.userFavorite && !a.userFavorite) {
     return 1;
   }
-  if (a.sId === "dust") {
+
+  if (a.sId === GLOBAL_AGENTS_SID.DUST) {
     return -1;
-  } else if (b.sId === "dust") {
+  } else if (b.sId === GLOBAL_AGENTS_SID.DUST) {
     return 1;
   }
+
+  if (a.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
+    return -1;
+  } else if (b.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
+    return 1;
+  }
+
   return (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0);
 }

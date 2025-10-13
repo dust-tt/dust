@@ -295,6 +295,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       })
     ).map((group) => new this(GroupModel, group.get()));
     const systemGroup =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingGroups.find((v) => v.kind === "system") ||
       (await GroupResource.makeNew({
         name: "System",
@@ -302,6 +303,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         workspaceId: workspace.id,
       }));
     const globalGroup =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingGroups.find((v) => v.kind === "global") ||
       (await GroupResource.makeNew({
         name: "Workspace",
@@ -370,7 +372,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Use with care as this gives access to all groups in the workspace.
   static async internalFetchAllWorkspaceGroups({
     workspaceId,
-    groupKinds = ["global", "regular", "system"],
+    groupKinds = ["global", "regular", "system", "provisioned"],
     transaction,
   }: {
     workspaceId: ModelId;
@@ -392,7 +394,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async listWorkspaceGroupsFromKey(
     key: KeyResource,
-    groupKinds: GroupKind[] = ["global", "regular", "system"]
+    groupKinds: GroupKind[] = ["global", "regular", "system", "provisioned"]
   ): Promise<GroupResource[]> {
     let groups: GroupModel[] = [];
 
@@ -493,6 +495,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     { includes, limit, order, where }: ResourceFindOptions<GroupModel> = {}
   ) {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const includeClauses: Includeable[] = includes || [];
 
     const groupModels = await this.model.findAll({

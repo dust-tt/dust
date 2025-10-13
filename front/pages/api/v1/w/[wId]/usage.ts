@@ -1,3 +1,4 @@
+import type { GetWorkspaceUsageResponseType } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -8,6 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { unsafeGetUsageData } from "@app/lib/workspace_usage";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 
 const DateString = t.refinement(
   t.string,
@@ -31,7 +33,7 @@ const GetWorkspaceUsageSchema = t.intersection([
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse,
+  res: NextApiResponse<WithAPIErrorResponse<GetWorkspaceUsageResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();

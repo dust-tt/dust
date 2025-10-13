@@ -176,6 +176,7 @@ const renderDataSourcesConfigurations = async (
         return {
           dataSourceView: serializedDataSourceView,
           selectedResources: [],
+          excludedResources: [],
           isSelectAll: sr.isSelectAll,
           tagsFilter: sr.tagsFilter,
         };
@@ -206,6 +207,7 @@ const renderDataSourcesConfigurations = async (
         return {
           dataSourceView: serializedDataSourceView,
           selectedResources: [],
+          excludedResources: [],
           isSelectAll: sr.isSelectAll,
           tagsFilter: sr.tagsFilter,
         };
@@ -214,6 +216,7 @@ const renderDataSourcesConfigurations = async (
       return {
         dataSourceView: serializedDataSourceView,
         selectedResources: contentNodesRes.value.nodes,
+        excludedResources: [],
         isSelectAll: sr.isSelectAll,
         tagsFilter: sr.tagsFilter,
       };

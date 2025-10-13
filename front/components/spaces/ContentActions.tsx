@@ -6,7 +6,7 @@ import {
   PencilSquareIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { capitalize } from "lodash";
+import capitalize from "lodash/capitalize";
 import type { NextRouter } from "next/router";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
 import React, { useCallback, useImperativeHandle, useState } from "react";
@@ -49,6 +49,7 @@ export type ContentAction = {
 const isUploadOrEditAction = (
   action: ContentActionKey | undefined
 ): action is UploadOrEditContentActionKey =>
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   ["DocumentUploadOrEdit", "TableUploadOrEdit"].includes(action || "");
 
 type ContentActionsProps = {
@@ -140,6 +141,7 @@ export const ContentActions = React.forwardRef<
           dataSourceView={dataSourceView}
           owner={owner}
           contentNode={currentAction.contentNode ?? null}
+          onDeleteSuccess={() => onSave("DeleteContentNode")}
         />
         <DataSourceViewDocumentModal
           owner={owner}

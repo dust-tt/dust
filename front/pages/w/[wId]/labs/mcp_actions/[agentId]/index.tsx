@@ -18,10 +18,12 @@ import { ConversationsNavigationProvider } from "@app/components/assistant/conve
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useMCPActions } from "@app/lib/swr/mcp_actions";
+import { getAgentRoute } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
   SubscriptionType,
@@ -126,17 +128,16 @@ export default function AgentMCPActions({
     }
   };
 
-  const getExecutionStateColor = (state: string) => {
+  const getExecutionStateColor = (state: ToolExecutionStatus) => {
     switch (state) {
-      case "allowed_explicitly":
-      case "allowed_implicitly":
+      case "succeeded":
         return "success";
       case "denied":
+      case "errored":
         return "warning";
-      case "pending":
+      case "blocked_authentication_required":
+      case "blocked_validation_required":
         return "info";
-      case "timeout":
-        return "warning";
       default:
         return "primary";
     }
@@ -147,7 +148,7 @@ export default function AgentMCPActions({
     messageId: string
   ) => {
     if (conversationId && messageId) {
-      window.open(`/w/${owner.sId}/assistant/${conversationId}`, "_blank");
+      window.open(getAgentRoute(owner.sId, conversationId), "_blank");
     }
   };
 
@@ -221,23 +222,22 @@ export default function AgentMCPActions({
                       {actions.map((action) => (
                         <ContextItem
                           key={action.sId}
+                          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                           title={action.functionCallName || "Unknown Action"}
                           visual={<Icon visual={ActionCodeBoxIcon} />}
                           action={
                             <div className="flex items-center gap-2">
                               <Chip
                                 color={
-                                  action.isError
+                                  action.status === "errored"
                                     ? "warning"
-                                    : getExecutionStateColor(
-                                        action.executionState
-                                      )
+                                    : getExecutionStateColor(action.status)
                                 }
                                 size="xs"
                               >
-                                {action.isError
+                                {action.status === "errored"
                                   ? "Error"
-                                  : action.executionState.replace("_", " ")}
+                                  : action.status.replace("_", " ")}
                               </Chip>
                               {action.conversationId && (
                                 <Button

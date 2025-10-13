@@ -99,8 +99,7 @@ impl SnowflakeClient {
 
         let session = SnowflakeSession {
             http: self.http.clone(),
-            // Replace any `_` with `-` in the account name for nginx proxy.
-            account: self.config.account.clone().replace('_', "-"),
+            account: self.config.account.clone(),
             session_token,
             timeout: self.config.timeout,
         };

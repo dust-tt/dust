@@ -166,6 +166,7 @@ async function handler(
                   m.id.startsWith("code-") ||
                   m.id.startsWith("gpt-3.5-turbo") ||
                   m.id.startsWith("gpt-4") ||
+                  m.id.startsWith("gpt-5") ||
                   m.id.startsWith("o1-") ||
                   m.id.startsWith("o3-") ||
                   m.id.startsWith("o4-")
@@ -199,15 +200,16 @@ async function handler(
               // Deprecated models.
               { id: "claude-2.1" }, // Retired Jul 2025.
               { id: "claude-3-sonnet-20240229" }, // Retired Jul 2025.
+              { id: "claude-3-5-sonnet-20240620" }, // Retired Oct 2025.
+              { id: "claude-3-5-sonnet-20241022" }, // Retired Oct 2025.
               { id: "claude-3-opus-20240229" }, // Retired Jan 2026.
+              { id: "claude-3-7-sonnet-20250219" }, // Retired Feb 2026.
               // Active models.
               { id: "claude-3-haiku-20240307" },
-              { id: "claude-3-5-sonnet-20240620" },
               { id: "claude-3-5-haiku-20241022" },
-              { id: "claude-3-5-sonnet-20241022" },
-              { id: "claude-3-7-sonnet-20250219" },
-              { id: "claude-sonnet-4-20250514" },
+              { id: "claude-4-sonnet-20250514" },
               { id: "claude-opus-4-20250514" },
+              { id: "claude-sonnet-4-5-20250929" },
             ];
           }
 

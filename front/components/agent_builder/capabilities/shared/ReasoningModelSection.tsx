@@ -2,76 +2,94 @@ import {
   Button,
   Card,
   ContentMessage,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuPortal,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
+  ContextItem,
   InformationCircleIcon,
+  SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { partition } from "lodash";
-import { useMemo } from "react";
+import { Icon } from "@dust-tt/sparkle";
+import { PencilIcon } from "@heroicons/react/20/solid";
+import { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useModels } from "@app/lib/swr/models";
-import type {
-  LightWorkspaceType,
-  ModelConfigurationType,
-  ModelProviderIdType,
-  ReasoningModelConfigurationType,
-} from "@app/types";
-import {
-  GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
-  getProviderDisplayName,
-  O3_MODEL_ID,
-  O4_MINI_MODEL_ID,
-} from "@app/types";
+import type { ModelConfigurationType } from "@app/types";
 
-interface ReasoningModelSectionProps {
-  owner: LightWorkspaceType;
+interface ModelSelectionListProps {
+  models: ModelConfigurationType[];
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  onModelSelect: (model: ModelConfigurationType) => void;
+  isDark: boolean;
 }
 
-const BEST_PERFORMING_REASONING_MODELS_ID = [
-  O4_MINI_MODEL_ID,
-  O3_MODEL_ID,
-  GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
-];
-
-function groupReasoningModelsByPerformance(
-  reasoningModels: ModelConfigurationType[]
-) {
-  const [performingModels, nonPerformingModels] = partition(
-    reasoningModels,
-    (model) => {
-      return BEST_PERFORMING_REASONING_MODELS_ID.includes(model.modelId);
-    }
+function ModelSelectionList({
+  models,
+  searchQuery,
+  setSearchQuery,
+  onModelSelect,
+  isDark,
+}: ModelSelectionListProps) {
+  const filteredModels = models.filter((model) =>
+    model.displayName.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  return { performingModels, nonPerformingModels };
+
+  return (
+    <>
+      <SearchInput
+        name="search"
+        placeholder="Search models"
+        value={searchQuery}
+        onChange={setSearchQuery}
+      />
+      <div className="mt-1">
+        {filteredModels.map((model) => {
+          const LogoComponent = getModelProviderLogo(model.providerId, isDark);
+          return (
+            <ContextItem
+              key={model.modelId}
+              title={model.displayName}
+              visual={
+                LogoComponent ? <Icon visual={LogoComponent} size="lg" /> : null
+              }
+              onClick={() => onModelSelect(model)}
+            >
+              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {model.description || "No description available"}
+              </div>
+            </ContextItem>
+          );
+        })}
+      </div>
+    </>
+  );
 }
 
-function groupModelsByProvider(reasoningModels: ModelConfigurationType[]) {
-  const map = new Map<ModelProviderIdType, ModelConfigurationType[]>();
-  for (const model of reasoningModels) {
-    const key = model.providerId;
-    if (!map.has(key)) {
-      map.set(key, []);
-    }
-    map.get(key)!.push(model);
-  }
-  return map;
+interface ModelMessageProps {
+  title: string;
+  children: string;
 }
 
-export function ReasoningModelSection({ owner }: ReasoningModelSectionProps) {
+function ModelMessage({ title, children }: ModelMessageProps) {
+  return (
+    <ContentMessage
+      title={title}
+      icon={InformationCircleIcon}
+      variant="warning"
+      size="sm"
+    >
+      {children}
+    </ContentMessage>
+  );
+}
+
+export function ReasoningModelSection() {
+  const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
     "configuration.reasoningModel"
@@ -83,50 +101,52 @@ export function ReasoningModelSection({ owner }: ReasoningModelSectionProps) {
     owner,
   });
   const { isDark } = useTheme();
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // It should be selected by default, but in case it was not available,
-  // use the first one from the list (sorted by preference).
+  const handleRowClick = (model: ModelConfigurationType) => {
+    field.onChange({
+      modelId: model.modelId,
+      providerId: model.providerId,
+      temperature: null,
+      reasoningEffort: null,
+    });
+  };
+
+  const handleEditClick = () => {
+    field.onChange(null);
+  };
+
   const selectedReasoningModelConfig = useMemo(
     () =>
-      (field.value &&
-        reasoningModels.find(
-          (m) =>
-            m.modelId === field.value.modelId &&
-            m.providerId === field.value.providerId
-        )) ??
-      reasoningModels[0],
+      field.value &&
+      reasoningModels.find(
+        (m) =>
+          m.modelId === field.value.modelId &&
+          m.providerId === field.value.providerId
+      ),
     [field.value, reasoningModels]
   );
 
-  const { performingModels, nonPerformingModels } =
-    groupReasoningModelsByPerformance(reasoningModels);
+  const shouldShowList =
+    !isModelsError && reasoningModels.length > 0 && !field.value;
 
-  const modelsGroupedByProvider = groupModelsByProvider(nonPerformingModels);
-
+  let messageProps: { title: string; children: string };
   if (isModelsError) {
-    return (
-      <ContentMessage
-        title="Error loading models"
-        icon={InformationCircleIcon}
-        variant="warning"
-        size="sm"
-      >
-        Failed to load available reasoning models. Please try again later.
-      </ContentMessage>
-    );
-  }
-
-  if (!isModelsLoading && reasoningModels.length === 0) {
-    return (
-      <ContentMessage
-        title="No reasoning model available"
-        icon={InformationCircleIcon}
-        variant="warning"
-        size="sm"
-      >
-        There are no reasoning models available on your workspace.
-      </ContentMessage>
-    );
+    messageProps = {
+      title: "Error loading models",
+      children:
+        "Failed to load available reasoning models. Please try again later.",
+    };
+  } else if (reasoningModels.length === 0) {
+    messageProps = {
+      title: "No reasoning model available",
+      children: "There are no reasoning models available on your workspace.",
+    };
+  } else {
+    messageProps = {
+      title: "The model selected is not available to you",
+      children: `The reasoning model selected is not available to you. Please select another model from the list.`,
+    };
   }
 
   return (
@@ -134,101 +154,65 @@ export function ReasoningModelSection({ owner }: ReasoningModelSectionProps) {
       title="Reasoning Model"
       error={fieldState.error?.message}
     >
-      {isModelsLoading ? (
-        <Card size="sm" className="h-36 w-full">
-          <div className="flex h-full w-full items-center justify-center">
-            <Spinner />
+      {isModelsLoading && (
+        <div className="flex h-full w-full items-center justify-center">
+          <Spinner />
+        </div>
+      )}
+
+      {!isModelsLoading && shouldShowList && (
+        <ModelSelectionList
+          models={reasoningModels}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          onModelSelect={handleRowClick}
+          isDark={isDark}
+        />
+      )}
+
+      {!isModelsLoading && !shouldShowList && selectedReasoningModelConfig && (
+        <Card size="sm" className="w-full">
+          <div className="flex w-full">
+            <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const LogoComponent = getModelProviderLogo(
+                      selectedReasoningModelConfig.providerId,
+                      isDark
+                    );
+                    return LogoComponent ? (
+                      <div className="flex h-8 w-8 items-center justify-center">
+                        <Icon visual={LogoComponent} size="lg" />
+                      </div>
+                    ) : null;
+                  })()}
+                  <div className="text-md font-medium">
+                    {selectedReasoningModelConfig.displayName}
+                  </div>
+                </div>
+              </div>
+              <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {selectedReasoningModelConfig.description ||
+                  "No description available"}
+              </div>
+            </div>
+            <div className="ml-4 self-start">
+              <Button
+                variant="outline"
+                size="sm"
+                icon={PencilIcon}
+                label="Edit selection"
+                onClick={handleEditClick}
+              />
+            </div>
           </div>
         </Card>
-      ) : (
-        <>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="sm"
-                label={selectedReasoningModelConfig.displayName}
-                variant="outline"
-                isSelect
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              {performingModels.length > 0 && (
-                <>
-                  <DropdownMenuLabel>
-                    Best performing reasoning models
-                  </DropdownMenuLabel>
-                  {performingModels.map((model) => (
-                    <ReasoningModelDropdownMenuItem
-                      key={model.modelId}
-                      model={model}
-                      onClick={(model) => field.onChange(model)}
-                      isDark={isDark}
-                    />
-                  ))}
-                  <DropdownMenuLabel>Other models</DropdownMenuLabel>
-                </>
-              )}
-              {[...modelsGroupedByProvider.entries()].map(
-                ([providerId, models]) => {
-                  return (
-                    <DropdownMenuGroup key={providerId}>
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger
-                          label={`${getProviderDisplayName(providerId)} models`}
-                          icon={getModelProviderLogo(providerId, isDark)}
-                        />
-                        <DropdownMenuPortal>
-                          <DropdownMenuSubContent>
-                            {models.map((model) => (
-                              <ReasoningModelDropdownMenuItem
-                                key={model.modelId}
-                                model={model}
-                                onClick={(model) => field.onChange(model)}
-                                isDark={isDark}
-                              />
-                            ))}
-                          </DropdownMenuSubContent>
-                        </DropdownMenuPortal>
-                      </DropdownMenuSub>
-                    </DropdownMenuGroup>
-                  );
-                }
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <p className="mt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
-            {selectedReasoningModelConfig.description}
-          </p>
-          {fieldState.error && (
-            <p className="text-sm text-red-500">{fieldState.error.message}</p>
-          )}
-        </>
+      )}
+
+      {!isModelsLoading && !shouldShowList && !selectedReasoningModelConfig && (
+        <ModelMessage {...messageProps} />
       )}
     </ConfigurationSectionContainer>
-  );
-}
-
-function ReasoningModelDropdownMenuItem({
-  model,
-  onClick,
-  isDark,
-}: {
-  model: ModelConfigurationType;
-  onClick: (model: ReasoningModelConfigurationType) => void;
-  isDark: boolean;
-}) {
-  return (
-    <DropdownMenuItem
-      label={model.displayName}
-      icon={getModelProviderLogo(model.providerId, isDark)}
-      onClick={() =>
-        onClick({
-          modelId: model.modelId,
-          providerId: model.providerId,
-          temperature: null,
-          reasoningEffort: null,
-        })
-      }
-    />
   );
 }

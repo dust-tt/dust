@@ -155,6 +155,7 @@ describe(
             json: () =>
               Promise.resolve({
                 ...SAMPLE_TEMPLATE,
+                id: 1,
                 sId: "template1",
                 handle: "template1",
               }),
@@ -166,6 +167,7 @@ describe(
             json: () =>
               Promise.resolve({
                 ...SAMPLE_TEMPLATE,
+                id: 2,
                 sId: "template2",
                 handle: "template2",
               }),
@@ -213,6 +215,7 @@ describe(
             json: () =>
               Promise.resolve({
                 ...SAMPLE_TEMPLATE,
+                id: 1,
                 sId: "template1",
                 handle: "template1",
               }),

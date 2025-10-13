@@ -27,15 +27,15 @@ import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conve
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType, ConversationType } from "@app/types";
-import { assertNever, CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export async function getJITServers(
   auth: Authenticator,
@@ -51,60 +51,56 @@ export async function getJITServers(
 ): Promise<MCPServerConfigurationType[]> {
   const jitServers: MCPServerConfigurationType[] = [];
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (featureFlags.includes("jit_tools")) {
-    // Get the list of tools from the agent configuration to avoid duplicates.
-    const agentMcpServerViewIds = agentConfiguration.actions
-      .map((action) =>
-        isServerSideMCPServerConfiguration(action)
-          ? action.mcpServerViewId
-          : null
-      )
-      .filter((mcpServerViewId) => mcpServerViewId !== null);
+  // Get the list of tools from the agent configuration to avoid duplicates.
+  const agentMcpServerViewIds = agentConfiguration.actions
+    .map((action) =>
+      isServerSideMCPServerConfiguration(action) ? action.mcpServerViewId : null
+    )
+    .filter((mcpServerViewId) => mcpServerViewId !== null);
 
-    // Get the conversation MCP server views (aka Tools)
-    const conversationMCPServerViews =
-      await ConversationResource.fetchMCPServerViews(auth, conversation, true);
+  // Get the conversation MCP server views (aka Tools)
+  const conversationMCPServerViews =
+    await ConversationResource.fetchMCPServerViews(auth, conversation, true);
 
-    for (const conversationMCPServerView of conversationMCPServerViews) {
-      const mcpServerViewResource = await MCPServerViewResource.fetchByModelPk(
-        auth,
-        conversationMCPServerView.mcpServerViewId
-      );
+  for (const conversationMCPServerView of conversationMCPServerViews) {
+    const mcpServerViewResource = await MCPServerViewResource.fetchByModelPk(
+      auth,
+      conversationMCPServerView.mcpServerViewId
+    );
 
-      if (
-        !mcpServerViewResource ||
-        agentMcpServerViewIds.includes(mcpServerViewResource.sId)
-      ) {
-        continue;
-      }
-
-      const mcpServerView = mcpServerViewResource.toJSON();
-
-      const conversationFilesServer: ServerSideMCPServerConfigurationType = {
-        id: -1,
-        sId: generateRandomModelSId(),
-        type: "mcp_server_configuration",
-        name: mcpServerView.name ?? mcpServerView.server.name,
-        description:
-          mcpServerView.description ?? mcpServerView.server.description,
-        dataSources: null,
-        tables: null,
-        childAgentId: null,
-        reasoningModel: null,
-        timeFrame: null,
-        jsonSchema: null,
-        additionalConfiguration: {},
-        mcpServerViewId: mcpServerView.sId,
-        dustAppConfiguration: null,
-        internalMCPServerId:
-          mcpServerView.serverType === "internal"
-            ? mcpServerView.server.sId
-            : null,
-      };
-
-      jitServers.push(conversationFilesServer);
+    if (
+      !mcpServerViewResource ||
+      agentMcpServerViewIds.includes(mcpServerViewResource.sId)
+    ) {
+      continue;
     }
+
+    const mcpServerView = mcpServerViewResource.toJSON();
+
+    const conversationFilesServer: ServerSideMCPServerConfigurationType = {
+      id: -1,
+      sId: generateRandomModelSId(),
+      type: "mcp_server_configuration",
+      name: mcpServerView.name ?? mcpServerView.server.name,
+      description:
+        mcpServerView.description ?? mcpServerView.server.description,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      jsonSchema: null,
+      secretName: null,
+      additionalConfiguration: {},
+      mcpServerViewId: mcpServerView.sId,
+      dustAppConfiguration: null,
+      internalMCPServerId:
+        mcpServerView.serverType === "internal"
+          ? mcpServerView.server.sId
+          : null,
+    };
+
+    jitServers.push(conversationFilesServer);
   }
 
   if (attachments.length === 0) {
@@ -135,6 +131,7 @@ export async function getJITServers(
     reasoningModel: null,
     timeFrame: null,
     jsonSchema: null,
+    secretName: null,
     additionalConfiguration: {},
     mcpServerViewId: conversationFilesView.sId,
     dustAppConfiguration: null,
@@ -156,9 +153,12 @@ export async function getJITServers(
     return jitServers;
   }
 
-  // Get the datasource view for the conversation.
-  const conversationDataSourceView =
-    await DataSourceViewResource.fetchByConversation(auth, conversation);
+  // Get datasource views for child conversations that have generated files
+  const fileIdToDataSourceViewMap = await getConversationDataSourceViews(
+    auth,
+    conversation,
+    attachments
+  );
 
   // Assign tables to multi-sheet spreadsheets.
   await concurrentExecutor(
@@ -181,48 +181,53 @@ export async function getJITServers(
     // Get the query_tables MCP server view
 
     // Try to get the new query_tables_v2 server.
-    // Will only be available for users with the "exploded_tables_query" feature flag.
-    let queryTablesView =
+    const queryTablesView =
       await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
         auth,
         "query_tables_v2"
       );
 
-    // Fallback to the old query_tables server.
-    if (!queryTablesView) {
-      queryTablesView =
-        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "query_tables"
-        );
-    }
-
     assert(
       queryTablesView,
-      "MCP server view not found for query_tables. Ensure auto tools are created."
+      "MCP server view not found for query_tables_v2. Ensure auto tools are created."
     );
 
-    const tables: TableDataSourceConfiguration[] =
-      filesUsableAsTableQuery.flatMap((f) => {
-        if (isFileAttachmentType(f)) {
-          assert(
-            conversationDataSourceView,
-            "No conversation datasource view found for table when trying to get JIT actions"
+    const tables: TableDataSourceConfiguration[] = [];
+
+    for (const f of filesUsableAsTableQuery) {
+      if (isFileAttachmentType(f)) {
+        // For file attachments, we need to find which datasource they belong to
+        // Check if it's from the current conversation or a child conversation
+        const dataSourceView = fileIdToDataSourceViewMap.get(f.fileId);
+
+        if (!dataSourceView) {
+          logger.warn(
+            {
+              fileId: f.fileId,
+              conversationId: conversation.sId,
+            },
+            "Could not find datasource view for file in table query"
           );
-          return f.generatedTables.map((tableId) => ({
+          continue;
+        }
+
+        for (const tableId of f.generatedTables) {
+          tables.push({
             workspaceId: auth.getNonNullableWorkspace().sId,
-            dataSourceViewId: conversationDataSourceView.sId,
+            dataSourceViewId: dataSourceView.sId,
             tableId,
-          }));
-        } else if (isContentNodeAttachmentType(f)) {
-          return f.generatedTables.map((tableId) => ({
+          });
+        }
+      } else if (isContentNodeAttachmentType(f)) {
+        for (const tableId of f.generatedTables) {
+          tables.push({
             workspaceId: auth.getNonNullableWorkspace().sId,
             dataSourceViewId: f.nodeDataSourceViewId,
             tableId,
-          }));
+          });
         }
-        assertNever(f);
-      });
+      }
+    }
 
     const tablesServer: ServerSideMCPServerConfigurationType = {
       id: -1,
@@ -236,6 +241,7 @@ export async function getJITServers(
       reasoningModel: null,
       timeFrame: null,
       jsonSchema: null,
+      secretName: null,
       additionalConfiguration: {},
       mcpServerViewId: queryTablesView.sId,
       dustAppConfiguration: null,
@@ -276,10 +282,18 @@ export async function getJITServers(
         },
       })
     );
-    if (conversationDataSourceView) {
+
+    const dataSourceIds = new Set(
+      [...fileIdToDataSourceViewMap.values()].map(
+        (dataSourceView) => dataSourceView.sId
+      )
+    );
+
+    // Add datasources for both current conversation and child conversations
+    for (const dataSourceViewId of dataSourceIds.values()) {
       dataSources.push({
         workspaceId: auth.getNonNullableWorkspace().sId,
-        dataSourceViewId: conversationDataSourceView.sId,
+        dataSourceViewId,
         filter: { parents: null, tags: null },
       });
     }
@@ -296,6 +310,7 @@ export async function getJITServers(
       reasoningModel: null,
       timeFrame: null,
       jsonSchema: null,
+      secretName: null,
       additionalConfiguration: {},
       mcpServerViewId: retrievalView.sId,
       dustAppConfiguration: null,
@@ -344,6 +359,7 @@ export async function getJITServers(
       reasoningModel: null,
       timeFrame: null,
       jsonSchema: null,
+      secretName: null,
       additionalConfiguration: {},
       mcpServerViewId: retrievalView.sId,
       dustAppConfiguration: null,
@@ -353,6 +369,99 @@ export async function getJITServers(
   }
 
   return jitServers;
+}
+
+/**
+ * Get datasource views for child conversations that have generated files
+ * This allows JIT actions to access files from run_agent child conversations
+ */
+async function getConversationDataSourceViews(
+  auth: Authenticator,
+  conversation: ConversationType,
+  attachments: ConversationAttachmentType[]
+): Promise<Map<string, DataSourceViewResource>> {
+  const conversationIdToDataSourceViewMap = new Map<
+    string,
+    DataSourceViewResource
+  >();
+
+  // Get the datasource view for the conversation.
+  const conversationDataSourceView =
+    await DataSourceViewResource.fetchByConversation(auth, conversation);
+  if (conversationDataSourceView) {
+    conversationIdToDataSourceViewMap.set(
+      conversation.sId,
+      conversationDataSourceView
+    );
+  }
+
+  const fileIdToDataSourceViewMap = new Map<string, DataSourceViewResource>();
+
+  // Check file attachments for their conversation metadata
+  for (const attachment of attachments) {
+    if (isFileAttachmentType(attachment)) {
+      try {
+        // Get the file resource to access its metadata
+        const fileResource = await FileResource.fetchById(
+          auth,
+          attachment.fileId
+        );
+        if (fileResource && fileResource.useCaseMetadata?.conversationId) {
+          const fileConversationId =
+            fileResource.useCaseMetadata.conversationId;
+
+          // First look in already fetched conversations
+          const cachedChildDataSourceView =
+            conversationIdToDataSourceViewMap.get(fileConversationId);
+          if (cachedChildDataSourceView) {
+            fileIdToDataSourceViewMap.set(
+              attachment.fileId,
+              cachedChildDataSourceView
+            );
+            continue;
+          }
+
+          // Fetch the datasource view for this conversation
+          const childConversation =
+            await ConversationResource.fetchConversationWithoutContent(
+              auth,
+              fileConversationId
+            );
+
+          if (childConversation.isErr()) {
+            logger.warn(
+              `Could not find child conversation with sId: ${fileConversationId}`
+            );
+            continue;
+          }
+
+          const childDataSourceView =
+            await DataSourceViewResource.fetchByConversation(
+              auth,
+              childConversation.value
+            );
+
+          if (childDataSourceView) {
+            conversationIdToDataSourceViewMap.set(
+              childConversation.value.sId,
+              childDataSourceView
+            );
+            // Map this file to its datasource view
+            fileIdToDataSourceViewMap.set(
+              attachment.fileId,
+              childDataSourceView
+            );
+          }
+        }
+      } catch (error) {
+        logger.warn(
+          `Failed to get file metadata for file ${attachment.fileId}: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
+  }
+
+  return fileIdToDataSourceViewMap;
 }
 
 async function getTablesFromMultiSheetSpreadsheet(

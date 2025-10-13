@@ -1,5 +1,3 @@
-import { escape } from "html-escaper";
-
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
@@ -13,6 +11,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -24,6 +23,14 @@ import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
+
+/**
+ * Soft HTML escaping that prevents HTML tag injection while preserving apostrophes and other common characters.
+ * Only escapes < and > which are the minimal characters needed to prevent HTML tag injection.
+ */
+function softHtmlEscape(str: string): string {
+  return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 export async function fetchUserFromSession(session: SessionWithUser) {
   const { workOSUserId } = session.user;
@@ -39,7 +46,7 @@ export async function maybeUpdateFromExternalUser(
   user: UserResource,
   externalUser: ExternalUser
 ) {
-  if (externalUser.picture && externalUser.picture !== user.imageUrl) {
+  if (!user.imageUrl && externalUser.picture) {
     void UserModel.update(
       {
         imageUrl: externalUser.picture,
@@ -56,9 +63,11 @@ export async function maybeUpdateFromExternalUser(
 export async function createOrUpdateUser({
   user,
   externalUser,
+  forceNameUpdate = false,
 }: {
   user: UserResource | null;
   externalUser: ExternalUser;
+  forceNameUpdate?: boolean;
 }): Promise<{ user: UserResource; created: boolean }> {
   if (user) {
     const updateArgs: { [key: string]: string } = {};
@@ -71,16 +80,17 @@ export async function createOrUpdateUser({
     // Update the user object from the updated session information.
     updateArgs.username = externalUser.nickname;
 
-    if (!user.firstName && !user.lastName) {
+    if ((!user.firstName && !user.lastName) || forceNameUpdate) {
       if (externalUser.given_name && externalUser.family_name) {
-        updateArgs.firstName = externalUser.given_name;
-        updateArgs.lastName = externalUser.family_name;
+        updateArgs.firstName = softHtmlEscape(externalUser.given_name);
+        updateArgs.lastName = softHtmlEscape(externalUser.family_name);
       } else {
         const { firstName, lastName } = guessFirstAndLastNameFromFullName(
           externalUser.name
         );
-        updateArgs.firstName = firstName;
-        updateArgs.lastName = lastName || "";
+        updateArgs.firstName = softHtmlEscape(firstName);
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        updateArgs.lastName = softHtmlEscape(lastName || "");
       }
     }
 
@@ -129,10 +139,12 @@ export async function createOrUpdateUser({
       externalUser.name
     );
 
-    firstName = escape(externalUser.given_name || firstName);
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    firstName = softHtmlEscape(externalUser.given_name || firstName);
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     lastName = externalUser.family_name || lastName;
     if (lastName) {
-      lastName = escape(lastName);
+      lastName = softHtmlEscape(lastName);
     }
 
     // If worksOSUserId is already taken, we don't want to take it - only one user can have the same workOSUserId.
@@ -269,6 +281,8 @@ export async function mergeUserIdentities({
   // Migrate authorship of files from the secondary user to the primary user.
   await FileModel.update(userIdValues, userIdOptions);
   await DustAppSecret.update(userIdValues, userIdOptions);
+  // Migrate authorship of agent memories from the secondary user to the primary user.
+  await AgentMemoryModel.update(userIdValues, userIdOptions);
 
   // Delete all group memberships for the secondary user that are already member.
   const groups = await GroupMembershipModel.findAll({

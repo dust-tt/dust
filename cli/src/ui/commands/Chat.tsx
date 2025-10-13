@@ -703,6 +703,18 @@ const CliChat: FC<CliChatProps> = ({
             throw new Error(`Agent error: ${event.error.message}`);
           } else if (event.type === "user_message_error") {
             throw new Error(`User message error: ${event.error.message}`);
+          } else if (event.type === "agent_generation_cancelled") {
+            // Handle generation cancellation
+            if (updateIntervalRef.current) {
+              clearInterval(updateIntervalRef.current);
+            }
+            setError(null);
+            pushFullLinesToConversationItems(false);
+            chainOfThoughtRef.current = "";
+            contentRef.current = contentRef.current || "[Cancelled]";
+            pushFullLinesToConversationItems(false);
+            contentRef.current = "";
+            break;
           } else if (event.type === "agent_message_success") {
             if (updateIntervalRef.current) {
               clearInterval(updateIntervalRef.current);
@@ -868,7 +880,7 @@ const CliChat: FC<CliChatProps> = ({
         void (async () => {
           const workspaceId = await AuthService.getSelectedWorkspaceId();
           if (workspaceId) {
-            const url = `https://dust.tt/w/${workspaceId}/assistant/${currentConversationId}`;
+            const url = `https://dust.tt/w/${workspaceId}/agent/${currentConversationId}`;
             await open(url);
           } else {
             console.error("\nCould not determine workspace ID");

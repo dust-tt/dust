@@ -15,14 +15,6 @@ export const VALIDATION_MESSAGES = {
     required: "Please select a Dust app",
     invalid: "Selected Dust app is not valid",
   },
-  additionalConfig: {
-    stringRequired: (key: string) => `${key} is required`,
-    numberRequired: (key: string) => `${key} must be a valid number`,
-    booleanRequired: (key: string) => `${key} must be selected`,
-    enumRequired: (key: string) =>
-      `${key} must be selected from available options`,
-    genericRequired: "All required configuration fields must be filled",
-  },
   name: {
     empty: "The name cannot be empty.",
     format:
@@ -31,5 +23,9 @@ export const VALIDATION_MESSAGES = {
   description: {
     required: "Description is required",
     tooLong: "Description too long",
+  },
+  secret: {
+    required: "Secret selection is required",
+    invalid: "Please select a valid secret",
   },
 } as const;

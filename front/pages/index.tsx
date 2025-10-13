@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { getSession } from "@app/lib/auth";
 import {
   getUserFromSession,
@@ -22,6 +23,8 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   // Fetch session explicitly as this page redirects logged in users to our home page.
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
+  const organizationId = session?.organizationId;
+  const currentRegion = multiRegionsConfig.getCurrentRegion();
 
   const { inviteToken } = context.query;
 
@@ -53,6 +56,15 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       url = `/w/${selection.lastWorkspaceId}`;
     }
 
+    if (organizationId) {
+      const organization = user.organizations?.find(
+        (o) => o.id === organizationId
+      );
+      if (organization && organization.metadata.region === currentRegion) {
+        url = `/w/${organization.externalId}`;
+      }
+    }
+
     // This allows linking to the workspace subscription page from the documentation.
     if (context.query.goto === "subscription") {
       url = url + "/subscription/manage";
@@ -61,7 +73,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     // This allows linking to the assistant template creation page from external sources.
     const { goto, templateId } = context.query;
     if (goto === "template" && isString(templateId)) {
-      url = url + `/builder/assistants/create?templateId=${templateId}`;
+      url = url + `/builder/agents/create?templateId=${templateId}`;
     }
 
     if (context.query.inviteToken) {
@@ -74,6 +86,26 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
         permanent: false,
       },
     };
+  } else if (session?.region) {
+    // User does not exist in this region but they have a cookie - checking if we need to redirect
+    const targetRegion = session.region;
+
+    if (targetRegion && targetRegion !== currentRegion) {
+      logger.info(
+        {
+          targetRegion,
+          currentRegion,
+        },
+        "Redirecting to correct region"
+      );
+      const targetRegionInfo = multiRegionsConfig.getOtherRegionInfo();
+      return {
+        redirect: {
+          destination: targetRegionInfo.url,
+          permanent: false,
+        },
+      };
+    }
   }
 
   let postLoginCallbackUrl = "/api/login";

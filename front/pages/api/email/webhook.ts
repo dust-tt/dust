@@ -14,6 +14,7 @@ import {
   userAndWorkspacesFromEmail,
 } from "@app/lib/api/assistant/email_trigger";
 import { Authenticator } from "@app/lib/auth";
+import { getAgentRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { Result, WithAPIErrorResponse } from "@app/types";
@@ -59,8 +60,11 @@ const parseSendgridWebhookContent = async (
     }
 
     return new Ok({
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       subject: subject || "(no subject)",
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       text: text || "",
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       auth: { SPF: SPF || "", dkim: dkim || "" },
       envelope: {
         to: envelope.to || [],
@@ -258,9 +262,7 @@ async function handler(
             agentConfiguration: answer.agentConfiguration,
             htmlContent: `<div><div>${
               answer.html
-            }</div><br/><a href="${DUST_CLIENT_FACING_URL}/w/${
-              auth.workspace()?.sId
-            }/assistant/${conversation.sId}">Open in Dust</a></div>`,
+            }</div><br/><a href="${getAgentRoute(auth.workspace()?.sId ?? "", conversation.sId, DUST_CLIENT_FACING_URL)}">Open in Dust</a></div>`,
           });
         });
       }

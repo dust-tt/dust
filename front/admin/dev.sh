@@ -1,3 +1,3 @@
 #!/bin/sh
 
-npm run dev
+NODE_ENV=development npm run dev

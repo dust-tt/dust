@@ -3,7 +3,7 @@ import type {
   PostSpaceMembersResponseBody,
 } from "@dust-tt/client";
 import { PostSpaceMembersRequestBodySchema } from "@dust-tt/client";
-import { uniqBy } from "lodash";
+import uniqBy from "lodash/uniqBy";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";

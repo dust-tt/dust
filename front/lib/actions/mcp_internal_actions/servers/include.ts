@@ -1,10 +1,14 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  FIND_TAGS_TOOL_NAME,
+  INCLUDE_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
@@ -13,21 +17,17 @@ import type {
   WarningResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
-import {
-  findTagsSchema,
-  makeFindTagsDescription,
-  makeFindTagsTool,
-} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import {
   checkConflictingTags,
-  getCoreSearchArgs,
   shouldAutoGenerateTags,
-} from "@app/lib/actions/mcp_internal_actions/servers/utils";
+} from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
+import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getDataSourceNameFromView,
@@ -36,37 +36,27 @@ import {
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { CoreAPIDocument, Result, TimeFrame } from "@app/types";
-import { Err, Ok } from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
+  Err,
+  Ok,
   removeNulls,
   stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "include_data",
-  version: "1.0.0",
-  description: "Include data exhaustively",
-  icon: "ActionTimeIcon",
-  authorization: null,
-  documentationUrl: null,
-};
-
-const INCLUDE_TOOL_NAME = "retrieve_recent_documents";
-
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("include_data");
 
   const commonInputsSchema = {
     timeFrame:
       ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
-      ],
+        INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+      ].optional(),
     dataSources:
       ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
   };
@@ -98,7 +88,7 @@ function createServer(
     tagsIn,
     tagsNot,
   }: {
-    timeFrame: TimeFrame | null;
+    timeFrame?: TimeFrame;
     dataSources: DataSourcesToolConfigurationType;
     tagsIn?: string[];
     tagsNot?: string[];
@@ -275,7 +265,7 @@ function createServer(
       commonInputsSchema,
       withToolLogging(
         auth,
-        { toolName: "include", agentLoopContext },
+        { toolNameForMonitoring: "include", agentLoopContext },
         includeFunction
       )
     );
@@ -289,17 +279,15 @@ function createServer(
       },
       withToolLogging(
         auth,
-        { toolName: "include", agentLoopContext },
+        { toolNameForMonitoring: "include", agentLoopContext },
         includeFunction
       )
     );
 
-    server.tool(
-      "find_tags",
-      makeFindTagsDescription(INCLUDE_TOOL_NAME),
-      findTagsSchema,
-      makeFindTagsTool(auth)
-    );
+    registerFindTagsTool(auth, server, agentLoopContext, {
+      name: FIND_TAGS_TOOL_NAME,
+      extraDescription: `This tool is meant to be used before the ${INCLUDE_TOOL_NAME} tool.`,
+    });
   }
 
   return server;

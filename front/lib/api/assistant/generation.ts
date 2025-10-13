@@ -16,9 +16,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
-import { visualizationWithInteractiveContentSystemPrompt } from "@app/lib/api/assistant/visualization_with_interactive_content";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -80,6 +78,10 @@ export async function constructPromptMultiActions(
     }
   }
 
+  if (model.formattingMetaPrompt) {
+    context += `# RESPONSE FORMAT\n${model.formattingMetaPrompt}\n`;
+  }
+
   if (errorContext) {
     context +=
       "\n\n # INSTRUCTIONS ERROR\n\nNote: There was an error while building instructions:\n" +
@@ -91,11 +93,13 @@ export async function constructPromptMultiActions(
   let toolsSection = "# TOOLS\n";
 
   let toolUseDirectives = "\n## TOOL USE DIRECTIVES\n";
+  if (hasAvailableActions && model.toolUseMetaPrompt) {
+    toolUseDirectives += `${model.toolUseMetaPrompt}\\n`;
+  }
   if (
     hasAvailableActions &&
     agentConfiguration.model.reasoningEffort === "light" &&
-    // TODO(gpt5): improve config to clean this up.
-    agentConfiguration.model.providerId !== "openai"
+    !model.useNativeLightReasoning
   ) {
     toolUseDirectives += `${CHAIN_OF_THOUGHT_META_PROMPT}\n`;
   } else if (
@@ -172,18 +176,12 @@ export async function constructPromptMultiActions(
     guidelinesSection += `\n${citationMetaPrompt(isUsingRunAgent)}\n`;
   }
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const hasInteractiveContentServer =
-    featureFlags.includes("interactive_content_server") &&
-    agentConfiguration.actions.some((action) =>
-      isMCPConfigurationForInternalInteractiveContent(action)
-    );
+  const hasInteractiveContentServer = agentConfiguration.actions.some(
+    (action) => isMCPConfigurationForInternalInteractiveContent(action)
+  );
 
-  // If interactive content server is enabled, use the interactive content system prompt over the
-  // visualization system prompt.
-  if (hasInteractiveContentServer) {
-    guidelinesSection += `\n${visualizationWithInteractiveContentSystemPrompt()}\n`;
-  } else if (agentConfiguration.visualizationEnabled) {
+  // Only inject the visualization system prompt if the Interactive Content server is not enabled.
+  if (agentConfiguration.visualizationEnabled && !hasInteractiveContentServer) {
     guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
   }
 
@@ -211,6 +209,7 @@ export async function constructPromptMultiActions(
   // Replacement if instructions include "{USER_FULL_NAME}".
   instructions = instructions.replaceAll(
     "{USER_FULL_NAME}",
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     userMessage.context.fullName || "Unknown user"
   );
 

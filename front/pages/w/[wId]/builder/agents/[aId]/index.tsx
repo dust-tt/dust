@@ -5,7 +5,6 @@ import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
@@ -35,12 +34,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
 
-    const featureFlags = await getFeatureFlags(owner);
-    if (!featureFlags.includes("agent_builder_v2") || !auth.isBuilder()) {
-      return {
-        notFound: true,
-      };
-    }
+    await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
     const [configuration] = await Promise.all([
       getAgentConfiguration(auth, {
@@ -88,7 +82,7 @@ export default function EditAgent({
   }
 
   return (
-    <AgentBuilderProvider owner={owner} user={user}>
+    <AgentBuilderProvider owner={owner} user={user} assistantTemplate={null}>
       <AgentBuilder agentConfiguration={agentConfiguration} />
     </AgentBuilderProvider>
   );

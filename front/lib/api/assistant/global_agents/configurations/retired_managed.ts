@@ -79,6 +79,7 @@ function _getManagedDataSourceAgent(
 
   // Check if deactivated by an admin
   if (
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (settings && settings.status === "disabled_by_admin") ||
     !modelConfiguration
   ) {
@@ -135,6 +136,7 @@ function _getManagedDataSourceAgent(
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     });
   }
 

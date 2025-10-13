@@ -27,6 +27,7 @@ pub enum CredentialProvider {
     Jira,
     Monday,
     Mcp,
+    McpStatic,
     Notion,
     Freshservice,
 }
@@ -40,6 +41,7 @@ impl From<ConnectionProvider> for CredentialProvider {
             ConnectionProvider::Gmail => CredentialProvider::Gmail,
             ConnectionProvider::Jira => CredentialProvider::Jira,
             ConnectionProvider::Mcp => CredentialProvider::Mcp,
+            ConnectionProvider::McpStatic => CredentialProvider::McpStatic,
             ConnectionProvider::Freshservice => CredentialProvider::Freshservice,
             _ => panic!("Unsupported provider: {:?}", provider),
         }
@@ -221,6 +223,9 @@ impl Credential {
                 vec!["client_id", "client_secret"]
             }
             CredentialProvider::Mcp => {
+                vec!["client_id"]
+            }
+            CredentialProvider::McpStatic => {
                 vec!["client_id"]
             }
             CredentialProvider::Notion => {

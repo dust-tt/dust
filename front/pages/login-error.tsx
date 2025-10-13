@@ -36,6 +36,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
     />
   );
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (domain || reason === "invalid_domain") {
     return (
       <>

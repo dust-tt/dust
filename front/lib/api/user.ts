@@ -1,10 +1,17 @@
 import type { Authenticator } from "@app/lib/auth";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import {
+  ADMIN_GROUP_NAME,
+  BUILDER_GROUP_NAME,
+  GroupResource,
+} from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
+  LightWorkspaceType,
+  MembershipRoleType,
   Result,
   UserTypeWithExtensionWorkspaces,
   UserTypeWithWorkspaces,
@@ -12,6 +19,7 @@ import type {
 import { Err, Ok } from "@app/types";
 
 import { MembershipResource } from "../resources/membership_resource";
+import { findWorkOSOrganizationsForUserId } from "./workos/organization_membership";
 
 /**
  * This function checks that the user had at least one membership in the past for this workspace
@@ -98,8 +106,20 @@ export async function getUserWithWorkspaces<T extends boolean>(
       )
     : [];
 
+  const organizations = user.workOSUserId
+    ? await findWorkOSOrganizationsForUserId(user.workOSUserId)
+    : [];
+
   return {
     ...user.toJSON(),
+    organizations: organizations.map((org) => ({
+      id: org.id,
+      name: org.name,
+      createdAt: org.createdAt,
+      updatedAt: org.updatedAt,
+      metadata: org.metadata,
+      externalId: org.externalId,
+    })),
     workspaces: workspaces.map((w) => {
       return {
         ...renderLightWorkspaceType({
@@ -116,4 +136,33 @@ export async function getUserWithWorkspaces<T extends boolean>(
       };
     }),
   };
+}
+
+export async function determineUserRoleFromGroups(
+  workspace: LightWorkspaceType,
+  user: UserResource
+): Promise<MembershipRoleType> {
+  // Get all groups the user is a member of.
+  const userGroups = await GroupResource.listUserGroupsInWorkspace({
+    user,
+    workspace,
+  });
+
+  let atLeastBuilder = false;
+
+  for (const group of userGroups) {
+    if (group.name === ADMIN_GROUP_NAME) {
+      return "admin";
+    }
+    if (group.name === BUILDER_GROUP_NAME) {
+      atLeastBuilder = true;
+    }
+  }
+  // If we're here, the user is not in the admin group.
+  if (atLeastBuilder) {
+    return "builder";
+  }
+
+  // Did not find any group granting a role, so the user should be a regular user.
+  return "user";
 }

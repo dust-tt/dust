@@ -100,7 +100,7 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
             const duration = Math.max(1, parseInt(e.target.value, 10) || 1);
             timeFrameField.onChange({
               duration,
-              unit: timeFrameField.value?.unit,
+              unit: timeFrameField.value?.unit ?? "day",
             });
           }}
           disabled={!isChecked}
@@ -125,7 +125,7 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
                 onClick={() => {
                   if (isTimeFrameUnit(key)) {
                     timeFrameField.onChange({
-                      duration: timeFrameField.value?.duration,
+                      duration: timeFrameField.value?.duration ?? 1,
                       unit: key,
                     });
                   }

@@ -409,6 +409,9 @@ impl Block for LLM {
                 if let Some(Value::String(s)) = v.get("reasoning_effort") {
                     extras["reasoning_effort"] = json!(s.clone());
                 }
+                if let Some(Value::Bool(s)) = v.get("prompt_caching") {
+                    extras["prompt_caching"] = json!(s.clone());
+                }
 
                 match extras.as_object().unwrap().keys().len() {
                     0 => None,

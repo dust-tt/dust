@@ -8,7 +8,7 @@ import { LinkWrapper, LinkWrapperProps } from "./LinkWrapper";
 
 const attachmentChipVariants = cva(
   cn(
-    "s-box-border s-inline-flex s-items-center s-gap-1.5 s-rounded-lg s-px-2 s-py-1 s-text-sm s-font-semibold",
+    "s-box-border s-inline-flex s-items-center s-gap-1.5 s-rounded-lg s-px-2 s-py-1 s-heading-sm",
     "s-border-border s-bg-background",
     "dark:s-border-border-night dark:s-bg-background-night",
     "s-text-foreground dark:s-text-foreground-night",

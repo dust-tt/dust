@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{info, warn};
 
+use crate::databases::csv::{MAX_COLUMN_NAME_LENGTH, MAX_TABLE_COLUMNS};
 use crate::databases::table_upserts_background_worker::{
     TableUpsertActivityData, REDIS_CLIENT, REDIS_LOCK_TTL_SECONDS, REDIS_TABLE_UPSERT_HASH_NAME,
     REDIS_URI,
@@ -198,6 +199,9 @@ impl Table {
     pub fn timestamp(&self) -> u64 {
         self.timestamp
     }
+    pub fn is_schema_stale(&self) -> bool {
+        self.schema_stale_at.is_some()
+    }
     pub fn schema_cached(&self) -> Option<&TableSchema> {
         self.schema.as_ref()
     }
@@ -231,6 +235,7 @@ impl Table {
     }
     pub fn set_schema(&mut self, schema: TableSchema) {
         self.schema = Some(schema);
+        self.schema_stale_at = None;
     }
     pub fn set_remote_database_secret_id(&mut self, remote_database_secret_id: String) {
         self.remote_database_secret_id = Some(remote_database_secret_id);
@@ -246,6 +251,11 @@ impl Table {
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         search_store: Option<Box<dyn SearchStore + Sync + Send>>,
     ) -> Result<()> {
+        info!(
+            table_id = self.table_id(),
+            "DSSTRUCTSTAT [delete] Deleting table"
+        );
+        let now = utils::now();
         if self.remote_database_table_id().is_none() {
             // Invalidate the databases that use the table.
             try_join_all(
@@ -283,6 +293,11 @@ impl Table {
                 .await?;
         }
 
+        info!(
+            table_id = self.table_id(),
+            duration = utils::now() - now,
+            "DSSTRUCTSTAT [delete] Table deleted"
+        );
         Ok(())
     }
 
@@ -379,22 +394,42 @@ impl LocalTable {
         let rows = Arc::new(rows);
 
         let now = utils::now();
-        // Validate that all rows keys are lowercase. We run it in a spawn_blocking since it is CPU
+        // Validate a few things about the rows. We run it in a spawn_blocking since it is CPU
         // bound (even if running fast for resaonably sized tables);
+        // We check:
+        // - that rows don't start with an uppercase character
+        // - that no row has more than MAX_TABLE_COLUMNS columns
+        // - that no header name is longer than MAX_COLUMN_NAME_LENGTH
         {
             let rows = rows.clone();
             tokio::task::spawn_blocking(move || {
                 for (row_index, row) in rows.iter().enumerate() {
-                    match row.value().keys().find(|key| match key.chars().next() {
-                        Some(c) => c.is_ascii_uppercase(),
-                        None => false,
-                    }) {
-                        Some(key) => Err(anyhow!(
-                            "Row {} has a key '{}' that contains uppercase characters",
+                    if row.headers.len() > MAX_TABLE_COLUMNS {
+                        Err(anyhow!(
+                            "Row {} has more than {} values ({})",
                             row_index,
-                            key
-                        ))?,
-                        None => (),
+                            MAX_TABLE_COLUMNS,
+                            row.headers.len()
+                        ))?;
+                    }
+
+                    for header in row.headers.iter() {
+                        if let Some(first_char) = header.chars().next() {
+                            if first_char.is_ascii_uppercase() {
+                                return Err(anyhow!(
+                                    "Column name '{}' starts with an uppercase character",
+                                    header
+                                ));
+                            }
+                        }
+
+                        if header.len() > MAX_COLUMN_NAME_LENGTH {
+                            return Err(anyhow!(
+                                "Column name '{}' is longer than maximum allowed length ({})",
+                                header,
+                                MAX_COLUMN_NAME_LENGTH
+                            ));
+                        }
                     }
                 }
                 Ok::<_, anyhow::Error>(())
@@ -405,6 +440,7 @@ impl LocalTable {
             duration = utils::now() - now,
             table_id = self.table.table_id(),
             row_count = rows.len(),
+            first_row_id = rows.get(0).map(|row| row.row_id()).unwrap_or(""),
             truncate,
             "DSSTRUCTSTAT [upsert_rows] validation"
         );
@@ -650,6 +686,8 @@ impl LocalTable {
     ) -> Result<()> {
         let now = utils::now();
 
+        info!(bucket, bucket_csv_path, "CSV upsert started");
+
         let rows = GoogleCloudStorageCSVContent {
             bucket: bucket.to_string(),
             bucket_csv_path: bucket_csv_path.to_string(),
@@ -734,27 +772,22 @@ impl LocalTable {
         &self,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
     ) -> Result<TableSchema> {
-        let mut schema: TableSchema = TableSchema::empty();
-        let limit = 500;
-        let mut offset = 0;
-        loop {
-            let (rows, total) = self
-                .list_rows(databases_store.clone(), Some((limit, offset)))
-                .await?;
-
-            let rows = Arc::new(rows);
-            if offset == 0 {
-                schema = TableSchema::from_rows_async(rows.clone()).await?;
-            } else {
-                schema = schema.merge(&TableSchema::from_rows_async(rows.clone()).await?)?;
-            }
-
-            offset += limit;
-            if offset >= total {
-                break;
-            }
-        }
-
+        let mut now = utils::now();
+        let (rows, _) = self.list_rows(databases_store, None).await?;
+        let rows = Arc::new(rows);
+        info!(
+            duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            row_count = rows.len(),
+            "DSSTRUCTSTAT [compute_schema] list rows"
+        );
+        now = utils::now();
+        let schema = TableSchema::from_rows_async(rows).await?;
+        info!(
+            duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            "DSSTRUCTSTAT [compute_schema] compute schema"
+        );
         Ok(schema)
     }
 
@@ -988,6 +1021,7 @@ impl Row {
 
     pub fn to_csv_record(&self, headers: &Vec<String>) -> Result<Vec<String>> {
         let mut record = Vec::new();
+        let row_val = self.value();
         for header in headers {
             // We need to set the row_id in a __dust_id field
             if header == "__dust_id" {
@@ -995,7 +1029,7 @@ impl Row {
                 continue;
             }
 
-            match self.value().get(header) {
+            match row_val.get(header) {
                 Some(Value::Bool(b)) => record.push(b.to_string()),
                 Some(Value::Number(x)) => {
                     if x.is_i64() {
@@ -1055,10 +1089,21 @@ impl<'de> Deserialize<'de> for Row {
         let value = serde_json::Map::deserialize(deserializer)?;
 
         match value["value"].as_object() {
-            Some(subvalue) => Ok(Row::new_from_value(
-                value["row_id"].to_string(),
-                subvalue.clone(),
-            )),
+            Some(subvalue) => {
+                let row_id_val = value
+                    .get("row_id")
+                    .ok_or_else(|| D::Error::custom("Missing row_id in Row"))?;
+
+                let row_id = if let Some(s) = row_id_val.as_str() {
+                    s.to_string()
+                } else if let Some(i) = row_id_val.as_i64() {
+                    i.to_string()
+                } else {
+                    return Err(D::Error::custom("Invalid row_id type in Row"));
+                };
+
+                Ok(Row::new_from_value(row_id, subvalue.clone()))
+            }
             None => Err(D::Error::custom("Missing value in Row")),
         }
     }

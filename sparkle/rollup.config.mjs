@@ -5,7 +5,6 @@ import resolve from "@rollup/plugin-node-resolve";
 import autoprefixer from "autoprefixer";
 import fs from "fs";
 import path from "path";
-import { rollup } from "rollup";
 import external from "rollup-plugin-peer-deps-external";
 import postcss from "rollup-plugin-postcss";
 import tailwindcss from "tailwindcss";
@@ -56,21 +55,27 @@ const config = {
       extract: false,
     }),
     json(),
-    terser({
-      compress: {
-        passes: 2,
-        drop_console: true,
-        keep_fnames: false,
-      },
-      format: {
-        comments: false,
-        preserve_annotations: false,
-      },
-      mangle: {
-        properties: false,
-      },
-      sourceMap: false,
-    }),
+    // Conditionally include terser based on environment variable
+    // Set DISABLE_TERSER=1 to disable minification (fixes webpack exports issue in dev)
+    ...(process.env.DISABLE_TERSER
+      ? []
+      : [
+          terser({
+            compress: {
+              passes: 2,
+              drop_console: true,
+              keep_fnames: false,
+            },
+            format: {
+              comments: false,
+              preserve_annotations: false,
+            },
+            mangle: {
+              properties: false,
+            },
+            sourceMap: false,
+          }),
+        ]),
   ],
 };
 

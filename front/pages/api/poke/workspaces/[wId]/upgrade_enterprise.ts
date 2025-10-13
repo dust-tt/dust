@@ -3,6 +3,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import {
@@ -10,6 +11,7 @@ import {
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
+import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -54,14 +56,30 @@ async function handler(
 
   switch (req.method) {
     case "POST":
+      const plugin = pluginManager.getNonNullablePlugin(
+        "upgrade-enterprise-plan"
+      );
+      const pluginRun = await PluginRunResource.makeNew(
+        plugin,
+        req.body,
+        auth.getNonNullableUser(),
+        owner,
+        {
+          resourceId: owner.sId,
+          resourceType: "workspaces",
+        }
+      );
+
       const bodyValidation = EnterpriseUpgradeFormSchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        const errorMessage = `The request body is invalid: ${pathError}`;
+        await pluginRun.recordError(errorMessage);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `The request body is invalid: ${pathError}`,
+            message: errorMessage,
           },
         });
       }
@@ -72,11 +90,13 @@ async function handler(
         body.stripeSubscriptionId
       );
       if (!stripeSubscription) {
+        const errorMessage = "The Stripe subscription does not exist.";
+        await pluginRun.recordError(errorMessage);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "The Stripe subscription does not exist.",
+            message: errorMessage,
           },
         });
       }
@@ -93,23 +113,27 @@ async function handler(
           stripeSubscription.id;
 
       if (subscription && !isCurrentWorkspaceSubscription) {
+        const errorMessage =
+          "The subscription is already attached to another workspace.";
+        await pluginRun.recordError(errorMessage);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "The subscription is already attached to another workspace.",
+            message: errorMessage,
           },
         });
       }
 
       if (!isEnterpriseSubscription(stripeSubscription)) {
+        const errorMessage =
+          "The subscription provided is not an enterprise subscription.";
+        await pluginRun.recordError(errorMessage);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "The subscription provided is not an enterprise subscription.",
+            message: errorMessage,
           },
         });
       }
@@ -117,11 +141,13 @@ async function handler(
       const assertValidSubscription =
         assertStripeSubscriptionIsValid(stripeSubscription);
       if (assertValidSubscription.isErr()) {
+        const errorMessage = assertValidSubscription.error.invalidity_message;
+        await pluginRun.recordError(errorMessage);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: assertValidSubscription.error.invalidity_message,
+            message: errorMessage,
           },
         });
       }
@@ -134,6 +160,7 @@ async function handler(
           error instanceof Error
             ? error.message
             : JSON.stringify(error, null, 2);
+        await pluginRun.recordError(errorString);
 
         return apiError(req, res, {
           status_code: 400,
@@ -143,6 +170,11 @@ async function handler(
           },
         });
       }
+
+      await pluginRun.recordResult({
+        display: "text",
+        value: `Workspace ${owner.name} upgraded to enterprise.`,
+      });
 
       res.status(200).json({
         success: true,

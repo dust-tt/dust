@@ -396,12 +396,15 @@ export async function deleteWorkspace(
 export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
   publicApiLimits?: PublicAPILimitsType;
+  allowContentCreationFileSharing?: boolean;
+  allowVoiceTranscription?: boolean;
 }
 
 export async function updateWorkspaceMetadata(
   owner: LightWorkspaceType,
   metadata: WorkspaceMetadata
 ): Promise<Result<void, Error>> {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const previousMetadata = owner.metadata || {};
   const newMetadata = { ...previousMetadata, ...metadata };
   return WorkspaceResource.updateMetadata(owner.id, newMetadata);
@@ -432,6 +435,7 @@ export function isWorkspaceRelocationDone(owner: LightWorkspaceType): boolean {
 export function getWorkspacePublicAPILimits(
   owner: LightWorkspaceType
 ): PublicAPILimitsType | null {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return owner.metadata?.publicApiLimits || null;
 }
 

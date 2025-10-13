@@ -435,9 +435,11 @@ NotionConnectorBlockCacheEntry.init(
         name: "uq_notion_block_id_conn_id_page_id_wf_id",
       },
       { fields: ["connectorId"] },
-      { fields: ["parentBlockId"] },
-      { fields: ["notionPageId"] },
-      { fields: ["workflowId"] },
+      { fields: ["connectorId", "workflowId"] },
+      {
+        fields: ["connectorId", "notionPageId", "workflowId"],
+        name: "notion_connector_block_cache_entries_connector_page_workflow",
+      },
     ],
   }
 );

@@ -7,6 +7,7 @@ import {
   CollapsibleComponent,
   ContentBlockWrapper,
   ContentMessage,
+  FaviconIcon,
   Icon,
   InformationCircleIcon,
   Markdown,
@@ -24,9 +25,9 @@ import type {
   ThinkingOutputType,
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isDataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isDataSourceNodeListType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  isDataSourceNodeContentType,
+  isDataSourceNodeListType,
   isIncludeQueryResourceType,
   isIncludeResultResourceType,
   isSearchQueryResourceType,
@@ -177,15 +178,17 @@ export function ToolGeneratedFileDetails({
 
 interface SearchResultProps {
   actionName: string;
-  defaultOpen: boolean;
+  defaultQuery?: string;
   visual: React.ComponentType<{ className?: string }>;
   actionOutput: CallToolResult["content"] | null;
+  viewType: "conversation" | "sidebar";
 }
 
 export function SearchResultDetails({
   actionName,
-  defaultOpen,
+  defaultQuery,
   visual,
+  viewType,
   actionOutput,
 }: SearchResultProps) {
   const query =
@@ -201,7 +204,11 @@ export function SearchResultDetails({
         return null;
       })
       .filter(Boolean)
-      .join("\n") || "No query provided";
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      .join("\n") ||
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    defaultQuery ||
+    "No query provided";
 
   const warning = actionOutput
     ?.filter(isWarningResourceType)
@@ -219,12 +226,11 @@ export function SearchResultDetails({
     return removeNulls(
       actionOutput.flatMap((r) => {
         if (isWebsearchResultResourceType(r)) {
-          const IconComponent = getDocumentIcon("webcrawler");
           return [
             {
               description: r.resource.text,
               title: r.resource.title,
-              icon: <IconComponent />,
+              icon: <FaviconIcon websiteUrl={r.resource.uri} size="sm" />,
               href: r.resource.uri,
             },
           ];
@@ -249,6 +255,7 @@ export function SearchResultDetails({
               }`,
               title: node.title,
               icon: <IconComponent />,
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               href: node.sourceUrl || undefined,
             };
           });
@@ -263,6 +270,7 @@ export function SearchResultDetails({
               }`,
               title: metadata.title,
               icon: <IconComponent />,
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               href: metadata.sourceUrl || undefined,
             },
           ];
@@ -274,49 +282,57 @@ export function SearchResultDetails({
 
   return (
     <ActionDetailsWrapper
+      viewType={viewType}
       actionName={actionName}
-      defaultOpen={defaultOpen}
       visual={visual}
     >
-      <div className="flex flex-col gap-4 pl-6 pt-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-            Query
-          </span>
-          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-            {query}
+      {viewType === "conversation" ? (
+        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+          {query}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4 pl-6 pt-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+              Query
+            </span>
+            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+              {query}
+            </div>
+            {warning && (
+              <Tooltip
+                label={warning.text}
+                trigger={<Chip color="warning" label={warning.warningTitle} />}
+              />
+            )}
           </div>
-          {warning && (
-            <Tooltip
-              label={warning.text}
-              trigger={<Chip color="warning" label={warning.warningTitle} />}
-            />
+          {actionOutput && viewType === "sidebar" && (
+            <div>
+              <CollapsibleComponent
+                rootProps={{ defaultOpen: true }}
+                triggerChildren={
+                  <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+                    Results
+                  </span>
+                }
+                contentChildren={
+                  <>
+                    {singleFileContentText && (
+                      <Markdown
+                        content={singleFileContentText}
+                        isStreaming={false}
+                        forcedTextSize="text-sm"
+                        textColor="text-muted-foreground dark:text-muted-foreground-night"
+                      />
+                    )}
+                    <PaginatedCitationsGrid items={citations} />
+                  </>
+                }
+              />
+            </div>
           )}
         </div>
-        <div>
-          <CollapsibleComponent
-            rootProps={{ defaultOpen }}
-            triggerChildren={
-              <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-                Results
-              </span>
-            }
-            contentChildren={
-              <>
-                {singleFileContentText && (
-                  <Markdown
-                    content={singleFileContentText}
-                    isStreaming={false}
-                    forcedTextSize="text-sm"
-                    textColor="text-muted-foreground dark:text-muted-foreground-night"
-                  />
-                )}
-                <PaginatedCitationsGrid items={citations} />
-              </>
-            }
-          />
-        </div>
-      </div>
+      )}
     </ActionDetailsWrapper>
   );
 }

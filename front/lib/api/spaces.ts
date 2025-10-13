@@ -1,5 +1,5 @@
 import assert from "assert";
-import { uniq } from "lodash";
+import uniq from "lodash/uniq";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
 import {
@@ -23,7 +23,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
-import type { DataSourceWithAgentsUsageType, Result } from "@app/types";
+import type { AgentsUsageType, Result } from "@app/types";
 import { Err, Ok, removeNulls, SPACE_GROUP_PREFIX } from "@app/types";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
@@ -34,7 +34,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
   assert(auth.isAdmin(), "Only admins can delete spaces.");
   assert(space.isRegular(), "Cannot delete non regular spaces.");
 
-  const usages: DataSourceWithAgentsUsageType[] = [];
+  const usages: AgentsUsageType[] = [];
 
   const dataSourceViews = await DataSourceViewResource.listBySpace(auth, space);
   for (const view of dataSourceViews) {

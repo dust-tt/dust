@@ -187,7 +187,8 @@ class RedisHybridManager {
   public async publish(
     channelName: string,
     data: string,
-    origin: RedisUsageTagsType
+    origin: RedisUsageTagsType,
+    ttl: number = 60 * 10 // 10 minutes
   ): Promise<string> {
     const streamAndPublishClient = await this.getStreamAndPublishClient();
     const streamName = this.getStreamName(channelName);
@@ -202,7 +203,7 @@ class RedisHybridManager {
       });
 
       // Set expiration on the stream
-      await streamAndPublishClient.expire(streamName, 60 * 10); // 10 minutes
+      await streamAndPublishClient.expire(streamName, ttl);
 
       const eventPayload: EventPayload = {
         id: eventId,
@@ -281,6 +282,7 @@ class RedisHybridManager {
     const history: EventPayload[] = await this.getHistory(
       streamClient,
       streamName,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       lastEventId || "0-0"
     );
 

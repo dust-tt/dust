@@ -26,7 +26,7 @@ interface MCPServerHeartbeatFailure {
   success: false;
 }
 
-type HeartbeatMCPResponseType =
+export type HeartbeatMCPResponseType =
   | MCPServerHeartbeatSuccess
   | MCPServerHeartbeatFailure;
 

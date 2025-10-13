@@ -202,6 +202,24 @@ const DevelopersMenuConfig: MenuConfig = {
   ],
 };
 
+const ProductMenuConfig: MenuConfig = {
+  title: "Product",
+  items: [
+    {
+      title: "Product",
+      href: "/home/product",
+    },
+    {
+      title: "Chrome Extension",
+      href: "/home/chrome-extension",
+    },
+    {
+      title: "Frames",
+      href: "/home/frames",
+    },
+  ],
+};
+
 const BuildMenuConfig: MenuConfig = {
   title: "Build",
   items: [
@@ -325,23 +343,10 @@ interface DocsConfig {
 export const menuConfig: DocsConfig = {
   mainNav: [
     {
-      title: "Product",
-      label: "Product & tools",
-      rows: 3,
-      items: [
-        {
-          title: "Product",
-          href: "/home/product",
-        },
-        {
-          title: "Chrome Extension",
-          href: "/home/chrome-extension",
-        },
-        {
-          title: "Canvas",
-          href: "/home/canvas",
-        },
-      ],
+      title: ProductMenuConfig.title,
+      label: "Discover Dust",
+      rows: 2,
+      items: ProductMenuConfig.items,
     },
     {
       title: SolutionsMenuConfig.title,
@@ -378,8 +383,8 @@ export const menuConfig: DocsConfig = {
   ],
   mobileNav: [
     {
-      title: "Product",
-      href: "/home/product",
+      title: ProductMenuConfig.title,
+      items: ProductMenuConfig.items,
     },
     {
       title: "Pricing",

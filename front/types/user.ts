@@ -1,9 +1,11 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import type { WorkOSOrganizationType } from "@dust-tt/client";
 import * as t from "io-ts";
 
 import type {
   EmbeddingProviderIdType,
   ModelProviderIdType,
-} from "./assistant/assistant";
+} from "./assistant/models/types";
 import type { MembershipOriginType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import { assertNever } from "./shared/utils/assert_never";
@@ -12,6 +14,7 @@ export type WorkspaceSegmentationType = "interesting" | null;
 
 export const ROLES = ["admin", "builder", "user", "none"] as const;
 export const ACTIVE_ROLES = ["admin", "builder", "user"] as const;
+export const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
 
 function keyObject<T extends readonly string[]>(
   arr: T
@@ -106,11 +109,15 @@ export type UserTypeWithWorkspace = UserType & {
 
 export type UserTypeWithWorkspaces = UserType & {
   workspaces: WorkspaceType[];
+  organizations?: WorkOSOrganizationType[];
   origin?: MembershipOriginType;
+  selectedWorkspace?: string;
 };
 
 export type UserTypeWithExtensionWorkspaces = UserType & {
   workspaces: ExtensionWorkspaceType[];
+  organizations: WorkOSOrganizationType[];
+  selectedWorkspace?: string;
 };
 
 export type UserMetadataType = {

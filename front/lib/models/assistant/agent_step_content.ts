@@ -1,7 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
+import type { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -19,7 +19,7 @@ export class AgentStepContentModel extends WorkspaceAwareModel<AgentStepContentM
   declare value: AgentContentItemType;
 
   declare agentMessage?: NonAttribute<AgentMessage>;
-  declare agentMCPActions?: NonAttribute<AgentMCPAction[]>;
+  declare agentMCPActions?: NonAttribute<AgentMCPActionModel[]>;
 }
 
 AgentStepContentModel.init(
@@ -76,11 +76,6 @@ AgentStepContentModel.init(
         unique: true,
         fields: ["agentMessageId", "step", "index", "version"],
         name: "agent_step_contents_agent_message_id_step_index_versioned",
-      },
-      // TODO(durable-agents, 2025-07-08): drop this index once we start using the one above.
-      {
-        fields: ["agentMessageId", "step", "index"],
-        name: "agent_step_contents_agent_message_id_step_index_in_step",
       },
       {
         fields: ["agentMessageId"],

@@ -1,5 +1,5 @@
 import assert from "assert";
-import { sortBy } from "lodash";
+import sortBy from "lodash/sortBy";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
@@ -313,6 +313,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
   }
 
   parseSavedSpecification() {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return JSON.parse(this.savedSpecification || "[]") as SpecificationType;
   }
 }

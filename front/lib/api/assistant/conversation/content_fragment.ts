@@ -1,4 +1,7 @@
+// All mime types are okay to use from the public API.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type { DustMimeType } from "@dust-tt/client";
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import {
   DATA_SOURCE_MIME_TYPE,
   isSupportedFileContentType,
@@ -144,7 +147,7 @@ export async function getContentFragmentBlob(
       auth,
       cf.nodeDataSourceViewId
     );
-    // If dsView is not defined it means it does not exist of we don't have access to it.
+    // If dsView is not defined, it means it does not exist of we don't have access to it.
     if (!dsView) {
       return new Err(
         new Error("Unknown data source view for content fragment input")

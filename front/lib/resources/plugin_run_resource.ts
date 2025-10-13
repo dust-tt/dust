@@ -5,7 +5,7 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import type {
   AllPlugins,
-  InferPluginArgs,
+  InferPluginArgsAtExecution,
   PluginResponse,
 } from "@app/lib/api/poke/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -23,12 +23,13 @@ import type {
   Result,
 } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+import type { PluginRunType } from "@app/types/poke/plugins";
 
 import type { UserResource } from "./user_resource";
 
 function redactPluginArgs(
   plugin: AllPlugins,
-  args: InferPluginArgs<PluginArgs>
+  args: InferPluginArgsAtExecution<PluginArgs>
 ) {
   const sanitizedArgs: Record<string, unknown> = {};
 
@@ -36,7 +37,11 @@ function redactPluginArgs(
     const arg = args[key];
     if (argDef.redact) {
       sanitizedArgs[key] = "REDACTED";
-    } else if (argDef.type === "file" && typeof arg === "object") {
+    } else if (
+      argDef.type === "file" &&
+      typeof arg === "object" &&
+      "originalFilename" in arg
+    ) {
       sanitizedArgs[key] = arg.originalFilename;
     } else {
       sanitizedArgs[key] = arg;
@@ -75,7 +80,7 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
 
   static async makeNew(
     plugin: AllPlugins,
-    args: InferPluginArgs<PluginArgs>,
+    args: InferPluginArgsAtExecution<PluginArgs>,
     author: UserResource,
     workspace: LightWorkspaceType | null,
     pluginResourceTarget: PluginResourceTarget
@@ -99,6 +104,21 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
     });
 
     return new this(PluginRunResource.model, pluginRun.get());
+  }
+
+  static async findByWorkspaceId(auth: Authenticator) {
+    const workspace = auth.workspace();
+
+    const pluginRuns = await this.model.findAll({
+      where: {
+        workspaceId: workspace?.id ?? null,
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return pluginRuns.map(
+      (pluginRun) => new this(PluginRunResource.model, pluginRun.get())
+    );
   }
 
   async recordError(error: string) {
@@ -145,6 +165,18 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
     } catch (err) {
       return new Err(normalizeError(err));
     }
+  }
+
+  toJSON(): PluginRunType {
+    return {
+      createdAt: this.createdAt.getTime(),
+      author: this.author,
+      pluginId: this.pluginId,
+      status: this.status,
+      resourceType: this.resourceType,
+      resourceId: this.resourceId,
+      args: this.args ? JSON.parse(this.args) : {},
+    };
   }
 
   static async deleteAllForWorkspace(auth: Authenticator) {

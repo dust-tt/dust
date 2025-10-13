@@ -46,6 +46,7 @@ export const processTrackerNotification = async ({
   }
 
   // Send the tracker email(s).
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const generations = tracker.generations || [];
   if (generations.length > 0 || !tracker.skipEmptyEmails) {
     await sendTrackerEmail({

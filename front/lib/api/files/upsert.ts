@@ -1,3 +1,5 @@
+// Okay to use public API types because it's internal stuff mostly.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import {
   DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE,
   isDustMimeType,
@@ -29,10 +31,11 @@ import type {
   FileUseCase,
   Result,
 } from "@app/types";
+import { isSupportedAudioContentType } from "@app/types";
 import {
   assertNever,
   Err,
-  isInteractiveFileContentType,
+  isInteractiveContentFileContentType,
   isSupportedImageContentType,
   Ok,
   slugify,
@@ -240,8 +243,8 @@ function makeWorksheetName(file: FileResource, worksheetName: string) {
 
 // Excel files are processed in a special way, we need to extract the content of each worksheet and
 // upsert it as a separate table. This means we pull the whole content of the file (this is not
-// great if the spreadhsheet is massive but we don't really have a choice here) and then split in
-// memory and reinstiate sub-files to call upsertTableToDatasource.
+// great if the spreadsheet is massive, but we don't really have a choice here) and then split in
+// memory and reinstate subfiles to call upsertTableToDatasource.
 const upsertExcelToDatasource: ProcessingFunction = async (
   auth,
   { file, dataSource, upsertArgs }
@@ -285,7 +288,7 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     });
 
     const parentId = workbookFolderId ?? file.sId;
-    const parents = workbookFolderId ? [tableId, workbookFolderId] : [tableId];
+    const parents = [tableId, parentId];
 
     const upsertTableArgs: UpsertTableArgs = {
       ...upsertArgs,
@@ -317,6 +320,8 @@ const upsertExcelToDatasource: ProcessingFunction = async (
 
     if (res.isOk()) {
       tableIds.push(tableId);
+    } else {
+      logger.error({ ...res.error, worksheetName }, "Error upserting table");
     }
   };
 
@@ -416,8 +421,8 @@ const getProcessingFunction = ({
     return undefined;
   }
 
-  // Interactive files should not be processed.
-  if (isInteractiveFileContentType(contentType)) {
+  // Interactive Content files should not be processed.
+  if (isInteractiveContentFileContentType(contentType)) {
     return undefined;
   }
 
@@ -458,6 +463,13 @@ const getProcessingFunction = ({
       } else {
         return undefined;
       }
+  }
+
+  if (isSupportedAudioContentType(contentType)) {
+    if (useCase === "conversation" || useCase === "upsert_document") {
+      return upsertDocumentToDatasource;
+    }
+    return undefined;
   }
 
   if (

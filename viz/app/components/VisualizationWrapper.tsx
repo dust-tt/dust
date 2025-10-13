@@ -1,10 +1,17 @@
 "use client";
 
+import { isDevelopment } from "@viz/app/types";
 import type {
   CommandResultMap,
   VisualizationRPCCommand,
   VisualizationRPCRequestMap,
 } from "@viz/app/types";
+import type {
+  SupportedMessage,
+  SupportedEventType,
+} from "@viz/app/types/messages";
+
+import { validateMessage } from "@viz/app/types/messages";
 import { Spinner } from "@viz/app/components/Components";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { toBlob, toSvg } from "html-to-image";
@@ -14,10 +21,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useResizeDetector } from "react-resize-detector";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
+import * as utilsAll from "@viz/lib/utils";
+import * as shadcnAll from "@viz/components/ui";
+import * as lucideAll from "lucide-react";
+import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
 
-// Regular expression to capture the value inside a className attribute. This pattern assumes
-// double quotes for simplicity.
-const classNameRegex = /className\s*=\s*"([^"]*)"/g;
+// Regular expressions to capture the value inside a className attribute.
+// We check both double and single quotes separately to handle mixed usage.
+const classNameDoubleQuoteRegex = /className\s*=\s*"([^"]*)"/g;
+const classNameSingleQuoteRegex = /className\s*=\s*'([^']*)'/g;
 
 // Regular expression to capture Tailwind arbitrary values:
 // Matches a word boundary, then one or more lowercase letters or hyphens,
@@ -34,10 +46,20 @@ const arbitraryRegex = /\b[a-z-]+-\[[^\]]+\]/g;
  */
 function validateTailwindCode(code: string): void {
   const matches: string[] = [];
-  let classMatch: RegExpExecArray | null = null;
 
-  // Iterate through all occurrences of the className attribute in the code.
-  while ((classMatch = classNameRegex.exec(code)) !== null) {
+  // Check double-quoted className attributes
+  let classMatch: RegExpExecArray | null = null;
+  while ((classMatch = classNameDoubleQuoteRegex.exec(code)) !== null) {
+    const classContent = classMatch[1];
+    if (classContent) {
+      // Find all matching arbitrary values within the class attribute's value.
+      const arbitraryMatches = classContent.match(arbitraryRegex) || [];
+      matches.push(...arbitraryMatches);
+    }
+  }
+
+  // Check single-quoted className attributes
+  while ((classMatch = classNameSingleQuoteRegex.exec(code)) !== null) {
     const classContent = classMatch[1];
     if (classContent) {
       // Find all matching arbitrary values within the class attribute's value.
@@ -59,7 +81,8 @@ function validateTailwindCode(code: string): void {
 }
 
 export function useVisualizationAPI(
-  sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>
+  sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>,
+  { allowedOrigins }: { allowedOrigins: string[] }
 ) {
   const [error, setError] = useState<Error | null>(null);
 
@@ -97,9 +120,7 @@ export function useVisualizationAPI(
         return null;
       }
 
-      const file = new File([blob], "fileId", { type: blob.type });
-
-      return file;
+      return new File([blob], "fileId", { type: blob.type });
     },
     [sendCrossDocumentMessage]
   );
@@ -128,13 +149,53 @@ export function useVisualizationAPI(
     await sendCrossDocumentMessage("displayCode", null);
   }, [sendCrossDocumentMessage]);
 
+  const addEventListener = useCallback(
+    (
+      eventType: SupportedEventType,
+      handler: (data: SupportedMessage) => void
+    ): (() => void) => {
+      const messageHandler = (event: MessageEvent) => {
+        if (!allowedOrigins.includes(event.origin)) {
+          console.log(
+            `Ignored message from unauthorized origin: ${
+              event.origin
+            }, expected one of: ${allowedOrigins.join(", ")}`
+          );
+          return;
+        }
+
+        // Validate message structure using zod.
+        const validatedMessage = validateMessage(event.data);
+        if (!validatedMessage) {
+          if (isDevelopment()) {
+            // Log to help debug the addition of new event types.
+            console.log("Invalid message format received:", event.data);
+          }
+          return;
+        }
+
+        // Check if this is the event type we're listening for
+        if (validatedMessage.type === eventType) {
+          handler(validatedMessage);
+        }
+      };
+
+      window.addEventListener("message", messageHandler);
+
+      // Return cleanup function
+      return () => window.removeEventListener("message", messageHandler);
+    },
+    [allowedOrigins]
+  );
+
   return {
+    addEventListener,
+    displayCode,
+    downloadFile,
     error,
     fetchCode,
     fetchFile,
     sendHeightToParent,
-    downloadFile,
-    displayCode,
   };
 }
 
@@ -187,28 +248,32 @@ interface RunnerParams {
 
 export function VisualizationWrapperWithErrorBoundary({
   identifier,
-  allowedVisualizationOrigin,
+  allowedOrigins,
   isFullHeight = false,
 }: {
   identifier: string;
-  allowedVisualizationOrigin: string | undefined;
+  allowedOrigins: string[];
   isFullHeight?: boolean;
 }) {
   const sendCrossDocumentMessage = useMemo(
     () =>
       makeSendCrossDocumentMessage({
         identifier,
-        allowedVisualizationOrigin,
+        allowedOrigins,
       }),
-    [identifier, allowedVisualizationOrigin]
+    [identifier, allowedOrigins]
   );
-  const api = useVisualizationAPI(sendCrossDocumentMessage);
+  const api = useVisualizationAPI(sendCrossDocumentMessage, {
+    allowedOrigins,
+  });
 
   return (
     <ErrorBoundary
       onErrored={(e) => {
         sendCrossDocumentMessage("setErrorMessage", {
           errorMessage: e instanceof Error ? e.message : `${e}`,
+          fileId: identifier,
+          isInteractiveContent: isFullHeight,
         });
       }}
     >
@@ -243,6 +308,7 @@ export function VisualizationWrapper({
     sendHeightToParent,
     downloadFile,
     displayCode,
+    addEventListener,
   } = api;
 
   const memoizedDownloadFile = useDownloadFileCallback(downloadFile);
@@ -262,16 +328,24 @@ export function VisualizationWrapper({
             code: "() => {import Comp from '@dust/generated-code'; return (<Comp />);}",
             scope: {
               import: {
-                recharts: rechartsAll,
                 react: reactAll,
+                recharts: rechartsAll,
+                shadcn: shadcnAll,
+                utils: utilsAll,
+                "lucide-react": lucideAll,
+                "@dust/slideshow/v1": dustSlideshowV1,
                 "@dust/generated-code": importCode(fetchedCode, {
                   import: {
-                    recharts: rechartsAll,
-                    react: reactAll,
                     papaparse: papaparseAll,
+                    react: reactAll,
+                    recharts: rechartsAll,
+                    shadcn: shadcnAll,
+                    utils: utilsAll,
+                    "lucide-react": lucideAll,
+                    "@dust/slideshow/v1": dustSlideshowV1,
                     "@dust/react-hooks": {
-                      useFile: (fileId: string) => useFile(fileId, fetchFile),
                       triggerUserFileDownload: memoizedDownloadFile,
+                      useFile: (fileId: string) => useFile(fileId, fetchFile),
                     },
                   },
                 }),
@@ -310,6 +384,15 @@ export function VisualizationWrapper({
         }
       } catch (err) {
         console.error("Failed to convert to Blob", err);
+        window.parent.postMessage(
+          {
+            type: "EXPORT_ERROR",
+            identifier,
+            errorMessage:
+              "Failed to export as PNG. This can happen when the content references external images.",
+          },
+          "*"
+        );
       }
     }
   }, [ref, downloadFile, identifier]);
@@ -326,6 +409,15 @@ export function VisualizationWrapper({
         await downloadFile(blob, `visualization-${identifier}.svg`);
       } catch (err) {
         console.error("Failed to convert to Blob", err);
+        window.parent.postMessage(
+          {
+            type: "EXPORT_ERROR",
+            identifier,
+            errorMessage:
+              "Failed to export as SVG. This can happen when the content references external images.",
+          },
+          "*"
+        );
       }
     }
   }, [ref, downloadFile, identifier]);
@@ -339,6 +431,25 @@ export function VisualizationWrapper({
       setErrorMessage(error);
     }
   }, [error]);
+
+  // Add message listeners for export requests.
+  useEffect(() => {
+    const cleanups: (() => void)[] = [];
+
+    cleanups.push(
+      addEventListener("EXPORT_PNG", async () => {
+        await handleScreenshotDownload();
+      })
+    );
+
+    cleanups.push(
+      addEventListener("EXPORT_SVG", async () => {
+        await handleSVGDownload();
+      })
+    );
+
+    return () => cleanups.forEach((cleanup) => cleanup());
+  }, [addEventListener, handleScreenshotDownload, handleSVGDownload]);
 
   if (errored) {
     // Throw the error to the ErrorBoundary.
@@ -355,31 +466,31 @@ export function VisualizationWrapper({
         isFullHeight ? "h-screen" : ""
       }`}
     >
-      <div className="flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
-        <button
-          onClick={handleScreenshotDownload}
-          title="Download screenshot"
-          className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
-        >
-          Png
-        </button>
-        <button
-          onClick={handleSVGDownload}
-          title="Download SVG"
-          className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
-        >
-          Svg
-        </button>
-        {!isFullHeight && (
+      {!isFullHeight && (
+        <div className='flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50'>
           <button
-            title="Show code"
+            onClick={handleScreenshotDownload}
+            title='Download screenshot'
+            className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
+          >
+            Png
+          </button>
+          <button
+            onClick={handleSVGDownload}
+            title='Download SVG'
+            className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
+          >
+            Svg
+          </button>
+          <button
+            title='Show code'
             onClick={handleDisplayCode}
-            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
+            className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
           >
             Code
           </button>
-        )}
-      </div>
+        </div>
+      )}
       <div ref={ref}>
         <Runner
           code={runnerParams.code}
@@ -397,10 +508,10 @@ export function VisualizationWrapper({
 
 export function makeSendCrossDocumentMessage({
   identifier,
-  allowedVisualizationOrigin,
+  allowedOrigins,
 }: {
   identifier: string;
-  allowedVisualizationOrigin: string | undefined;
+  allowedOrigins: string[];
 }) {
   return <T extends VisualizationRPCCommand>(
     command: T,
@@ -409,11 +520,10 @@ export function makeSendCrossDocumentMessage({
     return new Promise<CommandResultMap[T]>((resolve, reject) => {
       const messageUniqueId = Math.random().toString();
       const listener = (event: MessageEvent) => {
-        if (event.origin !== allowedVisualizationOrigin) {
+        if (!allowedOrigins.includes(event.origin)) {
           console.log(
             `Ignored message from unauthorized origin: ${event.origin}`
           );
-
           // Simply ignore messages from unauthorized origins.
           return;
         }

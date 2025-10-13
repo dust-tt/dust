@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import React, { useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import React, { useCallback, useState } from "react";
 
 import { Button } from "@sparkle/components/Button";
+import { ScrollableDataTable } from "@sparkle/components/DataTable";
 import {
   MultiPageSheet,
   MultiPageSheetContent,
@@ -11,7 +13,7 @@ import {
 import { Cog6ToothIcon, DocumentTextIcon, UserIcon } from "@sparkle/icons/app";
 
 const meta: Meta<typeof MultiPageSheetContent> = {
-  title: "Primitives/MultiPageSheet",
+  title: "Modules/MultiPageSheet",
   component: MultiPageSheetContent,
 };
 
@@ -437,6 +439,11 @@ export const WithConditionalNavigation: Story = {
             </div>
           </div>
         ),
+        footerContent: (
+          <div className="s-w-full s-border s-border-border-dark">
+            This is a footer content
+          </div>
+        ),
       },
     ];
 
@@ -456,11 +463,217 @@ export const WithConditionalNavigation: Story = {
             currentPageId === "data-selection" && selectedItems.length === 0
           }
           disableSave={!description.trim()}
-          footerContent={
-            <div className="s-w-full s-border s-border-border-dark">
-              This is a footer content
+        />
+      </MultiPageSheet>
+    );
+  },
+};
+
+// Sample data types for the ScrollableDataTable
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  lastActive: string;
+  onClick?: () => void;
+}
+
+// Generate random user data
+const generateRandomUsers = (
+  count: number,
+  startId: number = 0
+): UserData[] => {
+  const roles = ["Admin", "User", "Manager", "Developer", "Designer"];
+  const statuses = ["Active", "Inactive", "Pending"];
+  const firstNames = [
+    "John",
+    "Jane",
+    "Mike",
+    "Sarah",
+    "David",
+    "Lisa",
+    "Tom",
+    "Anna",
+    "Chris",
+    "Emma",
+  ];
+  const lastNames = [
+    "Smith",
+    "Johnson",
+    "Williams",
+    "Brown",
+    "Jones",
+    "Garcia",
+    "Miller",
+    "Davis",
+    "Rodriguez",
+    "Martinez",
+  ];
+
+  return Array.from({ length: count }, (_, index) => {
+    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+    const id = (startId + index + 1).toString();
+
+    return {
+      id,
+      name: `${firstName} ${lastName}`,
+      email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
+      role: roles[Math.floor(Math.random() * roles.length)],
+      status: statuses[Math.floor(Math.random() * statuses.length)],
+      lastActive: new Date(
+        Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000
+      ).toLocaleDateString(),
+      onClick: () => alert(`Clicked on user: ${firstName} ${lastName}`),
+    };
+  });
+};
+
+export const WithScrollableDataTable: Story = {
+  render() {
+    const [currentPageId, setCurrentPageId] = useState("users");
+    const [users, setUsers] = useState<UserData[]>(() =>
+      generateRandomUsers(50)
+    );
+    const [isLoading, setIsLoading] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+
+    // Define columns for the data table
+    const columns: ColumnDef<UserData>[] = [
+      {
+        accessorKey: "name",
+        header: "Name",
+        cell: ({ row }) => (
+          <div className="s-font-medium">{row.getValue("name")}</div>
+        ),
+        meta: { sizeRatio: 25 },
+      },
+      {
+        accessorKey: "email",
+        header: "Email",
+        cell: ({ row }) => (
+          <div className="s-text-muted-foreground">{row.getValue("email")}</div>
+        ),
+        meta: { sizeRatio: 30 },
+      },
+      {
+        accessorKey: "role",
+        header: "Role",
+        cell: ({ row }) => (
+          <div className="s-inline-flex s-rounded-full s-bg-blue-100 s-px-2 s-py-1 s-text-xs s-font-semibold s-text-blue-800">
+            {row.getValue("role")}
+          </div>
+        ),
+        meta: { sizeRatio: 15 },
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => {
+          const status = row.getValue("status") as string;
+          const colorClass =
+            status === "Active"
+              ? "s-bg-green-100 s-text-green-800"
+              : status === "Inactive"
+                ? "s-bg-red-100 s-text-red-800"
+                : "s-bg-yellow-100 s-text-yellow-800";
+
+          return (
+            <div
+              className={`s-inline-flex s-rounded-full s-px-2 s-py-1 s-text-xs s-font-semibold ${colorClass}`}
+            >
+              {status}
             </div>
-          }
+          );
+        },
+        meta: { sizeRatio: 15 },
+      },
+      {
+        accessorKey: "lastActive",
+        header: "Last Active",
+        cell: ({ row }) => (
+          <div className="s-text-sm s-text-muted-foreground">
+            {row.getValue("lastActive")}
+          </div>
+        ),
+        meta: { sizeRatio: 15 },
+      },
+    ];
+
+    // Handle infinite loading
+    const handleLoadMore = useCallback(() => {
+      if (isLoading || !hasMore) {
+        return;
+      }
+
+      setIsLoading(true);
+
+      // Simulate API call delay
+      setTimeout(() => {
+        const newUsers = generateRandomUsers(25, users.length);
+        setUsers((prev) => [...prev, ...newUsers]);
+        setIsLoading(false);
+
+        // Stop loading more after reaching 200 items for demo purposes
+        if (users.length >= 175) {
+          setHasMore(false);
+        }
+      }, 1000);
+    }, [isLoading, hasMore, users.length]);
+
+    const handleSave = () => {
+      alert("User data saved!");
+    };
+
+    const scrollableDataTablePages: MultiPageSheetPage[] = [
+      {
+        id: "users",
+        title: "User Management",
+        description: "Manage users with infinite scroll",
+        icon: UserIcon,
+        noScroll: true,
+        content: (
+          <div className="s-flex s-h-full s-flex-col s-space-y-4">
+            <div className="s-flex-shrink-0">
+              <h3 className="s-mb-2 s-text-lg s-font-semibold">
+                Users Database
+              </h3>
+              <p className="s-text-sm s-text-muted-foreground">
+                Browse through all users with infinite scrolling. Click on any
+                row to view details.
+              </p>
+            </div>
+            <ScrollableDataTable
+              className="s-min-h-0"
+              data={users}
+              columns={columns}
+              maxHeight={true}
+              onLoadMore={hasMore ? handleLoadMore : undefined}
+              isLoading={isLoading}
+              enableRowSelection={false}
+            />
+            <div className="s-flex-shrink-0 s-text-xs s-text-muted-foreground">
+              Showing {users.length} users{" "}
+              {hasMore ? "(loading more available)" : "(all users loaded)"}
+            </div>
+          </div>
+        ),
+      },
+    ];
+
+    return (
+      <MultiPageSheet>
+        <MultiPageSheetTrigger asChild>
+          <Button label="Open User Management" />
+        </MultiPageSheetTrigger>
+        <MultiPageSheetContent
+          pages={scrollableDataTablePages}
+          currentPageId={currentPageId}
+          onPageChange={setCurrentPageId}
+          size="xl"
+          onSave={handleSave}
         />
       </MultiPageSheet>
     );

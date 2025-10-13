@@ -1,53 +1,45 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  FIND_TAGS_TOOL_NAME,
+  SEARCH_SERVER_NAME,
+  SEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
-import {
-  findTagsSchema,
-  makeFindTagsDescription,
-  makeFindTagsTool,
-} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import {
   checkConflictingTags,
-  getCoreSearchArgs,
-} from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+  shouldAutoGenerateTags,
+} from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
+import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
+  Err,
+  Ok,
   parseTimeFrame,
   removeNulls,
   stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "search",
-  version: "1.0.0",
-  description: "Search through selected Data sources",
-  icon: "ActionMagnifyingGlassIcon",
-  authorization: null,
-  documentationUrl: null,
-};
 
 export async function searchFunction({
   query,
@@ -67,6 +59,7 @@ export async function searchFunction({
   agentLoopContext?: AgentLoopContextType;
 }): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
 
@@ -109,7 +102,10 @@ export async function searchFunction({
   if (coreSearchArgs.length === 0) {
     return new Err(
       new MCPError(
-        "Search action must have at least one data source configured."
+        "Search action must have at least one data source configured.",
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -220,7 +216,7 @@ function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer(SEARCH_SERVER_NAME);
 
   const commonInputsSchema = {
     query: z
@@ -274,7 +270,7 @@ function createServer(
       commonInputsSchema,
       withToolLogging(
         auth,
-        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        { toolNameForMonitoring: SEARCH_TOOL_NAME, agentLoopContext },
         async (args) => searchFunction({ ...args, auth, agentLoopContext })
       )
     );
@@ -290,17 +286,15 @@ function createServer(
       },
       withToolLogging(
         auth,
-        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        { toolNameForMonitoring: SEARCH_TOOL_NAME, agentLoopContext },
         async (args) => searchFunction({ ...args, auth, agentLoopContext })
       )
     );
 
-    server.tool(
-      "find_tags",
-      makeFindTagsDescription(SEARCH_TOOL_NAME),
-      findTagsSchema,
-      makeFindTagsTool(auth)
-    );
+    registerFindTagsTool(auth, server, agentLoopContext, {
+      name: FIND_TAGS_TOOL_NAME,
+      extraDescription: `This tool is meant to be used before the ${SEARCH_TOOL_NAME} tool.`,
+    });
   }
 
   return server;

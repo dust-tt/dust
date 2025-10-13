@@ -219,6 +219,10 @@ export async function isBotAllowed(
 ): Promise<Result<undefined, Error>> {
   const realName = slackUserInfo.real_name;
 
+  if (!realName) {
+    throw new Error("Failed to get bot name. Should never happen.");
+  }
+
   // Whitelisting a bot will accept any message from this bot.
   // This means that even a non verified user of a given Slack workspace who can trigger a bot
   // that talks to our bot (@dust) will be able to use the Dust bot.

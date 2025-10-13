@@ -1,248 +1,224 @@
-import { Avatar, BookOpenIcon, Card, Chip, Icon } from "@dust-tt/sparkle";
-import { ActionIcons } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
-import { PlusIcon } from "@dust-tt/sparkle";
-import { SearchInput } from "@dust-tt/sparkle";
+import {
+  ActionIcons,
+  BookOpenIcon,
+  Hoverable,
+  ToolCard,
+} from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { ActionSpecification } from "@app/components/agent_builder/types";
+import {
+  InternalActionIcons,
+  isCustomResourceIconType,
+} from "@app/components/resources/resources_icons";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
-import { isCustomServerIconType } from "@app/lib/actions/mcp_icons";
-import { InternalActionIcons } from "@app/lib/actions/mcp_icons";
-import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { MCPServerViewTypeType } from "@app/lib/api/mcp";
+import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import type { WhitelistableFeature } from "@app/types";
 
-const MCP_TOOLS_FILTERS = ["All tools", "Capabilities", "Other tools"];
+interface DataVisualizationCardProps {
+  specification: ActionSpecification;
+  isSelected: boolean;
+  onClick: () => void;
+}
 
-type McpToolsFilterType = (typeof MCP_TOOLS_FILTERS)[number];
+function DataVisualizationCard({
+  specification,
+  isSelected,
+  onClick,
+}: DataVisualizationCardProps) {
+  return (
+    <ToolCard
+      icon={specification.dropDownIcon}
+      label={specification.label}
+      description={specification.description}
+      isSelected={isSelected}
+      canAdd={!isSelected}
+      onClick={onClick}
+      cardContainerClassName="h-36"
+    />
+  );
+}
 
-const McpServerViewTypeMatch: Record<
-  McpToolsFilterType,
-  MCPServerViewTypeType[]
-> = {
-  "All tools": ["remote", "internal"],
-  Capabilities: ["internal"],
-  "Other tools": ["remote"],
-};
+interface MCPServerCardProps {
+  view: MCPServerViewTypeWithLabel;
+  isSelected: boolean;
+  onClick: () => void;
+  onToolInfoClick: () => void;
+  featureFlags?: WhitelistableFeature[];
+}
+
+function MCPServerCard({
+  view,
+  isSelected,
+  onClick,
+  onToolInfoClick,
+  featureFlags,
+}: MCPServerCardProps) {
+  const requirement = getMCPServerToolsConfigurations(view, featureFlags);
+  const canAdd = requirement.configurable !== "no" ? true : !isSelected;
+
+  const icon = isCustomResourceIconType(view.server.icon)
+    ? ActionIcons[view.server.icon]
+    : InternalActionIcons[view.server.icon] || BookOpenIcon;
+
+  // Create a ref to use as portal container for tooltips to prevent click blocking
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  let description: React.ReactNode | null;
+  if (view.server.documentationUrl) {
+    description = (
+      <>
+        {getMcpServerViewDescription(view)} Find documentation{" "}
+        <Hoverable
+          href={view.server.documentationUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          variant="primary"
+          onClick={(e) => e.stopPropagation()}
+        >
+          here
+        </Hoverable>
+        .
+      </>
+    );
+  } else {
+    description = <>{getMcpServerViewDescription(view)}</>;
+  }
+
+  return (
+    <div ref={containerRef}>
+      <ToolCard
+        icon={icon}
+        label={view.label}
+        description={description}
+        isSelected={isSelected}
+        canAdd={canAdd}
+        onClick={onClick}
+        cardContainerClassName="h-36"
+        mountPortal
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        mountPortalContainer={containerRef.current || undefined}
+        toolInfo={{
+          label: "More info",
+          onClick: onToolInfoClick,
+        }}
+      />
+    </div>
+  );
+}
 
 interface MCPServerSelectionPageProps {
-  mcpServerViews: MCPServerViewTypeWithLabel[];
-  onItemClick: (mcpServerView: MCPServerViewType) => void;
+  topMCPServerViews: MCPServerViewTypeWithLabel[];
+  nonTopMCPServerViews: MCPServerViewTypeWithLabel[];
+  onItemClick: (mcpServerView: MCPServerViewTypeWithLabel) => void;
   dataVisualization?: ActionSpecification | null;
   onDataVisualizationClick?: () => void;
-  selectedToolsInDialog?: SelectedTool[];
-  onRemoveSelectedTool?: (tool: SelectedTool) => void;
+  selectedToolsInSheet?: SelectedTool[];
+  onToolDetailsClick?: (tool: SelectedTool) => void;
+  featureFlags?: WhitelistableFeature[];
 }
 
 export function MCPServerSelectionPage({
-  mcpServerViews = [],
+  topMCPServerViews,
+  nonTopMCPServerViews,
   onItemClick,
   dataVisualization,
   onDataVisualizationClick,
-  selectedToolsInDialog = [],
-  onRemoveSelectedTool,
+  selectedToolsInSheet = [],
+  onToolDetailsClick,
+  featureFlags,
 }: MCPServerSelectionPageProps) {
-  const [filteredServerViews, setFilteredServerViews] =
-    React.useState<MCPServerViewTypeWithLabel[]>(mcpServerViews);
-  const [showDataVisualization, setShowDataVisualization] =
-    React.useState(true);
-
-  const [filter, setFilter] = React.useState<McpToolsFilterType>("All tools");
-  const [searchTerm, setSearchTerm] = React.useState("");
-
   // Optimize selection lookup with Set-based approach
   const selectedMCPIds = useMemo(() => {
     const mcpIds = new Set<string>();
-    selectedToolsInDialog.forEach((tool) => {
+    selectedToolsInSheet.forEach((tool) => {
       if (tool.type === "MCP") {
         mcpIds.add(tool.view.sId);
       }
     });
     return mcpIds;
-  }, [selectedToolsInDialog]);
+  }, [selectedToolsInSheet]);
 
-  const applyFiltersAndSearch = (
-    newFilter?: string,
-    newSearchTerm?: string
-  ) => {
-    const filterToUse = newFilter ?? filter;
-    const searchToUse = newSearchTerm ?? searchTerm;
-    const serverTypeMatch = McpServerViewTypeMatch[filterToUse];
-
-    let filtered = mcpServerViews.filter((v) =>
-      serverTypeMatch.includes(v.serverType)
-    );
-
-    if (searchToUse.trim()) {
-      const searchTermLower = searchToUse.toLowerCase();
-      filtered = filtered.filter(
-        (view) =>
-          view.label.toLowerCase().includes(searchTermLower) ||
-          view.description?.toLowerCase().includes(searchTermLower) ||
-          view.name?.toLowerCase().includes(searchTermLower)
-      );
-
-      setShowDataVisualization(
-        dataVisualization?.label.toLowerCase().includes(searchTermLower) ||
-          dataVisualization?.description
-            ?.toLowerCase()
-            .includes(searchTermLower) ||
-          false
-      );
-    } else {
-      setShowDataVisualization(true);
-    }
-
-    setFilteredServerViews(filtered);
-  };
-
-  const handleFilterClick = (newFilter: string) => {
-    setFilter(newFilter);
-    applyFiltersAndSearch(newFilter);
-  };
-
-  const handleSearchTermChange = (term: string) => {
-    setSearchTerm(term);
-    applyFiltersAndSearch(undefined, term);
-  };
-
-  const isDataVisualizationSelected = selectedToolsInDialog.some(
+  const isDataVisualizationSelected = selectedToolsInSheet.some(
     (tool) => tool.type === "DATA_VISUALIZATION"
   );
 
-  return (
-    <div className="space-y-4">
-      <SearchInput
-        value={searchTerm}
-        onChange={handleSearchTermChange}
-        name="Search"
-      />
-      <div className="flex flex-row flex-wrap gap-2">
-        {MCP_TOOLS_FILTERS.map((f) => (
-          <Button
-            label={f}
-            variant={filter == f ? "primary" : "outline"}
-            key={f}
-            size="xs"
-            onClick={() => handleFilterClick(f)}
-          />
-        ))}
-      </div>
-      <h2 className="text-lg font-semibold">Capabilities</h2>
-      <div className="grid grid-cols-2 gap-4">
-        {dataVisualization &&
-          onDataVisualizationClick &&
-          showDataVisualization && (
-            <Card
-              key="data-visualization"
-              variant="primary"
-              disabled={isDataVisualizationSelected}
-              onClick={
-                isDataVisualizationSelected
-                  ? undefined
-                  : onDataVisualizationClick
-              }
-            >
-              <div className="flex w-full flex-col gap-1 text-sm">
-                <div className="mb-2 flex items-center gap-2">
-                  <Avatar
-                    icon={DATA_VISUALIZATION_SPECIFICATION.dropDownIcon}
-                    size="sm"
-                  />
-                  <span className="text-sm font-medium">
-                    {dataVisualization.label}
-                  </span>
-                  {isDataVisualizationSelected && (
-                    <Chip size="xs" color="green" label="ADDED" />
-                  )}
-                </div>
-                <div className="line-clamp-2 w-full text-xs text-gray-600">
-                  {dataVisualization.description}
-                </div>
-                <div>
-                  {!isDataVisualizationSelected && (
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      icon={PlusIcon}
-                      label="Add"
-                    />
-                  )}
-                </div>
-              </div>
-            </Card>
-          )}
-        {filteredServerViews.map((view) => {
-          const isSelectedInDialog = selectedMCPIds.has(view.sId);
-          return (
-            <Card
-              key={view.id}
-              variant={isSelectedInDialog ? "secondary" : "primary"}
-              onClick={isSelectedInDialog ? undefined : () => onItemClick(view)}
-              disabled={isSelectedInDialog}
-            >
-              <div className="flex w-full flex-col gap-1 text-sm">
-                <div className="mb-2 flex items-center gap-2">
-                  <Icon
-                    visual={
-                      isCustomServerIconType(view.server.icon)
-                        ? ActionIcons[view.server.icon]
-                        : InternalActionIcons[view.server.icon] || BookOpenIcon
-                    }
-                    size="sm"
-                  />
-                  <span className="text-sm font-medium">{view.label}</span>
-                  {isSelectedInDialog && (
-                    <Chip size="xs" color="green" label="ADDED" />
-                  )}
-                </div>
-                <div className="line-clamp-2 w-full text-xs text-gray-600">
-                  {getMcpServerViewDescription(view)}
-                </div>
-                <div>
-                  {!isSelectedInDialog && (
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      icon={PlusIcon}
-                      label="Add"
-                    />
-                  )}
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+  const hasDataVisualization = dataVisualization && onDataVisualizationClick;
+  const hasTopViews = topMCPServerViews.length > 0;
+  const hasNonTopViews = nonTopMCPServerViews.length > 0;
+  const hasAnyResults =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    hasDataVisualization || hasTopViews || hasNonTopViews;
 
-      {selectedToolsInDialog.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Added tools</h2>
-          <div className="flex flex-wrap gap-2">
-            {selectedToolsInDialog.map((tool, index) => (
-              <Chip
-                key={index}
-                label={
-                  tool.type === "DATA_VISUALIZATION"
-                    ? dataVisualization?.label || ""
-                    : tool.type === "MCP"
-                      ? tool.view.name || tool.view.server.name
-                      : ""
-                }
-                onRemove={
-                  onRemoveSelectedTool
-                    ? () => onRemoveSelectedTool(tool)
-                    : undefined
-                }
-                size="sm"
-              />
-            ))}
+  if (!hasAnyResults) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="px-4 text-center">
+          <div className="mb-2 text-lg font-medium text-foreground">
+            No tool matches your search
+          </div>
+          <div className="max-w-sm text-muted-foreground">
+            No tools found. Try a different search term.
           </div>
         </div>
-      )}
-    </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex flex-col gap-4 py-2">
+        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
+        {((dataVisualization && onDataVisualizationClick) ||
+          topMCPServerViews) && (
+          <span className="text-lg font-semibold">Top tools</span>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          {dataVisualization && onDataVisualizationClick && (
+            <DataVisualizationCard
+              key="data-visualization"
+              specification={dataVisualization}
+              isSelected={isDataVisualizationSelected}
+              onClick={onDataVisualizationClick}
+            />
+          )}
+          {topMCPServerViews.map((view) => (
+            <MCPServerCard
+              key={view.id}
+              view={view}
+              isSelected={selectedMCPIds.has(view.sId)}
+              onClick={() => onItemClick(view)}
+              onToolInfoClick={() => {
+                if (onToolDetailsClick) {
+                  onToolDetailsClick({ type: "MCP", view });
+                }
+              }}
+              featureFlags={featureFlags}
+            />
+          ))}
+        </div>
+        {nonTopMCPServerViews.length ? (
+          <span className="text-lg font-semibold">Other tools</span>
+        ) : null}
+        <div className="grid grid-cols-2 gap-3">
+          {nonTopMCPServerViews.map((view) => (
+            <MCPServerCard
+              key={view.id}
+              view={view}
+              isSelected={selectedMCPIds.has(view.sId)}
+              onClick={() => onItemClick(view)}
+              onToolInfoClick={() => {
+                if (onToolDetailsClick) {
+                  onToolDetailsClick({ type: "MCP", view });
+                }
+              }}
+              featureFlags={featureFlags}
+            />
+          ))}
+        </div>
+      </div>
+    </>
   );
 }

@@ -130,6 +130,7 @@ export default function ViewDatasetView({
       (currentDatasetInEditor.data !== dataset.data ||
         currentDatasetInEditor.name !== dataset.name ||
         (currentDatasetInEditor.description !== dataset.description &&
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           (currentDatasetInEditor.description || dataset.description)))
     ) {
       setEditorDirty(true);

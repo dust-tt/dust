@@ -2,19 +2,19 @@ import { Button, SparklesIcon, TextArea } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { WorkspaceType } from "@app/types";
 
 interface JsonSchemaSectionProps {
   getAgentInstructions: () => string;
-  owner: WorkspaceType;
 }
 
 export function JsonSchemaSection({
   getAgentInstructions,
-  owner,
 }: JsonSchemaSectionProps) {
+  const { owner } = useAgentBuilderContext();
   const { getValues } = useFormContext();
 
   const { field: jsonSchemaField, fieldState } = useController({
@@ -106,15 +106,11 @@ export function JsonSchemaSection({
   };
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-element-900 text-base font-medium">Schema</h3>
-        <p className="text-element-700 mt-1 text-sm">
-          Optionally, provide a schema for the data to be extracted. If you do
-          not specify a schema, the tool will determine the schema based on the
-          conversation context.
-        </p>
-      </div>
+    <ConfigurationSectionContainer
+      title="Schema"
+      description="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
+      error={fieldState.error?.message}
+    >
       <Button
         tooltip="Automatically re-generate the extraction schema based on Instructions"
         label="Re-generate from Instructions"
@@ -125,18 +121,14 @@ export function JsonSchemaSection({
         onClick={generateSchemaFromInstructions}
         className="mb-4"
       />
-      <div className="space-y-2">
-        <TextArea
-          error={fieldState.error?.message}
-          showErrorLabel={true}
-          placeholder={
-            '{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    ...\n  }\n}'
-          }
-          value={jsonSchemaStringField.value}
-          disabled={isGeneratingSchema}
-          onChange={(e) => handleChange(e.target.value)}
-        />
-      </div>
-    </div>
+      <TextArea
+        placeholder={
+          '{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    ...\n  }\n}'
+        }
+        value={jsonSchemaStringField.value ?? ""}
+        disabled={isGeneratingSchema}
+        onChange={(e) => handleChange(e.target.value)}
+      />
+    </ConfigurationSectionContainer>
   );
 }

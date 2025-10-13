@@ -1,10 +1,12 @@
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
+import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
+import { getAgentRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types";
 
 export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
-  const [isNavigationBarOpen, setIsNavigationBarOpen] = useState(true);
+  const { toggleNavigationBar } = useDesktopNavigation();
 
   const router = useRouter();
 
@@ -17,14 +19,14 @@ export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
         switch (event.key.toLowerCase()) {
           case "b":
             event.preventDefault();
-            setIsNavigationBarOpen((prev) => !prev);
+            toggleNavigationBar();
             break;
         }
       } else if (isModifier) {
         switch (event.key) {
           case "/":
             event.preventDefault();
-            void router.push(`/w/${owner.sId}/assistant/new`, undefined, {
+            void router.push(getAgentRoute(owner.sId), undefined, {
               shallow: true,
             });
             break;
@@ -34,7 +36,5 @@ export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
 
     window.addEventListener("keydown", handleKeyboardShortcuts);
     return () => window.removeEventListener("keydown", handleKeyboardShortcuts);
-  }, [owner.sId, router]);
-
-  return { isNavigationBarOpen, setIsNavigationBarOpen };
+  }, [owner.sId, router, toggleNavigationBar]);
 }

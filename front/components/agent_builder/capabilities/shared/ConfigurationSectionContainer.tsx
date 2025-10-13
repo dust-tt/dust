@@ -28,7 +28,7 @@ export function ConfigurationSectionContainer({
         )}
       </div>
 
-      <div>{children}</div>
+      <div className="min-h-0 flex-1">{children}</div>
       {error && <div className="text-sm text-red-500">{error}</div>}
     </div>
   );

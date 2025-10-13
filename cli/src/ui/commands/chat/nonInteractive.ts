@@ -28,6 +28,7 @@ interface NonInteractiveOutput {
   messageId: string;
   events?: EventDetail[];
   agentMessage?: unknown;
+  cancelled?: boolean;
 }
 
 export async function sendNonInteractiveMessage(
@@ -191,6 +192,24 @@ export async function sendNonInteractiveMessage(
           return;
         }
         process.exit(1);
+      } else if (event.type === "agent_generation_cancelled") {
+        // Handle generation cancellation
+        const output: NonInteractiveOutput = {
+          agentId: selectedAgent.sId,
+          agentAnswer:
+            fullResponse.trim() || "[Message generation was cancelled]",
+          conversationId: conversation.sId,
+          messageId: event.messageId,
+          cancelled: true,
+        };
+
+        // Add detailed event history if requested
+        if (showDetails) {
+          output.events = eventDetails;
+        }
+
+        // Exit with special code to indicate cancellation
+        process.exit(2);
       } else if (event.type === "agent_message_success") {
         // Success - output the result
         const output: NonInteractiveOutput = {
@@ -206,7 +225,7 @@ export async function sendNonInteractiveMessage(
           output.agentMessage = event.message;
         }
 
-        // console.log(JSON.stringify(output));
+        console.log(JSON.stringify(output));
         process.exit(0);
       }
     }

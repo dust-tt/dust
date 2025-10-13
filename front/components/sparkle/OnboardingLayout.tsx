@@ -3,6 +3,7 @@ import Head from "next/head";
 import Script from "next/script";
 import React from "react";
 
+import { getFaviconPath } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
 
 export default function OnboardingLayout({
@@ -16,12 +17,13 @@ export default function OnboardingLayout({
   headerRightActions: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const faviconPath = getFaviconPath();
+
   return (
     <>
       <Head>
         <title>{`Dust - ${owner.name || "Onboarding"}`}</title>
-        <link rel="shortcut icon" href="/static/favicon.png" />
-        <link rel="icon" type="image/png" href="/static/favicon.png" />
+        <link rel="icon" type="image/png" href={faviconPath} />
 
         <meta name="apple-mobile-web-app-title" content="Dust" />
         <link rel="apple-touch-icon" href="/static/AppIcon.png" />

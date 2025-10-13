@@ -4,6 +4,7 @@ import type {
   ConversationPublicType,
   LightAgentConfigurationType,
   PublicPostContentFragmentRequestBody,
+  PublicPostMessagesRequestBody,
   Result,
   SupportedFileContentType,
   UserMessageType,
@@ -33,6 +34,7 @@ import {
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
   isSlackWebAPIPlatformError,
+  isWebAPIRateLimitedError,
   SlackExternalUserError,
   SlackMessageError,
 } from "@connectors/connectors/slack/lib/errors";
@@ -41,7 +43,7 @@ import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_clien
 import {
   getSlackBotInfo,
   getSlackClient,
-  getSlackUserInfo,
+  getSlackUserInfoMemoized,
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
@@ -49,6 +51,7 @@ import {
   isBotAllowed,
   notifyIfSlackUserIsNotAllowed,
 } from "@connectors/connectors/slack/lib/workspace_limits";
+import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
@@ -59,6 +62,7 @@ import {
   SlackChatBotMessage,
 } from "@connectors/lib/models/slack";
 import { createProxyAwareFetch } from "@connectors/lib/proxy";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -68,10 +72,10 @@ import {
   getHeaderFromUserEmail,
 } from "@connectors/types";
 
-const SLACK_RATE_LIMIT_ERROR_MESSAGE =
-  "Slack has blocked the agent from continuing the conversation, due to new restrictive" +
-  " rate limits. You can retry the conversation later. Learn more about the new rate limits" +
-  " and how Dust is responding <https://dust-tt.notion.site/Slack-API-Changes-Impact-and-Response-Plan-21728599d94180f3b2b4e892e6d20af6?pvs=73|here>";
+const SLACK_RATE_LIMIT_ERROR_MARKDOWN =
+  "You have reached a rate limit enforced by Slack. Please try again later (or contact Slack to increase your rate limit on the <https://dust4ai.slack.com/marketplace/A09214D6XQT-dust|Dust App for Slack>).";
+const SLACK_ERROR_TEXT =
+  "An unexpected error occurred while answering your message, please retry.";
 
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
@@ -150,16 +154,17 @@ export async function botAnswerMessage(
         channelId: slackChannel,
         useCase: "bot",
       });
-      if (e instanceof ProviderRateLimitError) {
+      if (e instanceof ProviderRateLimitError || isWebAPIRateLimitedError(e)) {
         await slackClient.chat.postMessage({
           channel: slackChannel,
-          blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MESSAGE),
+          blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MARKDOWN),
           thread_ts: slackMessageTs,
+          unfurl_links: false,
         });
       } else {
         await slackClient.chat.postMessage({
           channel: slackChannel,
-          text: "An unexpected error occurred. Our team has been notified",
+          text: SLACK_ERROR_TEXT,
           thread_ts: slackMessageTs,
         });
       }
@@ -227,13 +232,14 @@ export async function botReplaceMention(
     if (e instanceof ProviderRateLimitError) {
       await slackClient.chat.postMessage({
         channel: slackChannel,
-        blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MESSAGE),
+        blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MARKDOWN),
         thread_ts: slackMessageTs,
+        unfurl_links: false,
       });
     } else {
       await slackClient.chat.postMessage({
         channel: slackChannel,
-        text: "An unexpected error occurred. Our team has been notified.",
+        text: SLACK_ERROR_TEXT,
         thread_ts: slackMessageTs,
       });
     }
@@ -295,6 +301,41 @@ export async function botValidateToolExecution(
       actionId,
       approved,
     });
+
+    // Retry blocked actions on the main conversation if it differs from the event's conversation.
+    if (
+      slackChatBotMessage.conversationId &&
+      slackChatBotMessage.conversationId !== conversationId
+    ) {
+      const retryRes = await dustAPI.retryMessage({
+        conversationId,
+        messageId,
+        blockedOnly: true,
+      });
+
+      if (retryRes.isErr()) {
+        logger.error(
+          {
+            error: retryRes.error,
+            connectorId: connector.id,
+            mainConversationId: slackChatBotMessage.conversationId,
+            eventConversationId: conversationId,
+            agentMessageId: messageId,
+          },
+          "Failed to retry blocked actions on the main conversation"
+        );
+      } else {
+        logger.info(
+          {
+            connectorId: connector.id,
+            mainConversationId: slackChatBotMessage.conversationId,
+            eventConversationId: conversationId,
+            agentMessageId: messageId,
+          },
+          "Successfully retried blocked actions on the main conversation"
+        );
+      }
+    }
 
     if (responseUrl) {
       // Use response_url to delete the message
@@ -406,11 +447,21 @@ async function processErrorResult(
         channelId: slackChannel,
         useCase: "bot",
       });
-      await slackClient.chat.update({
-        ...errorPost,
-        channel: slackChannel,
-        ts: mainMessage.ts,
-      });
+
+      const mainMessageTs = mainMessage.ts;
+
+      await throttleWithRedis(
+        RATE_LIMITS["chat.update"],
+        `${connector.id}-chat-update`,
+        false,
+        async () =>
+          slackClient.chat.update({
+            ...errorPost,
+            channel: slackChannel,
+            ts: mainMessageTs,
+          }),
+        { source: "processErrorResult" }
+      );
     } else {
       reportSlackUsage({
         connectorId: connector.id,
@@ -470,11 +521,25 @@ async function answerMessage(
   // The order is important here because we want to prioritize the user id over the bot id.
   // When a bot sends a message "as a user", we want to honor the user and not the bot.
   if (slackUserId) {
-    slackUserInfo = await getSlackUserInfo(
-      connector.id,
-      slackClient,
-      slackUserId
-    );
+    try {
+      slackUserInfo = await getSlackUserInfoMemoized(
+        connector.id,
+        slackClient,
+        slackUserId
+      );
+    } catch (e) {
+      if (isSlackWebAPIPlatformError(e)) {
+        logger.error(
+          {
+            error: e,
+            connectorId: connector.id,
+            slackUserId,
+          },
+          "Failed to get slack user info"
+        );
+      }
+      throw e;
+    }
   } else if (slackBotId) {
     try {
       slackUserInfo = await getSlackBotInfo(
@@ -484,6 +549,16 @@ async function answerMessage(
       );
     } catch (e) {
       if (isSlackWebAPIPlatformError(e)) {
+        logger.error(
+          {
+            error: e,
+            connectorId: connector.id,
+            slackUserId,
+            slackBotId,
+            slackTeamId,
+          },
+          "Failed to get slack bot info"
+        );
         if (e.data.error === "bot_not_found") {
           // We received a bot message from a bot that is not accessible to us. We log and ignore
           // the message.
@@ -509,12 +584,21 @@ async function answerMessage(
   }
 
   let requestedGroups: string[] | undefined = undefined;
+  let skipToolsValidation = false;
 
   if (slackUserInfo.is_bot) {
     const isBotAllowedRes = await isBotAllowed(connector, slackUserInfo);
     if (isBotAllowedRes.isErr()) {
+      if (slackUserInfo.real_name === "Dust Data Sync") {
+        // The Dust Data Sync bot mentions Dust to let ther user know which bot to use so we should
+        // not react to it.
+        return new Ok(undefined);
+      }
       return isBotAllowedRes;
     }
+    // If the bot is allowed, we skip tools validation as we have no users to rely on for
+    // permissions.
+    skipToolsValidation = true;
   } else {
     const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
       connector,
@@ -564,6 +648,9 @@ async function answerMessage(
 
   if (slackUserInfo.is_bot) {
     const botName = slackUserInfo.real_name;
+    if (!botName) {
+      throw new Error("Failed to get bot name. Should never happen.");
+    }
     requestedGroups = await slackConfig.getBotGroupIds(botName);
   }
 
@@ -593,7 +680,8 @@ async function answerMessage(
     slackThreadTs || slackMessageTs,
     lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
     connector,
-    lastSlackChatBotMessage?.conversationId || null
+    lastSlackChatBotMessage?.conversationId || null,
+    slackBotId // If we reach that line with a slackBotId, it means that the message is from an allowed Slack workflow bot.
   );
 
   buildContentFragmentPromise.catch((error) => {
@@ -858,7 +946,7 @@ async function answerMessage(
     message = `:mention[${mention.assistantName}]{sId=${mention.assistantId}} ${message}`;
   }
 
-  const messageReqBody = {
+  const messageReqBody: PublicPostMessagesRequestBody = {
     content: message,
     mentions: [{ configurationId: mention.assistantId }],
     context: {
@@ -870,6 +958,7 @@ async function answerMessage(
       profilePictureUrl: slackChatBotMessage.slackAvatar || null,
       origin: "slack" as const,
     },
+    skipToolsValidation,
   };
 
   // Await the promise to get the content fragment.
@@ -969,6 +1058,9 @@ async function answerMessage(
     agentConfigurations: mostPopularAgentConfigurations,
   });
 
+  // Immediately mark the conversation as read.
+  await dustAPI.markAsRead({ conversationId: conversation.sId });
+
   if (streamRes.isErr()) {
     return buildSlackMessageError(streamRes, "streamConversationToSlack");
   }
@@ -999,7 +1091,8 @@ async function makeContentFragments(
   threadTs: string,
   startingAtTs: string | null,
   connector: ConnectorResource,
-  conversationId: string | null
+  conversationId: string | null,
+  allowedSlackBotId: string | undefined // Slack workflow bot message should be taken into account.
 ): Promise<Result<PublicPostContentFragmentRequestBody[] | null, Error>> {
   const allContentFragments: PublicPostContentFragmentRequestBody[] = [];
   let allMessages: MessageElement[] = [];
@@ -1026,7 +1119,11 @@ async function makeContentFragments(
       // Signal that we must take all the messages starting from this one.
       shouldTake = true;
     }
-    if (!reply.user) {
+
+    const isFromAllowedBot =
+      allowedSlackBotId && reply.bot_id === allowedSlackBotId;
+    // Message is not from a user or an allowed bot, so we skip it.
+    if (!reply.user && !isFromAllowedBot) {
       continue;
     }
     if (shouldTake) {

@@ -13,19 +13,16 @@ import {
 } from "@dust-tt/sparkle";
 import Link from "next/link";
 
-import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type { WorkspaceType } from "@app/types";
 
 interface AgentTemplateModalProps {
-  flow: BuilderFlow;
   onClose: () => void;
   owner: WorkspaceType;
   templateId: string | null;
 }
 
 export function AgentTemplateModal({
-  flow,
   onClose,
   owner,
   templateId,
@@ -60,7 +57,7 @@ export function AgentTemplateModal({
                     @{assistantTemplate.handle}
                   </span>
                   <Link
-                    href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}&templateId=${assistantTemplate.sId}`}
+                    href={`/w/${owner.sId}/builder/agents/new?templateId=${assistantTemplate.sId}`}
                   >
                     <Button
                       label="Use this template"
@@ -78,6 +75,7 @@ export function AgentTemplateModal({
               <Page.SectionHeader title="Instructions" />
               <ReadOnlyTextArea
                 content={assistantTemplate.presetInstructions}
+                minRows={10}
               />
             </div>
           </SheetContainer>

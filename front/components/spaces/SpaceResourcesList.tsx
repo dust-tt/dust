@@ -13,6 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
+import type { ParsedUrlQuery } from "querystring";
 import React, {
   useCallback,
   useContext,
@@ -21,7 +22,7 @@ import React, {
   useState,
 } from "react";
 
-import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
@@ -45,6 +46,7 @@ import {
   useDeleteFolderOrWebsite,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
+import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type {
   ConnectorProvider,
   DataSourceViewCategoryWithoutApps,
@@ -55,7 +57,11 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { isWebsiteOrFolderCategory } from "@app/types";
+import {
+  ANONYMOUS_USER_IMAGE_URL,
+  isString,
+  isWebsiteOrFolderCategory,
+} from "@app/types";
 
 export interface RowData {
   dataSourceView: DataSourceViewsWithDetails;
@@ -73,6 +79,16 @@ type StringColumnDef = ColumnDef<RowData, string>;
 type NumberColumnDef = ColumnDef<RowData, number>;
 
 type TableColumnDef = StringColumnDef | NumberColumnDef;
+
+const hasWebsiteModalQuery = (
+  query: ParsedUrlQuery
+): query is ParsedUrlQuery & { modal: string } =>
+  isString(query.modal) && query.modal === "website";
+
+const hasManagedModalQuery = (
+  query: ParsedUrlQuery
+): query is ParsedUrlQuery & { modal: string } =>
+  isString(query.modal) && query.modal === "managed";
 
 function getTableColumns(
   setAssistantSId: (a: string | null) => void,
@@ -101,8 +117,9 @@ function getTableColumns(
     header: "Managed by",
     accessorFn: (row) =>
       isGlobalOrSystemSpace
-        ? row.dataSourceView.dataSource.editedByUser?.imageUrl ?? undefined
-        : row.dataSourceView.editedByUser?.imageUrl ?? undefined,
+        ? row.dataSourceView.dataSource.editedByUser?.imageUrl ??
+          ANONYMOUS_USER_IMAGE_URL
+        : row.dataSourceView.editedByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL,
     cell: (ctx) => {
       const { dataSourceView } = ctx.row.original;
       const editedByUser = isGlobalOrSystemSpace
@@ -122,14 +139,14 @@ function getTableColumns(
     header: "Used by",
     // Return a numeric count to allow numeric sorts if we want
     accessorFn: (row) => row.dataSourceView.usage?.count ?? 0,
-    cell: (ctx) => {
-      const usage = ctx.row.original.dataSourceView.usage;
-      return (
-        <DataTable.CellContent>
-          <UsedByButton usage={usage} onItemClick={setAssistantSId} />
-        </DataTable.CellContent>
-      );
-    },
+    cell: (info) => (
+      <DataTable.CellContent>
+        <UsedByButton
+          usage={info.row.original.dataSourceView.usage}
+          onItemClick={setAssistantSId}
+        />
+      </DataTable.CellContent>
+    ),
   };
   // For lastSynced, we store a number or undefined in accessorFn
   const lastSyncedColumn: ColumnDef<RowData, number | undefined> = {
@@ -168,6 +185,7 @@ function getTableColumns(
     cell: (ctx) => {
       const { dataSourceView, isLoading, isAdmin, buttonOnClick } =
         ctx.row.original;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const disabled = isLoading || !isAdmin;
       const connector = dataSourceView.dataSource.connector;
       if (!connector) {
@@ -276,6 +294,7 @@ export const SpaceResourcesList = ({
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Partial<Record<ConnectorProvider, boolean>>
   >({});
+  const [shouldOpenManagedModal, setShouldOpenManagedModal] = useState(false);
 
   const router = useRouter();
   const isSystemSpace = systemSpace.sId === space.sId;
@@ -283,6 +302,38 @@ export const SpaceResourcesList = ({
   const isWebsite = category === "website";
   const isFolder = category === "folder";
   const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
+
+  useEffect(() => {
+    if (!router.isReady || !isWebsite) {
+      return;
+    }
+    const { query } = router;
+    if (!hasWebsiteModalQuery(query)) {
+      return;
+    }
+    setSelectedDataSourceView(null);
+    setShowFolderOrWebsiteModal(true);
+    void removeParamFromRouter(router, "modal");
+  }, [isWebsite, router.isReady, router.query.modal, router]);
+
+  useEffect(() => {
+    if (!router.isReady || !isManagedCategory || isSystemSpace) {
+      return;
+    }
+    const { query } = router;
+    if (!hasManagedModalQuery(query)) {
+      return;
+    }
+    setSelectedDataSourceView(null);
+    setShouldOpenManagedModal(true);
+    void removeParamFromRouter(router, "modal");
+  }, [
+    isManagedCategory,
+    isSystemSpace,
+    router.isReady,
+    router.query.modal,
+    router,
+  ]);
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
@@ -371,6 +422,7 @@ export const SpaceResourcesList = ({
           onClick: () => onSelect(dataSourceView.sId),
         };
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onSelect is not stable, mutating the agents list which prevent pagination to work
   }, [
     spaceDataSourceViews,
     owner.sId,
@@ -379,7 +431,6 @@ export const SpaceResourcesList = ({
     isWebsiteOrFolder,
     canWriteInSpace,
     isFolder,
-    onSelect,
     isDark,
   ]);
 
@@ -467,6 +518,8 @@ export const SpaceResourcesList = ({
           owner={owner}
           systemSpace={systemSpace}
           space={space}
+          shouldOpenModal={shouldOpenManagedModal}
+          onOpenModalHandled={() => setShouldOpenManagedModal(false)}
         />
       )}
       {isFolder && selectedDataSourceView && (
@@ -534,6 +587,7 @@ export const SpaceResourcesList = ({
 
       {rows.length > 0 && (
         <DataTable<RowData>
+          className="dd-privacy-mask"
           data={rows}
           columns={getTableColumns(
             setAssistantSId,

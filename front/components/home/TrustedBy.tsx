@@ -11,8 +11,7 @@ const LOGO_SETS = {
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
       { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
-      { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
-      { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
+      { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
       { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
@@ -20,6 +19,7 @@ const LOGO_SETS = {
       { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
       { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
     ],
     eu: [
       { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
@@ -41,8 +41,7 @@ const LOGO_SETS = {
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
       { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
-      { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
-      { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
+      { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
       { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
@@ -50,6 +49,7 @@ const LOGO_SETS = {
       { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
       { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
     ],
     eu: [
       { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
@@ -146,6 +146,7 @@ const LOGO_SETS = {
       { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
       { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
       { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
     ],
     eu: [
       { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
@@ -153,6 +154,7 @@ const LOGO_SETS = {
       { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
       { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
       { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
     ],
   },
 } as const;

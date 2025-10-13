@@ -153,14 +153,25 @@ fn generate_jwt_from_key_pair(
 
 fn try_parse_private_key(pem: &str, password: Option<&[u8]>) -> Result<RsaPrivateKey> {
     if let Some(password) = password {
-        if let Ok(private) = RsaPrivateKey::from_pkcs8_encrypted_pem(pem, password) {
-            return Ok(private);
+        if !password.is_empty() {
+            if let Ok(private) = RsaPrivateKey::from_pkcs8_encrypted_pem(pem, password) {
+                return Ok(private);
+            }
         }
     }
 
-    RsaPrivateKey::from_pkcs8_pem(pem)
-        .or_else(|_| RsaPrivateKey::from_pkcs1_pem(pem))
-        .map_err(|e| Error::Decode(format!("Failed to parse private key: {}", e)))
+    if let Ok(private) = RsaPrivateKey::from_pkcs8_encrypted_pem(pem, b"") {
+        return Ok(private);
+    }
+
+    RsaPrivateKey::from_pkcs8_pem(pem).or_else(|pkcs8_err| {
+        RsaPrivateKey::from_pkcs1_pem(pem).map_err(|pkcs1_err| {
+            Error::Decode(format!(
+                "Failed to parse private key. PKCS8 error: {}, PKCS1 error: {}",
+                pkcs8_err, pkcs1_err
+            ))
+        })
+    })
 }
 
 #[derive(serde::Deserialize)]

@@ -13,7 +13,13 @@ module.exports = {
     "@typescript-eslint/consistent-type-imports": "error",
     "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
     "@typescript-eslint/no-explicit-any": 0,
-    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+      },
+    ],
     "no-case-declarations": 0,
     "@next/next/no-img-element": 0,
     "@typescript-eslint/no-floating-promises": "error",
@@ -23,6 +29,7 @@ module.exports = {
         checksVoidReturn: false,
       },
     ],
+    "@typescript-eslint/prefer-nullish-coalescing": "error",
     "jsx-a11y/alt-text": 0,
     "no-restricted-syntax": [
       "error",
@@ -60,6 +67,8 @@ module.exports = {
     "dust/no-unverified-workspace-bypass": "error",
     "dust/too-long-index-name": "error",
     "dust/no-direct-sparkle-notification": "warn",
+    "dust/no-bulk-lodash": "error",
+    "dust/enforce-client-types-in-public-api": "error",
   },
   overrides: [
     {

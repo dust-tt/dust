@@ -2,7 +2,10 @@ import { useCallback, useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { CursorPaginationParams } from "@app/lib/api/pagination";
+import type {
+  CursorPaginationParams,
+  SortingParams,
+} from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSpaceName } from "@app/lib/spaces";
 import {
@@ -99,6 +102,7 @@ export function useSpaceInfo({
     `/api/w/${workspaceId}/spaces/${spaceId}`,
     spacesCategoriesFetcher,
     {
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       disabled: disabled || spaceId === null,
     }
   );
@@ -661,8 +665,10 @@ type BaseSearchParams = {
   spaceIds?: string[];
   viewType: ContentNodesViewType;
   pagination?: CursorPaginationParams;
+  searchSort?: SortingParams;
   allowAdminSearch?: boolean;
   dataSourceViewIdsBySpaceId?: Record<string, string[]>;
+  parentId?: string;
 };
 
 // Text search variant
@@ -690,9 +696,11 @@ export function useSpacesSearch({
   spaceIds,
   viewType,
   pagination,
+  searchSort,
   searchSourceUrls = false,
   allowAdminSearch = false,
   dataSourceViewIdsBySpaceId,
+  parentId,
 }: SpacesSearchParams): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -701,6 +709,7 @@ export function useSpacesSearch({
   searchResultNodes: DataSourceContentNode[];
   warningCode: SearchWarningCode | null;
   nextPageCursor: string | null;
+  resultsCount: number | null;
 } {
   const params = new URLSearchParams();
   if (pagination?.cursor) {
@@ -714,16 +723,19 @@ export function useSpacesSearch({
     includeDataSources,
     limit: pagination?.limit ?? DEFAULT_SEARCH_LIMIT,
     nodeIds,
+    searchSort,
     query: search,
     searchSourceUrls,
     spaceIds,
     viewType,
     allowAdminSearch,
     dataSourceViewIdsBySpaceId,
+    parentId,
   };
 
   // Only perform a query if we have a valid search
   const url =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (search && search.length >= MIN_SEARCH_QUERY_SIZE) || nodeIds?.length
       ? `/api/w/${owner.sId}/search?${params}`
       : null;
@@ -754,6 +766,7 @@ export function useSpacesSearch({
     isSearchValidating: isValidating,
     warningCode: data?.warningCode,
     nextPageCursor: data?.nextPageCursor || null,
+    resultsCount: data?.resultsCount || null,
   };
 }
 
@@ -767,6 +780,7 @@ export function useSpacesSearchWithInfiniteScroll({
   viewType,
   pageSize = 25,
   allowAdminSearch = false,
+  parentId,
 }: SpacesSearchParams & { pageSize?: number }): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -783,10 +797,12 @@ export function useSpacesSearchWithInfiniteScroll({
     includeDataSources,
     limit: pageSize,
     allowAdminSearch,
+    parentId,
   };
 
   // Only perform a query if we have a valid search
   const url =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (search && search.length >= 1) || nodeIds
       ? `/api/w/${owner.sId}/search`
       : null;

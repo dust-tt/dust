@@ -1,3 +1,5 @@
+import type { DataSourceViewType } from "@dust-tt/client";
+import { DustAPI, Err, Ok } from "@dust-tt/client";
 import type {
   CodedError,
   WebAPIPlatformError,
@@ -12,9 +14,9 @@ import type {
 import assert from "assert";
 import { Op, Sequelize } from "sequelize";
 
+import { findMatchingChannelPatterns } from "@connectors/connectors/slack/auto_read_channel";
 import {
   getBotUserIdMemoized,
-  getUserCacheKey,
   shouldIndexSlackMessage,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
@@ -41,8 +43,8 @@ import {
   slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier,
   slackThreadInternalIdFromSlackThreadIdentifier,
 } from "@connectors/connectors/slack/lib/utils";
+import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { cacheSet } from "@connectors/lib/cache";
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
@@ -63,8 +65,13 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
-import { concurrentExecutor, INTERNAL_MIME_TYPES } from "@connectors/types";
+import type { DataSourceConfig, SlackAutoReadPattern } from "@connectors/types";
+import {
+  concurrentExecutor,
+  INTERNAL_MIME_TYPES,
+  normalizeError,
+  withRetries,
+} from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "slack" });
 
@@ -100,8 +107,10 @@ export async function syncChannel(
   const remoteChannel = await withSlackErrorHandling(() =>
     getChannelById(slackClient, connectorId, channelId)
   );
-  if (!remoteChannel.name) {
-    throw new Error(`Could not find channel name for channel ${channelId}`);
+  if (!remoteChannel || !remoteChannel.name) {
+    throw new Error(
+      `Could not find channel or channel name for channel ${channelId}`
+    );
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -962,36 +971,6 @@ export async function syncThread(
   });
 }
 
-export async function fetchUsers(connectorId: ModelId) {
-  let cursor: string | undefined;
-  const slackClient = await getSlackClient(connectorId);
-  do {
-    reportSlackUsage({
-      connectorId,
-      method: "users.list",
-      limit: 100,
-    });
-    const res = await withSlackErrorHandling(() =>
-      slackClient.users.list({
-        cursor: cursor,
-        limit: 100,
-      })
-    );
-    if (res.error) {
-      throw new Error(`Failed to fetch users: ${res.error}`);
-    }
-    if (!res.members) {
-      throw new Error(`Failed to fetch users: members is undefined`);
-    }
-    for (const member of res.members) {
-      if (member.id && member.name) {
-        await cacheSet(getUserCacheKey(member.id, connectorId), member.name);
-      }
-    }
-    cursor = res.response_metadata?.next_cursor;
-  } while (cursor);
-}
-
 export async function saveSuccessSyncActivity(connectorId: ModelId) {
   logger.info(
     {
@@ -1090,6 +1069,8 @@ export async function getChannelsToGarbageCollect(
 
   const slackClient = await getSlackClient(connectorId);
 
+  // TODO: Consider using getJoinedChannels(slackClient, connectorId) for better performance.
+  // The only reason this was not done is to mitigate risk as this is a function with a large blast radius.
   const remoteChannels = new Set(
     (
       await withSlackErrorHandling(() =>
@@ -1145,6 +1126,13 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
       },
       limit: maxMessages,
     });
+    logger.info(
+      {
+        nbMessages: slackMessages.length,
+        ...loggerArgs,
+      },
+      `Deleting ${slackMessages.length} messages from channel ${channelId}.`
+    );
     for (const slackMessage of slackMessages) {
       // We delete from the remote datasource first because we would rather double delete remotely
       // than miss one.
@@ -1274,5 +1262,178 @@ export async function migrateChannelsFromLegacyBotToNewBotActivity(
     }
 
     throw e;
+  }
+}
+
+export async function autoReadChannelActivity(
+  connectorId: ModelId,
+  channelId: string
+): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const slackConfiguration =
+    await SlackConfigurationResource.fetchByConnectorId(connectorId);
+  if (!slackConfiguration) {
+    throw new Error(
+      `Slack configuration not found for connector ${connectorId}`
+    );
+  }
+
+  const slackClient = await getSlackClient(connectorId);
+
+  reportSlackUsage({
+    connectorId,
+    method: "conversations.info",
+    channelId,
+  });
+
+  const remoteChannel = await slackClient.conversations.info({
+    channel: channelId,
+  });
+
+  const channelName = remoteChannel.channel?.name;
+  const isPrivate = remoteChannel.channel?.is_private ?? false;
+
+  if (!remoteChannel.ok || !channelName) {
+    logger.error({
+      connectorId,
+      channelId,
+      error: remoteChannel.error,
+    });
+    throw new Error("Could not get the Slack channel information.");
+  }
+
+  const { autoReadChannelPatterns } = slackConfiguration;
+  const matchingPatterns = findMatchingChannelPatterns(
+    channelName,
+    autoReadChannelPatterns
+  );
+
+  if (matchingPatterns.length === 0) {
+    return;
+  }
+
+  const provider = connector.type as "slack" | "slack_bot";
+  let channel = await SlackChannel.findOne({
+    where: {
+      slackChannelId: channelId,
+      connectorId,
+    },
+  });
+
+  if (!channel) {
+    channel = await SlackChannel.create({
+      connectorId,
+      slackChannelId: channelId,
+      slackChannelName: channelName,
+      permission: "read_write",
+      private: isPrivate,
+    });
+  } else {
+    await channel.update({
+      permission: "read_write",
+    });
+  }
+
+  // For slack_bot context, only do the basic channel setup without data source operations
+  if (provider === "slack_bot") {
+    return;
+  }
+
+  // Slack context: perform full data source operations
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: slackChannelInternalIdFromSlackChannelId(channelId),
+    title: `#${channelName}`,
+    parentId: null,
+    parents: [slackChannelInternalIdFromSlackChannelId(channelId)],
+    mimeType: INTERNAL_MIME_TYPES.SLACK.CHANNEL,
+    sourceUrl: getSlackChannelSourceUrl(channelId, slackConfiguration),
+    providerVisibility: isPrivate ? "private" : "public",
+  });
+
+  const dustAPI = new DustAPI(
+    { url: apiConfig.getDustFrontAPIUrl() },
+    {
+      workspaceId: connector.workspaceId,
+      apiKey: connector.workspaceAPIKey,
+    },
+    mainLogger.child({ provider: "slack" })
+  );
+
+  const results = await concurrentExecutor(
+    matchingPatterns,
+    async (p: SlackAutoReadPattern) => {
+      const searchParams = new URLSearchParams({
+        vaultId: p.spaceId,
+        dataSourceId: connector.dataSourceId,
+      });
+
+      const searchRes = await dustAPI.searchDataSourceViews(searchParams);
+      if (searchRes.isErr()) {
+        mainLogger.error({
+          connectorId,
+          channelId,
+          error: searchRes.error.message,
+        });
+        return new Err(new Error("Failed to join Slack channel in Dust."));
+      }
+
+      const [dataSourceView] = searchRes.value;
+      if (!dataSourceView) {
+        mainLogger.error({
+          connectorId,
+          channelId,
+          error:
+            "Failed to join Slack channel, there was an issue retrieving dataSourceViews",
+        });
+        return new Err(
+          new Error("There was an issue retrieving dataSourceViews")
+        );
+      }
+
+      // Retry if the patch operation fails - it can happen if the channel is not in ES yet
+      try {
+        await withRetries(
+          mainLogger.child({ provider: "slack" }),
+          async (dataSourceView: DataSourceViewType) => {
+            const updateDataSourceViewRes = await dustAPI.patchDataSourceView(
+              dataSourceView,
+              {
+                parentsToAdd: [
+                  slackChannelInternalIdFromSlackChannelId(channelId),
+                ],
+                parentsToRemove: undefined,
+              }
+            );
+
+            if (updateDataSourceViewRes.isErr()) {
+              throw new Error(
+                `Failed to update Slack data source view for space ${p.spaceId}.`
+              );
+            }
+          },
+          {
+            retries: 3,
+            delayBetweenRetriesMs: 5000,
+          }
+        )(dataSourceView);
+      } catch (e) {
+        return new Err(normalizeError(e));
+      }
+
+      return new Ok(true);
+    },
+    { concurrency: 5 }
+  );
+
+  const firstError = results.find((r) => r.isErr());
+  if (firstError && firstError.isErr()) {
+    throw firstError.error;
   }
 }

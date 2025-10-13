@@ -1,14 +1,15 @@
 import type { Icon } from "@dust-tt/sparkle";
-import { uniqueId } from "lodash";
+import uniqueId from "lodash/uniqueId";
 import { z } from "zod";
 
 import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { mcpServerConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { nameToStorageFormat } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { WhitelistableFeature } from "@app/types";
@@ -56,17 +57,14 @@ export const CONFIGURATION_SHEET_PAGE_IDS = {
   CONFIGURATION: "configuration",
 } as const;
 
-export const CONFIGURATION_DIALOG_PAGE_IDS = {
+export const TOOLS_SHEET_PAGE_IDS = {
   TOOL_SELECTION: "tool-selection",
   CONFIGURATION: "configuration",
   INFO: "info",
 };
 
-export type ConfigurationSheetPageId =
-  (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
-
 export type ConfigurationPagePageId =
-  (typeof CONFIGURATION_DIALOG_PAGE_IDS)[keyof typeof CONFIGURATION_DIALOG_PAGE_IDS];
+  (typeof TOOLS_SHEET_PAGE_IDS)[keyof typeof TOOLS_SHEET_PAGE_IDS];
 
 // Zod validation schema for data source configuration - defines the contract/shape
 export const dataSourceConfigurationSchema = z.object({
@@ -97,15 +95,26 @@ export const capabilityFormSchema = z
     name: z
       .string()
       .min(1, "The name cannot be empty.")
-      .regex(
-        /^[a-z0-9_]+$/,
-        "The name can only contain lowercase letters, numbers, and underscores (no spaces)."
-      )
+      .transform((val) => {
+        // Convert to lowercase and replace spaces and special chars with underscores
+        return (
+          val
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, "_")
+            // Remove consecutive underscores
+            .replace(/_+/g, "_")
+            // Remove leading/trailing underscores
+            .replace(/^_+|_+$/g, "")
+        );
+      })
       .default(""),
     description: z
       .string()
       .min(1, "Description is required")
-      .max(DESCRIPTION_MAX_LENGTH, "Description too long"),
+      .max(
+        DESCRIPTION_MAX_LENGTH,
+        "Description should be less than 800 characters."
+      ),
     sources: dataSourceBuilderTreeType.refine(
       (val) => {
         return val.in.length > 0;
@@ -116,14 +125,16 @@ export const capabilityFormSchema = z
     configuration: mcpServerConfigurationSchema,
   })
   .superRefine((val, ctx) => {
-    const requirements = getMCPServerRequirements(val.mcpServerView);
+    const toolsConfigurations = getMCPServerToolsConfigurations(
+      val.mcpServerView
+    );
     const configuration = val.configuration;
 
-    if (!requirements) {
+    if (!toolsConfigurations) {
       return true;
     }
 
-    if (requirements.mayRequireTimeFrameConfiguration) {
+    if (toolsConfigurations.mayRequireTimeFrameConfiguration) {
       if (
         configuration.timeFrame !== null &&
         (configuration.timeFrame.duration === null ||
@@ -139,7 +150,7 @@ export const capabilityFormSchema = z
     }
 
     if (
-      requirements.mayRequireJsonSchemaConfiguration &&
+      toolsConfigurations.mayRequireJsonSchemaConfiguration &&
       configuration._jsonSchemaString !== null
     ) {
       const parsedSchema = validateConfiguredJsonSchema(
@@ -161,22 +172,27 @@ export const capabilityFormSchema = z
 export function getDefaultMCPAction(
   mcpServerView?: MCPServerViewType
 ): AgentBuilderAction {
-  const requirements = getMCPServerRequirements(mcpServerView);
+  const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
   const configuration = getDefaultConfiguration(mcpServerView);
+  const rawName = mcpServerView?.name ?? mcpServerView?.server.name ?? "";
+  const sanitizedName = rawName ? nameToStorageFormat(rawName) : "";
 
   return {
     id: uniqueId(),
     type: "MCP",
     configuration,
-    name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
+    // Ensure default name always matches validation regex (^[a-z0-9_]+$)
+    name: sanitizedName,
     description:
-      requirements.requiresDataSourceConfiguration ||
-      requirements.requiresTableConfiguration
+      toolsConfigurations.dataSourceConfiguration ??
+      toolsConfigurations.dataWarehouseConfiguration ??
+      toolsConfigurations.tableConfiguration ??
+      false
         ? ""
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    noConfigurationRequired: requirements.noRequirement,
+    configurable: toolsConfigurations.configurable !== "no",
   };
 }
 

@@ -7,98 +7,76 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
+import { useFormContext } from "react-hook-form";
 
-import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
-import {
-  useAddMCPServerToSpace,
-  useRemoveMCPServerViewFromSpace,
-} from "@app/lib/swr/mcp_servers";
-import { useMCPServers } from "@app/lib/swr/mcp_servers";
-import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
-
-type MCPServerDetailsSharingProps = {
-  mcpServer: MCPServerType;
-  owner: LightWorkspaceType;
-};
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import type { MCPServerType } from "@app/lib/api/mcp";
+import type { SpaceType, WorkspaceType } from "@app/types";
 
 type RowData = {
   name: string;
   space: SpaceType;
-  serverView: MCPServerViewType | undefined;
+  isEnabled: boolean;
   onClick: () => void;
 };
 
 const ActionCell = ({
-  mcpServer,
-  mcpServerView,
-  space,
-  owner,
+  isEnabled,
+  onToggle,
 }: {
-  mcpServer: MCPServerType;
-  mcpServerView?: MCPServerViewType;
-  space: SpaceType;
-  owner: LightWorkspaceType;
+  isEnabled: boolean;
+  onToggle: () => void;
 }) => {
-  const { addToSpace } = useAddMCPServerToSpace(owner);
-  const { removeFromSpace } = useRemoveMCPServerViewFromSpace(owner);
-  const [loading, setLoading] = useState(false);
   return (
     <DataTable.CellContent>
       <SliderToggle
-        disabled={loading}
-        selected={mcpServerView !== undefined}
-        onClick={async () => {
-          setLoading(true);
-          if (mcpServerView) {
-            await removeFromSpace(mcpServerView, space);
-          } else {
-            await addToSpace(mcpServer, space);
-          }
-          setLoading(false);
+        selected={isEnabled}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
         }}
       />
     </DataTable.CellContent>
   );
 };
 
+interface MCPServerDetailsSharingProps {
+  mcpServer?: MCPServerType;
+  owner: WorkspaceType;
+  spaces: SpaceType[];
+}
+
 export function MCPServerDetailsSharing({
-  mcpServer,
-  owner,
+  spaces,
 }: MCPServerDetailsSharingProps) {
-  const { spaces } = useSpacesAsAdmin({
-    workspaceId: owner.sId,
-    disabled: false,
-  });
-  const { mcpServers } = useMCPServers({
-    owner,
-  });
-  const mcpServerWithViews = mcpServers.find((s) => s.sId === mcpServer.sId);
-  const [loading, setLoading] = useState(false);
+  const form = useFormContext<MCPServerFormValues>();
+  const sharingSettings = form.watch("sharingSettings") || {};
 
-  const views =
-    mcpServerWithViews?.views.map((v) => ({
-      ...v,
-      space: spaces.find((space) => space.sId === v.spaceId),
-    })) || [];
-
-  const globalView = views.find((view) => view.space?.kind === "global");
   const globalSpace = spaces.find((space) => space.kind === "global");
-  const isRestricted = !globalView;
+  const availableSpaces = spaces.filter((s) => s.kind === "regular");
 
-  const availableSpaces = (spaces ?? []).filter((s) => s.kind === "regular");
+  const isRestricted = globalSpace ? !sharingSettings?.[globalSpace.sId] : true;
 
-  const { addToSpace } = useAddMCPServerToSpace(owner);
-  const { removeFromSpace } = useRemoveMCPServerViewFromSpace(owner);
+  const handleToggle = (space: SpaceType) => {
+    const currentState = sharingSettings?.[space.sId] ?? false;
+    const newState = !currentState;
+
+    form.setValue(`sharingSettings.${space.sId}`, newState, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+  };
 
   const rows: RowData[] = availableSpaces
     .map((space) => ({
       name: space.name,
       space: space,
-      serverView: views.find((view) => view.spaceId === space.sId),
-      onClick: () => {},
+      isEnabled: sharingSettings?.[space.sId] ?? false,
+      onClick: () => handleToggle(space),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
+
   const columns: ColumnDef<RowData, any>[] = [
     {
       id: "name",
@@ -108,16 +86,14 @@ export function MCPServerDetailsSharing({
     {
       id: "action",
       header: "",
-      accessorKey: "viewId",
+      accessorKey: "isEnabled",
       meta: {
         className: "w-14",
       },
-      cell: (info: CellContext<RowData, string>) => (
+      cell: (info: CellContext<RowData, boolean>) => (
         <ActionCell
-          mcpServer={mcpServer}
-          mcpServerView={info.row.original.serverView}
-          space={info.row.original.space}
-          owner={owner}
+          isEnabled={info.row.original.isEnabled}
+          onToggle={info.row.original.onClick}
         />
       ),
     },
@@ -131,17 +107,11 @@ export function MCPServerDetailsSharing({
         <div className="flex w-full items-center justify-between overflow-visible">
           <Page.SectionHeader title="Available to all Spaces" />
           <SliderToggle
-            disabled={loading}
             selected={!isRestricted}
-            onClick={async () => {
+            onClick={(e) => {
+              e.stopPropagation();
               if (globalSpace) {
-                setLoading(true);
-                if (!isRestricted) {
-                  await removeFromSpace(globalView, globalSpace);
-                } else {
-                  await addToSpace(mcpServer, globalSpace);
-                }
-                setLoading(false);
+                handleToggle(globalSpace);
               }
             }}
           />
@@ -165,13 +135,14 @@ export function MCPServerDetailsSharing({
             <SearchInput
               name="filter"
               placeholder="Search a space"
+              className="w-full"
               value={filter}
               onChange={(e) => setFilter(e)}
             />
           </div>
 
           <ScrollArea className="h-full">
-            <DataTable
+            <DataTable<RowData>
               data={rows}
               columns={columns}
               filter={filter}

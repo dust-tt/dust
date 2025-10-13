@@ -18,7 +18,7 @@ import {
   uninstallSlack,
 } from "@connectors/connectors/slack";
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
-import { getChannels } from "@connectors/connectors/slack/lib/channels";
+import { getJoinedChannels } from "@connectors/connectors/slack/lib/channels";
 import { retrievePermissions } from "@connectors/connectors/slack/lib/retrieve_permissions";
 import {
   getSlackAccessToken,
@@ -33,7 +33,6 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import { sequelizeConnection } from "@connectors/resources/storage";
 import type {
   ConnectorPermission,
   ContentNode,
@@ -41,6 +40,7 @@ import type {
   SlackConfigurationType,
 } from "@connectors/types";
 import { isSlackAutoReadPatterns, safeParseJSON } from "@connectors/types";
+import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
 
 const { SLACK_BOT_CLIENT_ID, SLACK_BOT_CLIENT_SECRET } = process.env;
 
@@ -81,56 +81,70 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
     );
     const legacyConfiguration =
       legacyConnector?.configuration as SlackConfigurationResource;
-    const connector = await sequelizeConnection.transaction(
-      async (transaction) => {
-        const connector = await ConnectorResource.makeNew(
-          "slack_bot",
-          {
-            connectionId,
-            workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-            workspaceId: dataSourceConfig.workspaceId,
-            dataSourceId: dataSourceConfig.dataSourceId,
-          },
-          {
-            ...(legacyConfiguration
-              ? {
-                  autoReadChannelPatterns:
-                    legacyConfiguration.autoReadChannelPatterns,
-                  whitelistedDomains: legacyConfiguration.whitelistedDomains,
-                  restrictedSpaceAgentsEnabled:
-                    legacyConfiguration.restrictedSpaceAgentsEnabled,
-                }
-              : {
-                  autoReadChannelPatterns:
-                    configuration.autoReadChannelPatterns,
-                  whitelistedDomains: configuration.whitelistedDomains,
-                  restrictedSpaceAgentsEnabled:
-                    configuration.restrictedSpaceAgentsEnabled ?? true,
-                }),
-            botEnabled: configuration.botEnabled,
-            slackTeamId,
-          },
-          transaction
-        );
+    const connector = await withTransaction(async (transaction) => {
+      const connector = await ConnectorResource.makeNew(
+        "slack_bot",
+        {
+          connectionId,
+          workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+          workspaceId: dataSourceConfig.workspaceId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+        },
+        {
+          ...(legacyConfiguration
+            ? {
+                autoReadChannelPatterns:
+                  legacyConfiguration.autoReadChannelPatterns,
+                whitelistedDomains: legacyConfiguration.whitelistedDomains,
+                restrictedSpaceAgentsEnabled:
+                  legacyConfiguration.restrictedSpaceAgentsEnabled,
+              }
+            : {
+                autoReadChannelPatterns: configuration.autoReadChannelPatterns,
+                whitelistedDomains: configuration.whitelistedDomains,
+                restrictedSpaceAgentsEnabled:
+                  configuration.restrictedSpaceAgentsEnabled ?? true,
+              }),
+          botEnabled: configuration.botEnabled,
+          slackTeamId,
+        },
+        transaction
+      );
 
-        if (legacyConnector) {
-          const slackBotChannelsCount = await SlackChannel.count({
+      // Track migration results for recap log
+      let channelsMigrated = 0;
+      let channelsMigrationStatus = "not_attempted";
+      let channelsMigrationSkipReason = null;
+
+      logger.info(
+        {
+          connectorId: connector.id,
+          workspaceId: dataSourceConfig.workspaceId,
+          slackTeamId,
+        },
+        "Starting auto-migration from legacy Slack connector"
+      );
+
+      if (legacyConnector) {
+        const slackBotChannelsCount = await SlackChannel.count({
+          where: {
+            connectorId: connector.id,
+          },
+        });
+        if (
+          slackBotChannelsCount === 0 // Ensure slack_bot connector has no channels
+        ) {
+          // Migrate channels from legacy slack connector to keep default bot per Slack channel
+          // functionality
+          const slackChannels = await SlackChannel.findAll({
             where: {
-              connectorId: connector.id,
+              connectorId: legacyConnector.id,
+              // Only migrate channels with agent configuration
+              agentConfigurationId: { [Op.ne]: null },
             },
           });
-          if (
-            slackBotChannelsCount === 0 // Ensure slack_bot connector has no channels
-          ) {
-            // Migrate channels from legacy slack connector to keep default bot per Slack channel
-            // functionality
-            const slackChannels = await SlackChannel.findAll({
-              where: {
-                connectorId: legacyConnector.id,
-                // Only migrate channels with agent configuration
-                agentConfigurationId: { [Op.ne]: null },
-              },
-            });
+
+          if (slackChannels.length > 0) {
             const creationRecords = slackChannels.map(
               (channel): CreationAttributes<SlackChannel> => ({
                 connectorId: connector.id, // Update to slack_bot connector ID
@@ -145,46 +159,81 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
               })
             );
             await SlackChannel.bulkCreate(creationRecords, { transaction });
-          }
-        }
-        if (legacyConfiguration && connector.configuration) {
-          const slackBotWhitelistModelCount =
-            await SlackBotWhitelistModel.count({
-              where: {
-                connectorId: legacyConfiguration.connectorId,
-              },
-            });
-          if (slackBotWhitelistModelCount > 0) {
-            // Migrate SlackBotWhitelistModel from legacy slack connector
-            const slackBotWhitelistModels =
-              await SlackBotWhitelistModel.findAll({
-                where: {
-                  connectorId: legacyConfiguration.connectorId,
-                },
-              });
-            const slackConfigurationId = connector.configuration.id;
-            const whitelistRecords = slackBotWhitelistModels.map(
-              (whitelistModel) => {
-                return {
-                  createdAt: whitelistModel.createdAt,
-                  updatedAt: whitelistModel.updatedAt,
-                  botName: whitelistModel.botName,
-                  groupIds: whitelistModel.groupIds,
-                  whitelistType: whitelistModel.whitelistType,
-                  connectorId: connector.id,
-                  slackConfigurationId,
-                };
-              }
-            );
-            await SlackBotWhitelistModel.bulkCreate(whitelistRecords, {
-              transaction,
-            });
-          }
-        }
 
-        return connector;
+            channelsMigrated = slackChannels.length;
+            channelsMigrationStatus = "success";
+          } else {
+            channelsMigrationStatus = "skipped";
+            channelsMigrationSkipReason = "no_channels_with_agent_config";
+          }
+        } else {
+          channelsMigrationStatus = "skipped";
+          channelsMigrationSkipReason = "connector_already_has_channels";
+        }
       }
-    );
+      // Track whitelist model migration results for recap log
+      let whitelistModelsMigrated = 0;
+      let whitelistMigrationStatus = "not_attempted";
+
+      if (legacyConfiguration && connector.configuration) {
+        const slackBotWhitelistModelCount = await SlackBotWhitelistModel.count({
+          where: {
+            connectorId: legacyConfiguration.connectorId,
+          },
+        });
+        if (slackBotWhitelistModelCount > 0) {
+          // Migrate SlackBotWhitelistModel from legacy slack connector
+          const slackBotWhitelistModels = await SlackBotWhitelistModel.findAll({
+            where: {
+              connectorId: legacyConfiguration.connectorId,
+            },
+          });
+          const slackConfigurationId = connector.configuration.id;
+          const whitelistRecords = slackBotWhitelistModels.map(
+            (whitelistModel) => {
+              return {
+                createdAt: whitelistModel.createdAt,
+                updatedAt: whitelistModel.updatedAt,
+                botName: whitelistModel.botName,
+                groupIds: whitelistModel.groupIds,
+                whitelistType: whitelistModel.whitelistType,
+                connectorId: connector.id,
+                slackConfigurationId,
+              };
+            }
+          );
+          await SlackBotWhitelistModel.bulkCreate(whitelistRecords, {
+            transaction,
+          });
+
+          whitelistModelsMigrated = slackBotWhitelistModelCount;
+          whitelistMigrationStatus = "success";
+        } else {
+          whitelistMigrationStatus = "skipped";
+        }
+      }
+
+      // Single recap log for Datadog monitoring
+      logger.info(
+        {
+          connectorId: connector.id,
+          workspaceId: dataSourceConfig.workspaceId,
+          slackTeamId,
+          botEnabled: configuration.botEnabled,
+          hasLegacyConnector: !!legacyConnector,
+          legacyConnectorId: legacyConnector?.id || null,
+          configurationSource: legacyConfiguration ? "legacy" : "new",
+          channelsMigrationStatus,
+          channelsMigrationSkipReason,
+          channelsMigrated,
+          whitelistMigrationStatus,
+          whitelistModelsMigrated,
+        },
+        "Auto-migration recap after Slack bot connector creation"
+      );
+
+      return connector;
+    });
 
     return new Ok(connector.id.toString());
   }
@@ -573,7 +622,7 @@ async function getFilteredChannels(
   const slackClient = await getSlackClient(connectorId);
 
   const [remoteChannels, localChannels] = await Promise.all([
-    getChannels(slackClient, connectorId, true),
+    getJoinedChannels(slackClient, connectorId),
     SlackChannel.findAll({
       where: {
         connectorId,

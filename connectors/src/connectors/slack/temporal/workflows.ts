@@ -1,13 +1,13 @@
 import {
+  allHandlersFinished,
+  condition,
   continueAsNew,
   executeChild,
-  log,
   proxyActivities,
   setHandler,
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
-import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
 import type { ModelId } from "@connectors/types";
@@ -15,18 +15,37 @@ import type { ModelId } from "@connectors/types";
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
 
+const JOIN_CHANNEL_USE_CASES = [
+  "join-only",
+  "auto-read",
+  "set-permission",
+] as const;
+export type JoinChannelUseCaseType = (typeof JOIN_CHANNEL_USE_CASES)[number];
+
 // Dynamic activity creation with fresh routing evaluation (enables retry queue switching).
 function getSlackActivities() {
   const {
     getChannel,
-    fetchUsers,
     saveSuccessSyncActivity,
     syncChannelMetadata,
     reportInitialSyncProgressActivity,
     getChannelsToGarbageCollect,
-    attemptChannelJoinActivity,
     deleteChannelsFromConnectorDb,
   } = proxyActivities<typeof activities>({
+    startToCloseTimeout: "10 minutes",
+  });
+
+  const { attemptChannelJoinActivity } = proxyActivities<typeof activities>({
+    startToCloseTimeout: "10 minutes",
+    retry: {
+      initialInterval: "3s",
+      maximumInterval: "12s",
+      backoffCoefficient: 1.5,
+      maximumAttempts: 25,
+    },
+  });
+
+  const { autoReadChannelActivity } = proxyActivities<typeof activities>({
     startToCloseTimeout: "10 minutes",
   });
 
@@ -45,9 +64,9 @@ function getSlackActivities() {
 
   return {
     attemptChannelJoinActivity,
+    autoReadChannelActivity,
     deleteChannel,
     deleteChannelsFromConnectorDb,
-    fetchUsers,
     getChannel,
     getChannelsToGarbageCollect,
     migrateChannelsFromLegacyBotToNewBotActivity,
@@ -60,9 +79,8 @@ function getSlackActivities() {
   };
 }
 
-// we have a maximum of 990 signal received before we continue as new
-// this is to avoid "Failed to signalWithStart Workflow: 3 INVALID_ARGUMENT: exceeded workflow execution limit for signal events"
-const MAX_SIGNAL_RECEIVED_COUNT = 990;
+// Max debounce
+const MAX_DEBOUNCE_COUNT = 100;
 
 /**
  * This workflow is in charge of synchronizing all the content of the Slack channels selected by the user.
@@ -86,31 +104,38 @@ export async function workspaceFullSync(
   fromTs: number | null
 ): Promise<void> {
   let i = 1;
-  const childWorkflowQueue = new PQueue({
-    concurrency: 1,
-  });
+  const signalQueue: Array<{ channelIds: string[] }> = [];
+
   setHandler(syncChannelSignal, async (input) => {
-    for (const channelId of input.channelIds) {
-      void childWorkflowQueue.add(async () => {
-        await getSlackActivities().reportInitialSyncProgressActivity(
-          connectorId,
-          `${i - 1}/${input.channelIds.length} channels`
-        );
-        await executeChild(syncOneChannel, {
-          workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
-          searchAttributes: {
-            connectorId: [connectorId],
-          },
-          args: [connectorId, channelId, false, fromTs],
-          memo: workflowInfo().memo,
-        });
-        i++;
-      });
-    }
+    // Add signal to queue
+    signalQueue.push(input);
   });
 
-  await getSlackActivities().fetchUsers(connectorId);
-  await childWorkflowQueue.onIdle();
+  while (signalQueue.length > 0) {
+    const signal = signalQueue.shift();
+    if (!signal) {
+      continue;
+    }
+
+    // Process channels sequentially for this signal
+    for (const channelId of signal.channelIds) {
+      await getSlackActivities().reportInitialSyncProgressActivity(
+        connectorId,
+        `${i - 1}/${signal.channelIds.length} channels`
+      );
+
+      await executeChild(syncOneChannel, {
+        workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        args: [connectorId, channelId, false, fromTs],
+        memo: workflowInfo().memo,
+      });
+
+      i++;
+    }
+  }
 
   await executeChild(slackGarbageCollectorWorkflow, {
     workflowId: slackGarbageCollectorWorkflowId(connectorId),
@@ -173,29 +198,12 @@ export async function syncOneThreadDebounced(
 ) {
   let signaled = false;
   let debounceCount = 0;
-  let receivedSignalsCount = 0;
 
   setHandler(newWebhookSignal, async () => {
-    receivedSignalsCount++;
-
-    if (receivedSignalsCount >= MAX_SIGNAL_RECEIVED_COUNT) {
-      log.info(
-        `Continuing as Workflow as new due to too many signals received for syncOneThreadDebounced: ${receivedSignalsCount}`,
-        {
-          connectorId,
-          channelId,
-          threadTs,
-          debounceCount,
-          receivedSignalsCount,
-        }
-      );
-      await continueAsNew(connectorId, channelId, threadTs);
-      return;
-    }
     signaled = true;
   });
 
-  while (signaled) {
+  while (signaled && debounceCount < MAX_DEBOUNCE_COUNT) {
     signaled = false;
     await sleep(10000);
     if (signaled) {
@@ -207,8 +215,10 @@ export async function syncOneThreadDebounced(
       connectorId,
       channelId
     );
-    if (!channel.name) {
-      throw new Error(`Could not find channel name for channel ${channelId}`);
+    if (!channel || !channel.name) {
+      throw new Error(
+        `Could not find channel or channel name for channel ${channelId}`
+      );
     }
 
     await getSlackActivities().syncChannelMetadata(
@@ -224,6 +234,17 @@ export async function syncOneThreadDebounced(
     );
     await getSlackActivities().saveSuccessSyncActivity(connectorId);
   }
+
+  // If we hit max iterations, ensure all handlers are finished before continuing as new.
+  if (debounceCount >= MAX_DEBOUNCE_COUNT) {
+    // Unregister the signal handler to prevent new signals from being accepted.
+    setHandler(newWebhookSignal, undefined);
+    // Wait for any in-progress async handlers to complete.
+    await condition(allHandlersFinished);
+    // Now safe to continue as new without losing signals or corrupting state.
+    await continueAsNew(connectorId, channelId, threadTs);
+  }
+
   // /!\ Any signal received outside of the while loop will be lost, so don't make any async
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
 }
@@ -235,34 +256,16 @@ export async function syncOneMessageDebounced(
 ) {
   let signaled = false;
   let debounceCount = 0;
-  let receivedSignalsCount = 0;
 
   setHandler(newWebhookSignal, async () => {
-    receivedSignalsCount++;
-
-    if (receivedSignalsCount >= MAX_SIGNAL_RECEIVED_COUNT) {
-      log.info(
-        `Continuing as Workflow as new due to too many signals received for syncOneMessageDebounced: ${receivedSignalsCount}`,
-        {
-          connectorId,
-          channelId,
-          threadTs,
-          debounceCount,
-          receivedSignalsCount,
-        }
-      );
-      await continueAsNew(connectorId, channelId, threadTs);
-      return;
-    }
     signaled = true;
   });
 
-  while (signaled) {
+  while (signaled && debounceCount < MAX_DEBOUNCE_COUNT) {
     signaled = false;
     await sleep(10000);
     if (signaled) {
       debounceCount++;
-
       continue;
     }
 
@@ -270,8 +273,10 @@ export async function syncOneMessageDebounced(
       connectorId,
       channelId
     );
-    if (!channel.name) {
-      throw new Error(`Could not find channel name for channel ${channelId}`);
+    if (!channel || !channel.name) {
+      throw new Error(
+        `Could not find channel or channel name for channel ${channelId}`
+      );
     }
     const messageTs = parseInt(threadTs, 10) * 1000;
     const startTsMs = getWeekStart(new Date(messageTs)).getTime();
@@ -280,7 +285,8 @@ export async function syncOneMessageDebounced(
     await getSlackActivities().syncChannelMetadata(
       connectorId,
       channelId,
-      endTsMs
+      // endTsMs can be in the future so we cap it to now for the channel metadata.
+      Math.min(new Date().getTime(), endTsMs)
     );
 
     await getSlackActivities().syncNonThreaded({
@@ -293,6 +299,17 @@ export async function syncOneMessageDebounced(
 
     await getSlackActivities().saveSuccessSyncActivity(connectorId);
   }
+
+  // If we hit max iterations, ensure all handlers are finished before continuing as new.
+  if (debounceCount >= MAX_DEBOUNCE_COUNT) {
+    // Unregister the signal handler to prevent new signals from being accepted.
+    setHandler(newWebhookSignal, undefined);
+    // Wait for any in-progress async handlers to complete.
+    await condition(allHandlersFinished);
+    // Now safe to continue as new without losing signals or corrupting state.
+    await continueAsNew(connectorId, channelId, threadTs);
+  }
+
   // /!\ Any signal received outside of the while loop will be lost, so don't make any async
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
 }
@@ -369,4 +386,52 @@ export function syncOneMessageDebouncedWorkflowId(
 
 export function slackGarbageCollectorWorkflowId(connectorId: ModelId) {
   return `slack-GarbageCollector-${connectorId}`;
+}
+
+export async function joinChannelWorkflow(
+  connectorId: ModelId,
+  channelId: string,
+  useCase: JoinChannelUseCaseType
+): Promise<{ success: boolean; error?: string }> {
+  if (useCase === "set-permission") {
+    throw new Error("set-permission use case not implemented");
+  }
+
+  try {
+    if (useCase === "auto-read") {
+      await getSlackActivities().autoReadChannelActivity(
+        connectorId,
+        channelId
+      );
+
+      return { success: true };
+    }
+
+    const joinSuccess = await getSlackActivities().attemptChannelJoinActivity(
+      connectorId,
+      channelId
+    );
+
+    if (!joinSuccess) {
+      return {
+        success: false,
+        error: "Channel is archived or could not be joined",
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    };
+  }
+}
+
+export function joinChannelWorkflowId(
+  connectorId: ModelId,
+  channelId: string,
+  useCase: JoinChannelUseCaseType
+) {
+  return `slack-joinChannel-${useCase}-${connectorId}-${channelId}`;
 }

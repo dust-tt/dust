@@ -1,4 +1,4 @@
-import { groupBy } from "lodash";
+import groupBy from "lodash/groupBy";
 import type { ReactNode } from "react";
 import React, { createContext, useContext, useMemo } from "react";
 
@@ -7,30 +7,49 @@ import {
   getMcpServerViewDisplayName,
   mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 export type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
+// Sort MCP server views based on priority order.
+// Order: Search -> Include Data -> Query Tables -> Extract Data -> Others (alphabetically).
+export const sortMCPServerViewsByPriority = (
+  views: MCPServerViewTypeWithLabel[]
+): MCPServerViewTypeWithLabel[] => {
+  const priorityOrder: Record<string, number> = {
+    search: 1,
+    query_tables: 2,
+    query_tables_v2: 2, // Same priority as query_tables
+    include_data: 3,
+    extract_data: 4,
+  };
+
+  return [...views].sort((a, b) => {
+    const priorityA = priorityOrder[a.server.name] ?? 999;
+    const priorityB = priorityOrder[b.server.name] ?? 999;
+
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+
+    // If priorities are the same, sort alphabetically by label.
+    return a.label.localeCompare(b.label);
+  });
+};
 
 interface MCPServerViewsContextType {
   mcpServerViews: MCPServerViewType[];
   mcpServerViewsWithKnowledge: MCPServerViewTypeWithLabel[];
-  defaultMCPServerViews: MCPServerViewTypeWithLabel[];
-  nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
+  mcpServerViewsWithoutKnowledge: MCPServerViewTypeWithLabel[];
   isMCPServerViewsLoading: boolean;
   isMCPServerViewsError: boolean;
 }
 
-const MCPServerViewsContext = createContext<MCPServerViewsContextType>({
-  mcpServerViews: [],
-  mcpServerViewsWithKnowledge: [],
-  defaultMCPServerViews: [],
-  nonDefaultMCPServerViews: [],
-  isMCPServerViewsLoading: false,
-  isMCPServerViewsError: false,
-});
+const MCPServerViewsContext = createContext<
+  MCPServerViewsContextType | undefined
+>(undefined);
 
 function getGroupedMCPServerViews({
   mcpServerViews,
@@ -42,8 +61,7 @@ function getGroupedMCPServerViews({
   if (!mcpServerViews || !Array.isArray(mcpServerViews)) {
     return {
       mcpServerViewsWithKnowledge: [],
-      defaultMCPServerViews: [],
-      nonDefaultMCPServerViews: [],
+      mcpServerViewsWithoutKnowledge: [],
     };
   }
 
@@ -80,11 +98,20 @@ function getGroupedMCPServerViews({
 
   const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
     groupBy(mcpServerViewsWithLabel, (view) => {
-      const requirements = getMCPServerRequirements(view);
+      const toolsConfigurations = getMCPServerToolsConfigurations(view);
+
+      // Special handling for interactive_content server:
+      // The interactive_content server includes list and cat tools for convenience, but its primary purpose is
+      // not data source operations. We don't want it to be classified as requiring knowledge.
+      const isInteractiveContentServer =
+        view.server.name === "interactive_content";
 
       const isWithKnowledge =
-        requirements.requiresDataSourceConfiguration ||
-        requirements.requiresTableConfiguration;
+        !isInteractiveContentServer &&
+        (toolsConfigurations.dataSourceConfiguration ??
+          toolsConfigurations.dataWarehouseConfiguration ??
+          toolsConfigurations.tableConfiguration ??
+          false);
 
       return isWithKnowledge
         ? "mcpServerViewsWithKnowledge"
@@ -97,9 +124,13 @@ function getGroupedMCPServerViews({
   );
 
   return {
-    mcpServerViewsWithKnowledge: mcpServerViewsWithKnowledge || [],
-    defaultMCPServerViews: grouped.auto || [],
-    nonDefaultMCPServerViews: grouped.manual || [],
+    mcpServerViewsWithKnowledge: sortMCPServerViewsByPriority(
+      mcpServerViewsWithKnowledge || []
+    ),
+    mcpServerViewsWithoutKnowledge: [
+      ...(grouped.manual || []),
+      ...(grouped.auto || []),
+    ],
   };
 }
 
@@ -124,43 +155,40 @@ export const MCPServerViewsProvider = ({
 }: MCPServerViewsProviderProps) => {
   const { spaces, isSpacesLoading } = useSpacesContext();
 
-  // TODO: we should only fetch it on mount.
   const {
     serverViews: mcpServerViews,
     isLoading,
     isError: isMCPServerViewsError,
-  } = useMCPServerViewsFromSpaces(owner, spaces);
+  } = useMCPServerViewsFromSpaces(owner, spaces, {
+    revalidateIfStale: false,
+    revalidateOnFocus: false,
+  });
 
   const sortedMCPServerViews = useMemo(
     () => mcpServerViews.sort(mcpServerViewSortingFn),
     [mcpServerViews]
   );
 
-  const {
-    mcpServerViewsWithKnowledge,
-    defaultMCPServerViews,
-    nonDefaultMCPServerViews,
-  } = useMemo(() => {
-    return getGroupedMCPServerViews({
-      mcpServerViews: sortedMCPServerViews,
-      spaces,
-    });
-  }, [sortedMCPServerViews, spaces]);
+  const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
+    useMemo(() => {
+      return getGroupedMCPServerViews({
+        mcpServerViews: sortedMCPServerViews,
+        spaces,
+      });
+    }, [sortedMCPServerViews, spaces]);
 
   const value: MCPServerViewsContextType = useMemo(() => {
     return {
       mcpServerViews: sortedMCPServerViews,
       mcpServerViewsWithKnowledge,
-      defaultMCPServerViews,
-      nonDefaultMCPServerViews,
+      mcpServerViewsWithoutKnowledge,
       isMCPServerViewsLoading: isLoading || isSpacesLoading, // Spaces is required to fetch server views so we check isSpacesLoading too.
       isMCPServerViewsError,
     };
   }, [
     sortedMCPServerViews,
     mcpServerViewsWithKnowledge,
-    defaultMCPServerViews,
-    nonDefaultMCPServerViews,
+    mcpServerViewsWithoutKnowledge,
     isLoading,
     isMCPServerViewsError,
     isSpacesLoading,

@@ -75,7 +75,11 @@ export const useMentionDropdown = (
           .deleteRange(rangeRef.current)
           .insertContent({
             type: "mention",
-            attrs: { id: suggestion.id, label: suggestion.label },
+            attrs: {
+              id: suggestion.id,
+              label: suggestion.label,
+              description: suggestion.description,
+            },
           })
           .insertContent(" ") // Add space after mention
           .run();
@@ -237,16 +241,26 @@ export const useMentionDropdown = (
                 closeDropdown();
                 return true;
               case " ":
-                const firstSuggestion = currentState.suggestions[0];
-                if (
-                  firstSuggestion &&
-                  currentState.query === firstSuggestion.label
-                ) {
+                if (currentState.isOpen) {
                   event.preventDefault();
-                  selectSuggestion(firstSuggestion);
+                  if (currentState.suggestions[currentState.selectedIndex]) {
+                    selectSuggestion(
+                      currentState.suggestions[currentState.selectedIndex]
+                    );
+                  }
                   return true;
+                } else {
+                  const firstSuggestion = currentState.suggestions[0];
+                  if (
+                    firstSuggestion &&
+                    currentState.query === firstSuggestion.label
+                  ) {
+                    event.preventDefault();
+                    selectSuggestion(firstSuggestion);
+                    return true;
+                  }
+                  return false;
                 }
-                return false;
               default:
                 return false;
             }

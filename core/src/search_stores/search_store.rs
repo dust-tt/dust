@@ -189,6 +189,13 @@ pub struct ElasticsearchSearchStore {
     pub client: Elasticsearch,
 }
 
+fn map_sort_field(field: &str) -> &str {
+    match field {
+        "title" => "title.keyword",
+        other => other,
+    }
+}
+
 impl ElasticsearchSearchStore {
     pub async fn new(es_uri: &str, username: &str, password: &str) -> Result<Self> {
         let credentials = Credentials::Basic(username.to_string(), password.to_string());
@@ -305,20 +312,13 @@ impl SearchStore for ElasticsearchSearchStore {
             None => MAX_PAGE_SIZE,
         };
 
-        // sort and query are mutually exclusive
-        if options.sort.is_some() && query.is_some() {
-            return Err(anyhow::anyhow!(
-                "Sort option and query string are mutually exclusive"
-            ));
-        }
-
         // Build search query with potential truncation.
         let (bool_query, indices_to_query, warning_code) =
             self.build_search_node_query(query.clone(), filter, &options)?;
 
-        let sort = match query {
-            None => self.build_search_nodes_sort(options.sort)?,
-            Some(_) => self.build_relevance_sort(),
+        let sort = match options.sort {
+            Some(_) => self.build_search_nodes_sort(options.sort)?,
+            None => self.build_relevance_sort(),
         };
 
         // Build and run search
@@ -1136,7 +1136,7 @@ impl ElasticsearchSearchStore {
                 sort.into_iter()
                     .map(|s| {
                         Sort::FieldSort(
-                            FieldSort::new(s.field)
+                            FieldSort::new(map_sort_field(&s.field))
                                 .order(match s.direction {
                                     SortDirection::Asc => SortOrder::Asc,
                                     SortDirection::Desc => SortOrder::Desc,

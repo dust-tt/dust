@@ -1,7 +1,5 @@
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import type { RegionType } from "@app/lib/api/regions/config";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetRegionResponseType } from "@app/pages/api/poke/region";
@@ -20,10 +18,7 @@ export function usePokeRegion() {
   const { data, error } = useSWRWithDefaults("/api/poke/region", regionFetcher);
 
   return {
-    region: useMemo(
-      () => (data?.region ? (data.region as RegionType) : undefined),
-      [data]
-    ),
+    regionData: data,
     isRegionLoading: !error && !data,
     isRegionError: error,
   };
@@ -134,6 +129,27 @@ export function usePokeFeatureFlags({
     data: data?.features ?? emptyArray(),
     isLoading: !error && !data,
     isError: error,
+    mutate,
+  };
+}
+
+export function usePokeWorkOSDSyncStatus({
+  disabled,
+  owner,
+}: {
+  disabled?: boolean;
+  owner: LightWorkspaceType;
+}) {
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/poke/workspaces/${owner.sId}/dsync`,
+    fetcher,
+    { disabled }
+  );
+
+  return {
+    dsyncStatus: data,
+    error,
+    isLoading: !error && !data,
     mutate,
   };
 }

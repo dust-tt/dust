@@ -1,5 +1,5 @@
 import { FilterOperatorEnum } from "@hubspot/api-client/lib/codegen/crm/contacts";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
@@ -54,29 +54,14 @@ import {
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
 import {
+  makeInternalMCPServer,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
   makeMCPToolTextSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "hubspot",
-  version: "1.0.0",
-  description:
-    "Comprehensive HubSpot CRM integration supporting all object types (contacts, companies, deals) and ALL engagement types (tasks, notes, meetings, calls, emails). " +
-    "Features advanced user activity tracking, owner search and listing, association management, and enhanced search capabilities with owner filtering. " +
-    "Perfect for CRM data management and user activity analysis.",
-  authorization: {
-    provider: "hubspot" as const,
-    supported_use_cases: ["platform_actions", "personal_actions"] as const,
-  },
-  icon: "HubspotLogo",
-  documentationUrl: null,
-};
 
 const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("hubspot");
 
   server.tool(
     "get_object_properties",
@@ -838,6 +823,7 @@ const createServer = (): McpServer => {
     "Comprehensive search tool for ALL HubSpot object types including contacts, companies, deals, " +
       "and ALL engagement types (tasks, notes, meetings, calls, emails). Supports advanced filtering by properties, " +
       "date ranges, owners, and free-text queries. Enhanced to support owner filtering across all engagement types. " +
+      "IMPORTANT: For enumeration properties (like industry), always use get_object_properties first to discover the exact values. " +
       "Use this for specific searches, or use get_user_activity for comprehensive user activity across all types.",
     {
       objectType: searchableObjectTypes,
@@ -986,6 +972,7 @@ const createServer = (): McpServer => {
       const csvContent = csvRows
         .map((row) =>
           input.propertiesToExport
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             .map((prop) => `"${String(row[prop] || "").replace(/"/g, '""')}"`)
             .join(",")
         )
@@ -1259,4 +1246,3 @@ const createServer = (): McpServer => {
 };
 
 export default createServer;
-export { serverInfo };

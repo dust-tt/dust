@@ -1,3 +1,4 @@
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
   BracesIcon,
@@ -12,19 +13,22 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
-import { SCOPE_INFO } from "@app/components/assistant/AssistantDetails";
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
+import { SCOPE_INFO } from "@app/components/assistant/details/AssistantDetails";
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useTags } from "@app/lib/swr/tags";
 import {
   classNames,
   formatTimestampToFriendlyDate,
   tagsSorter,
 } from "@app/lib/utils";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type {
   AgentConfigurationScope,
   AgentUsageType,
@@ -33,32 +37,31 @@ import type {
 } from "@app/types";
 import { isAdmin, pluralize } from "@app/types";
 import type { TagType } from "@app/types/tag";
-
-type MoreMenuItem = {
-  label: string;
-  icon: React.ComponentType;
-  onClick: (e: React.MouseEvent) => void;
-  variant?: "warning" | "default";
-  kind: "item";
-};
+import type { UserType } from "@app/types/user";
 
 type RowData = {
   sId: string;
   name: string;
   description: string;
   pictureUrl: string;
+  editors: UserType[];
   usage: AgentUsageType | undefined;
   feedbacks: { up: number; down: number } | undefined;
   lastUpdate: string | null;
   scope: AgentConfigurationScope;
   onClick?: () => void;
-  moreMenuItems?: MoreMenuItem[];
+  menuItems?: MenuItem[];
   agentTags: TagType[];
   agentTagsAsString: string;
-  action?: React.ReactNode;
+  action?: ReactNode;
   isSelected: boolean;
   canArchive: boolean;
 };
+
+// Global agents (canArchive: false) cannot be edited, so we disable them in batch edit.
+function isDisabled(canArchive: boolean, isBatchEdit: boolean): boolean {
+  return !canArchive && isBatchEdit;
+}
 
 const getTableColumns = ({
   owner,
@@ -71,6 +74,19 @@ const getTableColumns = ({
   isBatchEdit: boolean;
   mutateAgentConfigurations: () => Promise<any>;
 }) => {
+  /**
+   * Columns order:
+   * - Select (if batch edit)
+   * - Name (always)
+   * - Access (hidden on mobile)
+   * - Editors (hidden on mobile)
+   * - Tags (always)
+   * - Usage (hidden on mobile)
+   * - Feedback (hidden on mobile)
+   * - Last Edited (hidden on mobile)
+   * - Actions (always)
+   */
+
   return [
     ...(isBatchEdit
       ? [
@@ -78,7 +94,9 @@ const getTableColumns = ({
             header: "",
             accessorKey: "select",
             cell: (info: CellContext<RowData, boolean>) => (
-              <DataTable.CellContent>
+              <DataTable.CellContent
+                disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+              >
                 <Checkbox
                   checked={info.row.original.isSelected}
                   disabled={!info.row.original.canArchive}
@@ -97,13 +115,15 @@ const getTableColumns = ({
       header: "Name",
       accessorKey: "name",
       cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent>
+        <DataTable.CellContent
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+        >
           <div className={classNames("flex flex-row items-center gap-2 py-3")}>
             <div>
               <Avatar visual={info.row.original.pictureUrl} size="sm" />
             </div>
             <div className="flex min-w-0 grow flex-col">
-              <div className="overflow-hidden truncate text-sm font-semibold text-foreground dark:text-foreground-night">
+              <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
                 {`@${info.getValue()}`}
               </div>
               <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -113,12 +133,17 @@ const getTableColumns = ({
           </div>
         </DataTable.CellContent>
       ),
+      meta: {
+        className: "w-40 @lg:w-full",
+      },
     },
     {
       header: "Access",
       accessorKey: "scope",
       cell: (info: CellContext<RowData, AgentConfigurationScope>) => (
-        <DataTable.CellContent>
+        <DataTable.CellContent
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+        >
           {info.getValue() !== "hidden" && (
             <Chip
               size="xs"
@@ -130,14 +155,49 @@ const getTableColumns = ({
         </DataTable.CellContent>
       ),
       meta: {
-        className: "w-32",
+        className: "hidden @sm:w-32 @sm:table-cell",
+      },
+    },
+    {
+      header: "Editors",
+      accessorKey: "editors",
+      cell: (info: CellContext<RowData, UserType[]>) => {
+        const { editors } = info.row.original;
+
+        if (!editors) {
+          return (
+            <DataTable.BasicCellContent
+              disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+              label="-"
+            />
+          );
+        }
+
+        return (
+          <DataTable.CellContent
+            avatarStack={{
+              items: editors.map((editor) => ({
+                name: editor.fullName,
+                visual: editor.image,
+              })),
+              nbVisibleItems: 4,
+            }}
+          />
+        );
+      },
+      meta: {
+        className: "hidden @sm:w-32 @sm:table-cell",
       },
     },
     {
       header: "Tags",
       accessorKey: "agentTagsAsString",
       cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent grow className="flex flex-row items-center">
+        <DataTable.CellContent
+          grow
+          className={classNames("flex flex-row items-center")}
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+        >
           <div className="group flex flex-row items-center gap-1">
             <div className="truncate text-muted-foreground dark:text-muted-foreground-night">
               <Tooltip
@@ -158,7 +218,7 @@ const getTableColumns = ({
       ),
       isFilterable: true,
       meta: {
-        className: "w-32 xl:w-64",
+        className: "w-32 xl:w-60",
         tooltip: "Tags",
       },
     },
@@ -167,9 +227,11 @@ const getTableColumns = ({
       accessorFn: (row: RowData) => row.usage?.messageCount ?? 0,
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
         <DataTable.BasicCellContent
-          className="font-semibold"
+          className="font-mono"
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
           tooltip={assistantUsageMessage({
             assistantName: info.row.original.name,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             usage: info.row.original.usage || null,
             isLoading: false,
             isError: false,
@@ -179,7 +241,10 @@ const getTableColumns = ({
           label={info.row.original.usage?.messageCount ?? 0}
         />
       ),
-      meta: { className: "w-16", tooltip: "Messages in the last 30 days" },
+      meta: {
+        className: "hidden @sm:w-16 @sm:table-cell",
+        tooltip: "Messages in the last 30 days",
+      },
     },
     {
       header: "Feedback",
@@ -194,29 +259,34 @@ const getTableColumns = ({
           const feedbacksCount = `${f.up + f.down} feedback${pluralize(f.up + f.down)} over the last 30 days`;
           return (
             <DataTable.BasicCellContent
-              className="font-semibold"
+              className="font-mono"
+              disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
               tooltip={feedbacksCount}
               label={`${f.up + f.down}`}
             />
           );
         }
       },
-      meta: { className: "w-20", tooltip: "Active users in the last 30 days" },
+      meta: {
+        className: "hidden @sm:w-20 @sm:table-cell",
+        tooltip: "Active users in the last 30 days",
+      },
     },
     {
       header: "Last Edited",
       accessorKey: "lastUpdate",
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
           tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
           label={
             info.getValue()
-              ? formatTimestampToFriendlyDate(info.getValue(), "short")
+              ? formatTimestampToFriendlyDate(info.getValue(), "compact")
               : "-"
           }
         />
       ),
-      meta: { className: "w-32" },
+      meta: { className: "hidden @sm:w-32 @sm:table-cell" },
     },
     {
       header: "",
@@ -224,13 +294,18 @@ const getTableColumns = ({
       cell: (info: CellContext<RowData, number>) => {
         if (info.row.original.scope === "global") {
           return (
-            <DataTable.CellContent>
+            <DataTable.CellContent
+              disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+            >
               {info.row.original.action}
             </DataTable.CellContent>
           );
         }
         return (
-          <DataTable.MoreButton menuItems={info.row.original.moreMenuItems} />
+          <DataTable.MoreButton
+            menuItems={info.row.original.menuItems}
+            disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+          />
         );
       },
       meta: {
@@ -278,6 +353,8 @@ export function AssistantsTable({
     agentConfiguration: undefined,
   });
   const router = useRouter();
+  const { pagination, setPagination } = usePaginationFromUrl({});
+
   const rows: RowData[] = useMemo(
     () =>
       agents.map((agentConfiguration) => {
@@ -285,6 +362,7 @@ export function AssistantsTable({
           (agentConfiguration.canEdit || isAdmin(owner)) &&
           agentConfiguration.status !== "archived" &&
           agentConfiguration.scope !== "global";
+
         return {
           sId: agentConfiguration.sId,
           name: agentConfiguration.name,
@@ -298,7 +376,7 @@ export function AssistantsTable({
           pictureUrl: agentConfiguration.pictureUrl,
           lastUpdate: agentConfiguration.versionCreatedAt,
           feedbacks: agentConfiguration.feedbacks,
-          editors: agentConfiguration.editors,
+          editors: agentConfiguration.editors ?? [],
           scope: agentConfiguration.scope,
           agentTags: agentConfiguration.tags,
           agentTagsAsString:
@@ -332,7 +410,7 @@ export function AssistantsTable({
               setShowDetails(agentConfiguration);
             }
           },
-          moreMenuItems:
+          menuItems:
             agentConfiguration.scope !== "global" &&
             agentConfiguration.status !== "archived"
               ? [
@@ -345,13 +423,7 @@ export function AssistantsTable({
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
-                        `/w/${owner.sId}/builder/assistants/${
-                          agentConfiguration.sId
-                        }?flow=${
-                          agentConfiguration.scope
-                            ? "workspace_assistants"
-                            : "personal_assistants"
-                        }`
+                        getAgentBuilderRoute(owner.sId, agentConfiguration.sId)
                       );
                     },
                     kind: "item" as const,
@@ -388,7 +460,11 @@ export function AssistantsTable({
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
-                        `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
+                        getAgentBuilderRoute(
+                          owner.sId,
+                          "new",
+                          `duplicate=${agentConfiguration.sId}`
+                        )
                       );
                     },
                     kind: "item" as const,
@@ -410,11 +486,10 @@ export function AssistantsTable({
               : [],
         };
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleToggleAgentStatus & router are not stable, mutating the agents list which prevent pagination to work
     [
       agents,
-      handleToggleAgentStatus,
       owner,
-      router,
       setShowDetails,
       setShowDisabledFreeWorkspacePopup,
       showDisabledFreeWorkspacePopup,
@@ -448,6 +523,8 @@ export function AssistantsTable({
               isBatchEdit,
               mutateAgentConfigurations,
             })}
+            pagination={pagination}
+            setPagination={setPagination}
           />
         )}
       </div>

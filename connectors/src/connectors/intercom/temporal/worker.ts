@@ -22,10 +22,10 @@ export async function runIntercomWorker() {
     reuseV8Context: true,
     namespace,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
-        },
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "intercom"),
+        }),
       ],
     },
   });

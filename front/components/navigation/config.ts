@@ -1,18 +1,19 @@
 import {
   BarChartIcon,
-  BookOpenIcon,
   BracesIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
   DocumentTextIcon,
   FolderOpenIcon,
+  GlobeAltIcon,
   LockIcon,
   PlanetIcon,
   ShapesIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
 
+import { getAgentRoute } from "@app/lib/utils/router";
 import type { AppType, WhitelistableFeature, WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder } from "@app/types";
 
@@ -115,21 +116,17 @@ export const getTopNavigationTabs = (
   nav.push({
     id: "conversations",
     label: "Chat",
-    href: `/w/${owner.sId}/assistant/new`,
+    href: getAgentRoute(owner.sId),
     icon: ChatBubbleLeftRightIcon,
     sizing: "hug",
     isCurrent: (currentRoute) =>
-      [
-        "/w/[wId]/assistant/new",
-        "/w/[wId]/assistant/[cId]",
-        "/w/[wId]/assistants",
-      ].includes(currentRoute),
+      ["/w/[wId]/agent/new", "/w/[wId]/agent/[cId]"].includes(currentRoute),
   });
 
   nav.push({
     id: "data_sources",
     label: "Spaces",
-    icon: BookOpenIcon,
+    icon: PlanetIcon,
     href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
       currentRoute.startsWith("/w/[wId]/spaces/"),
@@ -141,7 +138,6 @@ export const getTopNavigationTabs = (
     nav.push({
       id: "settings",
       label: "Admin",
-      hideLabel: true,
       icon: Cog6ToothIcon,
       href: `/w/${owner.sId}/members`,
       isCurrent: (currentRoute) =>
@@ -197,7 +193,7 @@ export const subNavigationAdmin = ({
         {
           id: "workspace",
           label: "Workspace Settings",
-          icon: PlanetIcon,
+          icon: GlobeAltIcon,
           href: `/w/${owner.sId}/workspace`,
           current: current === "workspace",
           subMenuLabel: current === "workspace" ? subMenuLabel : undefined,

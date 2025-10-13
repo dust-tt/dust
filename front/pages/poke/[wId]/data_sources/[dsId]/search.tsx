@@ -45,6 +45,8 @@ export default function DataSourceView({
   dataSource,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [tagsIn, setTagsIn] = useState("");
+  const [tagsNotIn, setTagsNotIn] = useState("");
   const [documents, setDocuments] = useState<DocumentType[]>([]);
   const [expandedChunkId, setExpandedChunkId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -71,14 +73,26 @@ export default function DataSourceView({
     setError(false);
     let isCancelled = false;
     void (async () => {
-      if (searchQuery.trim().length == 0) {
+      if (
+        searchQuery.trim().length == 0 &&
+        tagsIn.trim().length == 0 &&
+        tagsNotIn.trim().length == 0
+      ) {
         setDocuments([]);
 
         return;
       }
       setIsLoading(true);
       const searchParams = new URLSearchParams();
-      searchParams.append("query", searchQuery);
+      if (searchQuery.trim().length > 0) {
+        searchParams.append("query", searchQuery);
+      }
+      if (tagsIn.trim().length > 0) {
+        searchParams.append("tags_in", tagsIn);
+      }
+      if (tagsNotIn.trim().length > 0) {
+        searchParams.append("tags_not", tagsNotIn);
+      }
       searchParams.append("top_k", "10");
       searchParams.append("full_text", "false");
 
@@ -110,7 +124,7 @@ export default function DataSourceView({
     return () => {
       isCancelled = true;
     };
-  }, [dataSource.sId, owner.sId, searchQuery]);
+  }, [dataSource.sId, owner.sId, searchQuery, tagsIn, tagsNotIn]);
 
   const onDisplayDocumentSource = (documentId: string) => {
     if (
@@ -141,6 +155,40 @@ export default function DataSourceView({
                 }
               }}
               placeholder="Search query..."
+            />
+          </div>
+        </div>
+        <div className="mt-4 sm:col-span-6">
+          <div className="mt-1 flex rounded-md">
+            <Input
+              type="text"
+              autoComplete="off"
+              name="tags_in"
+              id="tags_in"
+              className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-highlight-500 focus:ring-highlight-500"
+              onKeyDown={(e) => {
+                if (e.key == "Enter") {
+                  setTagsIn(e.currentTarget.value);
+                }
+              }}
+              placeholder="Tags in..."
+            />
+          </div>
+        </div>
+        <div className="mt-4 sm:col-span-6">
+          <div className="mt-1 flex rounded-md">
+            <Input
+              type="text"
+              autoComplete="off"
+              name="tags_not_in"
+              id="tags_not_in"
+              className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-highlight-500 focus:ring-highlight-500"
+              onKeyDown={(e) => {
+                if (e.key == "Enter") {
+                  setTagsNotIn(e.currentTarget.value);
+                }
+              }}
+              placeholder="Tags not in..."
             />
           </div>
         </div>
@@ -238,13 +286,17 @@ export default function DataSourceView({
                 if (
                   !isLoading &&
                   searchQuery.length == 0 &&
+                  tagsIn.length == 0 &&
+                  tagsNotIn.length == 0 &&
                   documents.length === 0
                 ) {
                   return null;
                 }
                 if (
                   !isLoading &&
-                  searchQuery.length > 0 &&
+                  (searchQuery.length > 0 ||
+                    tagsIn.length > 0 ||
+                    tagsNotIn.length > 0) &&
                   documents.length === 0
                 ) {
                   return <p>No document found.</p>;

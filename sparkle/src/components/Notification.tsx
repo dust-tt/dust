@@ -11,7 +11,7 @@ import { assertNever, cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
-const NOTIFICATION_DELAY = 5000;
+const NOTIFICATION_DELAY = 3000;
 
 export type NotificationType = {
   title?: string;
@@ -22,15 +22,23 @@ export type NotificationType = {
 const NotificationsContext = React.createContext<(n: NotificationType) => void>(
   (n) => n
 );
-export interface NotificationProps {
-  className?: string;
-  description?: string;
-  title?: string;
-  variant: "success" | "error" | "info";
-  onClick?: () => void;
-}
 
-function NotificationContent({ type, title, description }: NotificationType) {
+const notificationVariants = cva("s-pt-0.5", {
+  variants: {
+    type: {
+      success: "s-text-success-600 dark:s-text-success-400-night",
+      error: "s-text-warning-500 dark:s-text-warning-500-night",
+      info: "s-text-info-600 dark:s-text-info-400-night",
+    },
+  },
+});
+
+function NotificationContent({
+  type,
+  title,
+  description,
+  onDismiss,
+}: NotificationType & { onDismiss?: () => void }) {
   const icon = (() => {
     switch (type) {
       case "success":
@@ -44,36 +52,27 @@ function NotificationContent({ type, title, description }: NotificationType) {
     }
   })();
 
-  const variantClassName = cva("s-pt-0.5", {
-    variants: {
-      type: {
-        success: "s-text-success-600 dark:s-text-success-400-night",
-        error: "s-text-warning-500 dark:s-text-warning-500-night",
-        info: "s-text-info-600 dark:s-text-info-400-night",
-      },
-    },
-  });
-
   return (
     <div
       className={cn(
         "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-center s-gap-2 s-rounded-xl s-border",
         "s-border-border dark:s-border-border-night",
         "s-bg-background dark:s-bg-background-night",
-        "s-p-4 s-shadow-xl"
+        "s-cursor-pointer s-p-4 s-shadow-xl s-transition-colors hover:s-bg-muted/50 dark:hover:s-bg-muted-night/50"
       )}
+      onClick={onDismiss}
     >
       <Icon
         size="lg"
         visual={icon}
-        className={variantClassName({ type })}
+        className={notificationVariants({ type })}
         aria-hidden="true"
       />
-      <div className="s-flex s-flex-col">
+      <div className="s-flex s-min-w-0 s-flex-grow s-flex-col">
         <div
           className={cn(
-            "s-text-md s-line-clamp-1 s-h-6 s-grow s-font-semibold",
-            variantClassName({ type })
+            "s-heading-md s-line-clamp-1 s-h-6 s-grow",
+            notificationVariants({ type })
           )}
         >
           {title || type}
@@ -82,7 +81,7 @@ function NotificationContent({ type, title, description }: NotificationType) {
           <div
             className={cn(
               "s-text-muted-foreground dark:s-text-muted-foreground-night",
-              "s-line-clamp-3 s-pr-2 s-text-sm s-font-normal"
+              "s-line-clamp-3 s-text-sm s-font-normal"
             )}
           >
             {description}
@@ -98,11 +97,12 @@ export const Notification = {
     const sendNotification = React.useCallback(
       (notification: NotificationType) => {
         toast.custom(
-          () => (
+          (t) => (
             <NotificationContent
               type={notification.type}
               title={notification.title}
               description={notification.description}
+              onDismiss={() => toast.dismiss(t)}
             />
           ),
           {
@@ -119,9 +119,10 @@ export const Notification = {
         <Toaster
           toastOptions={{
             className: cn(
-              "s-transition-all s-duration-300",
+              "s-transition-all s-duration-300 s-select-none",
               "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out",
               "data-[swipe=move]:s-translate-x-[var(--toast-swipe-move-x)]",
+              "data-[swipe=move]:s-translate-y-[var(--toast-swipe-move-y)]",
               "data-[state=closed]:s-fade-out-80 data-[state=closed]:s-slide-out-to-right-full",
               "data-[state=open]:s-slide-in-from-right-full"
             ),
@@ -132,6 +133,7 @@ export const Notification = {
           closeButton={false}
           expand={false}
           invert={false}
+          swipeDirections={["right"]}
         />
       </NotificationsContext.Provider>
     );

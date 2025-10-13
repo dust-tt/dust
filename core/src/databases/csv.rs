@@ -19,8 +19,8 @@ pub struct GoogleCloudStorageCSVContent {
     pub bucket_csv_path: String,
 }
 
-const MAX_TABLE_COLUMNS: usize = 512;
-const MAX_COLUMN_NAME_LENGTH: usize = 1024;
+pub const MAX_TABLE_COLUMNS: usize = 512;
+pub const MAX_COLUMN_NAME_LENGTH: usize = 1024;
 const MAX_TABLE_ROWS: usize = 500_000;
 
 impl GoogleCloudStorageCSVContent {

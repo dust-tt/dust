@@ -7,6 +7,7 @@ import {
   Page,
   PencilSquareIcon,
   SearchInput,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -14,18 +15,16 @@ import { useMemo, useState } from "react";
 
 import { AgentTemplateGrid } from "@app/components/agent_builder/AgentTemplateGrid";
 import { AgentTemplateModal } from "@app/components/agent_builder/AgentTemplateModal";
-import type { BuilderFlow } from "@app/components/agent_builder/types";
-import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { getFeatureFlags } from "@app/lib/auth";
-import { isRestrictedFromAgentCreation } from "@app/lib/auth";
+import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type {
   SubscriptionType,
   TemplateTagCodeType,
@@ -35,7 +34,6 @@ import type {
 import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  flow: BuilderFlow;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   templateTagsMapping: TemplateTagsType;
@@ -49,34 +47,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const featureFlags = await getFeatureFlags(owner);
-  if (
-    !featureFlags.includes("agent_builder_v2") ||
-    (await isRestrictedFromAgentCreation(owner))
-  ) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const flow: BuilderFlow = BUILDER_FLOWS.includes(
-    context.query.flow as BuilderFlow
-  )
-    ? (context.query.flow as BuilderFlow)
-    : "personal_assistants";
-
   return {
     props: {
       owner,
       subscription,
-      flow,
       templateTagsMapping: TEMPLATES_TAGS_CONFIG,
     },
   };
 });
 
 export default function CreateAgent({
-  flow,
   owner,
   subscription,
   templateTagsMapping,
@@ -88,8 +68,11 @@ export default function CreateAgent({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     (router.query.templateId as string) ?? null
   );
-  const [isUploadingYAML, setIsUploadingYAML] = useState(false);
-  const sendNotification = useSendNotification();
+  const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
+    owner,
+  });
+
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const { assistantTemplates } = useAssistantTemplates();
 
@@ -133,13 +116,7 @@ export default function CreateAgent({
 
   const closeTemplateModal = async () => {
     setSelectedTemplateId(null);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { templateId, ...queryWithoutTemplate } = router.query;
-    await router.replace(
-      { pathname: router.pathname, query: queryWithoutTemplate },
-      undefined,
-      { shallow: true }
-    );
+    await removeParamFromRouter(router, "templateId");
   };
 
   const handleTagClick = (tagName: TemplateTagCodeType) => {
@@ -148,71 +125,6 @@ export default function CreateAgent({
         ? prevTags.filter((tag) => tag !== tagName)
         : [...prevTags, tagName]
     );
-  };
-
-  const handleYAMLUpload = async (event: Event) => {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    if (!file.name.endsWith(".yaml") && !file.name.endsWith(".yml")) {
-      sendNotification({
-        title: "Invalid file type",
-        description: "Please select a YAML file (.yaml or .yml)",
-        type: "error",
-      });
-      return;
-    }
-
-    setIsUploadingYAML(true);
-    try {
-      const yamlContent = await file.text();
-
-      const response = await fetch(
-        `/api/w/${owner.sId}/assistant/agent_configurations/new/yaml`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ yamlContent }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.error?.message || "Failed to create agent from YAML"
-        );
-      }
-
-      const result = await response.json();
-
-      sendNotification({
-        title: "Agent created successfully",
-        description: `Agent "${result.agentConfiguration.name}" was created from YAML`,
-        type: "success",
-      });
-
-      // Redirect to the newly created agent
-      await router.push(
-        `/w/${owner.sId}/builder/agents/${result.agentConfiguration.sId}`
-      );
-
-      // Clear the file input
-      target.value = "";
-    } catch (error) {
-      sendNotification({
-        title: "Error creating agent",
-        description:
-          error instanceof Error ? error.message : "Unknown error occurred",
-        type: "error",
-      });
-    } finally {
-      setIsUploadingYAML(false);
-    }
   };
 
   return (
@@ -251,22 +163,24 @@ export default function CreateAgent({
                   variant="highlight"
                   href={`/w/${owner.sId}/builder/agents/new`}
                 />
-                <Button
-                  icon={FolderOpenIcon}
-                  label={isUploadingYAML ? "Uploading..." : "Upload from YAML"}
-                  data-gtm-label="yamlUploadButton"
-                  data-gtm-location="assistantCreationPage"
-                  size="md"
-                  variant="outline"
-                  disabled={isUploadingYAML}
-                  onClick={() => {
-                    const input = document.createElement("input");
-                    input.type = "file";
-                    input.accept = ".yaml,.yml";
-                    input.onchange = handleYAMLUpload;
-                    input.click();
-                  }}
-                />
+                {hasFeature("agent_to_yaml") && (
+                  <Button
+                    icon={
+                      isUploadingYAML
+                        ? () => <Spinner size="xs" />
+                        : FolderOpenIcon
+                    }
+                    label={
+                      isUploadingYAML ? "Uploading..." : "Upload from YAML"
+                    }
+                    data-gtm-label="yamlUploadButton"
+                    data-gtm-location="assistantCreationPage"
+                    size="md"
+                    variant="outline"
+                    disabled={isUploadingYAML}
+                    onClick={triggerYAMLUpload}
+                  />
+                )}
               </div>
             </div>
 
@@ -318,7 +232,6 @@ export default function CreateAgent({
           </div>
         </Page>
         <AgentTemplateModal
-          flow={flow}
           owner={owner}
           templateId={selectedTemplateId}
           onClose={closeTemplateModal}

@@ -1,13 +1,14 @@
 import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
-import type { RedisUsageTagsType } from "@app/lib/api/redis";
-import { getRedisClient } from "@app/lib/api/redis";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import { createCallbackReader } from "@app/lib/utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
+import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
 import type { GenerationTokensEvent } from "@app/types";
 import type {
   AgentActionSuccessEvent,
@@ -55,7 +56,9 @@ export async function* getConversationEvents({
   }
 
   try {
-    const TIMEOUT = 60000; // 1 minute
+    // As most clients always listen to conversation events, we have a longer timeout to limit the overhead of initiating a new subscription.
+    // See https://dust4ai.slack.com/archives/C050SM8NSPK/p1757577149634519
+    const TIMEOUT = 180000; // 3 minutes
 
     // Do not loop forever, we will timeout after some time to avoid blocking the load balancer
     while (true) {
@@ -97,44 +100,38 @@ export async function* getConversationEvents({
 
 export async function cancelMessageGenerationEvent(
   auth: Authenticator,
-  messageIds: string[]
+  {
+    messageIds,
+    conversationId,
+  }: { messageIds: string[]; conversationId: string }
 ): Promise<void> {
-  const redis = await getRedisClient({ origin: "cancel_message_generation" });
+  const client = await getTemporalClientForAgentNamespace();
+  const workspaceId = auth.getNonNullableWorkspace().sId;
 
-  try {
-    const tasks = messageIds.map((messageId) => {
-      // Submit event to redis stream so we stop the generation
-      const redisTask = redis.set(
-        `assistant:generation:cancelled:${messageId}`,
-        1,
-        {
-          EX: 3600, // 1 hour
-        }
-      );
+  await concurrentExecutor(
+    messageIds,
+    async (messageId) => {
+      // We use the message id provided by the caller as the agentMessageId.
+      const agentMessageId = messageId;
 
-      // Already set the status to cancel
-      const dbTask = Message.findOne({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          sId: messageId,
-        },
-      }).then(async (message) => {
-        if (message && message.agentMessageId) {
-          await AgentMessage.update(
-            { status: "cancelled" },
-            { where: { id: message.agentMessageId } }
-          );
-        }
+      const workflowId = makeAgentLoopWorkflowId({
+        workspaceId,
+        conversationId,
+        agentMessageId,
       });
-
-      // Return both tasks as a single promise
-      return Promise.all([redisTask, dbTask]);
-    });
-
-    await Promise.all(tasks);
-  } catch (e) {
-    logger.error({ error: e }, "Error cancelling message generation");
-  }
+      try {
+        const handle = client.workflow.getHandle(workflowId);
+        await handle.signal(cancelAgentLoopSignal);
+      } catch (signalError) {
+        // Swallow errors from signaling (workflow might not exist anymore)
+        logger.warn(
+          { error: signalError, messageId },
+          "Failed to signal agent loop workflow for cancellation"
+        );
+      }
+    },
+    { concurrency: 8 }
+  );
 }
 
 export async function* getMessagesEvents(
@@ -147,12 +144,15 @@ export async function* getMessagesEvents(
 ): AsyncGenerator<
   {
     eventId: string;
-    data:
+    data: (
       | AgentErrorEvent
       | AgentActionRunningEvents
       | AgentActionSuccessEvent
       | AgentGenerationCancelledEvent
-      | GenerationTokensEvent;
+      | GenerationTokensEvent
+    ) & {
+      step: number;
+    };
   },
   void
 > {
@@ -213,16 +213,4 @@ export async function* getMessagesEvents(
 
 function getConversationChannelId(channelId: string) {
   return `conversation-${channelId}`;
-}
-
-export async function publishEvent({
-  origin,
-  channel,
-  event,
-}: {
-  origin: RedisUsageTagsType;
-  channel: string;
-  event: string;
-}) {
-  await getRedisHybridManager().publish(channel, event, origin);
 }

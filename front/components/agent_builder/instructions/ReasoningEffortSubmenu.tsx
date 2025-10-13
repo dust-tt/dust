@@ -1,5 +1,6 @@
 import {
   DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSub,
@@ -78,20 +79,22 @@ export function ReasoningEffortSubmenu() {
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger label="Reasoning effort" />
-      <DropdownMenuSubContent className="w-80">
-        <DropdownMenuLabel label="Select reasoning effort" />
-        <DropdownMenuRadioGroup value={field.value}>
-          {availableEfforts.map((effort) => (
-            <DropdownMenuRadioItem
-              key={effort}
-              value={effort}
-              label={asDisplayName(effort)}
-              description={REASONING_EFFORT_DESCRIPTIONS[effort]}
-              onClick={() => field.onChange(effort)}
-            />
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuSubContent>
+      <DropdownMenuPortal>
+        <DropdownMenuSubContent className="w-80">
+          <DropdownMenuLabel label="Select reasoning effort" />
+          <DropdownMenuRadioGroup value={field.value}>
+            {availableEfforts.map((effort) => (
+              <DropdownMenuRadioItem
+                key={effort}
+                value={effort}
+                label={asDisplayName(effort)}
+                description={REASONING_EFFORT_DESCRIPTIONS[effort]}
+                onClick={() => field.onChange(effort)}
+              />
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuSubContent>
+      </DropdownMenuPortal>
     </DropdownMenuSub>
   );
 }

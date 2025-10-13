@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import {
-  additionalConfigurationSchema,
   childAgentIdSchema,
   dataSourceConfigurationSchema,
   dustAppConfigurationSchema,
@@ -10,9 +9,10 @@ import {
   mcpServerViewIdSchema,
   mcpTimeFrameSchema,
   reasoningModelSchema,
+  secretNameSchema,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { VALIDATION_MESSAGES } from "@app/components/agent_builder/capabilities/mcp/utils/validationMessages";
-import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import type { MCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 
 /**
  * Creates base form validation schema with consistent error messages
@@ -52,25 +52,31 @@ export function createBaseConfigurationFields() {
  * Uses direct conditional logic for clarity
  */
 export function createDynamicConfigurationFields(
-  requirements: MCPServerRequirements
+  toolsConfigurations: MCPServerToolsConfigurations
 ) {
   return {
-    childAgentId: requirements.requiresChildAgentConfiguration
+    childAgentId: toolsConfigurations.childAgentConfiguration
       ? childAgentIdSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.childAgent.required,
         })
       : z.null(),
-    reasoningModel: requirements.requiresReasoningConfiguration
+    reasoningModel: toolsConfigurations.reasoningConfiguration
       ? reasoningModelSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.reasoningModel.required,
         })
       : z.null(),
-    dustAppConfiguration: requirements.requiresDustAppConfiguration
+    dustAppConfiguration: toolsConfigurations.mayRequireDustAppConfiguration
       ? dustAppConfigurationSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.dustApp.required,
         })
       : z.null(),
-    additionalConfiguration: createAdditionalConfigurationSchema(requirements),
+    secretName: toolsConfigurations.mayRequireSecretConfiguration
+      ? secretNameSchema.refine((val) => val !== null, {
+          message: VALIDATION_MESSAGES.secret.required,
+        })
+      : z.null(),
+    additionalConfiguration:
+      createAdditionalConfigurationSchema(toolsConfigurations),
   };
 }
 
@@ -79,73 +85,95 @@ export function createDynamicConfigurationFields(
  * Handles dynamic field validation based on requirements
  */
 function createAdditionalConfigurationSchema(
-  requirements: MCPServerRequirements
+  toolsConfigurations: MCPServerToolsConfigurations
 ) {
   const hasRequiredFields =
-    requirements.requiredStrings.length > 0 ||
-    requirements.requiredNumbers.length > 0 ||
-    requirements.requiredBooleans.length > 0 ||
-    Object.keys(requirements.requiredEnums).length > 0;
+    toolsConfigurations.stringConfigurations.length > 0 ||
+    toolsConfigurations.numberConfigurations.length > 0 ||
+    toolsConfigurations.booleanConfigurations.length > 0 ||
+    Object.keys(toolsConfigurations.enumConfigurations).length > 0 ||
+    Object.keys(toolsConfigurations.listConfigurations).length > 0;
 
   if (!hasRequiredFields) {
-    return additionalConfigurationSchema.default({});
+    return z.object({});
   }
 
-  return additionalConfigurationSchema
-    .default({})
-    .superRefine((additionalConfig, ctx) => {
-      // Validate required strings
-      for (const key of requirements.requiredStrings) {
-        const value = additionalConfig[key];
-        if (!value || (typeof value === "string" && value.trim() === "")) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: VALIDATION_MESSAGES.additionalConfig.stringRequired(key),
-            path: [key],
-          });
-        }
-      }
+  // Build a schema dynamically based on the requirements.
+  // We must take into account the nested structure of the additional configuration.
 
-      // Validate required numbers
-      for (const key of requirements.requiredNumbers) {
+  // Build a dynamic schema that handles nested structure
+  const buildNestedSchema = (keys: string[], prefix?: string): z.ZodSchema => {
+    const nestedStructure: Record<string, any> = {};
+
+    // Group keys by their root level
+    const rootKeys = new Set<string>();
+    const nestedKeys: Record<string, string[]> = {};
+
+    keys.forEach((key) => {
+      const parts = key.split(".");
+      const rootKey = parts[0];
+      rootKeys.add(rootKey);
+
+      if (parts.length > 1) {
+        if (!nestedKeys[rootKey]) {
+          nestedKeys[rootKey] = [];
+        }
+        nestedKeys[rootKey].push(parts.slice(1).join("."));
+      }
+    });
+
+    // Build schema for each root key
+    rootKeys.forEach((rootKey) => {
+      const path = prefix ? `${prefix}.${rootKey}` : rootKey;
+      if (nestedKeys[rootKey] && nestedKeys[rootKey].length > 0) {
+        // This is a nested object
+        nestedStructure[rootKey] = buildNestedSchema(nestedKeys[rootKey], path);
+      } else {
+        // This is a leaf value - determine type based on requirements
         if (
-          additionalConfig[key] === undefined ||
-          additionalConfig[key] === null
+          toolsConfigurations.stringConfigurations.some(
+            (item) => item.key === path
+          )
         ) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: VALIDATION_MESSAGES.additionalConfig.numberRequired(key),
-            path: [key],
-          });
-        }
-      }
-
-      // Validate required booleans
-      for (const key of requirements.requiredBooleans) {
-        if (
-          additionalConfig[key] === undefined ||
-          additionalConfig[key] === null
+          nestedStructure[rootKey] = z.string().min(1);
+        } else if (
+          toolsConfigurations.numberConfigurations.some(
+            (item) => item.key === path
+          )
         ) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: VALIDATION_MESSAGES.additionalConfig.booleanRequired(key),
-            path: [key],
-          });
-        }
-      }
-
-      // Validate required enums
-      for (const [key] of Object.entries(requirements.requiredEnums)) {
-        const value = additionalConfig[key];
-        if (!value || (typeof value === "string" && value.trim() === "")) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: VALIDATION_MESSAGES.additionalConfig.enumRequired(key),
-            path: [key],
-          });
+          nestedStructure[rootKey] = z.coerce.number();
+        } else if (
+          toolsConfigurations.booleanConfigurations.some(
+            (item) => item.key === path
+          )
+        ) {
+          nestedStructure[rootKey] = z.coerce.boolean();
+        } else if (toolsConfigurations.enumConfigurations[path]) {
+          const enumOptions =
+            toolsConfigurations.enumConfigurations[path].options;
+          const enumValues = enumOptions.map((option) => option.value) as [
+            string,
+            ...string[],
+          ];
+          nestedStructure[rootKey] = z.enum(enumValues);
+        } else if (toolsConfigurations.listConfigurations[rootKey]) {
+          nestedStructure[rootKey] = z
+            .array(z.string())
+            .min(1, `You must select at least one value for "${rootKey}"`);
         }
       }
     });
+
+    return z.object(nestedStructure);
+  };
+
+  return buildNestedSchema([
+    ...toolsConfigurations.stringConfigurations.map((item) => item.key),
+    ...toolsConfigurations.numberConfigurations.map((item) => item.key),
+    ...toolsConfigurations.booleanConfigurations.map((item) => item.key),
+    ...Object.keys(toolsConfigurations.enumConfigurations),
+    ...Object.keys(toolsConfigurations.listConfigurations),
+  ]);
 }
 
 /**
@@ -158,7 +186,7 @@ export function createDefaultConfigurationSchema() {
     childAgentId: childAgentIdSchema,
     reasoningModel: reasoningModelSchema,
     dustAppConfiguration: dustAppConfigurationSchema,
-    additionalConfiguration: additionalConfigurationSchema,
+    additionalConfiguration: z.object({}),
   });
 }
 
@@ -168,7 +196,7 @@ export function createDefaultConfigurationSchema() {
  * @returns Configuration validation schema
  */
 export function createConfigurationSchema(
-  requirements: MCPServerRequirements | null
+  requirements: MCPServerToolsConfigurations | null
 ) {
   const baseFields = createBaseConfigurationFields();
 
@@ -191,7 +219,7 @@ export function createConfigurationSchema(
  * @returns Complete form validation schema
  */
 export function createMCPFormSchema(
-  requirements: MCPServerRequirements | null
+  requirements: MCPServerToolsConfigurations | null
 ) {
   const baseFormSchema = createBaseFormSchema();
   const configurationSchema = createConfigurationSchema(requirements);

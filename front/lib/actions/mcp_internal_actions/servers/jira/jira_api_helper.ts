@@ -1,12 +1,12 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { markdownToAdf } from "marklassian";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   createJQLFromSearchFilters,
-  textToADF,
+  processFieldsForJira,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
 import type {
   ADFDocument,
@@ -24,12 +24,16 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
   ADFDocumentSchema,
+  JiraAttachmentsResultSchema,
   JiraCommentSchema,
   JiraCreateMetaSchema,
+  JiraFieldsSchema,
   JiraIssueLinkTypeSchema,
   JiraIssueSchema,
   JiraIssueTypeSchema,
+  JiraIssueWithAttachmentsSchema,
   JiraProjectSchema,
+  JiraProjectVersionSchema,
   JiraResourceSchema,
   JiraSearchResultSchema,
   JiraTransitionIssueSchema,
@@ -40,9 +44,13 @@ import {
   SEARCH_ISSUES_MAX_RESULTS,
   SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
+import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
+
+import { sanitizeFilename } from "../../utils/file_utils";
 
 // Type guard to check if a value is an ADFDocument
 function isADFDocument(value: unknown): value is ADFDocument {
@@ -78,6 +86,7 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
 ): Promise<Result<z.infer<T>, JiraErrorResult>> {
   try {
     const response = await fetch(`${options.baseUrl}${endpoint}`, {
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       method: options.method || "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -115,18 +124,130 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
   }
 }
 
+async function listUsersPage(
+  baseUrl: string,
+  accessToken: string,
+  startAt: number,
+  perPage: number
+): Promise<
+  Result<z.infer<typeof JiraUsersSearchResultSchema>, JiraErrorResult>
+> {
+  const params = new URLSearchParams({
+    startAt: String(startAt),
+    maxResults: String(perPage),
+  });
+
+  return jiraApiCall(
+    {
+      endpoint: `/rest/api/3/users/search?${params.toString()}`,
+      accessToken,
+    },
+    JiraUsersSearchResultSchema,
+    { baseUrl }
+  );
+}
+
+export async function listUsers(
+  baseUrl: string,
+  accessToken: string,
+  {
+    name,
+    maxResults,
+    startAt = 0,
+  }: {
+    name?: string;
+    maxResults: number;
+    startAt?: number;
+  }
+): Promise<
+  Result<
+    {
+      users: z.infer<typeof JiraUsersSearchResultSchema>;
+      nextStartAt: number | null;
+    },
+    JiraErrorResult
+  >
+> {
+  const perPage = 100;
+  let cursor = startAt;
+  const results: z.infer<typeof JiraUsersSearchResultSchema> = [];
+  const hasName = !!name && name.trim().length > 0;
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+  const normalizedName = (name || "").trim().toLowerCase();
+
+  while (results.length < maxResults) {
+    const pageResult = await listUsersPage(
+      baseUrl,
+      accessToken,
+      cursor,
+      perPage
+    );
+    if (pageResult.isErr()) {
+      return pageResult;
+    }
+    const page = pageResult.value || [];
+    if (page.length === 0) {
+      return new Ok({ users: results, nextStartAt: null });
+    }
+
+    for (const u of page) {
+      if (u.accountType !== "atlassian") {
+        continue;
+      }
+      if (
+        !hasName ||
+        (u.displayName || "").toLowerCase().includes(normalizedName)
+      ) {
+        results.push(u);
+        if (results.length >= maxResults) {
+          break;
+        }
+      }
+    }
+
+    cursor += page.length;
+    if (page.length < perPage) {
+      return new Ok({ users: results, nextStartAt: null });
+    }
+  }
+
+  return new Ok({ users: results, nextStartAt: cursor });
+}
+
 export async function getIssue({
   baseUrl,
   accessToken,
   issueKey,
+  fields,
 }: {
   baseUrl: string;
   accessToken: string;
   issueKey: string;
+  fields?: string[];
 }): Promise<Result<z.infer<typeof JiraIssueSchema> | null, JiraErrorResult>> {
+  // Use a minimal default field set to reduce payload size while keeping key metadata
+  const defaultFields = [
+    "summary",
+    "issuetype",
+    "priority",
+    "assignee",
+    "reporter",
+    "labels",
+    "duedate",
+    "parent",
+    "project",
+    "status",
+  ];
+
+  const params = new URLSearchParams();
+  const fieldList = (fields && fields.length > 0 ? fields : defaultFields).join(
+    ","
+  );
+  params.set("fields", fieldList);
+
   const result = await jiraApiCall(
     {
-      endpoint: `/rest/api/3/issue/${issueKey}`,
+      endpoint: `/rest/api/3/issue/${issueKey}?${params.toString()}`,
       accessToken,
     },
     JiraIssueSchema,
@@ -164,6 +285,27 @@ export async function getProjects(
     },
     z.array(JiraProjectSchema),
     { baseUrl }
+  );
+
+  return handleResults(result, []);
+}
+
+export async function getProjectVersions(
+  baseUrl: string,
+  accessToken: string,
+  projectKey: string
+): Promise<
+  Result<z.infer<typeof JiraProjectVersionSchema>[], JiraErrorResult>
+> {
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/3/project/${projectKey}/versions`,
+      accessToken,
+    },
+    z.array(JiraProjectVersionSchema),
+    {
+      baseUrl,
+    }
   );
 
   return handleResults(result, []);
@@ -243,6 +385,7 @@ export async function getJiraBaseUrl(
   accessToken: string
 ): Promise<string | null> {
   const resourceInfo = await getJiraResourceInfo(accessToken);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const cloudId = resourceInfo?.id || null;
   if (cloudId) {
     return `https://api.atlassian.com/ex/jira/${cloudId}`;
@@ -263,7 +406,7 @@ export async function createComment(
   let adfBody: ADFDocument;
 
   if (typeof commentBody === "string") {
-    adfBody = textToADF(commentBody);
+    adfBody = markdownToAdf(commentBody);
   } else if (isADFDocument(commentBody)) {
     adfBody = commentBody;
   } else {
@@ -276,6 +419,7 @@ export async function createComment(
     body: {
       type: adfBody.type,
       version: adfBody.version,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       content: adfBody.content || [],
     },
   };
@@ -332,6 +476,7 @@ export async function searchIssues(
     nextPageToken,
     sortBy,
     maxResults = SEARCH_ISSUES_MAX_RESULTS,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   } = options || {};
 
   const jql = createJQLFromSearchFilters(filters, sortBy);
@@ -378,6 +523,61 @@ export async function searchIssues(
     },
     ...result.value,
   });
+}
+
+export async function searchJiraIssuesUsingJql(
+  baseUrl: string,
+  accessToken: string,
+  jql: string,
+  options?: {
+    nextPageToken?: string;
+    maxResults?: number;
+    fields?: string[];
+  }
+): Promise<Result<JiraSearchResult, JiraErrorResult>> {
+  const {
+    nextPageToken,
+    maxResults = SEARCH_ISSUES_MAX_RESULTS,
+    fields = ["summary"],
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+  } = options || {};
+
+  const requestBody: z.infer<typeof JiraSearchRequestSchema> = {
+    jql,
+    maxResults,
+    fields,
+  };
+
+  if (nextPageToken) {
+    requestBody.nextPageToken = nextPageToken;
+  }
+
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/3/search/jql`,
+      accessToken,
+    },
+    JiraSearchResultSchema,
+    {
+      baseUrl,
+      method: "POST",
+      body: requestBody,
+    }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const resourceInfo = await getJiraResourceInfo(accessToken);
+  if (resourceInfo && result.value.issues) {
+    result.value.issues = result.value.issues.map((issue) => ({
+      ...issue,
+      browseUrl: `${resourceInfo.url}/browse/${issue.key}`,
+    }));
+  }
+
+  return new Ok(result.value);
 }
 
 export async function getIssueTypes(
@@ -509,30 +709,118 @@ export async function transitionIssue(
   return handleResults(result, null);
 }
 
+export async function getAllFields(
+  baseUrl: string,
+  accessToken: string
+): Promise<
+  Result<
+    Record<string, { schema?: { type?: string; custom?: string } }>,
+    JiraErrorResult
+  >
+> {
+  const result = await jiraApiCall(
+    {
+      endpoint: "/rest/api/3/field",
+      accessToken,
+    },
+    JiraFieldsSchema,
+    { baseUrl }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const fieldsMetadata: Record<
+    string,
+    { schema?: { type?: string; custom?: string } }
+  > = {};
+
+  for (const field of result.value) {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    const fieldKey = field.key || field.id;
+    fieldsMetadata[fieldKey] = {
+      schema: field.schema
+        ? {
+            type: field.schema.type,
+            custom: field.schema.custom,
+          }
+        : undefined,
+    };
+  }
+
+  return new Ok(fieldsMetadata);
+}
+
+// Returns a compact list of fields with their identifiers and names for discovery
+export async function listFieldSummaries(
+  baseUrl: string,
+  accessToken: string
+): Promise<
+  Result<
+    Array<{ id: string; key?: string; name: string; custom: boolean }>,
+    JiraErrorResult
+  >
+> {
+  const result = await jiraApiCall(
+    {
+      endpoint: "/rest/api/3/field",
+      accessToken,
+    },
+    JiraFieldsSchema,
+    { baseUrl }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const summaries = (result.value || []).map((f) => ({
+    id: f.id,
+    key: f.key,
+    name: f.name,
+    custom: f.custom,
+  }));
+  return new Ok(summaries);
+}
+
+async function processFieldsWithMetadata(
+  baseUrl: string,
+  accessToken: string,
+  fields: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  let fieldsMetadata: Record<
+    string,
+    {
+      schema?: { type?: string; custom?: string };
+    }
+  > = {};
+
+  // Check if we have custom fields that might need metadata for accurate processing
+  const hasCustomFields = Object.keys(fields).some((key) =>
+    key.startsWith("customfield_")
+  );
+
+  if (hasCustomFields) {
+    const metadataResult = await getAllFields(baseUrl, accessToken);
+    if (metadataResult.isOk()) {
+      fieldsMetadata = metadataResult.value;
+    }
+  }
+
+  return processFieldsForJira(fields, fieldsMetadata);
+}
+
 export async function createIssue(
   baseUrl: string,
   accessToken: string,
   issueData: z.infer<typeof JiraCreateIssueRequestSchema>
 ): Promise<Result<z.infer<typeof JiraIssueSchema>, JiraErrorResult>> {
-  // Process fields to convert strings to ADF for textarea fields only
-  const processedFields: typeof issueData & Record<string, unknown> = {
-    ...issueData,
-  };
-
-  // Convert description from string to ADF if it's a string
-  if (
-    processedFields.description &&
-    typeof processedFields.description === "string"
-  ) {
-    processedFields.description = textToADF(processedFields.description);
-  }
-
-  // Convert custom fields from string to ADF if they're strings
-  for (const [fieldKey, fieldValue] of Object.entries(processedFields)) {
-    if (fieldKey.startsWith("customfield_") && typeof fieldValue === "string") {
-      processedFields[fieldKey] = textToADF(fieldValue);
-    }
-  }
+  const processedFields = await processFieldsWithMetadata(
+    baseUrl,
+    accessToken,
+    issueData
+  );
 
   const result = await jiraApiCall(
     {
@@ -567,25 +855,11 @@ export async function updateIssue(
 ): Promise<
   Result<{ issueKey: string; browseUrl?: string } | null, JiraErrorResult>
 > {
-  // Process fields to convert strings to ADF for textarea fields only
-  const processedFields: typeof updateData & Record<string, unknown> = {
-    ...updateData,
-  };
-
-  // Convert description from string to ADF if it's a string
-  if (
-    processedFields.description &&
-    typeof processedFields.description === "string"
-  ) {
-    processedFields.description = textToADF(processedFields.description);
-  }
-
-  // Convert custom fields from string to ADF if they're strings
-  for (const [fieldKey, fieldValue] of Object.entries(processedFields)) {
-    if (fieldKey.startsWith("customfield_") && typeof fieldValue === "string") {
-      processedFields[fieldKey] = textToADF(fieldValue);
-    }
-  }
+  const processedFields = await processFieldsWithMetadata(
+    baseUrl,
+    accessToken,
+    updateData
+  );
 
   const result = await jiraApiCall(
     {
@@ -620,7 +894,10 @@ export async function updateIssue(
 
 type WithAuthParams = {
   authInfo?: AuthInfo;
-  action: (baseUrl: string, accessToken: string) => Promise<CallToolResult>;
+  action: (
+    baseUrl: string,
+    accessToken: string
+  ) => Promise<Result<CallToolResult["content"], MCPError>>;
 };
 
 export async function createIssueLink(
@@ -638,7 +915,7 @@ export async function createIssueLink(
     const commentText = requestBody.comment.body;
     requestBody.comment = {
       ...requestBody.comment,
-      body: textToADF(commentText),
+      body: markdownToAdf(commentText),
     };
   }
 
@@ -700,55 +977,80 @@ export async function getIssueLinkTypes(
   return new Ok(result.value.issueLinkTypes);
 }
 
-export async function searchUsers(
+export async function searchUsersByEmailExact(
   baseUrl: string,
   accessToken: string,
-  query: string,
-  maxResults: number = SEARCH_USERS_MAX_RESULTS
+  emailAddress: string,
+  {
+    maxResults = SEARCH_USERS_MAX_RESULTS,
+    startAt = 0,
+  }: { maxResults?: number; startAt?: number } = {}
 ): Promise<
-  Result<z.infer<typeof JiraUsersSearchResultSchema>, JiraErrorResult>
-> {
-  const params = new URLSearchParams({
-    query,
-    maxResults: maxResults.toString(),
-  });
-
-  const result = await jiraApiCall(
+  Result<
     {
-      endpoint: `/rest/api/3/users/search?${params.toString()}`,
-      accessToken,
+      users: z.infer<typeof JiraUsersSearchResultSchema>;
+      nextStartAt: number | null;
     },
-    JiraUsersSearchResultSchema,
-    { baseUrl }
-  );
+    JiraErrorResult
+  >
+> {
+  const perPage = 100;
+  let cursor = startAt;
+  const matches: z.infer<typeof JiraUsersSearchResultSchema> = [];
+  const normalized = emailAddress.trim().toLowerCase();
 
-  if (result.isErr()) {
-    return result;
+  while (matches.length < maxResults) {
+    const pageResult = await listUsersPage(
+      baseUrl,
+      accessToken,
+      cursor,
+      perPage
+    );
+    if (pageResult.isErr()) {
+      return pageResult;
+    }
+    const page = pageResult.value || [];
+    if (page.length === 0) {
+      return new Ok({ users: matches, nextStartAt: null });
+    }
+
+    for (const u of page) {
+      if (
+        u.accountType === "atlassian" &&
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        (u.emailAddress || "").toLowerCase() === normalized
+      ) {
+        matches.push(u);
+        if (matches.length >= maxResults) {
+          return new Ok({ users: matches, nextStartAt: cursor + page.length });
+        }
+      }
+    }
+
+    cursor += page.length;
+    if (page.length < perPage) {
+      return new Ok({ users: matches, nextStartAt: null });
+    }
   }
 
-  // Filter to only include Atlassian users as per documentation https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-user-search/#api-rest-api-3-user-search-get
-  const filteredUsers = result.value.filter(
-    (user) => user.accountType === "atlassian"
-  );
-
-  return new Ok(filteredUsers);
+  return new Ok({ users: matches, nextStartAt: cursor });
 }
 
 export const withAuth = async ({
   authInfo,
   action,
-}: WithAuthParams): Promise<CallToolResult> => {
+}: WithAuthParams): Promise<Result<CallToolResult["content"], MCPError>> => {
   const accessToken = authInfo?.token;
 
   if (!accessToken) {
-    return makeMCPToolTextError("No access token found");
+    return new Err(new MCPError("No access token found"));
   }
 
   try {
     // Get the base URL from accessible resources
     const baseUrl = await getJiraBaseUrl(accessToken);
     if (!baseUrl) {
-      return makeMCPToolTextError("No base url found");
+      return new Err(new MCPError("No base url found"));
     }
 
     return await action(baseUrl, accessToken);
@@ -766,12 +1068,272 @@ function logAndReturnError({
 }: {
   error: unknown;
   message: string;
-}): CallToolResult {
+}): Result<CallToolResult["content"], MCPError> {
   logger.error(
     {
       error,
     },
     `[JIRA MCP Server] ${message}`
   );
-  return makeMCPToolTextError(normalizeError(error).message);
+  return new Err(new MCPError(normalizeError(error).message));
+}
+
+function logAndReturnApiError<T>({
+  error,
+  message,
+}: {
+  error: unknown;
+  message: string;
+}): Result<T, string> {
+  logger.error(`[JIRA MCP Server] ${message}`);
+  return new Err(normalizeError(error).message);
+}
+
+export async function uploadAttachmentsToJira(
+  baseUrl: string,
+  accessToken: string,
+  issueKey: string,
+  files: Array<{
+    buffer: Buffer;
+    filename: string;
+    contentType: string;
+  }>
+): Promise<
+  Result<z.infer<typeof JiraAttachmentsResultSchema>, JiraErrorResult>
+> {
+  try {
+    const boundary = `----formdata-dust-${Date.now()}-${Math.random().toString(36)}`;
+    const parts: Buffer[] = [];
+
+    for (const file of files) {
+      const safeFilename = sanitizeFilename(file.filename);
+      parts.push(Buffer.from(`--${boundary}\r\n`));
+      parts.push(
+        Buffer.from(
+          `Content-Disposition: form-data; name="file"; filename="${safeFilename}"\r\n`
+        )
+      );
+      parts.push(Buffer.from(`Content-Type: ${file.contentType}\r\n\r\n`));
+      parts.push(file.buffer);
+      parts.push(Buffer.from("\r\n"));
+    }
+
+    parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+    const body = Buffer.concat(parts);
+
+    const response = await fetch(
+      `${baseUrl}/rest/api/2/issue/${issueKey}/attachments`,
+      {
+        method: "POST",
+        body,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+          "X-Atlassian-Token": "no-check", // Required to prevent CSRF blocking
+          "Content-Type": `multipart/form-data; boundary=${boundary}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      const msg = `JIRA API error: ${response.status} ${response.statusText} - ${errorBody}`;
+      return logAndReturnApiError({
+        error: new Error(msg),
+        message: "JIRA attachment upload failed",
+      });
+    }
+
+    const responseText = await response.text();
+    if (!responseText) {
+      return logAndReturnApiError({
+        error: new Error("Empty response from JIRA attachment upload"),
+        message: "JIRA attachment upload returned empty response",
+      });
+    }
+
+    const rawData = JSON.parse(responseText);
+    const parseResult = JiraAttachmentsResultSchema.safeParse(rawData);
+
+    if (!parseResult.success) {
+      const msg = `Invalid JIRA response format: ${parseResult.error.message}`;
+      return logAndReturnApiError({
+        error: new Error(msg),
+        message: "JIRA attachment upload response format invalid",
+      });
+    }
+
+    return new Ok(parseResult.data);
+  } catch (error: unknown) {
+    return logAndReturnApiError({
+      error,
+      message: "JIRA API call failed for attachment upload",
+    });
+  }
+}
+
+export async function getIssueAttachments({
+  baseUrl,
+  accessToken,
+  issueKey,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  issueKey: string;
+}): Promise<
+  Result<z.infer<typeof JiraAttachmentsResultSchema>, JiraErrorResult>
+> {
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/2/issue/${issueKey}?fields=attachment`,
+      accessToken,
+    },
+    JiraIssueWithAttachmentsSchema,
+    { baseUrl }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const attachments = result.value.fields?.attachment ?? [];
+  return new Ok(attachments);
+}
+
+async function downloadAttachmentContent({
+  baseUrl,
+  accessToken,
+  attachmentId,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  attachmentId: string;
+}): Promise<Result<Buffer, JiraErrorResult>> {
+  try {
+    const url = `${baseUrl}/rest/api/3/attachment/content/${attachmentId}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "*/*",
+      },
+      redirect: "follow",
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      const msg = `JIRA API error: ${response.status} ${response.statusText} - ${errorBody}`;
+      logger.warn(`${msg}`);
+      return logAndReturnApiError({
+        error: new Error(msg),
+        message: "JIRA attachment download failed",
+      });
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return new Ok(buffer);
+  } catch (error) {
+    logger.warn(`Attachment download failed:`, {
+      error: error instanceof Error ? error.message : String(error),
+      attachmentId,
+    });
+    return logAndReturnApiError({
+      error,
+      message: `JIRA attachment download failed: ${normalizeError(error).message}`,
+    });
+  }
+}
+
+export async function extractTextFromAttachment({
+  baseUrl,
+  accessToken,
+  attachmentId,
+  mimeType,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  attachmentId: string;
+  mimeType: string;
+}): Promise<Result<string, JiraErrorResult>> {
+  if (!isTextExtractionSupportedContentType(mimeType)) {
+    return new Err(`Text extraction not supported for file type: ${mimeType}.`);
+  }
+
+  const downloadResult = await downloadAttachmentContent({
+    baseUrl,
+    accessToken,
+    attachmentId,
+  });
+
+  if (downloadResult.isErr()) {
+    return downloadResult;
+  }
+
+  const textResult = await extractTextFromBuffer(
+    downloadResult.value,
+    mimeType
+  );
+
+  if (textResult.isErr()) {
+    logger.error(`Text extraction failed:`, {
+      error: textResult.error,
+      attachmentId,
+      mimeType,
+    });
+    return logAndReturnApiError({
+      error: new Error(textResult.error),
+      message: "Failed to extract text from attachment",
+    });
+  }
+
+  return textResult;
+}
+
+export async function getAttachmentContent({
+  baseUrl,
+  accessToken,
+  attachmentId,
+  mimeType,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  attachmentId: string;
+  mimeType: string;
+}): Promise<
+  Result<
+    { content: string; contentType: string; size: number },
+    JiraErrorResult
+  >
+> {
+  const downloadResult = await downloadAttachmentContent({
+    baseUrl,
+    accessToken,
+    attachmentId,
+  });
+
+  if (downloadResult.isErr()) {
+    return downloadResult;
+  }
+
+  const buffer = downloadResult.value;
+
+  // For text files, return the content directly
+  if (mimeType.startsWith("text/")) {
+    const content = buffer.toString("utf-8");
+    return new Ok({
+      content,
+      contentType: mimeType,
+      size: buffer.length,
+    });
+  }
+
+  // For other file types, return as base64
+  const base64Content = buffer.toString("base64");
+  return new Ok({
+    content: base64Content,
+    contentType: mimeType,
+    size: buffer.length,
+  });
 }

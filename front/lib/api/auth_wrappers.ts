@@ -310,6 +310,29 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
             });
           }
 
+          const owner = auth.workspace();
+          const plan = auth.plan();
+          if (!owner || !plan) {
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "workspace_not_found",
+                message: "The workspace was not found.",
+              },
+            });
+          }
+
+          if (!plan.limits.canUseProduct) {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_can_use_product_required_error",
+                message:
+                  "Your current plan does not allow API access. Please upgrade your plan.",
+              },
+            });
+          }
+
           req.addResourceToLog?.(auth.getNonNullableUser());
 
           const maintenance = auth.workspace()?.metadata?.maintenance;
@@ -317,7 +340,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
             return apiError(req, res, {
               status_code: 503,
               api_error: {
-                type: "not_authenticated",
+                type: "service_unavailable",
                 message: `Service is currently unavailable. [${maintenance}]`,
               },
             });
@@ -365,6 +388,17 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           api_error: {
             type: "workspace_not_found",
             message: "The workspace was not found.",
+          },
+        });
+      }
+
+      if (!plan.limits.canUseProduct) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_can_use_product_required_error",
+            message:
+              "Your current plan does not allow API access. Please upgrade your plan.",
           },
         });
       }
@@ -524,6 +558,14 @@ export function withTokenAuthentication<T>(
           user,
           isFromExtension
         );
+
+        const orgId = workOSDecoded.value.org_id;
+        if (orgId) {
+          const workspace = userWithWorkspaces.workspaces.find(
+            (w) => w.workOSOrganizationId === orgId
+          );
+          userWithWorkspaces.selectedWorkspace = workspace?.sId;
+        }
 
         return await handler(req, res, userWithWorkspaces);
       } catch (error) {

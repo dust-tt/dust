@@ -73,13 +73,7 @@ export async function deleteWorkspaceWorkflow({
   await deleteRunOnDustAppsActivity({ workspaceId });
   await deleteAppsActivity({ workspaceId });
   await deleteTrackersActivity({ workspaceId });
-  await deleteMembersActivity({
-    workspaceId,
-    // If the workspace was not relocated we delete users from Auth0 to prevent having these dangling.
-    // If the workspace was relocated we keep it since it is still in use in the other region
-    // (we keep the Auth0 sub when relocating).
-    deleteFromAuth0: !workspaceHasBeenRelocated,
-  });
+  await deleteMembersActivity({ workspaceId });
   await deleteTagsActivity({ workspaceId });
   await deleteSpacesActivity({ workspaceId });
   await deleteTranscriptsActivity({ workspaceId });

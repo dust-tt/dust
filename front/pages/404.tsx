@@ -13,7 +13,7 @@ export default function Custom404() {
   }, []);
 
   return (
-    <div className="flex h-screen items-center justify-center">
+    <div className="h-dvh flex items-center justify-center">
       <div className="flex flex-col gap-3 text-center">
         <div>
           <span className="text-4xl leading-10 text-foreground dark:text-foreground-night">

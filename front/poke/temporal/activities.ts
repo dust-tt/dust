@@ -6,12 +6,7 @@ import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
-import { deleteUserFromWorkOS } from "@app/lib/api/workos/user";
-import {
-  areAllSubscriptionsCanceled,
-  isWorkspaceRelocationDone,
-  isWorkspaceRelocationOngoing,
-} from "@app/lib/api/workspace";
+import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
@@ -31,6 +26,7 @@ import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Subscription } from "@app/lib/models/plan";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -45,6 +41,7 @@ import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { Provider } from "@app/lib/resources/storage/models/apps";
 import {
   LabsTranscriptsConfigurationModel,
@@ -54,6 +51,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -270,6 +268,13 @@ export async function deleteAgentsActivity({
       },
     });
 
+    await AgentMemoryModel.destroy({
+      where: {
+        agentConfigurationId: agent.sId,
+        workspaceId: workspace.id,
+      },
+    });
+
     const group = await GroupResource.fetchByAgentConfiguration({
       auth,
       agentConfiguration: agent,
@@ -303,7 +308,7 @@ export async function deleteAppsActivity({
     }
   }
 
-  await KeyResource.deleteAllForWorkspace(workspace);
+  await KeyResource.deleteAllForWorkspace(auth);
 
   await Provider.destroy({
     where: {
@@ -391,9 +396,7 @@ export const deleteRemoteMCPServersActivity = async ({
 }) => {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
-  await MCPServerConnectionResource.deleteAllForWorkspace(
-    auth.getNonNullableWorkspace()
-  );
+  await MCPServerConnectionResource.deleteAllForWorkspace(auth);
 
   const remoteMCPServers = await RemoteMCPServerResource.listByWorkspace(auth);
   for (const remoteMCPServer of remoteMCPServers) {
@@ -418,10 +421,8 @@ export const deleteTrackersActivity = async ({
 
 export async function deleteMembersActivity({
   workspaceId,
-  deleteFromAuth0 = false,
 }: {
   workspaceId: string;
-  deleteFromAuth0?: boolean;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.getNonNullableWorkspace();
@@ -429,12 +430,6 @@ export async function deleteMembersActivity({
   const childLogger = hardDeleteLogger.child({
     workspaceId: workspace.id,
   });
-
-  // Critical: we should never delete an Auth0 sub for a workspace that was relocated/is being relocated.
-  // The Auth0 sub is kept during the relocation, deleting it would affect the relocated users.
-  const workspaceRelocated =
-    isWorkspaceRelocationDone(workspace) ||
-    isWorkspaceRelocationOngoing(workspace);
 
   await MembershipInvitationModel.destroy({
     where: {
@@ -468,16 +463,12 @@ export async function deleteMembersActivity({
         await FileResource.deleteAllForUser(auth, user.toJSON());
         await membership.delete(auth, {});
 
-        // Delete the user from WorkOS.
-        if (deleteFromAuth0 && user.workOSUserId) {
-          assert(
-            !workspaceRelocated,
-            "Trying to delete a WorkOS user for a workspace that was relocated/is being relocated."
-          );
-
-          // Ignore errors, as the user might not exist in WorkOS.
-          await deleteUserFromWorkOS(user.workOSUserId);
-        }
+        // Delete the user's agent memories.
+        await AgentMemoryModel.destroy({
+          where: {
+            userId: user.id,
+          },
+        });
 
         await user.delete(auth, {});
       }
@@ -592,9 +583,10 @@ export async function deleteWorkspaceActivity({
       workspaceId: workspace.id,
     },
   });
-  await FileResource.deleteAllForWorkspace(workspace);
-  await RunResource.deleteAllForWorkspace(workspace);
-  await MembershipResource.deleteAllForWorkspace(workspace);
+  await TriggerResource.deleteAllForWorkspace(auth);
+  await FileResource.deleteAllForWorkspace(auth);
+  await RunResource.deleteAllForWorkspace(auth);
+  await MembershipResource.deleteAllForWorkspace(auth);
   await WorkspaceHasDomainModel.destroy({
     where: { workspaceId: workspace.id },
   });
@@ -612,6 +604,7 @@ export async function deleteWorkspaceActivity({
       workspaceId: workspace.id,
     },
   });
+  await AgentMemoryResource.deleteAllForWorkspace(auth);
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 

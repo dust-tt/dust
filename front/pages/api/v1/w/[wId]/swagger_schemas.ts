@@ -1,3 +1,4 @@
+/* eslint-disable dust/enforce-client-types-in-public-api */
 /**
  * @swagger
  * components:
@@ -655,4 +656,140 @@
  *           type: number
  *           nullable: true
  *           example: 150
+ *     MCPServerView:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Unique identifier for the MCP server view
+ *           example: 123
+ *         sId:
+ *           type: string
+ *           description: Unique string identifier for the MCP server view
+ *           example: "mcp_sv_abc123"
+ *         name:
+ *           type: string
+ *           nullable: true
+ *           description: Custom name for the MCP server view (null if not set)
+ *           example: "My Custom MCP Server"
+ *         description:
+ *           type: string
+ *           nullable: true
+ *           description: Custom description for the MCP server view (null if not set)
+ *           example: "This MCP server handles customer data operations"
+ *         createdAt:
+ *           type: number
+ *           description: Unix timestamp of when the MCP server view was created
+ *           example: 1625097600
+ *         updatedAt:
+ *           type: number
+ *           description: Unix timestamp of when the MCP server view was last updated
+ *           example: 1625184000
+ *         spaceId:
+ *           type: string
+ *           description: ID of the space containing the MCP server view
+ *           example: "spc_xyz789"
+ *         serverType:
+ *           type: string
+ *           enum: ["remote", "internal"]
+ *           description: Type of the MCP server
+ *           example: "remote"
+ *         server:
+ *           type: object
+ *           properties:
+ *             sId:
+ *               type: string
+ *               description: Unique string identifier for the MCP server
+ *               example: "mcp_srv_def456"
+ *             name:
+ *               type: string
+ *               description: Name of the MCP server
+ *               example: "Customer Data Server"
+ *             version:
+ *               type: string
+ *               description: Version of the MCP server
+ *               example: "1.0.0"
+ *             description:
+ *               type: string
+ *               description: Description of the MCP server
+ *               example: "Handles customer data operations and queries"
+ *             icon:
+ *               type: string
+ *               description: Icon identifier for the MCP server
+ *               example: "database"
+ *             authorization:
+ *               type: object
+ *               nullable: true
+ *               properties:
+ *                 provider:
+ *                   type: string
+ *                   description: OAuth provider for authorization
+ *                   example: "github"
+ *                 supported_use_cases:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                     enum: ["platform_actions", "personal_actions"]
+ *                   description: Supported use cases for the authorization
+ *                   example: ["platform_actions"]
+ *                 scope:
+ *                   type: string
+ *                   description: OAuth scope required
+ *                   example: "repo:read"
+ *             tools:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                     description: Name of the tool
+ *                     example: "query_customers"
+ *                   description:
+ *                     type: string
+ *                     description: Description of what the tool does
+ *                     example: "Query customer database for information"
+ *                   inputSchema:
+ *                     type: object
+ *                     description: JSON Schema for the tool's input parameters
+ *                     example: {"type": "object", "properties": {"customerId": {"type": "string"}}}
+ *             availability:
+ *               type: string
+ *               description: Availability status of the MCP server
+ *               example: "production"
+ *             allowMultipleInstances:
+ *               type: boolean
+ *               description: Whether multiple instances of this server can be created
+ *               example: false
+ *             documentationUrl:
+ *               type: string
+ *               nullable: true
+ *               description: URL to the server's documentation
+ *               example: "https://docs.example.com/mcp-server"
+ *         oAuthUseCase:
+ *           type: string
+ *           nullable: true
+ *           enum: ["platform_actions", "personal_actions"]
+ *           description: OAuth use case for the MCP server view
+ *           example: "platform_actions"
+ *         editedByUser:
+ *           type: object
+ *           nullable: true
+ *           description: Information about the user who last edited the MCP server view
+ *           properties:
+ *             editedAt:
+ *               type: number
+ *               nullable: true
+ *               description: Unix timestamp of when the edit occurred
+ *               example: 1625184000
+ *             fullName:
+ *               type: string
+ *               nullable: true
+ *               description: Full name of the editor
+ *               example: "John Doe"
+ *             imageUrl:
+ *               type: string
+ *               nullable: true
+ *               description: Profile image URL of the editor
+ *               example: "https://example.com/profile/johndoe.jpg"
  */

@@ -1,22 +1,32 @@
-import { ArrowPathIcon, Button, Spinner } from "@dust-tt/sparkle";
-import React from "react";
-import { useFormContext } from "react-hook-form";
+import { Spinner } from "@dust-tt/sparkle";
+import { useEffect, useMemo, useRef } from "react";
+import { useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import {
   useDraftAgent,
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
-import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
+import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
+import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
+import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import type { DustError } from "@app/lib/error";
 import { useUser } from "@app/lib/swr/user";
-
-import type { AgentBuilderFormData } from "./AgentBuilderFormContext";
+import type {
+  ContentFragmentsType,
+  ConversationWithoutContentType,
+  LightAgentConfigurationType,
+  Result,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 
 interface EmptyStateProps {
   message: string;
@@ -51,31 +61,176 @@ function LoadingState({ message }: LoadingStateProps) {
   );
 }
 
+interface PreviewContentProps {
+  conversation: ConversationWithoutContentType | null;
+  user: UserType | null;
+  owner: WorkspaceType;
+  currentPanel: ConversationSidePanelType;
+  resetConversation: () => void;
+  createConversation: (
+    input: string,
+    mentions: EditorMention[],
+    contentFragments: ContentFragmentsType
+  ) => Promise<Result<undefined, DustError>>;
+  draftAgent: LightAgentConfigurationType | null;
+  isSavingDraftAgent: boolean;
+}
+
+function PreviewContent({
+  conversation,
+  user,
+  owner,
+  currentPanel,
+  resetConversation,
+  createConversation,
+  draftAgent,
+  isSavingDraftAgent,
+}: PreviewContentProps) {
+  return (
+    <>
+      <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
+        <div className="flex-1 overflow-y-auto">
+          {conversation && user && (
+            <ConversationViewer
+              owner={owner}
+              user={user}
+              conversationId={conversation.sId}
+              agentBuilderContext={{
+                draftAgent: draftAgent ?? undefined,
+                isSavingDraftAgent,
+                resetConversation,
+                actionsToShow: ["attachment"],
+              }}
+              key={conversation.sId}
+            />
+          )}
+        </div>
+
+        {!conversation && (
+          <div className="mx-4 flex-shrink-0 py-4">
+            <InputBar
+              disable={isSavingDraftAgent}
+              owner={owner}
+              onSubmit={createConversation}
+              stickyMentions={
+                draftAgent ? [{ configurationId: draftAgent.sId }] : []
+              }
+              conversationId={null}
+              additionalAgentConfiguration={draftAgent ?? undefined}
+              actions={["attachment"]}
+              disableAutoFocus
+              isFloating={false}
+            />
+          </div>
+        )}
+      </div>
+
+      {conversation && (
+        <ConversationSidePanelContent
+          conversation={conversation}
+          owner={owner}
+          currentPanel={currentPanel}
+        />
+      )}
+    </>
+  );
+}
+
 export function AgentBuilderPreview() {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
-  const { getValues } = useFormContext<AgentBuilderFormData>();
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
+  const { isPreviewPanelOpen } = usePreviewPanelContext();
 
   const { currentPanel } = useConversationSidePanelContext();
 
-  const hasContent =
-    !!getValues("instructions").trim() || getValues("actions").length > 0;
+  const watchedFields = useWatch({
+    name: ["instructions", "actions", "agentSettings.name"],
+  });
+
+  const [instructions, actions, agentName] = watchedFields;
+
+  const hasContent = useMemo(() => {
+    return !!instructions?.trim() || (actions?.length ?? 0) > 0;
+  }, [instructions, actions]);
 
   const {
     draftAgent,
+    setDraftAgent,
+    createDraftAgent,
     getDraftAgent,
     isSavingDraftAgent,
     draftCreationFailed,
-    stickyMentions,
-    setStickyMentions,
   } = useDraftAgent();
 
-  const { conversation, handleSubmit, resetConversation } =
+  const { conversation, createConversation, resetConversation } =
     useDraftConversation({
       draftAgent,
       getDraftAgent,
     });
+
+  const debounceTimerRef = useRef<NodeJS.Timeout>();
+  const isUpdatingDraftRef = useRef(false);
+
+  useEffect(() => {
+    const handleDraftUpdate = async () => {
+      if (
+        !isPreviewPanelOpen ||
+        isMCPServerViewsLoading ||
+        isUpdatingDraftRef.current
+      ) {
+        return;
+      }
+
+      // Create an initial draft if none exists and we have content
+      if (!draftAgent && hasContent) {
+        isUpdatingDraftRef.current = true;
+        const newDraft = await createDraftAgent();
+        if (newDraft) {
+          setDraftAgent(newDraft);
+        }
+        isUpdatingDraftRef.current = false;
+        return;
+      }
+
+      // Update existing draft if agent name changed (with debouncing)
+      // Normalize names for comparison (empty string becomes "Preview")
+      const normalizedCurrentName = agentName?.trim() || "Preview";
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      const normalizedDraftName = draftAgent?.name?.trim() || "Preview";
+
+      if (draftAgent && normalizedCurrentName !== normalizedDraftName) {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+
+        debounceTimerRef.current = setTimeout(async () => {
+          isUpdatingDraftRef.current = true;
+          const newDraft = await createDraftAgent();
+          if (newDraft) {
+            setDraftAgent(newDraft);
+          }
+          isUpdatingDraftRef.current = false;
+        }, 500);
+      }
+    };
+
+    void handleDraftUpdate();
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [
+    isPreviewPanelOpen,
+    isMCPServerViewsLoading,
+    draftAgent,
+    hasContent,
+    agentName,
+    createDraftAgent,
+    setDraftAgent,
+  ]);
 
   // Show loading spinner only when the first time we create a draft agent. After that the spinner is shown
   // inside the button in the input bar. This way we don't have to unmount the conversation viewer every time.
@@ -106,65 +261,24 @@ export function AgentBuilderPreview() {
     }
 
     return (
-      <>
-        <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
-          {conversation && (
-            <div className="flex items-center justify-between px-6 py-3">
-              <h2 className="font-semibold text-foreground dark:text-foreground-night">
-                {conversation.title}
-              </h2>
-              <Button
-                variant="outline"
-                size="sm"
-                icon={ArrowPathIcon}
-                onClick={resetConversation}
-                label="Reset conversation"
-              />
-            </div>
-          )}
-          <div className="flex-1 overflow-y-auto px-4">
-            {conversation && user && (
-              <div className={currentPanel ? "hidden" : "block"}>
-                <ConversationViewer
-                  owner={owner}
-                  user={user}
-                  conversationId={conversation.sId}
-                  onStickyMentionsChange={setStickyMentions}
-                  isInModal
-                  key={conversation.sId}
-                />
-              </div>
-            )}
-          </div>
-          <div className="flex-shrink-0 p-4">
-            <AssistantInputBar
-              disableButton={isSavingDraftAgent}
-              owner={owner}
-              onSubmit={handleSubmit}
-              stickyMentions={stickyMentions}
-              conversationId={conversation?.sId || null}
-              additionalAgentConfiguration={draftAgent ?? undefined}
-              actions={["attachment"]}
-              disableAutoFocus
-              isFloating={false}
-            />
-          </div>
-        </div>
-
-        <ConversationSidePanelContent
-          conversation={conversation}
-          owner={owner}
-          currentPanel={currentPanel}
-        />
-      </>
+      <PreviewContent
+        conversation={conversation}
+        user={user}
+        owner={owner}
+        currentPanel={currentPanel}
+        resetConversation={resetConversation}
+        createConversation={createConversation}
+        draftAgent={draftAgent}
+        isSavingDraftAgent={isSavingDraftAgent}
+      />
     );
   };
 
   return (
     <div className="flex h-full w-full flex-col" aria-label="Agent preview">
-      <ActionValidationProvider owner={owner}>
+      <BlockedActionsProvider owner={owner} conversation={conversation}>
         <GenerationContextProvider>{renderContent()}</GenerationContextProvider>
-      </ActionValidationProvider>
+      </BlockedActionsProvider>
     </div>
   );
 }

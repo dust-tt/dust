@@ -67,6 +67,8 @@ pub enum StopReason {
 pub struct Usage {
     pub input_tokens: u64,
     pub output_tokens: u64,
+    pub cache_read_input_tokens: Option<u64>,
+    pub cache_creation_input_tokens: Option<u64>,
 }
 
 // Anthropic content enum (a response is really an array of contents)
@@ -125,6 +127,9 @@ pub struct AnthropicContent {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_control: Option<AnthropicCacheControl>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -136,6 +141,17 @@ pub enum AnthropicContentType {
     ToolResult,
     Thinking,
     RedactedThinking,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AnthropicCacheControl {
+    pub r#type: AnthropicCacheControlType,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnthropicCacheControlType {
+    Ephemeral,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -275,6 +291,7 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
                         value: ReasoningContent {
                             reasoning: Some(thinking.thinking),
                             metadata: metadata.to_string(),
+                            region: None,
                         },
                     });
                 }
@@ -287,6 +304,7 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
                         value: ReasoningContent {
                             reasoning: None,
                             metadata: metadata.to_string(),
+                            region: None,
                         },
                     });
                 }

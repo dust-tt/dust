@@ -60,13 +60,15 @@ export class DefaultRemoteMCPServerInMemoryResource {
       description: this.config.description,
       icon: this.config.icon,
       authorization:
-        this.config.authMethod === "oauth"
+        this.config.authMethod === "oauth-dynamic"
           ? {
               provider: "mcp",
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               supported_use_cases: this.config.supportedOAuthUseCases || [],
             }
           : null,
       tools: [], // There are no predefined tools for default remote servers
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       documentationUrl: this.config.documentationUrl || null,
       availability: "manual" as const,
       allowMultipleInstances: true,

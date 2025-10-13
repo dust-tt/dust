@@ -106,6 +106,7 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
       organizationTagsToExclude: this.organizationTagsToExclude,
       ticketTagsToInclude: this.ticketTagsToInclude,
       ticketTagsToExclude: this.ticketTagsToExclude,
+      customFieldsConfig: this.customFieldsConfig,
 
       connectorId: this.connectorId,
     };

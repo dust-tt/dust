@@ -293,6 +293,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       created: message.createdAt.getTime(),
       visibility: message.visibility,
       version: message.version,
+      rank: message.rank,
       sourceUrl: this.sourceUrl,
       title: this.title,
       contentType: this.contentType,
@@ -618,7 +619,7 @@ export async function getContentFragmentFromAttachmentFile(
   }
 }
 
-// Render only a tag to specifiy that a content fragment was injected at a given position except for
+// Render only a tag to specify that a content fragment was injected at a given position except for
 // images when the model support them.
 export async function renderLightContentFragmentForModel(
   auth: Authenticator,
@@ -630,7 +631,7 @@ export async function renderLightContentFragmentForModel(
   }: {
     excludeImages: boolean;
   }
-): Promise<ContentFragmentMessageTypeModel> {
+): Promise<ContentFragmentMessageTypeModel | null> {
   const { contentType, sId } = message;
 
   const contentFragment = await ContentFragmentResource.fromMessageId(
@@ -655,6 +656,9 @@ export async function renderLightContentFragmentForModel(
   }
 
   const attachment = getAttachmentFromContentFragment(message);
+  if (!attachment) {
+    return null;
+  }
 
   const { fileId: fileModelId } = contentFragment;
 

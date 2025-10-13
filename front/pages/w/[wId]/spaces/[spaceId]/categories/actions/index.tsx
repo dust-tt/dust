@@ -9,16 +9,18 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { DataSourceViewCategory, SpaceType } from "@app/types";
+import type { DataSourceViewCategory, SpaceType, UserType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {
     category: DataSourceViewCategory;
     isAdmin: boolean;
+    user: UserType;
     space: SpaceType;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
+  const user = auth.getNonNullableUser();
   const subscription = auth.subscription();
   const plan = auth.getNonNullablePlan();
   const isAdmin = auth.isAdmin();
@@ -52,6 +54,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       isAdmin,
       isBuilder,
       owner,
+      user: user.toJSON(),
       plan,
       space: space.toJSON(),
       subscription,
@@ -62,11 +65,17 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 export default function Space({
   isAdmin,
   owner,
+  user,
   space,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   if (space.kind === "system") {
     return (
-      <SystemSpaceActionsList isAdmin={isAdmin} owner={owner} space={space} />
+      <SystemSpaceActionsList
+        isAdmin={isAdmin}
+        owner={owner}
+        user={user}
+        space={space}
+      />
     );
   }
   return <SpaceActionsList isAdmin={isAdmin} owner={owner} space={space} />;

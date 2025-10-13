@@ -12,10 +12,7 @@ import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { isOrganizationSelectionRequiredError } from "@app/lib/api/workos/types";
 import type { SessionCookie } from "@app/lib/api/workos/user";
-import {
-  getDomainCookieClauseFromRequest,
-  setRegionForUser,
-} from "@app/lib/api/workos/user";
+import { setRegionForUser } from "@app/lib/api/workos/user";
 import { getSession } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import logger from "@app/logger/logger";
@@ -57,18 +54,27 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       organizationIdToUse = organizationId;
     }
 
-    let enterpriseParams: { organizationId?: string; connectionId?: string } =
+    const enterpriseParams: { organizationId?: string; connectionId?: string } =
       {};
     if (organizationIdToUse) {
+      enterpriseParams.organizationId = organizationIdToUse;
+
       // TODO(workos): We will want to cache this data
       const connections = await getWorkOS().sso.listConnections({
         organizationId: organizationIdToUse,
       });
-      enterpriseParams = {
-        organizationId: organizationIdToUse,
-        connectionId:
-          connections.data.length > 0 ? connections.data[0]?.id : undefined,
-      };
+
+      /**
+       * We only want to check active enterprise connection.
+       */
+      const connection =
+        connections.data.length > 0
+          ? connections.data.find((c) => c.state === "active")
+          : undefined;
+
+      if (connection) {
+        enterpriseParams.connectionId = connection.id;
+      }
     }
 
     const state = {
@@ -261,6 +267,9 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       }
 
       params.set("returnTo", returnTo);
+      if (organizationId) {
+        params.set("organizationId", organizationId);
+      }
       res.redirect(
         `${targetRegionInfo.url}/api/workos/login?${params.toString()}`
       );
@@ -268,11 +277,17 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     }
 
     // Set session cookie and redirect to returnTo URL
-
-    res.setHeader("Set-Cookie", [
-      `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure;SameSite=Lax; Max-Age=2592000`,
-      `sessionType=workos; Path=/; Secure;SameSite=Lax; Max-Age=2592000`,
-    ]);
+    const domain = config.getWorkOSSessionCookieDomain();
+    if (domain) {
+      res.setHeader("Set-Cookie", [
+        "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
+        `workos_session=${sealedCookie}; Domain=${domain}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+      ]);
+    } else {
+      res.setHeader("Set-Cookie", [
+        `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+      ]);
+    }
 
     if (isString(stateObj.returnTo)) {
       res.redirect(stateObj.returnTo);
@@ -288,6 +303,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 }
 
 async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const returnTo = req.query.returnTo || config.getClientFacingUrl();
 
   const session = await getSession(req, res);
@@ -303,24 +319,15 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
     }
   }
 
-  const domain = getDomainCookieClauseFromRequest(req);
+  const domain = config.getWorkOSSessionCookieDomain();
   if (domain) {
     res.setHeader("Set-Cookie", [
-      "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax",
-      `workos_session=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`,
-      `workos_session=; Domain=.${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`,
-      "appSession=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax",
-      `appSession=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`,
-      `appSession=; Domain=.${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`,
-      "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
-      `sessionType=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
-      `sessionType=; Domain=.${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+      "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
+      `workos_session=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax`,
     ]);
   } else {
     res.setHeader("Set-Cookie", [
-      "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax",
-      "appSession=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax",
-      "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
+      "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
     ]);
   }
 

@@ -6,6 +6,7 @@ export type DustErrorCode =
   | "connection_not_found"
   | "file_not_found"
   | "unauthorized"
+  | "agent_loop_already_running"
   // Data source
   | "data_source_error"
   | "data_source_quota_error"
@@ -35,6 +36,10 @@ export type DustErrorCode =
   | "remote_server_not_found"
   | "internal_server_not_found"
   | "mcp_server_view_not_found"
+  | "action_not_found"
+  | "action_not_blocked"
+  // Triggers errors
+  | "webhook_source_not_found"
   // Space errors
   | "space_already_exists";
 

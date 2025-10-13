@@ -1,3 +1,4 @@
+// TODO(2025-08-06 aubin): add some validation to confirm we actually get these types.
 export interface ZendeskFetchedBrand {
   url: string;
   id: number;
@@ -194,4 +195,12 @@ export interface ZendeskFetchedOrganization {
   notes: string | null;
   organization_fields: Record<string, string | number | boolean>;
   shared_brand_assets: boolean;
+}
+
+export interface ZendeskFetchedTicketField {
+  id: number;
+  title: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
 }

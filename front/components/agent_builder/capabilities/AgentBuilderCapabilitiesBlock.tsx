@@ -1,24 +1,32 @@
 import {
   Avatar,
+  BookOpenIcon,
+  Button,
   Card,
   CardActionButton,
   CardGrid,
+  ContentMessage,
   EmptyCTA,
-  Page,
+  Hoverable,
+  Spinner,
+  ToolsIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { Spinner } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type {
   AgentBuilderDataVizAction,
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
-import type { DialogMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
-import { MCPServerViewsDialog } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
+import type { SheetMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
+import { MCPServerViewsSheet } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
+import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
+import { getSpaceIdToActionsMap } from "@app/components/agent_builder/get_spaceid_to_actions_map";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
   getDefaultMCPAction,
@@ -31,7 +39,8 @@ import {
   MCP_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { asDisplayName } from "@app/types";
+import type { TemplateActionPreset } from "@app/types";
+import { asDisplayName, pluralize } from "@app/types";
 
 const dataVisualizationAction = {
   type: "DATA_VISUALIZATION",
@@ -42,9 +51,9 @@ const BACKGROUND_IMAGE_PATH = "/static/IconBar.svg";
 const BACKGROUND_IMAGE_STYLE_PROPS = {
   backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
   backgroundRepeat: "no-repeat",
-  backgroundPosition: "center 20px",
+  backgroundPosition: "center 14px",
   backgroundSize: "auto 60px",
-  paddingTop: "100px",
+  paddingTop: "90px",
 };
 
 function actionIcon(
@@ -85,7 +94,6 @@ interface ActionCardProps {
   onEdit?: () => void;
 }
 
-// TODO: Merge this with ActionCard.
 function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
@@ -98,10 +106,13 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
         ) ?? null
       : null;
 
+  const displayName = actionDisplayName(action, mcpServerView);
+  const description = action.description ?? "";
+
   return (
     <Card
       variant="primary"
-      className="max-h-40"
+      className="h-28"
       onClick={onEdit}
       action={
         <CardActionButton
@@ -117,19 +128,24 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
           {actionIcon(action, mcpServerView)}
-          <div className="w-full truncate">
-            {actionDisplayName(action, mcpServerView)}
-          </div>
+          <span className="truncate">{displayName}</span>
         </div>
-        <div className="line-clamp-4 text-muted-foreground dark:text-muted-foreground-night">
-          <p>{action.description}</p>
+
+        <div className="text-muted-foreground dark:text-muted-foreground-night">
+          <span className="line-clamp-2 break-words">{description}</span>
         </div>
       </div>
     </Card>
   );
 }
 
-export function AgentBuilderCapabilitiesBlock() {
+interface AgentBuilderCapabilitiesBlockProps {
+  isActionsLoading: boolean;
+}
+
+export function AgentBuilderCapabilitiesBlock({
+  isActionsLoading,
+}: AgentBuilderCapabilitiesBlockProps) {
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
@@ -138,20 +154,32 @@ export function AgentBuilderCapabilitiesBlock() {
     name: "actions",
   });
 
-  const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
-    useMCPServerViewsContext();
+  const {
+    mcpServerViewsWithKnowledge,
+    mcpServerViews,
+    isMCPServerViewsLoading,
+  } = useMCPServerViewsContext();
 
-  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
+  const { spaces } = useSpacesContext();
 
+  const [dialogMode, setDialogMode] = useState<SheetMode | null>(null);
   const [knowledgeAction, setKnowledgeAction] = useState<{
     action: AgentBuilderAction;
     index: number | null;
+    presetData?: TemplateActionPreset;
   } | null>(null);
+
   const dataVisualization = fields.some(
     (field) => field.type === "DATA_VISUALIZATION"
   )
     ? null
     : dataVisualizationAction;
+
+  usePresetActionHandler({
+    fields,
+    append,
+    setKnowledgeAction,
+  });
 
   const handleEditSave = (updatedAction: AgentBuilderAction) => {
     if (dialogMode?.type === "edit") {
@@ -166,20 +194,19 @@ export function AgentBuilderCapabilitiesBlock() {
   };
 
   const handleActionEdit = (action: AgentBuilderAction, index: number) => {
+    const mcpServerView = mcpServerViewsWithKnowledge.find(
+      (view) => view.sId === action.configuration?.mcpServerViewId
+    );
     const isDataSourceSelectionRequired =
-      action.type === "MCP" &&
-      Boolean(
-        action.configuration.dataSourceConfigurations ||
-          action.configuration.tablesConfigurations
-      );
+      action.type === "MCP" && Boolean(mcpServerView);
 
     if (isDataSourceSelectionRequired) {
       setKnowledgeAction({ action, index });
     } else {
       setDialogMode(
-        action.noConfigurationRequired
-          ? { type: "info", action }
-          : { type: "edit", action, index }
+        action.configurable
+          ? { type: "edit", action, index }
+          : { type: "info", action, source: "addedTool" }
       );
     }
   };
@@ -200,76 +227,136 @@ export function AgentBuilderCapabilitiesBlock() {
     setKnowledgeAction({
       action: {
         ...action,
-        noConfigurationRequired: false, // it's always required for knowledge
+        configurable: true, // it's always required for knowledge
       },
       index: null,
     });
   };
+  const actions = getValues("actions");
+  const spaceIdToActions = useMemo(() => {
+    return getSpaceIdToActionsMap(actions, mcpServerViews);
+  }, [actions, mcpServerViews]);
+
+  const nonGlobalSpacesUsedInActions = useMemo(() => {
+    const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
+    return nonGlobalSpaces.filter((s) => spaceIdToActions[s.sId]?.length > 0);
+  }, [spaceIdToActions, spaces]);
 
   const getAgentInstructions = () => getValues("instructions");
 
-  const dropdownButtons = (
-    <>
-      <KnowledgeConfigurationSheet
-        onClose={handleCloseSheet}
-        onClickKnowledge={onClickKnowledge}
-        onSave={handleEditSave}
-        action={knowledgeAction?.action ?? null}
-        isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
-        mcpServerViews={mcpServerViewsWithKnowledge}
-        getAgentInstructions={getAgentInstructions}
+  const headerActions = fields.length > 0 && (
+    <div className="flex items-center gap-2">
+      <Button
+        type="button"
+        onClick={onClickKnowledge}
+        label="Add knowledge"
+        icon={BookOpenIcon}
+        variant="primary"
       />
-      <MCPServerViewsDialog
-        addTools={append}
-        dataVisualization={dataVisualization}
-        mode={dialogMode}
-        onModeChange={setDialogMode}
-        onActionUpdate={handleMcpActionUpdate}
-        getAgentInstructions={getAgentInstructions}
+      <Button
+        type="button"
+        onClick={() => setDialogMode({ type: "add" })}
+        label="Add tools"
+        icon={ToolsIcon}
+        variant="outline"
       />
-    </>
+    </div>
   );
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <Page.H>Tools & Capabilities</Page.H>
-      <div className="flex flex-col items-center justify-between sm:flex-row">
-        <Page.P>
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Add tools and capabilities to enhance your agent's abilities.
-          </span>
-        </Page.P>
-        <div className="flex w-full flex-col gap-2 sm:w-auto">
-          <div className="flex items-center gap-2">
-            {fields.length > 0 && dropdownButtons}
-          </div>
-        </div>
-      </div>
+    <AgentBuilderSectionContainer
+      title="Knowledge & Tools"
+      description={
+        <>
+          Add knowledge and tools to enhance your agent’s abilities. Need help?
+          Check our{" "}
+          <Hoverable
+            variant="primary"
+            href="https://docs.dust.tt/docs/tools"
+            target="_blank"
+          >
+            guide
+          </Hoverable>
+          .
+        </>
+      }
+      headerActions={headerActions}
+    >
       <div className="flex-1">
-        {isMCPServerViewsLoading ? (
+        {isMCPServerViewsLoading || isActionsLoading ? (
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner />
           </div>
         ) : fields.length === 0 ? (
           <EmptyCTA
             action={
-              <div className="flex items-center gap-2">{dropdownButtons}</div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  onClick={onClickKnowledge}
+                  label="Add knowledge"
+                  icon={BookOpenIcon}
+                  variant="primary"
+                />
+                <Button
+                  type="button"
+                  onClick={() => setDialogMode({ type: "add" })}
+                  label="Add tools"
+                  icon={ToolsIcon}
+                  variant="outline"
+                />
+              </div>
             }
+            className="pb-5"
             style={BACKGROUND_IMAGE_STYLE_PROPS}
           />
         ) : (
-          <CardGrid>
-            {fields.map((field, index) => (
-              <ActionCard
-                key={field.id}
-                action={field}
-                onRemove={() => remove(index)}
-                onEdit={() => handleActionEdit(field, index)}
-              />
-            ))}
-          </CardGrid>
+          <>
+            {nonGlobalSpacesUsedInActions.length > 0 && (
+              <div className="mb-4 w-full">
+                <ContentMessage variant="golden" size="lg">
+                  Based on your selection, this agent can only be used by users
+                  with access to space
+                  {pluralize(nonGlobalSpacesUsedInActions.length)} :{" "}
+                  <strong>
+                    {nonGlobalSpacesUsedInActions.map((v) => v.name).join(", ")}
+                  </strong>
+                  .
+                </ContentMessage>
+              </div>
+            )}
+            <CardGrid>
+              {fields.map((field, index) => (
+                <ActionCard
+                  key={field.id}
+                  action={field}
+                  onRemove={() => remove(index)}
+                  onEdit={() => handleActionEdit(field, index)}
+                />
+              ))}
+            </CardGrid>
+          </>
         )}
       </div>
-    </div>
+      <KnowledgeConfigurationSheet
+        onClose={handleCloseSheet}
+        onSave={handleEditSave}
+        action={knowledgeAction?.action ?? null}
+        actions={fields}
+        isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
+        mcpServerViews={mcpServerViewsWithKnowledge}
+        getAgentInstructions={getAgentInstructions}
+        presetActionData={knowledgeAction?.presetData}
+      />
+      <MCPServerViewsSheet
+        addTools={append}
+        dataVisualization={dataVisualization}
+        mode={dialogMode}
+        onModeChange={setDialogMode}
+        onActionUpdate={handleMcpActionUpdate}
+        selectedActions={fields}
+        getAgentInstructions={getAgentInstructions}
+      />
+    </AgentBuilderSectionContainer>
   );
 }

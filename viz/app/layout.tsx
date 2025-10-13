@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Inter } from "next/font/google";
 
-import "./globals.css";
+import "./styles/globals.css";
 
 const geist = localFont({
   src: [
@@ -145,6 +146,12 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
 });
 
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
+
 export const metadata: Metadata = {
   title: "Dust Viz",
 };
@@ -157,7 +164,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geist.variable} ${geistMono.variable} ${geist.className} ${geistMono.className}`}
+      className={`${geist.variable} ${geistMono.variable} ${geist.className} ${geistMono.className} ${inter.variable} ${inter.className}`}
     >
       <body>{children}</body>
     </html>

@@ -45,6 +45,16 @@ export function isGithubIssueWasDeletedError(
   );
 }
 
+export function isGithubIssueWasDisabledError(
+  error: unknown
+): error is RequestError {
+  return (
+    error instanceof RequestError &&
+    error.status === 410 &&
+    error.message.includes("Issues are disabled for this repo")
+  );
+}
+
 export function isGraphQLNotFound(error: unknown): error is Error {
   return (
     error instanceof Error &&

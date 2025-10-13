@@ -28,7 +28,7 @@ export function ViewMCPServerViewTable({
       <div className="flex justify-between gap-3">
         <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-md flex-grow pb-4 font-bold">Overview:</h2>
+            <h2 className="text-md flex-grow pb-4 font-bold">Overview</h2>
           </div>
           <PokeTable>
             <PokeTableBody>
@@ -83,6 +83,7 @@ export function ViewMCPServerViewTable({
                     <PokeTableHead>Edited At</PokeTableHead>
                     <PokeTableCell>
                       {formatTimestampToFriendlyDate(
+                        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                         mcpServerView.editedByUser.editedAt || 0
                       )}
                     </PokeTableCell>

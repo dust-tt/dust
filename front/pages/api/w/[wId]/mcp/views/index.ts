@@ -1,6 +1,5 @@
-import type { MCPViewsRequestAvailabilityType } from "@dust-tt/client";
-import { GetMCPViewsRequestSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -12,6 +11,16 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
+
+const MCPViewsRequestAvailabilitySchema = z.enum(["manual", "auto"]);
+type MCPViewsRequestAvailabilityType = z.infer<
+  typeof MCPViewsRequestAvailabilitySchema
+>;
+
+const GetMCPViewsRequestSchema = z.object({
+  spaceIds: z.array(z.string()),
+  availabilities: z.array(MCPViewsRequestAvailabilitySchema),
+});
 
 export type GetMCPServerViewsListResponseBody = {
   success: boolean;

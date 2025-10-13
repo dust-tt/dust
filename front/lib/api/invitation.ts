@@ -1,4 +1,5 @@
 import sgMail from "@sendgrid/mail";
+import { escape } from "html-escaper";
 import { sign } from "jsonwebtoken";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -9,6 +10,7 @@ import {
   getWorkspaceAdministrationVersionLock,
 } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -28,9 +30,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
-
-// Make token expires after 7 days
-const INVITATION_EXPIRATION_TIME_SEC = 60 * 60 * 24 * 7;
 
 function typeFromModel(
   invitation: MembershipInvitationModel
@@ -185,7 +184,8 @@ export async function sendWorkspaceInvitationEmail(
     templateId: config.getInvitationEmailTemplate(),
     dynamic_template_data: {
       inviteLink: getMembershipInvitationUrl(owner, invitation.id),
-      inviterName: user.fullName,
+      // Escape the name to prevent XSS attacks via injected script elements.
+      inviterName: escape(user.fullName),
       workspaceName: owner.name,
     },
   };

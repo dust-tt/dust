@@ -4,6 +4,7 @@
 .idea
 test.ts
 .env.local
+.env.agent.local
 qdrant_storage
 .*.swp
 .rgignore
@@ -14,3 +15,8 @@ oauth-api-keys.json
 CLAUDE.md
 **/.yalc
 yalc.lock
+front/public/sitemap.xml
+front/public/robots.txt
+mprocs.log
+tsconfig.tsbuildinfo
+front/.npm-cache

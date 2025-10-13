@@ -6,7 +6,7 @@ import type {
   WhereOptions,
 } from "sequelize";
 
-import { makeUrlForEmojiAndBackground } from "@app/components/assistant_builder/avatar_picker/utils";
+import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
 import type { Authenticator } from "@app/lib/auth";
 import {
   CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
@@ -26,6 +26,7 @@ import { Err, normalizeError, Ok } from "@app/types";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface TemplateResource
   extends ReadonlyAttributesType<TemplateModel> {}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class TemplateResource extends BaseResource<TemplateModel> {
   static model: ModelStatic<TemplateModel> = TemplateModel;
@@ -37,10 +38,35 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     super(TemplateModel, blob);
   }
 
-  static async makeNew(blob: CreationAttributes<TemplateModel>) {
-    const template = await TemplateModel.create({
-      ...blob,
+  get pictureUrl() {
+    const [id, unified] = this.emoji ? this.emoji.split("/") : [];
+
+    return makeUrlForEmojiAndBackground(
+      {
+        id,
+        unified,
+        native: "",
+      },
+      this.backgroundColor as `bg-${string}`
+    );
+  }
+
+  get sId(): string {
+    return TemplateResource.modelIdToSId({
+      id: this.id,
     });
+  }
+
+  static async makeNew(
+    blob: CreationAttributes<TemplateModel>,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
+    const template = await TemplateModel.create(
+      {
+        ...blob,
+      },
+      { transaction }
+    );
 
     return new this(TemplateModel, template.get());
   }
@@ -74,6 +100,41 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     );
   }
 
+  static async upsertByHandle(
+    blob: CreationAttributes<TemplateModel>
+  ): Promise<Result<TemplateResource, Error>> {
+    const existing = await TemplateModel.findOne({
+      where: { handle: blob.handle },
+    });
+
+    if (existing) {
+      await existing.update(blob);
+      return new Ok(new TemplateResource(TemplateModel, existing.get()));
+    }
+
+    const templateWithSameId = await TemplateModel.findOne({
+      where: { id: blob.id },
+    });
+
+    if (templateWithSameId) {
+      return new Err(new Error("Template id already taken"));
+    }
+
+    const template = await TemplateResource.makeNew(blob);
+    return new Ok(template);
+  }
+
+  static modelIdToSId({ id }: { id: ModelId }): string {
+    return makeSId("template", {
+      id,
+      workspaceId: CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
+    });
+  }
+
+  static isTemplateSId(sId: string): boolean {
+    return isResourceSId("template", sId);
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
@@ -103,53 +164,9 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     return this.visibility === "published";
   }
 
-  get pictureUrl() {
-    const [id, unified] = this.emoji ? this.emoji.split("/") : [];
-
-    return makeUrlForEmojiAndBackground(
-      {
-        id,
-        unified,
-        native: "",
-      },
-      this.backgroundColor as `bg-${string}`
-    );
-  }
-
-  get sId(): string {
-    return TemplateResource.modelIdToSId({
-      id: this.id,
-    });
-  }
-
-  static async upsertByHandle(
-    blob: CreationAttributes<TemplateModel>
-  ): Promise<Result<TemplateResource, Error>> {
-    const existing = await TemplateModel.findOne({
-      where: { handle: blob.handle },
-    });
-
-    if (existing) {
-      await existing.update(blob);
-      return new Ok(new TemplateResource(TemplateModel, existing.get()));
-    }
-    const template = await TemplateResource.makeNew(blob);
-    return new Ok(template);
-  }
-
-  static modelIdToSId({ id }: { id: ModelId }): string {
-    return makeSId("template", {
-      id,
-      workspaceId: CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
-    });
-  }
-
-  static isTemplateSId(sId: string): boolean {
-    return isResourceSId("template", sId);
-  }
-
   toListJSON() {
     return {
+      id: this.id,
       description: this.description,
       handle: this.handle,
       pictureUrl: this.pictureUrl,
@@ -161,6 +178,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
 
   toJSON() {
     return {
+      id: this.id,
       backgroundColor: this.backgroundColor,
       description: this.description,
       emoji: this.emoji,

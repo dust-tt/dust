@@ -17,6 +17,7 @@ interface BaseAssistantCardProps {
   subtitle?: string;
   className?: string;
   onClick?: () => void;
+  onContextMenu?: (event: React.MouseEvent) => void;
   variant?: CardVariantType;
 }
 
@@ -42,6 +43,7 @@ export const AssistantCard = React.forwardRef<
     {
       className,
       onClick,
+      onContextMenu,
       title,
       description,
       pictureUrl,
@@ -57,6 +59,7 @@ export const AssistantCard = React.forwardRef<
         size="md"
         className={cn("s-flex s-flex-col s-gap-3", className)}
         onClick={onClick}
+        onContextMenu={onContextMenu}
         action={action}
         variant={variant}
       >
@@ -116,7 +119,7 @@ export const LargeAssistantCard = React.forwardRef<
             "s-text-foreground dark:s-text-foreground-night"
           )}
         >
-          <h3 className="s-font-semibold">{title}</h3>
+          <h3 className="s-heading-base">{title}</h3>
           <p
             className={cn(
               "s-line-clamp-5 s-overflow-hidden s-text-ellipsis",

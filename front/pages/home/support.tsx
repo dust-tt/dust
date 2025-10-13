@@ -134,7 +134,7 @@ function HeroSection() {
               variant="primary"
               size="md"
               label="Contact support"
-              href="/home/contact"
+              href="mailto:support@dust.tt"
               className="w-full sm:w-auto"
             />
             <UTMButton

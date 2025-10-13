@@ -1,3 +1,5 @@
+// Okay to use public API types because here front is talking to core API.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type {
   DataSourceFolderSpreadsheetMimeType,
   DataSourceSearchQuery,
@@ -20,7 +22,7 @@ import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { DustError } from "@app/lib/error";
 import { getDustDataSourcesBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
-import { Lock } from "@app/lib/lock";
+import { executeWithLock } from "@app/lib/lock";
 import { TrackerDataSourceConfigurationModel } from "@app/lib/models/doc_tracker";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -387,6 +389,7 @@ export async function upsertDocument({
 > {
   // enforcing validation on the parents and parent_id
   const documentId = document_id;
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const documentParents = parents || [documentId];
   const documentParentId = parent_id ?? null;
 
@@ -445,8 +448,10 @@ export async function upsertDocument({
           content: text,
           sections: [],
         }
-      : section || null;
+      : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        section || null;
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const nonNullTags = tags || [];
 
   const titleInTags = nonNullTags
@@ -893,7 +898,9 @@ export async function createDataSourceFolder(
     dataSourceId: dataSource.dustAPIDataSourceId,
     folderId,
     mimeType,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     parentId: parentId || null,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     parents: parents || [folderId],
     projectId: dataSource.dustAPIProjectId,
     providerVisibility: "public",
@@ -1079,7 +1086,7 @@ async function getOrCreateConversationDataSource(
 > {
   const lockName = "conversationDataSource" + conversation.id;
 
-  const res = await Lock.executeWithLock(
+  const res = await executeWithLock(
     lockName,
     async (): Promise<
       Result<

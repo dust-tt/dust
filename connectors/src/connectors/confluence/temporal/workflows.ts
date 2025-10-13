@@ -57,7 +57,7 @@ const {
 const { confluenceUpdateContentParentIdsActivity } = proxyActivities<
   typeof activities
 >({
-  startToCloseTimeout: "60 minutes",
+  startToCloseTimeout: "90 minutes",
   heartbeatTimeout: "5 minutes",
 });
 
@@ -188,7 +188,7 @@ export async function confluenceSpaceSyncWorkflow(
     confluenceCloudId: confluenceConfig?.cloudId,
   });
   // If the space does not exist, launch a workflow to remove the space.
-  if (space === null) {
+  if (!space) {
     return startConfluenceRemoveSpaceWorkflow(wInfo, connectorId, spaceId);
   }
 
@@ -361,12 +361,18 @@ export async function confluenceSyncTopLevelChildContentWorkflow(
     }
 
     // Get child content using either initial empty cursor or saved cursor.
-    const { childContentRefs, nextPageCursor } =
+    const childContentRefsRes =
       await confluenceGetActiveChildContentRefsActivity({
         ...params,
         parentContentId: isContentRef ? current.id : current.parentId,
         pageCursor: isContentRef ? "" : current.cursor,
       });
+
+    if (!childContentRefsRes) {
+      continue;
+    }
+
+    const { childContentRefs, nextPageCursor } = childContentRefsRes;
 
     // Add children and next cursor if there are more.
     stack.push(...childContentRefs);

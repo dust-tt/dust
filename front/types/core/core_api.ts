@@ -2,8 +2,8 @@ import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { EmbeddingProviderIdType } from "@app/types";
 import { dustManagedCredentials } from "@app/types/api/credentials";
-import type { EmbeddingProviderIdType } from "@app/types/assistant/assistant";
 import type { ProviderVisibility } from "@app/types/connectors/connectors_api";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import type {
@@ -34,6 +34,7 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LoggerInterface } from "@app/types/shared/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { errorToString } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export const MAX_CHUNK_SIZE = 512;
@@ -157,44 +158,6 @@ export type CoreAPIRow = {
   row_id: string;
   value: Record<string, CoreAPIRowValue>;
 };
-
-export function isRowMatchingSchema(
-  row: CoreAPIRow,
-  schema: CoreAPITableSchema
-) {
-  for (const [k, v] of Object.entries(row.value)) {
-    if (v === null) {
-      continue;
-    }
-    if (typeof v === "string" && v.trim().length === 0) {
-      continue;
-    }
-    const schemaEntry = schema.find((s) => s.name === k);
-    if (!schemaEntry) {
-      return false;
-    }
-
-    if (schemaEntry.value_type === "int" && typeof v !== "number") {
-      return false;
-    } else if (schemaEntry.value_type === "float" && typeof v !== "number") {
-      return false;
-    } else if (schemaEntry.value_type === "text" && typeof v !== "string") {
-      return false;
-    } else if (schemaEntry.value_type === "bool" && typeof v !== "boolean") {
-      return false;
-    } else if (
-      schemaEntry.value_type === "datetime" &&
-      (typeof v !== "object" ||
-        !v ||
-        typeof v.epoch !== "number" ||
-        (v.string_value && typeof v.string_value !== "string"))
-    ) {
-      return false;
-    }
-  }
-
-  return true;
-}
 
 export type CoreAPIQueryResult = {
   value: Record<string, string | number | boolean | null | undefined>;
@@ -780,6 +743,28 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async cancelRun({
+    projectId,
+    runId,
+  }: {
+    projectId: string;
+    runId: string;
+  }): Promise<CoreAPIResponse<{ success: boolean }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(
+        projectId
+      )}/runs/${encodeURIComponent(runId)}/cancel`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
   async getSpecificationHashes({
     projectId,
   }: {
@@ -1013,21 +998,15 @@ export class CoreAPI {
     const searchResults = await concurrentExecutor(
       searches,
       async (search) => {
-        const result = await this.searchDataSource(
-          search.projectId,
-          search.dataSourceId,
-          {
-            query: query,
-            topK: topK,
-            filter: search.filter,
-            view_filter: search.view_filter,
-            fullText: fullText,
-            credentials: credentials,
-            target_document_tokens: target_document_tokens,
-          }
-        );
-
-        return result;
+        return this.searchDataSource(search.projectId, search.dataSourceId, {
+          query: query,
+          topK: topK,
+          filter: search.filter,
+          view_filter: search.view_filter,
+          fullText: fullText,
+          credentials: credentials,
+          target_document_tokens: target_document_tokens,
+        });
       },
       { concurrency: 10 }
     );
@@ -1510,15 +1489,26 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
-  async dataSourceTokenize({
-    text,
-    projectId,
-    dataSourceId,
-  }: {
-    text: string;
-    projectId: string;
-    dataSourceId: string;
-  }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
+  async dataSourceTokenize(
+    {
+      text,
+      projectId,
+      dataSourceId,
+    }: {
+      text: string;
+      projectId: string;
+      dataSourceId: string;
+    },
+    opts?: { signal?: AbortSignal; timeoutMs?: number }
+  ): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
+    // Support optional timeout via AbortController to avoid excessively long calls.
+    let signal: AbortSignal | undefined = opts?.signal;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if (!signal && opts?.timeoutMs && opts.timeoutMs > 0) {
+      const controller = new AbortController();
+      signal = controller.signal;
+      timeoutId = setTimeout(() => controller.abort(), opts.timeoutMs);
+    }
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
@@ -1529,8 +1519,12 @@ export class CoreAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ text }),
+        signal,
       }
     );
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
     return this._resultFromResponse(response);
   }
 
@@ -1781,7 +1775,7 @@ export class CoreAPI {
         },
         body: JSON.stringify({
           rows,
-          truncate: truncate || false,
+          truncate: truncate ?? false,
         }),
       }
     );
@@ -1822,7 +1816,7 @@ export class CoreAPI {
         body: JSON.stringify({
           bucket,
           bucket_csv_path: bucketCSVPath,
-          truncate: truncate || false,
+          truncate: truncate ?? false,
         }),
       }
     );
@@ -2117,7 +2111,7 @@ export class CoreAPI {
     limit,
   }: {
     query?: string;
-    queryType?: string;
+    queryType?: "exact" | "prefix" | "match";
     dataSourceViews: DataSourceViewType[];
     limit?: number;
   }): Promise<CoreAPIResponse<CoreAPISearchTagsResponse>> {
@@ -2254,16 +2248,27 @@ export class CoreAPI {
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {
       const duration = Date.now() - now;
-      const err: CoreAPIError = {
-        code: "unexpected_network_error",
-        message: `Unexpected network error from CoreAPI: ${e}`,
-      };
+      const isAbort =
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        (init && init.signal && (init.signal as AbortSignal).aborted) ||
+        // Some environments throw an AbortError with name property.
+        (e as any)?.name === "AbortError";
+      const err: CoreAPIError = isAbort
+        ? {
+            code: "request_timeout",
+            message: `CoreAPI request aborted due to timeout`,
+          }
+        : {
+            code: "unexpected_network_error",
+            message: `Unexpected network error from CoreAPI: ${e}`,
+          };
       this._logger.error(
         {
           url,
           duration,
           coreError: err,
           error: e,
+          errorMessage: errorToString(e),
         },
         "CoreAPI error"
       );

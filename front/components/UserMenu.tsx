@@ -8,12 +8,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
+  DropdownMenuPortal,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  EyeIcon,
+  EyeSlashIcon,
   Icon,
   LightbulbIcon,
   LogoutIcon,
@@ -25,8 +26,9 @@ import {
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
+import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
+import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -51,7 +53,7 @@ export function UserMenu({
   });
 
   const sendNotification = useSendNotification();
-  const { setNavigationSelection } = usePersistedNavigationSelection();
+  const privacyMask = usePrivacyMask();
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {
@@ -78,9 +80,7 @@ export function UserMenu({
 
   // Check if user has multiple workspaces
   const hasMultipleWorkspaces = useMemo(() => {
-    return (
-      "workspaces" in user && user.workspaces && user.workspaces.length > 1
-    );
+    return user.organizations && user.organizations.length > 1;
   }, [user]);
 
   return (
@@ -106,7 +106,7 @@ export function UserMenu({
             >
               {user.firstName}
             </span>
-            <span className="w-full truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
               {owner.name}
             </span>
           </div>
@@ -123,27 +123,7 @@ export function UserMenu({
         {hasMultipleWorkspaces && (
           <>
             <DropdownMenuLabel label="Workspace" />
-            <DropdownMenuRadioGroup value={owner.sId}>
-              {"workspaces" in user &&
-                user.workspaces.map((w) => (
-                  <DropdownMenuRadioItem
-                    key={w.sId}
-                    value={w.sId}
-                    onClick={async () => {
-                      await setNavigationSelection({
-                        lastWorkspaceId: w.sId,
-                      });
-                      if (w.id !== owner.id) {
-                        await router
-                          .push(`/w/${w.sId}/assistant/new`)
-                          .then(() => router.reload());
-                      }
-                    }}
-                  >
-                    {w.name}
-                  </DropdownMenuRadioItem>
-                ))}
-            </DropdownMenuRadioGroup>
+            <WorkspacePickerRadioGroup user={user} workspace={owner} />
           </>
         )}
 
@@ -183,11 +163,7 @@ export function UserMenu({
             window.DD_RUM.onReady(() => {
               window.DD_RUM.clearUser();
             });
-            if (document.cookie.includes("sessionType=workos")) {
-              window.location.href = "/api/workos/logout";
-            } else {
-              window.location.href = "/api/auth/logout";
-            }
+            window.location.href = "/api/workos/logout";
           }}
         />
 
@@ -196,44 +172,52 @@ export function UserMenu({
             <DropdownMenuLabel label="Advanced" />
             <DropdownMenuSub>
               <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
-              <DropdownMenuSubContent>
-                {router.route === "/w/[wId]/assistant/[cId]" && (
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  {router.route === "/w/[wId]/agent/[cId]" && (
+                    <DropdownMenuItem
+                      label="Debug conversation"
+                      onClick={() => {
+                        const regexp = new RegExp(`/w/([^/]+)/agent/([^/]+)`);
+                        const match = window.location.href.match(regexp);
+                        if (match) {
+                          window.open(
+                            `/poke/${match[1]}/conversations/${match[2]}`,
+                            "_blank"
+                          );
+                        }
+                      }}
+                      icon={ShapesIcon}
+                    />
+                  )}
+                  {!isOnlyAdmin(owner) && (
+                    <DropdownMenuItem
+                      label="Become Admin"
+                      onClick={() => forceRoleUpdate("admin")}
+                      icon={StarIcon}
+                    />
+                  )}
+                  {!isOnlyBuilder(owner) && (
+                    <DropdownMenuItem
+                      label="Become Builder"
+                      onClick={() => forceRoleUpdate("builder")}
+                      icon={LightbulbIcon}
+                    />
+                  )}
+                  {!isOnlyUser(owner) && (
+                    <DropdownMenuItem
+                      label="Become User"
+                      onClick={() => forceRoleUpdate("user")}
+                      icon={UserIcon}
+                    />
+                  )}
                   <DropdownMenuItem
-                    label="Debug conversation"
-                    onClick={() => {
-                      const regexp = new RegExp(`/w/([^/]+)/assistant/([^/]+)`);
-                      const match = window.location.href.match(regexp);
-                      if (match) {
-                        void router.push(
-                          `/poke/${match[1]}/conversations/${match[2]}`
-                        );
-                      }
-                    }}
-                    icon={ShapesIcon}
+                    label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
+                    onClick={privacyMask.toggle}
+                    icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
                   />
-                )}
-                {!isOnlyAdmin(owner) && (
-                  <DropdownMenuItem
-                    label="Become Admin"
-                    onClick={() => forceRoleUpdate("admin")}
-                    icon={StarIcon}
-                  />
-                )}
-                {!isOnlyBuilder(owner) && (
-                  <DropdownMenuItem
-                    label="Become Builder"
-                    onClick={() => forceRoleUpdate("builder")}
-                    icon={LightbulbIcon}
-                  />
-                )}
-                {!isOnlyUser(owner) && (
-                  <DropdownMenuItem
-                    label="Become User"
-                    onClick={() => forceRoleUpdate("user")}
-                    icon={UserIcon}
-                  />
-                )}
-              </DropdownMenuSubContent>
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
             </DropdownMenuSub>
           </>
         )}

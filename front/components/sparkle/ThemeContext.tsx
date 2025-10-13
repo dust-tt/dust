@@ -107,6 +107,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const restoreAnimation = disableAnimation();
     document.documentElement.classList.toggle("dark", nextIsDark);
     document.documentElement.classList.toggle("s-dark", nextIsDark);
+
+    if (nextIsDark) {
+      document.body.classList.add("bg-background-night");
+    } else {
+      document.body.classList.remove("bg-background-night");
+    }
     restoreAnimation();
   }, []);
 

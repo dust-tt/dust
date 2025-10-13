@@ -1,11 +1,8 @@
 import {
-  CheckCircleIcon,
   CircleIcon,
-  EyeIcon,
   HexagonIcon,
   Icon,
   LinkIcon,
-  LockIcon,
   PlanetIcon,
   RectangleIcon,
   RobotIcon,
@@ -211,20 +208,20 @@ export const Strong = ({ children, className = "" }: ContentProps) => (
 
 export function CloudConnectorsSection() {
   return (
-    <div className="rounded-2xl bg-gray-50 px-6 py-8 sm:px-8 sm:py-10 md:px-10 md:py-12 lg:px-12 lg:py-16">
+    <div className="rounded-2xl bg-blue-50 px-6 py-4 sm:px-8 sm:py-6 md:px-10 lg:px-12 lg:py-0">
       <div className="flex flex-col items-center gap-6 sm:gap-8 md:gap-10 lg:flex-row lg:gap-16">
-        <div className="mb-2 w-full text-left sm:mb-4 md:mb-0 lg:w-1/2">
+        <div className="w-full text-left lg:w-1/2">
           <H3 className="mb-4 sm:mb-6">Work amplified</H3>
           <P size="md" className="text-muted-foreground">
             Dust is your future-proof AI platform: we are model-agnostic and let
             you connect all your existing systems.
           </P>
         </div>
-        <div className="flex w-full justify-center lg:w-1/2 lg:justify-end">
+        <div className="flex w-full justify-center lg:h-96 lg:w-1/2 lg:justify-end lg:overflow-hidden lg:rounded-2xl">
           <img
-            src="/static/landing/connectors/cloud_Connectors.png"
+            src="/static/landing/connectors/cloud_Connectors.svg"
             alt="Cloud Connectors"
-            className="h-auto w-full max-w-md object-contain sm:max-w-lg md:max-w-xl lg:h-96 lg:max-w-none"
+            className="h-auto w-full max-w-md object-contain sm:max-w-lg md:max-w-xl lg:h-full lg:w-full lg:object-cover"
           />
         </div>
       </div>
@@ -236,29 +233,47 @@ export function SecurityComplianceSection() {
   return (
     <div>
       <H2 className="mb-6 text-left">Security & compliance</H2>
-      <div className="flex w-full flex-col justify-between gap-6 md:flex-row">
-        <div className="flex flex-1 flex-col rounded-2xl bg-blue-50 p-6">
-          <Icon visual={LockIcon} className="mb-4 h-8 w-8 text-blue-400" />
-          <h4 className="text-lg font-semibold">Data-privacy</h4>
-          <P size="sm" className="mt-1 text-muted-foreground">
-            Your data is your data. Never used for model training.
+      <div className="grid gap-6 sm:gap-8 md:grid-cols-3">
+        <div className="rounded-2xl bg-gray-50 p-6">
+          <div className="mb-6 flex h-12 w-12 items-center justify-center">
+            <img
+              src="/static/landing/industry/d-blue.svg"
+              alt="Blue geometric shape"
+              className="h-full w-full object-contain"
+            />
+          </div>
+          <H3 className="mb-4">Data privacy</H3>
+          <P size="sm" className="text-muted-foreground">
+            Your data stays your data—never used for model training. Encryption
+            at rest and in transit by default.
           </P>
         </div>
-        <div className="flex flex-1 flex-col rounded-2xl bg-golden-50 p-6">
-          <Icon visual={EyeIcon} className="mb-4 h-8 w-8 text-golden-400" />
-          <h4 className="text-lg font-semibold">Access-control</h4>
-          <P size="sm" className="mt-1 text-muted-foreground">
-            Fine-grained permissions with Spaces for sensitive information.
+        <div className="rounded-2xl bg-gray-50 p-6">
+          <div className="mb-6 flex h-12 w-12 items-center justify-center">
+            <img
+              src="/static/landing/industry/d-red.svg"
+              alt="Red geometric shape"
+              className="h-full w-full object-contain"
+            />
+          </div>
+          <H3 className="mb-4">Access control</H3>
+          <P size="sm" className="text-muted-foreground">
+            Fine‑grained permissions with Spaces, SSO/SCIM support, and
+            role‑based controls for sensitive information.
           </P>
         </div>
-        <div className="flex flex-1 flex-col rounded-2xl bg-rose-50 p-6">
-          <Icon
-            visual={CheckCircleIcon}
-            className="mb-4 h-8 w-8 text-rose-400"
-          />
-          <h4 className="text-lg font-semibold">Compliance</h4>
-          <P size="sm" className="mt-1 text-muted-foreground">
-            SOC2 Type II certified, HIPAA and GDPR compliant.
+        <div className="rounded-2xl bg-gray-50 p-6">
+          <div className="mb-6 flex h-12 w-12 items-center justify-center">
+            <img
+              src="/static/landing/industry/d-green.svg"
+              alt="Green geometric shape"
+              className="h-full w-full object-contain"
+            />
+          </div>
+          <H3 className="mb-4">Compliance</H3>
+          <P size="sm" className="text-muted-foreground">
+            SOC 2 Type II certified. GDPR compliant. Enables HIPAA compliance.
+            Enterprise audit logs and data residency options.
           </P>
         </div>
       </div>

@@ -63,17 +63,21 @@ function extractUsageFromExecutions(
           token_usage: {
             prompt_tokens: number;
             completion_tokens: number;
+            cached_tokens?: number;
             reasoning_tokens?: number;
           };
         };
         if (token_usage) {
           const promptTokens = token_usage.prompt_tokens;
           const completionTokens = token_usage.completion_tokens;
+          const cachedTokens = token_usage.cached_tokens;
+
           usages.push({
             providerId: block.provider_id,
             modelId: block.model_id,
             promptTokens,
             completionTokens,
+            cachedTokens: cachedTokens ?? null,
           });
         }
       }
@@ -264,6 +268,11 @@ async function handler(
         }
       }
 
+      // Fetch the feature flags for the owner of the run.
+      const keyWorkspaceFlags = await getFeatureFlags(
+        keyAuth.getNonNullableWorkspace()
+      );
+
       let credentials: CredentialsType | null = null;
       if (auth.isSystemKey() && !useWorkspaceCredentials) {
         // Dust managed credentials: system API key (packaged apps).
@@ -294,11 +303,6 @@ async function handler(
       const flags = await getFeatureFlags(owner);
       const storeBlocksResults = !flags.includes("disable_run_logs");
 
-      // Fetch the feature flags for the owner of the run.
-      const keyWorkspaceFlags = await getFeatureFlags(
-        keyAuth.getNonNullableWorkspace()
-      );
-
       logger.info(
         {
           workspace: {
@@ -306,6 +310,8 @@ async function handler(
             name: owner.name,
           },
           app: app.sId,
+          useOpenAIEUEndpoint: credentials?.OPENAI_USE_EU_ENDPOINT,
+          userWorkspace: keyAuth.getNonNullableWorkspace().sId,
         },
         "App run creation"
       );

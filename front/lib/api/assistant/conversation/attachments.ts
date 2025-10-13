@@ -1,11 +1,13 @@
-import { assertNever, CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
-import assert from "assert";
+// All mime types are okay to use from the public API.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 import {
   isConversationIncludableFileContentType,
   isQueryableContentType,
   isSearchableContentType,
 } from "@app/lib/api/assistant/conversation/content_types";
+import logger from "@app/logger/logger";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentType,
@@ -17,6 +19,7 @@ import type {
   SupportedFileContentType,
 } from "@app/types";
 import {
+  assertNever,
   DATA_SOURCE_NODE_ID,
   isContentNodeContentFragment,
   isFileContentFragment,
@@ -81,7 +84,7 @@ export function conversationAttachmentId(
 
 export function getAttachmentFromContentFragment(
   cf: ContentFragmentType
-): ConversationAttachmentType {
+): ConversationAttachmentType | null {
   if (isContentNodeContentFragment(cf)) {
     return getAttachmentFromContentNodeContentFragment(cf);
   }
@@ -114,7 +117,7 @@ export function getAttachmentFromContentNodeContentFragment(
     contentType: cf.contentType,
     snippet: null,
     contentFragmentVersion: cf.contentFragmentVersion,
-    // Backward compatibility: we fallback to the fileId if no generated tables are mentionned
+    // Backward compatibility: we fallback to the fileId if no generated tables are mentioned
     // but the file is queryable.
     generatedTables: isQueryable ? [cf.nodeId] : [],
     isIncludable,
@@ -133,9 +136,18 @@ export function getAttachmentFromContentNodeContentFragment(
 
 export function getAttachmentFromFileContentFragment(
   cf: FileContentFragmentType
-): FileAttachmentType {
+): FileAttachmentType | null {
   const fileId = cf.fileId;
-  assert(fileId, `File attachment must have a fileId (sId: ${cf.sId})`);
+  if (!fileId) {
+    logger.warn(
+      {
+        contentFragmentId: cf.sId,
+        contentFragmentCreatedAt: new Date(cf.created),
+      },
+      "File attachment without a fileId (unsupported legacy)."
+    );
+    return null;
+  }
 
   // Here, snippet not null is actually to detect file attachments that are prior to the JIT
   // actions, and differentiate them from the newer file attachments that do have a snippet.
@@ -149,7 +161,7 @@ export function getAttachmentFromFileContentFragment(
     contentType: cf.contentType,
     snippet: cf.snippet,
     contentFragmentVersion: cf.contentFragmentVersion,
-    // Backward compatibility: we fallback to the fileId if no generated tables are mentionned
+    // Backward compatibility: we fallback to the fileId if no generated tables are mentioned
     // but the file is queryable.
     generatedTables:
       cf.generatedTables.length > 0

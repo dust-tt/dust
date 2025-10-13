@@ -1,12 +1,8 @@
-import { chunk } from "lodash";
-import { Op } from "sequelize";
+import chunk from "lodash/chunk";
 
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentMCPAction,
-  AgentMCPActionOutputItem,
-} from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -16,11 +12,17 @@ import {
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { ConversationWithoutContentType, ModelId } from "@app/types";
-import { removeNulls } from "@app/types";
+import type {
+  ConversationError,
+  ConversationWithoutContentType,
+  ModelId,
+  Result,
+} from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
@@ -29,13 +31,10 @@ async function destroyActionsRelatedResources(
   agentMessageIds: Array<ModelId>
 ) {
   // First, retrieve the MCP actions.
-  const mcpActions = await AgentMCPAction.findAll({
-    attributes: ["id"],
-    where: {
-      agentMessageId: { [Op.in]: agentMessageIds },
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
+  const mcpActions = await AgentMCPActionResource.listByAgentMessageIds(
+    auth,
+    agentMessageIds
+  );
 
   // Destroy MCP action output items.
   await AgentMCPActionOutputItem.destroy({
@@ -43,8 +42,8 @@ async function destroyActionsRelatedResources(
   });
 
   // Destroy the actions.
-  await AgentMCPAction.destroy({
-    where: { agentMessageId: agentMessageIds },
+  await AgentMCPActionResource.deleteByAgentMessageId(auth, {
+    agentMessageIds,
   });
 }
 
@@ -137,7 +136,7 @@ export async function destroyConversation(
   }: {
     conversationId: string;
   }
-) {
+): Promise<Result<void, ConversationError>> {
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
       auth,
@@ -147,8 +146,9 @@ export async function destroyConversation(
       { includeDeleted: true, dangerouslySkipPermissionFiltering: true }
     );
   if (conversationRes.isErr()) {
-    throw conversationRes.error;
+    return new Err(conversationRes.error);
   }
+
   const conversation = conversationRes.value;
 
   const messages = await Message.findAll({
@@ -212,4 +212,6 @@ export async function destroyConversation(
   if (c) {
     await c.delete(auth);
   }
+
+  return new Ok(undefined);
 }

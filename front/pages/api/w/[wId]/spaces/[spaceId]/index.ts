@@ -1,6 +1,6 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
-import { uniqBy } from "lodash";
+import uniqBy from "lodash/uniqBy";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
@@ -16,7 +16,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
-  DataSourceWithAgentsUsageType,
+  AgentsUsageType,
   SpaceType,
   UserType,
   WithAPIErrorResponse,
@@ -28,7 +28,7 @@ import {
 } from "@app/types";
 
 export type SpaceCategoryInfo = {
-  usage: DataSourceWithAgentsUsageType;
+  usage: AgentsUsageType;
   count: number;
 };
 

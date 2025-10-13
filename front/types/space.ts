@@ -4,7 +4,11 @@ export const UNIQUE_SPACE_KINDS = [
   "conversations",
 ] as const;
 
-const SPACE_KINDS = [...UNIQUE_SPACE_KINDS, "public", "regular"] as const;
+export const SPACE_KINDS = [
+  ...UNIQUE_SPACE_KINDS,
+  "public",
+  "regular",
+] as const;
 
 export type SpaceKind = (typeof SPACE_KINDS)[number];
 

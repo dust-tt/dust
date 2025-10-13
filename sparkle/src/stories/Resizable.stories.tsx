@@ -85,7 +85,7 @@ export function ResizableGrabDemo() {
       className="s-min-h-[200px] s-max-w-md s-rounded-lg s-border s-bg-white md:s-min-w-[450px]"
     >
       <ResizablePanel defaultSize={25}>
-        <div className="s-flex s-h-full s-items-center s-justify-center s-bg-primary-900 s-p-6 s-text-white">
+        <div className="s-flex s-h-full s-items-center s-justify-center">
           <span className="s-font-semibold">Sidebar</span>
         </div>
       </ResizablePanel>

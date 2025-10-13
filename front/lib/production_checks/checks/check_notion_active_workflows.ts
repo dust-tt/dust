@@ -1,5 +1,4 @@
 import type { Client } from "@temporalio/client";
-import type { LoggerOptions } from "pino";
 import type pino from "pino";
 import { QueryTypes } from "sequelize";
 
@@ -36,7 +35,7 @@ async function getDescriptionsAndHistories({
 }: {
   client: Client;
   notionConnector: NotionConnector;
-  logger: pino.Logger<LoggerOptions>;
+  logger: pino.Logger;
 }) {
   logger.info(
     {
@@ -94,7 +93,7 @@ async function getDescriptionsAndHistories({
 async function areTemporalWorkflowsRunning(
   client: Client,
   notionConnector: NotionConnector,
-  logger: pino.Logger<LoggerOptions>
+  logger: pino.Logger
 ) {
   try {
     const { descriptions, histories } = await withRetries(

@@ -48,7 +48,7 @@ function NoAgentState() {
 }
 
 interface AgentBuilderPerformanceProps {
-  agentConfigurationSId: string;
+  agentConfigurationSId?: string;
 }
 
 export function AgentBuilderPerformance({
@@ -59,11 +59,13 @@ export function AgentBuilderPerformance({
 
   const { agentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     agentConfigurationId: agentConfigurationSId || null,
   });
 
   const { agentAnalytics, isAgentAnalyticsLoading } = useAgentAnalytics({
     workspaceId: owner.sId,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     agentConfigurationId: agentConfiguration?.sId || null,
     period,
   });

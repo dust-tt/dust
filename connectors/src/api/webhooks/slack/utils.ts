@@ -2,8 +2,12 @@ import tracer from "dd-trace";
 import type { Request, Response } from "express";
 
 import { botAnswerMessage } from "@connectors/connectors/slack/bot";
+import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import type { Logger } from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 
 /**
@@ -106,6 +110,34 @@ export const withTrace =
       },
       fn
     );
+
+export async function isAppMentionMessage(
+  message: string,
+  teamId: string
+): Promise<boolean> {
+  try {
+    const slackConfig =
+      await SlackConfigurationResource.fetchByActiveBot(teamId);
+    if (!slackConfig) {
+      return false;
+    }
+
+    const connector = await ConnectorResource.fetchById(
+      slackConfig.connectorId
+    );
+    if (!connector) {
+      return false;
+    }
+
+    const slackClient = await getSlackClient(connector.id);
+    const botUserId = await getBotUserIdMemoized(slackClient, connector.id);
+
+    return message.includes(`<@${botUserId}>`);
+  } catch (error) {
+    // If we can't determine, default to false
+    return false;
+  }
+}
 
 export async function handleChatBot(
   req: Request,

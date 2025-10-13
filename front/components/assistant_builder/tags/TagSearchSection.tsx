@@ -18,6 +18,7 @@ interface TagSearchSectionProps {
   owner: LightWorkspaceType;
   selectedTagsIn: DataSourceTag[];
   selectedTagsNot: DataSourceTag[];
+  showChipIcons?: boolean;
 }
 
 export function TagSearchSection({
@@ -29,6 +30,7 @@ export function TagSearchSection({
   owner,
   selectedTagsIn,
   selectedTagsNot,
+  showChipIcons,
 }: TagSearchSectionProps) {
   const [searchInputValue, setSearchInputValue] = useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
@@ -58,17 +60,24 @@ export function TagSearchSection({
           );
 
         if (!isTagUsed) {
+          // Find the corresponding dataSourceView to get the connectorProvider
+          const dataSourceView = dataSourceViews.find(
+            (dsv) => dsv.dataSource.dustAPIDataSourceId === dataSourceId
+          );
+
           formattedTags.push({
             tag: tag.tag,
             dustAPIDataSourceId: dataSourceId,
-            connectorProvider: null,
+            connectorProvider:
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              dataSourceView?.dataSource.connectorProvider || null,
           });
         }
       }
     }
 
     setAvailableTags(formattedTags);
-  }, [rawTags, selectedTagsIn, selectedTagsNot]);
+  }, [dataSourceViews, rawTags, selectedTagsIn, selectedTagsNot]);
 
   // Debounce the search input.
   useEffect(() => {
@@ -107,6 +116,7 @@ export function TagSearchSection({
         onTagRemove={onTagRemove}
         tagChipColor={tagChipColor}
         isLoading={isLoading}
+        showChipIcons={showChipIcons}
       />
     </div>
   );

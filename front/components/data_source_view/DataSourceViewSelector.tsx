@@ -1,3 +1,5 @@
+// All mime types are okay to use from the public API.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
   Button,
@@ -43,7 +45,10 @@ import {
   isRemoteDatabase,
   isWebsite,
 } from "@app/lib/data_sources";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import {
+  useDataSourceViewContentNodes,
+  useInfiniteDataSourceViewContentNodes,
+} from "@app/lib/swr/data_source_views";
 import { useSpacesSearch } from "@app/lib/swr/spaces";
 import type {
   ContentNode,
@@ -65,6 +70,7 @@ import {
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 const ITEMS_PER_PAGE = 50;
+const PAGE_SIZE = 1000;
 
 const getUseResourceHook =
   (
@@ -157,6 +163,7 @@ const getNodesFromConfig = (
       [r.internalId]: {
         isSelected: true,
         node: r,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         parents: r.parentInternalIds || [],
       },
       ...acc,
@@ -206,6 +213,7 @@ const updateSelection = ({
           {
             ...item,
             dataSourceView: dsv,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             parentInternalIds: item.parentInternalIds || [],
           },
         ],
@@ -223,6 +231,7 @@ const updateSelection = ({
         {
           ...item,
           dataSourceView: dsv,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           parentInternalIds: item.parentInternalIds || [],
         },
       ];
@@ -290,6 +299,9 @@ export function DataSourceViewsSelector({
     const includesConnectorIDs: string[] = [];
     const excludesConnectorIDs: string[] = [];
 
+    // When selecting tables, for tables query all tables from a single warehouse
+    // (either the same remoteDb or all from Dust SQLite).
+    // The data_warehouse view type (for the warehouses tool server) allows multiple warehouses.
     if (viewType === "table" && useCase === "assistantBuilder") {
       const selection = Object.values(selectionConfigurations);
       const firstDs =
@@ -482,7 +494,7 @@ export function DataSourceViewsSelector({
   ]);
 
   return (
-    <div>
+    <div className="dd-privacy-mask">
       <SearchInputWithPopover
         value={searchSpaceText}
         onChange={setSearchSpaceText}
@@ -696,6 +708,11 @@ interface DataSourceViewSelectorProps {
   selectionMode?: "checkbox" | "radio";
 }
 
+// When `isRootSelectable` is false, you cannot select the entire data source and automatically sync new nodes
+// added to the data source. You can however select all the available nodes at that moment and we show the button to
+// select all in UI. We need to send all the available node ids to the backend, so we need to fetch
+// all the available nodes separately (= different from the paginated nodes a user is seeing in the UI).
+// We use useInfiniteDataSourceViewContentNodes hook and we keep fetching data until hasNextPage is false inside the useEffect.
 export function DataSourceViewSelector({
   owner,
   readonly = false,
@@ -742,10 +759,16 @@ export function DataSourceViewSelector({
     [dataSourceView]
   );
 
-  const { nodes: rootNodes } = useContentNodes({
+  const {
+    nodes: rootNodes,
+    hasNextPage,
+    isLoadingMore,
+    loadMore,
+  } = useInfiniteDataSourceViewContentNodes({
     owner,
     dataSourceView,
     viewType,
+    pagination: { limit: PAGE_SIZE, cursor: null },
   });
 
   const hasActiveSelection =
@@ -796,7 +819,7 @@ export function DataSourceViewSelector({
 
   const isTableView = viewType === "table";
 
-  // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
+  // Show the checkbox by default. Hide it only for tables view where no child items are partially checked.
   const hideCheckbox = readonly || (isTableView && isChecked !== "partial");
 
   const selectedNodes = useMemo(
@@ -896,6 +919,16 @@ export function DataSourceViewSelector({
     [searchResult, isExpanded]
   );
 
+  useEffect(() => {
+    const handleLoadMore = async () => {
+      await loadMore();
+    };
+
+    if (hasNextPage && !isLoadingMore) {
+      void handleLoadMore();
+    }
+  }, [hasNextPage, isLoadingMore, loadMore]);
+
   return (
     <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.sId}`}>
       <Tree.Item
@@ -925,7 +958,7 @@ export function DataSourceViewSelector({
             <Button
               variant="ghost"
               size="xs"
-              disabled={rootNodes.length === 0}
+              disabled={rootNodes.length === 0 || isLoadingMore}
               className="mr-4 text-xs"
               label={hasActiveSelection ? "Unselect All" : "Select All"}
               icon={ListCheckIcon}
@@ -944,7 +977,7 @@ export function DataSourceViewSelector({
             parentIsSelected={selectionConfiguration.isSelectAll}
             useResourcesHook={useResourcesHook}
             emptyComponent={
-              viewType === "table" ? (
+              viewType === "table" || viewType === "data_warehouse" ? (
                 <Tree.Empty label="No tables" />
               ) : (
                 <Tree.Empty label="No documents" />

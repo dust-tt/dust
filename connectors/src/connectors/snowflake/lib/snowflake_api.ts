@@ -31,6 +31,18 @@ import { EXCLUDE_DATABASES, EXCLUDE_SCHEMAS } from "@connectors/types";
 type SnowflakeRow = Record<string, any>;
 type SnowflakeRows = Array<SnowflakeRow>;
 
+class InvalidPrivateKeyError extends Error {
+  // Keep original error context for logging and debugging
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  cause?: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  constructor(message: string, cause?: any) {
+    super(message);
+    this.name = "InvalidPrivateKeyError";
+    this.cause = cause;
+  }
+}
+
 const snowflakeGrantCodec = t.type({
   privilege: t.string,
   granted_on: t.string,
@@ -78,7 +90,10 @@ export const testConnection = async ({
   // Connect to snowflake, fetch tables and grants, and close the connection.
   const connectionRes = await connectToSnowflake(credentials);
   if (connectionRes.isErr()) {
-    if (connectionRes.error.name === "OperationFailedError") {
+    if (
+      connectionRes.error.name === "OperationFailedError" ||
+      connectionRes.error.name === "InvalidPrivateKeyError"
+    ) {
       return new Err(
         new TestConnectionError(
           "INVALID_CREDENTIALS",
@@ -152,28 +167,50 @@ export async function connectToSnowflake(
       // Key-pair authentication
       connectionOptions.authenticator = "SNOWFLAKE_JWT";
 
-      // If the private key is encrypted (has a passphrase), decrypt it first
-      if (credentials.private_key_passphrase) {
-        try {
-          const privateKeyObject = crypto.createPrivateKey({
-            key: credentials.private_key,
-            format: "pem",
-            passphrase: credentials.private_key_passphrase,
-          });
+      // Always parse the provided key with Node's crypto to ensure PKCS#8 PEM output.
+      // This accepts:
+      // - Unencrypted PKCS#8 (-----BEGIN PRIVATE KEY-----)
+      // - Encrypted PKCS#8 (-----BEGIN ENCRYPTED PRIVATE KEY-----) with passphrase
+      // - PKCS#1 RSA keys (-----BEGIN RSA PRIVATE KEY-----), encrypted or not
+      try {
+        const passphraseToUse =
+          credentials.private_key_passphrase !== undefined
+            ? credentials.private_key_passphrase
+            : "";
 
-          // Extract the decrypted private key as a PEM-encoded string
-          connectionOptions.privateKey = privateKeyObject
-            .export({
-              format: "pem",
-              type: "pkcs8",
-            })
-            .toString();
-        } catch (err) {
-          return new Err(new Error("Invalid private key passphrase."));
-        }
-      } else {
-        // Unencrypted private key can be used directly
-        connectionOptions.privateKey = credentials.private_key;
+        const privateKeyObject = crypto.createPrivateKey({
+          key: credentials.private_key.trim(),
+          format: "pem",
+          passphrase: passphraseToUse,
+        });
+
+        // Export as unencrypted PKCS#8 PEM since snowflake-sdk only accepts that shape.
+        connectionOptions.privateKey = privateKeyObject
+          .export({
+            format: "pem",
+            type: "pkcs8",
+          })
+          .toString();
+      } catch (err) {
+        const detail =
+          err instanceof Error && err.message
+            ? ` Original error: ${err.message}`
+            : "";
+        const isEncrypted = /-----BEGIN ENCRYPTED PRIVATE KEY-----/.test(
+          credentials.private_key
+        );
+        const missingPassphrase =
+          credentials.private_key_passphrase === undefined;
+        const hint =
+          isEncrypted && missingPassphrase
+            ? " Encrypted key detected but no passphrase was supplied. If your passphrase is intentionally empty, submit an empty passphrase."
+            : "";
+        return new Err(
+          new InvalidPrivateKeyError(
+            `Invalid private key or passphrase.${hint} Provide a valid PEM key (PKCS#8 or RSA) and, if encrypted, the correct passphrase.${detail}`,
+            err
+          )
+        );
       }
     } else {
       throw new Error("Invalid credentials format");
@@ -446,10 +483,17 @@ async function _checkRoleGrants(
           )
         );
       }
+    } else if (["SCHEMA", "DATABASE"].includes(grantOn)) {
+      if (!["USAGE", "READ", "MONITOR"].includes(g.privilege)) {
+        return new Err(
+          new TestConnectionError(
+            "NOT_READONLY",
+            `Non-usage, read, or monitor grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+          )
+        );
+      }
     } else if (
       [
-        "SCHEMA",
-        "DATABASE",
         "FILE_FORMAT",
         "FUNCTION",
         "PROCEDURE",
@@ -464,6 +508,27 @@ async function _checkRoleGrants(
           new TestConnectionError(
             "NOT_READONLY",
             `Non-usage or read grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+          )
+        );
+      }
+    } else if (
+      [
+        "RESOURCE_MONITOR",
+        "COMPUTE_POOL",
+        "FAILOVER_GROUP",
+        "REPLICATION_GROUP",
+        "USER",
+        "ALERT",
+        "PIPE",
+        "SERVICE",
+        "TASK",
+      ].includes(grantOn)
+    ) {
+      if (g.privilege !== "MONITOR") {
+        return new Err(
+          new TestConnectionError(
+            "NOT_READONLY",
+            `Non-monitor grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
           )
         );
       }

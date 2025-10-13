@@ -1,3 +1,5 @@
+// Okay to use public API types because here front is talking to core API.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 import type {
@@ -12,7 +14,7 @@ import type { ConversationType } from "@app/types";
 import {
   isAgentMessageType,
   isContentFragmentType,
-  isInteractiveFileContentType,
+  isInteractiveContentFileContentType,
   isSupportedImageContentType,
 } from "@app/types";
 
@@ -34,13 +36,16 @@ export function listAttachments(
         continue;
       }
 
-      attachments.push(getAttachmentFromContentFragment(m));
+      const attachment = getAttachmentFromContentFragment(m);
+      if (attachment) {
+        attachments.push(attachment);
+      }
     } else if (isAgentMessageType(m)) {
-      const generatedFiles = m.actions.flatMap((a) => a.getGeneratedFiles());
+      const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
 
       for (const f of generatedFiles) {
-        // Interactive files should not be shown in the JIT.
-        if (isInteractiveFileContentType(f.contentType)) {
+        // Interactive Content files should not be shown in the JIT.
+        if (isInteractiveContentFileContentType(f.contentType)) {
           continue;
         }
 
@@ -53,8 +58,6 @@ export function listAttachments(
           })
         );
       }
-    } else {
-      continue;
     }
   }
 

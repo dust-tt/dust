@@ -11,19 +11,22 @@ import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { Result } from "@app/types";
+import { errorToString } from "@app/types";
 
 /**
  * Wraps a tool callback with logging and monitoring.
  * The tool callback is expected to return a `Result<CallToolResult["content"], MCPError>`,
  * Errors are caught and logged unless not tracked, and the error is returned as a text content.
+ *
+ * The tool name is used as a tag in the DD metric, it's 1 tool name <=> 1 monitor.
  */
 export function withToolLogging<T>(
   auth: Authenticator,
   {
-    toolName,
+    toolNameForMonitoring,
     agentLoopContext,
   }: {
-    toolName: string;
+    toolNameForMonitoring: string;
     agentLoopContext?: AgentLoopContextType;
   },
   toolCallback: (
@@ -46,22 +49,23 @@ export function withToolLogging<T>(
     > = {
       workspace: {
         sId: owner.sId,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         plan_code: auth.plan()?.code || null,
       },
-      toolName,
+      toolName: toolNameForMonitoring,
     };
 
     // Adding agent loop context if available.
     if (agentLoopContext?.runContext) {
       const {
         agentConfiguration,
-        actionConfiguration,
+        toolConfiguration,
         conversation,
         agentMessage,
       } = agentLoopContext.runContext;
       loggerArgs = {
         ...loggerArgs,
-        actionConfigurationId: actionConfiguration.sId,
+        actionConfigurationId: toolConfiguration.sId,
         agentConfigurationId: agentConfiguration.sId,
         agentConfigurationVersion: agentConfiguration.version,
         agentMessageId: agentMessage.sId,
@@ -72,8 +76,9 @@ export function withToolLogging<T>(
     logger.info(loggerArgs, "Tool execution start");
 
     const tags = [
-      `tool:${toolName}`,
+      `tool:${toolNameForMonitoring}`,
       `workspace:${owner.sId}`,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       `workspace_plan_code:${auth.plan()?.code || null}`,
     ];
 
@@ -98,12 +103,13 @@ export function withToolLogging<T>(
           "Tool execution error"
         );
       }
+
       return {
         isError: true,
         content: [
           {
             type: "text",
-            text: result.error.message,
+            text: errorToString(result.error),
           },
         ],
       };

@@ -1,6 +1,7 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { SearchItemsFilters } from "@app/lib/actions/mcp_internal_actions/servers/monday/monday_api_helper";
 import {
   createBoard,
@@ -34,45 +35,43 @@ import {
   uploadFileToColumn,
 } from "@app/lib/actions/mcp_internal_actions/servers/monday/monday_api_helper";
 import {
+  makeInternalMCPServer,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { Err, Ok } from "@app/types";
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "monday",
-  version: "1.0.0",
-  description:
-    "Monday.com integration providing CRM-like operations for boards, items, and updates. Enables reading and managing Monday.com boards and items through the GraphQL API.",
-  authorization: {
-    provider: "monday" as const,
-    supported_use_cases: ["personal_actions", "platform_actions"] as const,
-  },
-  icon: "MondayLogo",
-  documentationUrl:
-    "https://developer.monday.com/api-reference/docs/introduction-to-graphql",
-};
+// We use a single tool name for monitoring given the high granularity (can be revisited).
+const MONDAY_TOOL_NAME = "monday";
 
-const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo);
+const createServer = (auth: Authenticator): McpServer => {
+  const server = makeInternalMCPServer("monday");
 
   server.tool(
     "get_boards",
     "Lists all accessible boards in Monday.com workspace. Returns up to 100 boards.",
     {},
-    async (_params, { authInfo }) => {
-      const accessToken = authInfo?.token;
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: MONDAY_TOOL_NAME },
+      async (_params, { authInfo }) => {
+        const accessToken = authInfo?.token;
 
-      if (!accessToken) {
-        throw new Error("No Monday.com access token found");
+        if (!accessToken) {
+          return new Err(new MCPError("No Monday.com access token found"));
+        }
+
+        const boards = await getBoards(accessToken);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Boards retrieved successfully",
+            result: boards,
+          }).content
+        );
       }
-
-      const boards = await getBoards(accessToken);
-      return makeMCPToolJSONSuccess({
-        message: "Boards retrieved successfully",
-        result: boards,
-      });
-    }
+    )
   );
 
   server.tool(
@@ -81,19 +80,25 @@ const createServer = (): McpServer => {
     {
       boardId: z.string().describe("The board ID to retrieve items from"),
     },
-    async ({ boardId }, { authInfo }) => {
-      const accessToken = authInfo?.token;
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: MONDAY_TOOL_NAME },
+      async ({ boardId }, { authInfo }) => {
+        const accessToken = authInfo?.token;
 
-      if (!accessToken) {
-        throw new Error("No Monday.com access token found");
+        if (!accessToken) {
+          return new Err(new MCPError("No Monday.com access token found"));
+        }
+
+        const items = await getBoardItems(accessToken, boardId);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Board items retrieved successfully",
+            result: items,
+          }).content
+        );
       }
-
-      const items = await getBoardItems(accessToken, boardId);
-      return makeMCPToolJSONSuccess({
-        message: "Board items retrieved successfully",
-        result: items,
-      });
-    }
+    )
   );
 
   server.tool(
@@ -102,22 +107,28 @@ const createServer = (): McpServer => {
     {
       itemId: z.string().describe("The item ID to retrieve details for"),
     },
-    async ({ itemId }, { authInfo }) => {
-      const accessToken = authInfo?.token;
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: MONDAY_TOOL_NAME },
+      async ({ itemId }, { authInfo }) => {
+        const accessToken = authInfo?.token;
 
-      if (!accessToken) {
-        throw new Error("No Monday.com access token found");
-      }
+        if (!accessToken) {
+          return new Err(new MCPError("No Monday.com access token found"));
+        }
 
-      const item = await getItemDetails(accessToken, itemId);
-      if (!item) {
-        return makeMCPToolTextError("Item not found");
+        const item = await getItemDetails(accessToken, itemId);
+        if (!item) {
+          return new Err(new MCPError("Item not found"));
+        }
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Item details retrieved successfully",
+            result: item,
+          }).content
+        );
       }
-      return makeMCPToolJSONSuccess({
-        message: "Item details retrieved successfully",
-        result: item,
-      });
-    }
+    )
   );
 
   server.tool(
@@ -152,49 +163,56 @@ const createServer = (): McpServer => {
         .optional()
         .describe("Order direction (default: asc)"),
     },
-    async (
-      {
-        query,
-        boardId,
-        status,
-        assigneeId,
-        groupId,
-        timeframeStart,
-        timeframeEnd,
-        orderBy,
-        orderDirection,
-      },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: MONDAY_TOOL_NAME },
+      async (
+        {
+          query,
+          boardId,
+          status,
+          assigneeId,
+          groupId,
+          timeframeStart,
+          timeframeEnd,
+          orderBy,
+          orderDirection,
+        },
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
 
-      if (!accessToken) {
-        throw new Error("No Monday.com access token found");
-      }
+        if (!accessToken) {
+          return new Err(new MCPError("No Monday.com access token found"));
+        }
 
-      const filters: SearchItemsFilters = {
-        query,
-        boardId,
-        status,
-        assigneeId,
-        groupId,
-        orderBy,
-        orderDirection,
-      };
-
-      if (timeframeStart || timeframeEnd) {
-        filters.timeframe = {
-          start: timeframeStart ? new Date(timeframeStart) : undefined,
-          end: timeframeEnd ? new Date(timeframeEnd) : undefined,
+        const filters: SearchItemsFilters = {
+          query,
+          boardId,
+          status,
+          assigneeId,
+          groupId,
+          orderBy,
+          orderDirection,
         };
-      }
 
-      const items = await searchItems(accessToken, filters);
-      return makeMCPToolJSONSuccess({
-        message: `Found ${items.length} items (max 100 returned)`,
-        result: items,
-      });
-    }
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        if (timeframeStart || timeframeEnd) {
+          filters.timeframe = {
+            start: timeframeStart ? new Date(timeframeStart) : undefined,
+            end: timeframeEnd ? new Date(timeframeEnd) : undefined,
+          };
+        }
+
+        const items = await searchItems(accessToken, filters);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: `Found ${items.length} items (max 100 returned)`,
+            result: items,
+          }).content
+        );
+      }
+    )
   );
 
   server.tool(
@@ -214,25 +232,31 @@ const createServer = (): McpServer => {
           'Optional column values as a JSON object (e.g., {"status": "Working on it", "date": "2024-01-25"})'
         ),
     },
-    async ({ boardId, itemName, groupId, columnValues }, { authInfo }) => {
-      const accessToken = authInfo?.token;
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: MONDAY_TOOL_NAME },
+      async ({ boardId, itemName, groupId, columnValues }, { authInfo }) => {
+        const accessToken = authInfo?.token;
 
-      if (!accessToken) {
-        throw new Error("No Monday.com access token found");
+        if (!accessToken) {
+          return new Err(new MCPError("No Monday.com access token found"));
+        }
+
+        const item = await createItem(
+          accessToken,
+          boardId,
+          itemName,
+          groupId,
+          columnValues
+        );
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Item created successfully",
+            result: item,
+          }).content
+        );
       }
-
-      const item = await createItem(
-        accessToken,
-        boardId,
-        itemName,
-        groupId,
-        columnValues
-      );
-      return makeMCPToolJSONSuccess({
-        message: "Item created successfully",
-        result: item,
-      });
-    }
+    )
   );
 
   server.tool(
@@ -246,22 +270,28 @@ const createServer = (): McpServer => {
           'Column values to update as a JSON object (e.g., {"status": "Done", "priority": "High"})'
         ),
     },
-    async ({ itemId, columnValues }, { authInfo }) => {
-      const accessToken = authInfo?.token;
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: MONDAY_TOOL_NAME },
+      async ({ itemId, columnValues }, { authInfo }) => {
+        const accessToken = authInfo?.token;
 
-      if (!accessToken) {
-        throw new Error("No Monday.com access token found");
-      }
+        if (!accessToken) {
+          return new Err(new MCPError("No Monday.com access token found"));
+        }
 
-      if (!columnValues || Object.keys(columnValues).length === 0) {
-        return makeMCPToolTextError("Invalid column values format");
+        if (!columnValues || Object.keys(columnValues).length === 0) {
+          return new Err(new MCPError("Invalid column values format"));
+        }
+        const item = await updateItem(accessToken, itemId, columnValues);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Item updated successfully",
+            result: item,
+          }).content
+        );
       }
-      const item = await updateItem(accessToken, itemId, columnValues);
-      return makeMCPToolJSONSuccess({
-        message: "Item updated successfully",
-        result: item,
-      });
-    }
+    )
   );
 
   server.tool(
@@ -271,19 +301,25 @@ const createServer = (): McpServer => {
       itemId: z.string().describe("The item ID to add the update to"),
       body: z.string().describe("The content of the update/comment"),
     },
-    async ({ itemId, body }, { authInfo }) => {
-      const accessToken = authInfo?.token;
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: MONDAY_TOOL_NAME },
+      async ({ itemId, body }, { authInfo }) => {
+        const accessToken = authInfo?.token;
 
-      if (!accessToken) {
-        throw new Error("No Monday.com access token found");
+        if (!accessToken) {
+          return new Err(new MCPError("No Monday.com access token found"));
+        }
+
+        const update = await createUpdate(accessToken, itemId, body);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Update added successfully",
+            result: update,
+          }).content
+        );
       }
-
-      const update = await createUpdate(accessToken, itemId, body);
-      return makeMCPToolJSONSuccess({
-        message: "Update added successfully",
-        result: update,
-      });
-    }
+    )
   );
 
   server.tool(
@@ -360,6 +396,7 @@ const createServer = (): McpServer => {
       const board = await createBoard(
         accessToken,
         boardName,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         boardKind || "public",
         workspaceId,
         description
@@ -929,4 +966,3 @@ const createServer = (): McpServer => {
 };
 
 export default createServer;
-export { serverInfo };

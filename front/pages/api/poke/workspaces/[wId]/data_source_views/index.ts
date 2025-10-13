@@ -8,13 +8,13 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
+  AgentsUsageType,
   DataSourceViewType,
-  DataSourceWithAgentsUsageType,
   WithAPIErrorResponse,
 } from "@app/types";
 
 export type DataSourceViewWithUsage = DataSourceViewType & {
-  usage: DataSourceWithAgentsUsageType | null;
+  usage: AgentsUsageType | null;
 };
 
 export type PokeListDataSourceViews = {

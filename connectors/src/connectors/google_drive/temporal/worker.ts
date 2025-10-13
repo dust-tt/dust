@@ -26,11 +26,17 @@ export async function runGoogleWorkers() {
     reuseV8Context: true,
     namespace,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
-        },
-        () => new GoogleDriveCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(
+            ctx,
+            logger,
+            "google_drive"
+          ),
+        }),
+        () => ({
+          inbound: new GoogleDriveCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {
@@ -53,11 +59,17 @@ export async function runGoogleWorkers() {
     reuseV8Context: true,
     namespace,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
-        },
-        () => new GoogleDriveCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(
+            ctx,
+            logger,
+            "google_drive"
+          ),
+        }),
+        () => ({
+          inbound: new GoogleDriveCastKnownErrorsInterceptor(),
+        }),
       ],
     },
   });

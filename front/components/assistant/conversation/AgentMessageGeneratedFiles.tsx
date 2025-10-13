@@ -5,12 +5,14 @@ import {
   CitationIcons,
   CitationIndex,
   CitationTitle,
+  Icon,
+  SparklesIcon,
 } from "@dust-tt/sparkle";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 import type { LightAgentMessageType } from "@app/types";
-import { clientExecutableContentType } from "@app/types";
+import { frameContentType } from "@app/types";
 
 interface DefaultAgentMessageGeneratedFilesProps {
   document: MarkdownCitation;
@@ -43,25 +45,29 @@ export function DefaultAgentMessageGeneratedFiles({
   );
 }
 
-// Interactive files.
+// Interactive content files.
 
 function getDescriptionForContentType(
   file: LightAgentMessageType["generatedFiles"][number]
 ) {
-  if (file.contentType === clientExecutableContentType) {
-    return "Visualization";
+  if (file.contentType === frameContentType) {
+    return "Frame";
   }
 
   return null;
 }
 
-interface InteractiveAgentMessageGeneratedFilesProps {
+interface AgentMessageInteractiveContentGeneratedFilesProps {
   files: LightAgentMessageType["generatedFiles"];
+  onClick?: () => void;
+  variant?: "list" | "grid";
 }
 
-export function InteractiveAgentMessageGeneratedFiles({
+export function AgentMessageInteractiveContentGeneratedFiles({
   files,
-}: InteractiveAgentMessageGeneratedFilesProps) {
+  onClick,
+  variant = "list",
+}: AgentMessageInteractiveContentGeneratedFilesProps) {
   const { openPanel } = useConversationSidePanelContext();
 
   if (files.length === 0) {
@@ -69,14 +75,15 @@ export function InteractiveAgentMessageGeneratedFiles({
   }
 
   return (
-    <CitationGrid variant="list">
+    <CitationGrid variant={variant}>
       {files.map((file) => {
         const handleClick = (e: React.MouseEvent) => {
           e.preventDefault();
           openPanel({
-            type: "content",
+            type: "interactive_content",
             fileId: file.fileId,
           });
+          onClick?.();
         };
 
         const description = getDescriptionForContentType(file);
@@ -90,13 +97,18 @@ export function InteractiveAgentMessageGeneratedFiles({
           >
             <div className="flex flex-row items-center gap-2">
               <CitationTitle>{file.title}</CitationTitle>
-              {description && (
+              {description && variant === "list" && (
                 <CitationTitle className="text-muted-foreground dark:text-muted-foreground-night">
                   {description}
                 </CitationTitle>
               )}
             </div>
-            <CitationDescription>Interactive Content</CitationDescription>
+            <CitationDescription>
+              <div className="flow-row flex items-center gap-2">
+                <Icon visual={SparklesIcon} size="xs" />
+                Frame
+              </div>
+            </CitationDescription>
           </Citation>
         );
       })}

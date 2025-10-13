@@ -31,6 +31,7 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
       "freshservice.requesters.fields.view",
       "freshservice.requesters.view",
       "freshservice.service_catalog.view",
+      "freshservice.service_catalog.edit",
       "freshservice.sla_policies.view",
       "freshservice.solutions.publish",
       "freshservice.solutions.view",
@@ -41,12 +42,17 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
       "freshservice.tickets.conversations.edit",
       "freshservice.tickets.conversations.view",
       "freshservice.tickets.create",
+      "freshservice.tickets.edit",
+      "freshservice.tickets.fields.manage",
       "freshservice.tickets.tasks.create",
+      "freshservice.tickets.tasks.edit",
+      "freshservice.tickets.tasks.delete",
       "freshservice.tickets.tasks.view",
       "freshservice.tickets.time_entries.create",
       "freshservice.tickets.time_entries.edit",
       "freshservice.tickets.time_entries.view",
       "freshservice.tickets.view",
+      "freshservice.canned_responses.view",
     ];
 
     // Get domain from connection metadata

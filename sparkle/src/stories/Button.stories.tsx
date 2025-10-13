@@ -14,6 +14,7 @@ const ICONS = {
 const meta = {
   title: "Primitives/Button",
   component: Button,
+  tags: ["autodocs"],
   argTypes: {
     variant: {
       description: "The visual style variant of the button",
@@ -59,6 +60,10 @@ const meta = {
       description: "Whether the button should display a counter",
       control: "boolean",
     },
+    briefPulse: {
+      description: "Whether the button should display a brief pulse",
+      control: "boolean",
+    },
     counterValue: {
       description: "Value to display in the counter (if isCounter is true)",
       control: "text",
@@ -88,6 +93,7 @@ export const ExampleButton: Story = {
     isLoading: false,
     isPulsing: false,
     isSelect: false,
+    briefPulse: false,
     disabled: false,
     isCounter: false,
     counterValue: "1",

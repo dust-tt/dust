@@ -1,12 +1,13 @@
-import type { MCPActionType } from "@app/lib/actions/mcp";
+import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 import type { ContentFragmentType } from "../content_fragment";
 import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
-  ErrorContent,
+  GenericErrorContent,
   LightAgentConfigurationType,
 } from "./agent";
 import type { AgentContentItemType } from "./agent_message_content";
@@ -54,15 +55,8 @@ export type LightMessageType =
 export type MessageWithContentFragmentsType =
   | LightAgentMessageType
   | (UserMessageType & {
-      contenFragments?: ContentFragmentType[];
+      contentFragments?: ContentFragmentType[];
     });
-
-export type WithRank<T> = T & {
-  rank: number;
-};
-export type MessageWithRankType = WithRank<MessageType>;
-
-export type LightMessageWithRankType = WithRank<LightMessageType>;
 
 /**
  * User messages
@@ -78,10 +72,14 @@ export type UserMessageOrigin =
   | "n8n"
   | "raycast"
   | "slack"
+  | "triggered"
   | "web"
   | "zapier"
   | "zendesk"
-  | "run_agent";
+  | "excel"
+  | "powerpoint"
+  | "run_agent"
+  | "agent_handover";
 
 export type UserMessageContext = {
   username: string;
@@ -90,7 +88,10 @@ export type UserMessageContext = {
   email: string | null;
   profilePictureUrl: string | null;
   origin?: UserMessageOrigin | null;
+  originMessageId?: string | null;
+  lastTriggerRunAt?: number | null;
   clientSideMCPServerIds?: string[];
+  selectedMCPServerViewIds?: string[];
 };
 
 export type UserMessageType = {
@@ -100,12 +101,12 @@ export type UserMessageType = {
   sId: string;
   visibility: MessageVisibility;
   version: number;
+  rank: number;
   user: UserType | null;
   mentions: MentionType[];
   content: string;
   context: UserMessageContext;
 };
-export type UserMessageWithRankType = WithRank<UserMessageType>;
 
 export function isUserMessageType(
   arg: MessageType | LightMessageType
@@ -127,6 +128,7 @@ export interface CitationType {
   href?: string;
   title: string;
   provider: string;
+  faviconUrl?: string;
 }
 
 /**
@@ -140,12 +142,20 @@ export type BaseAgentMessageType = {
   type: "agent_message";
   sId: string;
   version: number;
+  rank: number;
+  created: number;
+  completedTs: number | null;
   parentMessageId: string | null;
+  parentAgentMessageId: string | null; // If handover, this is the agent message that summoned this agent.
   status: AgentMessageStatus;
   content: string | null;
   chainOfThought: string | null;
-  error: ErrorContent | null;
+  error: GenericErrorContent | null;
 };
+
+export type ParsedContentItem =
+  | { kind: "reasoning"; content: string }
+  | { kind: "action"; action: AgentMCPActionWithOutputType };
 
 export type AgentMessageType = BaseAgentMessageType & {
   id: ModelId;
@@ -154,12 +164,13 @@ export type AgentMessageType = BaseAgentMessageType & {
   visibility: MessageVisibility;
   configuration: LightAgentConfigurationType;
   skipToolsValidation: boolean;
-  actions: MCPActionType[];
+  actions: AgentMCPActionWithOutputType[];
   rawContents: Array<{
     step: number;
     content: string;
   }>;
   contents: Array<{ step: number; content: AgentContentItemType }>;
+  parsedContents: Record<number, Array<ParsedContentItem>>;
 };
 
 export type LightAgentMessageType = BaseAgentMessageType & {
@@ -171,16 +182,23 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     canRead: boolean;
     requestedGroupIds: string[][];
   };
-  actions: {
-    // TODO(2025-07-24 aubin): remove the type here.
-    type: "tool_action";
-    id: ModelId;
-  }[];
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
 };
 
-export type AgentMessageWithRankType = WithRank<AgentMessageType>;
+// This type represents the agent message we can reconstruct by accumulating streaming events
+// in a conversation.
+export type LightAgentMessageWithActionsType = LightAgentMessageType & {
+  actions: AgentMCPActionWithOutputType[];
+};
+
+export function isLightAgentMessageWithActionsType(
+  message: LightAgentMessageType | LightAgentMessageWithActionsType
+): message is LightAgentMessageWithActionsType {
+  // This check relies on the fact that `message` is already either a LightAgentMessageType or a
+  // LightAgentMessageWithActionsType; message.actions can therefore only be a AgentMCPActionType[].
+  return "actions" in message;
+}
 
 export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
   return arg.type === "agent_message";
@@ -204,13 +222,14 @@ export type ConversationWithoutContentType = {
   id: ModelId;
   created: number;
   updated?: number;
-  unread?: boolean;
-  actionRequired?: boolean;
+  unread: boolean;
+  actionRequired: boolean;
   owner: WorkspaceType;
   sId: string;
   title: string | null;
   visibility: ConversationVisibility;
   depth: number;
+  triggerId: string | null;
   requestedGroupIds: string[][];
 };
 
@@ -235,9 +254,11 @@ export interface AgentParticipantType {
 }
 
 export interface UserParticipantType {
+  sId: string;
   fullName: string | null;
   pictureUrl: string | null;
   username: string;
+  action: ParticipantActionType;
 }
 
 export interface ConversationParticipantsType {
@@ -249,6 +270,7 @@ export const CONVERSATION_ERROR_TYPES = [
   "conversation_not_found",
   "conversation_access_restricted",
   "conversation_with_unavailable_agent",
+  "user_already_participant",
 ] as const;
 
 export type ConversationErrorType = (typeof CONVERSATION_ERROR_TYPES)[number];
@@ -276,7 +298,7 @@ export type SubmitMessageError = {
 export interface FetchConversationMessagesResponse {
   hasMore: boolean;
   lastValue: number | null;
-  messages: LightMessageWithRankType[];
+  messages: LightMessageType[];
 }
 
 /**
@@ -288,7 +310,7 @@ export type UserMessageNewEvent = {
   type: "user_message_new";
   created: number;
   messageId: string;
-  message: UserMessageWithRankType;
+  message: UserMessageType;
 };
 
 // Event sent when the user message is created.
@@ -307,7 +329,7 @@ export type AgentMessageNewEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  message: AgentMessageWithRankType;
+  message: AgentMessageType;
 };
 
 // Event sent when the conversation title is updated.
@@ -327,3 +349,8 @@ export type ConversationMCPServerViewType = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type MCPActionValidationRequest = Omit<
+  MCPApproveExecutionEvent,
+  "type" | "created" | "configurationId"
+>;

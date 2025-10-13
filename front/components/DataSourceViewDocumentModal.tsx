@@ -92,7 +92,7 @@ export default function DataSourceViewDocumentModal({
                     <ul className="list-disc pl-4">
                       <li>
                         if the document is a spreadsheet, this is expected.
-                        Spreasheets do not expose raw contents. They are made
+                        Spreadsheets do not expose raw contents. They are made
                         available in Dust via the `Table Query` action in
                         assistants.
                       </li>

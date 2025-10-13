@@ -1,42 +1,39 @@
 import {
   Avatar,
   Button,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
-  Page,
   PencilSquareIcon,
   SparklesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AgentBuilderEditors } from "@app/components/agent_builder/settings/AgentBuilderEditors";
-import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
-import { AgentBuilderSlackSelector } from "@app/components/agent_builder/settings/AgentBuilderSlackSelector";
+import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
+import { BLUR_EVENT_NAME } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
+import { AccessSection } from "@app/components/agent_builder/settings/AccessSection";
 import { AvatarPicker } from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker";
 import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
 } from "@app/components/agent_builder/settings/avatar_picker/types";
+import {
+  buildSelectedEmojiType,
+  makeUrlForEmojiAndBackground,
+} from "@app/components/agent_builder/settings/avatar_picker/utils";
 import { TagsSection } from "@app/components/agent_builder/settings/TagsSection";
 import {
   fetchWithErr,
   getDescriptionSuggestion,
   getNameSuggestions,
 } from "@app/components/agent_builder/settings/utils";
-import {
-  buildSelectedEmojiType,
-  makeUrlForEmojiAndBackground,
-} from "@app/components/assistant_builder/avatar_picker/utils";
+import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   APIError,
@@ -108,7 +105,6 @@ function AgentNameInput() {
     });
 
     if (result.isErr()) {
-      console.error("Failed to generate name suggestions:", result.error);
       sendNotification({
         type: "error",
         title: "Failed to generate name suggestions",
@@ -137,10 +133,7 @@ function AgentNameInput() {
   };
 
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
-        Name
-      </label>
+    <SettingSectionContainer title="Name">
       <div className="relative">
         <Input placeholder="Enter agent name" {...field} className="pr-10" />
         <DropdownMenu
@@ -188,11 +181,11 @@ function AgentNameInput() {
       {fieldState.error && (
         <p className="text-sm text-warning-500">{fieldState.error.message}</p>
       )}
-    </div>
+    </SettingSectionContainer>
   );
 }
 
-function AgentDescriptionInput() {
+function AgentDescriptionInput({ isCreatingNew }: { isCreatingNew: boolean }) {
   const { owner } = useAgentBuilderContext();
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",
@@ -203,15 +196,18 @@ function AgentDescriptionInput() {
   const sendNotification = useSendNotification();
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const blurListenerRef = useRef<() => void>();
+  const userSetDescriptionRef = useRef(false);
 
   const { field, fieldState } = useController<
     AgentBuilderFormData,
     "agentSettings.description"
   >({ name: "agentSettings.description" });
 
-  const handleGenerateDescription = async () => {
+  const handleGenerateDescription = useCallback(async () => {
     if (
       isGenerating ||
+      userSetDescriptionRef.current ||
       !instructions ||
       instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
     ) {
@@ -227,7 +223,6 @@ function AgentDescriptionInput() {
     });
 
     if (result.isErr()) {
-      console.error("Failed to generate description:", result.error);
       sendNotification({
         type: "error",
         title: "Failed to generate description",
@@ -242,7 +237,7 @@ function AgentDescriptionInput() {
       result.value.suggestions &&
       result.value.suggestions.length > 0
     ) {
-      // Apply the first suggestion directly
+      // Apply the first suggestion directly (do not mark as user-set)
       field.onChange(result.value.suggestions[0]);
     } else {
       sendNotification({
@@ -253,18 +248,35 @@ function AgentDescriptionInput() {
       });
     }
     setIsGenerating(false);
-  };
+  }, [isGenerating, instructions, owner, name, field, sendNotification]);
+
+  // Trigger suggestion on each blur from instructions unless user typed a description
+  useEffect(() => {
+    const onInstructionsBlur = () => {
+      if (isCreatingNew && !userSetDescriptionRef.current) {
+        void handleGenerateDescription();
+      }
+    };
+    // Save reference for cleanup
+    blurListenerRef.current = onInstructionsBlur;
+    window.addEventListener(BLUR_EVENT_NAME, onInstructionsBlur);
+    return () => {
+      if (blurListenerRef.current) {
+        window.removeEventListener(BLUR_EVENT_NAME, blurListenerRef.current);
+      }
+    };
+  }, [field.value, handleGenerateDescription, isCreatingNew]);
 
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
-        Description
-      </label>
+    <SettingSectionContainer title="Description">
       <div className="relative">
         <Input
           placeholder="Enter agent description"
           {...field}
-          className="pr-10"
+          onChange={(e) => {
+            userSetDescriptionRef.current = true;
+            field.onChange(e);
+          }}
         />
         <Button
           icon={isGenerating ? () => <Spinner size="xs" /> : SparklesIcon}
@@ -290,13 +302,15 @@ function AgentDescriptionInput() {
       {fieldState.error && (
         <p className="text-sm text-warning-500">{fieldState.error.message}</p>
       )}
-    </div>
+    </SettingSectionContainer>
   );
 }
 
-function AgentPictureInput() {
+function AgentPictureInput({ isCreatingNew }: { isCreatingNew: boolean }) {
   const { owner } = useAgentBuilderContext();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const blurListenerRef = useRef<() => void>();
+  const userSetAvatarRef = useRef(false);
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
@@ -338,15 +352,28 @@ function AgentPictureInput() {
     field.onChange(avatarUrl);
   }, [owner, instructions, field]);
 
+  // Regenerate avatar on each instructions blur unless user picked an avatar
   useEffect(() => {
-    if (
-      !field.value &&
-      instructions &&
-      instructions.length >= MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
-    ) {
-      void updateEmojiFromSuggestions();
-    }
-  }, [field.value, instructions, updateEmojiFromSuggestions]);
+    const onInstructionsBlur = () => {
+      if (
+        isCreatingNew &&
+        !userSetAvatarRef.current &&
+        (instructions?.length ?? 0) >= MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+      ) {
+        void updateEmojiFromSuggestions();
+      }
+    };
+    blurListenerRef.current = onInstructionsBlur;
+    window.addEventListener("agent:instructions:blur", onInstructionsBlur);
+    return () => {
+      if (blurListenerRef.current) {
+        window.removeEventListener(
+          "agent:instructions:blur",
+          blurListenerRef.current
+        );
+      }
+    };
+  }, [instructions, updateEmojiFromSuggestions, isCreatingNew]);
 
   return (
     <>
@@ -354,13 +381,16 @@ function AgentPictureInput() {
         owner={owner}
         isOpen={isAvatarModalOpen}
         setOpen={setIsAvatarModalOpen}
-        onPick={field.onChange}
+        onPick={(url) => {
+          userSetAvatarRef.current = true;
+          field.onChange(url);
+        }}
         droidAvatarUrls={DROID_AVATAR_URLS}
         spiritAvatarUrls={SPIRIT_AVATAR_URLS}
-        avatarUrl={field.value || null}
+        avatarUrl={field.value ?? null}
       />
-      <div className="group relative py-2">
-        <Avatar size="xl" visual={field.value || null} />
+      <div className="group relative">
+        <Avatar size="lg" visual={field.value ?? null} />
         <Button
           variant="outline"
           size="sm"
@@ -374,60 +404,25 @@ function AgentPictureInput() {
   );
 }
 
-function AgentAccessAndPublication() {
-  return (
-    <div className="flex h-full flex-col space-y-2">
-      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
-        Access and Publication
-      </label>
-      <div className="flex flex-wrap items-center gap-2">
-        <AgentBuilderEditors />
-        <AgentBuilderScopeSelector />
-        <AgentBuilderSlackSelector />
-      </div>
-    </div>
-  );
-}
-
-interface AgentBuilderSettingsBlockProps {
-  isSettingBlocksOpen: boolean;
-}
-
 export function AgentBuilderSettingsBlock({
-  isSettingBlocksOpen,
-}: AgentBuilderSettingsBlockProps) {
-  const [isOpen, setIsOpen] = useState(isSettingBlocksOpen);
-
+  agentConfigurationId,
+}: {
+  agentConfigurationId: string | null;
+}) {
+  const isCreatingNew = !agentConfigurationId;
   return (
-    <div className="flex h-full flex-col gap-4">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger
-          isOpen={isOpen}
-          className="flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 hover:bg-transparent focus:outline-none"
-        >
-          <Page.H>Settings</Page.H>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="flex flex-col gap-4 px-1 pt-4">
-            <Page.P>
-              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Configure tags and access settings for your agent.
-              </span>
-            </Page.P>
-            <div className="space-y-4">
-              <div className="flex items-start gap-8">
-                <div className="flex-grow">
-                  <AgentNameInput />
-                </div>
-                <AgentPictureInput />
-              </div>
-              <AgentDescriptionInput />
-              <TagsSection />
-              <AgentAccessAndPublication />
-            </div>
+    <AgentBuilderSectionContainer title="Settings">
+      <div className="space-y-5">
+        <div className="flex items-start gap-8">
+          <div className="flex-grow">
+            <AgentNameInput />
           </div>
-        </CollapsibleContent>
-      </Collapsible>
-    </div>
+          <AgentPictureInput isCreatingNew={isCreatingNew} />
+        </div>
+        <AgentDescriptionInput isCreatingNew={isCreatingNew} />
+        <AccessSection />
+        <TagsSection />
+      </div>
+    </AgentBuilderSectionContainer>
   );
 }

@@ -11,7 +11,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import { getSignUpUrl } from "@app/lib/signup";
+import { getSignInUrl } from "@app/lib/signup";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -91,8 +91,11 @@ async function handler(
     },
   });
 
+  const isInviteOnOtherWorkspace =
+    membershipInvite && membershipInvite.workspace.sId !== workspaceId;
+
   // Prioritize enterprise connections.
-  if (workspaceId && isSSO) {
+  if (workspaceId && isSSO && !isInviteOnOtherWorkspace) {
     const { flow, workspace } = await handleEnterpriseSignUpFlow(
       user,
       workspaceId
@@ -100,7 +103,7 @@ async function handler(
     if (flow === "unauthorized") {
       // Only happen if the workspace associated with workOSOrganizationId is not found.
       res.redirect(
-        `/api/auth/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
+        `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
       );
       return;
     }
@@ -116,9 +119,10 @@ async function handler(
       const pendingInvitation =
         await MembershipInvitationResource.getPendingForEmail(user.email);
       if (pendingInvitation) {
-        const signUpUrl = getSignUpUrl({
+        const signUpUrl = await getSignInUrl({
           signupCallbackUrl: `/api/login?inviteToken=${getMembershipInvitationToken(pendingInvitation.id)}`,
           invitationEmail: pendingInvitation.inviteEmail,
+          userExists: true,
         });
         res.redirect(signUpUrl);
         return;
@@ -141,7 +145,7 @@ async function handler(
           "Error during login flow."
         );
         res.redirect(
-          `/api/auth/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`
+          `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`
         );
         return;
       }
@@ -152,7 +156,7 @@ async function handler(
       }
 
       res.redirect(
-        `/api/auth/logout?returnTo=/sso-enforced?workspaceId=${error.workspaceId}`
+        `/api/workos/logout?returnTo=/sso-enforced?workspaceId=${error.workspaceId}`
       );
       return;
     }

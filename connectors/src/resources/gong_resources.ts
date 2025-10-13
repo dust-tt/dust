@@ -109,6 +109,12 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
     });
   }
 
+  async setAccountsEnabled(accountsEnabled: boolean): Promise<void> {
+    await this.update({
+      accountsEnabled,
+    });
+  }
+
   async resetLastSyncTimestamp(): Promise<void> {
     await this.update({
       lastSyncTimestamp: null,

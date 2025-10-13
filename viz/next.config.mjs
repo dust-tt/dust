@@ -2,7 +2,7 @@
 const isDev = process.env.NODE_ENV === "development";
 
 const CONTENT_SECURITY_POLICIES = `connect-src 'self'; media-src 'self'; frame-ancestors 'self' ${
-  isDev ? "http://localhost:3000" : "https://dust.tt https://eu.dust.tt"
+  isDev ? "http://localhost:3000" : "https://dust.tt https://eu.dust.tt https://front-edge.dust.tt https://eu.front-edge.dust.tt"
 };`;
 
 const nextConfig = {

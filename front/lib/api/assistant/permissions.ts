@@ -1,6 +1,7 @@
 import { Op } from "sequelize";
 
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { getAvailabilityOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
@@ -15,7 +16,7 @@ import type {
   ContentFragmentInputWithContentNode,
   ModelId,
 } from "@app/types";
-import { removeNulls } from "@app/types";
+import { assertNever, removeNulls } from "@app/types";
 
 export async function listAgentConfigurationsForGroups(
   auth: Authenticator,
@@ -51,15 +52,21 @@ export function getDataSourceViewIdsFromActions(
 
   return removeNulls(
     relevantActions.flatMap((action) => {
+      const dataSourceViewIds = new Set<string>();
+
       if (action.dataSources) {
-        return action.dataSources.map(
-          (dataSource) => dataSource.dataSourceViewId
-        );
-      } else if (action.tables) {
-        return action.tables.map((table) => table.dataSourceViewId);
-      } else {
-        return [];
+        action.dataSources.forEach((dataSource) => {
+          dataSourceViewIds.add(dataSource.dataSourceViewId);
+        });
       }
+
+      if (action.tables) {
+        action.tables.forEach((table) => {
+          dataSourceViewIds.add(table.dataSourceViewId);
+        });
+      }
+
+      return Array.from(dataSourceViewIds);
     })
   );
 }
@@ -121,6 +128,21 @@ export async function getAgentConfigurationGroupIdsFromActions(
     const { sId: spaceId } = view.space;
     if (ignoreSpaceIds?.has(spaceId)) {
       continue;
+    }
+
+    // We skip the permissions for internal tools as they are automatically available to all users.
+    // This mimic the previous behavior of generic internal tools (search etc..).
+    if (view.serverType === "internal") {
+      const availability = getAvailabilityOfInternalMCPServerById(view.sId);
+      switch (availability) {
+        case "auto":
+        case "auto_hidden_builder":
+          continue;
+        case "manual":
+          break;
+        default:
+          assertNever(availability);
+      }
     }
     if (!spacePermissions.has(spaceId)) {
       spacePermissions.set(spaceId, new Set());

@@ -1,18 +1,20 @@
 import type {
-  MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type {
+  ModelIdType,
+  ModelProviderIdType,
+  OAuthProvider,
+} from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type {
+  FunctionCallContentType,
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
-import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
-import type {
-  ModelIdType,
-  ModelProviderIdType,
-} from "@app/types/assistant/assistant";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
+import { isOAuthProvider, isValidScope } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
@@ -97,6 +99,7 @@ export type AgentModelConfigurationType = {
   temperature: number;
   reasoningEffort?: AgentReasoningEffort;
   responseFormat?: string;
+  promptCaching?: boolean;
 };
 
 export type AgentFetchVariant = "light" | "full" | "extra_light";
@@ -183,8 +186,7 @@ export function isTemplateAgentConfiguration(
   );
 }
 
-export const DEFAULT_MAX_STEPS_USE_PER_RUN = 8;
-export const MAX_STEPS_USE_PER_RUN_LIMIT = 128;
+export const MAX_STEPS_USE_PER_RUN_LIMIT = 64;
 export const MAX_ACTIONS_PER_STEP = 16;
 
 /**
@@ -220,11 +222,56 @@ export type AgentMessageErrorEvent = {
 };
 
 // Generic type for the content of an agent / tool error.
-export type ErrorContent = {
+export type GenericErrorContent = {
   code: string;
   message: string;
   metadata: Record<string, string | number | boolean> | null;
 };
+
+export type MCPServerPersonalAuthenticationRequiredMetadata = {
+  mcp_server_id: string;
+  provider: OAuthProvider;
+  scope?: string;
+  conversationId: string;
+  messageId: string;
+};
+
+export function isMCPServerPersonalAuthenticationRequiredMetadata(
+  metadata: unknown
+): metadata is MCPServerPersonalAuthenticationRequiredMetadata {
+  return (
+    typeof metadata === "object" &&
+    metadata !== null &&
+    "mcp_server_id" in metadata &&
+    typeof metadata.mcp_server_id === "string" &&
+    "provider" in metadata &&
+    isOAuthProvider(metadata?.provider) &&
+    (!("scope" in metadata) || isValidScope(metadata.scope)) &&
+    "conversationId" in metadata &&
+    typeof metadata.conversationId === "string" &&
+    "messageId" in metadata &&
+    typeof metadata.messageId === "string"
+  );
+}
+
+export type PersonalAuthenticationRequiredErrorContent = {
+  code: "mcp_server_personal_authentication_required";
+  message: string;
+  metadata: MCPServerPersonalAuthenticationRequiredMetadata;
+};
+
+export function isPersonalAuthenticationRequiredErrorContent(
+  error: unknown
+): error is PersonalAuthenticationRequiredErrorContent {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "mcp_server_personal_authentication_required" &&
+    "metadata" in error &&
+    isMCPServerPersonalAuthenticationRequiredMetadata(error.metadata)
+  );
+}
 
 // Generic event sent when an error occurred during the model call.
 export type AgentErrorEvent = {
@@ -232,7 +279,16 @@ export type AgentErrorEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  error: ErrorContent;
+  error: GenericErrorContent;
+};
+
+// Generic event sent when an agent message is done (could be successful, failed, or cancelled).
+export type AgentMessageDoneEvent = {
+  type: "agent_message_done";
+  created: number;
+  conversationId: string;
+  configurationId: string;
+  messageId: string;
 };
 
 // Event sent when an error occurred during the tool call.
@@ -241,7 +297,13 @@ export type ToolErrorEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  error: ErrorContent;
+  conversationId: string;
+  error: GenericErrorContent | PersonalAuthenticationRequiredErrorContent;
+  isLastBlockingEventForStep: boolean;
+  // TODO(DURABLE-AGENTS 2025-08-25): Move to a deferred event base interface.
+  metadata?: {
+    pubsubMessageId?: string;
+  };
 };
 
 export type AgentDisabledErrorEvent = {
@@ -260,7 +322,7 @@ export type AgentActionSuccessEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  action: MCPActionType;
+  action: AgentMCPActionWithOutputType;
 };
 
 // Event sent to stop the generation.

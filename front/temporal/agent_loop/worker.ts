@@ -5,9 +5,18 @@ import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
+import {
+  finalizeCancellationActivity,
+  notifyWorkflowError,
+} from "@app/temporal/agent_loop/activities/common";
 import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activities/ensure_conversation_title";
-import { createToolActionsActivity } from "@app/temporal/agent_loop/activities/create_tool_actions";
-import { runModelActivity } from "@app/temporal/agent_loop/activities/run_model";
+import {
+  logAgentLoopPhaseCompletionActivity,
+  logAgentLoopPhaseStartActivity,
+  logAgentLoopStepCompletionActivity,
+} from "@app/temporal/agent_loop/activities/instrumentation";
+import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
+import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
 
@@ -20,15 +29,23 @@ export async function runAgentLoopWorker() {
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities: {
-      createToolActionsActivity,
       ensureConversationTitleActivity,
-      runModelActivity,
+      logAgentLoopPhaseCompletionActivity,
+      logAgentLoopPhaseStartActivity,
+      logAgentLoopStepCompletionActivity,
+      notifyWorkflowError,
+      finalizeCancellationActivity,
+      publishDeferredEventsActivity,
+      runModelAndCreateActionsActivity,
       runToolActivity,
     },
     taskQueue: QUEUE_NAME,
     connection,
     namespace,
     shutdownGraceTime: SHUTDOWN_GRACE_TIME,
+    // This also bounds the time until an activity may receive a cancellation signal.
+    // See https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling
+    maxHeartbeatThrottleInterval: "20 seconds",
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
@@ -50,5 +67,14 @@ export async function runAgentLoopWorker() {
     },
   });
 
-  await worker.run();
+  process.on("SIGTERM", () => worker.shutdown());
+
+  try {
+    await worker.run(); // this resolves after shutdown completes
+  } catch (error) {
+    logger.error({ error }, "Agent loop worker error");
+  } finally {
+    await connection.close();
+    process.exit(0);
+  }
 }

@@ -3,6 +3,8 @@ FROM node:20.19.2 AS build
 
 RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
 
+ARG COMMIT_HASH_LONG
+
 WORKDIR /tmp/
 COPY /connectors/admin/docker_build/install_poppler_tools.sh ./
 RUN chmod +x ./install_poppler_tools.sh
@@ -35,6 +37,9 @@ RUN npm run build
 
 
 EXPOSE 3002
+
+ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
+ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
 # Set a default command, it will start the API service if no command is provided
 CMD ["npm", "run", "start:web"]

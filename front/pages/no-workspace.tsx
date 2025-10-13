@@ -1,6 +1,8 @@
 import { BarHeader, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 
+import { UserMenu } from "@app/components/UserMenu";
+import WorkspacePicker from "@app/components/WorkspacePicker";
 import { fetchRevokedWorkspace } from "@app/lib/api/user";
 import {
   getUserFromSession,
@@ -9,8 +11,10 @@ import {
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { useUser } from "@app/lib/swr/user";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type { UserTypeWithWorkspaces } from "@app/types";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types";
 
 // Fetch workspace details for scenarios where auto-join is disabled.
 async function fetchWorkspaceDetails(
@@ -34,9 +38,9 @@ async function fetchWorkspaceDetails(
 }
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
+  workspace: WorkspaceType;
   status: "auto-join-disabled" | "revoked";
   userFirstName: string;
-  workspaceName: string;
   workspaceVerifiedDomain: string | null;
 }>(async (context, auth, session) => {
   const user = await getUserFromSession(session);
@@ -82,7 +86,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
 
     if (res.isErr()) {
       logger.error(
-        { flow, userId: user.id, panic: true },
+        { flow, userId: user.id, panic: true, error: res.error },
         "Unreachable: workspace not found."
       );
       throw new Error("Workspace not found.");
@@ -96,23 +100,40 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
 
   return {
     props: {
+      workspace: renderLightWorkspaceType({ workspace }),
       status,
       userFirstName: user.firstName,
-      workspaceName: workspace.name,
       workspaceVerifiedDomain,
     },
   };
 });
 
 export default function NoWorkspace({
+  workspace,
   status,
   userFirstName,
-  workspaceName,
   workspaceVerifiedDomain,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { user } = useUser();
+
   return (
     <Page variant="normal">
-      <BarHeader title="Joining Dust" />
+      <BarHeader
+        title="Joining Dust"
+        className="ml-10 lg:ml-0"
+        rightActions={
+          <div className="flex flex-row items-center">
+            {user?.organizations && user.organizations.length > 1 && (
+              <WorkspacePicker user={user} workspace={workspace} />
+            )}
+            <div>
+              {user && (
+                <UserMenu user={user} owner={workspace} subscription={null} />
+              )}
+            </div>
+          </div>
+        }
+      />
       <div className="mx-auto mt-40 flex max-w-2xl flex-col gap-8">
         <div className="flex flex-col gap-2">
           <div className="items-left justify-left flex flex-row">
@@ -126,7 +147,7 @@ export default function NoWorkspace({
           {status === "auto-join-disabled" && (
             <div className="flex flex-col gap-4">
               <span className="heading-lg text-muted-foreground dark:text-muted-foreground-night">
-                {workspaceVerifiedDomain ?? workspaceName} already has a Dust
+                {workspaceVerifiedDomain ?? workspace.name} already has a Dust
                 workspace.
               </span>
               <span className="copy-md text-muted-foreground dark:text-muted-foreground-night">
@@ -144,7 +165,7 @@ export default function NoWorkspace({
           {status === "revoked" && (
             <div className="flex flex-col gap-4">
               <span className="heading-lg text-muted-foreground dark:text-muted-foreground-night">
-                You no longer have access to {workspaceName}'s Dust workspace.
+                You no longer have access to {workspace.name}'s Dust workspace.
               </span>
               <span className="copy-md text-muted-foreground dark:text-muted-foreground-night">
                 You may have been removed from the workspace or the workspace
@@ -152,7 +173,7 @@ export default function NoWorkspace({
                 <br />
                 Please{" "}
                 <span className="font-semibold">
-                  contact the administrator in {workspaceName}
+                  contact the administrator in {workspace.name}
                 </span>{" "}
                 for more informations or to add you again.
               </span>

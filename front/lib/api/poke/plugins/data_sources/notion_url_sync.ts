@@ -32,6 +32,7 @@ export const notionUrlSyncPlugin = createPlugin({
           label: operation,
           value: operation,
         })),
+        multiple: false,
       },
       urls: {
         type: "text",
@@ -76,7 +77,7 @@ export const notionUrlSyncPlugin = createPlugin({
       );
     }
 
-    if (operation === "Sync urls") {
+    if (operation[0] === "Sync urls") {
       const res = await syncNotionUrls({
         urlsArray,
         dataSourceId: dataSource.sId,
@@ -95,7 +96,7 @@ export const notionUrlSyncPlugin = createPlugin({
         display: "text",
         value: `Synced ${urlsArray.length} URLs from Notion.`,
       });
-    } else if (operation === "Delete urls") {
+    } else if (operation[0] === "Delete urls") {
       const res = await deleteUrls({
         urlsArray,
         dataSourceId: dataSource.sId,
@@ -289,6 +290,7 @@ export async function deleteUrls({
         db: { [key: string]: unknown } | null;
       };
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if ((page && !page.in_trash) || (db && !db.in_trash)) {
         return {
           url,

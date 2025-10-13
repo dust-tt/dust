@@ -36,22 +36,30 @@ export function formatHubSpotObject(
       case "contacts":
         return object.properties.firstname && object.properties.lastname
           ? `${object.properties.firstname} ${object.properties.lastname}`
-          : object.properties.email ||
+          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            object.properties.email ||
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               object.properties.firstname ||
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               object.properties.lastname ||
               "Unnamed Contact";
       case "companies":
         return (
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           object.properties.name ||
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           object.properties.domain ||
           "Unnamed Company"
         );
       case "deals":
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         return object.properties.dealname || "Unnamed Deal";
 
       default:
         return (
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           object.properties.name ||
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           object.properties.title ||
           `${type.slice(0, -1)} #${object.id}`
         );
@@ -67,8 +75,6 @@ export function formatHubSpotObject(
         value !== undefined &&
         value !== "" &&
         !key.startsWith("hs_") &&
-        !key.includes("_id") &&
-        key !== "hubspot_owner_id" &&
         ((!key.includes("_date") && !key.includes("_timestamp")) ||
           allowlist.includes(key))
     )
@@ -90,7 +96,9 @@ export function formatHubSpotObject(
     title: getTitleField(objectType),
     url: hubSpotUrl,
     properties: cleanProperties,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     created_at: object.properties.createdate || undefined,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     updated_at: object.properties.lastmodifieddate || undefined,
   };
 }
@@ -166,7 +174,7 @@ export function formatHubSpotPropertiesAsText(
         text += `\n   Required: Yes`;
       }
       if (summary.options && summary.options.length > 0) {
-        text += `\n   Options: ${summary.options.map((o) => o.label).join(", ")}`;
+        text += `\n   Options: ${summary.options.map((o) => `${o.label} (${o.value})`).join(", ")}`;
       }
       return text;
     })
@@ -199,7 +207,7 @@ export function formatTransformedPropertiesAsText(
         text += `\n   Description: ${property.description}`;
       }
       if (property.options && property.options.length > 0) {
-        text += `\n   Options: ${property.options.map((o) => o.label).join(", ")}`;
+        text += `\n   Options: ${property.options.map((o) => `${o.label} (${o.value})`).join(", ")}`;
       }
       return text;
     })

@@ -1,4 +1,3 @@
-import moment from "moment-timezone";
 import { z } from "zod";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
@@ -6,8 +5,9 @@ import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
-import { NotificationInteractiveFileContentSchema } from "./output_schemas";
+import { NotificationInteractiveContentFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
+import { TIMEZONE_NAMES } from "./timezone_names";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -30,6 +30,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "deepseek"
   | "fireworks"
   | "xai"
+  | "noop"
 >();
 
 const ModelLLMIdSchema = FlexibleEnumSchema<
@@ -40,6 +41,8 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gpt-4o-mini"
   | "gpt-4.1-2025-04-14"
   | "gpt-4.1-mini-2025-04-14"
+  | "gpt-5-nano"
+  | "gpt-5-mini"
   | "gpt-5"
   | "o1"
   | "o1-mini"
@@ -48,6 +51,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "o4-mini"
   | "claude-4-opus-20250514"
   | "claude-4-sonnet-20250514"
+  | "claude-sonnet-4-5-20250929"
   | "claude-3-opus-20240229"
   | "claude-3-5-sonnet-20240620"
   | "claude-3-5-sonnet-20241022"
@@ -60,16 +64,18 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "mistral-medium"
   | "mistral-small-latest"
   | "codestral-latest"
-  | "gemini-1.5-pro-latest"
-  | "gemini-1.5-flash-latest"
-  | "gemini-2.0-flash"
-  | "gemini-2.0-flash-lite"
-  | "gemini-2.5-pro-preview-03-25"
-  | "gemini-2.5-pro"
+  | "gemini-1.5-pro-latest" // DEPRECATED
+  | "gemini-1.5-flash-latest" // DEPRECATED
+  | "gemini-2.0-flash" // DEPRECATED
+  | "gemini-2.0-flash-lite" // DEPRECATED
+  | "gemini-2.5-pro-preview-03-25" // DEPRECATED
   | "gemini-2.0-flash-exp" // DEPRECATED
   | "gemini-2.0-flash-lite-preview-02-05" // DEPRECATED
   | "gemini-2.0-pro-exp-02-05" // DEPRECATED
   | "gemini-2.0-flash-thinking-exp-01-21" // DEPRECATED
+  | "gemini-2.5-pro"
+  | "gemini-2.5-flash"
+  | "gemini-2.5-flash-lite"
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
   | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
   | "Qwen/QwQ-32B-Preview" // togetherai
@@ -84,6 +90,10 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "grok-3-mini-latest" // xAI
   | "grok-3-fast-latest" // xAI
   | "grok-3-mini-fast-latest" // xAI
+  | "grok-4-latest" // xAI
+  | "grok-4-fast-non-reasoning-latest"
+  | "grok-4-fast-reasoning-latest"
+  | "noop" // Noop
 >();
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
@@ -108,6 +118,7 @@ const ConnectorsAPIErrorTypeSchema = FlexibleEnumSchema<
   | "connector_rate_limit_error"
   | "slack_configuration_not_found"
   | "google_drive_webhook_not_found"
+  | "connector_operation_in_progress"
 >();
 
 const ConnectorsAPIErrorSchema = z.object({
@@ -163,6 +174,7 @@ export const supportedOtherFileFormats = {
   "text/tab-separated-values": [".tsv"],
   "text/tsv": [".tsv"],
   "text/vnd.dust.attachment.slack.thread": [".txt"],
+  "text/vnd.dust.attachment.pasted": [".txt"],
   "text/html": [".html", ".htm", ".xhtml", ".xhtml+xml"],
   "text/xml": [".xml"],
   "text/calendar": [".ics"],
@@ -203,8 +215,25 @@ export const supportedImageFileFormats = {
   "image/webp": [".webp"],
 } as const;
 
+export const supportedAudioFileFormats = {
+  "audio/mpeg": [".mp3", ".mp4"],
+  "audio/x-m4a": [".m4a", ".mp4"],
+  "audio/ogg": [".ogg"],
+  "audio/wav": [".wav"],
+  "audio/webm": [".webm"],
+} as const;
+
+// Webhook trigger endpoint (skeleton) response type
+export const PostWebhookTriggerResponseSchema = z.object({
+  success: z.literal(true),
+});
+export type PostWebhookTriggerResponseType = z.infer<
+  typeof PostWebhookTriggerResponseSchema
+>;
+
 type OtherContentType = keyof typeof supportedOtherFileFormats;
 type ImageContentType = keyof typeof supportedImageFileFormats;
+type AudioContentType = keyof typeof supportedAudioFileFormats;
 
 const supportedOtherContentTypes = Object.keys(
   supportedOtherFileFormats
@@ -212,21 +241,29 @@ const supportedOtherContentTypes = Object.keys(
 const supportedImageContentTypes = Object.keys(
   supportedImageFileFormats
 ) as ImageContentType[];
+const supportedAudioContentTypes = Object.keys(
+  supportedAudioFileFormats
+) as AudioContentType[];
 
 export const supportedFileExtensions = [
   ...Object.keys(supportedOtherFileFormats),
   ...Object.keys(supportedImageFileFormats),
 ];
 
-export type SupportedFileContentType = OtherContentType | ImageContentType;
+export type SupportedFileContentType =
+  | OtherContentType
+  | ImageContentType
+  | AudioContentType;
 const supportedUploadableContentType = [
   ...supportedOtherContentTypes,
   ...supportedImageContentTypes,
+  ...supportedAudioContentTypes,
 ] as SupportedFileContentType[];
 
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
+  | keyof typeof supportedAudioFileFormats
   | (typeof INTERNAL_MIME_TYPES_VALUES)[number]
   // Legacy content types still retuned by the API when rendering old messages.
   | "dust-application/slack"
@@ -235,7 +272,15 @@ const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
 const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
+  | keyof typeof supportedAudioFileFormats
 >();
+
+const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
+
+const ActionGeneratedFileContentTypeSchema = z.union([
+  SupportedFileContentFragmentTypeSchema,
+  FrameContentTypeSchema,
+]);
 
 export function isSupportedFileContentType(
   contentType: string
@@ -257,6 +302,12 @@ export function isSupportedImageContentType(
   return supportedImageContentTypes.includes(contentType as ImageContentType);
 }
 
+export function isSupportedAudioContentType(
+  contentType: string
+): contentType is AudioContentType {
+  return supportedAudioContentTypes.includes(contentType as AudioContentType);
+}
+
 const UserMessageOriginSchema = FlexibleEnumSchema<
   | "api"
   | "email"
@@ -267,10 +318,14 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "n8n"
   | "raycast"
   | "slack"
+  | "triggered"
   | "web"
   | "zapier"
   | "zendesk"
   | "run_agent"
+  | "agent_handover"
+  | "excel"
+  | "powerpoint"
 >()
   .or(z.null())
   .or(z.undefined());
@@ -308,7 +363,7 @@ export class Err<E> {
 export type Result<T, E> = Ok<T> | Err<E>;
 
 // Custom codec to validate the timezone
-const Timezone = z.string().refine((s) => moment.tz.names().includes(s), {
+const Timezone = z.string().refine((s) => TIMEZONE_NAMES.includes(s), {
   message: "Invalid timezone",
 });
 
@@ -453,7 +508,7 @@ export interface LoggerInterface {
 }
 
 const DataSourceViewCategoriesSchema = FlexibleEnumSchema<
-  "managed" | "folder" | "website" | "apps" | "actions"
+  "managed" | "folder" | "website" | "apps" | "actions" | "triggers"
 >();
 
 const BlockTypeSchema = FlexibleEnumSchema<
@@ -588,23 +643,25 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "advanced_search"
   | "agent_builder_instructions_autocomplete"
-  | "agent_builder_v2"
+  | "agent_management_tool"
+  | "agent_to_yaml"
   | "anthropic_vertex_fallback"
-  | "async_loop"
   | "claude_4_opus_feature"
   | "co_edition"
+  | "confluence_tool"
+  | "deep_research_as_a_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
-  | "exploded_tables_query"
+  | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
   | "google_sheets_tool"
+  | "hootl_subscriptions"
+  | "hootl_webhooks"
+  | "hootl_dev_webhooks"
   | "index_private_slack_channel"
-  | "interactive_content_server"
-  | "jira_tool"
-  | "jit_tools"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
@@ -614,14 +671,21 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
-  | "freshservice_tool"
+  | "openai_usage_mcp"
   | "research_agent"
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "show_debug_tools"
+  | "slack_semantic_search"
+  | "slack_bot_mcp"
+  | "slack_enhanced_default_agent"
+  | "slack_message_splitting"
+  | "slideshow"
   | "usage_data_api"
+  | "web_summarization"
   | "xai_feature"
-  | "agent_management_tool"
+  | "noop_model_feature"
+  | "elevenlabs_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -681,13 +745,31 @@ export const WebsearchResultSchema = z.object({
 
 export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
 
-const MCPActionTypeSchema = z.object({
+const ActionGeneratedFileSchema = z.object({
+  fileId: z.string(),
+  title: z.string(),
+  contentType: ActionGeneratedFileContentTypeSchema,
+  snippet: z.string().nullable(),
+  hidden: z.boolean().optional(),
+});
+
+export type ActionGeneratedFileType = z.infer<typeof ActionGeneratedFileSchema>;
+
+const AgentActionTypeSchema = z.object({
   id: ModelIdSchema,
+  sId: z.string(),
+  createdAt: z.number(),
+  mcpServerId: z.string().nullable(),
+  internalMCPServerName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
-  functionCallName: z.string().nullable(),
-  params: z.unknown(),
+  functionCallName: z.string(),
+  functionCallId: z.string(),
+  status: z.string(),
+  params: z.record(z.any()),
+  step: z.number(),
+  citationsAllocated: z.number(),
   output: CallToolResultSchema.shape.content.nullable(),
-  type: z.literal("tool_action"),
+  generatedFiles: z.array(ActionGeneratedFileSchema),
 });
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
@@ -848,7 +930,10 @@ const UserMessageContextSchema = z.object({
   email: z.string().optional().nullable(),
   profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
+  originMessageId: z.string().optional().nullable(),
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
+  selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
+  lastTriggerRunAt: z.number().optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
@@ -871,7 +956,7 @@ export type UserMessageWithRankType = z.infer<
   typeof UserMessageWithRankTypeSchema
 >;
 
-export type AgentActionPublicType = z.infer<typeof MCPActionTypeSchema>;
+export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
 const AgentMessageStatusSchema = FlexibleEnumSchema<
   "created" | "succeeded" | "failed" | "cancelled"
@@ -888,7 +973,7 @@ const AgentMessageTypeSchema = z.object({
   parentMessageId: z.string().nullable(),
   configuration: LightAgentConfigurationSchema,
   status: AgentMessageStatusSchema,
-  actions: z.array(MCPActionTypeSchema),
+  actions: z.array(AgentActionTypeSchema),
   content: z.string().nullable(),
   chainOfThought: z.string().nullable(),
   rawContents: z.array(
@@ -906,6 +991,17 @@ const AgentMessageTypeSchema = z.object({
     .nullable(),
 });
 export type AgentMessagePublicType = z.infer<typeof AgentMessageTypeSchema>;
+
+export function isAgentMessage(
+  message:
+    | UserMessageType
+    | AgentMessagePublicType
+    | ContentFragmentType
+    | null
+    | undefined
+): message is AgentMessagePublicType {
+  return AgentMessageTypeSchema.safeParse(message).success;
+}
 
 const AgentMessageFeedbackSchema = z.object({
   messageId: z.string(),
@@ -931,6 +1027,8 @@ const ConversationWithoutContentSchema = z.object({
   id: ModelIdSchema,
   created: z.number(),
   updated: z.number().optional(),
+  unread: z.boolean(),
+  actionRequired: z.boolean(),
   owner: WorkspaceSchema,
   sId: z.string(),
   title: z.string().nullable(),
@@ -993,7 +1091,7 @@ const MCPParamsEventSchema = z.object({
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
-  action: MCPActionTypeSchema,
+  action: AgentActionTypeSchema,
 });
 
 const NotificationImageContentSchema = z.object({
@@ -1038,12 +1136,29 @@ const NotificationRunAgentGenerationTokensSchema = z.object({
   text: z.string(),
 });
 
+const NotificationStoreResourceContentSchema = z.object({
+  type: z.literal("store_resource"),
+  contents: z.array(
+    z.object({
+      type: z.literal("resource"),
+      resource: z
+        .object({
+          mimeType: z.string(),
+          text: z.string(),
+          uri: z.string(),
+        })
+        .passthrough(),
+    }) // Allow additional properties
+  ),
+});
+
 const NotificationContentSchema = z.union([
+  NotificationInteractiveContentFileContentSchema,
   NotificationImageContentSchema,
-  NotificationInteractiveFileContentSchema,
-  NotificationRunAgentContentSchema,
   NotificationRunAgentChainOfThoughtSchema,
+  NotificationRunAgentContentSchema,
   NotificationRunAgentGenerationTokensSchema,
+  NotificationStoreResourceContentSchema,
   NotificationTextContentSchema,
   NotificationToolApproveBubbleUpContentSchema,
 ]);
@@ -1066,7 +1181,7 @@ const ToolNotificationEventSchema = z.object({
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
-  action: MCPActionTypeSchema,
+  action: AgentActionTypeSchema,
   notification: ToolNotificationProgressSchema,
 });
 
@@ -1076,17 +1191,69 @@ export type MCPValidationMetadataPublicType = z.infer<
   typeof MCPValidationMetadataSchema
 >;
 
-const MCPApproveExecutionEventSchema = z.object({
-  type: z.literal("tool_approve_execution"),
-  created: z.number(),
-  configurationId: z.string(),
-  conversationId: z.string(),
-  messageId: z.string(),
+const ToolExecutionBlockedStatusSchema = z.enum([
+  "blocked_authentication_required",
+  "blocked_validation_required",
+  "blocked_child_action_input_required",
+]);
+
+export type ToolExecutionBlockedStatusType = z.infer<
+  typeof ToolExecutionBlockedStatusSchema
+>;
+
+const ToolExecutionMetadataSchema = z.object({
   actionId: z.string(),
   inputs: z.record(z.any()),
   stake: MCPStakeLevelSchema,
   metadata: MCPValidationMetadataSchema,
 });
+
+const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
+  messageId: z.string(),
+  conversationId: z.string(),
+  status: ToolExecutionBlockedStatusSchema,
+});
+
+export type BlockedActionExecutionType = z.infer<
+  typeof BlockedActionExecutionSchema
+>;
+
+const MCPApproveExecutionEventSchema = ToolExecutionMetadataSchema.extend({
+  type: z.literal("tool_approve_execution"),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  created: z.number(),
+  isLastBlockingEventForStep: z.boolean().optional(),
+  messageId: z.string(),
+});
+
+export type MCPApproveExecutionEvent = z.infer<
+  typeof MCPApproveExecutionEventSchema
+>;
+
+const ToolErrorEventSchema = z.object({
+  type: z.literal("tool_error"),
+  created: z.number(),
+  configurationId: z.string(),
+  isLastBlockingEventForStep: z.boolean().optional(),
+  messageId: z.string(),
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    metadata: z.record(z.any()).nullable(),
+  }),
+});
+export type ToolErrorEvent = z.infer<typeof ToolErrorEventSchema>;
+
+export function isMCPServerPersonalAuthRequiredError(
+  error: ToolErrorEvent["error"]
+) {
+  return (
+    error.code === "mcp_server_personal_authentication_required" &&
+    error.metadata &&
+    "mcpServerId" in error.metadata
+  );
+}
 
 const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),
@@ -1115,7 +1282,7 @@ const AgentActionSuccessEventSchema = z.object({
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
-  action: MCPActionTypeSchema,
+  action: AgentActionTypeSchema,
 });
 export type AgentActionSuccessEvent = z.infer<
   typeof AgentActionSuccessEventSchema
@@ -1132,6 +1299,15 @@ const AgentMessageSuccessEventSchema = z.object({
 export type AgentMessageSuccessEvent = z.infer<
   typeof AgentMessageSuccessEventSchema
 >;
+
+const AgentMessageDoneEventSchema = z.object({
+  type: z.literal("agent_message_done"),
+  created: z.number(),
+  conversationId: z.string(),
+  configurationId: z.string(),
+  messageId: z.string(),
+});
+export type AgentMessageDoneEvent = z.infer<typeof AgentMessageDoneEventSchema>;
 
 const AgentGenerationCancelledEventSchema = z.object({
   type: z.literal("agent_generation_cancelled"),
@@ -1663,6 +1839,10 @@ export const PostMessageFeedbackResponseSchema = z.object({
   success: z.literal(true),
 });
 
+export type PostMessageFeedbackResponseType = z.infer<
+  typeof PostMessageFeedbackResponseSchema
+>;
+
 export const PostUserMessageResponseSchema = z.object({
   message: UserMessageSchema,
 });
@@ -1671,12 +1851,35 @@ export type PostUserMessageResponseType = z.infer<
   typeof PostUserMessageResponseSchema
 >;
 
+export const RetryMessageResponseSchema = z.object({
+  message: AgentMessageTypeSchema,
+});
+export type RetryMessageResponseType = z.infer<
+  typeof RetryMessageResponseSchema
+>;
+
 export const GetConversationResponseSchema = z.object({
   conversation: ConversationSchema,
 });
 
 export type GetConversationResponseType = z.infer<
   typeof GetConversationResponseSchema
+>;
+
+export const PatchConversationRequestSchema = z.object({
+  read: z.literal(true),
+});
+
+export type PatchConversationRequestType = z.infer<
+  typeof PatchConversationRequestSchema
+>;
+
+export const PatchConversationResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type PatchConversationResponseType = z.infer<
+  typeof PatchConversationResponseSchema
 >;
 
 export const TokenizeResponseSchema = z.object({
@@ -1735,7 +1938,7 @@ export type PublicPostMessagesRequestBody = z.infer<
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;
-  agentMessages?: AgentMessagePublicType[];
+  agentMessages: AgentMessagePublicType[];
 };
 
 export const PublicPostEditMessagesRequestBodySchema = z.object({
@@ -2335,6 +2538,14 @@ export type GetWorkspaceUsageRequestType = z.infer<
   typeof GetWorkspaceUsageRequestSchema
 >;
 
+const GetWorkspaceUsageResponseSchema = z
+  .string()
+  .or(z.undefined())
+  .or(z.instanceof(Buffer));
+export type GetWorkspaceUsageResponseType = z.infer<
+  typeof GetWorkspaceUsageResponseSchema
+>;
+
 export const FileUploadUrlRequestSchema = z.object({
   contentType: SupportedFileContentFragmentTypeSchema,
   fileName: z.string().max(4096, "File name must be less than 4096 characters"),
@@ -2396,10 +2607,37 @@ export type FileUploadedRequestResponseType = z.infer<
   typeof FileUploadedRequestResponseSchema
 >;
 
+export const PublicFrameResponseBodySchema = z.object({
+  content: z.string().optional(),
+  file: FileTypeSchema,
+});
+
+export type PublicFrameResponseBodyType = z.infer<
+  typeof PublicFrameResponseBodySchema
+>;
+
+export const MembershipOriginType = FlexibleEnumSchema<
+  "provisioned" | "invited" | "auto-joined"
+>();
+
+export const WorkOSOrganizationSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  externalId: z.string().nullable(),
+  metadata: z.record(z.string()),
+});
+
+export type WorkOSOrganizationType = z.infer<typeof WorkOSOrganizationSchema>;
+
 export const MeResponseSchema = z.object({
   user: UserSchema.and(
     z.object({
       workspaces: WorkspaceSchema.array().or(ExtensionWorkspaceSchema.array()),
+      organizations: WorkOSOrganizationSchema.array().optional(),
+      origin: MembershipOriginType.optional(),
+      selectedWorkspace: z.string().optional(),
     })
   ),
 });
@@ -2507,6 +2745,269 @@ export const GetSpacesResponseSchema = z.object({
 
 export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 
+const OAuthProviderSchema = FlexibleEnumSchema<
+  | "confluence"
+  | "confluence_tools"
+  | "freshservice"
+  | "github"
+  | "google_drive"
+  | "gmail"
+  | "intercom"
+  | "jira"
+  | "monday"
+  | "notion"
+  | "slack"
+  | "gong"
+  | "microsoft"
+  | "microsoft_tools"
+  | "zendesk"
+  | "salesforce"
+  | "hubspot"
+  | "mcp"
+  | "mcp_static"
+>();
+
+const InternalAllowedIconSchema = FlexibleEnumSchema<
+  | "ActionBrainIcon"
+  | "ActionCloudArrowLeftRightIcon"
+  | "ActionDocumentTextIcon"
+  | "ActionEmotionLaughIcon"
+  | "ActionFrameIcon"
+  | "ActionGitBranchIcon"
+  | "ActionGlobeAltIcon"
+  | "ActionImageIcon"
+  | "ActionLightbulbIcon"
+  | "ActionLockIcon"
+  | "ActionMagnifyingGlassIcon"
+  | "ActionRobotIcon"
+  | "ActionScanIcon"
+  | "ActionTableIcon"
+  | "ActionTimeIcon"
+  | "AsanaLogo"
+  | "CommandLineIcon"
+  | "ConfluenceLogo"
+  | "DriveLogo"
+  | "GcalLogo"
+  | "GithubLogo"
+  | "GmailLogo"
+  | "GoogleSpreadsheetLogo"
+  | "FreshserviceLogo"
+  | "HubspotLogo"
+  | "OutlookLogo"
+  | "JiraLogo"
+  | "LinearLogo"
+  | "MondayLogo"
+  | "NotionLogo"
+  | "SalesforceLogo"
+  | "SlackLogo"
+  | "StripeLogo"
+  | "OpenaiLogo"
+>();
+
+const CustomServerIconSchema = FlexibleEnumSchema<
+  | "ActionArmchairIcon"
+  | "ActionArrowDownOnSquareIcon"
+  | "ActionArrowUpOnSquareIcon"
+  | "ActionAttachmentIcon"
+  | "ActionAtomIcon"
+  | "ActionBankIcon"
+  | "ActionBarcodeIcon"
+  | "ActionBeerIcon"
+  | "ActionBookOpenIcon"
+  | "ActionBracesIcon"
+  | "ActionBrainIcon"
+  | "ActionBriefcaseIcon"
+  | "ActionBuildingIcon"
+  | "ActionCalculatorIcon"
+  | "ActionCalendarIcon"
+  | "ActionCalendarCheckIcon"
+  | "ActionCameraIcon"
+  | "ActionCarIcon"
+  | "ActionCardIcon"
+  | "ActionCheckCircleIcon"
+  | "ActionClipboardIcon"
+  | "ActionCloudArrowDownIcon"
+  | "ActionCloudArrowLeftRightIcon"
+  | "ActionCloudArrowUpIcon"
+  | "ActionCodeBlockIcon"
+  | "ActionCodeBoxIcon"
+  | "ActionCommandIcon"
+  | "ActionCommand1Icon"
+  | "ActionCommunityIcon"
+  | "ActionCompanyIcon"
+  | "ActionCubeIcon"
+  | "ActionCupIcon"
+  | "ActionCustomerServiceIcon"
+  | "ActionDashboardIcon"
+  | "ActionDatabaseIcon"
+  | "ActionDocumentIcon"
+  | "ActionDocumentPileIcon"
+  | "ActionDocumentPlusIcon"
+  | "ActionDocumentTextIcon"
+  | "ActionDoubleQuotesIcon"
+  | "ActionEmotionLaughIcon"
+  | "ActionExternalLinkIcon"
+  | "ActionEyeIcon"
+  | "ActionEyeSlashIcon"
+  | "ActionFrameIcon"
+  | "ActionFilmIcon"
+  | "ActionFilterIcon"
+  | "ActionFingerprintIcon"
+  | "ActionFireIcon"
+  | "ActionFlagIcon"
+  | "ActionFlightLandIcon"
+  | "ActionFlightTakeoffIcon"
+  | "ActionFolderIcon"
+  | "ActionFolderAddIcon"
+  | "ActionFolderOpenIcon"
+  | "ActionFullscreenIcon"
+  | "ActionFullscreenExitIcon"
+  | "ActionGamepadIcon"
+  | "ActionGitBranchIcon"
+  | "ActionGitForkIcon"
+  | "ActionGlobeIcon"
+  | "ActionGlobeAltIcon"
+  | "ActionGraduationCapIcon"
+  | "ActionHandHeartIcon"
+  | "ActionHandThumbDownIcon"
+  | "ActionHandThumbUpIcon"
+  | "ActionHeartIcon"
+  | "ActionHomeIcon"
+  | "ActionHospitalIcon"
+  | "ActionImageIcon"
+  | "ActionInboxIcon"
+  | "ActionIncludeIcon"
+  | "ActionLayoutIcon"
+  | "ActionLightbulbIcon"
+  | "ActionListIcon"
+  | "ActionListCheckIcon"
+  | "ActionLockIcon"
+  | "ActionLogoutIcon"
+  | "ActionMagicIcon"
+  | "ActionMagnifyingGlassIcon"
+  | "ActionMailIcon"
+  | "ActionMailAiIcon"
+  | "ActionMailCloseIcon"
+  | "ActionMapIcon"
+  | "ActionMapPinIcon"
+  | "ActionMarkPenIcon"
+  | "ActionMedalIcon"
+  | "ActionMegaphoneIcon"
+  | "ActionMenuIcon"
+  | "ActionMicIcon"
+  | "ActionMoonIcon"
+  | "ActionMovieIcon"
+  | "ActionNumbersIcon"
+  | "ActionPaintIcon"
+  | "ActionPencilSquareIcon"
+  | "ActionPieChartIcon"
+  | "ActionPinDistanceIcon"
+  | "ActionPingPongIcon"
+  | "ActionPlanetIcon"
+  | "ActionPlusIcon"
+  | "ActionPlusCircleIcon"
+  | "ActionPrinterIcon"
+  | "ActionPushpinIcon"
+  | "ActionRainbowIcon"
+  | "ActionRobotIcon"
+  | "ActionRocketIcon"
+  | "ActionSafeIcon"
+  | "ActionSaveIcon"
+  | "ActionScalesIcon"
+  | "ActionScanIcon"
+  | "ActionSeedlingIcon"
+  | "ActionServerIcon"
+  | "ActionShakeHandsIcon"
+  | "ActionShipIcon"
+  | "ActionShirtIcon"
+  | "ActionShoppingBasketIcon"
+  | "ActionSlideshowIcon"
+  | "ActionSparklesIcon"
+  | "ActionSquare3Stack3DIcon"
+  | "ActionStopSignIcon"
+  | "ActionStoreIcon"
+  | "ActionSunIcon"
+  | "ActionSwordIcon"
+  | "ActionTableIcon"
+  | "ActionTagIcon"
+  | "ActionTestTubeIcon"
+  | "ActionTimeIcon"
+  | "ActionTrainIcon"
+  | "ActionTranslateIcon"
+  | "ActionTrashIcon"
+  | "ActionTrophyIcon"
+  | "ActionTShirtIcon"
+  | "ActionUmbrellaIcon"
+  | "ActionUserIcon"
+  | "ActionUserGroupIcon"
+  | "ActionVidiconIcon"
+  | "ActionVolumeUpIcon"
+  | "ActionXCircleIcon"
+>();
+
+const MCPServerTypeSchema = z.object({
+  sId: z.string(),
+  name: z.string(),
+  version: z.string(),
+  description: z.string(),
+  icon: z.union([InternalAllowedIconSchema, CustomServerIconSchema]),
+  authorization: z
+    .object({
+      provider: OAuthProviderSchema,
+      supported_use_cases: z.array(
+        z.enum(["personal_actions", "platform_actions"])
+      ),
+      scope: z.string().optional(),
+    })
+    .nullable(),
+  tools: z.array(
+    z.object({
+      name: z.string(),
+      description: z.string(),
+      inputSchema: z.any().optional(),
+    })
+  ),
+  availability: z.enum(["manual", "auto", "auto_hidden_builder"]),
+  allowMultipleInstances: z.boolean(),
+  documentationUrl: z.string().nullable(),
+});
+
+const MCPServerViewTypeSchema = z.object({
+  id: z.number(),
+  sId: z.string(),
+  name: z.string().nullable(),
+  description: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  spaceId: z.string(),
+  serverType: z.enum(["remote", "internal"]),
+  server: MCPServerTypeSchema,
+  oAuthUseCase: z.enum(["personal_actions", "platform_actions"]).nullable(),
+  editedByUser: EditedByUserSchema.nullable(),
+});
+
+export type MCPServerViewType = z.infer<typeof MCPServerViewTypeSchema>;
+
+export const GetMCPServerViewsResponseSchema = z.object({
+  success: z.literal(true),
+  serverViews: z.array(MCPServerViewTypeSchema),
+});
+
+export type GetMCPServerViewsResponseType = z.infer<
+  typeof GetMCPServerViewsResponseSchema
+>;
+
+export const GetMCPServerViewsQuerySchema = z.object({
+  includeAuto: z
+    .enum(["true", "false"])
+    .transform((val) => val === "true")
+    .optional(),
+});
+
+export type GetMCPServerViewsQueryType = z.infer<
+  typeof GetMCPServerViewsQuerySchema
+>;
+
 export const BaseSearchBodySchema = z.object({
   viewType: ContentNodesViewTypeSchema,
   spaceIds: z.array(z.string()),
@@ -2593,6 +3094,7 @@ export type SearchWarningCode = z.infer<typeof SearchWarningCodeSchema>;
 export const PostWorkspaceSearchResponseBodySchema = z.object({
   nodes: DataSourceContentNodeSchema.array(),
   warningCode: SearchWarningCodeSchema.optional().nullable(),
+  resultsCount: z.number().optional().nullable(),
 });
 
 export type PostWorkspaceSearchResponseBodyType = z.infer<
@@ -2611,9 +3113,16 @@ export type ValidateActionResponseType = z.infer<
   typeof ValidateActionResponseSchema
 >;
 
+export const ActionApprovalStateSchema = z.enum([
+  "approved",
+  "rejected",
+  "always_approved",
+]);
+export type ActionApprovalStateType = z.infer<typeof ActionApprovalStateSchema>;
+
 export const ValidateActionRequestBodySchema = z.object({
-  actionId: z.union([z.string(), z.number()]),
-  approved: z.enum(["approved", "rejected", "always_approved"]),
+  actionId: z.string(),
+  approved: ActionApprovalStateSchema,
 });
 
 export type ValidateActionRequestBodyType = z.infer<
@@ -2695,8 +3204,17 @@ const MCP_VALIDATION_OUTPUTS = [
   "rejected",
   "always_approved",
 ] as const;
+
 export type MCPValidationOutputPublicType =
   (typeof MCP_VALIDATION_OUTPUTS)[number];
+
+export const BlockedActionsResponseSchema = z.object({
+  blockedActions: z.array(BlockedActionExecutionSchema),
+});
+
+export type BlockedActionsResponseType = z.infer<
+  typeof BlockedActionsResponseSchema
+>;
 
 const MCPViewsRequestAvailabilitySchema = z.enum(["manual", "auto"]);
 export type MCPViewsRequestAvailabilityType = z.infer<

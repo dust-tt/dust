@@ -13,8 +13,15 @@ import type {
 } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
+export type Organization = {
+  id: string;
+  name: string;
+};
+
 export type UserTypeWithExtensionWorkspaces = UserType & {
   workspaces: ExtensionWorkspaceType[];
+  organizations: Organization[];
+  selectedWorkspace: string | null;
 };
 
 export type StoredTokens = {
@@ -110,7 +117,7 @@ export abstract class AuthService {
 
   abstract logout(): Promise<boolean>;
 
-  abstract getAccessToken(): Promise<string | null>;
+  abstract getAccessToken(forceRefresh?: boolean): Promise<string | null>;
 
   abstract refreshToken(
     tokens: StoredTokens | null
@@ -122,7 +129,7 @@ export abstract class AuthService {
   }: {
     accessToken: string;
     dustDomain: string;
-  }): Promise<Result<{ user: StoredUser }, AuthError>> {
+  }): Promise<Result<{ user: UserTypeWithExtensionWorkspaces }, AuthError>> {
     const response = await fetch(`${dustDomain}/api/v1/me`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,

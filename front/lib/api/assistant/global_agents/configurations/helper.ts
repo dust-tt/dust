@@ -9,6 +9,7 @@ import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guid
 import {
   _getAgentRouterToolsConfiguration,
   _getDefaultWebActionsForGlobalAgent,
+  _getInteractiveContentToolConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import config from "@app/lib/api/config";
@@ -64,12 +65,14 @@ export function _getHelperGlobalAgent({
   agentRouterMCPServerView,
   webSearchBrowseMCPServerView,
   searchMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
   helperPromptInstance: HelperAssistantPrompt;
   agentRouterMCPServerView: MCPServerViewResource | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let prompt = "";
 
@@ -125,6 +128,7 @@ export function _getHelperGlobalAgent({
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     });
   }
 
@@ -149,6 +153,13 @@ export function _getHelperGlobalAgent({
   const sId = GLOBAL_AGENTS_SID.HELPER;
   const metadata = getGlobalAgentMetadata(sId);
 
+  actions.push(
+    ..._getInteractiveContentToolConfiguration({
+      agentId: sId,
+      interactiveContentMCPServerView,
+    })
+  );
+
   return {
     id: -1,
     sId,
@@ -165,7 +176,7 @@ export function _getHelperGlobalAgent({
     model: model,
     actions,
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],

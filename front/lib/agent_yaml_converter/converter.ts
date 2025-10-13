@@ -1,7 +1,7 @@
 import * as yaml from "js-yaml";
-import { z } from "zod";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { processAdditionalConfiguration } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
   isAutoInternalMCPServerName,
   isInternalMCPServerName,
@@ -24,15 +24,6 @@ import type {
 } from "./schemas";
 import { agentYAMLConfigSchema } from "./schemas";
 
-const yamlConverterMetadataSchema = z.object({
-  agentSId: z.string().min(1, "Agent ID is required"),
-  createdBy: z.string().min(1, "Created by user ID is required"),
-  lastModified: z.date(),
-  version: z.string().min(1, "Version is required"),
-});
-
-type YamlConverterMetadata = z.infer<typeof yamlConverterMetadataSchema>;
-
 /**
  * AgentYAMLConverter provides utilities for converting between AgentBuilderFormData
  * and YAML format, with proper error handling and type safety.
@@ -51,24 +42,15 @@ export class AgentYAMLConverter {
    */
   static async fromBuilderFormData(
     auth: Authenticator,
-    formData: AgentBuilderFormData,
-    metadata: YamlConverterMetadata
+    formData: AgentBuilderFormData
   ): Promise<Result<AgentYAMLConfig, Error>> {
     try {
-      const validatedMetadata = yamlConverterMetadataSchema.parse(metadata);
-
       const actionsResult = await this.convertActions(auth, formData.actions);
       if (actionsResult.isErr()) {
         return actionsResult;
       }
 
       const yamlConfig = {
-        metadata: {
-          version: validatedMetadata.version,
-          agent_id: validatedMetadata.agentSId,
-          last_modified: validatedMetadata.lastModified.toISOString(),
-          created_by: validatedMetadata.createdBy,
-        },
         agent: {
           handle: formData.agentSettings.name,
           description: formData.agentSettings.description,
@@ -141,7 +123,6 @@ export class AgentYAMLConverter {
       const convertedActions: AgentYAMLAction[] = [];
       for (const action of actions) {
         const baseAction = {
-          id: action.id,
           name: action.name,
           description: action.description,
         };
@@ -178,8 +159,27 @@ export class AgentYAMLConverter {
                       .dataSourceConfigurations as DataSourceViewSelectionConfigurations
                   )
                 : undefined,
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               time_frame: action.configuration.timeFrame || undefined,
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               json_schema: action.configuration.jsonSchema || undefined,
+              reasoning_model: action.configuration.reasoningModel
+                ? {
+                    model_id: action.configuration.reasoningModel.modelId,
+                    provider_id: action.configuration.reasoningModel.providerId,
+                    temperature:
+                      action.configuration.reasoningModel.temperature ??
+                      undefined,
+                    reasoning_effort:
+                      action.configuration.reasoningModel.reasoningEffort ??
+                      undefined,
+                  }
+                : undefined,
+              additional_configuration:
+                Object.keys(action.configuration.additionalConfiguration || {})
+                  .length > 0
+                  ? action.configuration.additionalConfiguration
+                  : undefined,
             },
           });
         }
@@ -262,13 +262,11 @@ export class AgentYAMLConverter {
     };
   }
 
-  /**
-   * Gets the MCP server name from an MCP action configuration.
-   * Looks up the MCP server view to get the actual server name.
-   */
+  // Gets the MCP server name from an MCP action configuration.
+  // Looks up the MCP server view to get the actual server name.
   private static async getMCPServerNameFromConfig(
     auth: Authenticator,
-    configuration: any
+    configuration: { mcpServerViewId: string | null }
   ): Promise<string | null> {
     if (configuration.mcpServerViewId) {
       try {
@@ -372,16 +370,36 @@ export class AgentYAMLConverter {
                 auth.getNonNullableWorkspace().sId
               )
             : null,
+        // TODO(ab-v2): Handle tables configuration if needed
         tables: null,
+        // TODO(ab-v2): Handle child agent ID if needed
         childAgentId: null,
-        reasoningModel: null,
+        reasoningModel:
+          "reasoning_model" in action.configuration &&
+          action.configuration.reasoning_model
+            ? {
+                modelId: action.configuration.reasoning_model.model_id,
+                providerId: action.configuration.reasoning_model.provider_id,
+                temperature:
+                  action.configuration.reasoning_model.temperature ?? null,
+                reasoningEffort:
+                  action.configuration.reasoning_model.reasoning_effort ?? null,
+              }
+            : null,
         jsonSchema:
           "json_schema" in action.configuration &&
           action.configuration.json_schema
             ? action.configuration.json_schema
             : null,
-        additionalConfiguration: {},
+        additionalConfiguration:
+          "additional_configuration" in action.configuration &&
+          action.configuration.additional_configuration
+            ? processAdditionalConfiguration(
+                action.configuration.additional_configuration
+              )
+            : {},
         dustAppConfiguration: null,
+        secretName: null,
         timeFrame:
           "time_frame" in action.configuration &&
           action.configuration.time_frame
@@ -397,13 +415,17 @@ export class AgentYAMLConverter {
    * Converts an array of YAML actions to MCP server configurations.
    * Filters out DATA_VISUALIZATION actions which are handled differently.
    * Uses concurrent execution for better performance with bounds checking.
+   * Returns both successful configurations and skipped actions with reasons.
    */
   static async convertYAMLActionsToMCPConfigurations(
     auth: Authenticator,
     yamlActions: AgentYAMLAction[]
   ): Promise<
     Result<
-      PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][],
+      {
+        configurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][];
+        skipped: { action: AgentYAMLAction; reason: string }[];
+      },
       Error
     >
   > {
@@ -416,18 +438,26 @@ export class AgentYAMLConverter {
 
       const mcpConfigurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][] =
         [];
+      const skippedActions: { action: AgentYAMLAction; reason: string }[] = [];
 
-      for (const result of results) {
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        const originalAction = yamlActions[i];
+
         if (result.isErr()) {
-          return result;
-        }
-
-        if (result.value) {
+          skippedActions.push({
+            action: originalAction,
+            reason: result.error.message,
+          });
+        } else if (result.value) {
           mcpConfigurations.push(result.value);
         }
       }
 
-      return new Ok(mcpConfigurations);
+      return new Ok({
+        configurations: mcpConfigurations,
+        skipped: skippedActions,
+      });
     } catch (error) {
       return new Err(normalizeError(error));
     }

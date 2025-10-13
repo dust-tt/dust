@@ -65,6 +65,7 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
 
   declare promptTokens: number;
   declare completionTokens: number;
+  declare cachedTokens: number | null;
 }
 
 RunUsageModel.init(
@@ -85,11 +86,20 @@ RunUsageModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    cachedTokens: {
+      type: DataTypes.INTEGER,
+      defaultValue: null,
+      allowNull: true,
+    },
   },
   {
     modelName: "run_usages",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["runId"] }, { fields: ["providerId", "modelId"] }],
+    indexes: [
+      { fields: ["runId"] },
+      { fields: ["providerId", "modelId"] },
+      { fields: ["workspaceId"], concurrently: true },
+    ],
   }
 );
 

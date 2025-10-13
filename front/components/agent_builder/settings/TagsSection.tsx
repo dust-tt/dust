@@ -1,19 +1,11 @@
-import {
-  Button,
-  Chip,
-  PopoverContent,
-  PopoverTrigger,
-  SparklesIcon,
-  Spinner,
-} from "@dust-tt/sparkle";
-import { PopoverRoot } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
-import { useController, useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { TagsSelector } from "@app/components/agent_builder/settings/TagsSelector";
 import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
+import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useTags } from "@app/lib/swr/tags";
 import type {
@@ -59,55 +51,40 @@ export function TagsSection() {
   const { owner } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { tags: allTags } = useTags({ owner });
-  const { field } = useController<AgentBuilderFormData, "agentSettings.tags">({
+  const {
+    fields: selectedTags,
+    append,
+    remove,
+  } = useFieldArray<AgentBuilderFormData, "agentSettings.tags">({
     name: "agentSettings.tags",
   });
   const sendNotification = useSendNotification();
 
-  const selectedTags = field.value;
-
-  const [filteredTagsSuggestions, setFilteredTagsSuggestions] = useState<
-    TagType[]
-  >([]);
-  const [isTagsSuggestionLoading, setTagsSuggestionsLoading] = useState(false);
+  const [isSuggestLoading, setIsSuggestLoading] = useState(false);
 
   const instructions = getValues("instructions");
 
+  const availableTagsCount = useMemo(() => {
+    const currentTagIds = new Set(selectedTags.map((field) => field.sId));
+    return allTags.filter((t) => !currentTagIds.has(t.sId)).length;
+  }, [allTags, selectedTags]);
+
   const isButtonDisabled = useMemo(() => {
     return (
+      isSuggestLoading ||
       !instructions ||
       instructions.length < MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS ||
-      allTags.length === 0
+      availableTagsCount === 0
     );
-  }, [instructions, allTags.length]);
+  }, [isSuggestLoading, instructions, availableTagsCount]);
 
-  const buttonTooltip = useMemo(() => {
+  const getSuggestedTags = async (): Promise<TagType[]> => {
     if (
       !instructions ||
       instructions.length < MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS
     ) {
-      return `Add at least ${MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS} characters to instructions to get suggestions`;
+      return [];
     }
-    if (allTags.length === 0) {
-      return "Create tags to start using suggestions";
-    }
-    return undefined;
-  }, [instructions, allTags.length]);
-
-  const updateTagsSuggestions = async () => {
-    if (isTagsSuggestionLoading) {
-      return;
-    }
-
-    if (
-      !instructions ||
-      instructions.length < MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS
-    ) {
-      return;
-    }
-
-    setTagsSuggestionsLoading(true);
-    setFilteredTagsSuggestions([]);
 
     try {
       const description = getValues("agentSettings.description");
@@ -122,11 +99,9 @@ export function TagsSection() {
       if (tagsSuggestionsResult.isOk()) {
         const tagsSuggestions = tagsSuggestionsResult.value;
 
-        let filtered: TagType[] = [];
         if (tagsSuggestions.status === "ok") {
-          const currentTagIds = new Set(selectedTags.map((t) => t.sId));
-          // We make sure we don't suggest tags that already exists.
-          filtered = allTags
+          const currentTagIds = new Set(selectedTags.map((field) => field.sId));
+          return allTags
             .filter((t) => !currentTagIds.has(t.sId))
             .filter((t) => isBuilder(owner) || t.kind !== "protected")
             .filter(
@@ -137,88 +112,68 @@ export function TagsSection() {
             )
             .slice(0, 3);
         }
-
-        setFilteredTagsSuggestions(filtered);
-
-        if (tagsSuggestions.status === "ok" && filtered.length === 0) {
-          sendNotification({
-            title: "No tag suggestions available",
-            type: "info",
-            description:
-              "We couldn't find any relevant tags to suggest for this agent.",
-          });
-        }
       }
     } catch (err) {
       sendNotification({
-        title: "Could not populate any tag suggestions.",
+        title: "Could not get tag suggestions.",
         type: "error",
         description:
           "An error occurred while generating tag suggestions. Please contact us if the error persists.",
       });
+    }
+
+    return [];
+  };
+
+  const handleSuggestTags = async (): Promise<TagType[]> => {
+    if (isSuggestLoading) {
+      return [];
+    }
+
+    setIsSuggestLoading(true);
+
+    try {
+      const suggestedTags = await getSuggestedTags();
+
+      if (suggestedTags.length === 0) {
+        sendNotification({
+          title: "No tag suggestions available",
+          type: "info",
+          description:
+            "We couldn't find any relevant tags to suggest for this agent.",
+        });
+        return [];
+      }
+
+      return suggestedTags;
     } finally {
-      setTagsSuggestionsLoading(false);
+      setIsSuggestLoading(false);
+    }
+  };
+
+  const handleAddTag = (tag: TagType) => {
+    append(tag);
+  };
+
+  const handleRemoveTag = (tagId: string) => {
+    const index = selectedTags.findIndex((field) => field.sId === tagId);
+    if (index !== -1) {
+      remove(index);
     }
   };
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
-        Tags
-      </label>
+    <SettingSectionContainer title="Tags" className="h-full">
       <TagsSelector
         owner={owner}
         tags={selectedTags}
-        onTagsChange={field.onChange}
-        suggestionButton={
-          <PopoverRoot onOpenChange={(open) => open && updateTagsSuggestions()}>
-            <PopoverTrigger asChild>
-              <Button
-                label="Suggest"
-                icon={SparklesIcon}
-                variant="outline"
-                isSelect
-                disabled={isButtonDisabled}
-                tooltip={buttonTooltip}
-              />
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-3" side="top" align="start">
-              {isTagsSuggestionLoading ? (
-                <div className="flex items-center justify-center p-4">
-                  <Spinner size="sm" />
-                </div>
-              ) : filteredTagsSuggestions.length > 0 ? (
-                <div className="space-y-2">
-                  <div className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
-                    Suggestions:
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {filteredTagsSuggestions.map((tag) => (
-                      <Chip
-                        key={`tag-suggestion-chip-${tag.sId}`}
-                        label={tag.name}
-                        size="xs"
-                        color="golden"
-                        onClick={() => {
-                          field.onChange([...selectedTags, tag]);
-                          setFilteredTagsSuggestions((prev) =>
-                            prev.filter((t) => t.sId !== tag.sId)
-                          );
-                        }}
-                        className="cursor-pointer hover:opacity-80"
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
-                  No suggestions available
-                </div>
-              )}
-            </PopoverContent>
-          </PopoverRoot>
-        }
+        onAddTag={handleAddTag}
+        onRemoveTag={handleRemoveTag}
+        onSuggestTags={handleSuggestTags}
+        isSuggestLoading={isSuggestLoading}
+        isSuggestDisabled={isButtonDisabled}
+        instructions={instructions}
       />
-    </div>
+    </SettingSectionContainer>
   );
 }

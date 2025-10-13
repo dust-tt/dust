@@ -7,11 +7,11 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  PlusIcon,
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
 import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 
@@ -20,9 +20,11 @@ interface AssistantPickerProps {
   assistants: LightAgentConfigurationType[];
   onItemClick: (assistant: LightAgentConfigurationType) => void;
   pickerButton?: React.ReactNode;
+  showDropdownArrow?: boolean;
   showFooterButtons?: boolean;
   size?: "xs" | "sm" | "md";
   isLoading?: boolean;
+  disabled?: boolean;
   mountPortal?: boolean;
 }
 
@@ -31,9 +33,11 @@ export function AssistantPicker({
   assistants,
   onItemClick,
   pickerButton,
+  showDropdownArrow = true,
   showFooterButtons = true,
   size = "md",
   isLoading = false,
+  disabled = false,
 }: AssistantPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -57,16 +61,16 @@ export function AssistantPicker({
           <Button
             icon={RobotIcon}
             variant="ghost-secondary"
-            isSelect
+            isSelect={showDropdownArrow}
             size={size}
             tooltip="Pick an agent"
-            disabled={isLoading}
+            disabled={disabled || isLoading}
           />
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="h-96 w-96"
-        align="end"
+        align="start"
         dropdownHeaders={
           <>
             <DropdownMenuSearchbar
@@ -84,11 +88,7 @@ export function AssistantPicker({
               }}
               button={
                 showFooterButtons && (
-                  <Button
-                    label="Create"
-                    icon={PlusIcon}
-                    href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-                  />
+                  <CreateAgentButton owner={owner} dataGtmLocation="homepage" />
                 )
               }
             />
