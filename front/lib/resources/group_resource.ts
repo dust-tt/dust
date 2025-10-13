@@ -112,6 +112,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         userId: user.id,
         workspaceId: workspace.id,
         startAt: new Date(),
+        status: "active" as const,
       },
       { transaction }
     );
@@ -838,6 +839,7 @@ export class GroupResource extends BaseResource<GroupModel> {
             workspaceId: workspace.id,
             startAt: { [Op.lte]: new Date() },
             [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+            status: "active",
           },
           required: true,
         },
@@ -873,6 +875,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         startAt: { [Op.lte]: new Date() },
         [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
         userId: user.id,
+        status: "active",
       },
     });
 
@@ -897,6 +900,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           workspaceId: owner.id,
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          status: "active",
         },
       });
     }
@@ -933,6 +937,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           workspaceId: owner.id,
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          status: "active",
         },
       });
     }
@@ -1030,6 +1035,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         userId: user.id,
         workspaceId: owner.id,
         startAt: new Date(),
+        status: "active" as const,
       })),
       { transaction }
     );
