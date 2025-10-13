@@ -114,20 +114,15 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
       },
     });
 
-    if (countBefore === 0) {
-      return new Ok({
-        display: "text",
-        value: "No history records found for this transcripts configuration.",
+    // Delete all history records (if any exist)
+    if (countBefore > 0) {
+      await LabsTranscriptsHistoryModel.destroy({
+        where: {
+          workspaceId: workspace.id,
+          configurationId: configuration.id,
+        },
       });
     }
-
-    // Delete all history records
-    await LabsTranscriptsHistoryModel.destroy({
-      where: {
-        workspaceId: workspace.id,
-        configurationId: configuration.id,
-      },
-    });
 
     // Determine the correct Temporal namespace based on region
     const currentRegion = config.getCurrentRegion();
@@ -162,7 +157,7 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
 
     return new Ok({
       display: "text",
-      value: `Successfully deleted ${countBefore} history record(s) for transcripts configuration [${configuration.provider}] and restarted the workflow. The sync will now restart from the beginning.\n\nTemporal workflow: ${temporalLink}`,
+      value: `Successfully ${countBefore > 0 ? `deleted ${countBefore} history record(s) and ` : ""}restarted the workflow for transcripts configuration [${configuration.provider}]. The sync will now ${countBefore > 0 ? "restart from the beginning" : "start fresh"}.\n\nTemporal workflow: ${temporalLink}`,
     });
   },
 });
