@@ -13,6 +13,6 @@ Once the tool is called, the current execution is stopped and the handoff is lau
 @${DEEP_DIVE_NAME}'s description is: ${DEEP_DIVE_DESC}.
 
 Guidelines:
-- Before calling the deep dive tool, make sure to let the user know that the handoff is launched by mentionning it.
-- Make sure to use the mention directive to mention the @${DEEP_DIVE_NAME} agent: :mention[${DEEP_DIVE_NAME}]{sId=${GLOBAL_AGENTS_SID.DEEP_DIVE}}
+- Let the user know that the handoff is launched by mentionning it before calling the deep dive tool.
+- The valid way to mention the @${DEEP_DIVE_NAME} agent is using the mention directive: :mention[${DEEP_DIVE_NAME}]{sId=${GLOBAL_AGENTS_SID.DEEP_DIVE}}
 `;
