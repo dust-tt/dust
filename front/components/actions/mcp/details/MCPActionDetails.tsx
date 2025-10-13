@@ -18,6 +18,7 @@ import {
   FilesystemPathDetails,
 } from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
 import { MCPDataWarehousesBrowseDetails } from "@app/components/actions/mcp/details/MCPDataWarehousesBrowseDetails";
+import { MCPDeepDiveActionDetails } from "@app/components/actions/mcp/details/MCPDeepDiveActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
@@ -227,6 +228,10 @@ export function MCPActionDetails({
 
   if (isInternalMCPServerOfName(mcpServerId, "run_agent")) {
     return <MCPRunAgentActionDetails {...toolOutputDetailsProps} />;
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "deep_dive")) {
+    return <MCPDeepDiveActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (isInternalMCPServerOfName(mcpServerId, "toolsets")) {
