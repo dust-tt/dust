@@ -78,21 +78,45 @@ function ExpressionNode({
     }
   }
 
-  return (
-    <div className="itemcenter flex flex-wrap gap-2">
-      <code className="px-2 py-1">{expression.field}</code>
-      <Chip color="primary" size="xs">
-        {expression.op.toUpperCase()}
-      </Chip>
-      <div className="itemcenter flex flex-wrap gap-1">
-        {expression.options.map((option, index) => (
-          <code key={index} className="rounded px-2 py-1">
-            {typeof option === "string" ? `"${option}"` : String(option)}
-          </code>
-        ))}
+  // Render operation expressions.
+  if (isOperationExpression(expression)) {
+    // For exists operator (unary).
+    if (expression.op === "exists") {
+      return (
+        <div className="itemcenter flex flex-wrap gap-2">
+          <Chip color="primary" size="xs">
+            EXISTS
+          </Chip>
+          <code className="px-2 py-1">{expression.field}</code>
+        </div>
+      );
+    }
+
+    return (
+      <div className="itemcenter flex flex-wrap gap-2">
+        <code className="px-2 py-1">{expression.field}</code>
+        <Chip color="primary" size="xs">
+          {expression.op.toUpperCase()}
+        </Chip>
+        <div className="itemcenter flex flex-wrap gap-1">
+          {expression.value !== undefined && (
+            <code className="py-1">
+              {typeof expression.value === "string"
+                ? `"${expression.value}"`
+                : String(expression.value)}
+            </code>
+          )}
+
+          {expression.values &&
+            expression.values.map((value, index) => (
+              <code key={index} className="py-1">
+                {typeof value === "string" ? `"${value}"` : String(value)}
+              </code>
+            ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 }
 
 export function TriggerFilterRenderer({ data }: TriggerFilterRendererProps) {

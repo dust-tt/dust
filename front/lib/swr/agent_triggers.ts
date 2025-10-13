@@ -15,7 +15,8 @@ import type {
   PostTextAsCronRuleResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/text_as_cron_rule";
 import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
-import type { LightWorkspaceType } from "@app/types";
+import { normalizeError, type LightWorkspaceType } from "@app/types";
+import { parseMatcherExpression } from "@app/lib/webhooks/parser";
 
 export function useAgentTriggers({
   workspaceId,
@@ -115,6 +116,14 @@ export function useWebhookFilterGenerator({
           }),
         }
       );
+
+      try {
+        parseMatcherExpression(r.filter);
+      } catch (e: unknown) {
+        throw new Error(
+          "Error generating the filter : " + normalizeError(e).message
+        );
+      }
 
       return { filter: r.filter };
     },
