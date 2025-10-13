@@ -89,6 +89,7 @@ interface AgentMessageProps {
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
+  hideRetryButton: boolean;
 }
 
 export function AgentMessage({
@@ -97,6 +98,7 @@ export function AgentMessage({
   messageStreamState,
   messageFeedback,
   owner,
+  hideRetryButton = false,
 }: AgentMessageProps) {
   const sId = getMessageSId(messageStreamState);
   const { isDark } = useTheme();
@@ -348,7 +350,8 @@ export function AgentMessage({
   if (
     agentMessageToRender.status !== "created" &&
     agentMessageToRender.status !== "failed" &&
-    !shouldStream
+    !shouldStream &&
+    !hideRetryButton
   ) {
     buttons.push(
       <Button
