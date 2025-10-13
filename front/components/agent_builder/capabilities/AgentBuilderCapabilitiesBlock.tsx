@@ -204,7 +204,7 @@ export function AgentBuilderCapabilitiesBlock({
       setKnowledgeAction({ action, index });
     } else {
       setDialogMode(
-        action.configurable
+        action.configurationRequired
           ? { type: "edit", action, index }
           : { type: "info", action, source: "addedTool" }
       );
@@ -227,7 +227,7 @@ export function AgentBuilderCapabilitiesBlock({
     setKnowledgeAction({
       action: {
         ...action,
-        configurable: true, // it's always required for knowledge
+        configurationRequired: true, // it's always required for knowledge
       },
       index: null,
     });

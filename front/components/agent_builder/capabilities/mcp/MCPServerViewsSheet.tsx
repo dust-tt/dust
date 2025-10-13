@@ -192,7 +192,7 @@ export function MCPServerViewsSheet({
           action.type === "MCP" &&
           action.configuration &&
           action.configuration.mcpServerViewId &&
-          !action.configurable
+          !action.configurationRequired
         ) {
           const selectedView = allMcpServerViews.find(
             (mcpServerView) =>
@@ -493,7 +493,7 @@ export function MCPServerViewsSheet({
             configuration: null,
             name: DEFAULT_DATA_VISUALIZATION_NAME,
             description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-            configurable: false,
+            configurationRequired: false,
           };
         } else {
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -626,7 +626,7 @@ export function MCPServerViewsSheet({
           <FormProvider form={form} className="h-full">
             <div className="h-full">
               <div className="h-full space-y-6 pt-3">
-                {configurationTool.configurable && (
+                {configurationTool.configurationRequired && (
                   <NameSection
                     title="Name"
                     placeholder="My tool name…"
