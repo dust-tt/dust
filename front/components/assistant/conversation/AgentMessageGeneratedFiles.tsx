@@ -11,8 +11,8 @@ import { formatCalendarDate } from "@app/lib/utils/timestamps";
 import type { LightAgentMessageType } from "@app/types";
 import { frameContentType } from "@app/types";
 
-function getTime(dateString: string): string {
-  return format(new Date(dateString), "HH:mm");
+function getTime(date: number): string {
+  return format(new Date(date), "HH:mm");
 }
 
 function getDescriptionForContentType(
