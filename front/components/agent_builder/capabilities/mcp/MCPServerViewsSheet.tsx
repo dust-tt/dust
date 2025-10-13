@@ -416,14 +416,8 @@ export function MCPServerViewsSheet({
 
         const defaultReasoningModel =
           reasoningModels.find(
-            (model) =>
-              model.modelId ===
-              toolsConfigurations.reasoningConfiguration?.default?.modelId
-          ) ??
-          reasoningModels.find(
             (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
-          ) ??
-          reasoningModels[0];
+          ) ?? reasoningModels[0];
 
         configuredAction = {
           ...action,
