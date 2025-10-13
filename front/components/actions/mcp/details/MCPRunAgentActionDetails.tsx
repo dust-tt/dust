@@ -28,6 +28,10 @@ import {
 } from "@app/components/markdown/CiteBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getCitationIcon } from "@app/components/markdown/MCPReferenceCitation";
+import {
+  getMentionPlugin,
+  mentionDirective,
+} from "@app/components/markdown/MentionBlock";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -187,15 +191,16 @@ export function MCPRunAgentActionDetails({
     }
   };
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective()],
+    () => [getCiteDirective(), mentionDirective],
     []
   );
 
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       sup: CiteBlock,
+      mention: getMentionPlugin(owner),
     }),
-    []
+    [owner]
   );
 
   if (!childAgent) {
@@ -266,8 +271,12 @@ export function MCPRunAgentActionDetails({
             )}
             {handoverResource && (
               <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                <ContentMessage title="Handover" variant="primary" size="lg">
-                  {handoverResource.resource.text}
+                <ContentMessage title="Handoff" variant="primary" size="lg">
+                  <Markdown
+                    content={handoverResource.resource.text}
+                    additionalMarkdownPlugins={additionalMarkdownPlugins}
+                    additionalMarkdownComponents={additionalMarkdownComponents}
+                  />
                 </ContentMessage>
               </div>
             )}
