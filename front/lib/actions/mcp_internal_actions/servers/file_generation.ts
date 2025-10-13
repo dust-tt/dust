@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import { Readable } from "node:stream";
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -265,6 +266,7 @@ const createServer = (
           return new Err(new MCPError("Missing environment variable."));
         }
 
+        const fileNameWithoutExtension = basename(file_name);
         // Remove the leading dot from the extension.
         const extension = extname(file_name).replace(/^\./, "");
         if (!isValidOutputType(extension)) {
@@ -368,10 +370,9 @@ ${file_content
               }
             }
 
-            const tempFileName = file_name.replace(`.${extension}`, "");
             const uploadResult = await convertapi.upload(
               Readable.from(htmlContent),
-              `${tempFileName}.html`
+              `${fileNameWithoutExtension}.html`
             );
 
             const result = await convertapi.convert(
@@ -396,7 +397,7 @@ ${file_content
                     blob: base64,
                     text: "Your file was generated successfully.",
                     mimeType: getContentTypeFromOutputFormat(extension),
-                    uri: "",
+                    uri: fileNameWithoutExtension,
                   },
                 },
               ]);
@@ -423,7 +424,7 @@ ${file_content
               blob: Buffer.from(file_content).toString("base64"),
               text: "Your file was generated successfully.",
               mimeType: getContentTypeFromOutputFormat(extension),
-              uri: "",
+              uri: fileNameWithoutExtension,
             },
           },
         ]);
