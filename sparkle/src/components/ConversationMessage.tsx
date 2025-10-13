@@ -139,7 +139,7 @@ interface ConversationMessageContentProps
 export const ConversationMessageContent = React.forwardRef<
   HTMLDivElement,
   ConversationMessageContentProps
->(({ children, citations, className, type, ...props }, ref) => {
+>(({ children, citations, className, ...props }, ref) => {
   return (
     <div
       ref={ref}
@@ -150,11 +150,7 @@ export const ConversationMessageContent = React.forwardRef<
       {...props}
     >
       <div
-        className={cn(
-          "s-text-sm @sm:s-text-base",
-          "s-text-foreground dark:s-text-foreground-night",
-          type !== "agentAsTool" && "@md:s-px-4"
-        )}
+        className="s-text-base s-text-foreground dark:s-text-foreground-night"
       >
         {children}
       </div>
@@ -231,11 +227,7 @@ export const ConversationMessageHeader = React.forwardRef<
         )}
         <div className="s-flex s-w-full s-flex-row s-justify-between s-gap-0.5">
           <div
-            className={cn(
-              "s-heading-xs @sm:s-heading-sm",
-              "s-text-foreground dark:s-text-foreground-night",
-              "s-flex s-flex-row s-items-center s-gap-2"
-            )}
+            className="s-heading-sm s-text-foreground dark:s-text-foreground-night s-flex s-flex-row s-items-center s-gap-2"
           >
             {renderName(name)}
             {infoChip}

@@ -159,8 +159,8 @@ describe("augmentInputsWithConfiguration", () => {
         dataSources: [
           {
             workspaceId: mockWorkspace.sId,
-            sId: "ds-123",
-            dataSourceViewId: "view-123",
+            sId: "dsc_123",
+            dataSourceViewId: "view_123",
             filter: {
               tags: { in: ["test"], not: [], mode: "auto" },
               parents: { in: [], not: [] },
@@ -188,7 +188,7 @@ describe("augmentInputsWithConfiguration", () => {
       expect(result).toEqual({
         dataSource: [
           {
-            uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_configurations/ds-123`,
+            uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_configurations/dsc_123`,
             mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
           },
         ],
@@ -202,7 +202,7 @@ describe("augmentInputsWithConfiguration", () => {
           {
             workspaceId: mockWorkspace.sId,
             sId: undefined,
-            dataSourceViewId: "view-123",
+            dataSourceViewId: "view_123",
             filter: {
               tags: { in: ["test"], not: [], mode: "auto" },
               parents: { in: [], not: [] },
@@ -236,7 +236,7 @@ describe("augmentInputsWithConfiguration", () => {
       expect(result).toEqual({
         dataSource: [
           {
-            uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_views/view-123/filter/${expectedFilter}`,
+            uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_views/view_123/filter/${expectedFilter}`,
             mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
           },
         ],
@@ -252,7 +252,7 @@ describe("augmentInputsWithConfiguration", () => {
           {
             workspaceId: mockWorkspace.sId,
             sId: "table-123",
-            dataSourceViewId: "view-123",
+            dataSourceViewId: "view_123",
             tableId: "table-id-123",
           },
         ],
@@ -1188,6 +1188,178 @@ describe("nested objects and complex schemas", () => {
     });
   });
 
+  it("should initialize intermediate objects when parent is missing", () => {
+    // Test case where the parent object doesn't exist in rawInputs
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        "filter.stringParam": "filter-value",
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          filter: {
+            type: "object",
+            properties: {
+              stringParam:
+                ConfigurableToolInputJSONSchemas[
+                  INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                ],
+            },
+            required: ["stringParam"],
+          },
+        },
+        required: ["filter"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      filter: {
+        stringParam: {
+          value: "filter-value",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+        },
+      },
+    });
+  });
+
+  it("should initialize multiple levels of nested objects", () => {
+    // Test case verifying multi-level object initialization
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        "level1.level2.level3.stringParam": "deep-value",
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          level1: {
+            type: "object",
+            properties: {
+              level2: {
+                type: "object",
+                properties: {
+                  level3: {
+                    type: "object",
+                    properties: {
+                      stringParam:
+                        ConfigurableToolInputJSONSchemas[
+                          INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                        ],
+                    },
+                    required: ["stringParam"],
+                  },
+                },
+                required: ["level3"],
+              },
+            },
+            required: ["level2"],
+          },
+        },
+        required: ["level1"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    // Should create all intermediate objects: level1, level2, level3
+    expect(result).toEqual({
+      level1: {
+        level2: {
+          level3: {
+            stringParam: {
+              value: "deep-value",
+              mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+            },
+          },
+        },
+      },
+    });
+  });
+
+  it("should handle array property named 'items' with configurable fields", () => {
+    // Test the exact user schema: filter.items[] where items is an array property
+    // iterateOverSchemaPropertiesRecursive will generate path: filter.items.items.field
+    // (first 'items' is property name, second 'items' is array marker)
+    // Since field is configurable (STRING type), it should be augmented
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        "filter.items.items.field": "indicator-id",
+      },
+      inputSchema: {
+        type: "object",
+        required: ["portfolio_id"],
+        properties: {
+          portfolio_id: {
+            type: "string",
+            description: "The ID of the portfolio",
+          },
+          filter: {
+            type: "object",
+            properties: {
+              items: {
+                type: "array",
+                items: {
+                  type: "object",
+                  required: ["field", "operator", "value"],
+                  properties: {
+                    field:
+                      ConfigurableToolInputJSONSchemas[
+                        INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                      ],
+                    operator: {
+                      type: "string",
+                      enum: ["=", "!=", ">", ">=", "<", "<=", "isAnyOf"],
+                    },
+                    value: {},
+                  },
+                },
+              },
+              logicOperator: {
+                enum: ["and", "or"],
+                type: "string",
+              },
+            },
+            description: "Filter model for filtering portfolio lines",
+          },
+        },
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    // Should initialize filter.items.items.field structure
+    // Note: filter.items becomes an object (not array) because we're storing
+    // configuration values, not actual runtime array data
+    expect(result).toHaveProperty("filter");
+    expect(result.filter).toHaveProperty("items");
+    expect(result.filter).toMatchObject({
+      items: {
+        items: {
+          field: {
+            value: "indicator-id",
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+          },
+        },
+      },
+    });
+  });
+
   it("should handle multiple missing properties", () => {
     const rawInputs = {};
     const config = createBasicMCPConfiguration({
@@ -1198,8 +1370,8 @@ describe("nested objects and complex schemas", () => {
       dataSources: [
         {
           workspaceId: mockWorkspace.sId,
-          sId: "ds-123",
-          dataSourceViewId: "view-123",
+          sId: "dsc_123",
+          dataSourceViewId: "view_123",
           filter: {
             tags: { in: ["test"], not: [], mode: "auto" },
             parents: { in: [], not: [] },
@@ -1243,7 +1415,7 @@ describe("nested objects and complex schemas", () => {
       },
       dataSource: [
         {
-          uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_configurations/ds-123`,
+          uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_configurations/dsc_123`,
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
         },
       ],

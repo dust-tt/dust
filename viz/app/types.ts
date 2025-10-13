@@ -18,7 +18,7 @@ interface DownloadFileRequestParams {
 interface setErrorMessageParams {
   errorMessage: string;
   fileId: string;
-  isContentCreation: boolean;
+  isInteractiveContent: boolean;
 }
 
 // Define a mapped type to extend the base with specific parameters.
@@ -43,4 +43,11 @@ export interface CommandResultMap {
   setContentHeight: void;
   setErrorMessage: void;
   displayCode: void;
+}
+
+export function isDevelopment() {
+  return (
+    process.env.NODE_ENV === "development" ||
+    process.env.IS_DEVELOPMENT === "true"
+  );
 }

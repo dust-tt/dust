@@ -3,14 +3,17 @@ import type { Channel } from "@slack/web-api/dist/response/ConversationsListResp
 import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
 import slackifyMarkdown from "slackify-markdown";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeMCPToolJSONSuccess } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { removeDiacritics } from "@app/lib/utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getAgentRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
+import { Err, Ok } from "@app/types";
 
 export const getSlackClient = async (accessToken?: string) => {
   if (!accessToken) {
@@ -87,6 +90,7 @@ export async function executePostMessage(
   to: string,
   message: string,
   threadTs: string | undefined,
+  fileId: string | undefined,
   accessToken: string,
   agentLoopContext: AgentLoopContextType,
   auth: Authenticator
@@ -102,6 +106,71 @@ export async function executePostMessage(
   );
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
+  // If a file is provided, upload it as attachment of the original message
+  if (fileId) {
+    const file = await FileResource.fetchById(auth, fileId);
+    if (!file) {
+      return new Err(new MCPError("File not found"));
+    }
+
+    // Resolve channel id
+    const conversationsList = await slackClient.conversations.list({
+      exclude_archived: true,
+    });
+    if (!conversationsList.ok) {
+      return new Err(
+        new MCPError(conversationsList.error ?? "Failed to list conversations")
+      );
+    }
+    const searchString = to.trim().replace(/^#/, "").toLowerCase();
+    const channel = conversationsList.channels?.find(
+      (c) =>
+        c.name?.toLowerCase() === searchString ||
+        c.id?.toLowerCase() === searchString
+    );
+    if (!channel) {
+      return new Err(
+        new MCPError(
+          `Unable to resolve channel id for "${to}". Please use a channel id or a valid channel name.`
+        )
+      );
+    }
+    const channelId = channel.id;
+
+    const signedUrl = await file.getSignedUrlForDownload(auth, "original");
+    const fileResp = await fetch(signedUrl);
+    if (!fileResp.ok) {
+      return new Err(
+        new MCPError(`Failed to fetch file (HTTP ${fileResp.status})`)
+      );
+    }
+    const arrayBuf = await fileResp.arrayBuffer();
+    const fileBuffer = Buffer.from(arrayBuf);
+
+    const filename = file.fileName ?? `upload_${file.sId}`;
+
+    const uploadResp = await slackClient.filesUploadV2({
+      channel_id: channelId,
+      file: fileBuffer,
+      filename,
+      filetype: file.contentType,
+      initial_comment: message,
+      thread_ts: threadTs,
+    });
+
+    if (!uploadResp.ok) {
+      return new Err(new MCPError(uploadResp.error ?? "Unknown error"));
+    }
+
+    return new Ok(
+      makeMCPToolJSONSuccess({
+        message: `Message with file uploaded to ${channelId}`,
+        result: uploadResp,
+      }).content
+    );
+  }
+
+  // No file provided: regular message
   const response = await slackClient.chat.postMessage({
     channel: to,
     text: message,
@@ -110,13 +179,15 @@ export async function executePostMessage(
   });
 
   if (!response.ok) {
-    throw new Error(response.error);
+    return new Err(new MCPError(response.error ?? "Unknown error"));
   }
 
-  return makeMCPToolJSONSuccess({
-    message: `Message posted to ${to}`,
-    result: response,
-  });
+  return new Ok(
+    makeMCPToolJSONSuccess({
+      message: `Message posted to ${to}`,
+      result: response,
+    }).content
+  );
 }
 
 export async function executeListUsers(
@@ -133,7 +204,7 @@ export async function executeListUsers(
       limit: 100,
     });
     if (!response.ok) {
-      throw new Error(response.error);
+      return new Err(new MCPError(response.error ?? "Unknown error"));
     }
     users.push(...(response.members ?? []).filter((member) => !member.is_bot));
     cursor = response.response_metadata?.next_cursor;
@@ -152,25 +223,31 @@ export async function executeListUsers(
 
       // Early return if we found a user
       if (filteredUsers.length > 0) {
-        return makeMCPToolJSONSuccess({
-          message: `The workspace has ${filteredUsers.length} users containing "${nameFilter}"`,
-          result: filteredUsers,
-        });
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: `The workspace has ${filteredUsers.length} users containing "${nameFilter}"`,
+            result: filteredUsers,
+          }).content
+        );
       }
     }
   } while (cursor);
 
   if (nameFilter) {
-    return makeMCPToolJSONSuccess({
-      message: `The workspace has ${users.length} users but none containing "${nameFilter}"`,
-      result: users,
-    });
+    return new Ok(
+      makeMCPToolJSONSuccess({
+        message: `The workspace has ${users.length} users but none containing "${nameFilter}"`,
+        result: users,
+      }).content
+    );
   }
 
-  return makeMCPToolJSONSuccess({
-    message: `The workspace has ${users.length} users`,
-    result: users,
-  });
+  return new Ok(
+    makeMCPToolJSONSuccess({
+      message: `The workspace has ${users.length} users`,
+      result: users,
+    }).content
+  );
 }
 
 export async function executeGetUser(userId: string, accessToken: string) {
@@ -178,13 +255,14 @@ export async function executeGetUser(userId: string, accessToken: string) {
   const response = await slackClient.users.info({ user: userId });
 
   if (!response.ok || !response.user) {
-    throw new Error(response.error ?? "Unknown error");
+    return new Err(new MCPError(response.error ?? "Unknown error"));
   }
-
-  return makeMCPToolJSONSuccess({
-    message: `Retrieved user information for ${userId}`,
-    result: response.user,
-  });
+  return new Ok(
+    makeMCPToolJSONSuccess({
+      message: `Retrieved user information for ${userId}`,
+      result: response.user,
+    }).content
+  );
 }
 
 export async function executeListPublicChannels(
@@ -212,21 +290,27 @@ export async function executeListPublicChannels(
 
     // Early return if we found a channel
     if (filteredChannels.length > 0) {
-      return makeMCPToolJSONSuccess({
-        message: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
-        result: filteredChannels,
-      });
+      return new Ok(
+        makeMCPToolJSONSuccess({
+          message: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
+          result: filteredChannels,
+        }).content
+      );
     }
   }
   if (nameFilter) {
-    return makeMCPToolJSONSuccess({
-      message: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
-      result: channels,
-    });
+    return new Ok(
+      makeMCPToolJSONSuccess({
+        message: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
+        result: channels,
+      }).content
+    );
   }
 
-  return makeMCPToolJSONSuccess({
-    message: `The workspace has ${channels.length} channels`,
-    result: channels,
-  });
+  return new Ok(
+    makeMCPToolJSONSuccess({
+      message: `The workspace has ${channels.length} channels`,
+      result: channels,
+    }).content
+  );
 }

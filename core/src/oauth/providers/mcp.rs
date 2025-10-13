@@ -129,7 +129,10 @@ impl Provider for MCPConnectionProvider {
                 Some(n) => n,
                 None => Err(anyhow!("Invalid `expires_in` in response from MCP"))?,
             },
-            _ => Err(anyhow!("Missing `expires_in` in response from MCP"))?,
+            _ => {
+                info!("Missing `expires_in` in response from MCP, using default value of 3600 seconds");
+                3600
+            }
         };
 
         // Some MCP servers do not return a refresh token when finalizing an access token.

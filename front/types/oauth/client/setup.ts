@@ -23,6 +23,14 @@ export async function setupOAuthConnection({
   extraConfig: OAuthCredentials;
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
+    // Clear any stale OAuth data from previous attempts
+    const storageKey = `oauth_finalize_${provider}`;
+    try {
+      localStorage.removeItem(storageKey);
+    } catch (e) {
+      // Ignore localStorage errors
+    }
+
     let url = `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}`;
     if (extraConfig) {
       url += `&extraConfig=${encodeURIComponent(JSON.stringify(extraConfig))}`;
@@ -30,14 +38,18 @@ export async function setupOAuthConnection({
     const oauthPopup = window.open(url);
     let authComplete = false;
 
-    const popupMessageEventListener = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) {
-        return;
+    const handleFinalization = (data: any) => {
+      if (authComplete) {
+        return; // Already processed
       }
 
-      if (event.data.type === "connection_finalized") {
+      if (data.type === "connection_finalized" && data.provider === provider) {
         authComplete = true;
-        const { error, connection } = event.data;
+        const { error, connection } = data;
+
+        cleanup();
+        oauthPopup?.close();
+
         if (error) {
           resolve(new Err(new Error(error)));
         } else if (
@@ -53,25 +65,35 @@ export async function setupOAuthConnection({
             )
           );
         }
-        window.removeEventListener("message", popupMessageEventListener);
-        oauthPopup?.close();
       }
     };
 
-    window.addEventListener("message", popupMessageEventListener);
-
-    const checkPopupStatus = setInterval(() => {
-      if (oauthPopup && oauthPopup.closed) {
-        window.removeEventListener("message", popupMessageEventListener);
-        clearInterval(checkPopupStatus);
-        setTimeout(() => {
-          if (!authComplete) {
-            resolve(
-              new Err(new Error("User closed the window before auth completed"))
-            );
-          }
-        }, 100);
+    // Method 1: window.postMessage (preferred, direct communication)
+    const handleWindowMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) {
+        return;
       }
-    }, 100);
+      handleFinalization(event.data);
+    };
+
+    window.addEventListener("message", handleWindowMessage);
+
+    // Method 2: BroadcastChannel (fallback)
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel("oauth_finalize");
+      channel.addEventListener("message", (event: MessageEvent) => {
+        handleFinalization(event.data);
+      });
+    } catch (e) {
+      // BroadcastChannel not supported, will use localStorage
+    }
+
+    const cleanup = () => {
+      window.removeEventListener("message", handleWindowMessage);
+      if (channel) {
+        channel.close();
+      }
+    };
   });
 }

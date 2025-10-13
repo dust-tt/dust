@@ -5,7 +5,7 @@ import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
-import { NotificationContentCreationFileContentSchema } from "./output_schemas";
+import { NotificationInteractiveContentFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
 import { TIMEZONE_NAMES } from "./timezone_names";
 
@@ -91,6 +91,8 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "grok-3-fast-latest" // xAI
   | "grok-3-mini-fast-latest" // xAI
   | "grok-4-latest" // xAI
+  | "grok-4-fast-non-reasoning-latest"
+  | "grok-4-fast-reasoning-latest"
   | "noop" // Noop
 >();
 
@@ -273,13 +275,11 @@ const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedAudioFileFormats
 >();
 
-const ContentCreationExecutableSchema = z.literal(
-  "application/vnd.dust.client-executable"
-);
+const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
 
 const ActionGeneratedFileContentTypeSchema = z.union([
   SupportedFileContentFragmentTypeSchema,
-  ContentCreationExecutableSchema,
+  FrameContentTypeSchema,
 ]);
 
 export function isSupportedFileContentType(
@@ -661,8 +661,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_sheets_tool"
   | "hootl_subscriptions"
   | "hootl_webhooks"
+  | "hootl_dev_webhooks"
   | "index_private_slack_channel"
-  | "interactive_content_server"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
@@ -683,13 +683,11 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_message_splitting"
   | "slideshow"
   | "usage_data_api"
-  | "use_openai_eu_key"
   | "web_summarization"
   | "xai_feature"
-  | "simple_audio_transcription"
-  | "virtualized_conversations"
   | "noop_model_feature"
   | "discord_bot"
+  | "elevenlabs_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -756,6 +754,8 @@ const ActionGeneratedFileSchema = z.object({
   snippet: z.string().nullable(),
   hidden: z.boolean().optional(),
 });
+
+export type ActionGeneratedFileType = z.infer<typeof ActionGeneratedFileSchema>;
 
 const AgentActionTypeSchema = z.object({
   id: ModelIdSchema,
@@ -935,7 +935,7 @@ const UserMessageContextSchema = z.object({
   originMessageId: z.string().optional().nullable(),
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
   selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
-  lastTriggerRunAt: z.date().optional().nullable(),
+  lastTriggerRunAt: z.number().optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
@@ -1155,7 +1155,7 @@ const NotificationStoreResourceContentSchema = z.object({
 });
 
 const NotificationContentSchema = z.union([
-  NotificationContentCreationFileContentSchema,
+  NotificationInteractiveContentFileContentSchema,
   NotificationImageContentSchema,
   NotificationRunAgentChainOfThoughtSchema,
   NotificationRunAgentContentSchema,
@@ -2609,13 +2609,14 @@ export type FileUploadedRequestResponseType = z.infer<
   typeof FileUploadedRequestResponseSchema
 >;
 
-export const PublicFileResponseBodySchema = z.object({
+export const PublicFrameResponseBodySchema = z.object({
   content: z.string().optional(),
   file: FileTypeSchema,
+  conversationUrl: z.string().nullable(),
 });
 
-export type PublicFileResponseBodyType = z.infer<
-  typeof PublicFileResponseBodySchema
+export type PublicFrameResponseBodyType = z.infer<
+  typeof PublicFrameResponseBodySchema
 >;
 
 export const MembershipOriginType = FlexibleEnumSchema<
@@ -2774,6 +2775,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionCloudArrowLeftRightIcon"
   | "ActionDocumentTextIcon"
   | "ActionEmotionLaughIcon"
+  | "ActionFrameIcon"
   | "ActionGitBranchIcon"
   | "ActionGlobeAltIcon"
   | "ActionImageIcon"
@@ -2850,6 +2852,7 @@ const CustomServerIconSchema = FlexibleEnumSchema<
   | "ActionExternalLinkIcon"
   | "ActionEyeIcon"
   | "ActionEyeSlashIcon"
+  | "ActionFrameIcon"
   | "ActionFilmIcon"
   | "ActionFilterIcon"
   | "ActionFingerprintIcon"

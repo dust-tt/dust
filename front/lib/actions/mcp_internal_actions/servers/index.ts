@@ -9,11 +9,11 @@ import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_
 import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actions/servers/confluence/server";
-import { default as contentCreationServer } from "@app/lib/actions/mcp_internal_actions/servers/content_creation";
 import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/server";
-import { default as deepResearchServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_research";
+import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
+import { default as elevenlabsServer } from "@app/lib/actions/mcp_internal_actions/servers/elevenlabs";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice/server";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
@@ -24,6 +24,7 @@ import { default as sheetsServer } from "@app/lib/actions/mcp_internal_actions/s
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/server";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
+import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira/server";
 import { default as jitTestingServer } from "@app/lib/actions/mcp_internal_actions/servers/jit_testing";
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
@@ -94,16 +95,18 @@ export async function getInternalMCPServer(
       return hubspotServer();
     case "image_generation":
       return imageGenerationDallEServer(auth);
+    case "elevenlabs":
+      return elevenlabsServer(auth);
     case "file_generation":
       return generateFileServer(auth);
-    case "content_creation":
-      return contentCreationServer(auth, agentLoopContext);
+    case "interactive_content":
+      return interactiveContentServer(auth, agentLoopContext);
     case "query_tables_v2":
       return tablesQueryServerV2(auth, agentLoopContext);
     case "primitive_types_debugger":
-      return primitiveTypesDebuggerServer();
+      return primitiveTypesDebuggerServer(auth);
     case "jit_testing":
-      return jitTestingServer();
+      return jitTestingServer(auth);
     case "web_search_&_browse":
       return webtoolsServer(auth, agentLoopContext);
     case "search":
@@ -133,15 +136,15 @@ export async function getInternalMCPServer(
     case "extract_data":
       return extractDataServer(auth, agentLoopContext);
     case "salesforce":
-      return salesforceServer();
+      return salesforceServer(auth);
     case "gmail":
-      return gmailServer();
+      return gmailServer(auth);
     case "google_calendar":
-      return calendarServer(agentLoopContext);
+      return calendarServer(auth, agentLoopContext);
     case "google_drive":
-      return driveServer();
+      return driveServer(auth);
     case "google_sheets":
-      return sheetsServer();
+      return sheetsServer(auth);
     case "data_sources_file_system":
       return dataSourcesFileSystemServer(auth, agentLoopContext);
     case "conversation_files":
@@ -149,7 +152,7 @@ export async function getInternalMCPServer(
     case "jira":
       return jiraServer(auth, agentLoopContext);
     case "monday":
-      return mondayServer();
+      return mondayServer(auth);
     case "slack":
       return slackServer(auth, mcpServerId, agentLoopContext);
     case "slack_bot":
@@ -159,7 +162,7 @@ export async function getInternalMCPServer(
     case "confluence":
       return confluenceServer();
     case "outlook":
-      return outlookServer();
+      return outlookServer(auth);
     case "outlook_calendar":
       return outlookCalendarServer();
     case "agent_management":
@@ -170,8 +173,8 @@ export async function getInternalMCPServer(
       return dataWarehousesServer(auth, agentLoopContext);
     case "toolsets":
       return toolsetsServer(auth, agentLoopContext);
-    case "deep_research":
-      return deepResearchServer(auth, agentLoopContext);
+    case "deep_dive":
+      return deepDiveServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

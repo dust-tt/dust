@@ -1,4 +1,4 @@
-import { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
@@ -14,12 +14,15 @@ import {
 
 const meta = {
   title: "Components/Tabs",
-} satisfies Meta;
+  component: Tabs,
+  tags: ["autodocs"],
+} satisfies Meta<typeof Tabs>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-export function Demo() {
-  return (
+export const Default: Story = {
+  render: () => (
     <div className="s-w-80">
       <Tabs defaultValue="account">
         <TabsList className="s-px-2">
@@ -37,11 +40,11 @@ export function Demo() {
         <TabsContent value="settings">Settings</TabsContent>
       </Tabs>
     </div>
-  );
-}
+  ),
+};
 
-export function Demo2() {
-  return (
+export const WithMultipleTabs: Story = {
+  render: () => (
     <div className="s-w-[100%]">
       <Tabs defaultValue="tab1">
         <TabsList className="s-px-2">
@@ -62,5 +65,5 @@ export function Demo2() {
         <TabsContent value="tab6">Content for Tab 6</TabsContent>
       </Tabs>
     </div>
-  );
-}
+  ),
+};

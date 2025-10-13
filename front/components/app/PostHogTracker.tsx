@@ -10,9 +10,9 @@ import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { isString } from "@app/types";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+const POSTHOG_INITIALIZED_KEY = "dust-ph-init";
 
 const EXCLUDED_PATHS = [
-  "/subscribe",
   "/poke",
   "/poke/",
   "/sso-enforced",
@@ -52,9 +52,23 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     if (!activeSubscription) {
       return null;
     }
+
+    const planCode = activeSubscription.plan.code;
+    const planCodeUpper = planCode.toUpperCase();
+    let planType = "OTHER";
+
+    if (planCodeUpper.includes("ENT")) {
+      planType = "ENTERPRISE";
+    } else if (planCodeUpper.includes("PRO")) {
+      planType = "PRO";
+    } else if (planCodeUpper.includes("FREE")) {
+      planType = "FREE";
+    }
+
     return {
-      plan_code: activeSubscription.plan.code,
+      plan_code: planCode,
       plan_name: activeSubscription.plan.name,
+      plan_type: planType,
       is_trial: activeSubscription.trialing ? "true" : "false",
     };
   }, [activeSubscription]);
@@ -66,12 +80,11 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
 
   const shouldTrack = isTrackablePage && hasAcceptedCookies;
 
-  const lastIdentifiedUserId = useRef<string | null>(null);
   const lastIdentifiedWorkspaceId = useRef<string | null>(null);
   const lastPlanPropertiesString = useRef<string | null>(null);
   const hasInitialized = useRef(false);
 
-  // Initialize PostHog once with correct default state
+  // Initialize PostHog once
   useEffect(() => {
     if (!POSTHOG_KEY || posthog.__loaded || hasInitialized.current) {
       return;
@@ -83,13 +96,14 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
       defaults: "2025-05-24",
       opt_out_capturing_by_default: !shouldTrack,
       capture_pageview: true,
-      capture_pageleave: true,
+      capture_pageleave: false,
       autocapture: false,
       property_denylist: ["$ip"],
       before_send: (event) => {
         if (!event) {
           return null;
         }
+        // Strip query parameters from URLs for privacy.
         if (event.properties.$current_url) {
           event.properties.$current_url =
             event.properties.$current_url.split("?")[0];
@@ -109,41 +123,49 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     hasInitialized.current = true;
   }, [shouldTrack]);
 
-  // Handle tracking state changes only when user logs in or cookie acceptance changes
+  // Handle opt-in and user identification (once per user via localStorage)
   const prevShouldTrack = useRef(shouldTrack);
   useEffect(() => {
     if (!posthog.__loaded || !hasInitialized.current) {
       return;
     }
 
-    if (prevShouldTrack.current !== shouldTrack) {
-      if (shouldTrack) {
-        posthog.opt_in_capturing();
-      } else {
-        posthog.opt_out_capturing();
-      }
-      prevShouldTrack.current = shouldTrack;
-    }
-  }, [shouldTrack]);
-
-  // Identify user when they log in or workspace changes
-  useEffect(() => {
-    if (!posthog.__loaded || !user || !shouldTrack) {
+    const trackingStateChanged = prevShouldTrack.current !== shouldTrack;
+    if (!trackingStateChanged) {
       return;
     }
 
-    const userChanged = lastIdentifiedUserId.current !== user.sId;
+    if (shouldTrack) {
+      const initializedUserId =
+        typeof window !== "undefined"
+          ? localStorage.getItem(POSTHOG_INITIALIZED_KEY)
+          : null;
+      const needsInitialization = user
+        ? initializedUserId !== user.sId
+        : !initializedUserId;
 
-    if (userChanged) {
-      const userProperties: Record<string, string> = {
-        ...(workspaceId && { workspace_id: workspaceId }),
-      };
-      posthog.identify(user.sId, userProperties);
-      lastIdentifiedUserId.current = user.sId;
+      if (needsInitialization) {
+        posthog.opt_in_capturing();
+
+        if (user) {
+          posthog.identify(user.sId);
+        }
+
+        if (typeof window !== "undefined") {
+          localStorage.setItem(
+            POSTHOG_INITIALIZED_KEY,
+            user?.sId ?? "anonymous"
+          );
+        }
+      }
+    } else {
+      posthog.opt_out_capturing();
     }
-  }, [user, workspaceId, shouldTrack]);
 
-  // Group users by workspace (all users) and set workspace properties (admin only).
+    prevShouldTrack.current = shouldTrack;
+  }, [shouldTrack, user]);
+
+  // Group users by workspace and set workspace properties (admin only)
   useEffect(() => {
     if (!posthog.__loaded || !workspaceId || !shouldTrack) {
       return;
@@ -166,13 +188,21 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     }
   }, [workspaceId, planProperties, shouldTrack, isAdmin]);
 
-  // Track pageviews on route changes (Next.js client-side navigation)
+  // Track pageviews on route changes.
   useEffect(() => {
     if (!posthog.__loaded || !shouldTrack) {
       return;
     }
 
     const handleRouteChange = () => {
+      const pathname = router.pathname;
+
+      // Don't track pageviews on conversation pages (/agent/[cId]), but track /agent/new.
+      const isConversationPage = /\/agent\/(?!new$)[^/]+$/.test(pathname);
+      if (isConversationPage) {
+        return;
+      }
+
       posthog.capture("$pageview");
     };
 
@@ -180,7 +210,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     return () => {
       router.events.off("routeChangeComplete", handleRouteChange);
     };
-  }, [router.events, shouldTrack]);
+  }, [router.events, router.pathname, shouldTrack]);
 
   if (isTrackablePage && hasAcceptedCookies) {
     return <PostHogProvider client={posthog}>{children}</PostHogProvider>;

@@ -2,16 +2,22 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { z } from "zod";
 
 import type {
+  ConfluenceCreatePageRequest,
   ConfluenceCurrentUser,
   ConfluenceErrorResult,
   ConfluenceListPagesResult,
+  ConfluencePage,
   ConfluenceSearchRequest,
+  ConfluenceUpdatePageRequest,
+  UpdatePagePayload,
   WithAuthParams,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/types";
 import {
   AtlassianResourceSchema,
   ConfluenceCurrentUserSchema,
   ConfluenceListPagesResultSchema,
+  ConfluencePageSchema,
+  CreatePagePayloadSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/types";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import logger from "@app/logger/logger";
@@ -221,6 +227,158 @@ export async function listPages(
   );
 
   if (result.isErr()) {
+    return new Err(result.error);
+  }
+
+  return new Ok(result.value);
+}
+
+export async function createPage(
+  baseUrl: string,
+  accessToken: string,
+  createData: ConfluenceCreatePageRequest
+): Promise<Result<ConfluencePage, string>> {
+  const endpoint = `/wiki/api/v2/pages`;
+
+  const payloadData = {
+    spaceId: createData.spaceId,
+    title: createData.title,
+    status: createData.status,
+    parentId: createData.parentId,
+    body: createData.body,
+  };
+
+  const parseResult = CreatePagePayloadSchema.safeParse(payloadData);
+  if (!parseResult.success) {
+    return new Err(`Invalid payload data: ${parseResult.error.message}`);
+  }
+
+  const payload = parseResult.data;
+
+  const result = await confluenceApiCall(
+    {
+      endpoint,
+      accessToken,
+    },
+    ConfluencePageSchema,
+    {
+      method: "POST",
+      body: payload,
+      baseUrl,
+    }
+  );
+
+  if (result.isErr()) {
+    return new Err(result.error);
+  }
+
+  return new Ok(result.value);
+}
+
+export async function updatePage(
+  baseUrl: string,
+  accessToken: string,
+  updateData: ConfluenceUpdatePageRequest
+): Promise<Result<ConfluencePage, string>> {
+  const currentPageResult = await getPage(
+    baseUrl,
+    accessToken,
+    updateData.id,
+    false
+  );
+  if (currentPageResult.isErr()) {
+    return new Err(
+      `Failed to get current page data: ${currentPageResult.error}`
+    );
+  }
+
+  if (currentPageResult.value === null) {
+    return new Err(`Page with id ${updateData.id} not found`);
+  }
+
+  const currentPage = currentPageResult.value;
+  const endpoint = `/wiki/api/v2/pages/${updateData.id}`;
+
+  // Helper function to construct update payload
+  const buildUpdatePagePayload = (
+    updateData: ConfluenceUpdatePageRequest,
+    currentPage: ConfluencePage
+  ): UpdatePagePayload => {
+    const payload: UpdatePagePayload = {
+      id: updateData.id,
+      version: updateData.version,
+      status: updateData.status ?? (currentPage.status || "current"),
+      title: updateData.title ?? currentPage.title,
+    };
+
+    if (updateData.spaceId ?? currentPage.spaceId) {
+      payload.spaceId = updateData.spaceId ?? currentPage.spaceId;
+    }
+    if (updateData.parentId ?? currentPage.parentId) {
+      payload.parentId =
+        updateData.parentId ?? currentPage.parentId ?? undefined;
+    }
+
+    if (updateData.body) {
+      payload.body = {
+        value: updateData.body.value,
+        representation: updateData.body.representation,
+      };
+    }
+
+    return payload;
+  };
+
+  const payload = buildUpdatePagePayload(updateData, currentPage);
+
+  const result = await confluenceApiCall(
+    {
+      endpoint,
+      accessToken,
+    },
+    ConfluencePageSchema,
+    {
+      method: "PUT",
+      body: payload,
+      baseUrl,
+    }
+  );
+
+  if (result.isErr()) {
+    return new Err(result.error);
+  }
+
+  return new Ok(result.value);
+}
+
+export async function getPage(
+  baseUrl: string,
+  accessToken: string,
+  pageId: string,
+  includeBody: boolean = false
+): Promise<Result<ConfluencePage | null, string>> {
+  const searchParams = new URLSearchParams();
+  if (includeBody) {
+    searchParams.append("body-format", "storage");
+  }
+
+  const endpoint = `/wiki/api/v2/pages/${pageId}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+
+  const result = await confluenceApiCall(
+    {
+      endpoint,
+      accessToken,
+    },
+    ConfluencePageSchema,
+    {
+      baseUrl,
+    }
+  );
+
+  if (result.isErr()) {
+    if (result.error.includes("404")) {
+      return new Ok(null);
+    }
     return new Err(result.error);
   }
 

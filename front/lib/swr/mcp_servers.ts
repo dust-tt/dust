@@ -1178,8 +1178,8 @@ function useMCPServerViewsFromSpacesBase(
 
   const url = `/api/w/${owner.sId}/mcp/views?spaceIds=${spaceIds}&availabilities=${availabilitiesParam}`;
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
-    disabled: !spaces.length,
     ...swrOptions,
+    ...(!spaces.length ? { disabled: true } : {}),
   });
 
   return {
@@ -1203,22 +1203,12 @@ export function useMCPServerViewsFromSpaces(
   );
 }
 
-// Note from seb: the name is misleading as manual will return both internal and remote servers. (all remote are manual, some internals are manual too).
-export function useRemoteMCPServerViewsFromSpaces(
+export function useManualMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
   spaces: SpaceType[],
   swrOptions?: SWRConfiguration & { disabled?: boolean }
 ) {
   return useMCPServerViewsFromSpacesBase(owner, spaces, ["manual"], swrOptions);
-}
-
-// Note from seb: on the flip side, auto will return only internal servers but not all of them so the name is also misleading.
-export function useInternalMCPServerViewsFromSpaces(
-  owner: LightWorkspaceType,
-  spaces: SpaceType[],
-  swrOptions?: SWRConfiguration & { disabled?: boolean }
-) {
-  return useMCPServerViewsFromSpacesBase(owner, spaces, ["auto"], swrOptions);
 }
 
 export function useMCPServerViewsWithPersonalConnections({

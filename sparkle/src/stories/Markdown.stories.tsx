@@ -3,9 +3,10 @@ import React from "react";
 
 import { Markdown } from "../index_with_tw_base";
 
-const meta: Meta<typeof Markdown> = {
+const meta = {
   title: "Components/Markdown",
   component: Markdown,
+  tags: ["autodocs"],
   decorators: [(Story) => <Story />],
   argTypes: {
     textColor: {
@@ -17,7 +18,7 @@ const meta: Meta<typeof Markdown> = {
       control: { type: "radio" },
     },
   },
-};
+} satisfies Meta<typeof Markdown>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

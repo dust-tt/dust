@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { AugmentedMessage } from "@app/lib/utils/find_agents_in_message";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -41,8 +40,6 @@ export function useVoiceTranscriberService({
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const sendNotification = useSendNotification();
-
-  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
 
   const stopLevelMetering = useCallback(() => {
     if (intervalRef.current !== null) {
@@ -211,12 +208,6 @@ export function useVoiceTranscriberService({
         onTranscribeDelta,
         onTranscribeComplete,
       });
-
-      sendNotification({
-        type: "success",
-        title: "Voice recorded.",
-        description: "Audio sent for transcription.",
-      });
     },
     [onTranscribeDelta, onTranscribeComplete, owner.sId, sendNotification]
   );
@@ -279,7 +270,7 @@ export function useVoiceTranscriberService({
     await stopAndFinalize();
   }, [stopAndFinalize]);
 
-  return featureFlags.hasFeature("simple_audio_transcription")
+  return owner.metadata?.allowVoiceTranscription !== false
     ? {
         status,
         level,

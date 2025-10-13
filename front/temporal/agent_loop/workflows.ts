@@ -221,8 +221,8 @@ export async function agentLoopWorkflow({
     // Notify error in a non-cancellable scope to ensure it runs even if workflow is cancelled
     await CancellationScope.nonCancellable(async () => {
       if (cancelRequested) {
-        // Run finalization tasks on cancellation (dummy for now).
         await finalizeCancellationActivity(authType, agentLoopArgs);
+        return;
       } else {
         await notifyWorkflowError(authType, {
           conversationId: agentLoopArgs.conversationId,
@@ -231,14 +231,8 @@ export async function agentLoopWorkflow({
           error: workflowError,
         });
       }
+      throw err;
     });
-
-    // If cancellation was explicitly requested via signal, finish gracefully without rethrowing.
-    if (cancelRequested) {
-      return;
-    }
-
-    throw err;
   }
 }
 

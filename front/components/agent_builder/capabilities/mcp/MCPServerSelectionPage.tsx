@@ -14,32 +14,8 @@ import {
   isCustomResourceIconType,
 } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { WhitelistableFeature } from "@app/types";
-
-interface DataVisualizationCardProps {
-  specification: ActionSpecification;
-  isSelected: boolean;
-  onClick: () => void;
-}
-
-function DataVisualizationCard({
-  specification,
-  isSelected,
-  onClick,
-}: DataVisualizationCardProps) {
-  return (
-    <ToolCard
-      icon={specification.dropDownIcon}
-      label={specification.label}
-      description={specification.description}
-      isSelected={isSelected}
-      canAdd={!isSelected}
-      onClick={onClick}
-      cardContainerClassName="h-36"
-    />
-  );
-}
 
 interface MCPServerCardProps {
   view: MCPServerViewTypeWithLabel;
@@ -56,8 +32,8 @@ function MCPServerCard({
   onToolInfoClick,
   featureFlags,
 }: MCPServerCardProps) {
-  const requirement = getMCPServerToolsConfigurations(view, featureFlags);
-  const canAdd = requirement.configurable !== "no" ? true : !isSelected;
+  const requirements = getMCPServerRequirements(view, featureFlags);
+  const canAdd = requirements.noRequirement ? !isSelected : true;
 
   const icon = isCustomResourceIconType(view.server.icon)
     ? ActionIcons[view.server.icon]
@@ -141,10 +117,6 @@ export function MCPServerSelectionPage({
     return mcpIds;
   }, [selectedToolsInSheet]);
 
-  const isDataVisualizationSelected = selectedToolsInSheet.some(
-    (tool) => tool.type === "DATA_VISUALIZATION"
-  );
-
   const hasDataVisualization = dataVisualization && onDataVisualizationClick;
   const hasTopViews = topMCPServerViews.length > 0;
   const hasNonTopViews = nonTopMCPServerViews.length > 0;
@@ -176,14 +148,6 @@ export function MCPServerSelectionPage({
           <span className="text-lg font-semibold">Top tools</span>
         )}
         <div className="grid grid-cols-2 gap-3">
-          {dataVisualization && onDataVisualizationClick && (
-            <DataVisualizationCard
-              key="data-visualization"
-              specification={dataVisualization}
-              isSelected={isDataVisualizationSelected}
-              onClick={onDataVisualizationClick}
-            />
-          )}
           {topMCPServerViews.map((view) => (
             <MCPServerCard
               key={view.id}

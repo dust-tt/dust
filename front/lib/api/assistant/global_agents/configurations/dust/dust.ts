@@ -4,11 +4,13 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
+import { DEEP_DIVE_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
 import {
   _getAgentRouterToolsConfiguration,
   _getDefaultWebActionsForGlobalAgent,
+  _getInteractiveContentToolConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -35,14 +37,16 @@ export function _getDustGlobalAgent(
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
     searchMCPServerView,
-    deepResearchMCPServerView,
+    deepDiveMCPServerView,
+    interactiveContentMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     searchMCPServerView: MCPServerViewResource | null;
-    deepResearchMCPServerView: MCPServerViewResource | null;
+    deepDiveMCPServerView: MCPServerViewResource | null;
+    interactiveContentMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -108,7 +112,7 @@ export function _getDustGlobalAgent(
 
   <complex_request_guidelines>
   If the request is complex, do not handle it yourself.
-  Immediately delegate the request to the deep research agent by using the \`deep_research\` tool.
+  Immediately delegate the request to the deep dive agent by using the \`deep_dive\` tool.
   </complex_request_guidelines>
 
   <simple_request_guidelines>
@@ -126,7 +130,7 @@ export function _getDustGlobalAgent(
   </general_guidelines>
   `;
 
-  if (deepResearchMCPServerView) {
+  if (deepDiveMCPServerView) {
     instructions += requestComplexityPrompt;
   } else {
     instructions += `<instructions>
@@ -147,7 +151,7 @@ export function _getDustGlobalAgent(
     scope: "global" as const,
     userFavorite: false,
     model,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -273,15 +277,15 @@ export function _getDustGlobalAgent(
     )
   );
 
-  if (deepResearchMCPServerView) {
+  if (deepDiveMCPServerView) {
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST + "-deep-research",
+      sId: GLOBAL_AGENTS_SID.DUST + "-deep-dive",
       type: "mcp_server_configuration",
-      name: "deep_research" satisfies InternalMCPServerNameType,
-      description: "Deep research agent",
-      mcpServerViewId: deepResearchMCPServerView.sId,
-      internalMCPServerId: deepResearchMCPServerView.internalMCPServerId,
+      name: "deep_dive" satisfies InternalMCPServerNameType,
+      description: `Handoff the query to the @${DEEP_DIVE_NAME} agent`,
+      mcpServerViewId: deepDiveMCPServerView.sId,
+      internalMCPServerId: deepDiveMCPServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
       childAgentId: null,
@@ -293,6 +297,13 @@ export function _getDustGlobalAgent(
       secretName: null,
     });
   }
+
+  actions.push(
+    ..._getInteractiveContentToolConfiguration({
+      agentId: GLOBAL_AGENTS_SID.DUST,
+      interactiveContentMCPServerView,
+    })
+  );
 
   // Fix the action ids.
   actions.forEach((action, i) => {

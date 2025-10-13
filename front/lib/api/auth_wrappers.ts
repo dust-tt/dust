@@ -340,7 +340,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
             return apiError(req, res, {
               status_code: 503,
               api_error: {
-                type: "not_authenticated",
+                type: "service_unavailable",
                 message: `Service is currently unavailable. [${maintenance}]`,
               },
             });
@@ -633,21 +633,32 @@ async function handleWorkOSAuth<T>(
 }
 
 /**
- * Checks if the current session has a user that is an active member of the specified workspace.
- * Returns true if the user is authenticated and is a member of the workspace.
- * Returns false if not authenticated or not a member.
+ * Creates an authenticator for shared/publicly accessible endpoints.
+ *
+ * Use this for endpoints that can be accessed by anyone with the link:
+ * - Frames
+ *
+ * Still maintains proper authentication via cookies but designed for endpoints
+ * that don't require users to be logged into the main application.
+ *
+ * @returns Authenticated workspace-scoped authenticator for shared content, or null if not authenticated
  */
-export async function isSessionWithUserFromWorkspace(
+export async function getAuthForSharedEndpointWorkspaceMembersOnly(
   req: NextApiRequest,
   res: NextApiResponse,
   workspaceId: string
-): Promise<boolean> {
+): Promise<Authenticator | null> {
   const session = await getSession(req, res);
   if (!session) {
-    return false;
+    return null;
   }
 
   const auth = await Authenticator.fromSession(session, workspaceId);
 
-  return auth.isUser();
+  // If the user is not part of the workspace, return null.
+  if (!auth.isUser()) {
+    return null;
+  }
+
+  return auth;
 }

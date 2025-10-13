@@ -581,6 +581,7 @@ export const RunAgentResultResourceSchema = z.object({
         href: z.string().optional(),
         title: z.string(),
         provider: z.string(),
+        mimeType: z.string(),
       })
     )
     .optional(),
@@ -814,24 +815,24 @@ export function isImageProgressOutput(
   return output !== undefined && output.type === "image";
 }
 
-// Content creation file.
+// Interactive content file.
 
-const NotificationContentCreationFileContentSchema = z.object({
-  type: z.literal("content_creation_file"),
+const NotificationInteractiveContentFileContentSchema = z.object({
+  type: z.literal("interactive_content_file"),
   fileId: z.string(),
   mimeType: z.string(),
   title: z.string(),
   updatedAt: z.string(),
 });
 
-type ContentCreationFileContentProgressOutput = z.infer<
-  typeof NotificationContentCreationFileContentSchema
+type InteractiveContentFileContentProgressOutput = z.infer<
+  typeof NotificationInteractiveContentFileContentSchema
 >;
 
-export function isContentCreationFileContentOutput(
+export function isInteractiveContentFileContentOutput(
   output: ProgressNotificationOutput
-): output is ContentCreationFileContentProgressOutput {
-  return output !== undefined && output.type === "content_creation_file";
+): output is InteractiveContentFileContentProgressOutput {
+  return output !== undefined && output.type === "interactive_content_file";
 }
 
 const InternalAllowedIconSchema = z.enum(
@@ -980,8 +981,8 @@ export function isStoreResourceProgressOutput(
 
 export const ProgressNotificationOutputSchema = z
   .union([
-    NotificationContentCreationFileContentSchema,
     NotificationImageContentSchema,
+    NotificationInteractiveContentFileContentSchema,
     NotificationRunAgentChainOfThoughtSchema,
     NotificationRunAgentContentSchema,
     NotificationRunAgentGenerationTokensSchema,

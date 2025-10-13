@@ -23,7 +23,10 @@ import type {
   SupportedImageContentType,
 } from "@app/types";
 import { isSupportedAudioContentType } from "@app/types";
-import { isContentCreationFileContentType, normalizeError } from "@app/types";
+import {
+  isInteractiveContentFileContentType,
+  normalizeError,
+} from "@app/types";
 import {
   assertNever,
   Err,
@@ -273,7 +276,11 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
 
     // 4) Store transcript in processed version as plain text.
     const transcript = tr.value;
-    const writeStream = file.getWriteStream({ auth, version: "processed" });
+    const writeStream = file.getWriteStream({
+      auth,
+      version: "processed",
+      overrideContentType: "text/plain", // Explicitly set content type to plain text as it's a transcription
+    });
     await pipeline(Readable.from(transcript), writeStream);
 
     return new Ok(undefined);
@@ -350,14 +357,16 @@ type ProcessingFunction = (
 ) => Promise<Result<undefined, Error>>;
 
 const getProcessingFunction = ({
+  auth,
   contentType,
   useCase,
 }: {
+  auth: Authenticator;
   contentType: AllSupportedFileContentType;
   useCase: FileUseCase;
 }): ProcessingFunction | undefined => {
-  // Content Creation file types are not processed.
-  if (isContentCreationFileContentType(contentType)) {
+  // Interactive Content file types are not processed.
+  if (isInteractiveContentFileContentType(contentType)) {
     return undefined;
   }
 
@@ -394,7 +403,11 @@ const getProcessingFunction = ({
   }
 
   if (isSupportedAudioContentType(contentType)) {
-    if (useCase === "conversation") {
+    if (
+      useCase === "conversation" &&
+      // Only handle voice transcription if the workspace has enabled it.
+      auth.getNonNullableWorkspace().metadata?.allowVoiceTranscription !== false
+    ) {
       return extractTextFromAudioAndUpload;
     }
     return undefined;
@@ -486,6 +499,7 @@ const getProcessingFunction = ({
 };
 
 export const isUploadSupported = (arg: {
+  auth: Authenticator;
   contentType: SupportedFileContentType;
   useCase: FileUseCase;
 }): boolean => {
@@ -499,7 +513,7 @@ const maybeApplyProcessing: ProcessingFunction = async (
 ) => {
   const start = performance.now();
 
-  const processing = getProcessingFunction(file);
+  const processing = getProcessingFunction({ auth, ...file });
   if (!processing) {
     return new Err(
       new Error(

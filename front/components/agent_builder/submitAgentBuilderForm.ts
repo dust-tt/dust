@@ -520,7 +520,7 @@ export async function submitAgentBuilderForm({
         action: TRACKING_ACTIONS.SUBMIT,
         extra: {
           scope: formData.agentSettings.scope,
-          has_actions: processedActions.length > 0 ? "true" : "false",
+          has_actions: processedActions.length > 0,
         },
       });
     }

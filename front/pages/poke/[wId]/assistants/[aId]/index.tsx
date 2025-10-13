@@ -13,6 +13,7 @@ import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
+import { AgentOverviewTable } from "@app/components/poke/assistants/AgentOverviewTable";
 import { ConversationAgentDataTable } from "@app/components/poke/conversations/agent_table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
@@ -21,9 +22,12 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { decodeSqids } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
+  SpaceType,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -33,6 +37,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   agentConfigurations: AgentConfigurationType[];
   authors: UserType[];
   lastVersionEditors: UserType[];
+  spaces: SpaceType[];
   workspace: WorkspaceType;
 }>(async (context, auth) => {
   const aId = context.params?.aId;
@@ -48,12 +53,23 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   });
 
   const lastVersionEditors = await getEditors(auth, agentConfigurations[0]);
+  const [latestAgentConfiguration] = agentConfigurations;
+  const uniqueGroupIds = Array.from(
+    new Set(latestAgentConfiguration.requestedGroupIds.flat())
+  );
+  const groupRes = await GroupResource.fetchByIds(auth, uniqueGroupIds);
+  if (groupRes.isErr()) {
+    throw new Error(`Failed to fetch groups: ${groupRes.error.message}`);
+  }
+
+  const spaces = await SpaceResource.listForGroups(auth, groupRes.value);
 
   return {
     props: {
       agentConfigurations,
-      lastVersionEditors,
       authors: await getAuthors(agentConfigurations),
+      lastVersionEditors,
+      spaces: spaces.map((s) => s.toJSON()),
       workspace: auth.getNonNullableWorkspace(),
     },
   };
@@ -63,6 +79,7 @@ const AssistantDetailsPage = ({
   agentConfigurations,
   authors,
   lastVersionEditors,
+  spaces,
   workspace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const { isDark } = useTheme();
@@ -82,7 +99,7 @@ const AssistantDetailsPage = ({
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.currentTarget.focus();
               }}
-              label={`Editors`}
+              label="Editors"
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -102,14 +119,22 @@ const AssistantDetailsPage = ({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="mt-4">
-        <PluginList
-          pluginResourceTarget={{
-            resourceId: agentConfigurations[0].sId,
-            resourceType: "agents",
-            workspace: workspace,
-          }}
+
+      <div className="mt-4 flex flex-row items-stretch space-x-3">
+        <AgentOverviewTable
+          agentConfiguration={agentConfigurations[0]}
+          authors={authors}
+          spaces={spaces}
         />
+        <div className="flex flex-grow flex-col">
+          <PluginList
+            pluginResourceTarget={{
+              resourceId: agentConfigurations[0].sId,
+              resourceType: "agents",
+              workspace: workspace,
+            }}
+          />
+        </div>
       </div>
 
       <div className="mt-4">

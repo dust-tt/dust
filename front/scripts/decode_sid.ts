@@ -1,25 +1,26 @@
 import { getIdsFromSId } from "@app/lib/resources/string_ids";
+import { makeScript } from "@app/scripts/helpers";
 
-function main() {
-  const sId = process.argv[2];
+makeScript(
+  {
+    sId: {
+      type: "string",
+      alias: "s",
+      description: "String ID to decode",
+      required: true,
+    },
+  },
+  async ({ sId }, _logger) => {
+    const result = getIdsFromSId(sId);
 
-  if (!sId) {
-    console.error("Usage: ts-node decode_sid.ts <sId>");
-    process.exit(1);
+    if (result.isErr()) {
+      throw new Error(`Error decoding sId: ${result.error.message}`);
+    }
+
+    const { workspaceModelId, resourceModelId } = result.value;
+
+    console.log(`sId: ${sId}`);
+    console.log(`Workspace ID: ${workspaceModelId}`);
+    console.log(`Resource ID: ${resourceModelId}`);
   }
-
-  const result = getIdsFromSId(sId);
-
-  if (result.isErr()) {
-    console.error("Error decoding sId:", result.error.message);
-    process.exit(1);
-  }
-
-  const { workspaceModelId, resourceModelId } = result.value;
-
-  console.log(`sId: ${sId}`);
-  console.log(`Workspace ID: ${workspaceModelId}`);
-  console.log(`Resource ID: ${resourceModelId}`);
-}
-
-main();
+);

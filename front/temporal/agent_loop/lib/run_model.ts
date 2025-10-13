@@ -1,4 +1,4 @@
-import { heartbeat } from "@temporalio/activity";
+import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
 import assert from "assert";
 
 import { buildToolSpecification } from "@app/lib/actions/mcp";
@@ -28,13 +28,13 @@ import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
+import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -58,7 +58,6 @@ const MAX_AUTO_RETRY = 3;
 // action to execute and generate its inputs.
 //
 // TODO(DURABLE-AGENTS 2025-07-20): The method mutates agentMessage, this must
-
 // be refactored in a follow up PR.
 export async function runModelActivity(
   auth: Authenticator,
@@ -472,8 +471,21 @@ export async function runModelActivity(
       return handlePossiblyRetryableError(event.content.message);
     }
 
-    // Heartbeat allows the activity to be cancelled, e.g. on a "Stop agent" request.
+    // Heartbeat & sleep allow the activity to be cancelled, e.g. on a "Stop
+    // agent" request. Upon experimentation, both are needed to ensure the
+    // activity receives the cancellation signal. The delay until which is the
+    // signal is received is governed by heartbeat
+    // [throttling](https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling).
     heartbeat();
+    try {
+      await sleep(1);
+    } catch (err) {
+      if (err instanceof CancelledFailure) {
+        logger.info("Activity cancelled, stopping");
+        return null;
+      }
+      throw err;
+    }
 
     if (event.type === "tokens" && isGeneration) {
       for await (const tokenEvent of contentParser.emitTokens(
@@ -553,18 +565,18 @@ export async function runModelActivity(
         } | null;
         const reasoningTokens = meta?.token_usage?.reasoning_tokens ?? 0;
 
-        // Determine the region based on feature flag and current region
-        let region = "us";
-        const workspace = auth.getNonNullableWorkspace();
-        const featureFlags = await getFeatureFlags(workspace);
-
-        if (featureFlags.includes("use_openai_eu_key")) {
-          const currentRegion = regionsConfig.getCurrentRegion();
-          if (currentRegion === "europe-west1") {
+        // Pass the current region, which helps decide whether encrypted blocks are usable
+        const currentRegion = regionsConfig.getCurrentRegion();
+        let region: "us" | "eu";
+        switch (currentRegion) {
+          case "europe-west1":
             region = "eu";
-          } else if (currentRegion === "us-central1") {
+            break;
+          case "us-central1":
             region = "us";
-          }
+            break;
+          default:
+            throw new Error(`Unexpected region: ${currentRegion}`);
         }
 
         const contents = (block.message.contents ?? []).map((content) => {
@@ -630,6 +642,20 @@ export async function runModelActivity(
     return handlePossiblyRetryableError("Agent execution didn't complete.");
   }
 
+  // It is possible that temporal requested activity cancellation but the
+  // activity has not yet received the signal. In that case, the agent message
+  // row would have status to cancelled (done via finalizeCancellationActivity).
+  const message = await fetchMessageInConversation(
+    auth,
+    conversation,
+    agentMessage.sId,
+    agentMessage.version
+  );
+  if (message?.agentMessage?.status === "cancelled") {
+    logger.info("Agent message cancelled, stopping");
+    return null;
+  }
+
   // Create AgentStepContent for each content item (reasoning, text, function calls)
   // This replaces the original agent_step_content event emission
   for (const [index, content] of output.contents.entries()) {
@@ -682,6 +708,7 @@ export async function runModelActivity(
     }
     agentMessage.content = (agentMessage.content ?? "") + processedContent;
     agentMessage.status = "succeeded";
+    agentMessage.completedTs = Date.now();
 
     await updateResourceAndPublishEvent(auth, {
       event: {

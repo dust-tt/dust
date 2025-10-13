@@ -134,6 +134,18 @@ export async function syncGongTranscript({
     (tracker) => `tracker:${tracker.name}`
   );
 
+  // Extract account names from context where objectType === "Account".
+  const accountTags =
+    transcriptMetadata.context?.flatMap((ctx) =>
+      ctx.objects
+        .filter((obj) => obj.objectType === "Account")
+        .flatMap((obj) =>
+          obj.fields
+            .filter((field) => field.name === "Name" && field.value)
+            .map((field) => `account:${field.value}`)
+        )
+    ) ?? [];
+
   await upsertDataSourceDocument({
     dataSourceConfig,
     documentId,
@@ -149,6 +161,7 @@ export async function syncGongTranscript({
       `direction:${transcriptMetadata.metaData.direction}`,
       ...participantEmails.map((email) => `participant:${email}`),
       ...trackerTags,
+      ...accountTags,
     ],
     parents: [documentId, makeGongTranscriptFolderInternalId(connector)],
     parentId: makeGongTranscriptFolderInternalId(connector),

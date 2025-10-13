@@ -1,5 +1,4 @@
-import type { ModelId } from "@app/types";
-import type { ModelProviderIdType } from "@app/types/assistant/assistant";
+import type { ModelId, ModelProviderIdType } from "@app/types";
 import type { FunctionCallType } from "@app/types/assistant/generation";
 
 export type TextContentType = {

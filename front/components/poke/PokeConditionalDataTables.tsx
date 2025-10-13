@@ -1,13 +1,17 @@
 import { Button, Spinner } from "@dust-tt/sparkle";
 import { useState } from "react";
-import type { KeyedMutator } from "swr";
 
+import type { useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types";
 
+type MutatorType<TData> = ReturnType<
+  typeof useSWRWithDefaults<string, TData>
+>["mutate"];
+
 interface PokeDataTableConditionalFetchProps<T, M> {
   buttonText?: string;
-  children: (data: T, mutate: KeyedMutator<M>) => React.ReactNode;
+  children: (data: T, mutate: MutatorType<M>) => React.ReactNode;
   globalActions?: React.ReactNode;
   header: string;
   loadOnInit?: boolean;
@@ -17,7 +21,7 @@ interface PokeDataTableConditionalFetchProps<T, M> {
     data: T;
     isError: any;
     isLoading: boolean;
-    mutate: KeyedMutator<M>;
+    mutate: MutatorType<M>;
   };
 }
 

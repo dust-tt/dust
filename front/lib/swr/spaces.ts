@@ -91,15 +91,18 @@ export function useSpaceInfo({
   workspaceId,
   spaceId,
   disabled,
+  includeAllMembers = false,
 }: {
   workspaceId: string;
   spaceId: string | null;
   disabled?: boolean;
+  includeAllMembers?: boolean;
 }) {
   const spacesCategoriesFetcher: Fetcher<GetSpaceResponseBody> = fetcher;
 
+  const queryParams = includeAllMembers ? "?includeAllMembers=true" : "";
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/spaces/${spaceId}`,
+    `/api/w/${workspaceId}/spaces/${spaceId}${queryParams}`,
     spacesCategoriesFetcher,
     {
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

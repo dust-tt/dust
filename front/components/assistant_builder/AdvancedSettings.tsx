@@ -4,6 +4,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSub,
@@ -123,81 +124,85 @@ export function AdvancedSettings({
         {/* Model Selection */}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger label="Model selection" />
-          <DropdownMenuSubContent className="w-80">
-            <DropdownMenuLabel label="Best performing models" />
-            <DropdownMenuRadioGroup
-              value={generationSettings.modelSettings.modelId}
-            >
-              {bestPerformingModelConfigs.map((modelConfig) => (
-                <DropdownMenuRadioItem
-                  key={modelConfig.modelId}
-                  value={modelConfig.modelId}
-                  icon={getModelProviderLogo(modelConfig.providerId, isDark)}
-                  description={modelConfig.shortDescription}
-                  label={modelConfig.displayName}
-                  onClick={() => {
-                    setGenerationSettings({
-                      ...generationSettings,
-                      modelSettings: {
-                        modelId: modelConfig.modelId,
-                        providerId: modelConfig.providerId,
-                      },
-                      reasoningEffort: modelConfig.defaultReasoningEffort,
-                    });
-                  }}
-                />
-              ))}
-            </DropdownMenuRadioGroup>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent className="w-80">
+              <DropdownMenuLabel label="Best performing models" />
+              <DropdownMenuRadioGroup
+                value={generationSettings.modelSettings.modelId}
+              >
+                {bestPerformingModelConfigs.map((modelConfig) => (
+                  <DropdownMenuRadioItem
+                    key={modelConfig.modelId}
+                    value={modelConfig.modelId}
+                    icon={getModelProviderLogo(modelConfig.providerId, isDark)}
+                    description={modelConfig.shortDescription}
+                    label={modelConfig.displayName}
+                    onClick={() => {
+                      setGenerationSettings({
+                        ...generationSettings,
+                        modelSettings: {
+                          modelId: modelConfig.modelId,
+                          providerId: modelConfig.providerId,
+                        },
+                        reasoningEffort: modelConfig.defaultReasoningEffort,
+                      });
+                    }}
+                  />
+                ))}
+              </DropdownMenuRadioGroup>
 
-            <DropdownMenuLabel label="Other models" />
-            <DropdownMenuRadioGroup
-              value={generationSettings.modelSettings.modelId}
-            >
-              {otherModelConfigs.map((modelConfig) => (
-                <DropdownMenuRadioItem
-                  key={modelConfig.modelId}
-                  value={modelConfig.modelId}
-                  icon={getModelProviderLogo(modelConfig.providerId, isDark)}
-                  description={modelConfig.shortDescription}
-                  label={modelConfig.displayName}
-                  onClick={() => {
-                    setGenerationSettings({
-                      ...generationSettings,
-                      modelSettings: {
-                        modelId: modelConfig.modelId,
-                        providerId: modelConfig.providerId,
-                      },
-                      reasoningEffort: modelConfig.defaultReasoningEffort,
-                    });
-                  }}
-                />
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
+              <DropdownMenuLabel label="Other models" />
+              <DropdownMenuRadioGroup
+                value={generationSettings.modelSettings.modelId}
+              >
+                {otherModelConfigs.map((modelConfig) => (
+                  <DropdownMenuRadioItem
+                    key={modelConfig.modelId}
+                    value={modelConfig.modelId}
+                    icon={getModelProviderLogo(modelConfig.providerId, isDark)}
+                    description={modelConfig.shortDescription}
+                    label={modelConfig.displayName}
+                    onClick={() => {
+                      setGenerationSettings({
+                        ...generationSettings,
+                        modelSettings: {
+                          modelId: modelConfig.modelId,
+                          providerId: modelConfig.providerId,
+                        },
+                        reasoningEffort: modelConfig.defaultReasoningEffort,
+                      });
+                    }}
+                  />
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
         </DropdownMenuSub>
 
         {/* Creativity Level */}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger label="Creativity level" />
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup
-              value={generationSettings?.temperature.toString()}
-            >
-              {CREATIVITY_LEVELS.map(({ label, value }) => (
-                <DropdownMenuRadioItem
-                  key={value}
-                  value={value.toString()}
-                  label={label}
-                  onClick={() => {
-                    setGenerationSettings({
-                      ...generationSettings,
-                      temperature: value,
-                    });
-                  }}
-                />
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent>
+              <DropdownMenuRadioGroup
+                value={generationSettings?.temperature.toString()}
+              >
+                {CREATIVITY_LEVELS.map(({ label, value }) => (
+                  <DropdownMenuRadioItem
+                    key={value}
+                    value={value.toString()}
+                    label={label}
+                    onClick={() => {
+                      setGenerationSettings({
+                        ...generationSettings,
+                        temperature: value,
+                      });
+                    }}
+                  />
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
         </DropdownMenuSub>
 
         <ReasoningEffortSubmenu

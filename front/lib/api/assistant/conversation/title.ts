@@ -3,12 +3,16 @@ import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { getDustProdAction } from "@app/lib/registry";
-import { cloneBaseConfig } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType, Result } from "@app/types";
-import { Err, getLargeNonAnthropicWhitelistedModel, Ok } from "@app/types";
+import {
+  ConversationError,
+  Err,
+  getLargeNonAnthropicWhitelistedModel,
+  Ok,
+} from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
@@ -20,6 +24,13 @@ export async function ensureConversationTitle(
 ): Promise<string | null> {
   const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
+    if (
+      runAgentDataRes.error instanceof ConversationError &&
+      runAgentDataRes.error.type === "conversation_not_found"
+    ) {
+      return null;
+    }
+
     throw runAgentDataRes.error;
   }
 

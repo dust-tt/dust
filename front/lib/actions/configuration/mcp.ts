@@ -167,10 +167,14 @@ export async function fetchMCPServerActionConfigurations(
         icon: serverIcon,
         mcpServerViewId: mcpServerView?.sId ?? "",
         internalMCPServerId: config.internalMCPServerId,
-        dataSources: dataSourceConfigurations.map(
-          renderDataSourceConfiguration
-        ),
-        tables: tablesConfigurations.map(renderTableConfiguration),
+        dataSources:
+          dataSourceConfigurations.length > 0
+            ? dataSourceConfigurations.map(renderDataSourceConfiguration)
+            : null,
+        tables:
+          tablesConfigurations.length > 0
+            ? tablesConfigurations.map(renderTableConfiguration)
+            : null,
         dustAppConfiguration: dustApp
           ? {
               id: dustApp.id,

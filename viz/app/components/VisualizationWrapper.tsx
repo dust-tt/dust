@@ -1,5 +1,6 @@
 "use client";
 
+import { isDevelopment } from "@viz/app/types";
 import type {
   CommandResultMap,
   VisualizationRPCCommand,
@@ -166,7 +167,10 @@ export function useVisualizationAPI(
         // Validate message structure using zod.
         const validatedMessage = validateMessage(event.data);
         if (!validatedMessage) {
-          console.log("Invalid message format received:", event.data);
+          if (isDevelopment()) {
+            // Log to help debug the addition of new event types.
+            console.log("Invalid message format received:", event.data);
+          }
           return;
         }
 
@@ -269,7 +273,7 @@ export function VisualizationWrapperWithErrorBoundary({
         sendCrossDocumentMessage("setErrorMessage", {
           errorMessage: e instanceof Error ? e.message : `${e}`,
           fileId: identifier,
-          isContentCreation: isFullHeight,
+          isInteractiveContent: isFullHeight,
         });
       }}
     >
@@ -463,25 +467,25 @@ export function VisualizationWrapper({
       }`}
     >
       {!isFullHeight && (
-        <div className="flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
+        <div className='flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50'>
           <button
             onClick={handleScreenshotDownload}
-            title="Download screenshot"
-            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
+            title='Download screenshot'
+            className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
           >
             Png
           </button>
           <button
             onClick={handleSVGDownload}
-            title="Download SVG"
-            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
+            title='Download SVG'
+            className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
           >
             Svg
           </button>
           <button
-            title="Show code"
+            title='Show code'
             onClick={handleDisplayCode}
-            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
+            className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
           >
             Code
           </button>

@@ -539,7 +539,9 @@ export async function postUserMessage(
                   userContextProfilePictureUrl: context.profilePictureUrl,
                   userContextOrigin: context.origin,
                   userContextOriginMessageId: originMessage?.sId ?? null,
-                  userContextLastTriggerRunAt: context.lastTriggerRunAt,
+                  userContextLastTriggerRunAt: context.lastTriggerRunAt
+                    ? new Date(context.lastTriggerRunAt)
+                    : null,
                   userId: user
                     ? user.id
                     : (
@@ -629,6 +631,11 @@ export async function postUserMessage(
                 }
               );
 
+              const parentAgentMessageId =
+                userMessage.context.origin === "agent_handover"
+                  ? userMessage.context.originMessageId ?? null
+                  : null;
+
               return {
                 row: agentMessageRow,
                 m: {
@@ -641,6 +648,7 @@ export async function postUserMessage(
                   visibility: "visible",
                   version: 0,
                   parentMessageId: userMessage.sId,
+                  parentAgentMessageId,
                   status: "created",
                   actions: [],
                   content: null,
@@ -1082,6 +1090,11 @@ export async function editUserMessage(
               }
             );
 
+            const parentAgentMessageId =
+              userMessage.context.origin === "agent_handover"
+                ? userMessage.context.originMessageId ?? null
+                : null;
+
             return {
               row: agentMessageRow,
               m: {
@@ -1094,6 +1107,7 @@ export async function editUserMessage(
                 visibility: "visible",
                 version: 0,
                 parentMessageId: userMessage.sId,
+                parentAgentMessageId,
                 status: "created",
                 actions: [],
                 content: null,
@@ -1327,6 +1341,7 @@ export async function retryAgentMessage(
         visibility: m.visibility,
         version: m.version,
         parentMessageId: message.parentMessageId,
+        parentAgentMessageId: message.parentAgentMessageId,
         status: "created",
         actions: [],
         content: null,

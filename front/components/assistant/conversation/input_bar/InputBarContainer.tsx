@@ -37,7 +37,6 @@ import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -99,7 +98,6 @@ const InputBarContainer = ({
   selectedMCPServerViews,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
-  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
@@ -150,11 +148,13 @@ const InputBarContainer = ({
       title,
       from,
       to,
+      textContent,
     }: {
       fileId: string;
       title: string;
       from: number;
       to: number;
+      textContent: string;
     }) => {
       const editorInstance = editorRef.current;
       if (!editorInstance) {
@@ -174,7 +174,7 @@ const InputBarContainer = ({
         ...(needsLeadingSpace ? [{ type: "text", text: " " }] : []),
         {
           type: "pastedAttachment",
-          attrs: { fileId, title },
+          attrs: { fileId, title, textContent },
           text: `:pasted_attachment[${title}]{fileId=${fileId}}`,
         },
         { type: "text", text: " " },
@@ -208,6 +208,57 @@ const InputBarContainer = ({
     setNodeOrUrlCandidate(null);
   };
 
+  const sendNotification = useSendNotification();
+
+  const handleInlineText = useCallback(
+    async (fileId: string, textContent: string) => {
+      const editorInstance = editorRef.current;
+      if (!editorInstance) {
+        return;
+      }
+
+      try {
+        // Find the pasted attachment node to get its position
+        let nodePos: number | null = null;
+        editorInstance.state.doc.descendants((node, pos) => {
+          if (
+            node.type.name === "pastedAttachment" &&
+            node.attrs?.fileId === fileId
+          ) {
+            nodePos = pos;
+            return false;
+          }
+          return true;
+        });
+
+        if (nodePos === null) {
+          return;
+        }
+
+        // Replace the chip with the text content
+        const node = editorInstance.state.doc.nodeAt(nodePos);
+        if (node) {
+          editorInstance
+            .chain()
+            .focus()
+            .deleteRange({ from: nodePos, to: nodePos + node.nodeSize })
+            .insertContentAt(nodePos, textContent)
+            .run();
+        }
+
+        // Remove the file from the uploader service
+        fileUploaderService.removeFile(fileId);
+      } catch (e) {
+        sendNotification({
+          type: "error",
+          title: "Failed to inline text",
+          description: normalizeError(e).message,
+        });
+      }
+    },
+    [editorRef, fileUploaderService, sendNotification]
+  );
+
   // Pass the editor ref to the mention dropdown hook
   const mentionDropdown = useMentionDropdown(suggestions, editorRef);
 
@@ -218,6 +269,7 @@ const InputBarContainer = ({
     onUrlDetected: handleUrlDetected,
     suggestionHandler: mentionDropdown.getSuggestionHandler(),
     owner,
+    onInlineText: handleInlineText,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;
@@ -232,6 +284,7 @@ const InputBarContainer = ({
           title: displayName,
           from,
           to,
+          textContent: text,
         });
 
         const file = new File([text], filename, {
@@ -328,8 +381,6 @@ const InputBarContainer = ({
     [spaces]
   );
 
-  const sendNotification = useSendNotification();
-
   const { searchResultNodes, isSearchLoading } = useSpacesSearch(
     isNodeCandidate(nodeOrUrlCandidate)
       ? {
@@ -424,6 +475,10 @@ const InputBarContainer = ({
     disableAutoFocus
   );
 
+  const buttonSize = useMemo(() => {
+    return isMobile ? "sm" : "xs";
+  }, [isMobile]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const contentEditableClasses = classNames(
@@ -508,6 +563,7 @@ const InputBarContainer = ({
                     onNodeUnselect={onNodeUnselect}
                     attachedNodes={attachedNodes}
                     disabled={disableTextInput}
+                    buttonSize={buttonSize}
                   />
                 </>
               )}
@@ -518,13 +574,14 @@ const InputBarContainer = ({
                   onSelect={onMCPServerViewSelect}
                   onDeselect={onMCPServerViewDeselect}
                   disabled={disableTextInput}
+                  buttonSize={buttonSize}
                 />
               )}
               {(actions.includes("assistants-list") ||
                 actions.includes("assistants-list-with-actions")) && (
                 <AssistantPicker
                   owner={owner}
-                  size="xs"
+                  size={buttonSize}
                   onItemClick={(c) => {
                     editorService.insertMention({
                       id: c.sId,
@@ -543,15 +600,16 @@ const InputBarContainer = ({
             </div>
             <div className="grow" />
             <div className="flex items-center gap-2 md:gap-1">
-              {featureFlags.hasFeature("simple_audio_transcription") &&
+              {owner.metadata?.allowVoiceTranscription !== false &&
                 actions.includes("voice") && (
                   <VoicePicker
                     voiceTranscriberService={voiceTranscriberService}
                     disabled={disableTextInput}
+                    buttonSize={buttonSize}
                   />
                 )}
               <Button
-                size="xs"
+                size={buttonSize}
                 isLoading={
                   disableSendButton &&
                   voiceTranscriberService.status !== "transcribing"

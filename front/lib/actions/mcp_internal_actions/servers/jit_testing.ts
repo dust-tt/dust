@@ -4,8 +4,11 @@ import { z } from "zod";
 
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { Ok } from "@app/types";
 
-function createServer(): McpServer {
+function createServer(auth: Authenticator): McpServer {
   const server = makeInternalMCPServer("jit_testing");
 
   server.tool(
@@ -63,17 +66,18 @@ function createServer(): McpServer {
 
       note: z.string().describe("Optional note for debugging").optional(),
     },
-    async (params) => {
-      return {
-        isError: false,
-        content: [
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "jit_all_optionals_and_defaults" },
+      async (params) => {
+        return new Ok([
           {
             type: "text",
             text: `JIT testing tool received: ${JSON.stringify(params)}`,
           },
-        ],
-      };
-    }
+        ]);
+      }
+    )
   );
 
   return server;

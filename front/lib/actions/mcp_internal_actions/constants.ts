@@ -12,9 +12,12 @@ import {
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
-import { CONTENT_CREATION_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/instructions";
+import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
-import { DUST_DEEP_DESCRIPTION } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import {
+  DEEP_DIVE_NAME,
+  DEEP_DIVE_SERVER_INSTRUCTIONS,
+} from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -71,7 +74,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "conversation_files",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
-  "deep_research",
+  "deep_dive",
   "extract_data",
   "file_generation",
   "freshservice",
@@ -82,8 +85,9 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "google_sheets",
   "hubspot",
   "image_generation",
+  "elevenlabs",
   "include_data",
-  "content_creation",
+  "interactive_content",
   "slideshow",
   "jira",
   "missing_action_catcher",
@@ -499,7 +503,8 @@ The directive should be used to display a clickable version of the agent name in
       },
       icon: "GcalLogo",
       documentationUrl: "https://docs.dust.tt/docs/google-calendar",
-      instructions: null,
+      instructions:
+        "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool.",
     },
   },
   conversation_files: {
@@ -715,26 +720,24 @@ The directive should be used to display a clickable version of the agent name in
       instructions: JIRA_SERVER_INSTRUCTIONS,
     },
   },
-  content_creation: {
+  interactive_content: {
     id: 23,
     availability: "auto",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("interactive_content_server");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "content_creation",
+      name: "interactive_content",
       version: "1.0.0",
       description:
         "Create dashboards, presentations, or any interactive content.",
       authorization: null,
-      icon: "ActionDocumentTextIcon",
+      icon: "ActionFrameIcon",
       documentationUrl: null,
-      instructions: CONTENT_CREATION_INSTRUCTIONS,
+      instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
     },
   },
   outlook: {
@@ -915,12 +918,12 @@ The directive should be used to display a clickable version of the agent name in
       instructions: SLIDESHOW_INSTRUCTIONS,
     },
   },
-  deep_research: {
+  deep_dive: {
     id: 29,
     availability: "auto",
-    isRestricted: ({ featureFlags, isDustDeepDisabled }) => {
+    isRestricted: ({ featureFlags, isDeepDiveDisabled }) => {
       return (
-        !featureFlags.includes("deep_research_as_a_tool") || isDustDeepDisabled
+        !featureFlags.includes("deep_research_as_a_tool") || isDeepDiveDisabled
       );
     },
     allowMultipleInstances: false,
@@ -929,13 +932,13 @@ The directive should be used to display a clickable version of the agent name in
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "deep_research",
+      name: "deep_dive",
       version: "0.1.0",
-      description: "Handoff the query to the deep research agent.",
+      description: `Launch a handoff of the user's query to the @${DEEP_DIVE_NAME} agent.`,
       authorization: null,
       icon: "ActionAtomIcon",
       documentationUrl: null,
-      instructions: `This tool performs a complete handoff to the dust-deep research agent: ${DUST_DEEP_DESCRIPTION}`,
+      instructions: DEEP_DIVE_SERVER_INSTRUCTIONS,
     },
   },
   slack_bot: {
@@ -1012,6 +1015,10 @@ The directive should be used to display a clickable version of the agent name in
       // Read operations - never ask
       get_current_user: "never_ask",
       get_pages: "never_ask",
+
+      // Write operations - ask
+      create_page: "low",
+      update_page: "low",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1025,6 +1032,30 @@ The directive should be used to display a clickable version of the agent name in
       },
       icon: "ConfluenceLogo",
       documentationUrl: "https://docs.dust.tt/docs/confluence-tool",
+      instructions: null,
+    },
+  },
+  elevenlabs: {
+    id: 34,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("elevenlabs_tool");
+    },
+    isPreview: false,
+    tools_stakes: {
+      text_to_speech: "low",
+      generate_music: "low",
+    },
+    tools_retry_policies: { default: "retry_on_interrupt" },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "elevenlabs",
+      version: "1.0.0",
+      description: "Generate speech audio and music with ElevenLabs.",
+      authorization: null,
+      icon: "ActionMegaphoneIcon",
+      documentationUrl: null,
       instructions: null,
     },
   },
@@ -1231,7 +1262,7 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
-  // Using satisfies here instead of : type to avoid typescript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
+  // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
   [K in InternalMCPServerNameType]: {
     id: number;
@@ -1241,7 +1272,7 @@ The directive should be used to display a clickable version of the agent name in
       | ((params: {
           plan: PlanType;
           featureFlags: WhitelistableFeature[];
-          isDustDeepDisabled: boolean;
+          isDeepDiveDisabled: boolean;
         }) => boolean)
       | undefined;
     isPreview: boolean;

@@ -13,6 +13,7 @@ export class GongConfigurationModel extends ConnectorBaseModel<GongConfiguration
   declare baseUrl: string;
   declare retentionPeriodDays: number | null;
   declare trackersEnabled: boolean;
+  declare accountsEnabled: boolean;
 }
 
 GongConfigurationModel.init(
@@ -44,6 +45,11 @@ GongConfigurationModel.init(
       allowNull: true,
     },
     trackersEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    accountsEnabled: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,

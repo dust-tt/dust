@@ -37,7 +37,7 @@ export const markdownHeaderClasses = {
 };
 
 const sizes = {
-  p: "s-copy-sm @sm:s-text-base @sm:s-leading-7",
+  p: "s-text-base s-leading-7",
   ...markdownHeaderClasses,
 };
 
@@ -225,7 +225,7 @@ export function Markdown({
 
   try {
     return (
-      <div className={cn("s-w-full", isStreaming ? "s-blinking-cursor" : "")}>
+      <div className="s-w-full">
         <MarkdownContentContext.Provider
           value={{
             content: processedContent,
@@ -246,7 +246,7 @@ export function Markdown({
     );
   } catch (error) {
     return (
-      <div className={cn("s-w-full", isStreaming ? "s-blinking-cursor" : "")}>
+      <div className="s-w-full">
         <Chip color="warning">
           There was an error parsing this markdown content
         </Chip>
