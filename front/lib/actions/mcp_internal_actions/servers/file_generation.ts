@@ -189,7 +189,11 @@ const createServer = (
               resourceModelId
             );
             if (!file) {
-              return new Err(new MCPError(`File not found: ${file_id_or_url}`));
+              return new Err(
+                new MCPError(`File not found: ${file_id_or_url}`, {
+                  tracked: false,
+                })
+              );
             }
 
             url = await convertapi.upload(

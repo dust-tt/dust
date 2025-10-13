@@ -110,7 +110,11 @@ export async function executePostMessage(
   if (fileId) {
     const file = await FileResource.fetchById(auth, fileId);
     if (!file) {
-      return new Err(new MCPError("File not found"));
+      return new Err(
+        new MCPError("File not found", {
+          tracked: false,
+        })
+      );
     }
 
     // Resolve channel id
