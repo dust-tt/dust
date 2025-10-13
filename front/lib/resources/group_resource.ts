@@ -939,7 +939,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
       memberships = m;
     } else {
-      // Get all members regardless of status (active, suspended, revoked)
+      // Get all members regardless of status (active, suspended)
       memberships = await GroupMembershipModel.findAll({
         where: {
           groupId: this.id,
