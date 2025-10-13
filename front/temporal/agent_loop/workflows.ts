@@ -13,6 +13,7 @@ import {
   RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
 } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
+import type * as agentAnalyticsActivities from "@app/temporal/agent_loop/activities/agent_analytics";
 import type * as commonActivities from "@app/temporal/agent_loop/activities/common";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as instrumentationActivities from "@app/temporal/agent_loop/activities/instrumentation";
@@ -84,6 +85,16 @@ const { notifyWorkflowError, finalizeCancellationActivity } = proxyActivities<
   startToCloseTimeout: "2 minutes",
   retry: {
     maximumAttempts: 5,
+  },
+});
+
+const { storeAgentAnalyticsActivity } = proxyActivities<
+  typeof agentAnalyticsActivities
+>({
+  startToCloseTimeout: "30 seconds",
+  retry: {
+    // Don't retry analytics - it's best effort
+    maximumAttempts: 1,
   },
 });
 
@@ -212,6 +223,16 @@ export async function agentLoopWorkflow({
       });
     });
 
+    // Store analytics data for the completed agent loop
+    await storeAgentAnalyticsActivity(authType, {
+      agentLoopArgs: {
+        ...agentLoopArgs,
+        initialStartTime,
+      },
+      status: "completed",
+      latencyMs: Date.now() - initialStartTime,
+    });
+
     if (childWorkflowHandle) {
       await childWorkflowHandle.result();
     }
@@ -220,6 +241,16 @@ export async function agentLoopWorkflow({
 
     // Notify error in a non-cancellable scope to ensure it runs even if workflow is cancelled
     await CancellationScope.nonCancellable(async () => {
+      // Store analytics data for failed/cancelled workflows
+      await storeAgentAnalyticsActivity(authType, {
+        agentLoopArgs: {
+          ...agentLoopArgs,
+          initialStartTime,
+        },
+        status: cancelRequested ? "cancelled" : "failed",
+        latencyMs: Date.now() - initialStartTime,
+      });
+
       if (cancelRequested) {
         await finalizeCancellationActivity(authType, agentLoopArgs);
         return;
