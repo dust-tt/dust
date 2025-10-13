@@ -18,9 +18,12 @@ import type { InteractionWithTokens, MessageWithTokens } from "./pruning";
 import {
   getInteractionTokenCount,
   progressivelyPruneInteraction,
-  pruneAllToolResults,
+  prunePreviousInteractions,
 } from "./pruning";
 import { renderAllMessages } from "./shared/message_rendering";
+
+// When previous iteractions pruning is enabled, we'll attempt to fully preserve this number of interactions.
+const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;
 
 /**
  * Group messages into interactions (user turn + agent responses).
@@ -120,17 +123,6 @@ export async function renderConversationEnhanced(
 
   const interactions = groupMessagesIntoInteractions(messagesWithTokens);
 
-  // Apply pruning to previous interactions (all but the last) if enabled.
-  const prunedInteractions = interactions.map((interaction, index) => {
-    const isLastInteraction = index === interactions.length - 1;
-
-    if (!enablePreviousInteractionsPruning || isLastInteraction) {
-      return interaction;
-    }
-
-    return pruneAllToolResults(interaction);
-  });
-
   // Calculate base token usage.
   const toolDefinitionsCountAdjustmentFactor = 0.7;
   const tokensMargin = 1024;
@@ -139,29 +131,58 @@ export async function renderConversationEnhanced(
     Math.floor(toolDefinitionsCount * toolDefinitionsCountAdjustmentFactor) +
     tokensMargin;
 
+  let currentInteraction = interactions[interactions.length - 1];
+  let currentInteractionTokens = getInteractionTokenCount(currentInteraction);
+
+  let availableTokens = allowedTokenCount - baseTokens;
+
+  if (currentInteractionTokens > availableTokens) {
+    // The last interaction does not fit within the token budget.
+    // We apply progressive pruning to that interaction until it fits within the token budget.
+    currentInteraction = progressivelyPruneInteraction(
+      currentInteraction,
+      availableTokens
+    );
+    currentInteractionTokens = getInteractionTokenCount(currentInteraction);
+    if (currentInteractionTokens > availableTokens) {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+        },
+        "Render Conversation V2: No interactions fit in context window."
+      );
+      throw new Error(
+        "Context window exceeded: at least one message is required"
+      );
+    }
+    availableTokens -= currentInteractionTokens;
+  }
+
+  let previousInteractions = interactions.slice(0, -1);
+
+  // If previous interactions pruning is enabled, apply it.
+  if (enablePreviousInteractionsPruning) {
+    previousInteractions = prunePreviousInteractions(
+      previousInteractions,
+      availableTokens,
+      PREVIOUS_INTERACTIONS_TO_PRESERVE
+    );
+  }
+
+  const prunedInteractions = [...previousInteractions, currentInteraction];
+
   // Select interactions that fit within token budget.
   const selected: MessageWithTokens[] = [];
   let tokensUsed = baseTokens;
 
   // Go backward through interactions.
   for (let i = prunedInteractions.length - 1; i >= 0; i--) {
-    let interaction = prunedInteractions[i];
-    const isLastInteraction = i === prunedInteractions.length - 1;
+    const interaction = prunedInteractions[i];
 
-    // For the last interaction, try progressive pruning if it doesn't fit within the token budget.
-    // This means the we progressively prune the earliest tools results until the interaction fits within the token budget.
     const interactionTokens = getInteractionTokenCount(interaction);
-    if (
-      isLastInteraction &&
-      interactionTokens > allowedTokenCount - tokensUsed
-    ) {
-      const availableTokens = allowedTokenCount - tokensUsed;
-      interaction = progressivelyPruneInteraction(interaction, availableTokens);
-    }
-
-    const finalInteractionTokens = getInteractionTokenCount(interaction);
-    if (tokensUsed + finalInteractionTokens <= allowedTokenCount) {
-      tokensUsed += finalInteractionTokens;
+    if (tokensUsed + interactionTokens <= allowedTokenCount) {
+      tokensUsed += interactionTokens;
       selected.unshift(...interaction.messages);
     } else {
       break;

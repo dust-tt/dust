@@ -1,8 +1,13 @@
 import type { ModelMessageTypeMultiActions } from "@app/types";
 
-const PRUNED_RESULT_PLACEHOLDER =
+const CURRENT_INTERACTION_PRUNED_RESULT_PLACEHOLDER =
+  "<dust_system>This function result is no longer available." +
+  " Warning: the content of this function result was pruned to prevent context window overflow.</dust_system>";
+const CURRENT_INTERACTION_PRUNED_TOOL_RESULT_TOKENS = 40;
+
+const PREVIOUS_INTERACTIONS_PRUNED_RESULT_PLACEHOLDER =
   "<dust_system>This function result is no longer available.</dust_system>";
-const PRUNED_TOOL_RESULT_TOKENS = 20;
+const PREVIOUS_INTERACTIONS_PRUNED_TOOL_RESULT_TOKENS = 20;
 
 export type MessageWithTokens = ModelMessageTypeMultiActions & {
   tokenCount: number;
@@ -23,8 +28,8 @@ export function pruneAllToolResults(
     if (msg.role === "function") {
       return {
         ...msg,
-        content: PRUNED_RESULT_PLACEHOLDER,
-        tokenCount: PRUNED_TOOL_RESULT_TOKENS,
+        content: PREVIOUS_INTERACTIONS_PRUNED_RESULT_PLACEHOLDER,
+        tokenCount: PREVIOUS_INTERACTIONS_PRUNED_TOOL_RESULT_TOKENS,
       };
     }
     return msg;
@@ -69,16 +74,13 @@ export function progressivelyPruneInteraction(
   let prunedMessages = [...interaction.messages];
   for (const index of toolResultIndices) {
     const message = prunedMessages[index];
-    if (
-      message.role === "function" &&
-      message.content !== PRUNED_RESULT_PLACEHOLDER
-    ) {
+    if (message.role === "function") {
       // Create a new array with the pruned message.
       prunedMessages = [...prunedMessages];
       prunedMessages[index] = {
         ...message,
-        content: PRUNED_RESULT_PLACEHOLDER,
-        tokenCount: PRUNED_TOOL_RESULT_TOKENS,
+        content: CURRENT_INTERACTION_PRUNED_RESULT_PLACEHOLDER,
+        tokenCount: CURRENT_INTERACTION_PRUNED_TOOL_RESULT_TOKENS,
       };
 
       // Check if we've pruned enough.
@@ -95,4 +97,54 @@ export function progressivelyPruneInteraction(
   return {
     messages: prunedMessages,
   };
+}
+
+/**
+ * Prunes all tool results from a list of interactions, attempting to fully preserve up to n interactions (starting from the last).
+ * As soon as we reach n interactions, or as soon as an interaction does not fit within the token budget,
+ * we'll fully prune the remaining interactions.
+ */
+export function prunePreviousInteractions(
+  inputInteractions: InteractionWithTokens[],
+  maxTokens: number,
+  interactionsToPreserve: number
+): InteractionWithTokens[] {
+  const interactions = [...inputInteractions];
+
+  let shouldPrune = false;
+  let availableTokens = maxTokens;
+  for (let i = interactions.length - 1; i >= 0; i--) {
+    // We prune if we've pruned the last interaction, or if we've reached the number of interactions to preserve.
+    shouldPrune =
+      shouldPrune || i < interactions.length - interactionsToPreserve;
+
+    const interaction = interactions[i];
+    if (shouldPrune) {
+      // We are pruning all previous interactions.
+      // We simply prune all tool results and update the available tokens.
+      interactions[i] = pruneAllToolResults(interaction);
+      availableTokens -= getInteractionTokenCount(interaction);
+      continue;
+    }
+
+    // We check if the interaction fits fully.
+    // If so, we leave it untouched.
+    // Otherwise, we prune it along all previous interactions.
+    let interactionTokens = getInteractionTokenCount(interaction);
+    if (interactionTokens > availableTokens) {
+      // Interaction does not fit within the token budget.
+      // We prune it, and will prune all previous interactions as well.
+      interactions[i] = pruneAllToolResults(interaction);
+      interactionTokens = getInteractionTokenCount(interaction);
+      shouldPrune = true;
+    } else {
+      // Interaction fits within the token budget.
+      // We keep it as-is
+    }
+
+    // We update the available tokens.
+    availableTokens -= interactionTokens;
+  }
+
+  return interactions;
 }
