@@ -70,7 +70,6 @@ export function PublicFrameRenderer({
       <PublicInteractiveContentHeader
         title={formatFilenameForDisplay(fileName ?? "Frame")}
         user={user}
-        workspaceId={workspaceId}
         conversationUrl={conversationUrl}
       />
 
