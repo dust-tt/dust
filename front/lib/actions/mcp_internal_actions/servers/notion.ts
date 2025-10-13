@@ -290,10 +290,11 @@ async function withNotionClient<T>(
     const tracked =
       APIResponseError.isAPIResponseError(e) &&
       [
-        "service_unavailable",
+        // Ignoring errors due to a malformed input passed by the model (e.g. invalid ID).
         "restricted_resource",
         "object_not_found",
-        "internal_server_error",
+        "invalid_request",
+        "validation_error",
       ].includes(e.code);
     return new Err(
       new MCPError(normalizeError(e).message, {
