@@ -201,7 +201,7 @@ const variantStyles = cva("", {
     },
     isSticky: {
       true: cn(
-        "s-sticky s-top-0 s-z-10 s-border-b s-bg-background dark:s-bg-muted-background-night",
+        "s-sticky s-top-0 s-z-10 s-bg-background dark:s-bg-muted-background-night",
         "s-border-border dark:s-border-border-night"
       ),
     },
@@ -213,7 +213,7 @@ const variantStyles = cva("", {
 });
 
 const labelStyles = cva(
-  "s-pt-4 s-pb-2 s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
+  "s-pt-4 s-pb-2 s-pl-3 s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
 );
 
 interface NavigationListLabelProps
