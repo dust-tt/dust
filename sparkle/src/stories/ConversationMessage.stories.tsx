@@ -3,15 +3,14 @@ import React from "react";
 
 import {
   ArrowPathIcon,
-  AtomIcon,
   Avatar,
   Button,
+  ChevronRightIcon,
   Citation,
   CitationIcons,
   CitationTitle,
   ClipboardIcon,
   ClockIcon,
-  CommandLineIcon,
   ConversationContainer,
   ConversationMessage,
   GithubIcon,
@@ -227,24 +226,13 @@ export const ConversationHandoffExample = () => {
             />
           </ConversationMessage>
           <ConversationMessage
-            type="agentAsTool"
-            name="Deep Dive"
-            renderName={(name) => (
-              <span className="s-inline-flex s-items-center s-text-muted-foreground dark:s-text-muted-foreground-night">
-                <Icon visual={AtomIcon} size="sm" />
-                <span className="s-ml-1">{name}</span>
-              </span>
-            )}
+            name="@deep-dive"
+            type="agent"
             completionStatus={
-              <Button
-                icon={CommandLineIcon}
-                onClick={() => {
-                  console.log("soupinou");
-                }}
-                label="Completed in 9 min 30 sec"
-                size="xs"
-                variant={"outline"}
-              />
+              <span className="s-flex s-cursor-pointer s-items-center s-gap-1 s-text-xs">
+                <span>Completed in 9 min 30 sec</span>
+                <Icon visual={ChevronRightIcon} size="xs" />
+              </span>
             }
             citations={[
               <Citation href="https://www.google.com">
