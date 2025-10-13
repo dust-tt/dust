@@ -8,6 +8,7 @@ import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/wo
 import { runSalesforceWorker } from "@connectors/connectors/salesforce/temporal/worker";
 import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/worker";
 
+import { initializeDiscordCommands } from "./api/webhooks/discord/startup";
 import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runGoogleWorkers } from "./connectors/google_drive/temporal/worker";
 import { runIntercomWorker } from "./connectors/intercom/temporal/worker";
@@ -68,4 +69,8 @@ runSalesforceWorker().catch((err) =>
 );
 runGongWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running gong worker")
+);
+
+initializeDiscordCommands().catch((err) =>
+  logger.error(errorFromAny(err), "Error initializing Discord commands")
 );

@@ -40,4 +40,10 @@ export const apiConfig = {
   getDiscordAppPublicKey: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DISCORD_APP_PUBLIC_KEY");
   },
+  getDiscordBotToken: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DISCORD_BOT_TOKEN");
+  },
+  getDiscordApplicationId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DISCORD_APP_ID");
+  },
 };
