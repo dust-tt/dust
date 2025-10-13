@@ -211,8 +211,10 @@ export default async function createServer(
     return server;
   }
 
+  const toolName = `run_${childAgentBlob.name}`;
+
   server.tool(
-    `run_${childAgentBlob.name}`,
+    toolName,
     `Run agent ${childAgentBlob.name} (${childAgentBlob.description})`,
     {
       query: z
@@ -354,6 +356,7 @@ export default async function createServer(
 You have been summoned by @${mainAgent.name}. Its instructions are: <main_agent_instructions>
 ${instructions ?? ""}
 </main_agent_instructions>
+The ${toolName} tool is not available to you, do not attempt to use it.
 ${query}`
               : query,
             toolsetsToAdd: toolsetsToAdd ?? null,
