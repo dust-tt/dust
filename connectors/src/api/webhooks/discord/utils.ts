@@ -67,7 +67,7 @@ export async function getAvailableAgents(
 }
 
 /**
- * Format agents list for Discord response
+ * Format agents list for Discord response.
  */
 export function formatAgentsList(
   agents: LightAgentConfigurationType[]
@@ -87,8 +87,8 @@ export function formatAgentsList(
 }
 
 /**
- * Get connector from Discord guild ID
- * Looks up the Discord configuration for the guild and returns the associated connector
+ * Get connector from Discord guild ID. Looks up the Discord configuration for the guild and
+ * returns the associated connector.
  *
  * @param guildId - Discord guild (server) ID
  * @param logger - Logger instance

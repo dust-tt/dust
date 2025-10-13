@@ -145,13 +145,9 @@ async function handleListAgentsCommand(
 
   const connector = connectorResult.value;
 
-  const agentsResult = await getAvailableAgents(
-    connector,
-    logger
-    // Discord doesn't provide email directly in slash commands.
-    // You would need to implement a separate user mapping system if you want
-    // to filter agents based on user permissions.
-  );
+  // Discord doesn't provide email directly in slash commands. You would need to implement a
+  // separate user mapping system if you want to filter agents based on user permissions.
+  const agentsResult = await getAvailableAgents(connector, logger);
 
   if (agentsResult.isErr()) {
     logger.error(
@@ -231,7 +227,7 @@ const _webhookDiscordAppHandler = async (
     });
   }
 
-  // Handle application commands (slash commands)
+  // Handle application commands (slash commands).
   if (interactionBody.type === DiscordInteraction.APPLICATION_COMMAND) {
     const commandName = interactionBody.data?.name;
     const guildId = interactionBody.guild_id;
@@ -247,12 +243,12 @@ const _webhookDiscordAppHandler = async (
     }
 
     if (commandName === "list-dust-agents") {
-      // Send deferred response immediately to avoid timeout
+      // Send deferred response immediately to avoid timeout.
       const deferredResponse = res.status(200).json({
         type: DiscordInteractionResponse.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
       });
 
-      // Process the command asynchronously
+      // Process the command asynchronously.
       setImmediate(async () => {
         await handleListAgentsCommand(interactionBody, guildId, userId);
       });
@@ -287,7 +283,7 @@ async function parseExpressRequestRawBody(req: Request): Promise<string> {
 }
 
 /**
- * Send a follow-up message to Discord after a deferred response
+ * Send a follow-up message to Discord after a deferred response.
  */
 async function sendDiscordFollowUp(
   interactionBody: DiscordWebhookReqBody,

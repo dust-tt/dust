@@ -90,7 +90,7 @@ async function registerSlashCommand(
 }
 
 /**
- * Register the agents command as a Discord slash command
+ * Register the agents command as a Discord slash command.
  */
 async function registerAgentsCommand(): Promise<Result<void, Error>> {
   const agentsCommand: DiscordSlashCommand = {
@@ -102,8 +102,8 @@ async function registerAgentsCommand(): Promise<Result<void, Error>> {
 }
 
 /**
- * Initialize Discord commands during service startup
- * This registers the slash commands with Discord
+ * Initialize Discord commands during service startup. This registers the slash commands with
+ * Discord.
  */
 export async function initializeDiscordCommands(): Promise<void> {
   logger.info("Registering agents command with Discord");
