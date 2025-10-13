@@ -405,12 +405,13 @@ export default async function createServer(
 
         if (isHandoff) {
           return finalizeAndReturn(
-	  	 new Ok(
-            makeMCPToolExit({
-              message: `Handoff from :mention[${mainAgent.name}]{sId=${mainAgent.sId}} to :mention[${childAgentBlob.name}]{sId=${childAgentId}} successfully launched.`,
-              isError: false,
-            }).content
-          ));
+            new Ok(
+              makeMCPToolExit({
+                message: `Handoff from :mention[${mainAgent.name}]{sId=${mainAgent.sId}} to :mention[${childAgentBlob.name}]{sId=${childAgentId}} successfully launched.`,
+                isError: false,
+              }).content
+            )
+          );
         }
 
         const { conversation, isNewConversation, userMessageId } =
