@@ -151,7 +151,7 @@ export const ConversationMessageContent = React.forwardRef<
     >
       <div
         className={cn(
-          "s-text-sm @sm:s-text-base",
+          "s-text-base",
           "s-text-foreground dark:s-text-foreground-night"
         )}
       >
@@ -231,7 +231,7 @@ export const ConversationMessageHeader = React.forwardRef<
         <div className="s-flex s-w-full s-flex-row s-justify-between s-gap-0.5">
           <div
             className={cn(
-              "s-heading-xs @sm:s-heading-sm",
+              "s-heading-sm",
               "s-text-foreground dark:s-text-foreground-night",
               "s-flex s-flex-row s-items-center s-gap-2"
             )}
