@@ -735,7 +735,7 @@ The directive should be used to display a clickable version of the agent name in
       description:
         "Create dashboards, presentations, or any interactive content.",
       authorization: null,
-      icon: "ActionDocumentTextIcon",
+      icon: "ActionFrameIcon",
       documentationUrl: null,
       instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
     },
