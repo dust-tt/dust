@@ -44,13 +44,13 @@ export function isOperationExpression(
   return "field" in expr;
 }
 
-export function isUnaryOperation(
+export function isMonadicOperation(
   op: Operation | LogicalOp
 ): op is "exists" | "not" {
   return op === "exists" || op === "not";
 }
 
-export function isBinaryOperation(op: Operation | LogicalOp): boolean {
+export function isDyadicOperation(op: Operation | LogicalOp): boolean {
   return (
     op === "eq" ||
     op === "starts-with" ||

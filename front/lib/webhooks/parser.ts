@@ -1,10 +1,10 @@
 import { assertNever } from "@app/types";
 import {
-  isBinaryOperation,
+  isDyadicOperation,
   isLogicalExpression,
   isOperationExpression,
   isOperator,
-  isUnaryOperation,
+  isMonadicOperation,
   isVariadicOperation,
   type LogicalOp,
   type MatcherExpression,
@@ -123,7 +123,7 @@ export function parseMatcherExpression(expression: string): MatcherExpression {
       };
     }
 
-    if (isUnaryOperation(op)) {
+    if (isMonadicOperation(op)) {
       if (list.length !== 2) {
         throw new Error(`${op} requires exactly one expression`);
       }
@@ -150,10 +150,9 @@ export function parseMatcherExpression(expression: string): MatcherExpression {
       }
     }
 
-    // Handle operation operators.
-    if (isBinaryOperation(op)) {
+    if (isDyadicOperation(op)) {
       // Binary operators: (op field value) or (op field (values...))
-      if (list.length < 3) {
+      if (list.length !== 3) {
         throw new Error(`${op} requires field and value(s)`);
       }
       const field = list[1];
