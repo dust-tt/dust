@@ -525,17 +525,17 @@ function GroupedConfigurationSection({
 }
 
 interface AdditionalConfigurationSectionProps {
-  stringConfigurations: OptionalDescribedKey[];
-  numberConfigurations: OptionalDescribedKey[];
-  booleanConfigurations: OptionalDescribedKey[];
-  enumConfigurations: Record<
+  requiredStrings: OptionalDescribedKey[];
+  requiredNumbers: OptionalDescribedKey[];
+  requiredBooleans: OptionalDescribedKey[];
+  requiredEnums: Record<
     string,
     {
       options: Array<{ value: string; label: string; description?: string }>;
       description?: string;
     }
   >;
-  listConfigurations: Record<
+  requiredLists: Record<
     string,
     {
       options: Array<{ value: string; label: string; description?: string }>;
@@ -545,11 +545,11 @@ interface AdditionalConfigurationSectionProps {
 }
 
 export function AdditionalConfigurationSection({
-  stringConfigurations,
-  numberConfigurations,
-  booleanConfigurations,
-  enumConfigurations,
-  listConfigurations,
+  requiredStrings,
+  requiredNumbers,
+  requiredBooleans,
+  requiredEnums,
+  requiredLists,
 }: AdditionalConfigurationSectionProps) {
   const { owner } = useAgentBuilderContext();
   const { featureFlags } = useFeatureFlags({
@@ -559,20 +559,20 @@ export function AdditionalConfigurationSection({
 
   const filteredBooleanConfigurations = useMemo(
     () =>
-      booleanConfigurations.filter(
+      requiredBooleans.filter(
         ({ key }) => !(key === "useSummary" && !hasWebSummarizationFlag)
       ),
-    [booleanConfigurations, hasWebSummarizationFlag]
+    [requiredBooleans, hasWebSummarizationFlag]
   );
 
   // Group configuration fields by prefix.
   const groupedStrings = useMemo(
-    () => groupKeysByPrefix(stringConfigurations),
-    [stringConfigurations]
+    () => groupKeysByPrefix(requiredStrings),
+    [requiredStrings]
   );
   const groupedNumbers = useMemo(
-    () => groupKeysByPrefix(numberConfigurations),
-    [numberConfigurations]
+    () => groupKeysByPrefix(requiredNumbers),
+    [requiredNumbers]
   );
   const groupedBooleans = useMemo(
     () => groupKeysByPrefix(filteredBooleanConfigurations),
@@ -593,7 +593,7 @@ export function AdditionalConfigurationSection({
         }
       >
     > = {};
-    Object.entries(enumConfigurations).forEach(([key, values]) => {
+    Object.entries(requiredEnums).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {
         groups[prefix] = {};
@@ -601,7 +601,7 @@ export function AdditionalConfigurationSection({
       groups[prefix][key] = values;
     });
     return groups;
-  }, [enumConfigurations]);
+  }, [requiredEnums]);
 
   const groupedLists = useMemo(() => {
     const groups: Record<
@@ -618,7 +618,7 @@ export function AdditionalConfigurationSection({
         }
       >
     > = {};
-    Object.entries(listConfigurations).forEach(([key, values]) => {
+    Object.entries(requiredLists).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {
         groups[prefix] = {};
@@ -626,7 +626,7 @@ export function AdditionalConfigurationSection({
       groups[prefix][key] = values;
     });
     return groups;
-  }, [listConfigurations]);
+  }, [requiredLists]);
 
   // Get all unique prefixes
   const allPrefixes = useMemo(() => {
@@ -648,11 +648,11 @@ export function AdditionalConfigurationSection({
   ]);
 
   const hasConfiguration =
-    stringConfigurations.length > 0 ||
-    numberConfigurations.length > 0 ||
+    requiredStrings.length > 0 ||
+    requiredNumbers.length > 0 ||
     filteredBooleanConfigurations.length > 0 ||
-    Object.keys(enumConfigurations).length > 0 ||
-    Object.keys(listConfigurations).length > 0;
+    Object.keys(requiredEnums).length > 0 ||
+    Object.keys(requiredLists).length > 0;
 
   if (!hasConfiguration) {
     return null;
