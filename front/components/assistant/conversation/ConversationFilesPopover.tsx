@@ -12,10 +12,9 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import {
-  AgentMessageInteractiveContentGeneratedFiles,
-  DefaultAgentMessageGeneratedFiles,
-} from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
+import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { useConversationFiles } from "@app/lib/swr/conversations";
 import type {
@@ -98,26 +97,28 @@ interface FileRendererProps {
   conversationId: string;
 }
 
-function FileRenderer({ files, owner, conversationId }: FileRendererProps) {
-  return (
-    <CitationGrid variant="grid" className="md:grid-cols-3">
-      {files.map((file, index) => (
-        <DefaultAgentMessageGeneratedFiles
+const FileRenderer = ({ files, owner, conversationId }: FileRendererProps) => (
+  <CitationGrid variant="grid" className="md:grid-cols-3">
+    {files.map((file, index) => {
+      const attachmentCitation = markdownCitationToAttachmentCitation({
+        href: `/api/w/${owner.sId}/files/${file.fileId}`,
+        icon: <DocumentIcon />,
+        title: file.title,
+        contentType: file.contentType,
+        fileId: file.fileId,
+      });
+
+      return (
+        <AttachmentCitation
           key={index}
-          document={{
-            href: `/api/w/${owner.sId}/files/${file.fileId}`,
-            icon: <DocumentIcon />,
-            title: file.title,
-            contentType: file.contentType,
-            fileId: file.fileId,
-          }}
+          attachmentCitation={attachmentCitation}
           owner={owner}
           conversationId={conversationId}
         />
-      ))}
-    </CitationGrid>
-  );
-}
+      );
+    })}
+  </CitationGrid>
+);
 
 interface FileGroupSectionProps {
   group: FileGroup;
@@ -126,12 +127,12 @@ interface FileGroupSectionProps {
   conversationId: string;
 }
 
-function FileGroupSection({
+const FileGroupSection = ({
   group,
   onFileClick,
   owner,
   conversationId,
-}: FileGroupSectionProps) {
+}: FileGroupSectionProps) => {
   const isInteractiveContent = isInteractiveContentContentType(
     group.contentType
   );
@@ -158,7 +159,7 @@ function FileGroupSection({
       </div>
     </div>
   );
-}
+};
 
 function EmptyFilesState() {
   return (
@@ -178,10 +179,10 @@ interface ConversationFilesPopoverProps {
   owner: LightWorkspaceType;
 }
 
-export function ConversationFilesPopover({
+export const ConversationFilesPopover = ({
   conversationId,
   owner,
-}: ConversationFilesPopoverProps) {
+}: ConversationFilesPopoverProps) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [shouldDisableConversationFiles, setShouldDisableConversationFiles] =
     React.useState(true);
@@ -264,4 +265,4 @@ export function ConversationFilesPopover({
       </PopoverContent>
     </PopoverRoot>
   );
-}
+};

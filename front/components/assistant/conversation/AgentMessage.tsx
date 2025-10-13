@@ -21,10 +21,9 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import { AgentMessageCompletionStatus } from "@app/components/assistant/conversation/AgentMessageCompletionStatus";
-import {
-  AgentMessageInteractiveContentGeneratedFiles,
-  DefaultAgentMessageGeneratedFiles,
-} from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
+import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -792,10 +791,11 @@ function getCitations({
   activeReferences.sort((a, b) => a.index - b.index);
 
   return activeReferences.map(({ document, index }) => {
+    const attachmentCitation = markdownCitationToAttachmentCitation(document);
     return (
-      <DefaultAgentMessageGeneratedFiles
+      <AttachmentCitation
         key={index}
-        document={document}
+        attachmentCitation={attachmentCitation}
         owner={owner}
         conversationId={conversationId}
       />
