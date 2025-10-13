@@ -19,6 +19,7 @@ import { DeleteConversationsDialog } from "@app/components/assistant/conversatio
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useURLSheet } from "@app/hooks/useURLSheet";
 import {
   useConversationParticipants,
   useConversationParticipationOption,
@@ -26,7 +27,7 @@ import {
   useJoinConversation,
 } from "@app/lib/swr/conversations";
 import { useUser } from "@app/lib/swr/user";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getAgentRoute, setQueryParam } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
@@ -120,6 +121,14 @@ export function ConversationMenu({
   const { user } = useUser();
   const router = useRouter();
   const sendNotification = useSendNotification();
+
+  const { onOpenChange: onOpenChangeAssistantModal } =
+    useURLSheet("agentDetails");
+
+  const handleSeeDetails = (agentId: string) => {
+    onOpenChangeAssistantModal(true);
+    setQueryParam(router, "agentDetails", agentId);
+  };
 
   const shouldWaitBeforeFetching =
     activeConversationId === null || user?.sId === undefined || !isOpen;
@@ -298,6 +307,7 @@ export function ConversationMenu({
                     <DropdownMenuItem
                       key={agent.configurationId}
                       label={agent.name}
+                      onClick={() => handleSeeDetails(agent.configurationId)}
                       icon={
                         <Avatar
                           size="xs"
@@ -305,8 +315,6 @@ export function ConversationMenu({
                           name={agent.name}
                         />
                       }
-                      disabled
-                      className="!text-foreground dark:!text-foreground-night"
                     />
                   ))}
                 </>
