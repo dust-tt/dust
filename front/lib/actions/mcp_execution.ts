@@ -352,7 +352,6 @@ export async function processToolResults(
         fileId: c.file.sId,
         snippet: c.file.snippet,
         title: c.file.fileName,
-        // createdAt: c.file.createdAt.toISOString(),
         ...(isHidden ? { hidden: true } : {}),
       } satisfies ActionGeneratedFileType;
     })
