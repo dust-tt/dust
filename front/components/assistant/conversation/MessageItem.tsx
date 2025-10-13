@@ -153,7 +153,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               messageStreamState={data}
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
-              hideRetryButton={hackyIsAgentHandingOver(data, nextData)}
             />
           )}
         </div>
@@ -161,30 +160,3 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     );
   }
 );
-
-/*
- * Hacky way to check if an agent message is performing a handover to another agent:
- * A handover agent message will be followed by a handover user message that points to this message.
- *
- * Since we don't have branching in the conversation, we don't want to retry a message that has generated another agent response.
- *
- * This is not very robust and should be removed once we have branching in the conversation.
- * (ex: if there's another agent message in between, this will return false and we will display the buttons of the agent message handing off).
- */
-const hackyIsAgentHandingOver = (
-  currentMessage: VirtuosoMessage | null,
-  nextMessage: VirtuosoMessage | null
-): boolean => {
-  // Early return if current message is not an agent message.
-  if (!currentMessage || !isMessageTemporayState(currentMessage)) {
-    return false;
-  }
-
-  // Early return if next message is not a handover user message.
-  if (!nextMessage || !isHandoverUserMessage(nextMessage)) {
-    return false;
-  }
-
-  // Check if the current message is the same as the origin message of the handover user message.
-  return currentMessage.message.sId === nextMessage.context.originMessageId;
-};

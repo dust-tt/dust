@@ -40,6 +40,7 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import {
   getMessageSId,
+  isHandoverUserMessage,
   isMessageTemporayState,
 } from "@app/components/assistant/conversation/types";
 import {
@@ -89,7 +90,6 @@ interface AgentMessageProps {
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
-  hideRetryButton: boolean;
 }
 
 export function AgentMessage({
@@ -98,7 +98,6 @@ export function AgentMessage({
   messageStreamState,
   messageFeedback,
   owner,
-  hideRetryButton = false,
 }: AgentMessageProps) {
   const sId = getMessageSId(messageStreamState);
   const { isDark } = useTheme();
@@ -347,11 +346,22 @@ export function AgentMessage({
 
   // Show the retry button as long as it's not streaming nor failed,
   // since failed messages have their own retry button in ErrorMessage.
+  // Also, don't show the retry button if the agent message is handing over to another agent since we don't want to retry a message that has generated another agent response.
+  // This is to be removed as soon as we have branching in the conversation.
+  const methods = useVirtuosoMethods<
+    VirtuosoMessage,
+    VirtuosoMessageListContext
+  >();
+
+  const isAgentMessageHandingOver = methods.data
+    .get()
+    .some((m) => isHandoverUserMessage(m) && m.context.originMessageId === sId);
+
   if (
     agentMessageToRender.status !== "created" &&
     agentMessageToRender.status !== "failed" &&
     !shouldStream &&
-    !hideRetryButton
+    !isAgentMessageHandingOver
   ) {
     buttons.push(
       <Button
