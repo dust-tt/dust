@@ -383,8 +383,7 @@ function SharingAndAccessSection() {
           <div className="order-2 flex flex-col justify-center lg:order-2">
             <H3 className="mb-6">Secure and collaborative</H3>
             <P size="lg" className="text-muted-foreground">
-              Share content with conversation participants, workspace members,
-              or anyone via public links
+              Share content with workspace members, or anyone via public links
             </P>
           </div>
         </div>
