@@ -48,8 +48,8 @@ import {
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import { getImgPlugin, imgDirective } from "@app/components/markdown/Image";
-import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
-import { getCitationIcon } from "@app/components/markdown/MarkdownCitation";
+import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
+import { getCitationIcon } from "@app/components/markdown/MCPReferenceCitation";
 import {
   getMentionPlugin,
   mentionDirective,
@@ -105,7 +105,7 @@ export function AgentMessage({
     React.useState<boolean>(false);
 
   const [activeReferences, setActiveReferences] = React.useState<
-    { index: number; document: MarkdownCitation }[]
+    { index: number; document: MCPReferenceCitation }[]
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
 
@@ -176,7 +176,7 @@ export function AgentMessage({
   const references = useMemo(
     () =>
       Object.entries(agentMessageToRender.citations ?? {}).reduce<
-        Record<string, MarkdownCitation>
+        Record<string, MCPReferenceCitation>
       >((acc, [key, citation]) => {
         if (citation) {
           const IconComponent = getCitationIcon(
@@ -524,14 +524,14 @@ function AgentMessageContent({
     blockedOnly?: boolean;
   }) => Promise<void>;
   messageStreamState: MessageTemporaryState;
-  references: { [key: string]: MarkdownCitation };
+  references: { [key: string]: MCPReferenceCitation };
   streaming: boolean;
   lastTokenClassification: null | "tokens" | "chain_of_thought";
-  activeReferences: { index: number; document: MarkdownCitation }[];
+  activeReferences: { index: number; document: MCPReferenceCitation }[];
   setActiveReferences: (
     references: {
       index: number;
-      document: MarkdownCitation;
+      document: MCPReferenceCitation;
     }[]
   ) => void;
 }) {
@@ -578,7 +578,10 @@ function AgentMessageContent({
   );
 
   // References logic.
-  function updateActiveReferences(document: MarkdownCitation, index: number) {
+  function updateActiveReferences(
+    document: MCPReferenceCitation,
+    index: number
+  ) {
     const existingIndex = activeReferences.find((r) => r.index === index);
     if (!existingIndex) {
       setActiveReferences([...activeReferences, { index, document }]);
@@ -783,7 +786,7 @@ function getCitations({
 }: {
   activeReferences: {
     index: number;
-    document: MarkdownCitation;
+    document: MCPReferenceCitation;
   }[];
   owner: LightWorkspaceType;
   conversationId: string;

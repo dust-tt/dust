@@ -19,7 +19,7 @@ import {
   getDisplayNameFromPastedFileId,
   isPastedFile,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
-import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
+import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import type { ContentFragmentType } from "@app/types";
 import {
@@ -180,7 +180,7 @@ export function attachmentToAttachmentCitation(
 }
 
 export function markdownCitationToAttachmentCitation(
-  citation: MarkdownCitation
+  citation: MCPReferenceCitation
 ): AttachmentCitation {
   return {
     id: citation.fileId,

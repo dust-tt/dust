@@ -26,8 +26,8 @@ import {
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
-import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
-import { getCitationIcon } from "@app/components/markdown/MarkdownCitation";
+import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
+import { getCitationIcon } from "@app/components/markdown/MCPReferenceCitation";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -92,7 +92,7 @@ export function MCPRunAgentActionDetails({
   >(null);
   const [streamedResponse, setStreamedResponse] = useState<string | null>(null);
   const [activeReferences, setActiveReferences] = useState<
-    { index: number; document: MarkdownCitation }[]
+    { index: number; document: MCPReferenceCitation }[]
   >([]);
 
   useEffect(() => {
@@ -160,7 +160,7 @@ export function MCPRunAgentActionDetails({
     if (!resultResource?.resource.refs) {
       return {};
     }
-    const markdownCitations: { [key: string]: MarkdownCitation } = {};
+    const mcpReferenceCitations: { [key: string]: MCPReferenceCitation } = {};
     Object.entries(resultResource.resource.refs).forEach(([key, citation]) => {
       const IconComponent = getCitationIcon(
         citation.provider,
@@ -168,7 +168,7 @@ export function MCPRunAgentActionDetails({
         undefined,
         citation.href
       );
-      markdownCitations[key] = {
+      mcpReferenceCitations[key] = {
         contentType: citation.mimeType as AllSupportedFileContentType,
         title: citation.title,
         href: citation.href,
@@ -177,10 +177,10 @@ export function MCPRunAgentActionDetails({
         fileId: key,
       };
     });
-    return markdownCitations;
+    return mcpReferenceCitations;
   }, [resultResource, isDark]);
 
-  const updateActiveReferences = (doc: MarkdownCitation, index: number) => {
+  const updateActiveReferences = (doc: MCPReferenceCitation, index: number) => {
     const existingIndex = activeReferences.find((r) => r.index === index);
     if (!existingIndex) {
       setActiveReferences([...activeReferences, { index, document: doc }]);
