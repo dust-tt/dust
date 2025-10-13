@@ -14,6 +14,7 @@ export const CONNECTOR_PROVIDERS = [
   "google_drive",
   "intercom",
   "microsoft",
+  "microsoft_bot",
   "notion",
   "salesforce",
   "slack",

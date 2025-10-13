@@ -6,6 +6,7 @@ import {
   GlobeAltIcon,
   Input,
   MicIcon,
+  MicrosoftLogo,
   Page,
   PencilSquareIcon,
   Sheet,
@@ -35,10 +36,7 @@ import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import {
-  useConnectorConfig,
-  useToggleSlackChatBot,
-} from "@app/lib/swr/connectors";
+import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
 import logger from "@app/logger/logger";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
@@ -54,6 +52,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   isSlackDataSourceBotEnabled: boolean;
   slackBotDataSource: DataSourceType | null;
+  microsoftBotDataSource: DataSourceType | null;
   systemSpace: SpaceType;
 }>(async (_, auth) => {
   const owner = auth.workspace();
@@ -64,10 +63,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const [[slackDataSource], [slackBotDataSource]] = await Promise.all([
-    DataSourceResource.listByConnectorProvider(auth, "slack"),
-    DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
-  ]);
+  const [[slackDataSource], [slackBotDataSource], [microsoftBotDataSource]] =
+    await Promise.all([
+      DataSourceResource.listByConnectorProvider(auth, "slack"),
+      DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
+      DataSourceResource.listByConnectorProvider(auth, "microsoft_bot"),
+    ]);
 
   let isSlackDataSourceBotEnabled = false;
   if (slackDataSource && slackDataSource.connectorId) {
@@ -92,6 +93,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       isSlackDataSourceBotEnabled,
       slackBotDataSource: slackBotDataSource?.toJSON() ?? null,
+      microsoftBotDataSource: microsoftBotDataSource?.toJSON() ?? null,
       systemSpace: systemSpace.toJSON(),
     },
   };
@@ -102,6 +104,7 @@ export default function WorkspaceAdmin({
   subscription,
   isSlackDataSourceBotEnabled,
   slackBotDataSource,
+  microsoftBotDataSource,
   systemSpace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
@@ -245,11 +248,30 @@ export default function WorkspaceAdmin({
         {!isSlackDataSourceBotEnabled && (
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Integrations</Page.H>
-            <SlackBotToggle
-              owner={owner}
-              slackBotDataSource={slackBotDataSource}
-              systemSpace={systemSpace}
-            />
+
+            <ContextItem.List>
+              <div className="h-full border-b border-border dark:border-border-night" />
+              <BotToggle
+                owner={owner}
+                botDataSource={slackBotDataSource}
+                systemSpace={systemSpace}
+                oauthProvider="slack"
+                connectorProvider="slack_bot"
+                name="Slack Bot"
+                description="Use Dust Agents in Slack with the Dust Slack app"
+                visual={<SlackLogo className="h-6 w-6" />}
+              />
+              <BotToggle
+                owner={owner}
+                botDataSource={microsoftBotDataSource}
+                systemSpace={systemSpace}
+                oauthProvider="microsoft"
+                connectorProvider="microsoft_bot"
+                name="Microsoft Teams Bot"
+                description="Use Dust Agents in Teams with the Dust Microsoft Teams Bot"
+                visual={<MicrosoftLogo className="h-6 w-6" />}
+              />
+            </ContextItem.List>
           </Page.Vertical>
         )}
       </Page.Vertical>
@@ -257,36 +279,46 @@ export default function WorkspaceAdmin({
   );
 }
 
-function SlackBotToggle({
+function BotToggle({
   owner,
-  slackBotDataSource,
+  botDataSource,
   systemSpace,
+  oauthProvider,
+  connectorProvider,
+  name,
+  description,
+  visual,
 }: {
   owner: WorkspaceType;
-  slackBotDataSource: DataSourceType | null;
+  botDataSource: DataSourceType | null;
   systemSpace: SpaceType;
+  oauthProvider: "slack" | "microsoft";
+  connectorProvider: "slack_bot" | "microsoft_bot";
+  name: string;
+  description: string;
+  visual: React.ReactNode;
 }) {
   const { configValue } = useConnectorConfig({
     configKey: "botEnabled",
-    dataSource: slackBotDataSource ?? null,
+    dataSource: botDataSource ?? null,
     owner,
   });
-  const isSlackBotEnabled = configValue === "true";
+  const isBotEnabled = configValue === "true";
 
-  const toggleSlackBotOnExistingDataSource = useToggleSlackChatBot({
-    dataSource: slackBotDataSource ?? null,
+  const toggleBotOnExistingDataSource = useToggleChatBot({
+    dataSource: botDataSource ?? null,
     owner,
   });
 
   const [isChangingSlackBot, setIsChangingSlackBot] = useState(false);
   const sendNotification = useSendNotification();
 
-  const createSlackBotConnectionAndDataSource = async () => {
+  const createBotConnectionAndDataSource = async () => {
     try {
       // OAuth flow
       const cRes = await setupConnection({
         owner,
-        provider: "slack",
+        provider: oauthProvider,
         useCase: "bot",
         extraConfig: {},
       });
@@ -302,7 +334,7 @@ function SlackBotToggle({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            provider: "slack_bot",
+            provider: connectorProvider,
             connectionId: cRes.value,
             name: undefined,
             configuration: null,
@@ -320,12 +352,12 @@ function SlackBotToggle({
     }
   };
 
-  const toggleSlackBot = async () => {
+  const toggleBot = async () => {
     setIsChangingSlackBot(true);
-    if (slackBotDataSource) {
-      await toggleSlackBotOnExistingDataSource(!isSlackBotEnabled);
+    if (botDataSource) {
+      await toggleBotOnExistingDataSource(!isBotEnabled);
     } else {
-      const createRes = await createSlackBotConnectionAndDataSource();
+      const createRes = await createBotConnectionAndDataSource();
       if (createRes) {
         // No need to toggle since default config already enabled the bot.
         // await toggleSlackBotOnExistingDataSource(true);
@@ -334,8 +366,8 @@ function SlackBotToggle({
       } else {
         sendNotification({
           type: "error",
-          title: `Failed to enable Slack Bot.`,
-          description: `Could not create a new Slack Bot data source.`,
+          title: `Failed to enable ${name}.`,
+          description: `Could not create a new ${name} data source.`,
         });
       }
     }
@@ -343,73 +375,70 @@ function SlackBotToggle({
   };
 
   return (
-    <ContextItem.List>
-      <div className="h-full border-b border-border dark:border-border-night" />
-      <ContextItem
-        title="Slack Bot"
-        subElement="Use Dust Agents in Slack with the Dust Slack app"
-        visual={<SlackLogo className="h-6 w-6" />}
-        hasSeparatorIfLast={true}
-        action={
-          <div className="flex flex-row items-center gap-2">
-            {isSlackBotEnabled && slackBotDataSource && (
-              <Button
-                variant="outline"
-                label="Reconnect"
-                size="xs"
-                icon={ArrowPathIcon}
-                onClick={async () => {
-                  const cRes = await setupConnection({
-                    owner,
-                    provider: "slack",
-                    useCase: "bot",
-                    extraConfig: {},
+    <ContextItem
+      title={name}
+      subElement={description}
+      visual={visual}
+      hasSeparatorIfLast={true}
+      action={
+        <div className="flex flex-row items-center gap-2">
+          {isBotEnabled && botDataSource && (
+            <Button
+              variant="outline"
+              label="Reconnect"
+              size="xs"
+              icon={ArrowPathIcon}
+              onClick={async () => {
+                const cRes = await setupConnection({
+                  owner,
+                  provider: oauthProvider,
+                  useCase: "bot",
+                  extraConfig: {},
+                });
+                if (!cRes.isOk()) {
+                  sendNotification({
+                    type: "error",
+                    title: `Failed to reconnect ${name}.`,
+                    description: `Could not reconnect the Dust ${name}.`,
                   });
-                  if (!cRes.isOk()) {
+                } else {
+                  const updateRes = await updateConnectorConnectionId(
+                    cRes.value,
+                    connectorProvider,
+                    botDataSource,
+                    owner
+                  );
+
+                  if (updateRes.error) {
                     sendNotification({
                       type: "error",
-                      title: "Failed to reconnect Slack Bot.",
-                      description: "Could not reconnect the Dust Slack Bot.",
+                      title: `Failed to update the ${name} connection`,
+                      description: updateRes.error,
                     });
                   } else {
-                    const updateRes = await updateConnectorConnectionId(
-                      cRes.value,
-                      "slack_bot",
-                      slackBotDataSource,
-                      owner
-                    );
-
-                    if (updateRes.error) {
-                      sendNotification({
-                        type: "error",
-                        title: "Failed to update the Slack Bot connection",
-                        description: updateRes.error,
-                      });
-                    } else {
-                      sendNotification({
-                        type: "success",
-                        title: "Successfully updated Slack Bot connection",
-                        description: "The connection was successfully updated.",
-                      });
-                    }
+                    sendNotification({
+                      type: "success",
+                      title: `Successfully updated ${name} connection`,
+                      description: "The connection was successfully updated.",
+                    });
                   }
-                }}
-              />
-            )}
-            <SliderToggle
-              selected={
-                // When changing and initially enabled, show disabled, and vice versa.
-                isSlackBotEnabled !== isChangingSlackBot
-              }
-              disabled={isChangingSlackBot}
-              onClick={() => {
-                void toggleSlackBot();
+                }
               }}
             />
-          </div>
-        }
-      />
-    </ContextItem.List>
+          )}
+          <SliderToggle
+            selected={
+              // When changing and initially enabled, show disabled, and vice versa.
+              isBotEnabled !== isChangingSlackBot
+            }
+            disabled={isChangingSlackBot}
+            onClick={() => {
+              void toggleBot();
+            }}
+          />
+        </div>
+      }
+    />
   );
 }
 

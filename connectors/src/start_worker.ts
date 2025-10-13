@@ -50,7 +50,7 @@ Runtime.install({
 });
 
 type WorkerType =
-  | Exclude<ConnectorProvider, "slack_bot">
+  | Exclude<ConnectorProvider, "slack_bot" | "microsoft_bot">
   | "notion_garbage_collector";
 
 const workerFunctions: Record<WorkerType, () => Promise<void>> = {

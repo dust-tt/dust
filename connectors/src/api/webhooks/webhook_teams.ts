@@ -6,6 +6,11 @@ import {
 } from "botbuilder";
 import type { Request, Response } from "express";
 
+import {
+  extractBearerToken,
+  generateTeamsRateLimitKey,
+  validateBotFrameworkToken,
+} from "@connectors/api/webhooks/teams/jwt_validation";
 import { getConnector } from "@connectors/api/webhooks/teams/utils";
 import {
   createErrorAdaptiveCard,
@@ -15,6 +20,7 @@ import { botAnswerTeamsMessage } from "@connectors/connectors/teams/bot";
 import { sendActivity } from "@connectors/connectors/teams/bot_messaging_utils";
 import { apiConfig } from "@connectors/lib/api/config";
 import logger from "@connectors/logger/logger";
+import { apiError } from "@connectors/logger/withlogging";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 // Store message references for streaming updates
@@ -68,8 +74,90 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
       },
       bodySize: JSON.stringify(req.body).length,
       requestId: req.headers["x-request-id"],
+      clientIp: req.ip,
     },
     "Received Teams messages webhook with details"
+  );
+
+  // Step 1: Validate Bot Framework JWT token
+  const authHeader = req.headers.authorization;
+  const token = extractBearerToken(authHeader);
+
+  if (!token) {
+    logger.warn("Missing or invalid Authorization header in Teams webhook");
+    return apiError(req, res, {
+      api_error: {
+        type: "invalid_request_error",
+        message: "Missing or invalid Authorization header",
+      },
+      status_code: 401,
+    });
+  }
+
+  const microsoftAppId = process.env.MICROSOFT_BOT_ID;
+  if (!microsoftAppId) {
+    logger.error("MICROSOFT_BOT_ID environment variable not set");
+    return apiError(req, res, {
+      api_error: {
+        type: "internal_server_error",
+        message: "Bot configuration error",
+      },
+      status_code: 500,
+    });
+  }
+
+  // Validate JWT token
+  const claims = await validateBotFrameworkToken(token, microsoftAppId);
+  if (!claims) {
+    logger.warn({ microsoftAppId }, "Invalid Bot Framework JWT token");
+    return apiError(req, res, {
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid authentication token",
+      },
+      status_code: 403,
+    });
+  }
+
+  // Step 2: Validate request origin
+  const expectedOrigins = [
+    "https://smba.trafficmanager.net",
+    "https://eus.smba.trafficmanager.net",
+    "https://wus.smba.trafficmanager.net",
+    "https://emea.smba.trafficmanager.net",
+    "https://apac.smba.trafficmanager.net",
+  ];
+
+  const serviceUrl = claims.serviceurl;
+  const isValidOrigin = expectedOrigins.some((origin) =>
+    serviceUrl.startsWith(origin)
+  );
+
+  if (!isValidOrigin) {
+    logger.warn(
+      { serviceUrl, expectedOrigins },
+      "Invalid service URL in Teams webhook"
+    );
+    return apiError(req, res, {
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid request origin",
+      },
+      status_code: 403,
+    });
+  }
+
+  logger.info(
+    {
+      appId: claims.aud,
+      serviceUrl: claims.serviceUrl,
+      rateLimitKey: generateTeamsRateLimitKey(
+        microsoftAppId,
+        claims.serviceUrl,
+        req.ip
+      ),
+    },
+    "Teams webhook validation passed"
   );
 
   try {

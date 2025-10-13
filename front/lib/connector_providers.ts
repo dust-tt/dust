@@ -320,6 +320,32 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     isDeletable: false,
   },
+  microsoft_bot: {
+    name: "Microsoft Teams (Bot)",
+    connectorProvider: "microsoft_bot",
+    status: "built",
+    // Hidden from connections since used as bot integration only. Strings below are therefore all
+    // set to N/A
+    hide: true,
+    isPermissionsConfigurableBlocked: true,
+    permissionsDisabledPlaceholder: "N/A",
+    description: "N/A",
+    limitations: "N/A",
+    mismatchError: "N/A",
+    guideLink: "https://docs.dust.tt/docs/microsoft-connection",
+    selectLabel: "N/A",
+    getLogoComponent: () => {
+      return MicrosoftLogo;
+    },
+    isNested: false,
+    oauthExtraConfigComponent: MicrosoftOAuthExtraConfig,
+    isTitleFilterEnabled: true,
+    permissions: {
+      selected: "read",
+      unselected: "write",
+    },
+    isDeletable: false,
+  },
   webcrawler: {
     name: "Web Crawler",
     connectorProvider: "webcrawler",
@@ -502,6 +528,7 @@ export const isConnectorProviderAllowedForPlan = (
     case "salesforce":
       return !!featureFlags?.includes("salesforce_synced_queries");
     case "microsoft":
+    case "microsoft_bot":
     case "slack_bot":
     case "snowflake":
     case "zendesk":
@@ -523,6 +550,7 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "google_drive":
     case "intercom":
     case "microsoft":
+    case "microsoft_bot":
     case "notion":
     case "slack":
     case "zendesk":
@@ -574,6 +602,7 @@ export function isConnectorTypeTrackable(
     case "github":
     case "notion":
     case "microsoft":
+    case "microsoft_bot":
     case "confluence":
     case "intercom":
     case "webcrawler":

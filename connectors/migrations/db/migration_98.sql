@@ -23,3 +23,4 @@ CREATE INDEX "teams_messages_connectorId_idx" ON "teams_messages" ("connectorId"
 CREATE INDEX "teams_messages_conversationId_idx" ON "teams_messages" ("conversationId");
 CREATE INDEX "teams_messages_userId_idx" ON "teams_messages" ("userId");
 CREATE INDEX "teams_messages_dustConversationId_idx" ON "teams_messages" ("dustConversationId");
+
