@@ -86,6 +86,8 @@ export function contentFragmentToAttachmentCitation(
           : null,
       contentType: contentFragment.contentType,
       attachmentCitationType: "fragment",
+      sourceUrl: contentFragment.sourceUrl,
+      description: null,
     };
   }
 
@@ -136,7 +138,7 @@ export function contentFragmentToAttachmentCitation(
       title,
       sourceUrl: contentFragment.sourceUrl,
       visual: <IconFromContentType contentType={contentFragment.contentType} />,
-      description,
+      description: description ?? null,
       fileId: contentFragment.fileId,
       contentType: contentFragment.contentType,
       attachmentCitationType: "fragment",
@@ -154,10 +156,10 @@ export function attachmentToAttachmentCitation(
       type: "file",
       id: attachment.id,
       title: attachment.title,
-      sourceUrl: attachment.sourceUrl,
+      sourceUrl: attachment.sourceUrl ?? null,
       isUploading: attachment.isUploading,
       visual: <IconFromContentType contentType={attachment.contentType} />,
-      description: attachment.description,
+      description: attachment.description ?? null,
       fileId: attachment.id,
       contentType: attachment.contentType,
       onRemove: attachment.onRemove,
@@ -187,6 +189,7 @@ export function markdownCitationToAttachmentCitation(
     fileId: citation.fileId,
     attachmentCitationType: "mcp",
     contentType: citation.contentType,
+    sourceUrl: citation.href ?? null,
     title: citation.title,
     type: "markdown",
     visual: <IconFromContentType contentType={citation.contentType} />,
