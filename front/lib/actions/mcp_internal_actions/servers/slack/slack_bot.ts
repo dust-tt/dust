@@ -69,15 +69,13 @@ const createServer = async (
         }
 
         try {
-          return await executePostMessage(
+          return await executePostMessage(auth, agentLoopContext, {
             to,
             message,
             threadTs,
             fileId,
             accessToken,
-            agentLoopContext,
-            auth
-          );
+          });
         } catch (error) {
           return new Err(
             new MCPError(`Error posting message: ${normalizeError(error)}`)

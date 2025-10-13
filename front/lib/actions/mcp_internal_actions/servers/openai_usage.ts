@@ -147,7 +147,10 @@ const createServer = (
         ) {
           return new Err(
             new MCPError(
-              "OpenAI Admin API key not configured. Please configure a secret containing an admin key in the agent settings."
+              "OpenAI Admin API key not configured. Please configure a secret containing an admin key in the agent settings.",
+              {
+                tracked: false,
+              }
             )
           );
         }
@@ -305,7 +308,10 @@ const createServer = (
         ) {
           return new Err(
             new MCPError(
-              "OpenAI Admin API key not configured. Please configure a secret containing an admin key in the agent settings."
+              "OpenAI Admin API key not configured. Please configure a secret containing an admin key in the agent settings.",
+              {
+                tracked: false,
+              }
             )
           );
         }

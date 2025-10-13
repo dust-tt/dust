@@ -195,10 +195,11 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
             }).content
           );
         } catch (err) {
+          const error = normalizeError(err);
           return new Err(
-            new MCPError(
-              normalizeError(err).message || "Failed to search files"
-            )
+            new MCPError(error.message || "Failed to search files", {
+              cause: error,
+            })
           );
         }
       }
@@ -249,14 +250,20 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
           if (!file.mimeType || !SUPPORTED_MIMETYPES.includes(file.mimeType)) {
             return new Err(
               new MCPError(
-                `Unsupported file type: ${file.mimeType}. Supported types: ${SUPPORTED_MIMETYPES.join(", ")}`
+                `Unsupported file type: ${file.mimeType}. Supported types: ${SUPPORTED_MIMETYPES.join(", ")}`,
+                {
+                  tracked: false,
+                }
               )
             );
           }
-          if (file.size && parseInt(file.size) > MAX_FILE_SIZE) {
+          if (file.size && parseInt(file.size, 10) > MAX_FILE_SIZE) {
             return new Err(
               new MCPError(
-                `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
+                `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`,
+                {
+                  tracked: false,
+                }
               )
             );
           }
@@ -298,7 +305,9 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
             }
             default:
               return new Err(
-                new MCPError(`Unsupported file type: ${file.mimeType}`)
+                new MCPError(`Unsupported file type: ${file.mimeType}`, {
+                  tracked: false,
+                })
               );
           }
 
