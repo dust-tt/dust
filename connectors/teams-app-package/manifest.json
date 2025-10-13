@@ -1,0 +1,99 @@
+{
+    "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.21/MicrosoftTeams.schema.json",
+    "version": "1.0.0",
+    "manifestVersion": "1.21",
+    "id": "<APP_ID>",
+    "name": {
+        "short": "<BOT_NAME>",
+        "full": "<BOT_NAME>"
+    },
+    "developer": {
+        "name": "Dust",
+        "websiteUrl": "https://dust.tt",
+        "privacyUrl": "https://dust.tt/privacy",
+        "termsOfUseUrl": "https://dust.tt/terms"
+    },
+    "description": {
+        "short": "AI assistant powered by Dust",
+        "full": "Intelligent AI assistant that can help with various tasks using Dust's AI platform"
+    },
+    "icons": {
+        "outline": "outline.png",
+        "color": "color.png"
+    },
+    "accentColor": "#FF6B47",
+    "bots": [
+        {
+            "botId": "<BOT_ID>",
+            "scopes": [
+                "personal",
+                "team",
+                "groupChat"
+            ],
+            "commandLists": [
+                {
+                    "commands": [
+                        {
+                            "title": "+dust",
+                            "description": "Ask any question to Dust AI assistants"
+                        },
+                        {
+                            "title": "+help",
+                            "description": "Get help using Dust in Teams"
+                        }
+                    ],
+                    "scopes": [
+                        "personal"
+                    ]
+                },
+                {
+                    "commands": [
+                        {
+                            "title": "+dust",
+                            "description": "Ask any question to Dust AI assistants"
+                        },
+                        {
+                            "title": "+help",
+                            "description": "Get help using Dust in Teams"
+                        }
+                    ],
+                    "scopes": [
+                        "team"
+                    ]
+                }
+            ],
+            "isNotificationOnly": false,
+            "supportsCalling": false,
+            "supportsVideo": false,
+            "supportsFiles": false
+        }
+    ],
+    "composeExtensions": [
+        {
+            "botId": "<BOT_ID>",
+            "commands": [
+                {
+                    "id": "searchAgents",
+                    "type": "query",
+                    "title": "🤖 Select Dust Agent",
+                    "description": "Choose from your available AI assistants",
+                    "initialRun": true,
+                    "fetchTask": false,
+                    "context": [
+                        "compose"
+                    ],
+                    "parameters": [
+                        {
+                            "name": "searchQuery",
+                            "title": "Search agents",
+                            "description": "Type to search for agents",
+                            "inputType": "text"
+                        }
+                    ]
+                }
+            ],
+            "canUpdateConfiguration": false
+        }
+    ],
+    "validDomains": []
+}
