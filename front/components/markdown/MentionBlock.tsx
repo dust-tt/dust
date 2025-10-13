@@ -28,7 +28,9 @@ function MentionBlock({
     useURLSheet("agentDetails");
 
   const handleStartConversation = async () => {
-    await router.push(getConversationRoute(owner.sId, "new", `agent=${agentSId}`));
+    await router.push(
+      getConversationRoute(owner.sId, "new", `agent=${agentSId}`)
+    );
   };
 
   const handleSeeDetails = () => {

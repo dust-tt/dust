@@ -160,7 +160,9 @@ export function HelpDrawer({
         });
       } else {
         // We start the push before creating the message to optimize for instantaneity as well.
-        void router.push(getConversationRoute(owner.sId, conversationRes.value.sId));
+        void router.push(
+          getConversationRoute(owner.sId, conversationRes.value.sId)
+        );
         return new Ok(undefined);
       }
     },

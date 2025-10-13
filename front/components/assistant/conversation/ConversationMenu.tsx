@@ -157,7 +157,12 @@ export function ConversationMenu({
   const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   const shareLink =
     baseUrl !== undefined
-      ? getConversationRoute(owner.sId, activeConversationId, undefined, baseUrl)
+      ? getConversationRoute(
+          owner.sId,
+          activeConversationId,
+          undefined,
+          baseUrl
+        )
       : undefined;
 
   const doDelete = useDeleteConversation(owner);

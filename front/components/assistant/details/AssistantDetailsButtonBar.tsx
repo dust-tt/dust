@@ -24,7 +24,10 @@ import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { getAgentBuilderRoute, getConversationRoute } from "@app/lib/utils/router";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+} from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder, normalizeError } from "@app/types";

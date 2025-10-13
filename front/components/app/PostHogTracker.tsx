@@ -198,7 +198,9 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
       const pathname = router.pathname;
 
       // Don't track pageviews on conversation pages (/conversation/[cId]), but track /conversation/new.
-      const isConversationPage = /\/conversation\/(?!new$)[^/]+$/.test(pathname);
+      const isConversationPage = /\/conversation\/(?!new$)[^/]+$/.test(
+        pathname
+      );
       if (isConversationPage) {
         return;
       }

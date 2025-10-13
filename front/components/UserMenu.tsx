@@ -178,7 +178,9 @@ export function UserMenu({
                     <DropdownMenuItem
                       label="Debug conversation"
                       onClick={() => {
-                        const regexp = new RegExp(`/w/([^/]+)/conversation/([^/]+)`);
+                        const regexp = new RegExp(
+                          `/w/([^/]+)/conversation/([^/]+)`
+                        );
                         const match = window.location.href.match(regexp);
                         if (match) {
                           window.open(

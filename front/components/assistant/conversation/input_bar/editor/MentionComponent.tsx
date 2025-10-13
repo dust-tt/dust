@@ -40,7 +40,9 @@ export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
     if (!owner) {
       return;
     }
-    await router.push(getConversationRoute(owner.sId, "new", `agent=${agentSId}`));
+    await router.push(
+      getConversationRoute(owner.sId, "new", `agent=${agentSId}`)
+    );
   };
 
   const handleSeeDetails = () => {
