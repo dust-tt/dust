@@ -478,33 +478,6 @@ The "mayRequire" properties are true in one of two cases:
   2. There is a property with a default value that may still be changed by the user.
 */
 export interface MCPServerToolsConfigurations {
-  dataSourceConfiguration?: {
-    description?: string;
-    default?: { uri: string }[];
-  };
-  dataWarehouseConfiguration?: {
-    description?: string;
-    default?: { uri: string }[];
-  };
-  tableConfiguration?: {
-    description?: string;
-    default?: { uri: string }[];
-  };
-  childAgentConfiguration?: {
-    description?: string;
-    default?: { uri: string };
-  };
-  reasoningConfiguration?: {
-    description?: string;
-    default?: {
-      modelId: string;
-      providerId: string;
-      temperature: number;
-      reasoningEffort: string;
-    };
-  };
-  mayRequireTimeFrameConfiguration: boolean;
-  mayRequireJsonSchemaConfiguration: boolean;
   stringConfigurations: {
     key: string;
     description?: string;
@@ -537,8 +510,15 @@ export interface MCPServerToolsConfigurations {
       default?: string;
     }
   >;
-  mayRequireDustAppConfiguration: boolean;
-  mayRequireSecretConfiguration: boolean;
+  dataSourceConfigurable: boolean;
+  dataWarehouseConfigurable: boolean;
+  tableConfigurable: boolean;
+  childAgentConfigurable: boolean;
+  reasoningConfigurable: boolean;
+  timeFrameConfigurable: boolean;
+  jsonSchemaConfigurable: boolean;
+  dustAppConfigurable: boolean;
+  secretConfigurable: boolean;
   configurable: "no" | "optional" | "required";
 }
 
@@ -548,16 +528,21 @@ export function getMCPServerToolsConfigurations(
 ): MCPServerToolsConfigurations {
   if (!mcpServerView) {
     return {
-      mayRequireTimeFrameConfiguration: false,
-      mayRequireJsonSchemaConfiguration: false,
+      dataSourceConfigurable: false,
+      dataWarehouseConfigurable: false,
+      tableConfigurable: false,
+      childAgentConfigurable: false,
+      reasoningConfigurable: false,
+      timeFrameConfigurable: false,
+      jsonSchemaConfigurable: false,
+      dustAppConfigurable: false,
+      secretConfigurable: false,
+      configurable: "no",
       stringConfigurations: [],
       numberConfigurations: [],
       booleanConfigurations: [],
       enumConfigurations: {},
       listConfigurations: {},
-      mayRequireDustAppConfiguration: false,
-      mayRequireSecretConfiguration: false,
-      configurable: "optional",
     };
   }
   const { server } = mcpServerView;
@@ -580,51 +565,6 @@ export function getMCPServerToolsConfigurations(
     return undefined;
   }
 
-  function extractSchemaDefaultArray<T>(
-    schema: JSONSchema,
-    typeGuard: (value: unknown) => value is T
-  ): T[] | undefined {
-    // findPathsToConfiguration returns an empty object if the schema default is an empty Array
-    if (
-      schema.default &&
-      typeof schema.default === "object" &&
-      Object.keys(schema.default).length === 0
-    ) {
-      return [];
-    }
-
-    // Try object-level default first: { default: T[] }
-    if (
-      schema.default &&
-      typeof schema.default === "object" &&
-      schema.default !== null
-    ) {
-      const defaults: T[] = [];
-      Object.entries(schema.default).map(([index, value]) => {
-        if (
-          typeof index === "string" &&
-          Number.isInteger(Number(index)) &&
-          typeGuard(value)
-        ) {
-          defaults.push(value);
-        }
-      });
-      return defaults;
-    }
-
-    return undefined;
-  }
-
-  function getConfigurableStateForOptional<T extends { default?: unknown }>(
-    config?: T
-  ): "no" | "optional" | "required" {
-    return config !== undefined
-      ? config.default === undefined
-        ? "required"
-        : "optional"
-      : "no";
-  }
-
   function getConfigurableStateForArray<T extends { default?: unknown }>(
     config: T[]
   ): "no" | "optional" | "required" {
@@ -645,97 +585,53 @@ export function getMCPServerToolsConfigurations(
       : "no";
   }
 
-  const dataSourceConfiguration = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
-    })
-  )
-    .map((schema) => ({
-      description: schema.description,
-      default: extractSchemaDefaultArray(
-        schema,
-        (v: unknown): v is { uri: string } =>
-          v !== null && typeof v === "object" && "uri" in v
-      ),
-    }))
-    .at(0);
+  const dataSourceConfigurable =
+    Object.values(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      })
+    ).length > 0;
 
-  const dataWarehouseConfiguration = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE,
-    })
-  )
-    .map((schema) => ({
-      description: schema.description,
-      default: extractSchemaDefaultArray(
-        schema,
-        (v: unknown): v is { uri: string } =>
-          v !== null && typeof v === "object" && "uri" in v
-      ),
-    }))
-    .at(0);
+  const dataWarehouseConfigurable =
+    Object.values(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE,
+      })
+    ).length > 0;
 
-  const tableConfiguration = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
-    })
-  )
-    .map((schema) => ({
-      description: schema.description,
-      default: extractSchemaDefaultArray(
-        schema,
-        (v: unknown): v is { uri: string } =>
-          v !== null && typeof v === "object" && "uri" in v
-      ),
-    }))
-    .at(0);
+  const tableConfigurable =
+    Object.values(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
+      })
+    ).length > 0;
 
-  const childAgentConfiguration = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT,
-    })
-  )
-    .map((schema) => ({
-      description: schema.description,
-      default: extractSchemaDefault(
-        schema,
-        (v: unknown): v is { uri: string } =>
-          v !== null && typeof v === "object" && "uri" in v
-      ),
-    }))
-    .at(0);
+  const childAgentConfigurable =
+    Object.values(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT,
+      })
+    ).length > 0;
 
-  const reasoningConfiguration = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
-    })
-  )
-    .map((schema) => ({
-      description: schema.description,
-      default: extractSchemaDefault(
-        schema,
-        (
-          v: unknown
-        ): v is {
-          modelId: string;
-          providerId: string;
-          temperature: number;
-          reasoningEffort: string;
-        } =>
-          v !== null &&
-          typeof v === "object" &&
-          "modelId" in v &&
-          "providerId" in v &&
-          "temperature" in v &&
-          "reasoningEffort" in v
-      ),
-    }))
-    .at(0);
+  const reasoningConfigurable =
+    Object.values(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
+      })
+    ).length > 0;
+
+  const timeFrameConfigurable =
+    Object.values(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
+      })
+    ).length > 0;
 
   // If there is no toolsMetadata (= undefined or empty array), it means everything is enabled
   const disabledToolNames =
@@ -748,11 +644,8 @@ export function getMCPServerToolsConfigurations(
       ? server.tools.filter((tool) => !disabledToolNames.includes(tool.name))
       : server.tools;
 
-  const mayRequireTimeFrameConfiguration = enabledTools.some(
-    (tool) => tool.inputSchema?.properties?.timeFrame
-  );
-
-  const mayRequireJsonSchemaConfiguration = enabledTools.some(
+  // JSON is handled differently because it can only be at the root of the schema.
+  const jsonSchemaConfigurable = enabledTools.some(
     (tool) => tool.inputSchema?.properties?.jsonSchema
   );
 
@@ -928,7 +821,7 @@ export function getMCPServerToolsConfigurations(
     })
   );
 
-  const mayRequireDustAppConfiguration =
+  const dustAppConfigurable =
     Object.keys(
       findPathsToConfiguration({
         mcpServerView,
@@ -936,15 +829,9 @@ export function getMCPServerToolsConfigurations(
       })
     ).length > 0;
 
-  const mayRequireSecretConfiguration =
-    mcpServerView.server.requiresSecret === true;
+  const secretConfigurable = mcpServerView.server.requiresSecret === true;
 
   const configurableStates = [
-    getConfigurableStateForOptional(dataSourceConfiguration),
-    getConfigurableStateForOptional(dataWarehouseConfiguration),
-    getConfigurableStateForOptional(tableConfiguration),
-    getConfigurableStateForOptional(childAgentConfiguration),
-    getConfigurableStateForOptional(reasoningConfiguration),
     getConfigurableStateForArray(stringConfigurations),
     getConfigurableStateForArray(numberConfigurations),
     getConfigurableStateForArray(booleanConfigurations),
@@ -959,28 +846,33 @@ export function getMCPServerToolsConfigurations(
       : "required";
 
   const configurable =
-    mayRequireSecretConfiguration ||
-    mayRequireDustAppConfiguration ||
-    mayRequireJsonSchemaConfiguration ||
-    mayRequireTimeFrameConfiguration
+    secretConfigurable ||
+    dustAppConfigurable ||
+    jsonSchemaConfigurable ||
+    timeFrameConfigurable ||
+    childAgentConfigurable ||
+    reasoningConfigurable ||
+    dataSourceConfigurable ||
+    dataWarehouseConfigurable ||
+    tableConfigurable
       ? "required"
       : realConfigurable;
 
   return {
-    dataSourceConfiguration,
-    dataWarehouseConfiguration,
-    tableConfiguration,
-    childAgentConfiguration,
-    reasoningConfiguration,
-    mayRequireTimeFrameConfiguration,
-    mayRequireJsonSchemaConfiguration,
+    dataSourceConfigurable,
+    dataWarehouseConfigurable,
+    tableConfigurable,
+    childAgentConfigurable,
+    reasoningConfigurable,
+    timeFrameConfigurable,
+    jsonSchemaConfigurable,
     stringConfigurations,
     numberConfigurations,
     booleanConfigurations,
     enumConfigurations,
     listConfigurations,
-    mayRequireDustAppConfiguration,
-    mayRequireSecretConfiguration,
+    dustAppConfigurable,
+    secretConfigurable,
     configurable,
   };
 }

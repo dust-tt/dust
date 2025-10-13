@@ -164,9 +164,8 @@ function KnowledgeConfigurationSheetForm({
     );
 
     const datasource =
-      toolsConfigurations.dataSourceConfiguration ??
-      toolsConfigurations.dataWarehouseConfiguration ??
-      false
+      toolsConfigurations.dataSourceConfigurable ||
+      toolsConfigurations.dataWarehouseConfigurable
         ? { dataSourceConfigurations: dataSourceConfigurations }
         : { tablesConfigurations: dataSourceConfigurations };
 
@@ -361,10 +360,10 @@ function KnowledgeConfigurationSheetContent({
   const pages: MultiPageSheetPage[] = [
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
-      title: toolsConfigurations.tableConfiguration
+      title: toolsConfigurations.tableConfigurable
         ? "Select Tables"
         : "Select Data Sources",
-      description: toolsConfigurations.tableConfiguration
+      description: toolsConfigurations.tableConfigurable
         ? "Choose the tables to query for your processing method"
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,
@@ -393,11 +392,11 @@ function KnowledgeConfigurationSheetContent({
             triggerValidationOnChange={true}
           />
 
-          {toolsConfigurations.mayRequireTimeFrameConfiguration && (
+          {toolsConfigurations.timeFrameConfigurable && (
             <TimeFrameSection actionType="extract" />
           )}
 
-          {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
+          {toolsConfigurations.jsonSchemaConfigurable && (
             <JsonSchemaSection getAgentInstructions={getAgentInstructions} />
           )}
 
