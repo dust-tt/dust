@@ -1,7 +1,7 @@
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getAuthFromWorkspaceSession } from "@app/lib/api/auth_wrappers";
+import { getAuthForSharedEndpoint } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -89,8 +89,7 @@ async function handler(
     });
   }
 
-  // TODO: Rename function.
-  const auth = await getAuthFromWorkspaceSession(req, res, workspace.sId);
+  const auth = await getAuthForSharedEndpoint(req, res, workspace.sId);
 
   // For workspace sharing, check authentication.
   if (shareScope === "workspace") {

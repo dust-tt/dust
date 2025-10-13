@@ -633,31 +633,17 @@ async function handleWorkOSAuth<T>(
 }
 
 /**
- * Checks if the current session has a user that is an active member of the specified workspace.
- * Returns true if the user is authenticated and is a member of the workspace.
- * Returns false if not authenticated or not a member.
+ * Creates an authenticator for shared/publicly accessible endpoints.
+ *
+ * Use this for endpoints that can be accessed by anyone with the link:
+ * - Frames
+ *
+ * Still maintains proper authentication via cookies but designed for endpoints
+ * that don't require users to be logged into the main application.
+ *
+ * @returns Authenticated workspace-scoped authenticator for shared content, or null if not authenticated
  */
-export async function isSessionWithUserFromWorkspace(
-  req: NextApiRequest,
-  res: NextApiResponse,
-  workspaceId: string
-): Promise<boolean> {
-  const auth = await getAuthFromWorkspaceSession(req, res, workspaceId);
-
-  if (!auth) {
-    return false;
-  }
-
-  return auth.isUser();
-}
-
-/**
- * Get an auth object if the current session has a user that is an active member of the specified
- * workspace.
- * Return an Authenticator if the user is authenticated and is a member of the workspace.
- * Returns null if not authenticated or not a member.
- */
-export async function getAuthFromWorkspaceSession(
+export async function getAuthForSharedEndpoint(
   req: NextApiRequest,
   res: NextApiResponse,
   workspaceId: string
@@ -668,6 +654,11 @@ export async function getAuthFromWorkspaceSession(
   }
 
   const auth = await Authenticator.fromSession(session, workspaceId);
+
+  // If the user is not part of the workspace, return null.
+  if (!auth.isUser()) {
+    return null;
+  }
 
   return auth;
 }
