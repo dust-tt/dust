@@ -176,14 +176,6 @@ export function MCPServerSelectionPage({
           <span className="text-lg font-semibold">Top tools</span>
         )}
         <div className="grid grid-cols-2 gap-3">
-          {dataVisualization && onDataVisualizationClick && (
-            <DataVisualizationCard
-              key="data-visualization"
-              specification={dataVisualization}
-              isSelected={isDataVisualizationSelected}
-              onClick={onDataVisualizationClick}
-            />
-          )}
           {topMCPServerViews.map((view) => (
             <MCPServerCard
               key={view.id}
