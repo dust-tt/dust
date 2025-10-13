@@ -3,14 +3,14 @@ import { Box, Text, useInput } from "ink";
 import type { FC } from "react";
 import React, { useEffect, useState } from "react";
 
-import { startTestMcpServer } from "../../mcp/servers/testServer.js";
+import { startDebugMcpServer } from "../../mcp/servers/debugServer.js";
 import { useClearTerminalOnMount } from "../../utils/hooks/use_clear_terminal_on_mount.js";
 
-interface TestMCPProps {
+interface DebugMCPProps {
   port?: number;
 }
 
-const TestMCP: FC<TestMCPProps> = ({ port }) => {
+const DebugMCP: FC<DebugMCPProps> = ({ port }) => {
   const [error, setError] = useState<string | null>(null);
   const [isServerStarted, setIsServerStarted] = useState(false);
   const [serverUrl, setServerUrl] = useState<string | null>(null);
@@ -19,7 +19,7 @@ const TestMCP: FC<TestMCPProps> = ({ port }) => {
   useEffect(() => {
     if (!isServerStarted) {
       const startServer = async () => {
-        const startRes = await startTestMcpServer(
+        const startRes = await startDebugMcpServer(
           (url) => {
             setIsServerStarted(true);
             setServerUrl(url);
@@ -81,14 +81,15 @@ const TestMCP: FC<TestMCPProps> = ({ port }) => {
         </Box>
 
         <Box marginTop={1} flexDirection="column">
-          <Text bold>Test MCP Server - Dynamic Tool Management</Text>
-          <Text color="gray">Type commands to manage tools:</Text>
+          <Text bold>Debug MCP Server - Dynamic Tool Management</Text>
+          <Text color="gray">Single-letter commands:</Text>
           <Box flexDirection="column" paddingLeft={2} marginTop={1}>
-            <Text color="cyan">  add &lt;name&gt;                - Add a new tool</Text>
-            <Text color="cyan">  remove &lt;name&gt;             - Remove a tool</Text>
-            <Text color="cyan">  rename &lt;oldName&gt; &lt;newName&gt; - Rename a tool</Text>
-            <Text color="cyan">  list                      - List all tools</Text>
-            <Text color="cyan">  help                      - Show help</Text>
+            <Text color="cyan">  a - Add a new tool</Text>
+            <Text color="cyan">  d - Delete a tool</Text>
+            <Text color="cyan">  r - Rename a tool</Text>
+            <Text color="cyan">  l - List all tools</Text>
+            <Text color="cyan">  h - Show help</Text>
+            <Text color="cyan">  x - Exit</Text>
           </Box>
         </Box>
       </Box>
@@ -97,10 +98,10 @@ const TestMCP: FC<TestMCPProps> = ({ port }) => {
 
   return (
     <Box>
-      <Text color="green">Initializing test MCP server...</Text>
+      <Text color="green">Initializing debug MCP server...</Text>
     </Box>
   );
 };
 
-export default TestMCP;
+export default DebugMCP;
 

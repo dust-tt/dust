@@ -2,6 +2,7 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { Request, Response } from "express";
 import express from "express";
 import http from "http";
@@ -10,20 +11,19 @@ import { z } from "zod";
 
 import { normalizeError } from "../../utils/errors.js";
 
-interface DynamicTool {
-  name: string;
-  description: string;
-}
+type DynamicTool = string;
 
 // Export the test server function
-export async function startTestMcpServer(
+export async function startDebugMcpServer(
   onServerStart: (url: string) => void,
   requestedPort?: number
 ): Promise<Result<void, Error>> {
   const app = express();
 
   // Store dynamic tools
-  const tools = new Map<string, DynamicTool>();
+  const tools = new Set<DynamicTool>();
+
+  tools.add("default_tool");
 
   // Active sessions
   const activeSessions = new Map<
@@ -40,22 +40,22 @@ export async function startTestMcpServer(
 
         // Create new server with current tools
         const newServer = new McpServer({
-          name: "test-mcp-server",
+          name: "debug-mcp-server",
           version: "1.0.0",
         });
 
         // Register all current tools
-        for (const [toolName, tool] of tools) {
+        for (const tool of tools) {
           newServer.tool(
-            toolName,
-            tool.description,
+            tool,
+            "Debug tool: " + tool,
             { input: z.string().optional().describe("Optional input parameter") },
             async ({ input }: { input?: string }) => {
               return {
                 content: [
                   {
                     type: "text",
-                    text: `Executed ${toolName}${input ? ` with input: ${input}` : ""}`,
+                    text: `Executed ${tool}${input ? ` with input: ${input}` : ""}`,
                   },
                 ],
               };
@@ -72,10 +72,12 @@ export async function startTestMcpServer(
   };
 
   // CLI interface for tool management
+  // Note: Using process.stdin.isTTY to determine if we can use terminal mode
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stderr,
-    terminal: false,
+    terminal: process.stdin.isTTY || false,
+    prompt: '> ',
   });
 
   const listTools = () => {
@@ -83,15 +85,15 @@ export async function startTestMcpServer(
     if (tools.size === 0) {
       console.error("  (none)");
     } else {
-      tools.forEach((tool, name) => {
-        console.error(`  - ${name}: ${tool.description}`);
+      tools.forEach((tool) => {
+        console.error(`  - ${tool}`);
       });
     }
     console.error("");
   };
 
-  const addTool = (name: string, description: string) => {
-    tools.set(name, { name, description });
+  const addTool = (name: string) => {
+    tools.add(name);
     console.error(`[Test Server] Added tool: ${name}`);
     void rebuildServers();
   };
@@ -106,73 +108,108 @@ export async function startTestMcpServer(
   };
 
   const renameTool = (oldName: string, newName: string) => {
-    const tool = tools.get(oldName);
+    const tool = tools.has(oldName);
     if (!tool) {
       console.error(`[Test Server] Tool not found: ${oldName}`);
       return;
     }
     tools.delete(oldName);
-    tools.set(newName, { name: newName, description: tool.description });
+    tools.add(newName);
     console.error(`[Test Server] Renamed tool: ${oldName} -> ${newName}`);
     void rebuildServers();
   };
 
-  console.error("\n=== Test MCP Server ===");
-  console.error("Commands:");
-  console.error("  add <name>                - Add a new tool");
-  console.error("  remove <name>             - Remove a tool");
-  console.error("  rename <oldName> <newName> - Rename a tool");
-  console.error("  list                      - List all tools");
-  console.error("  help                      - Show this help");
-  console.error("========================\n");
+  // Track prompt state
+  let promptState: { command: string; data?: string } | null = null;
 
   rl.on("line", (line) => {
-    const parts = line.trim().split(/\s+/);
-    const command = parts[0];
+    const input = line.trim();
 
-    switch (command) {
-      case "add": {
-        const [, name] = parts;
-        if (!name) {
-          console.error("[Test Server] Usage: add <name>");
+    // Handle multi-step prompts
+    if (promptState) {
+      switch (promptState.command) {
+        case "add":
+          if (input) {
+            addTool(input);
+          }
+          promptState = null;
           break;
-        }
-        addTool(name, `Test tool: ${name}`);
-        break;
-      }
-      case "remove": {
-        const [, name] = parts;
-        if (!name) {
-          console.error("[Test Server] Usage: remove <name>");
+        case "remove":
+          if (input) {
+            removeTool(input);
+          }
+          promptState = null;
           break;
-        }
-        removeTool(name);
-        break;
-      }
-      case "rename": {
-        const [, oldName, newName] = parts;
-        if (!oldName || !newName) {
-          console.error("[Test Server] Usage: rename <oldName> <newName>");
+        case "rename":
+          if (!promptState.data) {
+            // First prompt: old name
+            if (input) {
+              promptState.data = input;
+              rl.setPrompt("New name: ");
+              rl.prompt();
+              return;
+            } else {
+              promptState = null;
+            }
+          } else {
+            // Second prompt: new name
+            if (input) {
+              renameTool(promptState.data, input);
+            }
+            promptState = null;
+            rl.setPrompt("> ");
+          }
           break;
-        }
-        renameTool(oldName, newName);
-        break;
       }
-      case "list":
+      rl.prompt();
+      return;
+    }
+
+    // Handle single-letter commands
+    switch (input) {
+      case "a":
+        promptState = { command: "add" };
+        rl.setPrompt("Tool name: ");
+        rl.prompt();
+        break;
+      case "d":
+        promptState = { command: "remove" };
+        rl.setPrompt("Tool name to delete: ");
+        rl.prompt();
+        break;
+      case "r":
+        promptState = { command: "rename" };
+        rl.setPrompt("Old name: ");
+        rl.prompt();
+        break;
+      case "l":
         listTools();
+        rl.prompt();
         break;
-      case "help":
+      case "h":
+      case "?":
         console.error("\nCommands:");
-        console.error("  add <name>                - Add a new tool");
-        console.error("  remove <name>             - Remove a tool");
-        console.error("  rename <oldName> <newName> - Rename a tool");
-        console.error("  list                      - List all tools");
-        console.error("  help                      - Show this help\n");
+        console.error("  a - Add a new tool");
+        console.error("  d - Delete a tool");
+        console.error("  r - Rename a tool");
+        console.error("  l - List all tools");
+        console.error("  h - Show this help");
+        console.error("  x - Exit\n");
+        rl.prompt();
+        break;
+      case "x":
+      case "q":
+      case "exit":
+      case "quit":
+        console.error("\nShutting down gracefully...");
+        process.exit(0);
+        break;
+      case "":
+        rl.prompt();
         break;
       default:
-        if (command) {
-          console.error(`[Test Server] Unknown command: ${command}`);
-        }
+        console.error(`Unknown command: '${input}' (press 'h' for help)`);
+        rl.prompt();
     }
   });
 
@@ -195,25 +232,28 @@ export async function startTestMcpServer(
       console.error(`[SSE] Session ${sessionId} created`);
 
       const server = new McpServer({
-        name: "test-mcp-server",
+        name: "debug-mcp-server",
         version: "1.0.0",
       });
 
       // Register all current tools
-      for (const [toolName, tool] of tools) {
+      for (const tool of tools) {
         server.tool(
-          toolName,
-          tool.description,
+          tool,
+          "Debug tool: " + tool,
           { input: z.string().optional().describe("Optional input parameter") },
           async ({ input }: { input?: string }) => {
-            return {
+            console.error(`[MCP Tool Called] ${tool} with input:`, input);
+            const result: CallToolResult = {
               content: [
                 {
                   type: "text",
-                  text: `Executed ${toolName}${input ? ` with input: ${input}` : ""}`,
+                  text: `Executed ${tool}${input ? ` with input: ${input}` : ""}`,
                 },
               ],
             };
+            console.error(`[MCP Tool Success] ${tool} returning:`, JSON.stringify(result));
+            return result;
           }
         );
       }
@@ -310,6 +350,11 @@ export async function startTestMcpServer(
     const url = `http://localhost:${port}/sse`;
     console.error(`HTTP server listening on port ${port}`);
     onServerStart(url);
+    
+    // Give Ink time to exit, then show the prompt
+    setTimeout(() => {
+      rl.prompt();
+    }, 100);
 
     // Graceful shutdown handler
     const shutdown = async () => {
