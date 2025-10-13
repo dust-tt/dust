@@ -228,9 +228,10 @@ async function handler(
     });
   }
 
-  // This variable is used in the context of the DustAppRun action to use the dust managed credentials
-  // instead of the workspace credentials when running an app with a system API key and not specifying
-  // the `use_workspace_credentials` query parameter.
+  // This variable defines whether to use the dust managed credentials or the workspace credentials.
+  // Dust managed credentials can only be used with a system API key.
+  // The `use_workspace_credentials` query parameter is used in the context of the DustAppRun action, to
+  // use the workspace credentials even though we use a system API key.
   const useDustCredentials =
     auth.isSystemKey() && req.query["use_workspace_credentials"] !== "true";
 
