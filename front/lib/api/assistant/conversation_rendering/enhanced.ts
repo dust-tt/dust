@@ -124,8 +124,8 @@ export async function renderConversationEnhanced(
         },
         "Render Conversation V2: No interactions fit in context window."
       );
-      throw new Error(
-        "Context window exceeded: at least one message is required"
+      return new Err(
+        new Error("Context window exceeded: at least one message is required")
       );
     }
     availableTokens -= currentInteractionTokens;
