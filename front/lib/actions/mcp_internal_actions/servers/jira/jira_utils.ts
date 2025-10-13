@@ -14,7 +14,7 @@ export const escapeJQLValue = (value: string): string => {
 
   // JQL reserved words that need quoting
   const isReservedWord =
-    /^(and|or|not|in|is|was|from|to|on|by|during|before|after|empty|null|order|asc|desc|changed|was|in|not|to|from|by|before|after|on|during)$/i.test(
+    /^(and|or|not|in|is|was|from|to|on|by|during|before|after|empty|null|order|asc|desc|changed)$/i.test(
       value
     );
 
