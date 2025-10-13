@@ -319,7 +319,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     setSidebarOpen(false);
     const { cId } = router.query;
     const isNewConversation =
-      router.pathname === "/w/[wId]/agent/[cId]" &&
+      router.pathname === "/w/[wId]/conversation/[cId]" &&
       typeof cId === "string" &&
       cId === "new";
     if (isNewConversation) {

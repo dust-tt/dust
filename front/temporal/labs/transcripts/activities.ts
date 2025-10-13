@@ -407,7 +407,7 @@ export async function processTranscriptActivity(
     );
 
     const dataSourceViewId =
-      fullStorageDataSourceViewId || transcriptsConfiguration.dataSourceViewId;
+      fullStorageDataSourceViewId ?? transcriptsConfiguration.dataSourceViewId;
 
     if (!dataSourceViewId) {
       localLogger.error(
