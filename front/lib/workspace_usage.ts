@@ -621,9 +621,9 @@ export async function getAssistantsUsageData(
              MAX(CAST(ac."createdAt" AS DATE))  AS "lastEdit"
       FROM "agent_messages" a
              JOIN "messages" m ON a."id" = m."agentMessageId"
-             JOIN "messages" parent ON m."parentId" = parent."id"
-             JOIN "user_messages" um ON um."id" = parent."userMessageId"
-             JOIN "users" u ON um."userId" = u."id"
+             LEFT JOIN "messages" parent ON m."parentId" = parent."id"
+             LEFT JOIN "user_messages" um ON um."id" = parent."userMessageId"
+             LEFT JOIN "users" u ON um."userId" = u."id"
              JOIN "agent_configurations" ac ON a."agentConfigurationId" = ac."sId"
              JOIN "users" aut ON ac."authorId" = aut."id"
       WHERE a."createdAt" BETWEEN :startDate AND :endDate
