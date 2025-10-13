@@ -228,10 +228,12 @@ async function handler(
     });
   }
 
-  // This variable is used in the context of the DustAppRun action to use the workspace credentials
-  // instead of our managed credentials when running an app with a system API key.
-  const useWorkspaceCredentials =
-    req.query["use_workspace_credentials"] === "true" || !auth.isSystemKey();
+  // This variable is used in the context of the DustAppRun action to use the dust managed credentials
+  // instead of the workspace credentials when running an app with a system API key and not specifying
+  // the `use_workspace_credentials` query parameter.
+  const useDustCredentials =
+    auth.isSystemKey() && req.query["use_workspace_credentials"] !== "true";
+
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   const runFlavor: RunFlavor = req.body.stream
     ? "streaming"
@@ -274,7 +276,7 @@ async function handler(
       );
 
       let credentials: CredentialsType | null = null;
-      if (!useWorkspaceCredentials) {
+      if (useDustCredentials) {
         // Dust managed credentials: system API key (packaged apps).
         credentials = dustManagedCredentials();
       } else {
@@ -447,7 +449,7 @@ async function handler(
           appId: app.id,
           runType: "deploy",
           workspaceId: keyWorkspaceId,
-          useWorkspaceCredentials,
+          useWorkspaceCredentials: !useDustCredentials,
         });
 
         await run.recordRunUsage(usages);
