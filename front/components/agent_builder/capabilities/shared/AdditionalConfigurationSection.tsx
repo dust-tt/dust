@@ -302,7 +302,7 @@ function EnumConfigurationInput({
         </div>
       </div>
       {currentDescription && (
-        <div className="mt-1 text-sm text-gray-600 dark:text-gray-600-night">
+        <div className="mt-1 whitespace-pre-line text-sm text-gray-600 dark:text-gray-600-night">
           {currentDescription}
         </div>
       )}
