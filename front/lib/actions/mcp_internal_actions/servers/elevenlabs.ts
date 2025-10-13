@@ -70,6 +70,7 @@ const createServer = (_auth: Authenticator): McpServer => {
 
         const stream = await client.textToSpeech.convert(voiceId, {
           text,
+          enableLogging: false,
           modelId: "eleven_multilingual_v2",
           outputFormat: "mp3_44100_128",
         });
