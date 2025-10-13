@@ -37,7 +37,7 @@ export const markdownHeaderClasses = {
 };
 
 const sizes = {
-  p: "s-copy-sm @sm:s-text-base @sm:s-leading-7",
+  p: "s-text-base s-leading-7",
   ...markdownHeaderClasses,
 };
 
