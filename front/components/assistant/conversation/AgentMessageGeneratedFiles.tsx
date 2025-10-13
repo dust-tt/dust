@@ -7,35 +7,9 @@ import {
   SparklesIcon,
 } from "@dust-tt/sparkle";
 
-import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
-import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
+import type { LightAgentMessageType } from "@app/types";
 import { frameContentType } from "@app/types";
-
-import { AttachmentCitation } from "./attachment/AttachmentCitation";
-
-interface DefaultAgentMessageGeneratedFilesProps {
-  document: MarkdownCitation;
-  owner: LightWorkspaceType;
-  conversationId: string;
-}
-
-export const DefaultAgentMessageGeneratedFiles = ({
-  document,
-  owner,
-  conversationId,
-}: DefaultAgentMessageGeneratedFilesProps) => {
-  const attachmentCitation = markdownCitationToAttachmentCitation(document);
-
-  return (
-    <AttachmentCitation
-      attachmentCitation={attachmentCitation}
-      owner={owner}
-      conversationId={conversationId}
-    />
-  );
-};
 
 // Interactive content files.
 
