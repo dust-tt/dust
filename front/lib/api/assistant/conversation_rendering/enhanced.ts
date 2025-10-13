@@ -25,34 +25,6 @@ import { renderAllMessages } from "./shared/message_rendering";
 // When previous iteractions pruning is enabled, we'll attempt to fully preserve this number of interactions.
 const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;
 
-/**
- * Group messages into interactions (user turn + agent responses).
- */
-function groupMessagesIntoInteractions(
-  messages: MessageWithTokens[]
-): InteractionWithTokens[] {
-  const interactions: InteractionWithTokens[] = [];
-  let currentInteraction: MessageWithTokens[] = [];
-
-  for (let i = 0; i < messages.length; i++) {
-    const message = messages[i];
-    currentInteraction.push(message);
-
-    // Start a new interaction when we see the next user message.
-    const isLastMessage = i === messages.length - 1;
-    const nextIsUser = !isLastMessage && messages[i + 1].role === "user";
-
-    if (isLastMessage || nextIsUser) {
-      interactions.push({
-        messages: currentInteraction,
-      });
-      currentInteraction = [];
-    }
-  }
-
-  return interactions;
-}
-
 export async function renderConversationEnhanced(
   auth: Authenticator,
   {
@@ -255,4 +227,32 @@ export async function renderConversationEnhanced(
     },
     tokensUsed,
   });
+}
+
+/**
+ * Group messages into interactions (user turn + agent responses).
+ */
+function groupMessagesIntoInteractions(
+  messages: MessageWithTokens[]
+): InteractionWithTokens[] {
+  const interactions: InteractionWithTokens[] = [];
+  let currentInteraction: MessageWithTokens[] = [];
+
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i];
+    currentInteraction.push(message);
+
+    // Start a new interaction when we see the next user message.
+    const isLastMessage = i === messages.length - 1;
+    const nextIsUser = !isLastMessage && messages[i + 1].role === "user";
+
+    if (isLastMessage || nextIsUser) {
+      interactions.push({
+        messages: currentInteraction,
+      });
+      currentInteraction = [];
+    }
+  }
+
+  return interactions;
 }
