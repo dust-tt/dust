@@ -39,7 +39,6 @@ export const SubscribePage = ({
               <DustLogo className="h-8 w-36" />
             </Link>
           </div>
-
           <div className="text-center max-w-[400px]">
             <Page.H variant="h4">Almost there!</Page.H>
           </div>

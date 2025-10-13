@@ -62,7 +62,7 @@ export const LoginPage = () => {
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
-        <div className="flex flex-1 flex-col items-center justify-center gap-8">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4">
           <div className="flex flex-col items-center text-center space-y-9 max-w-[400px]">
             <Link to="https://dust.tt" target="_blank">
               <DustLogo className="h-8 w-36" />
