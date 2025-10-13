@@ -36,6 +36,7 @@ import type {
   ConnectorType,
   DataSourceType,
   LightWorkspaceType,
+  OAuthProvider,
   OAuthUseCase,
   PlanType,
   Result,
@@ -70,7 +71,7 @@ export async function setupConnection({
   extraConfig,
 }: {
   owner: LightWorkspaceType;
-  provider: ConnectorProvider;
+  provider: ConnectorProvider | OAuthProvider;
   useCase?: OAuthUseCase;
   extraConfig: Record<string, string>;
 }): Promise<Result<string, Error>> {
@@ -429,6 +430,7 @@ export const AddConnectionMenu = ({
               );
             case "microsoft_bot":
             case "slack_bot":
+            case "discord_bot":
             case undefined:
               return null;
             default:

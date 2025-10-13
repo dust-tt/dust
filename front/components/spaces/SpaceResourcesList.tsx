@@ -38,6 +38,7 @@ import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import {
+  CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
   isConnectorPermissionsEditable,
 } from "@app/lib/connector_providers";
@@ -362,10 +363,16 @@ export const SpaceResourcesList = ({
     }
 
     return spaceDataSourceViews
-      .filter(
-        (dataSourceView) =>
-          dataSourceView.dataSource.connectorProvider !== "slack_bot"
-      )
+      .filter((dataSourceView) => {
+        const connectorConfig = dataSourceView.dataSource.connectorProvider
+          ? CONNECTOR_CONFIGURATIONS[
+              dataSourceView.dataSource.connectorProvider
+            ]
+          : null;
+
+        // Filter out data sources that are hidden as data sources
+        return !connectorConfig?.isHiddenAsDataSource;
+      })
       .map((dataSourceView) => {
         const provider = dataSourceView.dataSource.connectorProvider;
 

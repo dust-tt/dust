@@ -28,11 +28,13 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { DiscordBotToggle } from "@app/components/workspace/DiscordBotToggle";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriptionToggle } from "@app/hooks/useVoiceTranscriptionToggle";
 import config from "@app/lib/api/config";
+import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -54,8 +56,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   isSlackDataSourceBotEnabled: boolean;
+  isDiscordBotEnabled: boolean;
   slackBotDataSource: DataSourceType | null;
   microsoftBotDataSource: DataSourceType | null;
+  discordBotDataSource: DataSourceType | null;
   systemSpace: SpaceType;
 }>(async (_, auth) => {
   const owner = auth.workspace();
@@ -66,11 +70,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const [[slackDataSource], [slackBotDataSource], [microsoftBotDataSource]] =
+  const [[slackDataSource], [slackBotDataSource], [microsoftBotDataSource], [discordBotDataSource]] =
+   
     await Promise.all([
-      DataSourceResource.listByConnectorProvider(auth, "slack"),
-      DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
-      DataSourceResource.listByConnectorProvider(auth, "microsoft_bot"),
+        DataSourceResource.listByConnectorProvider(auth, "slack"),
+        DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
+        DataSourceResource.listByConnectorProvider(auth, "microsoft_bot"),
+        DataSourceResource.listByConnectorProvider(auth, "discord_bot"),
     ]);
 
   let isSlackDataSourceBotEnabled = false;
@@ -88,6 +94,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     }
   }
 
+  const featureFlags = await getFeatureFlags(owner);
+  const isDiscordBotEnabled = featureFlags.includes("discord_bot");
+
   const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
   return {
@@ -95,8 +104,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       isSlackDataSourceBotEnabled,
+      isDiscordBotEnabled,
       slackBotDataSource: slackBotDataSource?.toJSON() ?? null,
       microsoftBotDataSource: microsoftBotDataSource?.toJSON() ?? null,
+      discordBotDataSource: discordBotDataSource?.toJSON() ?? null,
       systemSpace: systemSpace.toJSON(),
     },
   };
@@ -106,8 +117,10 @@ export default function WorkspaceAdmin({
   owner,
   subscription,
   isSlackDataSourceBotEnabled,
+  isDiscordBotEnabled,
   slackBotDataSource,
   microsoftBotDataSource,
+  discordBotDataSource,
   systemSpace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
@@ -253,10 +266,11 @@ export default function WorkspaceAdmin({
             <VoiceTranscriptionToggle owner={owner} />
           </ContextItem.List>
         </Page.Vertical>
-        {!isSlackDataSourceBotEnabled && (
+        {(!isSlackDataSourceBotEnabled || isDiscordBotEnabled) && (
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Integrations</Page.H>
-
+            {!isSlackDataSourceBotEnabled && (
+  
             <ContextItem.List>
               <div className="h-full border-b border-border dark:border-border-night" />
               <BotToggle
@@ -271,10 +285,10 @@ export default function WorkspaceAdmin({
               />
               {isMicrosoftTeamsBotEnabled && (
                 <BotToggle
-                  owner={owner}
-                  botDataSource={microsoftBotDataSource}
-                  systemSpace={systemSpace}
-                  oauth={{
+                    owner={owner}
+                    botDataSource={microsoftBotDataSource}
+                    systemSpace={systemSpace}
+                    oauth={{
                     provider: "microsoft",
                     useCase: "bot",
                     extraConfig: {},
@@ -286,6 +300,14 @@ export default function WorkspaceAdmin({
                 />
               )}
             </ContextItem.List>
+            )}
+            {isDiscordBotEnabled && (
+              <DiscordBotToggle
+                owner={owner}
+                discordBotDataSource={discordBotDataSource}
+                systemSpace={systemSpace}
+              />
+            )}
           </Page.Vertical>
         )}
       </Page.Vertical>

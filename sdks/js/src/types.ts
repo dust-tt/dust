@@ -2773,6 +2773,7 @@ const OAuthProviderSchema = FlexibleEnumSchema<
   | "hubspot"
   | "mcp"
   | "mcp_static"
+  | "discord"
 >();
 
 const InternalAllowedIconSchema = FlexibleEnumSchema<

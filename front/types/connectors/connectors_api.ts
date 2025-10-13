@@ -10,12 +10,14 @@ import { Err, Ok } from "../shared/result";
 import type { AdminCommandType, AdminResponseType } from "./admin/cli";
 import type { ConnectorConfiguration } from "./configuration";
 import type { ContentNodesViewType } from "./content_nodes";
+import { DiscordBotConfigurationTypeSchema } from "./discord_bot";
 import { SlackConfigurationTypeSchema } from "./slack";
 import { WebCrawlerConfigurationTypeSchema } from "./webcrawler";
 
 export const ConnectorConfigurationTypeSchema = t.union([
   WebCrawlerConfigurationTypeSchema,
   SlackConfigurationTypeSchema,
+  DiscordBotConfigurationTypeSchema,
   t.null,
 ]);
 

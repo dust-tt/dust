@@ -229,6 +229,78 @@ export function useToggleChatBot({
   return doToggle;
 }
 
+export function useToggleDiscordChatBot({
+  dataSource,
+  owner,
+}: {
+  dataSource: DataSourceType | null;
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const { mutateConfig } = useConnectorConfig({
+    owner,
+    dataSource,
+    configKey: "botEnabled",
+    disabled: true,
+  });
+
+  if (!dataSource) {
+    return () => {
+      sendNotification({
+        type: "error",
+        title: "Failed to Enable Discord Bot",
+        description:
+          "Tried to enable Discord Bot, but no data source was found.",
+      });
+    };
+  }
+
+  const doToggle = async (botEnabled: boolean) => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/botEnabled`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({ configValue: botEnabled.toString() }),
+      }
+    );
+
+    if (res.ok) {
+      void mutateConfig();
+
+      const response: GetOrPostManagedDataSourceConfigResponseBody =
+        await res.json();
+
+      const { configValue } = response;
+
+      sendNotification({
+        type: "success",
+        title: botEnabled
+          ? "Discord Bot Enabled Successfully"
+          : "Discord Bot Disabled Successfully",
+        description: botEnabled
+          ? "The Discord bot is now active and ready to use."
+          : "The Discord bot has been disabled.",
+      });
+      return configValue;
+    } else {
+      const errorData = await getErrorFromResponse(res);
+
+      sendNotification({
+        type: "error",
+        title: "Failed to Enable Discord Bot",
+        description: errorData.message,
+      });
+      return null;
+    }
+  };
+
+  return doToggle;
+}
+
 export function useTogglePdfEnabled({
   dataSource,
   owner,
