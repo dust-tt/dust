@@ -1,8 +1,8 @@
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getSession } from "@app/lib/auth";
-import { ConversationParticipantModel } from "@app/lib/models/assistant/conversation";
+import { isUserConversationParticipant } from "@app/lib/api/assistant/participants";
+import { getAuthFromWorkspaceSession } from "@app/lib/api/auth_wrappers";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -88,22 +88,11 @@ async function handler(
       },
     });
   }
-  const session = await getSession(req, res);
+  const auth = await getAuthFromWorkspaceSession(req, res, workspace.sId);
 
   // For workspace sharing, check authentication.
   if (shareScope === "workspace") {
-    if (!session) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "file_not_found",
-          message: "File not found.",
-        },
-      });
-    }
-
-    const auth = await Authenticator.fromSession(session, workspace.sId);
-    if (!auth.isUser()) {
+    if (!auth) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {
@@ -115,36 +104,32 @@ async function handler(
   }
 
   const conversationId = file.useCaseMetadata?.conversationId;
+  const user = auth && auth.user();
 
-  let participant: ConversationParticipantModel | null = null;
+  let isParticipant = false;
 
-  if (session && conversationId) {
-    const auth = await Authenticator.fromSession(session, workspace.sId);
-    const user = auth.user();
+  if (user && conversationId) {
+    const conversationRes =
+      await ConversationResource.fetchConversationWithoutContent(
+        auth,
+        conversationId
+      );
 
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      conversationId
-    );
-
-    if (user && conversation) {
-      participant = await ConversationParticipantModel.findOne({
-        where: {
-          conversationId: conversation.id,
-          workspaceId: workspace.id,
-          userId: user.id,
-        },
-      });
+    if (user && conversationRes.isOk()) {
+      isParticipant = await isUserConversationParticipant(
+        auth,
+        conversationRes.value,
+        user.id
+      );
     }
   }
 
   res.status(200).json({
     content: fileContent,
     file: file.toJSON(),
-    conversationUrl:
-      participant !== null && conversationId
-        ? `/w/${workspace.sId}/agent/${conversationId}`
-        : null,
+    conversationUrl: isParticipant
+      ? `/w/${workspace.sId}/agent/${conversationId}`
+      : null,
   });
 }
 

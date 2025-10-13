@@ -138,3 +138,25 @@ export async function fetchConversationParticipants(
     })),
   });
 }
+
+export async function isUserConversationParticipant(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType,
+  userId: ModelId
+): Promise<boolean> {
+  const owner = auth.workspace();
+
+  if (!owner) {
+    return false;
+  }
+
+  const participant = await ConversationParticipantModel.findOne({
+    where: {
+      conversationId: conversation.id,
+      workspaceId: owner.id,
+      userId,
+    },
+  });
+
+  return participant !== null;
+}
