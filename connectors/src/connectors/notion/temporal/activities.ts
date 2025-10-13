@@ -1944,77 +1944,6 @@ export async function renderAndUpsertPageFromCache({
     throw new Error("Could not find page in cache");
   }
 
-  if (notionPageInDb?.parentType === "database" && notionPageInDb.parentId) {
-    localLogger.info(
-      "notionRenderAndUpsertPageFromCache: Retrieving parent database from connectors DB."
-    );
-    const parentDb = await NotionDatabase.findOne({
-      where: {
-        connectorId: connector.id,
-        notionDatabaseId: notionPageInDb.parentId,
-      },
-    });
-
-    if (parentDb) {
-      // Only do structured data incremental sync if the DB has already been synced as structured data.
-      if (parentDb.structuredDataUpsertedTs) {
-        localLogger.info(
-          "notionRenderAndUpsertPageFromCache: Upserting page in structured data."
-        );
-        const { tableId, tableName, tableDescription } =
-          getTableInfoFromDatabase(parentDb);
-
-        const { csv } = await renderDatabaseFromPages({
-          databaseTitle: null,
-          pagesProperties: [
-            JSON.parse(
-              pageCacheEntry.pagePropertiesText
-            ) as PageObjectProperties,
-          ],
-          dustIdColumn: [pageId],
-          cellSeparator: ",",
-          rowBoundary: "",
-        });
-
-        const parentPageOrDbIds = await getParents(
-          connector.id,
-          parentDb.notionDatabaseId,
-          [],
-          true,
-          runTimestamp.toString()
-        );
-        await heartbeat();
-
-        const parents = parentPageOrDbIds.map((id) => `notion-${id}`);
-
-        await ignoreTablesError("Notion Database", () =>
-          upsertDataSourceTableFromCsv({
-            dataSourceConfig: dataSourceConfigFromConnector(connector),
-            tableId,
-            tableName,
-            tableDescription,
-            tableCsv: csv,
-            loggerArgs,
-            // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
-            truncate: false,
-            parents: parents,
-            parentId: parents[1] || null,
-            title: parentDb.title ?? "Untitled Notion Database",
-            mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
-            sourceUrl:
-              parentDb.notionUrl ??
-              `https://www.notion.so/${parentDb.notionDatabaseId.replace(/-/g, "")}`,
-            allowEmptySchema: true,
-          })
-        );
-      } else {
-        localLogger.info(
-          "notionRenderAndUpsertPageFromCache: Skipping page as parent database has not been synced as structured data."
-        );
-      }
-    }
-  }
-
   localLogger.info(
     "notionRenderAndUpsertPageFromCache: Retrieving blocks from cache."
   );
@@ -2251,6 +2180,77 @@ export async function renderAndUpsertPageFromCache({
     skipReason: undefined,
     lastCreatedOrMovedRunTs: createdOrMoved ? runTimestamp : undefined,
   });
+
+  if (parentType === "database" && parentId) {
+    localLogger.info(
+      "notionRenderAndUpsertPageFromCache: Retrieving parent database from connectors DB."
+    );
+    const parentDb = await NotionDatabase.findOne({
+      where: {
+        connectorId: connector.id,
+        notionDatabaseId: parentId,
+      },
+    });
+
+    if (parentDb) {
+      // Only do structured data incremental sync if the DB has already been synced as structured data.
+      if (parentDb.structuredDataUpsertedTs) {
+        localLogger.info(
+          "notionRenderAndUpsertPageFromCache: Upserting page in structured data."
+        );
+        const { tableId, tableName, tableDescription } =
+          getTableInfoFromDatabase(parentDb);
+
+        const { csv } = await renderDatabaseFromPages({
+          databaseTitle: null,
+          pagesProperties: [
+            JSON.parse(
+              pageCacheEntry.pagePropertiesText
+            ) as PageObjectProperties,
+          ],
+          dustIdColumn: [pageId],
+          cellSeparator: ",",
+          rowBoundary: "",
+        });
+
+        const parentPageOrDbIds = await getParents(
+          connector.id,
+          parentDb.notionDatabaseId,
+          [],
+          true,
+          runTimestamp.toString()
+        );
+        await heartbeat();
+
+        const parents = parentPageOrDbIds.map((id) => `notion-${id}`);
+
+        await ignoreTablesError("Notion Database", () =>
+          upsertDataSourceTableFromCsv({
+            dataSourceConfig: dataSourceConfigFromConnector(connector),
+            tableId,
+            tableName,
+            tableDescription,
+            tableCsv: csv,
+            loggerArgs,
+            // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
+            truncate: false,
+            parents: parents,
+            parentId: parents[1] || null,
+            title: parentDb.title ?? "Untitled Notion Database",
+            mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
+            sourceUrl:
+              parentDb.notionUrl ??
+              `https://www.notion.so/${parentDb.notionDatabaseId.replace(/-/g, "")}`,
+            allowEmptySchema: true,
+          })
+        );
+      } else {
+        localLogger.info(
+          "notionRenderAndUpsertPageFromCache: Skipping page as parent database has not been synced as structured data."
+        );
+      }
+    }
+  }
 
   const childDatabaseIdsToCheck = blockCacheEntries
     .filter((b) => b.blockType === "child_database")
