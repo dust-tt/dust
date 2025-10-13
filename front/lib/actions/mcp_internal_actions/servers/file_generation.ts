@@ -2,6 +2,7 @@ import { basename } from "node:path";
 import { Readable } from "node:stream";
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { AxiosError } from "axios";
 import type { UploadResult } from "convertapi";
 import ConvertAPI from "convertapi";
 import { marked } from "marked";
@@ -228,10 +229,14 @@ const createServer = (
 
           return new Ok(content);
         } catch (e) {
+          const error = normalizeError(e);
           return new Err(
             new MCPError(
-              `There was an error generating your file: ${normalizeError(e)}. ` +
-                "You may be able to get the desired result by chaining multiple conversions, look closely to the source format you use."
+              `There was an error generating your file: ${error}. ` +
+                "You may be able to get the desired result by chaining multiple conversions, look closely to the source format you use.",
+              {
+                tracked: !error.message.includes("Unsupported conversion"),
+              }
             )
           );
         }
