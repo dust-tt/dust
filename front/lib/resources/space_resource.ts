@@ -510,7 +510,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           if (managementMode === "group") {
             // When switching to group mode, suspend all active members of the default group
             await this.suspendDefaultGroupMembers(auth, t);
-          } else if (managementMode === "manual" && previousManagementMode === "group") {
+          } else if (
+            managementMode === "manual" &&
+            previousManagementMode === "group"
+          ) {
             // When switching from group to manual mode, restore suspended members
             await this.restoreDefaultGroupMembers(auth, t);
           }
@@ -920,7 +923,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     transaction?: Transaction
   ): Promise<void> {
     const defaultSpaceGroup = this.getDefaultSpaceGroup();
-    
+
     await GroupMembershipModel.update(
       { status: "suspended" },
       {
@@ -944,7 +947,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     transaction?: Transaction
   ): Promise<void> {
     const defaultSpaceGroup = this.getDefaultSpaceGroup();
-    
+
     await GroupMembershipModel.update(
       { status: "active" },
       {

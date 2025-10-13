@@ -15,7 +15,7 @@ export class GroupMembershipModel extends WorkspaceAwareModel<GroupMembershipMod
 
   declare groupId: ForeignKey<GroupModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
-  declare status: "active" | "suspended" | "revoked";
+  declare status: "active" | "suspended";
 }
 GroupMembershipModel.init(
   {
