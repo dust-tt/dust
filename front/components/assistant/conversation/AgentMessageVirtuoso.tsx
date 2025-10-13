@@ -1,13 +1,11 @@
 import {
   ArrowPathIcon,
-  AtomIcon,
   Button,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
   ConversationMessage,
   DocumentIcon,
-  Icon,
   InteractiveImageGrid,
   Markdown,
   Separator,
@@ -79,6 +77,7 @@ import type {
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
+  isAgentMessageType,
   isInteractiveContentFileContentType,
   isPersonalAuthenticationRequiredErrorContent,
   isSupportedImageContentType,
@@ -87,7 +86,6 @@ import {
 interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
-  isAgentMessageHandover: boolean;
   messageStreamState: MessageTemporaryState;
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
@@ -97,7 +95,6 @@ interface AgentMessageProps {
 export function AgentMessageVirtuoso({
   conversationId,
   isLastMessage,
-  isAgentMessageHandover,
   messageStreamState,
   messageFeedback,
   owner,
@@ -125,6 +122,15 @@ export function AgentMessageVirtuoso({
     workspaceId: owner.sId,
     messageId: sId,
     options: { disabled: true },
+  });
+
+  const parentAgentMessage = useConversationMessage({
+    conversationId,
+    workspaceId: owner.sId,
+    messageId: messageStreamState.message.parentAgentMessageId,
+    options: {
+      disabled: messageStreamState.message.parentAgentMessageId === null,
+    },
   });
 
   const { shouldStream } = useAgentMessageStreamVirtuoso({
@@ -410,18 +416,17 @@ export function AgentMessageVirtuoso({
   const canMention = agentConfiguration.canRead;
   const isArchived = agentConfiguration.status === "archived";
 
-  // Determine if this should be displayed as "agentAsTool" type.
-  const isDustDeep = agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE;
-  const isDeepDive = isAgentMessageHandover && isDustDeep;
+  let parentAgent = null;
+  if (
+    parentAgentMessage.message &&
+    isAgentMessageType(parentAgentMessage.message)
+  ) {
+    parentAgent = parentAgentMessage.message.configuration;
+  }
 
   const renderName = useCallback(
-    () =>
-      isDeepDive ? (
-        <span className="inline-flex items-center text-muted-foreground dark:text-muted-foreground-night">
-          <Icon visual={AtomIcon} size="sm" />
-          <span className="ml-1">Deep Dive</span>
-        </span>
-      ) : (
+    () => (
+      <span className="inline-flex items-center text-muted-foreground dark:text-muted-foreground-night">
         <AgentHandle
           assistant={{
             sId: agentConfiguration.sId,
@@ -430,13 +435,24 @@ export function AgentMessageVirtuoso({
           canMention={canMention}
           isDisabled={isArchived}
         />
-      ),
+        {parentAgent && (
+          <Chip
+            label={`via @${parentAgent.name}`}
+            size="xs"
+            className="ml-1"
+            color="primary"
+            isBusy={agentMessageToRender.status === "created"}
+          />
+        )}
+      </span>
+    ),
     [
       agentConfiguration.name,
       agentConfiguration.sId,
       canMention,
       isArchived,
-      isDeepDive,
+      parentAgent,
+      agentMessageToRender.status,
     ]
   );
 
@@ -449,7 +465,7 @@ export function AgentMessageVirtuoso({
       isDisabled={isArchived}
       renderName={renderName}
       timestamp={
-        isDeepDive
+        parentAgent
           ? undefined
           : formatTimestring(
               agentMessageToRender.completedTs ?? agentMessageToRender.created
@@ -458,7 +474,7 @@ export function AgentMessageVirtuoso({
       completionStatus={
         <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
       }
-      type={isDeepDive ? "agentAsTool" : "agent"}
+      type="agent"
       citations={citations}
     >
       <div>

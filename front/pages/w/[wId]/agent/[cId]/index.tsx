@@ -2,7 +2,6 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
-import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainerVirtuoso";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayoutVirtuoso";
 import ConversationLayoutVirtuoso from "@app/components/assistant/conversation/ConversationLayoutVirtuoso";
@@ -83,8 +82,6 @@ export default function AgentConversation({
     } else if (!activeConversationId) {
       // Force re-render by setting a new key with a random number.
       setConversationKey(`new_${Math.random() * 1000}`);
-
-      document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
     }
 
     const agentId = agent ?? null;

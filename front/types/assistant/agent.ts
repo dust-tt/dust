@@ -2,17 +2,17 @@ import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { OAuthProvider } from "@app/types";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+  OAuthProvider,
+} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
-import type {
-  ModelIdType,
-  ModelProviderIdType,
-} from "@app/types/assistant/assistant";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { isOAuthProvider, isValidScope } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";

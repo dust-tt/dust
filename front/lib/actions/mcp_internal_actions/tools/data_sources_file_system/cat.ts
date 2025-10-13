@@ -64,7 +64,7 @@ export function registerCatTool(
     catToolInputSchema,
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_CAT_TOOL_NAME, agentLoopContext },
+      { toolNameForMonitoring: FILESYSTEM_CAT_TOOL_NAME, agentLoopContext },
       async ({ dataSources, nodeId, offset, limit, grep }) => {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 

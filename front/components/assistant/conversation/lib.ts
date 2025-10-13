@@ -158,6 +158,7 @@ export function createPlaceholderAgentMessage({
       created: createdAt,
       completedTs: null,
       parentMessageId: null,
+      parentAgentMessageId: null,
       status: "created",
       content: null,
       chainOfThought: null,

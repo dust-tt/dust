@@ -36,7 +36,7 @@ import {
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
 const MAX_SUB_AGENT_BATCHES = 3;
 
-const dustDeepKnowledgeCutoffPrompt = `Your knowledge cutoff was at least 1 year ago. You have no internal knowledge of anything that happened since then.
+const deepDiveKnowledgeCutoffPrompt = `Your knowledge cutoff was at least 1 year ago. You have no internal knowledge of anything that happened since then.
 Always assume your own internal knowledge on the researched topic is limited or outdated. Major events may have happened since your knowledge cutoff.
 Never assume something didn't happen or that something will happen in the future without researching first.
 
@@ -44,19 +44,19 @@ The user's message will always contain the precise date and time of the message.
 CRITICAL: make sure to reflect on the current date, time and year before making any assumptions.
 `;
 
-const dustDeepPrimaryGoal = `<primary_goal>
+const deepDivePrimaryGoal = `<primary_goal>
 You are an agent. Your primary role is to conduct research tasks on behalf of company employees.
 As an AI agent, your own context window is limited. Prefer spawning sub-agents when the work is decomposable or requires additional toolsets, typically when tasks involve more than ~3 steps. If a task cannot be reasonably decomposed and requires no additional toolsets, execute it directly.
 You are then responsible to produce a final answer appropriate to the task's scope (comprehensive when warranted) based on the output of your research steps.
 
-${dustDeepKnowledgeCutoffPrompt}
+${deepDiveKnowledgeCutoffPrompt}
 </primary_goal>`;
 
 const subAgentPrimaryGoal = `<primary_goal>
 You are an agent. Your primary role is to conduct research tasks.
 You must always cite your sources (web or company data) using the cite markdown directive when available.
 
-${dustDeepKnowledgeCutoffPrompt}
+${deepDiveKnowledgeCutoffPrompt}
 </primary_goal>`;
 
 const requestComplexityPrompt = `<request_complexity>
@@ -257,7 +257,7 @@ Heavily bias against using the interactive_content tool for what could be writte
 Never use the slideshow tool unless explicitly requested by the user.
 </output_guidelines>`;
 
-const dustDeepInstructions = `${dustDeepPrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
+const deepDiveInstructions = `${deepDivePrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
 
 const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}\n${toolsPrompt}
 <output_format>
@@ -300,7 +300,7 @@ This is a hard maximum, but:
 The research agent you are planning for has the following instructions:
 
 <research_agent_instructions>
-${dustDeepInstructions}
+${deepDiveInstructions}
 </research_agent_instructions>
 
 These instructions are NOT your own instructions, but you may use them to understand the research agent's capabilities and constraints.
@@ -530,7 +530,7 @@ export function _getDeepDiveGlobalAgent(
     versionAuthorId: null,
     name: DEEP_DIVE_NAME,
     description: DEEP_DIVE_DESC,
-    instructions: dustDeepInstructions,
+    instructions: deepDiveInstructions,
     pictureUrl,
     scope: "global" as const,
     userFavorite: false,

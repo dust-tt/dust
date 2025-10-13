@@ -4,7 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
-export const isDustDeepDisabledByAdmin = memoizer.sync({
+export const isDeepDiveDisabledByAdmin = memoizer.sync({
   load: async (auth: Authenticator): Promise<boolean> => {
     // We cannot call getGlobalAgents here because it will cause a dependency cycle.
     // Can be cached if too many calls are made.
@@ -18,7 +18,7 @@ export const isDustDeepDisabledByAdmin = memoizer.sync({
   },
 
   hash: function (auth: Authenticator) {
-    return `dust_deep_disabled_by_admin_${auth.getNonNullableWorkspace().id}`;
+    return `deep_dive_disabled_by_admin_${auth.getNonNullableWorkspace().id}`;
   },
 
   itemMaxAge: () => 3000,

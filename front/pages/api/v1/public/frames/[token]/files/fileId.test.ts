@@ -15,7 +15,7 @@ describe("/api/v1/public/frames/[token]/files/[fileId] security tests", () => {
     vi.resetAllMocks();
   });
 
-  it("should only allow access to files from the same conversation as the frame", async () => {
+  it("should only allow access to files from the same conversation as the frame (usecase: 'conversation')", async () => {
     const workspace = await WorkspaceFactory.basic();
 
     // Create frame file with conversation context.
@@ -37,6 +37,58 @@ describe("/api/v1/public/frames/[token]/files/[fileId] security tests", () => {
       fileSize: 500,
       status: "ready",
       useCase: "conversation",
+      useCaseMetadata: { conversationId: "conversation-A" },
+    });
+
+    const token = frameShareInfo?.shareUrl.split("/").at(-1);
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: {
+        fileId: targetFile.sId,
+        token,
+      },
+    });
+
+    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+      file: frameFile,
+      content: "<html>Frame content</html>",
+      shareScope: "public",
+    });
+
+    vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+      // Mocked stream content.
+      Readable.from(["File content"])
+    );
+
+    await handler(req, res);
+
+    // Should succeed - file from same conversation.
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  it("should only allow access to files from the same conversation as the frame (usecase: 'tool_output')", async () => {
+    const workspace = await WorkspaceFactory.basic();
+
+    // Create frame file with conversation context.
+    const frameFile = await FileFactory.create(workspace, null, {
+      contentType: frameContentType,
+      fileName: "frame.html",
+      fileSize: 1000,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: "conversation-A" },
+    });
+
+    const frameShareInfo = await frameFile.getShareInfo();
+
+    // Create target file in same conversation.
+    const targetFile = await FileFactory.create(workspace, null, {
+      contentType: "text/plain",
+      fileName: "target.txt",
+      fileSize: 500,
+      status: "ready",
+      useCase: "tool_output",
       useCaseMetadata: { conversationId: "conversation-A" },
     });
 

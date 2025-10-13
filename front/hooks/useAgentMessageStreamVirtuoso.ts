@@ -13,9 +13,11 @@ import {
   getMessageSId,
   isMessageTemporayState,
 } from "@app/components/assistant/conversation/types";
+import { useBrowserNotification } from "@app/hooks/useBrowserNotification";
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
+import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
 import type {
   LightAgentMessageWithActionsType,
   LightWorkspaceType,
@@ -125,6 +127,13 @@ export function useAgentMessageStreamVirtuoso({
         !!messageStreamState.message.chainOfThought)
   );
 
+  // Track the start time of the streaming run to compute duration on completion.
+  const { notify } = useBrowserNotification();
+  const runStartedAtRef = useRef<number | null>(null);
+  if (shouldStream && runStartedAtRef.current === null) {
+    runStartedAtRef.current = Date.now();
+  }
+
   const chainOfThought = useRef(
     messageStreamState.message.chainOfThought ?? ""
   );
@@ -142,9 +151,8 @@ export function useAgentMessageStreamVirtuoso({
         // We have a lastEventId, so this is not a fresh mount
         isFreshMountWithContent.current = false;
       }
-      const url = esURL + "?lastEventId=" + lastEventId;
 
-      return url;
+      return esURL + "?lastEventId=" + lastEventId;
     },
     [conversationId, sId, owner.sId]
   );
@@ -301,6 +309,23 @@ export function useAgentMessageStreamVirtuoso({
         customOnEventCallback(eventPayload);
       }
 
+      // Notify if the run took a long time and just finished.
+      if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(eventType)) {
+        if (runStartedAtRef.current !== null) {
+          const elapsedMs = Date.now() - runStartedAtRef.current;
+          const LONG_RUN_THRESHOLD_MS = 120_000; // 2 minutes
+          if (elapsedMs >= LONG_RUN_THRESHOLD_MS) {
+            notify(
+              `${messageStreamState.message.configuration.name} finished`,
+              {
+                body: "The agent run has completed.",
+                tag: `agent-finished-${sId}`,
+              }
+            );
+          }
+        }
+      }
+
       const shouldRefresh = [
         "agent_action_success",
         "agent_error",
@@ -312,7 +337,14 @@ export function useAgentMessageStreamVirtuoso({
         void mutateMessage();
       }
     },
-    [customOnEventCallback, methods, mutateMessage, sId]
+    [
+      customOnEventCallback,
+      messageStreamState.message.configuration.name,
+      methods,
+      mutateMessage,
+      notify,
+      sId,
+    ]
   );
 
   useEventSource(buildEventSourceURL, onEventCallback, streamId, {
