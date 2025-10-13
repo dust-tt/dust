@@ -1,7 +1,7 @@
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getAuthForSharedEndpoint } from "@app/lib/api/auth_wrappers";
+import { getAuthForSharedEndpointMembersOnly } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -89,7 +89,11 @@ async function handler(
     });
   }
 
-  const auth = await getAuthForSharedEndpoint(req, res, workspace.sId);
+  const auth = await getAuthForSharedEndpointMembersOnly(
+    req,
+    res,
+    workspace.sId
+  );
 
   // For workspace sharing, check authentication.
   if (shareScope === "workspace") {

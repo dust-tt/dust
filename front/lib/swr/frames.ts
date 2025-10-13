@@ -20,7 +20,8 @@ export function usePublicFrame({ shareToken }: { shareToken: string | null }) {
   return {
     frameMetadata: data?.file,
     frameContent: data?.content,
-    conversationUrl: data?.conversationUrl ?? null, // you will have it only when you are a conversation participant
+    // Set only if user is a conversation participant.
+    conversationUrl: data?.conversationUrl ?? null,
     isFrameLoading: !error && !data,
     error,
     mutateFrame: mutate,
