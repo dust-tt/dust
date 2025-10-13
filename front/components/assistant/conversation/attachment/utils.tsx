@@ -13,6 +13,9 @@ import React from "react";
 import type {
   Attachment,
   AttachmentCitation,
+  FileAttachmentCitation,
+  MCPAttachmentCitation,
+  NodeAttachmentCitation,
 } from "@app/components/assistant/conversation/attachment/types";
 import {
   getDisplayDateFromPastedFileId,
@@ -72,7 +75,7 @@ function getContentTypeIcon(
 
 export function contentFragmentToAttachmentCitation(
   contentFragment: ContentFragmentType
-): AttachmentCitation {
+): FileAttachmentCitation | NodeAttachmentCitation {
   // Handle expired content fragments
   if (contentFragment.expiredReason) {
     return {
@@ -150,7 +153,7 @@ export function contentFragmentToAttachmentCitation(
 
 export function attachmentToAttachmentCitation(
   attachment: Attachment
-): AttachmentCitation {
+): FileAttachmentCitation | NodeAttachmentCitation {
   if (attachment.type === "file") {
     return {
       type: "file",
@@ -183,15 +186,16 @@ export function attachmentToAttachmentCitation(
 
 export function markdownCitationToAttachmentCitation(
   citation: MCPReferenceCitation
-): AttachmentCitation {
+): MCPAttachmentCitation {
   return {
     id: citation.fileId,
     fileId: citation.fileId,
     attachmentCitationType: "mcp",
     contentType: citation.contentType,
     sourceUrl: citation.href ?? null,
+    description: citation.description,
     title: citation.title,
-    type: "markdown",
+    type: "file",
     visual: <IconFromContentType contentType={citation.contentType} />,
     isUploading: false,
   };

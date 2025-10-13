@@ -57,11 +57,12 @@ export interface NodeAttachmentCitation extends BaseAttachmentCitation {
   spaceName: string;
 }
 
-export interface MarkdownAttachmentCitation extends BaseAttachmentCitation {
-  type: "markdown";
+export interface MCPAttachmentCitation extends BaseAttachmentCitation {
+  type: "file";
   attachmentCitationType: "mcp";
   fileId: string;
   isUploading: false;
+  description?: string;
 
   contentType:
     | AllSupportedFileContentType
@@ -72,4 +73,4 @@ export interface MarkdownAttachmentCitation extends BaseAttachmentCitation {
 export type AttachmentCitation =
   | FileAttachmentCitation
   | NodeAttachmentCitation
-  | MarkdownAttachmentCitation;
+  | MCPAttachmentCitation;
