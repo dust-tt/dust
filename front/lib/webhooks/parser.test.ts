@@ -239,7 +239,7 @@ describe("parseMatcherExpression", () => {
 
     it("should throw on exists with wrong arity", () => {
       expect(() => parseMatcherExpression('(exists "field" "extra")')).toThrow(
-        "exists requires exactly one field"
+        "exists requires exactly one expression"
       );
     });
   });

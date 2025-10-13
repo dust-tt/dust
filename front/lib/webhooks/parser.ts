@@ -1,14 +1,11 @@
 import { assertNever } from "@app/types";
+
+import type { LogicalOp, MatcherExpression, Operation } from "./types";
 import {
   isDyadicOperation,
-  isLogicalExpression,
-  isOperationExpression,
-  isOperator,
   isMonadicOperation,
+  isOperator,
   isVariadicOperation,
-  type LogicalOp,
-  type MatcherExpression,
-  type Operation,
 } from "./types";
 
 /**
