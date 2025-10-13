@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { computeTextByteSize } from "@app/lib/actions/action_output_limits";
 import {
-  DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+  DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -37,7 +37,6 @@ import {
 } from "@app/types";
 
 const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.
-const MAX_FILE_SIZE_FOR_INCLUDE = 1024 * 1024; // 1MB.
 
 /**
  * MCP server for handling conversation file operations.
@@ -53,95 +52,6 @@ function createServer(
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
   const server = makeInternalMCPServer("conversation_files");
-
-  server.tool(
-    DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
-    "Include the content of a file from the conversation attachments. Use this to access the full content of files that have been attached to the conversation.",
-    {
-      fileId: z
-        .string()
-        .describe(
-          "The fileId of the attachment to include, as returned by the conversation_list_files action"
-        ),
-    },
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: "jit_include_file",
-        agentLoopContext,
-      },
-      async ({ fileId }) => {
-        if (!agentLoopContext?.runContext) {
-          return new Err(new MCPError("No conversation context available"));
-        }
-
-        const conversation = agentLoopContext.runContext.conversation;
-
-        const model = getSupportedModelConfig(
-          agentLoopContext.runContext.agentConfiguration.model
-        );
-
-        const fileRes = await getFileFromConversation(
-          auth,
-          fileId,
-          conversation,
-          model
-        );
-
-        if (fileRes.isErr()) {
-          return new Err(new MCPError(fileRes.error));
-        }
-
-        const { content, title } = fileRes.value;
-
-        // Get the file metadata to extract the actual content type
-        const attachments = listAttachments(conversation);
-        const attachment = attachments.find(
-          (a) => conversationAttachmentId(a) === fileId
-        );
-
-        if (isTextContent(content)) {
-          const textByteSize = computeTextByteSize(content.text);
-          if (textByteSize > MAX_FILE_SIZE_FOR_INCLUDE) {
-            return new Err(
-              new MCPError(
-                `File ${title} is too large (${(textByteSize / 1024 / 1024).toFixed(2)}MB) to include in the conversation. ` +
-                  `Maximum supported size is ${MAX_FILE_SIZE_FOR_INCLUDE / 1024 / 1024}MB. ` +
-                  `Consider using cat to read smaller portions of the file.`,
-                { tracked: false }
-              )
-            );
-          }
-
-          return new Ok([
-            {
-              type: "text",
-              text: content.text,
-            },
-          ]);
-        } else if (isImageContent(content)) {
-          // For images, we return the URL as a resource with the correct MIME type
-          return new Ok([
-            {
-              type: "resource",
-              resource: {
-                uri: content.image_url.url,
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                mimeType: attachment?.contentType || "application/octet-stream",
-                text: `Image: ${title}`,
-              },
-            },
-          ]);
-        }
-
-        return new Err(
-          new MCPError(
-            `File ${attachment?.title ?? fileId} of type ${attachment?.contentType ?? "unknown"} has no text or image content`
-          )
-        );
-      }
-    )
-  );
 
   server.tool(
     DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
@@ -189,7 +99,7 @@ function createServer(
   );
 
   server.tool(
-    "cat",
+    DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
     "Read the contents of a large file from conversation attachments with offset/limit and optional grep filtering (named after the 'cat' unix tool). " +
       "Use this when files are too large to read in full, or when you need to search for specific patterns within a file.",
     {
