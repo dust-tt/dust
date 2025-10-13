@@ -42,7 +42,7 @@ export function getCitationIcon(
 }
 
 // TODO(interactive_content 2025-08-27): Use proper and distinct types for Interactive Content.
-export interface MarkdownCitation {
+export interface MCPReferenceCitation {
   description?: string;
   href?: string;
   icon: React.JSX.Element;
