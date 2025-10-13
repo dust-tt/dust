@@ -10,6 +10,7 @@ import type {
   QueryDatabaseParameters,
   RichTextItemResponse,
 } from "@notionhq/client/build/src/api-endpoints";
+import { APIResponseError } from "@notionhq/client/build/src/errors";
 import { parseISO } from "date-fns";
 import { z } from "zod";
 
@@ -286,7 +287,20 @@ async function withNotionClient<T>(
       }).content
     );
   } catch (e) {
-    return new Err(new MCPError(normalizeError(e).message));
+    const tracked =
+      APIResponseError.isAPIResponseError(e) &&
+      [
+        "service_unavailable",
+        "restricted_resource",
+        "object_not_found",
+        "internal_server_error",
+      ].includes(e.code);
+    return new Err(
+      new MCPError(normalizeError(e).message, {
+        tracked,
+        cause: normalizeError(e),
+      })
+    );
   }
 }
 
