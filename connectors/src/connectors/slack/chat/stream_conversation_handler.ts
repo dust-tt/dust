@@ -299,7 +299,7 @@ async function streamAgentAnswerToSlack(
         );
         const files = actions.flatMap((action) => action.generatedFiles);
         const filesUploaded = await getFilesFromDust(files, dustAPI);
-        
+
         const slackContent = slackifyMarkdown(
           normalizeContentForSlack(formattedContent)
         );
@@ -315,7 +315,7 @@ async function streamAgentAnswerToSlack(
           const splitMessages = splitContentForSlack(slackContent);
 
           debouncedPostSlackMessageUpdate.cancel();
-          
+
           // If we have files, we need to delete and repost the message
           if (filesUploaded.length > 0) {
             await deleteAndRepostMessageWithFiles({
@@ -495,7 +495,7 @@ async function deleteAndRepostMessageWithFiles({
   connector: ConnectorResource;
   conversation: ConversationPublicType;
   mainMessage: ChatPostMessageResponse;
-  uploadedFiles: {file: Buffer, filename: string}[];
+  uploadedFiles: { file: Buffer; filename: string }[];
 }): Promise<void> {
   const { slackChannelId, slackClient } = slack;
   const conversationUrl = makeConversationUrl(
@@ -752,7 +752,6 @@ async function getMessageSplittingFromFeatureFlag(
   }
 }
 
-
 async function getFilesFromDust(
   files: Array<{
     fileId: string;
@@ -761,8 +760,8 @@ async function getFilesFromDust(
     snippet: string | null;
     hidden?: boolean;
   }>,
-  dustAPI: DustAPI,
-): Promise<{file: Buffer, filename: string}[]> {
+  dustAPI: DustAPI
+): Promise<{ file: Buffer; filename: string }[]> {
   const uploadPromises = files
     .filter((file) => !file.hidden) // Skip hidden files
     .map(async (file) => {
@@ -777,10 +776,10 @@ async function getFilesFromDust(
         };
       } catch (error) {
         logger.error(
-          { 
-            fileId: file.fileId, 
+          {
+            fileId: file.fileId,
             title: file.title,
-            error: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? error.message : String(error),
           },
           "Error downloading file from Dust"
         );
@@ -789,5 +788,8 @@ async function getFilesFromDust(
     });
 
   const uploadResults = await Promise.all(uploadPromises);
-  return uploadResults.filter(result => result !== null) as {file: Buffer, filename: string}[];
+  return uploadResults.filter((result) => result !== null) as {
+    file: Buffer;
+    filename: string;
+  }[];
 }
