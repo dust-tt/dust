@@ -5,7 +5,7 @@ import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -66,8 +66,7 @@ const createServer = (
           )
           .filter(
             (mcpServerView) =>
-              getMCPServerToolsConfigurations(mcpServerView).configurable !==
-              "required"
+              getMCPServerRequirements(mcpServerView).noRequirement
           )
           .filter(
             (mcpServerView) =>

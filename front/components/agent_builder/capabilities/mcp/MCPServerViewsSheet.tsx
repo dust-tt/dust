@@ -76,7 +76,7 @@ import {
 } from "@app/lib/actions/constants";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -229,8 +229,9 @@ export function MCPServerViewsSheet({
       return filteredList;
     }
 
+    // You should not be able to select Reasoning if there is no reasoning model available.
     return filteredList.filter(
-      (view) => !getMCPServerToolsConfigurations(view).reasoningConfiguration
+      (view) => !getMCPServerRequirements(view).requiresReasoningConfiguration
     );
   }, [
     topMCPServerViews,
@@ -391,19 +392,16 @@ export function MCPServerViewsSheet({
 
   function onClickMCPServer(mcpServerView: MCPServerViewTypeWithLabel) {
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
-    const toolsConfigurations = getMCPServerToolsConfigurations(
-      mcpServerView,
-      featureFlags
-    );
+    const requirements = getMCPServerRequirements(mcpServerView, featureFlags);
 
-    if (toolsConfigurations.configurable !== "no") {
+    if (!requirements.noRequirement) {
       const action = getDefaultMCPAction(mcpServerView);
-      const isReasoning = toolsConfigurations.reasoningConfiguration
-        ? true
-        : false;
 
       let configuredAction = action;
-      if (action.type === "MCP" && isReasoning) {
+      if (
+        action.type === "MCP" &&
+        requirements.requiresReasoningConfiguration
+      ) {
         if (reasoningModels.length === 0) {
           sendNotification({
             title: "No reasoning model available",
@@ -539,7 +537,7 @@ export function MCPServerViewsSheet({
   const toolsConfigurations = useMemo(
     () =>
       mcpServerView
-        ? getMCPServerToolsConfigurations(mcpServerView, featureFlags)
+        ? getMCPServerRequirements(mcpServerView, featureFlags)
         : null,
     [mcpServerView, featureFlags]
   );
@@ -636,11 +634,11 @@ export function MCPServerViewsSheet({
                   />
                 )}
 
-                {toolsConfigurations.reasoningConfiguration && (
+                {toolsConfigurations.requiresReasoningConfiguration && (
                   <ReasoningModelSection />
                 )}
 
-                {toolsConfigurations.childAgentConfiguration && (
+                {toolsConfigurations.requiresChildAgentConfiguration && (
                   <ChildAgentSection />
                 )}
 
@@ -648,11 +646,11 @@ export function MCPServerViewsSheet({
                   <TimeFrameSection actionType="search" />
                 )}
 
-                {toolsConfigurations.mayRequireDustAppConfiguration && (
+                {toolsConfigurations.requiresDustAppConfiguration && (
                   <DustAppSection />
                 )}
 
-                {toolsConfigurations.mayRequireSecretConfiguration && (
+                {toolsConfigurations.requiresSecretConfiguration && (
                   <SecretSection />
                 )}
 
@@ -663,17 +661,11 @@ export function MCPServerViewsSheet({
                 )}
 
                 <AdditionalConfigurationSection
-                  stringConfigurations={
-                    toolsConfigurations.stringConfigurations
-                  }
-                  numberConfigurations={
-                    toolsConfigurations.numberConfigurations
-                  }
-                  booleanConfigurations={
-                    toolsConfigurations.booleanConfigurations
-                  }
-                  enumConfigurations={toolsConfigurations.enumConfigurations}
-                  listConfigurations={toolsConfigurations.listConfigurations}
+                  stringConfigurations={toolsConfigurations.requiredStrings}
+                  numberConfigurations={toolsConfigurations.requiredNumbers}
+                  booleanConfigurations={toolsConfigurations.requiredBooleans}
+                  enumConfigurations={toolsConfigurations.requiredEnums}
+                  listConfigurations={toolsConfigurations.requiredLists}
                 />
               </div>
             </div>

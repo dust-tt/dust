@@ -9,7 +9,7 @@ import {
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import type {
@@ -112,7 +112,7 @@ export function getDataVisualizationConfiguration(): AssistantBuilderDataVisuali
 export function getDefaultMCPServerActionConfiguration(
   mcpServerView?: MCPServerViewType
 ): AssistantBuilderMCPConfiguration {
-  const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
+  const requirements = getMCPServerRequirements(mcpServerView);
 
   return {
     type: "MCP",
@@ -131,15 +131,15 @@ export function getDefaultMCPServerActionConfiguration(
     },
     name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:
-      toolsConfigurations.dataSourceConfiguration ??
-      toolsConfigurations.dataWarehouseConfiguration ??
-      toolsConfigurations.tableConfiguration ??
-      false
+      requirements.requiresDataSourceConfiguration ||
+      requirements.requiresDataWarehouseConfiguration ||
+      requirements.requiresTableConfiguration
         ? ""
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    configurable: toolsConfigurations.configurable !== "no",
+    // TODO(2025-10-10 aubin): rename back to noConfigurationRequired.
+    configurable: !requirements.noRequirement,
   };
 }
 
