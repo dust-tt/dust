@@ -97,7 +97,7 @@ export function withToolLogging<T>(
 
         logger.error(
           {
-            error: result.error.message,
+            error: result.error,
             ...loggerArgs,
           },
           "Tool execution error"
