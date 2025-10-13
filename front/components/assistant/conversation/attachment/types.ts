@@ -35,7 +35,7 @@ interface BaseAttachmentCitation {
   id: string;
   attachmentCitationType: "fragment" | "inputBar" | "mcp";
   title: string;
-  sourceUrl?: string | null;
+  sourceUrl: string | null;
   visual: React.ReactNode;
   onRemove?: () => void;
 }
@@ -44,7 +44,7 @@ export interface FileAttachmentCitation extends BaseAttachmentCitation {
   type: "file";
 
   contentType: SupportedContentFragmentType;
-  description?: string;
+  description: string | null;
   fileId: string | null;
   isUploading?: boolean;
 }
