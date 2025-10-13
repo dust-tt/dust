@@ -35,6 +35,7 @@ export type SpaceCategoryInfo = {
 export type GetSpaceResponseBody = {
   space: SpaceType & {
     categories: { [key: string]: SpaceCategoryInfo };
+    isMember: boolean;
     members: UserType[];
   };
 };
@@ -110,10 +111,7 @@ async function handler(
       const currentMembers = uniqBy(
         (
           await concurrentExecutor(
-            // Filter the correct group, if we switch back and forth, the space will have 2 group
-            // one provisioned and one regular.
-            // If a user manully remove users from the regular group, they might still appear as they
-            // would still be in the provisioned group
+            // Get members from the regular group only.
             space.groups.filter((g) => {
               return g.kind === "regular";
             }),
@@ -131,6 +129,7 @@ async function handler(
         space: {
           ...space.toJSON(),
           categories,
+          isMember: space.canRead(auth),
           members: currentMembers.map((member) => member.toJSON()),
         },
       });

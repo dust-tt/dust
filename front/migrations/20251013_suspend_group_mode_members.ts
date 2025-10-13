@@ -41,8 +41,8 @@ async function suspendGroupModeMembers(
     });
 
     // Get the group IDs from the junction table
-    const groupIds = groupSpaceJunctions.map(gs => gs.groupId);
-    
+    const groupIds = groupSpaceJunctions.map((gs) => gs.groupId);
+
     // Find regular groups among those associated with the space
     const regularGroups = await GroupModel.findAll({
       where: {
