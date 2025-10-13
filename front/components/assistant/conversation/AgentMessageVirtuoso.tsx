@@ -342,8 +342,13 @@ export function AgentMessageVirtuoso({
     );
   }
 
-  // Show retry button as long as it's not streaming
-  if (agentMessageToRender.status !== "created" && !shouldStream) {
+  // Show the retry button as long as it's not streaming nor failed,
+  // since failed messages have their own retry button in ErrorMessage.
+  if (
+    agentMessageToRender.status !== "created" &&
+    agentMessageToRender.status !== "failed" &&
+    !shouldStream
+  ) {
     buttons.push(
       <Button
         key="retry-msg-button"
