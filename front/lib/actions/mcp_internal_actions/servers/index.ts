@@ -92,7 +92,7 @@ export async function getInternalMCPServer(
     case "github":
       return githubServer(auth);
     case "hubspot":
-      return hubspotServer(auth, agentLoopContext);
+      return hubspotServer();
     case "image_generation":
       return imageGenerationDallEServer(auth);
     case "elevenlabs":
