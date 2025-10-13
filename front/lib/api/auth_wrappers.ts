@@ -643,7 +643,7 @@ async function handleWorkOSAuth<T>(
  *
  * @returns Authenticated workspace-scoped authenticator for shared content, or null if not authenticated
  */
-export async function getAuthForSharedEndpointMembersOnly(
+export async function getAuthForSharedEndpointWorkspaceMembersOnly(
   req: NextApiRequest,
   res: NextApiResponse,
   workspaceId: string

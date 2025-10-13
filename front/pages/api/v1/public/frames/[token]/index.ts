@@ -1,7 +1,7 @@
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getAuthForSharedEndpointMembersOnly } from "@app/lib/api/auth_wrappers";
+import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -89,7 +89,7 @@ async function handler(
     });
   }
 
-  const auth = await getAuthForSharedEndpointMembersOnly(
+  const auth = await getAuthForSharedEndpointWorkspaceMembersOnly(
     req,
     res,
     workspace.sId
