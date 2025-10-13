@@ -795,7 +795,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const groupFilter =
       this.managementMode === "manual"
         ? (group: GroupResource) => !group.isProvisioned()
-        : (group: GroupResource) => group.isProvisioned();
+        : () => true;
 
     // Open space.
     // Currently only using global group for simplicity.

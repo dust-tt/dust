@@ -79,7 +79,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: CREATE_SLIDESHOW_FILE_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: CREATE_SLIDESHOW_FILE_TOOL_NAME,
+        agentLoopContext,
+      },
       async (
         { file_name, mime_type, content, description },
         { sendNotification, _meta }
@@ -204,7 +207,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: EDIT_SLIDESHOW_FILE_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: EDIT_SLIDESHOW_FILE_TOOL_NAME,
+        agentLoopContext,
+      },
       async (
         { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
@@ -281,7 +287,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: RETRIEVE_SLIDESHOW_FILE_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: RETRIEVE_SLIDESHOW_FILE_TOOL_NAME,
+        agentLoopContext,
+      },
       async ({ file_id }) => {
         const result = await getClientExecutableFileContent(auth, file_id);
 

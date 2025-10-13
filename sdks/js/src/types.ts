@@ -91,6 +91,8 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "grok-3-fast-latest" // xAI
   | "grok-3-mini-fast-latest" // xAI
   | "grok-4-latest" // xAI
+  | "grok-4-fast-non-reasoning-latest"
+  | "grok-4-fast-reasoning-latest"
   | "noop" // Noop
 >();
 
@@ -660,7 +662,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "hootl_webhooks"
   | "hootl_dev_webhooks"
   | "index_private_slack_channel"
-  | "interactive_content_server"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
@@ -681,11 +682,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_message_splitting"
   | "slideshow"
   | "usage_data_api"
-  | "use_openai_eu_key"
   | "web_summarization"
   | "xai_feature"
-  | "virtualized_conversations"
   | "noop_model_feature"
+  | "elevenlabs_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2773,6 +2773,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionCloudArrowLeftRightIcon"
   | "ActionDocumentTextIcon"
   | "ActionEmotionLaughIcon"
+  | "ActionFrameIcon"
   | "ActionGitBranchIcon"
   | "ActionGlobeAltIcon"
   | "ActionImageIcon"
@@ -2849,6 +2850,7 @@ const CustomServerIconSchema = FlexibleEnumSchema<
   | "ActionExternalLinkIcon"
   | "ActionEyeIcon"
   | "ActionEyeSlashIcon"
+  | "ActionFrameIcon"
   | "ActionFilmIcon"
   | "ActionFilterIcon"
   | "ActionFingerprintIcon"

@@ -59,11 +59,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Prevent users from creating agents, allowing only admins and builders",
     stage: "on_demand",
   },
-  interactive_content_server: {
-    description:
-      "Interactive Content MCP server - gives access to the new visualization layout",
-    stage: "on_demand",
-  },
   google_ai_studio_experimental_models_feature: {
     description: "Access to experimental Google AI Studio models",
     stage: "on_demand",
@@ -148,11 +143,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   research_agent: {
-    description: "Activate @research agent.",
-    stage: "dust_only",
+    description: "Activate @deepDive agent.",
+    stage: "rolling_out",
   },
   deep_research_as_a_tool: {
-    description: "Activate deep research as a tool",
+    description: "Activate Deep Dive tool",
     stage: "dust_only",
   },
   hootl_subscriptions: {
@@ -181,10 +176,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Webhooks for Human Out Of The Loop (aka Triggers) / webhooks",
     stage: "dust_only",
   },
-  use_openai_eu_key: {
-    description: "Use OpenAI EU API key instead of the default OpenAI API key",
-    stage: "on_demand",
-  },
   slack_bot_mcp: {
     description: "Slack bot MCP server for workspace-level Slack integration",
     stage: "on_demand",
@@ -193,12 +184,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slack semantic search feature",
     stage: "on_demand",
   },
-  virtualized_conversations: {
-    description: "Use virtualized conversations display",
-    stage: "dust_only",
-  },
   web_summarization: {
     description: "AI-powered web page summarization in the web browser tool",
+    stage: "on_demand",
+  },
+  elevenlabs_tool: {
+    description: "Elevenlabs MCP tool for voice synthesis",
     stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;

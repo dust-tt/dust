@@ -514,6 +514,23 @@ async function handleUserRemovedFromGroup(
     );
   }
 
+  // Check if user is still a member of the workspace before removing from group
+  const { total } = await MembershipResource.getActiveMemberships({
+    users: [user],
+    workspace,
+  });
+
+  if (total === 0) {
+    logger.info(
+      {
+        userId: user.sId,
+        groupName: group.name,
+      },
+      "Skipping group removal - user is no longer a member of workspace"
+    );
+    return;
+  }
+
   const res = await group.removeMember(auth, user.toJSON());
   if (res.isErr()) {
     throw new Error(res.error.message);
@@ -603,6 +620,26 @@ async function handleDeleteWorkOSUser(
     throw new Error(
       `Did not find user to delete for workOSUserId "${workOSUser.id}" in workspace "${workspace.sId}"`
     );
+  }
+
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const groups = await GroupResource.listUserGroupsInWorkspace({
+    user,
+    workspace,
+  });
+
+  for (const group of groups) {
+    const removeResult = await group.removeMember(auth, user.toJSON());
+    if (removeResult.isErr()) {
+      logger.warn(
+        {
+          userId: user.sId,
+          groupId: group.sId,
+          error: removeResult.error,
+        },
+        "Failed to remove user from group"
+      );
+    }
   }
 
   const membershipRevokeResult = await MembershipResource.revokeMembership({

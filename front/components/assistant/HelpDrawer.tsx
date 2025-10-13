@@ -14,7 +14,7 @@ import type { ComponentType } from "react";
 import { useCallback, useState } from "react";
 
 import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
-import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
@@ -220,7 +220,7 @@ export function HelpDrawer({
                   </div>
                 </div>
               </div>
-              <AssistantInputBar
+              <InputBar
                 owner={owner}
                 onSubmit={handleHelpSubmit}
                 conversationId={null}

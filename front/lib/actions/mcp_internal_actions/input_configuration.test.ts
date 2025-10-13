@@ -159,8 +159,8 @@ describe("augmentInputsWithConfiguration", () => {
         dataSources: [
           {
             workspaceId: mockWorkspace.sId,
-            sId: "ds-123",
-            dataSourceViewId: "view-123",
+            sId: "dsc_123",
+            dataSourceViewId: "view_123",
             filter: {
               tags: { in: ["test"], not: [], mode: "auto" },
               parents: { in: [], not: [] },
@@ -188,7 +188,7 @@ describe("augmentInputsWithConfiguration", () => {
       expect(result).toEqual({
         dataSource: [
           {
-            uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_configurations/ds-123`,
+            uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_configurations/dsc_123`,
             mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
           },
         ],
@@ -202,7 +202,7 @@ describe("augmentInputsWithConfiguration", () => {
           {
             workspaceId: mockWorkspace.sId,
             sId: undefined,
-            dataSourceViewId: "view-123",
+            dataSourceViewId: "view_123",
             filter: {
               tags: { in: ["test"], not: [], mode: "auto" },
               parents: { in: [], not: [] },
@@ -236,7 +236,7 @@ describe("augmentInputsWithConfiguration", () => {
       expect(result).toEqual({
         dataSource: [
           {
-            uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_views/view-123/filter/${expectedFilter}`,
+            uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_views/view_123/filter/${expectedFilter}`,
             mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
           },
         ],
@@ -252,7 +252,7 @@ describe("augmentInputsWithConfiguration", () => {
           {
             workspaceId: mockWorkspace.sId,
             sId: "table-123",
-            dataSourceViewId: "view-123",
+            dataSourceViewId: "view_123",
             tableId: "table-id-123",
           },
         ],
@@ -1370,8 +1370,8 @@ describe("nested objects and complex schemas", () => {
       dataSources: [
         {
           workspaceId: mockWorkspace.sId,
-          sId: "ds-123",
-          dataSourceViewId: "view-123",
+          sId: "dsc_123",
+          dataSourceViewId: "view_123",
           filter: {
             tags: { in: ["test"], not: [], mode: "auto" },
             parents: { in: [], not: [] },
@@ -1415,7 +1415,7 @@ describe("nested objects and complex schemas", () => {
       },
       dataSource: [
         {
-          uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_configurations/ds-123`,
+          uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_configurations/dsc_123`,
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
         },
       ],

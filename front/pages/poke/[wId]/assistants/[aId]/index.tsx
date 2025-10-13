@@ -13,6 +13,7 @@ import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
+import { AgentOverviewTable } from "@app/components/poke/assistants/AgentOverviewTable";
 import { ConversationAgentDataTable } from "@app/components/poke/conversations/agent_table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
@@ -24,7 +25,6 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { decodeSqids } from "@app/lib/utils";
-import { AgentOverviewTable } from "@app/pages/poke/[wId]/assistants/[aId]/AgentOverviewTable";
 import type {
   AgentConfigurationType,
   SpaceType,

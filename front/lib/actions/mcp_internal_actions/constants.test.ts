@@ -47,7 +47,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "agent_memory", id: 21 },
       { name: "interactive_content", id: 23 },
       { name: "slideshow", id: 28 },
-      { name: "deep_research", id: 29 },
+      { name: "deep_dive", id: 29 },
       { name: "search", id: 1006 },
       { name: "run_agent", id: 1008 },
       { name: "reasoning", id: 1007 },

@@ -9,13 +9,13 @@ import {
   _getClaudeInstantGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
-import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
   _getBrowserSummaryAgent,
-  _getDustDeepGlobalAgent,
+  _getDeepDiveGlobalAgent,
   _getDustTaskGlobalAgent,
   _getPlanningAgent,
-} from "@app/lib/api/assistant/global_agents/configurations/dust/dust-deep";
+} from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
+import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import {
@@ -80,7 +80,7 @@ function getGlobalAgent({
   toolsetsMCPServerView,
   dataWarehousesMCPServerView,
   slideshowMCPServerView,
-  deepResearchMCPServerView,
+  deepDiveMCPServerView,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -96,16 +96,16 @@ function getGlobalAgent({
   toolsetsMCPServerView: MCPServerViewResource | null;
   dataWarehousesMCPServerView: MCPServerViewResource | null;
   slideshowMCPServerView: MCPServerViewResource | null;
-  deepResearchMCPServerView: MCPServerViewResource | null;
+  deepDiveMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
 
   let agentConfiguration: AgentConfigurationType | null = null;
 
-  // We use only default selected global datasources for all global agents except `@dust-deep` and
+  // We use only default selected global datasources for all global agents except `@deepDive` and
   // `@dust-task`
-  // We use all global datasources for `@dust-deep` and `@dust-task`
+  // We use all global datasources for `@deepDive` and `@dust-task`
   const defaultSelectedPrefetchedDataSources: PrefetchedDataSourcesType | null =
     !preFetchedDataSources
       ? null
@@ -335,12 +335,12 @@ function getGlobalAgent({
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
         searchMCPServerView,
-        deepResearchMCPServerView,
+        deepDiveMCPServerView,
         interactiveContentMCPServerView,
       });
       break;
-    case GLOBAL_AGENTS_SID.DUST_DEEP:
-      agentConfiguration = _getDustDeepGlobalAgent(auth, {
+    case GLOBAL_AGENTS_SID.DEEP_DIVE:
+      agentConfiguration = _getDeepDiveGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
         webSearchBrowseMCPServerView,
@@ -403,7 +403,7 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.NOTION,
   GLOBAL_AGENTS_SID.O1_MINI,
   GLOBAL_AGENTS_SID.SLACK,
-  // Hidden helper sub-agent, only invoked via run_agent by dust-deep
+  // Hidden helper sub-agent, only invoked via run_agent by deep-dive
   GLOBAL_AGENTS_SID.DUST_TASK,
   GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
   GLOBAL_AGENTS_SID.DUST_PLANNING,
@@ -442,7 +442,7 @@ export async function getGlobalAgents(
     toolsetsMCPServerView,
     dataWarehousesMCPServerView,
     slideshowMCPServerView,
-    deepResearchMCPServerView,
+    deepDiveMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -508,7 +508,7 @@ export async function getGlobalAgents(
     variant === "full"
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
-          "deep_research"
+          "deep_dive"
         )
       : null,
   ]);
@@ -545,7 +545,7 @@ export async function getGlobalAgents(
 
   if (!flags.includes("research_agent")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_DEEP
+      (sId) => sId !== GLOBAL_AGENTS_SID.DEEP_DIVE
     );
   }
 
@@ -567,7 +567,7 @@ export async function getGlobalAgents(
       toolsetsMCPServerView,
       dataWarehousesMCPServerView,
       slideshowMCPServerView,
-      deepResearchMCPServerView,
+      deepDiveMCPServerView,
     })
   );
 

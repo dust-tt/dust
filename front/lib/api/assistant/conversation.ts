@@ -631,6 +631,11 @@ export async function postUserMessage(
                 }
               );
 
+              const parentAgentMessageId =
+                userMessage.context.origin === "agent_handover"
+                  ? userMessage.context.originMessageId ?? null
+                  : null;
+
               return {
                 row: agentMessageRow,
                 m: {
@@ -643,6 +648,7 @@ export async function postUserMessage(
                   visibility: "visible",
                   version: 0,
                   parentMessageId: userMessage.sId,
+                  parentAgentMessageId,
                   status: "created",
                   actions: [],
                   content: null,
@@ -1084,6 +1090,11 @@ export async function editUserMessage(
               }
             );
 
+            const parentAgentMessageId =
+              userMessage.context.origin === "agent_handover"
+                ? userMessage.context.originMessageId ?? null
+                : null;
+
             return {
               row: agentMessageRow,
               m: {
@@ -1096,6 +1107,7 @@ export async function editUserMessage(
                 visibility: "visible",
                 version: 0,
                 parentMessageId: userMessage.sId,
+                parentAgentMessageId,
                 status: "created",
                 actions: [],
                 content: null,
@@ -1329,6 +1341,7 @@ export async function retryAgentMessage(
         visibility: m.visibility,
         version: m.version,
         parentMessageId: message.parentMessageId,
+        parentAgentMessageId: message.parentAgentMessageId,
         status: "created",
         actions: [],
         content: null,

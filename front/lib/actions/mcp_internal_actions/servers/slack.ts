@@ -11,15 +11,6 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
-  SLACK_GET_USER,
-  SLACK_LIST_PUBLIC_CHANNELS,
-  SLACK_LIST_THREADS,
-  SLACK_LIST_USERS,
-  SLACK_POST_MESSAGE,
-  SLACK_SEARCH_MESSAGES,
-  SLACK_SEMANTIC_SEARCH_MESSAGES,
-} from "@app/lib/actions/mcp_internal_actions/servers/slack/constants";
-import {
   executeGetUser,
   executeListPublicChannels,
   executeListUsers,
@@ -54,6 +45,9 @@ export type SlackSearchMatch = {
   content?: string;
   permalink?: string;
 };
+
+// We use a single tool name for monitoring given the high granularity (can be revisited).
+const SLACK_TOOL_LOG_NAME = "slack";
 
 export const slackSearch = async (
   query: string,
@@ -323,7 +317,7 @@ const createServer = async (
       },
       withToolLogging(
         auth,
-        { toolName: SLACK_SEARCH_MESSAGES, agentLoopContext },
+        { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
         async (
           {
             keywords,
@@ -477,7 +471,10 @@ const createServer = async (
       },
       withToolLogging(
         auth,
-        { toolName: SLACK_SEMANTIC_SEARCH_MESSAGES, agentLoopContext },
+        {
+          toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+          agentLoopContext,
+        },
         async (
           {
             query,
@@ -621,7 +618,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolName: SLACK_LIST_THREADS, agentLoopContext },
+      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
       async ({ channel, relativeTimeFrame }, { authInfo }) => {
         if (!agentLoopContext?.runContext) {
           return new Err(
@@ -762,7 +759,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolName: SLACK_POST_MESSAGE, agentLoopContext },
+      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
       async ({ to, message, threadTs, fileId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -806,7 +803,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolName: SLACK_LIST_USERS, agentLoopContext },
+      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -835,7 +832,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolName: SLACK_GET_USER, agentLoopContext },
+      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
       async ({ userId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -865,7 +862,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolName: SLACK_LIST_PUBLIC_CHANNELS, agentLoopContext },
+      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {

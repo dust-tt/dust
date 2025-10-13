@@ -9,7 +9,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { DUST_DEEP_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import { DEEP_DIVE_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -20,17 +20,17 @@ const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
-  const server = makeInternalMCPServer("deep_research");
+  const server = makeInternalMCPServer("deep_dive");
 
   const owner = auth.getNonNullableWorkspace();
 
   server.tool(
-    "run_dust_deep",
-    "Handoff the query to the generic deep research agent",
+    "handoff",
+    `Launch a handoff to the :mention[${DEEP_DIVE_NAME}]{sId=${GLOBAL_AGENTS_SID.DEEP_DIVE}} agent`,
     {},
     withToolLogging(
       auth,
-      { toolName: "run_dust_deep", agentLoopContext },
+      { toolNameForMonitoring: "handoff", agentLoopContext },
       async () => {
         if (!agentLoopContext?.runContext) {
           return new Err(new MCPError("No conversation context available"));
@@ -54,18 +54,18 @@ const createServer = (
         );
 
         const runContext = agentLoopContext.runContext;
-        const { agentConfiguration, conversation } = runContext;
+        const { agentConfiguration, conversation, agentMessage } = runContext;
         const instructions = agentConfiguration.instructions;
-        const query = `You have been summoned by @${agentConfiguration.name}. Its instructions are: <main_agent_instructions>${instructions ?? ""}</main_agent_instructions>`;
+        const query = `The user's query is being handed off to you from @${agentConfiguration.name} within the same conversation. The calling agent's instructions are: <caller_agent_instructions>${instructions ?? ""}</caller_agent_instructions>`;
 
         const convRes = await getOrCreateConversation(api, runContext, {
           childAgentBlob: {
-            name: DUST_DEEP_NAME,
-            description: "Deep research agent",
+            name: DEEP_DIVE_NAME,
+            description: "Deep dive agent",
           },
-          childAgentId: GLOBAL_AGENTS_SID.DUST_DEEP,
+          childAgentId: GLOBAL_AGENTS_SID.DEEP_DIVE,
           mainAgent: agentConfiguration,
-          originMessage: agentLoopContext.runContext.agentMessage,
+          originMessage: agentMessage,
           mainConversation: conversation,
           query,
           toolsetsToAdd: null,
@@ -78,7 +78,7 @@ const createServer = (
         }
 
         const response = makeMCPToolExit({
-          message: `Forwarding this request to @${DUST_DEEP_NAME} for Deep Research.`,
+          message: `Handoff from @${agentConfiguration.name} to @${DEEP_DIVE_NAME} successfully launched.`,
           isError: false,
         });
 

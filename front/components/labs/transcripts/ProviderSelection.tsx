@@ -7,6 +7,7 @@ import {
   useLabsTranscriptsDefaultConfiguration,
   useLabsTranscriptsIsConnectorConnected,
 } from "@app/lib/swr/labs";
+import datadogLogger from "@app/logger/datadogLogger";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type {
   LabsTranscriptsConfigurationType,
@@ -145,12 +146,65 @@ export function ProviderSelection({
     async (provider: string) => {
       const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ provider, useConnectorConnection: true }),
       });
       return response;
     },
     [owner.sId]
   );
+
+  const handleConnectGongTranscriptsSource = useCallback(async () => {
+    try {
+      const response = await saveConnectorConnection("gong");
+      if (!response.ok) {
+        const errorText = await response.text();
+        datadogLogger.error(
+          {
+            status: response.status,
+            error: errorText,
+            workspaceId: owner.sId,
+          },
+          "[Labs Transcripts] Failed to connect Gong"
+        );
+        sendNotification({
+          type: "error",
+          title: "Failed to connect Gong",
+          description: "Could not connect to Gong. Please try again.",
+        });
+        return;
+      }
+
+      sendNotification({
+        type: "success",
+        title: "Gong connected",
+        description:
+          "Your transcripts provider has been connected successfully.",
+      });
+
+      await mutateTranscriptsConfiguration();
+    } catch (error) {
+      datadogLogger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          workspaceId: owner.sId,
+        },
+        "[Labs Transcripts] Exception connecting Gong"
+      );
+      sendNotification({
+        type: "error",
+        title: "Failed to connect Gong",
+        description: "Could not connect to Gong. Please try again.",
+      });
+    }
+  }, [
+    saveConnectorConnection,
+    sendNotification,
+    mutateTranscriptsConfiguration,
+    owner.sId,
+  ]);
 
   const handleConnectModjoTranscriptsSource = useCallback(
     async ({
@@ -226,7 +280,7 @@ export function ProviderSelection({
             transcriptsConfiguration={transcriptsConfiguration}
             setIsDeleteProviderDialogOpened={setIsDeleteProviderDialogOpened}
             isGongConnectorConnected={isGongConnectorConnected}
-            onConnect={() => saveConnectorConnection("gong")}
+            onConnect={handleConnectGongTranscriptsSource}
           />
         );
       case "modjo":

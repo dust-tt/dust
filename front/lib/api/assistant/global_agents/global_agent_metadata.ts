@@ -1,4 +1,8 @@
 import {
+  DEEP_DIVE_DESC,
+  DEEP_DIVE_NAME,
+} from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import {
   assertNever,
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -259,14 +263,12 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "An agent with context on your company data.",
         pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
       };
-    case GLOBAL_AGENTS_SID.DUST_DEEP:
+    case GLOBAL_AGENTS_SID.DEEP_DIVE:
       return {
-        sId: GLOBAL_AGENTS_SID.DUST_DEEP,
-        name: "dust-deep",
-        description:
-          "Deep research agent with company data, web search, browsing, Interactive Content, and data warehouses.",
-        pictureUrl:
-          "https://dust.tt/static/systemavatar/dust-deep_avatar_full.png",
+        sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
+        name: DEEP_DIVE_NAME,
+        description: DEEP_DIVE_DESC,
+        pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.DUST_TASK:
       return {

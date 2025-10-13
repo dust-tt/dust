@@ -288,6 +288,10 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       {} as Record<string, AgentStepContentResource[]>
     );
 
+  // Create maps for efficient lookups
+  const messagesBySId = new Map(messages.map((m) => [m.sId, m]));
+  const messagesById = new Map(messages.map((m) => [m.id, m]));
+
   // The only async part here is the content parsing, but it's "fake async" as the content parsing is not doing
   // any IO or network. We need it to be async as we want to re-use the async generators for the content parsing.
   const renderedMessages = await Promise.all(
@@ -393,6 +397,23 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         }
       })();
 
+      const parentMessage = message.parentId
+        ? messagesById.get(message.parentId) ?? null
+        : null;
+
+      let parentAgentMessage: Message | null = null;
+      if (
+        parentMessage &&
+        parentMessage?.userMessage &&
+        parentMessage.userMessage.userContextOrigin === "agent_handover" &&
+        parentMessage.userMessage.userContextOriginMessageId
+      ) {
+        parentAgentMessage =
+          messagesBySId.get(
+            parentMessage.userMessage.userContextOriginMessageId
+          ) ?? null;
+      }
+
       const m = {
         id: message.id,
         agentMessageId: agentMessage.id,
@@ -403,8 +424,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         visibility: message.visibility,
         version: message.version,
         rank: message.rank,
-        parentMessageId:
-          messages.find((m) => m.id === message.parentId)?.sId ?? null,
+        parentMessageId: parentMessage?.sId ?? null,
+        parentAgentMessageId: parentAgentMessage?.sId ?? null,
         status: agentMessage.status,
         actions,
         content,

@@ -20,6 +20,11 @@ declare global {
         }) => void;
       };
     };
+    __default__?: {
+      form_id?: number;
+      team_id?: number;
+      listenToIds?: string[];
+    };
   }
 }
 
@@ -126,6 +131,31 @@ export default function HubSpotForm() {
     };
 
     document.body.appendChild(script);
+
+    // Load Default.com script
+    window.__default__ = window.__default__ ?? {};
+    window.__default__.form_id = 503792;
+    window.__default__.team_id = 579;
+
+    const loadDefaultScript = (attempt = 0) => {
+      const defaultScript = document.createElement("script");
+      defaultScript.async = true;
+      defaultScript.src = "https://import-cdn.default.com";
+      defaultScript.onload = () => {
+        console.info("[Default.com] Powered by Default.com");
+      };
+      defaultScript.onerror = () => {
+        if (attempt < 3) {
+          setTimeout(
+            () => loadDefaultScript(attempt + 1),
+            1000 * (attempt + 1)
+          );
+        }
+      };
+      document.head.appendChild(defaultScript);
+    };
+
+    loadDefaultScript();
   }, []);
 
   return (
@@ -135,6 +165,7 @@ export default function HubSpotForm() {
       data-region={region}
       data-form-id={formId}
       data-portal-id={portalId}
+      data-default-form-id="503792"
     />
   );
 }

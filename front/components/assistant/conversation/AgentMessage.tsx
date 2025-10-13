@@ -1,21 +1,20 @@
 import {
   ArrowPathIcon,
-  AtomIcon,
   Button,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
   ConversationMessage,
   DocumentIcon,
-  Icon,
   InteractiveImageGrid,
   Markdown,
   Separator,
   StopIcon,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -34,6 +33,16 @@ import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conver
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
+import type {
+  AgentMessageStateWithControlEvent,
+  MessageTemporaryState,
+  VirtuosoMessage,
+  VirtuosoMessageListContext,
+} from "@app/components/assistant/conversation/types";
+import {
+  getMessageSId,
+  isMessageTemporayState,
+} from "@app/components/assistant/conversation/types";
 import {
   CitationsContext,
   CiteBlock,
@@ -54,20 +63,21 @@ import {
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
-import { RETRY_BLOCKED_ACTIONS_STARTED_EVENT } from "@app/lib/assistant/state/messageReducer";
 import { useCancelMessage } from "@app/lib/swr/conversations";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
+  LightWorkspaceType,
+  PersonalAuthenticationRequiredErrorContent,
   UserType,
   WorkspaceType,
 } from "@app/types";
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
+  isAgentMessageType,
   isInteractiveContentFileContentType,
   isPersonalAuthenticationRequiredErrorContent,
   isSupportedImageContentType,
@@ -76,27 +86,20 @@ import {
 interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
-  isHandoverGroup: boolean;
-  message: LightAgentMessageType;
+  messageStreamState: MessageTemporaryState;
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
 }
 
-/**
- *
- * @param isInModal is the conversation happening in a side modal, i.e. when
- * testing an agent? see conversation/Conversation.tsx
- * @returns
- */
 export function AgentMessage({
   conversationId,
   isLastMessage,
-  isHandoverGroup,
-  message,
+  messageStreamState,
   messageFeedback,
   owner,
 }: AgentMessageProps) {
+  const sId = getMessageSId(messageStreamState);
   const { isDark } = useTheme();
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
@@ -108,7 +111,7 @@ export function AgentMessage({
   const [isCopied, copy] = useCopyToClipboard();
 
   const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
-    message.configuration.sId as GLOBAL_AGENTS_SID
+    messageStreamState.message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
   const { showBlockedActionsDialog, enqueueBlockedAction } =
@@ -117,24 +120,35 @@ export function AgentMessage({
   const { mutateMessage } = useConversationMessage({
     conversationId,
     workspaceId: owner.sId,
-    messageId: message.sId,
+    messageId: sId,
     options: { disabled: true },
   });
 
-  const { messageStreamState, dispatch, shouldStream } = useAgentMessageStream({
-    message,
+  const parentAgentMessage = useConversationMessage({
+    conversationId,
+    workspaceId: owner.sId,
+    messageId: messageStreamState.message.parentAgentMessageId,
+    options: {
+      disabled: messageStreamState.message.parentAgentMessageId === null,
+    },
+  });
+
+  const { shouldStream } = useAgentMessageStream({
+    messageStreamState,
     conversationId,
     owner,
     mutateMessage,
     onEventCallback: useCallback(
-      (eventStr: string) => {
-        const eventPayload = JSON.parse(eventStr);
+      (eventPayload: {
+        eventId: string;
+        data: AgentMessageStateWithControlEvent;
+      }) => {
         const eventType = eventPayload.data.type;
 
         if (eventType === "tool_approve_execution") {
           showBlockedActionsDialog();
           enqueueBlockedAction({
-            messageId: message.sId,
+            messageId: sId,
             blockedAction: {
               status: "blocked_validation_required",
               authorizationInfo: null,
@@ -148,72 +162,44 @@ export function AgentMessage({
           });
         }
       },
-      [showBlockedActionsDialog, enqueueBlockedAction, message]
+      [showBlockedActionsDialog, enqueueBlockedAction, sId]
     ),
-    streamId: `message-${message.sId}`,
+    streamId: `message-${sId}`,
     useFullChainOfThought: false,
   });
 
   const agentMessageToRender = getAgentMessageToRender({
-    message,
-    messageStreamState,
+    message: messageStreamState.message,
+    messageStreamState: messageStreamState,
   });
   const cancelMessage = useCancelMessage({ owner, conversationId });
 
-  const references = Object.entries(
-    agentMessageToRender.citations ?? {}
-  ).reduce<Record<string, MarkdownCitation>>((acc, [key, citation]) => {
-    if (citation) {
-      const IconComponent = getCitationIcon(
-        citation.provider,
-        isDark,
-        citation.faviconUrl,
-        citation.href
-      );
-      return {
-        ...acc,
-        [key]: {
-          href: citation.href,
-          title: citation.title,
-          description: citation.description,
-          icon: <IconComponent />,
-        },
-      };
-    }
-    return acc;
-  }, {});
-
-  // Autoscroll is performed when a message is generating and the page is
-  // already scrolled down; but if the user has scrolled the page up after the
-  // start of the message, we do not want to scroll it back down.
-  //
-  // Checking the conversation is already at the bottom of the screen is done
-  // modulo a small margin (50px). This value is small because if large, it
-  // prevents user from scrolling up when the message continues generating
-  // (forces it back down), but it cannot be zero otherwise the scroll does not
-  // happen.
-  const isAtBottom = React.useRef(true);
-  const bottomRef = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        isAtBottom.current = entry.isIntersecting;
-      },
-      { threshold: 1 }
-    );
-
-    const currentBottomRef = bottomRef.current;
-
-    if (currentBottomRef) {
-      observer.observe(currentBottomRef);
-    }
-
-    return () => {
-      if (currentBottomRef) {
-        observer.unobserve(currentBottomRef);
-      }
-    };
-  }, []);
+  const references = useMemo(
+    () =>
+      Object.entries(agentMessageToRender.citations ?? {}).reduce<
+        Record<string, MarkdownCitation>
+      >((acc, [key, citation]) => {
+        if (citation) {
+          const IconComponent = getCitationIcon(
+            citation.provider,
+            isDark,
+            citation.faviconUrl,
+            citation.href
+          );
+          return {
+            ...acc,
+            [key]: {
+              href: citation.href,
+              title: citation.title,
+              description: citation.description,
+              icon: <IconComponent />,
+            },
+          };
+        }
+        return acc;
+      }, {}),
+    [agentMessageToRender.citations, isDark]
+  );
 
   // GenerationContext: to know if we are generating or not.
   const generationContext = React.useContext(GenerationContext);
@@ -224,34 +210,19 @@ export function AgentMessage({
   }
   React.useEffect(() => {
     const isInArray = generationContext.generatingMessages.some(
-      (m) => m.messageId === message.sId
+      (m) => m.messageId === sId
     );
-    if (agentMessageToRender.status === "created" && !isInArray) {
+    if (shouldStream && !isInArray) {
+      generationContext.setGeneratingMessages((s) => [
+        ...s,
+        { messageId: sId, conversationId },
+      ]);
+    } else if (!shouldStream && isInArray) {
       generationContext.setGeneratingMessages((s) =>
-        // Re-check if the message is already in the array since there may be
-        // a race condition on the update (double call of useEffect).
-        s.some((m) => m.messageId === message.sId)
-          ? s
-          : [...s, { messageId: message.sId, conversationId }]
-      );
-    } else if (agentMessageToRender.status !== "created" && isInArray) {
-      generationContext.setGeneratingMessages((s) =>
-        s.filter((m) => m.messageId !== message.sId)
+        s.filter((m) => m.messageId !== sId)
       );
     }
-  }, [
-    agentMessageToRender.status,
-    generationContext,
-    message.sId,
-    conversationId,
-  ]);
-
-  // Auto-open interactive content drawer when interactive files are available.
-  const { interactiveFiles } = useAutoOpenInteractiveContent({
-    messageStreamState,
-    agentMessageToRender,
-    isLastMessage,
-  });
+  }, [shouldStream, generationContext, sId, conversationId]);
 
   const PopoverContent = useCallback(
     () => (
@@ -264,8 +235,7 @@ export function AgentMessage({
   );
 
   async function handleCopyToClipboard() {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    const messageContent = agentMessageToRender.content || "";
+    const messageContent = agentMessageToRender.content ?? "";
     let footnotesMarkdown = "";
     let footnotesHtml = "";
 
@@ -338,7 +308,7 @@ export function AgentMessage({
   // Show stop agent button only when streaming with multiple agents
   // (it feels distractive to show buttons while streaming so we would like to avoid as much as possible.
   // However, when there are multiple agents there is no other way to stop only single agent so we need to show it here).
-  if (hasMultiAgents && agentMessageToRender.status === "created") {
+  if (hasMultiAgents && shouldStream) {
     buttons.push(
       <Button
         key="stop-msg-button"
@@ -346,7 +316,7 @@ export function AgentMessage({
         variant="ghost-secondary"
         size="xs"
         onClick={async () => {
-          await cancelMessage([message.sId]);
+          await cancelMessage([sId]);
         }}
         icon={StopIcon}
         className="text-muted-foreground"
@@ -372,8 +342,13 @@ export function AgentMessage({
     );
   }
 
-  // Show retry button as long as it's not streaming
-  if (agentMessageToRender.status !== "created") {
+  // Show the retry button as long as it's not streaming nor failed,
+  // since failed messages have their own retry button in ErrorMessage.
+  if (
+    agentMessageToRender.status !== "created" &&
+    agentMessageToRender.status !== "failed" &&
+    !shouldStream
+  ) {
     buttons.push(
       <Button
         key="retry-msg-button"
@@ -410,6 +385,197 @@ export function AgentMessage({
     );
   }
 
+  const retryHandler = useCallback(
+    async ({
+      conversationId,
+      messageId,
+      blockedOnly = false,
+    }: {
+      conversationId: string;
+      messageId: string;
+      blockedOnly?: boolean;
+    }) => {
+      setIsRetryHandlerProcessing(true);
+      await fetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=${blockedOnly}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      setIsRetryHandlerProcessing(false);
+    },
+    [owner.sId]
+  );
+
+  const { configuration: agentConfiguration } = agentMessageToRender;
+
+  const citations = React.useMemo(
+    () => getCitations({ activeReferences }),
+    [activeReferences]
+  );
+
+  const canMention = agentConfiguration.canRead;
+  const isArchived = agentConfiguration.status === "archived";
+
+  let parentAgent = null;
+  if (
+    parentAgentMessage.message &&
+    isAgentMessageType(parentAgentMessage.message)
+  ) {
+    parentAgent = parentAgentMessage.message.configuration;
+  }
+
+  const renderName = useCallback(
+    () => (
+      <span className="inline-flex items-center text-muted-foreground dark:text-muted-foreground-night">
+        <AgentHandle
+          assistant={{
+            sId: agentConfiguration.sId,
+            name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
+          }}
+          canMention={canMention}
+          isDisabled={isArchived}
+        />
+        {parentAgent && (
+          <Chip
+            label={`handoff from @${parentAgent.name}`}
+            size="xs"
+            className="ml-1"
+            color="primary"
+            isBusy={agentMessageToRender.status === "created"}
+          />
+        )}
+      </span>
+    ),
+    [
+      agentConfiguration.name,
+      agentConfiguration.sId,
+      canMention,
+      isArchived,
+      parentAgent,
+      agentMessageToRender.status,
+    ]
+  );
+
+  return (
+    <ConversationMessage
+      pictureUrl={agentConfiguration.pictureUrl}
+      name={agentConfiguration.name}
+      buttons={buttons.length > 0 ? buttons : undefined}
+      avatarBusy={agentMessageToRender.status === "created"}
+      isDisabled={isArchived}
+      renderName={renderName}
+      timestamp={
+        parentAgent
+          ? undefined
+          : formatTimestring(
+              agentMessageToRender.completedTs ?? agentMessageToRender.created
+            )
+      }
+      completionStatus={
+        <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
+      }
+      type="agent"
+      citations={citations}
+    >
+      <div>
+        <AgentMessageContent
+          owner={owner}
+          conversationId={conversationId}
+          retryHandler={retryHandler}
+          isLastMessage={isLastMessage}
+          messageStreamState={messageStreamState}
+          references={references}
+          streaming={shouldStream}
+          lastTokenClassification={
+            messageStreamState.agentState === "thinking" ? "tokens" : null
+          }
+          activeReferences={activeReferences}
+          setActiveReferences={setActiveReferences}
+        />
+      </div>
+    </ConversationMessage>
+  );
+}
+
+function AgentMessageContent({
+  isLastMessage,
+  messageStreamState,
+  references,
+  streaming,
+  lastTokenClassification,
+  owner,
+  conversationId,
+  activeReferences,
+  setActiveReferences,
+  retryHandler,
+}: {
+  isLastMessage: boolean;
+  owner: LightWorkspaceType;
+  conversationId: string;
+  retryHandler: (params: {
+    conversationId: string;
+    messageId: string;
+    blockedOnly?: boolean;
+  }) => Promise<void>;
+  messageStreamState: MessageTemporaryState;
+  references: { [key: string]: MarkdownCitation };
+  streaming: boolean;
+  lastTokenClassification: null | "tokens" | "chain_of_thought";
+  activeReferences: { index: number; document: MarkdownCitation }[];
+  setActiveReferences: (
+    references: {
+      index: number;
+      document: MarkdownCitation;
+    }[]
+  ) => void;
+}) {
+  const methods = useVirtuosoMethods<
+    VirtuosoMessage,
+    VirtuosoMessageListContext
+  >();
+  const agentMessage = messageStreamState.message;
+  const { sId, configuration: agentConfiguration } = agentMessage;
+
+  const retryHandlerWithResetState = useCallback(
+    async (error: PersonalAuthenticationRequiredErrorContent) => {
+      methods.data.map((m) =>
+        isMessageTemporayState(m) && getMessageSId(m) === sId
+          ? {
+              ...m,
+              message: {
+                ...m.message,
+                status: "created",
+                error: null,
+              },
+              // Reset the agent state to "acting" to allow for streaming to continue.
+              agentState: "acting",
+            }
+          : m
+      );
+
+      // Retry on the event's conversationId, which may be coming from a subagent.
+      if (error.metadata.conversationId !== conversationId) {
+        await retryHandler({
+          conversationId: error.metadata.conversationId,
+          messageId: error.metadata.messageId,
+          blockedOnly: true,
+        });
+      }
+      // Retry on the main conversation.
+      await retryHandler({
+        conversationId,
+        messageId: sId,
+        blockedOnly: true,
+      });
+    },
+    [conversationId, methods.data, retryHandler, sId]
+  );
+
   // References logic.
   function updateActiveReferences(document: MarkdownCitation, index: number) {
     const existingIndex = activeReferences.find((r) => r.index === index);
@@ -418,21 +584,19 @@ export function AgentMessage({
     }
   }
 
-  const { configuration: agentConfiguration } = agentMessageToRender;
-
   const additionalMarkdownComponents: Components = React.useMemo(
     () => ({
       visualization: getVisualizationPlugin(
         owner,
         agentConfiguration.sId,
         conversationId,
-        message.sId
+        sId
       ),
       sup: CiteBlock,
       mention: getMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
     }),
-    [owner, conversationId, message.sId, agentConfiguration.sId]
+    [owner, conversationId, sId, agentConfiguration.sId]
   );
 
   const additionalMarkdownPlugins: PluggableList = React.useMemo(
@@ -445,263 +609,139 @@ export function AgentMessage({
     []
   );
 
-  const citations = React.useMemo(
-    () => getCitations({ activeReferences }),
-    [activeReferences]
-  );
+  // Auto-open interactive content drawer when interactive files are available.
+  const { interactiveFiles } = useAutoOpenInteractiveContent({
+    messageStreamState,
+    agentMessageToRender: agentMessage,
+    isLastMessage,
+  });
 
-  const canMention = agentConfiguration.canRead;
-  const isArchived = agentConfiguration.status === "archived";
-
-  // Determine if this should be displayed as "agentAsTool" type.
-  const isDustDeep = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_DEEP;
-  const isDeepDive = isHandoverGroup && isDustDeep;
-
-  return (
-    <ConversationMessage
-      pictureUrl={agentConfiguration.pictureUrl}
-      name={agentConfiguration.name}
-      buttons={buttons}
-      avatarBusy={agentMessageToRender.status === "created"}
-      isDisabled={isArchived}
-      renderName={() => {
-        return isDeepDive ? (
-          <span className="inline-flex items-center text-muted-foreground dark:text-muted-foreground-night">
-            <Icon visual={AtomIcon} size="sm" />
-            <span className="ml-1">Deep Dive</span>
-          </span>
-        ) : (
-          <AgentHandle
-            assistant={{
-              sId: agentConfiguration.sId,
-              name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
-            }}
-            canMention={canMention}
-            isDisabled={isArchived}
-          />
-        );
-      }}
-      timestamp={
-        agentMessageToRender.completedTs && !isDeepDive
-          ? formatTimestring(agentMessageToRender.completedTs)
-          : undefined
-      }
-      completionStatus={
-        <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
-      }
-      type={isDeepDive ? "agentAsTool" : "agent"}
-      citations={citations}
-    >
-      <div>
-        {renderAgentMessage({
-          agentMessage: agentMessageToRender,
-          references: references,
-          streaming: shouldStream,
-          lastTokenClassification:
-            messageStreamState.agentState === "thinking" ? "tokens" : null,
-        })}
-      </div>
-      {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
-      <div ref={bottomRef} className="h-1.5" />
-    </ConversationMessage>
-  );
-
-  function renderAgentMessage({
-    agentMessage,
-    references,
-    streaming,
-    lastTokenClassification,
-  }: {
-    agentMessage: LightAgentMessageType;
-    references: { [key: string]: MarkdownCitation };
-    streaming: boolean;
-    lastTokenClassification: null | "tokens" | "chain_of_thought";
-  }) {
-    if (agentMessage.status === "failed") {
-      const { error } = agentMessage;
-      if (isPersonalAuthenticationRequiredErrorContent(error)) {
-        return (
-          <div className="flex flex-col gap-y-4">
-            <AgentMessageActions
-              agentMessage={agentMessage}
-              lastAgentStateClassification={messageStreamState.agentState}
-              actionProgress={messageStreamState.actionProgress}
-              owner={owner}
-            />
-            <MCPServerPersonalAuthenticationRequired
-              owner={owner}
-              mcpServerId={error.metadata.mcp_server_id}
-              provider={error.metadata.provider}
-              scope={error.metadata.scope}
-              retryHandler={async () => {
-                // Dispatch retry event to reset failed state and re-enable streaming.
-                dispatch(RETRY_BLOCKED_ACTIONS_STARTED_EVENT);
-                // Retry on the event's conversationId, which may be coming from a subagent.
-                if (error.metadata.conversationId !== conversationId) {
-                  await retryHandler({
-                    conversationId: error.metadata.conversationId,
-                    messageId: error.metadata.messageId,
-                    blockedOnly: true,
-                  });
-                }
-                // Retry on the main conversation.
-                await retryHandler({
-                  conversationId,
-                  messageId: agentMessage.sId,
-                  blockedOnly: true,
-                });
-              }}
-            />
-          </div>
-        );
-      }
+  if (agentMessage.status === "failed") {
+    const { error } = agentMessage;
+    if (isPersonalAuthenticationRequiredErrorContent(error)) {
       return (
-        <div className="flex flex-col gap-y-4">
-          <AgentMessageActions
-            agentMessage={agentMessage}
-            lastAgentStateClassification={messageStreamState.agentState}
-            actionProgress={messageStreamState.actionProgress}
-            owner={owner}
-          />
-          <ErrorMessage
-            error={
-              agentMessage.error ?? {
-                message: "Unexpected Error",
-                code: "unexpected_error",
-                metadata: {},
-              }
-            }
-            retryHandler={async () =>
-              retryHandler({ conversationId, messageId: agentMessage.sId })
-            }
-          />
-        </div>
+        <MCPServerPersonalAuthenticationRequired
+          owner={owner}
+          mcpServerId={error.metadata.mcp_server_id}
+          provider={error.metadata.provider}
+          scope={error.metadata.scope}
+          retryHandler={() => retryHandlerWithResetState(error)}
+        />
       );
     }
-
-    // Get in-progress images.
-    const inProgressImages = Array.from(
-      messageStreamState.actionProgress.entries()
-    )
-      .filter(([, progress]) =>
-        isImageProgressOutput(progress.progress?.data.output)
-      )
-      .map(([actionId, progress]) => ({
-        id: actionId,
-        isLoading: true,
-        progress: progress.progress?.progress,
-      }));
-
-    // Get completed images.
-    const completedImages = messageStreamState.message.generatedFiles.filter(
-      (file) => isSupportedImageContentType(file.contentType)
-    );
-
-    const generatedFiles = agentMessage.generatedFiles
-      .filter((file) => !file.hidden)
-      .filter(
-        (file) =>
-          !isSupportedImageContentType(file.contentType) &&
-          !isInteractiveContentFileContentType(file.contentType)
-      );
-
     return (
-      <div className="flex flex-col gap-y-4">
-        <AgentMessageActions
-          agentMessage={agentMessage}
-          lastAgentStateClassification={messageStreamState.agentState}
-          actionProgress={messageStreamState.actionProgress}
-          owner={owner}
-        />
-        <AgentMessageInteractiveContentGeneratedFiles
-          files={interactiveFiles}
-        />
-        {(inProgressImages.length > 0 || completedImages.length > 0) && (
-          <InteractiveImageGrid
-            images={[
-              ...completedImages.map((image) => ({
-                imageUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=view`,
-                downloadUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=download`,
-                alt: `${image.title}`,
-                title: `${image.title}`,
-                isLoading: false,
-              })),
-              ...inProgressImages.map(() => ({
-                alt: "",
-                title: "",
-                isLoading: true,
-              })),
-            ]}
-          />
-        )}
+      <ErrorMessage
+        error={
+          agentMessage.error ?? {
+            message: "Unexpected Error",
+            code: "unexpected_error",
+            metadata: {},
+          }
+        }
+        retryHandler={async () =>
+          retryHandler({ conversationId, messageId: agentMessage.sId })
+        }
+      />
+    );
+  }
 
-        {agentMessage.content !== null && (
-          <div>
-            <CitationsContext.Provider
-              value={{
-                references,
-                updateActiveReferences,
-              }}
-            >
-              <Markdown
-                content={sanitizeVisualizationContent(agentMessage.content)}
-                isStreaming={streaming && lastTokenClassification === "tokens"}
-                isLastMessage={isLastMessage}
-                additionalMarkdownComponents={additionalMarkdownComponents}
-                additionalMarkdownPlugins={additionalMarkdownPlugins}
-              />
-            </CitationsContext.Provider>
-          </div>
-        )}
-        {generatedFiles.length > 0 && (
-          <div className="mt-2 grid grid-cols-5 gap-1">
-            {getCitations({
-              activeReferences: generatedFiles.map((file) => ({
-                index: -1,
-                document: {
-                  href: `/api/w/${owner.sId}/files/${file.fileId}`,
-                  icon: <DocumentIcon />,
-                  title: file.title,
-                },
-              })),
-            })}
-          </div>
-        )}
-        {agentMessage.status === "cancelled" && (
-          <div>
-            <Chip
-              label="The message generation was interrupted"
-              size="xs"
-              className="mt-4"
+  // Get in-progress images.
+  const inProgressImages = Array.from(
+    messageStreamState.actionProgress.entries()
+  )
+    .filter(([, progress]) =>
+      isImageProgressOutput(progress.progress?.data.output)
+    )
+    .map(([actionId, progress]) => ({
+      id: actionId,
+      isLoading: true,
+      progress: progress.progress?.progress,
+    }));
+
+  // Get completed images.
+  const completedImages = agentMessage.generatedFiles.filter((file) =>
+    isSupportedImageContentType(file.contentType)
+  );
+
+  const generatedFiles = agentMessage.generatedFiles
+    .filter((file) => !file.hidden)
+    .filter(
+      (file) =>
+        !isSupportedImageContentType(file.contentType) &&
+        !isInteractiveContentFileContentType(file.contentType)
+    );
+
+  return (
+    <div className="flex flex-col gap-y-4">
+      <AgentMessageActions
+        agentMessage={agentMessage}
+        lastAgentStateClassification={messageStreamState.agentState}
+        actionProgress={messageStreamState.actionProgress}
+        owner={owner}
+      />
+      <AgentMessageInteractiveContentGeneratedFiles files={interactiveFiles} />
+      {(inProgressImages.length > 0 || completedImages.length > 0) && (
+        <InteractiveImageGrid
+          images={[
+            ...completedImages.map((image) => ({
+              imageUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=view`,
+              downloadUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=download`,
+              alt: `${image.title}`,
+              title: `${image.title}`,
+              isLoading: false,
+            })),
+            ...inProgressImages.map(() => ({
+              alt: "",
+              title: "",
+              isLoading: true,
+            })),
+          ]}
+        />
+      )}
+
+      {agentMessage.content !== null && (
+        <div>
+          <CitationsContext.Provider
+            value={{
+              references,
+              updateActiveReferences,
+            }}
+          >
+            <Markdown
+              content={sanitizeVisualizationContent(agentMessage.content)}
+              isStreaming={streaming && lastTokenClassification === "tokens"}
+              isLastMessage={isLastMessage}
+              additionalMarkdownComponents={additionalMarkdownComponents}
+              additionalMarkdownPlugins={additionalMarkdownPlugins}
             />
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  async function retryHandler({
-    conversationId,
-    messageId,
-    blockedOnly = false,
-  }: {
-    conversationId: string;
-    messageId: string;
-    blockedOnly?: boolean;
-  }) {
-    setIsRetryHandlerProcessing(true);
-    await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=${blockedOnly}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    setIsRetryHandlerProcessing(false);
-  }
+          </CitationsContext.Provider>
+        </div>
+      )}
+      {generatedFiles.length > 0 && (
+        <div className="mt-2 grid grid-cols-5 gap-1">
+          {getCitations({
+            activeReferences: generatedFiles.map((file) => ({
+              index: -1,
+              document: {
+                href: `/api/w/${owner.sId}/files/${file.fileId}`,
+                icon: <DocumentIcon />,
+                title: file.title,
+              },
+            })),
+          })}
+        </div>
+      )}
+      {agentMessage.status === "cancelled" && (
+        <div>
+          <Chip
+            label="The message generation was interrupted"
+            size="xs"
+            className="mt-4"
+          />
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**

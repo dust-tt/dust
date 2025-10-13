@@ -47,7 +47,6 @@ import {
 } from "react";
 import { useInView } from "react-intersection-observer";
 
-import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import {
   ConversationMenu,
   useConversationMenu,
@@ -325,7 +324,6 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
       cId === "new";
     if (isNewConversation) {
       setAnimate(true);
-      document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
     }
   }, [setSidebarOpen, router, setAnimate]);
 
@@ -389,7 +387,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                             label="New agent"
                           />
                           <DropdownMenuPortal>
-                            <DropdownMenuSubContent>
+                            <DropdownMenuSubContent className="pointer-events-auto">
                               <DropdownMenuItem
                                 href={getAgentBuilderRoute(owner.sId, "new")}
                                 icon={DocumentIcon}
@@ -442,7 +440,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                               label="Edit agent"
                             />
                             <DropdownMenuPortal>
-                              <DropdownMenuSubContent>
+                              <DropdownMenuSubContent className="pointer-events-auto">
                                 <DropdownMenuSearchbar
                                   ref={agentsSearchInputRef}
                                   name="search"
