@@ -13,7 +13,7 @@ export type PostWebhookFilterGeneratorResponseBody = {
 
 const PostWebhookFilterGeneratorRequestBodySchema = z.object({
   naturalDescription: z.string(),
-  eventSchema: z.record(z.any()),
+  eventSchema: z.record(z.any()).optional(),
 });
 
 export type PostWebhookFilterGeneratorRequestBody = z.infer<

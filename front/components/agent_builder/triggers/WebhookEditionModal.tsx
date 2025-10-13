@@ -2,6 +2,8 @@ import type { Icon } from "@dust-tt/sparkle";
 import {
   Button,
   Checkbox,
+  Collapsible,
+  CollapsibleComponent,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +12,7 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
+  PrettyJsonViewer,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -20,7 +23,7 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -28,12 +31,16 @@ import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_build
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
+import { useWebhookFilterGenerator } from "@app/lib/swr/agent_triggers";
 import { useUser } from "@app/lib/swr/user";
 import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
+import { debounce } from "@app/lib/utils/debounce";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
+import { parseMatcherExpression } from "@app/lib/webhooks/payload_matcher";
+import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
 
 const webhookFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
@@ -90,6 +97,16 @@ export function WebhookEditionModal({
   const selectedViewSId = form.watch("webhookSourceViewSId") ?? "";
   const selectedEvent = form.watch("event");
   const includePayload = form.watch("includePayload");
+
+  const [naturalFilterDescription, setNaturalFilterDescription] = useState("");
+  const [filterGenerationStatus, setFilterGenerationStatus] = useState<
+    "idle" | "loading" | "error"
+  >("idle");
+  const [filterErrorMessage, setFilterErrorMessage] = useState<string | null>(
+    null
+  );
+  const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
+  const generateFilter = useWebhookFilterGenerator({ workspace: owner });
 
   const { spaces } = useSpacesContext();
   const { webhookSourcesWithViews, isWebhookSourcesWithViewsLoading } =
@@ -227,9 +244,46 @@ export function WebhookEditionModal({
     handleClose();
   };
 
+  const filterGenerationResult = useMemo(() => {
+    switch (filterGenerationStatus) {
+      case "idle":
+        if (form.watch("filter")) {
+          return (
+            <CollapsibleComponent
+              triggerChildren={
+                <Label className="cursor-pointer">Generated filter</Label>
+              }
+              contentChildren={
+                <TriggerFilterRenderer data={form.watch("filter")} />
+              }
+            />
+          );
+        }
+        return null;
+      case "loading":
+        return (
+          <div className="flex items-center gap-2">
+            <Spinner size="sm" />
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Generating filter...
+            </span>
+          </div>
+        );
+      case "error":
+        return (
+          <p className="text-sm text-warning">
+            {filterErrorMessage ||
+              "Unable to generate filter. Please try rephrasing."}
+          </p>
+        );
+      default:
+        return null;
+    }
+  }, [filterGenerationStatus, filterErrorMessage]);
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <SheetContent size="lg">
+      <SheetContent size="xl">
         <SheetHeader>
           <SheetTitle>
             {trigger
@@ -369,16 +423,55 @@ export function WebhookEditionModal({
               {/* Filters input */}
               {selectedPreset && availableEvents.length > 0 && (
                 <div className="space-y-1">
-                  <Label htmlFor="trigger-filters">Filters (Optional)</Label>
+                  <Label htmlFor="trigger-filter-description">
+                    Filter Description
+                  </Label>
                   <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Add a filter string for the webhook event
+                    Describe in natural language what events you want to filter
                   </p>
                   <TextArea
-                    id="trigger-filter"
-                    placeholder="Enter filter"
+                    id="trigger-filter-description"
+                    placeholder='e.g. "Only issues with priority high or critical"'
+                    rows={3}
+                    value={naturalFilterDescription}
                     disabled={!isEditor}
-                    {...form.register("filter")}
+                    onChange={async (e) => {
+                      const txt = e.target.value;
+                      setNaturalFilterDescription(txt);
+                      setFilterGenerationStatus(txt ? "loading" : "idle");
+
+                      if (txt.length >= 10) {
+                        debounce(
+                          debounceHandle,
+                          async () => {
+                            form.setValue("filter", "");
+                            try {
+                              const result = await generateFilter(txt);
+                              form.setValue("filter", result.filter);
+                              setFilterGenerationStatus("idle");
+                              setFilterErrorMessage(null);
+                            } catch (error) {
+                              setFilterGenerationStatus("error");
+                              setFilterErrorMessage(
+                                error instanceof Error
+                                  ? error.message
+                                  : "Unable to generate filter. Please try rephrasing."
+                              );
+                            }
+                          },
+                          500
+                        );
+                      } else {
+                        if (debounceHandle.current) {
+                          clearTimeout(debounceHandle.current);
+                          debounceHandle.current = undefined;
+                        }
+                        form.setValue("filter", "");
+                      }
+                    }}
                   />
+
+                  <div className="pt-2">{filterGenerationResult}</div>
                 </div>
               )}
 
@@ -417,6 +510,15 @@ export function WebhookEditionModal({
                 />
               </div>
             </div>
+
+            <TextArea
+              id="trigger-filter"
+              placeholder="Filter will be generated..."
+              disabled={true}
+              value={form.watch("filter")}
+              rows={3}
+              className="hidden"
+            />
           </FormProvider>
         </SheetContainer>
 

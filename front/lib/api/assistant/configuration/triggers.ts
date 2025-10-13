@@ -125,7 +125,7 @@ export async function generateWebhookFilter(
     eventSchema,
   }: {
     naturalDescription: string;
-    eventSchema: Record<string, any>;
+    eventSchema?: Record<string, any>;
   }
 ): Promise<Result<{ filter: string }, Error>> {
   const owner = auth.getNonNullableWorkspace();
@@ -150,7 +150,304 @@ export async function generateWebhookFilter(
     [
       {
         naturalDescription,
-        expectedPayloadDescription: JSON.stringify(eventSchema),
+        expectedPayloadDescription: {
+          $schema: "http://json-schema.org/draft-07/schema#",
+          title: "GitHub Pull Request Webhook Event",
+          description:
+            "Activity related to pull requests. The type of activity is specified in the `action` property of the payload object.",
+          type: "object",
+          required: ["action", "number", "pull_request", "sender"],
+          properties: {
+            action: {
+              type: "string",
+              description: "The action that was performed on the pull request.",
+              enum: [
+                "assigned",
+                "auto_merge_disabled",
+                "auto_merge_enabled",
+                "closed",
+                "converted_to_draft",
+                "dequeued",
+                "edited",
+                "enqueued",
+                "labeled",
+                "locked",
+                "merged",
+                "opened",
+                "ready_for_review",
+                "reopened",
+                "review_request_removed",
+                "review_requested",
+                "synchronize",
+                "unassigned",
+                "unlabeled",
+                "unlocked",
+              ],
+            },
+            number: {
+              type: "number",
+              description: "The pull request number.",
+            },
+            pull_request: {
+              type: "object",
+              description: "The pull request itself.",
+              properties: {
+                html_url: {
+                  type: "string",
+                  description: "The GitHub web URL of the pull request.",
+                },
+                id: {
+                  type: "number",
+                  description: "The unique identifier of the pull request.",
+                },
+                number: {
+                  type: "number",
+                  description: "The pull request number.",
+                },
+                state: {
+                  type: "string",
+                  description: "The state of the pull request.",
+                  enum: ["open", "closed"],
+                },
+                locked: {
+                  type: "boolean",
+                  description: "Whether the pull request is locked.",
+                },
+                title: {
+                  type: "string",
+                  description: "The title of the pull request.",
+                },
+                user: {
+                  $ref: "#/definitions/User",
+                  description: "The user who created the pull request.",
+                },
+                body: {
+                  type: "string",
+                  description: "The body content of the pull request.",
+                },
+                created_at: {
+                  type: "string",
+                  description:
+                    "The timestamp when the pull request was created.",
+                },
+                updated_at: {
+                  type: "string",
+                  description:
+                    "The timestamp when the pull request was last updated.",
+                },
+                merged_at: {
+                  type: "string",
+                  description:
+                    "The timestamp when the pull request was merged.",
+                },
+                assignee: {
+                  $ref: "#/definitions/User",
+                  description: "The user assigned to the pull request.",
+                },
+                assignees: {
+                  type: "array",
+                  description: "The users assigned to the pull request.",
+                  items: {
+                    $ref: "#/definitions/User",
+                  },
+                },
+                requested_reviewers: {
+                  type: "array",
+                  description:
+                    "The users requested to review the pull request.",
+                  items: {
+                    $ref: "#/definitions/User",
+                  },
+                },
+                labels: {
+                  type: "array",
+                  description: "The labels applied to the pull request.",
+                  items: {
+                    $ref: "#/definitions/Label",
+                  },
+                },
+                milestone: {
+                  $ref: "#/definitions/Milestone",
+                  description:
+                    "The milestone associated with the pull request.",
+                },
+                head: {
+                  type: "object",
+                  description: "The head branch of the pull request.",
+                  properties: {
+                    label: {
+                      type: "string",
+                      description: "The label of the head branch.",
+                    },
+                    ref: {
+                      type: "string",
+                      description: "The ref of the head branch.",
+                    },
+                  },
+                },
+                base: {
+                  type: "object",
+                  description: "The base branch of the pull request.",
+                  properties: {
+                    label: {
+                      type: "string",
+                      description: "The label of the base branch.",
+                    },
+                    ref: {
+                      type: "string",
+                      description: "The ref of the base branch.",
+                    },
+                  },
+                },
+                draft: {
+                  type: "boolean",
+                  description: "Whether the pull request is a draft.",
+                },
+                merged: {
+                  type: "boolean",
+                  description: "Whether the pull request has been merged.",
+                },
+                mergeable: {
+                  type: "boolean",
+                  description: "Whether the pull request is mergeable.",
+                },
+                comments: {
+                  type: "number",
+                  description: "The number of comments on the pull request.",
+                },
+                commits: {
+                  type: "number",
+                  description: "The number of commits in the pull request.",
+                },
+                additions: {
+                  type: "number",
+                  description: "The number of additions in the pull request.",
+                },
+                deletions: {
+                  type: "number",
+                  description: "The number of deletions in the pull request.",
+                },
+                changed_files: {
+                  type: "number",
+                  description:
+                    "The number of changed files in the pull request.",
+                },
+              },
+            },
+            sender: {
+              $ref: "#/definitions/User",
+              description: "The user that triggered the event.",
+            },
+          },
+          definitions: {
+            User: {
+              type: "object",
+              description: "A GitHub user object.",
+              properties: {
+                login: {
+                  type: "string",
+                  description: "The username of the user.",
+                },
+                id: {
+                  type: "number",
+                  description: "The unique identifier of the user.",
+                },
+                html_url: {
+                  type: "string",
+                  description: "The GitHub profile URL of the user.",
+                },
+                type: {
+                  type: "string",
+                  description: "The type of the user account.",
+                  enum: ["User", "Organization"],
+                },
+                site_admin: {
+                  type: "boolean",
+                  description:
+                    "Whether the user is a GitHub site administrator.",
+                },
+              },
+            },
+            Label: {
+              type: "object",
+              description: "A GitHub label object.",
+              properties: {
+                id: {
+                  type: "number",
+                  description: "The unique identifier of the label.",
+                },
+                url: {
+                  type: "string",
+                  description: "The API URL of the label.",
+                },
+                name: {
+                  type: "string",
+                  description: "The name of the label.",
+                },
+              },
+            },
+            Milestone: {
+              type: "object",
+              description: "A GitHub milestone object.",
+              properties: {
+                html_url: {
+                  type: "string",
+                  description: "The GitHub web URL of the milestone.",
+                },
+                id: {
+                  type: "number",
+                  description: "The unique identifier of the milestone.",
+                },
+                number: {
+                  type: "number",
+                  description: "The milestone number.",
+                },
+                title: {
+                  type: "string",
+                  description: "The title of the milestone.",
+                },
+                description: {
+                  type: "string",
+                  description: "The description of the milestone.",
+                },
+                creator: {
+                  $ref: "#/definitions/User",
+                  description: "The user who created the milestone.",
+                },
+                open_issues: {
+                  type: "number",
+                  description: "The number of open issues in the milestone.",
+                },
+                closed_issues: {
+                  type: "number",
+                  description: "The number of closed issues in the milestone.",
+                },
+                state: {
+                  type: "string",
+                  description: "The state of the milestone.",
+                  enum: ["open", "closed"],
+                },
+                created_at: {
+                  type: "string",
+                  description: "The timestamp when the milestone was created.",
+                },
+                updated_at: {
+                  type: "string",
+                  description:
+                    "The timestamp when the milestone was last updated.",
+                },
+                due_on: {
+                  type: "string",
+                  description: "The due date for the milestone.",
+                },
+                closed_at: {
+                  type: "string",
+                  description: "The timestamp when the milestone was closed.",
+                },
+              },
+            },
+          },
+        },
       },
     ],
     {

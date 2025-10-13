@@ -1,4 +1,4 @@
-import get from 'lodash/get';
+import get from "lodash/get";
 
 // Type definitions for matcher expressions.
 export type Operation = "in" | "contains";
@@ -165,13 +165,13 @@ export function parseMatcherExpression(expression: string): MatcherExpression {
 }
 
 // Type guard functions.
-function isLogicalExpression(
+export function isLogicalExpression(
   expr: MatcherExpression
 ): expr is LogicalExpression {
   return "expressions" in expr;
 }
 
-function isOperationExpression(
+export function isOperationExpression(
   expr: MatcherExpression
 ): expr is OperationExpression {
   return "field" in expr && "options" in expr;
