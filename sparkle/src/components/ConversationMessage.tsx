@@ -150,10 +150,7 @@ export const ConversationMessageContent = React.forwardRef<
       {...props}
     >
       <div
-        className={cn(
-          "s-text-base",
-          "s-text-foreground dark:s-text-foreground-night"
-        )}
+        className="s-text-base s-text-foreground dark:s-text-foreground-night"
       >
         {children}
       </div>
@@ -230,11 +227,7 @@ export const ConversationMessageHeader = React.forwardRef<
         )}
         <div className="s-flex s-w-full s-flex-row s-justify-between s-gap-0.5">
           <div
-            className={cn(
-              "s-heading-sm",
-              "s-text-foreground dark:s-text-foreground-night",
-              "s-flex s-flex-row s-items-center s-gap-2"
-            )}
+            className="s-heading-sm s-text-foreground dark:s-text-foreground-night s-flex s-flex-row s-items-center s-gap-2"
           >
             {renderName(name)}
             {infoChip}
