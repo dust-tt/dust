@@ -57,6 +57,41 @@ import {
 
 const RUN_AGENT_TOOL_LOG_NAME = "run_agent";
 
+function isRunAgentHandoffMode(
+  agentLoopContext?: AgentLoopContextType
+): boolean {
+  if (!agentLoopContext) {
+    return false;
+  }
+
+  // Check if we're in the listToolsContext (when presenting tools to the model).
+  if (agentLoopContext.listToolsContext) {
+    const agentActionConfig =
+      agentLoopContext.listToolsContext.agentActionConfiguration;
+    if (
+      isServerSideMCPServerConfiguration(agentActionConfig) &&
+      agentActionConfig.additionalConfiguration?.executionMode
+    ) {
+      return (
+        agentActionConfig.additionalConfiguration.executionMode === "handoff"
+      );
+    }
+  }
+
+  // Check if we're in the runContext (when executing the tool).
+  if (agentLoopContext.runContext) {
+    const toolConfig = agentLoopContext.runContext.toolConfiguration;
+    if (
+      isLightServerSideMCPToolConfiguration(toolConfig) &&
+      toolConfig.additionalConfiguration?.executionMode
+    ) {
+      return toolConfig.additionalConfiguration.executionMode === "handoff";
+    }
+  }
+
+  return false;
+}
+
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
   if (!match) {
@@ -214,11 +249,16 @@ export default async function createServer(
     return server;
   }
 
+  const isHandoffConfiguration = isRunAgentHandoffMode(agentLoopContext);
+
   const toolName = `run_${childAgentBlob.name}`;
+  const toolDescription = isHandoffConfiguration
+    ? `Handoff completely to ${childAgentBlob.name} (${childAgentBlob.description}). Inform the user that you are handing off to :mention[${childAgentBlob.name}]{sId=${childAgentId}} before calling the tool since this agent will respond in the conversation.`
+    : `Run ${childAgentBlob.name} in the background and pass results back to the main agent. You will have access to the results of the agent in the conversation.`;
 
   server.tool(
     toolName,
-    `Run agent ${childAgentBlob.name} (${childAgentBlob.description})`,
+    toolDescription,
     {
       query: z
         .string()
