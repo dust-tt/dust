@@ -33,18 +33,21 @@ export const SubscribePage = ({
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
-        <div className="flex flex-1 flex-col items-center justify-center gap-8">
-          <div className="flex flex-col items-center text-center space-y-9 max-w-[400px]">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4">
+          <div className="flex flex-col items-center text-center max-w-[400px]">
             <Link to="https://dust.tt" target="_blank">
-              <DustLogo className="h-12 w-48" />
+              <DustLogo className="h-8 w-36" />
             </Link>
-            <Page.SectionHeader title="Almost there" />
           </div>
-          <div className="text-center">
+
+          <div className="text-center max-w-[400px]">
+            <Page.H variant="h4">Almost there!</Page.H>
+          </div>
+          <div className="text-lg text-center">
             Subscribe to start using Dust agent from anywhere in your browser.
           </div>
 
-          <div className="text-center gap-2 flex">
+          <div className="text-center m-1 flex">
             <Link to={`${user.dustDomain}/w/${workspace.sId}/subscribe`}>
               <Button
                 icon={RocketIcon}
@@ -56,7 +59,7 @@ export const SubscribePage = ({
                     "_blank"
                   );
                 }}
-                size="md"
+                size="sm"
               />
             </Link>
           </div>
