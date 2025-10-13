@@ -35,15 +35,23 @@ interface ConversationMessageProps
   citations?: React.ReactElement[];
   isDisabled?: boolean;
   name?: string;
+  timestamp?: string;
+  completionStatus?: React.ReactNode;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
+  infoChip?: React.ReactNode;
+  type: ConversationMessageType;
 }
+
+export type ConversationMessageType = "user" | "agent" | "agentAsTool";
 
 const messageVariants = cva("s-flex s-w-full s-flex-col s-rounded-2xl", {
   variants: {
     type: {
       user: "s-bg-muted-background dark:s-bg-muted-background-night s-px-5 s-py-4 s-gap-2",
       agent: "s-w-full s-gap-3",
+      agentAsTool:
+        "s-w-full s-gap-5 s-border s-border-border dark:s-border-border-night s-rounded-2xl s-px-5 s-py-5",
     },
   },
   defaultVariants: {
@@ -51,20 +59,18 @@ const messageVariants = cva("s-flex s-w-full s-flex-col s-rounded-2xl", {
   },
 });
 
-const buttonsVariants = cva(
-  "s-invisible s-flex s-justify-start s-gap-2 s-pt-2 group-hover/message:s-visible",
-  {
-    variants: {
-      type: {
-        user: "s-justify-end",
-        agent: "s-justify-start",
-      },
+const buttonsVariants = cva("s-flex s-justify-start s-gap-2 s-pt-2", {
+  variants: {
+    type: {
+      user: "s-justify-end",
+      agent: "s-justify-start",
+      agentAsTool: "s-justify-start",
     },
-    defaultVariants: {
-      type: "agent",
-    },
-  }
-);
+  },
+  defaultVariants: {
+    type: "agent",
+  },
+});
 /**
  * Parent component for both UserMessage and AgentMessage, to ensure avatar,
  * side buttons and spacing are consistent between the two
@@ -81,8 +87,11 @@ export const ConversationMessage = React.forwardRef<
       citations,
       isDisabled = false,
       name,
+      timestamp,
+      completionStatus,
       pictureUrl,
       renderName = (name) => <span>{name}</span>,
+      infoChip,
       type,
       className,
       ...props
@@ -95,12 +104,16 @@ export const ConversationMessage = React.forwardRef<
           <ConversationMessageHeader
             avatarUrl={pictureUrl}
             name={name}
+            timestamp={timestamp}
+            completionStatus={completionStatus}
             isBusy={avatarBusy}
             isDisabled={isDisabled}
             renderName={renderName}
+            infoChip={infoChip}
+            type={type}
           />
 
-          <ConversationMessageContent citations={citations}>
+          <ConversationMessageContent citations={citations} type={type}>
             {children}
           </ConversationMessageContent>
         </div>
@@ -120,6 +133,7 @@ interface ConversationMessageContentProps
   extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   citations?: React.ReactElement[];
+  type: ConversationMessageType;
 }
 
 export const ConversationMessageContent = React.forwardRef<
@@ -136,10 +150,7 @@ export const ConversationMessageContent = React.forwardRef<
       {...props}
     >
       <div
-        className={cn(
-          "s-text-sm @sm:s-text-base @md:s-px-4",
-          "s-text-foreground dark:s-text-foreground-night"
-        )}
+        className="s-text-base s-text-foreground dark:s-text-foreground-night"
       >
         {children}
       </div>
@@ -158,7 +169,11 @@ interface ConversationMessageHeaderProps
   isBusy?: boolean;
   isDisabled?: boolean;
   name?: string;
+  timestamp?: string;
+  completionStatus?: React.ReactNode;
+  infoChip?: React.ReactNode;
   renderName: (name: string | null) => React.ReactNode;
+  type: ConversationMessageType;
 }
 
 export const ConversationMessageHeader = React.forwardRef<
@@ -171,6 +186,10 @@ export const ConversationMessageHeader = React.forwardRef<
       isBusy,
       isDisabled,
       name = "",
+      timestamp,
+      infoChip,
+      type,
+      completionStatus,
       renderName,
       className,
       ...props
@@ -186,29 +205,37 @@ export const ConversationMessageHeader = React.forwardRef<
         )}
         {...props}
       >
-        <Avatar
-          className="@sm:s-hidden"
-          name={name}
-          visual={avatarUrl}
-          busy={isBusy}
-          disabled={isDisabled}
-          size="xs"
-        />
-        <Avatar
-          className="s-hidden @sm:s-flex"
-          name={name}
-          visual={avatarUrl}
-          busy={isBusy}
-          disabled={isDisabled}
-          size="sm"
-        />
-        <div
-          className={cn(
-            "s-text-sm s-font-semibold @sm:s-text-base",
-            "s-text-foreground dark:s-text-foreground-night"
-          )}
-        >
-          {renderName(name)}
+        {type !== "agentAsTool" && (
+          <>
+            <Avatar
+              className="@sm:s-hidden"
+              name={name}
+              visual={avatarUrl}
+              busy={isBusy}
+              disabled={isDisabled}
+              size="xs"
+            />
+            <Avatar
+              className="s-hidden @sm:s-flex"
+              name={name}
+              visual={avatarUrl}
+              busy={isBusy}
+              disabled={isDisabled}
+              size="sm"
+            />
+          </>
+        )}
+        <div className="s-flex s-w-full s-flex-row s-justify-between s-gap-0.5">
+          <div
+            className="s-heading-sm s-text-foreground dark:s-text-foreground-night s-flex s-flex-row s-items-center s-gap-2"
+          >
+            {renderName(name)}
+            {infoChip}
+            <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {timestamp}
+            </span>
+          </div>
+          {completionStatus ?? null}
         </div>
       </div>
     );

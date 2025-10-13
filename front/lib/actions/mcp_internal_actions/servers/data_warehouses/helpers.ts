@@ -1,13 +1,14 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import _ from "lodash";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   RenderedWarehouseNodeType,
   WarehousesBrowseType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { WAREHOUSES_BROWSE_MIME_TYPE } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeDataSourceViewFilter } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { makeDataSourceViewFilter } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -22,7 +23,7 @@ export async function getAvailableWarehouses(
 ): Promise<
   Result<
     { nodes: RenderedWarehouseNodeType[]; nextPageCursor: string | null },
-    CoreAPIError
+    MCPError
   >
 > {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -43,7 +44,7 @@ export async function getAvailableWarehouses(
     },
   });
   if (searchResult.isErr()) {
-    return searchResult;
+    return new Err(new MCPError(searchResult.error.message));
   }
 
   const dataSourceById = _.keyBy(
@@ -81,7 +82,7 @@ export async function getWarehouseNodes(
 ): Promise<
   Result<
     { nodes: RenderedWarehouseNodeType[]; nextPageCursor: string | null },
-    Error | CoreAPIError
+    MCPError
   >
 > {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -96,7 +97,9 @@ export async function getWarehouseNodes(
     const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
     if (!dataSource) {
       return new Err(
-        new Error(`Data source not found for ID: ${dataSourceId}`)
+        new MCPError(`Data source not found for ID: ${dataSourceId}`, {
+          tracked: false,
+        })
       );
     }
     const dataSourceConfiguration = dataSourceConfigurations.find(
@@ -105,7 +108,9 @@ export async function getWarehouseNodes(
     );
     if (!dataSourceConfiguration) {
       return new Err(
-        new Error(`Data source configuration not found for ID: ${dataSourceId}`)
+        new MCPError(
+          `Data source configuration not found for ID: ${dataSourceId}`
+        )
       );
     }
     configsToUse = [dataSourceConfiguration];
@@ -141,7 +146,7 @@ export async function getWarehouseNodes(
   });
 
   if (result.isErr()) {
-    return result;
+    return new Err(new MCPError(result.error.message));
   }
 
   const nodes = result.value.nodes.map((node) => {

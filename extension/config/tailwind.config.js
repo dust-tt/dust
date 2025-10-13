@@ -2,11 +2,20 @@
 const colors = require("tailwindcss/colors"); // eslint-disable-line @typescript-eslint/no-var-requires
 const plugin = require("tailwindcss/plugin"); // eslint-disable-line @typescript-eslint/no-var-requires
 
+// Remove unused deprecated colors that just generate noise
+// See here for the hack: https://github.com/tailwindlabs/tailwindcss/discussions/15127
+delete colors.lightBlue;
+delete colors.warmGray;
+delete colors.trueGray;
+delete colors.coolGray;
+delete colors.blueGray;
+
 // Custom color definitions
 const customColors = {
   gray: {
     950: "#111418",
     900: "#1C222D",
+    850: "#232A37",
     800: "#2A3241",
     700: "#364153",
     600: "#545D6C",
@@ -502,12 +511,15 @@ module.exports = {
           "hunter-green": colors.green[600],
           "tea-green": colors.green[200],
           "support-green": colors.green[50],
+          "support-green-night": colors.green[950],
           "electric-blue": colors.blue[500],
           "sky-blue": colors.blue[200],
           "support-blue": colors.blue[50],
+          "support-blue-night": colors.blue[950],
           "red-rose": colors.red[500],
           "pink-rose": colors.red[200],
           "support-rose": colors.red[50],
+          "support-rose-night": colors.red[950],
           "orange-golden": customColors.golden[600],
           "sunshine-golden": customColors.golden[200],
           "support-golden": customColors.golden[50],
@@ -546,10 +558,10 @@ module.exports = {
             night: colors.rose[800],
           },
         },
-        background: { DEFAULT: colors.white, night: colors.black },
+        background: { DEFAULT: colors.white, night: colors.gray[950] },
         foreground: {
           DEFAULT: colors.gray[950],
-          night: colors.gray[50],
+          night: colors.gray[200],
           warning: {
             DEFAULT: colors.rose[500],
             night: colors.rose[500],
@@ -564,7 +576,7 @@ module.exports = {
           },
           background: {
             DEFAULT: colors.gray[50],
-            night: colors.gray[950],
+            night: colors.gray[900],
           },
         },
         faint: {

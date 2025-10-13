@@ -5,8 +5,7 @@ import { z, ZodError } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { Result } from "@app/types";
-import { normalizeError } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 /**
  * URI pattern for configuring the data source to use within an action.
@@ -141,20 +140,23 @@ export const ConfigurableToolInputSchemas = {
     appId: z.string(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP),
   }),
-  [INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME]: z
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME]: z
     .object({
       duration: z.number(),
       unit: z.enum(["hour", "day", "week", "month", "year"]),
-      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME),
     })
-    .describe("An optional time frame to use for the tool.")
-    .nullable(),
+    .describe("An optional time frame to use for the tool."),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]: z.intersection(
-    JsonSchemaSchema,
     z.object({
       mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA),
-    })
+    }),
+    JsonSchemaSchema
   ),
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.SECRET]: z.object({
+    secretName: z.string(),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.SECRET),
+  }),
   // All mime types do not necessarily have a fixed schema,
   // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
 } as const satisfies Omit<
@@ -184,7 +186,8 @@ export type ConfigurableToolInputType =
   | z.infer<
       (typeof ConfigurableToolInputSchemas)[keyof typeof ConfigurableToolInputSchemas]
     >
-  | FlexibleConfigurableToolInput[keyof FlexibleConfigurableToolInput];
+  | FlexibleConfigurableToolInput[keyof FlexibleConfigurableToolInput]
+  | undefined;
 
 export type DataSourcesToolConfigurationType = z.infer<
   (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE]
@@ -199,10 +202,16 @@ export type TablesConfigurationToolType = z.infer<
  * and the JSON schema resulting from the Zod schema defined above.
  */
 export const ConfigurableToolInputJSONSchemas = Object.fromEntries(
-  Object.entries(ConfigurableToolInputSchemas).map(([key, schema]) => [
-    key,
-    zodToJsonSchema(schema),
-  ])
+  Object.entries(ConfigurableToolInputSchemas).map(([key, schema]) => {
+    const jsonSchema = zodToJsonSchema(schema, {
+      // Use 'none' to inline all references instead of creating $ref pointers
+      $refStrategy: "none",
+    });
+    // Remove $schema property since these are property definitions, not standalone schemas
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { $schema, ...schemaWithoutDollarSchema } = jsonSchema;
+    return [key, schemaWithoutDollarSchema];
+  })
 ) as Omit<
   Record<InternalToolInputMimeType, JSONSchema>,
   typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM

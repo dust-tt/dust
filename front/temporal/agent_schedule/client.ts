@@ -4,28 +4,34 @@ import {
   ScheduleOverlapPolicy,
 } from "@temporalio/client";
 
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/agent_schedule/config";
-import { agentScheduleWorkflow } from "@app/temporal/agent_schedule/workflows";
-import type { Result } from "@app/types";
+import { agentTriggerWorkflow } from "@app/temporal/agent_schedule/workflows";
+import type { ContentFragmentInputWithFileIdType, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+import type {
+  ScheduleTriggerType,
+  TriggerType,
+} from "@app/types/assistant/triggers";
+import { isScheduleTrigger } from "@app/types/assistant/triggers";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 function getScheduleOptions(
   auth: Authenticator,
-  trigger: TriggerResource,
+  triggerData: ScheduleTriggerType,
   scheduleId: string
 ): ScheduleOptions {
   return {
     action: {
       type: "startWorkflow",
-      workflowType: agentScheduleWorkflow,
+      workflowType: agentTriggerWorkflow,
       args: [
         auth.getNonNullableUser().sId,
         auth.getNonNullableWorkspace().sId,
-        trigger.toJSON(),
+        triggerData,
       ],
       taskQueue: QUEUE_NAME,
     },
@@ -34,13 +40,13 @@ function getScheduleOptions(
       overlap: ScheduleOverlapPolicy.SKIP,
     },
     spec: {
-      cronExpressions: [trigger.configuration.cron],
-      timezone: trigger.configuration.timezone,
+      cronExpressions: [triggerData.configuration.cron],
+      timezone: triggerData.configuration.timezone,
     },
   };
 }
 
-function makeScheduleId(workspaceId: string, triggerId: string): string {
+export function makeScheduleId(workspaceId: string, triggerId: string): string {
   return `agent-schedule-${workspaceId}-${triggerId}`;
 }
 
@@ -57,6 +63,23 @@ export async function createOrUpdateAgentScheduleWorkflow({
     return new Err(new Error("Workspace ID is required"));
   }
 
+  if (auth.getNonNullableUser().id !== trigger.editor) {
+    /**
+     * Only the editor of the trigger can create or update the schedule.
+     * If the user is not the editor, we skip the creation/update.
+     * This can happen when an admin does operation on a trigger.
+     */
+    logger.warn(
+      {
+        userId: auth.getNonNullableUser().sId,
+        triggerId: trigger.sId(),
+        triggerEditorId: trigger.editor,
+      },
+      "User is not the editor of the trigger, skipping schedule creation/update."
+    );
+    return new Ok("");
+  }
+
   const scheduleId = makeScheduleId(workspace.sId, trigger.sId());
 
   const childLogger = logger.child({
@@ -66,12 +89,14 @@ export async function createOrUpdateAgentScheduleWorkflow({
     trigger: trigger.toJSON(),
   });
 
-  if (trigger.kind !== "schedule") {
+  const scheduleTrigger = trigger.toJSON();
+
+  if (!isScheduleTrigger(scheduleTrigger)) {
     childLogger.error("Trigger is not a schedule.");
     return new Err(new Error("Trigger is not a schedule"));
   }
 
-  const scheduleOptions = getScheduleOptions(auth, trigger, scheduleId);
+  const scheduleOptions = getScheduleOptions(auth, scheduleTrigger, scheduleId);
 
   /**
    * First, we try to get and update the existing schedule
@@ -110,36 +135,71 @@ export async function createOrUpdateAgentScheduleWorkflow({
 
 export async function deleteAgentScheduleWorkflow({
   workspaceId,
-  triggerId,
+  trigger,
 }: {
   workspaceId: string;
-  triggerId: string;
+  trigger: TriggerResource;
 }): Promise<Result<void, Error>> {
   const client = await getTemporalClientForAgentNamespace();
-  const scheduleId = makeScheduleId(workspaceId, triggerId);
+  const scheduleId = makeScheduleId(workspaceId, trigger.sId());
 
   const childLogger = logger.child({
     workspaceId,
+    scheduleId,
+    trigger: trigger.toJSON(),
   });
 
   try {
     const handle = client.schedule.getHandle(scheduleId);
     await handle.delete();
-    childLogger.info(
-      { scheduleId },
-      "Deleted scheduled workflow successfully."
-    );
+    childLogger.info({}, "Deleted scheduled workflow successfully.");
     return new Ok(undefined);
   } catch (err) {
     if (err instanceof ScheduleNotFoundError) {
-      childLogger.warn(
-        { scheduleId },
-        "Workflow not found, nothing to delete."
-      );
+      childLogger.warn({}, "Workflow not found, nothing to delete.");
       return new Ok(undefined);
     }
 
     childLogger.error({ err }, "Failed to delete scheduled workflow.");
     return new Err(normalizeError(err));
   }
+}
+
+export async function launchAgentTriggerWorkflow({
+  auth,
+  trigger,
+  contentFragment,
+}: {
+  auth: Authenticator;
+  trigger: TriggerResource;
+  contentFragment?: ContentFragmentInputWithFileIdType;
+}): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClientForAgentNamespace();
+
+  const workflowId = makeAgentTriggerWorkflowId(
+    auth.getNonNullableUser().sId,
+    auth.getNonNullableWorkspace().sId,
+    trigger.toJSON()
+  );
+
+  await client.workflow.start(agentTriggerWorkflow, {
+    args: [
+      auth.getNonNullableUser().sId,
+      auth.getNonNullableWorkspace().sId,
+      trigger.toJSON(),
+      contentFragment,
+    ],
+    taskQueue: QUEUE_NAME,
+    workflowId,
+  });
+
+  return new Ok(undefined);
+}
+
+function makeAgentTriggerWorkflowId(
+  userId: string,
+  workspaceId: string,
+  trigger: TriggerType
+): string {
+  return `agent-trigger-${trigger.kind}-${userId}-${workspaceId}-${trigger.sId}-${Date.now()}`;
 }

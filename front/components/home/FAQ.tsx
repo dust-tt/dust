@@ -67,6 +67,7 @@ export const FAQ: React.FC<FAQProps> = ({
   className,
 }) => {
   return (
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     <div className={classNames("w-full", className || "")}>
       <div className="w-full">
         <H2 className="mb-12 text-left text-foreground dark:text-foreground-night">

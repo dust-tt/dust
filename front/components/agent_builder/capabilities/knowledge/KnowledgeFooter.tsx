@@ -47,6 +47,7 @@ function KnowledgeFooterItemReadablePath({
       ) : (
         <span className="text-xs">
           {item.type === "data_source" ? (
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             spaceName || ""
           ) : (
             <>
@@ -80,6 +81,7 @@ function KnowledgeFooterItem({
     <ContextItem
       key={item.path}
       title={item.name}
+      truncateSubElement
       visual={<Icon size="sm" visual={VisualComponent} />}
       action={
         <Button
@@ -102,8 +104,8 @@ function KnowledgeFooterItem({
 }
 
 export function KnowledgeFooter() {
-  const [isOpen, setOpen] = useState(true);
   const { field } = useSourcesFormController();
+  const [isOpen, setOpen] = useState(field.value.in.length > 0);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setOpen}>
@@ -115,10 +117,14 @@ export function KnowledgeFooter() {
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="rounded-xl bg-muted dark:bg-muted-night">
-          <ContextItem.List className="max-h-40 overflow-x-scroll">
-            {field.value.in.map((item) => (
-              <KnowledgeFooterItem key={item.path} item={item} />
-            ))}
+          <ContextItem.List className="max-h-40 overflow-y-auto">
+            {field.value.in.length > 0 ? (
+              field.value.in.map((item) => (
+                <KnowledgeFooterItem key={item.path} item={item} />
+              ))
+            ) : (
+              <ContextItem title="No selection" visual={null} />
+            )}
           </ContextItem.List>
         </div>
       </CollapsibleContent>

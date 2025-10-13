@@ -8,7 +8,7 @@ import {
   PokeTableCellWithCopy,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import { useWorkOSDSyncStatus } from "@app/lib/swr/workos";
+import { usePokeWorkOSDSyncStatus } from "@app/lib/swr/poke";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type {
   ExtensionConfigurationType,
@@ -32,7 +32,7 @@ export function WorkspaceInfoTable({
   workspaceRetention: number | null;
   workosEnvironmentId: string;
 }) {
-  const { dsyncStatus } = useWorkOSDSyncStatus({ owner });
+  const { dsyncStatus } = usePokeWorkOSDSyncStatus({ owner });
 
   const getStatusChipColor = (status: WorkOSConnectionSyncStatus["status"]) => {
     switch (status) {
@@ -63,9 +63,10 @@ export function WorkspaceInfoTable({
         return "primary";
     }
   };
+
   return (
-    <div className="flex justify-between gap-3">
-      <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
+    <div className="mt-3 flex justify-between gap-3">
+      <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4 pb-2">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-md flex-grow pb-4 font-bold">Workspace info</h2>
         </div>
@@ -134,7 +135,7 @@ export function WorkspaceInfoTable({
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>Verified Domains</PokeTableCell>
-              <PokeTableCell>
+              <PokeTableCell className="max-w-sm break-words">
                 {workspaceVerifiedDomains.map((d) => d.domain).join(", ")}
               </PokeTableCell>
             </PokeTableRow>
@@ -142,7 +143,7 @@ export function WorkspaceInfoTable({
               <PokeTableCell className="max-w-48">
                 Extension blacklisted domains/URLs
               </PokeTableCell>
-              <PokeTableCell>
+              <PokeTableCell className="max-w-sm break-words">
                 {extensionConfig?.blacklistedDomains.length
                   ? extensionConfig.blacklistedDomains.join(", ")
                   : "None"}
@@ -161,9 +162,11 @@ export function WorkspaceInfoTable({
               <PokeTableCell>
                 <Chip
                   color={getStatusChipColor(
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                     dsyncStatus?.status || "not_configured"
                   )}
                 >
+                  {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                   {asDisplayName(dsyncStatus?.status || "not_configured")}
                 </Chip>
               </PokeTableCell>

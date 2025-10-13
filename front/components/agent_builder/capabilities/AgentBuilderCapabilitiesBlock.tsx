@@ -1,6 +1,5 @@
 import {
   Avatar,
-  BoltIcon,
   BookOpenIcon,
   Button,
   Card,
@@ -10,9 +9,9 @@ import {
   EmptyCTA,
   Hoverable,
   Spinner,
+  ToolsIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import isEmpty from "lodash/isEmpty";
 import React, { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -139,6 +138,7 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
     </Card>
   );
 }
+
 interface AgentBuilderCapabilitiesBlockProps {
   isActionsLoading: boolean;
 }
@@ -194,20 +194,19 @@ export function AgentBuilderCapabilitiesBlock({
   };
 
   const handleActionEdit = (action: AgentBuilderAction, index: number) => {
+    const mcpServerView = mcpServerViewsWithKnowledge.find(
+      (view) => view.sId === action.configuration?.mcpServerViewId
+    );
     const isDataSourceSelectionRequired =
-      action.type === "MCP" &&
-      Boolean(
-        !isEmpty(action.configuration.dataSourceConfigurations) ||
-          !isEmpty(action.configuration.tablesConfigurations)
-      );
+      action.type === "MCP" && Boolean(mcpServerView);
 
     if (isDataSourceSelectionRequired) {
       setKnowledgeAction({ action, index });
     } else {
       setDialogMode(
-        action.noConfigurationRequired
-          ? { type: "info", action, source: "addedTool" }
-          : { type: "edit", action, index }
+        action.configurable
+          ? { type: "edit", action, index }
+          : { type: "info", action, source: "addedTool" }
       );
     }
   };
@@ -228,7 +227,7 @@ export function AgentBuilderCapabilitiesBlock({
     setKnowledgeAction({
       action: {
         ...action,
-        noConfigurationRequired: false, // it's always required for knowledge
+        configurable: true, // it's always required for knowledge
       },
       index: null,
     });
@@ -258,7 +257,7 @@ export function AgentBuilderCapabilitiesBlock({
         type="button"
         onClick={() => setDialogMode({ type: "add" })}
         label="Add tools"
-        icon={BoltIcon}
+        icon={ToolsIcon}
         variant="outline"
       />
     </div>
@@ -303,7 +302,7 @@ export function AgentBuilderCapabilitiesBlock({
                   type="button"
                   onClick={() => setDialogMode({ type: "add" })}
                   label="Add tools"
-                  icon={BoltIcon}
+                  icon={ToolsIcon}
                   variant="outline"
                 />
               </div>
@@ -355,7 +354,7 @@ export function AgentBuilderCapabilitiesBlock({
         mode={dialogMode}
         onModeChange={setDialogMode}
         onActionUpdate={handleMcpActionUpdate}
-        actions={fields}
+        selectedActions={fields}
         getAgentInstructions={getAgentInstructions}
       />
     </AgentBuilderSectionContainer>

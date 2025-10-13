@@ -1,4 +1,4 @@
-import { groupBy } from "lodash";
+import groupBy from "lodash/groupBy";
 import { useMemo } from "react";
 
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -17,8 +17,7 @@ function getGroupedMCPServerViews({
   if (!mcpServerViews || !Array.isArray(mcpServerViews)) {
     return {
       mcpServerViewsWithKnowledge: [],
-      defaultMCPServerViews: [],
-      nonDefaultMCPServerViews: [],
+      mcpServerViewsWithoutKnowledge: [],
     };
   }
 
@@ -55,12 +54,16 @@ function getGroupedMCPServerViews({
 
   const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
     groupBy(mcpServerViewsWithLabel, (view) => {
-      const requirements = getMCPServerRequirements(view);
+      const {
+        requiresDataSourceConfiguration,
+        requiresDataWarehouseConfiguration,
+        requiresTableConfiguration,
+      } = getMCPServerRequirements(view);
 
       const isWithKnowledge =
-        requirements.requiresDataSourceConfiguration ||
-        requirements.requiresDataWarehouseConfiguration ||
-        requirements.requiresTableConfiguration;
+        requiresDataSourceConfiguration ||
+        requiresDataWarehouseConfiguration ||
+        requiresTableConfiguration;
 
       return isWithKnowledge
         ? "mcpServerViewsWithKnowledge"
@@ -74,8 +77,10 @@ function getGroupedMCPServerViews({
 
   return {
     mcpServerViewsWithKnowledge: mcpServerViewsWithKnowledge || [],
-    defaultMCPServerViews: grouped.auto || [],
-    nonDefaultMCPServerViews: grouped.manual || [],
+    mcpServerViewsWithoutKnowledge: [
+      ...(grouped.auto || []),
+      ...(grouped.manual || []),
+    ],
   };
 }
 
@@ -83,17 +88,13 @@ export const useAgentBuilderTools = () => {
   const { spaces } = useSpacesContext();
   const { mcpServerViews } = useMCPServerViewsContext();
 
-  const {
-    mcpServerViewsWithKnowledge,
-    defaultMCPServerViews,
-    nonDefaultMCPServerViews,
-  } = useMemo(() => {
-    return getGroupedMCPServerViews({ mcpServerViews, spaces });
-  }, [mcpServerViews, spaces]);
+  const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
+    useMemo(() => {
+      return getGroupedMCPServerViews({ mcpServerViews, spaces });
+    }, [mcpServerViews, spaces]);
 
   return {
     mcpServerViewsWithKnowledge,
-    defaultMCPServerViews,
-    nonDefaultMCPServerViews,
+    mcpServerViewsWithoutKnowledge,
   };
 };

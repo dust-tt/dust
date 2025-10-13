@@ -7,6 +7,7 @@ import {
   CollapsibleComponent,
   ContentBlockWrapper,
   ContentMessage,
+  FaviconIcon,
   Icon,
   InformationCircleIcon,
   Markdown,
@@ -203,7 +204,9 @@ export function SearchResultDetails({
         return null;
       })
       .filter(Boolean)
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       .join("\n") ||
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     defaultQuery ||
     "No query provided";
 
@@ -223,12 +226,11 @@ export function SearchResultDetails({
     return removeNulls(
       actionOutput.flatMap((r) => {
         if (isWebsearchResultResourceType(r)) {
-          const IconComponent = getDocumentIcon("webcrawler");
           return [
             {
               description: r.resource.text,
               title: r.resource.title,
-              icon: <IconComponent />,
+              icon: <FaviconIcon websiteUrl={r.resource.uri} size="sm" />,
               href: r.resource.uri,
             },
           ];
@@ -253,6 +255,7 @@ export function SearchResultDetails({
               }`,
               title: node.title,
               icon: <IconComponent />,
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               href: node.sourceUrl || undefined,
             };
           });
@@ -267,6 +270,7 @@ export function SearchResultDetails({
               }`,
               title: metadata.title,
               icon: <IconComponent />,
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               href: metadata.sourceUrl || undefined,
             },
           ];

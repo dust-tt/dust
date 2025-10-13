@@ -100,7 +100,7 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
                   e.stopPropagation();
                   toolInfo.onClick();
                 }}
-                className="hover:s-underline-offset-2 dark:s-text-muted-foreground-night s-cursor-pointer s-text-sm s-font-semibold s-text-muted-foreground hover:s-text-highlight-light hover:s-underline dark:hover:s-text-highlight-light-night"
+                className="s-heading-sm s-cursor-pointer s-text-muted-foreground hover:s-text-highlight-light hover:s-underline hover:s-underline-offset-2 dark:s-text-muted-foreground-night dark:hover:s-text-highlight-light-night"
               >
                 {toolInfo.label}
               </a>

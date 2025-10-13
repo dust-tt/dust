@@ -6,11 +6,19 @@ import { UserIcon } from "@sparkle/icons/app";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";
 
-const AVATAR_SIZES = ["xs", "sm", "md", "lg", "xl", "xxl", "auto"] as const;
-type AvatarSizeType = (typeof AVATAR_SIZES)[number];
+export const AVATAR_SIZES = [
+  "xs",
+  "sm",
+  "md",
+  "lg",
+  "xl",
+  "2xl",
+  "auto",
+] as const;
+export type AvatarSizeType = (typeof AVATAR_SIZES)[number];
 
-const AVATAR_VARIANTS = ["default", "clickable", "disabled"] as const;
-type AvatarVariantType = (typeof AVATAR_VARIANTS)[number];
+export const AVATAR_VARIANTS = ["default", "clickable", "disabled"] as const;
+export type AvatarVariantType = (typeof AVATAR_VARIANTS)[number];
 
 const avatarVariants = cva(
   "s-flex s-flex-shrink-0 s-items-center s-justify-center s-overflow-hidden",
@@ -22,7 +30,7 @@ const avatarVariants = cva(
         md: "s-h-10 s-w-10",
         lg: "s-h-16 s-w-16",
         xl: "s-h-20 s-w-20",
-        xxl: "s-h-36 s-w-36",
+        "2xl": "s-h-36 s-w-36",
         auto: "s-w-full s-relative",
       },
       variant: {
@@ -64,7 +72,7 @@ const avatarVariants = cva(
       },
       {
         rounded: false,
-        size: "xxl",
+        size: "2xl",
         className: "s-rounded-[38px]",
       },
       {
@@ -89,7 +97,7 @@ const textVariants = cva("s-select-none s-font-semibold", {
       md: "s-text-base",
       lg: "s-text-3xl",
       xl: "s-text-5xl",
-      xxl: "s-text-7xl",
+      "2xl": "s-text-7xl",
       auto: "s-text-xl",
     },
   },
@@ -246,6 +254,7 @@ interface AvatarStackProps {
   size?: AvatarStackSizeType;
   isRounded?: boolean;
   hasMagnifier?: boolean;
+  tooltipTriggerAsChild?: boolean;
 }
 
 const sizeClassesPx: Record<AvatarStackSizeType, number> = {
@@ -260,6 +269,7 @@ Avatar.Stack = function ({
   size = "sm",
   isRounded = false,
   hasMagnifier = true,
+  tooltipTriggerAsChild = false,
 }: AvatarStackProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -299,7 +309,7 @@ Avatar.Stack = function ({
   return (
     <Tooltip
       label={tooltipLabel}
-      triggerAsChild
+      tooltipTriggerAsChild={tooltipTriggerAsChild}
       trigger={
         <>
           <div

@@ -11,6 +11,7 @@ export class RunModel extends WorkspaceAwareModel<RunModel> {
 
   declare dustRunId: string;
   declare runType: string;
+  declare useWorkspaceCredentials: boolean | null;
 
   declare appId: ForeignKey<AppModel["id"]>;
 
@@ -36,6 +37,10 @@ RunModel.init(
     runType: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    useWorkspaceCredentials: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
     },
   },
   {
@@ -95,7 +100,11 @@ RunUsageModel.init(
   {
     modelName: "run_usages",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["runId"] }, { fields: ["providerId", "modelId"] }],
+    indexes: [
+      { fields: ["runId"] },
+      { fields: ["providerId", "modelId"] },
+      { fields: ["workspaceId"], concurrently: true },
+    ],
   }
 );
 

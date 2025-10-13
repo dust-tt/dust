@@ -1,4 +1,5 @@
 import {
+  BoltIcon,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
   CompanyIcon,
@@ -130,6 +131,11 @@ export const CATEGORY_DETAILS: {
   actions: {
     label: "Tools",
     icon: MCP_SPECIFICATION.cardIcon,
+  },
+  triggers: {
+    label: "Triggers",
+    icon: BoltIcon,
+    flag: "hootl_webhooks",
   },
 };
 

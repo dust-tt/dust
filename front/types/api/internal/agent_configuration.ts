@@ -2,13 +2,11 @@ import * as t from "io-ts";
 import type { JSONSchema7 } from "json-schema";
 
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
-import type { SupportedModel } from "@app/types/assistant/assistant";
-import {
-  isSupportedModel,
-  ModelIdCodec,
-  ModelProviderIdCodec,
-  ReasoningEffortCodec,
-} from "@app/types/assistant/assistant";
+import { isSupportedModel } from "@app/types/assistant/assistant";
+import { ModelIdCodec } from "@app/types/assistant/models/models";
+import { ModelProviderIdCodec } from "@app/types/assistant/models/providers";
+import { ReasoningEffortCodec } from "@app/types/assistant/models/reasoning";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 import { createRangeCodec } from "@app/types/shared/utils/iots_utils";
 import { TimeframeUnitCodec } from "@app/types/shared/utils/time_frame";
 
@@ -31,6 +29,7 @@ export const GetAgentConfigurationsQuerySchema = t.type({
   ]),
   withUsage: t.union([t.literal("true"), t.literal("false"), t.undefined]),
   withAuthors: t.union([t.literal("true"), t.literal("false"), t.undefined]),
+  withEditors: t.union([t.literal("true"), t.literal("false"), t.undefined]),
   withFeedbacks: t.union([t.literal("true"), t.literal("false"), t.undefined]),
   limit: t.union([LimitCodec, t.undefined]),
   sort: t.union([
@@ -122,7 +121,7 @@ const JsonSchemaCodec = new t.Type<JSONSchema7, unknown, unknown>(
     const validation = validateJsonSchema(JSON.stringify(u));
     return validation.isValid
       ? t.success(u as JSONSchema7)
-      : t.failure(u, c, validation.error || "Invalid JSON schema");
+      : t.failure(u, c, validation.error ?? "Invalid JSON schema");
   },
   t.identity
 );
@@ -149,6 +148,7 @@ const MCPServerActionConfigurationSchema = t.type({
     t.union([t.boolean, t.number, t.string, t.array(t.string), t.null])
   ),
   dustAppConfiguration: t.union([DustAppRunActionConfigurationSchema, t.null]),
+  secretName: t.union([t.string, t.null]),
 });
 
 const multiActionsCommonFields = {

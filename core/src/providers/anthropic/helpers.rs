@@ -59,6 +59,7 @@ fn convert_chat_message_to_anthropic_chat_message(
                 thinking: None,
                 signature: None,
                 data: None,
+                cache_control: None,
             }],
             role: AnthropicChatMessageRole::User,
         }),
@@ -73,6 +74,7 @@ fn convert_chat_message_to_anthropic_chat_message(
                     thinking: None,
                     signature: None,
                     data: None,
+                    cache_control: None,
                 }],
                 role: AnthropicChatMessageRole::User,
             }),
@@ -89,6 +91,7 @@ fn convert_chat_message_to_anthropic_chat_message(
                             thinking: None,
                             signature: None,
                             data: None,
+                            cache_control: None,
                         }),
                         MixedContent::ImageContent(ic) => {
                             let base64_data = base64_map
@@ -104,6 +107,7 @@ fn convert_chat_message_to_anthropic_chat_message(
                                 thinking: None,
                                 signature: None,
                                 data: None,
+                                cache_control: None,
                             })
                         }
                     })
@@ -133,6 +137,7 @@ fn convert_chat_message_to_anthropic_chat_message(
                             thinking: None,
                             signature: None,
                             data: None,
+                            cache_control: None,
                         })),
                         AssistantContentItem::FunctionCall { value } => {
                             Some(serde_json::from_str(&value.arguments).map(|input| {
@@ -149,6 +154,7 @@ fn convert_chat_message_to_anthropic_chat_message(
                                     thinking: None,
                                     signature: None,
                                     data: None,
+                                    cache_control: None,
                                 }
                             }))
                         }
@@ -174,6 +180,7 @@ fn convert_chat_message_to_anthropic_chat_message(
                                     thinking: None,
                                     signature: None,
                                     data: Some(encrypted_content.to_string()),
+                                    cache_control: None,
                                 }))
                             } else {
                                 Some(Ok(AnthropicContent {
@@ -185,6 +192,7 @@ fn convert_chat_message_to_anthropic_chat_message(
                                     thinking: value.reasoning.clone(),
                                     signature: Some(encrypted_content.to_string()),
                                     data: None,
+                                    cache_control: None,
                                 }))
                             }
                         }
@@ -210,6 +218,7 @@ fn convert_chat_message_to_anthropic_chat_message(
                     thinking: None,
                     signature: None,
                     data: None,
+                    cache_control: None,
                 }],
                 role: AnthropicChatMessageRole::User,
             }),
@@ -248,6 +257,7 @@ fn convert_chat_message_to_anthropic_chat_message(
                         thinking: None,
                         signature: None,
                         data: None,
+                        cache_control: None,
                     }],
                     role: AnthropicChatMessageRole::User,
                 })

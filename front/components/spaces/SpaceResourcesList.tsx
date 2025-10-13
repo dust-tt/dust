@@ -13,6 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
+import type { ParsedUrlQuery } from "querystring";
 import React, {
   useCallback,
   useContext,
@@ -45,6 +46,7 @@ import {
   useDeleteFolderOrWebsite,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
+import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type {
   ConnectorProvider,
   DataSourceViewCategoryWithoutApps,
@@ -57,6 +59,7 @@ import type {
 } from "@app/types";
 import {
   ANONYMOUS_USER_IMAGE_URL,
+  isString,
   isWebsiteOrFolderCategory,
 } from "@app/types";
 
@@ -76,6 +79,16 @@ type StringColumnDef = ColumnDef<RowData, string>;
 type NumberColumnDef = ColumnDef<RowData, number>;
 
 type TableColumnDef = StringColumnDef | NumberColumnDef;
+
+const hasWebsiteModalQuery = (
+  query: ParsedUrlQuery
+): query is ParsedUrlQuery & { modal: string } =>
+  isString(query.modal) && query.modal === "website";
+
+const hasManagedModalQuery = (
+  query: ParsedUrlQuery
+): query is ParsedUrlQuery & { modal: string } =>
+  isString(query.modal) && query.modal === "managed";
 
 function getTableColumns(
   setAssistantSId: (a: string | null) => void,
@@ -172,6 +185,7 @@ function getTableColumns(
     cell: (ctx) => {
       const { dataSourceView, isLoading, isAdmin, buttonOnClick } =
         ctx.row.original;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const disabled = isLoading || !isAdmin;
       const connector = dataSourceView.dataSource.connector;
       if (!connector) {
@@ -280,6 +294,7 @@ export const SpaceResourcesList = ({
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Partial<Record<ConnectorProvider, boolean>>
   >({});
+  const [shouldOpenManagedModal, setShouldOpenManagedModal] = useState(false);
 
   const router = useRouter();
   const isSystemSpace = systemSpace.sId === space.sId;
@@ -287,6 +302,38 @@ export const SpaceResourcesList = ({
   const isWebsite = category === "website";
   const isFolder = category === "folder";
   const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
+
+  useEffect(() => {
+    if (!router.isReady || !isWebsite) {
+      return;
+    }
+    const { query } = router;
+    if (!hasWebsiteModalQuery(query)) {
+      return;
+    }
+    setSelectedDataSourceView(null);
+    setShowFolderOrWebsiteModal(true);
+    void removeParamFromRouter(router, "modal");
+  }, [isWebsite, router.isReady, router.query.modal, router]);
+
+  useEffect(() => {
+    if (!router.isReady || !isManagedCategory || isSystemSpace) {
+      return;
+    }
+    const { query } = router;
+    if (!hasManagedModalQuery(query)) {
+      return;
+    }
+    setSelectedDataSourceView(null);
+    setShouldOpenManagedModal(true);
+    void removeParamFromRouter(router, "modal");
+  }, [
+    isManagedCategory,
+    isSystemSpace,
+    router.isReady,
+    router.query.modal,
+    router,
+  ]);
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
@@ -375,6 +422,7 @@ export const SpaceResourcesList = ({
           onClick: () => onSelect(dataSourceView.sId),
         };
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onSelect is not stable, mutating the agents list which prevent pagination to work
   }, [
     spaceDataSourceViews,
     owner.sId,
@@ -383,7 +431,6 @@ export const SpaceResourcesList = ({
     isWebsiteOrFolder,
     canWriteInSpace,
     isFolder,
-    onSelect,
     isDark,
   ]);
 
@@ -471,6 +518,8 @@ export const SpaceResourcesList = ({
           owner={owner}
           systemSpace={systemSpace}
           space={space}
+          shouldOpenModal={shouldOpenManagedModal}
+          onOpenModalHandled={() => setShouldOpenManagedModal(false)}
         />
       )}
       {isFolder && selectedDataSourceView && (

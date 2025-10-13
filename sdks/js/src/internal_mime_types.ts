@@ -25,7 +25,7 @@ type UnderscoreToDash<T extends string> = T extends `${infer A}_${infer B}`
  */
 function generateConnectorRelativeMimeTypes<
   P extends ConnectorProvider,
-  T extends Uppercase<string>[]
+  T extends Uppercase<string>[],
 >({
   provider,
   resourceTypes,
@@ -193,7 +193,7 @@ export const INCLUDABLE_INTERNAL_CONTENT_NODE_MIME_TYPES = {
 
 function generateToolMimeTypes<
   P extends Uppercase<string>,
-  T extends Uppercase<string>[]
+  T extends Uppercase<string>[],
 >({
   category,
   resourceTypes,
@@ -235,13 +235,15 @@ const TOOL_MIME_TYPES = {
       "LIST",
       "REASONING_MODEL",
       "DUST_APP",
-      "NULLABLE_TIME_FRAME",
+      "TIME_FRAME",
       "JSON_SCHEMA",
+      "SECRET",
     ],
   }),
   TOOL_OUTPUT: generateToolMimeTypes({
     category: "TOOL_OUTPUT",
     resourceTypes: [
+      "AGENT_PAUSE_TOOL_OUTPUT",
       "BROWSE_RESULT",
       "DATA_SOURCE_SEARCH_QUERY",
       "DATA_SOURCE_SEARCH_RESULT",
@@ -269,6 +271,7 @@ const TOOL_MIME_TYPES = {
       "WEBSEARCH_QUERY",
       "WEBSEARCH_RESULT",
       "RUN_AGENT_RESULT",
+      "RUN_AGENT_HANDOVER",
       "RUN_AGENT_QUERY",
       "WARNING",
       "AGENT_CREATION_RESULT",

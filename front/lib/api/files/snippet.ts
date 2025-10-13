@@ -1,5 +1,7 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isSupportedPlainTextContentType } from "@dust-tt/client";
 
+import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { runAction } from "@app/lib/actions/server";
 import config from "@app/lib/api/config";
 import { getFileContent } from "@app/lib/api/files/utils";
@@ -9,6 +11,7 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
+import { isSupportedAudioContentType } from "@app/types";
 import {
   assertNever,
   CoreAPI,
@@ -68,6 +71,14 @@ export async function generateSnippet(
     let content = await getFileContent(auth, file);
     if (!content) {
       return new Err(new Error("Failed to get file content"));
+    }
+
+    if (isPastedFile(file.contentType)) {
+      // Include up to 2^16 characters in pasted text snippet
+      if (content.length > 65536) {
+        return new Ok(content.slice(0, 65536) + "... (truncated)");
+      }
+      return new Ok(content);
     }
 
     if (!ENABLE_LLM_SNIPPETS) {
@@ -183,6 +194,20 @@ export async function generateSnippet(
       default:
         assertNever(run);
     }
+  }
+
+  if (isSupportedAudioContentType(file.contentType)) {
+    const content = await getFileContent(auth, file, "processed");
+    if (!content) {
+      return new Err(new Error("Failed to get file processed content"));
+    }
+
+    let snippet = `Audio file: ${content}`;
+    if (snippet.length > 256) {
+      snippet = snippet.slice(0, 242) + "... (truncated)";
+    }
+
+    return new Ok(snippet);
   }
 
   return new Err(new Error("Unsupported file type"));

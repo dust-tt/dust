@@ -9,7 +9,7 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
-import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerDialog";
+import { CreateMCPServerSheet } from "@app/components/actions/mcp/CreateMCPServerSheet";
 import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
@@ -51,6 +51,7 @@ type RowData = {
 
 const NameCell = ({ row }: { row: RowData }) => {
   const { mcpServer, mcpServerView, isConnected } = row;
+
   return (
     <DataTable.CellContent grow>
       <div
@@ -162,32 +163,28 @@ export const AdminActionsList = ({
     () =>
       mcpServers
         .filter((mcpServer) => mcpServer.availability === "manual")
-        .map((mcpServer) => {
-          const mcpServerWithViews = mcpServers.find(
-            (s) => s.sId === mcpServer.sId
-          );
+        .map((mcpServerWithViews) => {
           const mcpServerView = mcpServerWithViews?.views.find(
             (v) => v.spaceId === systemSpace?.sId
           );
-          const spaceIds = mcpServerWithViews
-            ? mcpServerWithViews.views.map((v) => v.spaceId)
-            : [];
+          const spaceIds =
+            mcpServerWithViews?.views.map((v) => v.spaceId) ?? [];
           const agentsUsage =
             usage && mcpServerView ? usage[mcpServerView.server.sId] : null;
 
           return {
-            mcpServer,
+            mcpServer: mcpServerWithViews,
             mcpServerView,
             spaces: spaces.filter((s) => spaceIds?.includes(s.sId)),
             usage: agentsUsage,
             isConnected: !!connections.find(
               (c) =>
-                c.internalMCPServerId === mcpServer.sId ||
-                c.remoteMCPServerId === mcpServer.sId
+                c.internalMCPServerId === mcpServerWithViews.sId ||
+                c.remoteMCPServerId === mcpServerWithViews.sId
             ),
             onClick: () => {
-              if (mcpServerView && mcpServer) {
-                setMcpServerToShow(mcpServer);
+              if (mcpServerView && mcpServerWithViews) {
+                setMcpServerToShow(mcpServerWithViews);
               }
             },
           };
@@ -220,13 +217,13 @@ export const AdminActionsList = ({
             rowB.original.mcpServer.name
           );
         },
+        meta: {
+          className: "w-28 @2xl:w-32",
+        },
       },
       {
         header: "Used by",
         accessorFn: (row: RowData) => row.usage?.count ?? 0,
-        meta: {
-          className: "w-24",
-        },
         cell: (info) => (
           <DataTable.CellContent>
             <UsedByButton
@@ -235,6 +232,9 @@ export const AdminActionsList = ({
             />
           </DataTable.CellContent>
         ),
+        meta: {
+          className: "hidden @sm:w-10 @sm:table-cell",
+        },
       },
       {
         id: "access",
@@ -242,6 +242,7 @@ export const AdminActionsList = ({
         header: "Access",
         cell: (info: CellContext<RowData, SpaceType[]>) => {
           const globalSpace = info.getValue().find((s) => s.kind === "global");
+
           return (
             <DataTable.CellContent>
               <div className="flex items-center gap-2">
@@ -262,7 +263,7 @@ export const AdminActionsList = ({
           );
         },
         meta: {
-          className: "w-28",
+          className: "hidden w-28 @2xl:w-10 @sm:table-cell",
         },
       },
       {
@@ -271,6 +272,7 @@ export const AdminActionsList = ({
         header: "By",
         cell: (info) => {
           const editedByUser = info.row.original.mcpServerView?.editedByUser;
+
           return (
             <DataTable.CellContent
               avatarUrl={editedByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL}
@@ -280,7 +282,7 @@ export const AdminActionsList = ({
           );
         },
         meta: {
-          className: "w-10",
+          className: "hidden @sm:w-10 @sm:table-cell",
         },
       },
       {
@@ -297,7 +299,7 @@ export const AdminActionsList = ({
           />
         ),
         meta: {
-          className: "w-28",
+          className: "hidden @sm:w-28 @sm:table-cell @2xl:w-10",
         },
       }
     );
@@ -313,7 +315,7 @@ export const AdminActionsList = ({
         assistantId={assistantSId}
         onClose={() => setAssistantSId(null)}
       />
-      <CreateMCPServerDialog
+      <CreateMCPServerSheet
         isOpen={isCreateOpen}
         internalMCPServer={internalMCPServerToCreate}
         setIsOpen={setIsCreateOpen}

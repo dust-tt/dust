@@ -9,6 +9,7 @@ import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { ProxyAgent } from "undici";
 
+import { isInternalAllowedIcon } from "@app/components/resources/resources_icons";
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
   DEFAULT_MCP_ACTION_NAME,
@@ -20,10 +21,7 @@ import {
 } from "@app/lib/actions/mcp_authentication";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import {
-  DEFAULT_MCP_SERVER_ICON,
-  isInternalAllowedIcon,
-} from "@app/lib/actions/mcp_icons";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
@@ -313,7 +311,12 @@ export const connectToMCPServer = async (
           try {
             const req = {
               requestInit: {
-                headers: undefined,
+                // Include stored custom headers (excluding Authorization; handled by authProvider)
+                headers: Object.fromEntries(
+                  Object.entries(remoteMCPServer.customHeaders ?? {}).filter(
+                    ([k]) => k.toLowerCase() !== "authorization"
+                  )
+                ),
                 dispatcher: createMCPDispatcher(auth),
               },
               authProvider: new MCPOAuthProvider(auth, token),
@@ -452,6 +455,9 @@ export function extractMetadataFromServerVersion(
       documentationUrl: isInternalMCPServerDefinition(r)
         ? r.documentationUrl
         : null,
+      requiresSecret: isInternalMCPServerDefinition(r)
+        ? r.requiresSecret
+        : undefined,
     };
   }
 
@@ -462,6 +468,7 @@ export function extractMetadataFromServerVersion(
     icon: DEFAULT_MCP_SERVER_ICON,
     authorization: null,
     documentationUrl: null,
+    requiresSecret: undefined,
   };
 }
 
@@ -479,7 +486,7 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
     }
     return {
       name: tool.name,
-      description: tool.description || "",
+      description: tool.description ?? "",
       inputSchema,
     };
   });

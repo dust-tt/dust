@@ -1,5 +1,6 @@
 import {
   Avatar,
+  BellIcon,
   Card,
   CardActionButton,
   TimeIcon,
@@ -18,6 +19,10 @@ function getIcon(kind: TriggerKind) {
       return (
         <TimeIcon className="h-4 w-4 text-foreground dark:text-foreground-night" />
       );
+    case "webhook":
+      return (
+        <BellIcon className="h-4 w-4 text-foreground dark:text-foreground-night" />
+      );
     default:
       return null;
   }
@@ -35,21 +40,27 @@ export const TriggerCard = ({
 }: TriggerCardProps) => {
   const { user } = useUser();
   const isEditor = trigger.editor === user?.id;
-  const cronDescription = useMemo(() => {
+  const description = useMemo(() => {
     try {
-      if (trigger.configuration?.cron) {
-        return `Runs ${cronstrue.toString(trigger.configuration?.cron)}.`;
+      if (
+        trigger.kind === "schedule" &&
+        trigger.configuration &&
+        "cron" in trigger.configuration
+      ) {
+        return `Runs ${cronstrue.toString(trigger.configuration.cron)}.`;
+      } else if (trigger.kind === "webhook") {
+        return "Triggered by webhook.";
       }
     } catch (error) {
       // Ignore.
     }
     return "";
-  }, [trigger.configuration?.cron]);
+  }, [trigger.kind, trigger.configuration]);
 
   return (
     <Card
       variant="primary"
-      className={"h-28 select-none"}
+      className={"min-h-28 select-none"}
       onClick={onEdit}
       action={
         isEditor && (
@@ -70,10 +81,17 @@ export const TriggerCard = ({
           <span className="truncate">{trigger.name}</span>
         </div>
         <span className="text-muted-foreground dark:text-muted-foreground-night">
-          {trigger.kind === "schedule" && (
-            <span className="line-clamp-2 break-words">{cronDescription}</span>
-          )}
+          <span className="line-clamp-2 break-words">{description}</span>
         </span>
+        {trigger.editorEmail && (
+          <span className="mt-auto text-xs text-muted-foreground dark:text-muted-foreground-night">
+            Managed by{" "}
+            <span className="font-semibold">
+              {trigger.editorEmail ?? "another user"}
+            </span>
+            .
+          </span>
+        )}
       </div>
     </Card>
   );

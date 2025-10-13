@@ -6,7 +6,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  LockIcon,
   NavigationList,
   NavigationListItem,
   NavigationListItemAction,
@@ -73,12 +72,22 @@ export const Demo = () => {
   return (
     <div className="s-flex s-h-[400px] s-w-full s-flex-row s-gap-12">
       <div className="s-h-[400px] s-w-[240px]">
-        <NavigationList className="s-relative s-h-full s-w-full s-px-3">
+        <NavigationList className="s-relative s-h-full s-w-full s-px-3 dark:s-bg-muted-background-night">
           {conversationTitles.map((section, sectionIndex) => (
             <React.Fragment key={sectionIndex}>
               <NavigationListLabel label={section.label} />
               {section.items.map((title, index) => {
                 const itemIndex = allItems.indexOf(title);
+                // Add status based on index for demonstration
+                const getStatus = (idx: number) => {
+                  if (idx % 5 === 0) {
+                    return "unread";
+                  }
+                  if (idx % 3 === 0) {
+                    return "blocked";
+                  }
+                  return "idle";
+                };
                 return (
                   <NavigationListItem
                     key={index}
@@ -94,7 +103,7 @@ export const Demo = () => {
                     label={title}
                     className="s-w-full"
                     moreMenu={getMoreMenu(title)}
-                    icon={LockIcon}
+                    status={getStatus(index)}
                   />
                 );
               })}
@@ -103,12 +112,22 @@ export const Demo = () => {
         </NavigationList>
       </div>
       <div className="s-h-[400px] s-w-[240px]">
-        <NavigationList className="s-relative s-h-full s-w-full s-px-3">
+        <NavigationList className="s-relative s-h-full s-w-full s-px-3 dark:s-bg-muted-background-night">
           {conversationTitles.map((section, sectionIndex) => (
             <React.Fragment key={sectionIndex}>
               <NavigationListLabel label={section.label} isSticky />
               {section.items.map((title, index) => {
                 const itemIndex = allItems.indexOf(title);
+                // Add status based on index for demonstration.
+                const getStatus = (idx: number) => {
+                  if (idx % 5 === 0) {
+                    return "unread";
+                  }
+                  if (idx % 3 === 0) {
+                    return "blocked";
+                  }
+                  return "idle";
+                };
                 return (
                   <NavigationListItem
                     key={index}
@@ -124,7 +143,7 @@ export const Demo = () => {
                     label={title}
                     className="s-w-full"
                     moreMenu={getMoreMenu(title)}
-                    icon={LockIcon}
+                    status={getStatus(index)}
                   />
                 );
               })}

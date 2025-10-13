@@ -158,10 +158,12 @@ export default function AppView({
   const { mutate } = useSWRConfig();
 
   const [spec, setSpec] = useState(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     JSON.parse(app.savedSpecification || `[]`) as SpecificationType
   );
 
   const [config, setConfig] = useState(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     extractConfig(JSON.parse(app.savedSpecification || `{}`))
   );
   const [runnable, setRunnable] = useState(isRunnable(readOnly, spec, config));
@@ -228,6 +230,7 @@ export default function AppView({
     idx: number | null,
     blockType: BlockType | "map_reduce" | "while_end"
   ) => {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const s = addBlock(spec, idx === null ? spec.length - 1 : idx, blockType);
     await update(s);
     if (idx === null) {

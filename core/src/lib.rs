@@ -57,12 +57,11 @@ pub mod search_filter;
 pub mod utils;
 pub mod providers {
     pub mod azure_openai;
+    pub mod chat_messages;
     pub mod embedder;
     pub mod llm;
     pub mod mistral;
     pub mod openai;
-
-    pub mod chat_messages;
     pub mod provider;
     pub mod tiktoken {
         pub mod tiktoken;
@@ -81,6 +80,7 @@ pub mod providers {
     pub mod fireworks;
     pub mod google_ai_studio;
     pub mod helpers;
+    pub mod noop;
     pub mod openai_compatible_helpers;
     pub mod openai_responses_api_helpers;
     pub mod togetherai;
@@ -140,6 +140,8 @@ pub mod oauth {
 
     pub mod providers {
         pub mod confluence;
+        pub mod confluence_tools;
+        pub mod discord;
         pub mod freshservice;
         pub mod github;
         pub mod gmail;
@@ -173,3 +175,20 @@ pub mod open_telemetry;
 pub mod otel_log_format;
 
 pub mod mem_check;
+
+pub mod api {
+    pub mod api_state;
+    pub mod data_sources;
+    pub mod databases;
+    pub mod datasets;
+    pub mod folders;
+    pub mod nodes;
+    pub mod projects;
+    pub(crate) mod run_manager;
+    pub mod runs;
+    pub mod specifications;
+    pub mod sqlite_workers;
+    pub mod tables;
+    pub mod tags;
+    pub mod tokenize;
+}

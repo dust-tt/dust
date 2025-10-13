@@ -166,6 +166,7 @@ async function handler(
                   m.id.startsWith("code-") ||
                   m.id.startsWith("gpt-3.5-turbo") ||
                   m.id.startsWith("gpt-4") ||
+                  m.id.startsWith("gpt-5") ||
                   m.id.startsWith("o1-") ||
                   m.id.startsWith("o3-") ||
                   m.id.startsWith("o4-")
@@ -206,8 +207,9 @@ async function handler(
               // Active models.
               { id: "claude-3-haiku-20240307" },
               { id: "claude-3-5-haiku-20241022" },
-              { id: "claude-sonnet-4-20250514" },
+              { id: "claude-4-sonnet-20250514" },
               { id: "claude-opus-4-20250514" },
+              { id: "claude-sonnet-4-5-20250929" },
             ];
           }
 

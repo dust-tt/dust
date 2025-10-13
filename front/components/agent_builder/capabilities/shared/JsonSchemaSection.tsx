@@ -125,7 +125,7 @@ export function JsonSchemaSection({
         placeholder={
           '{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    ...\n  }\n}'
         }
-        value={jsonSchemaStringField.value}
+        value={jsonSchemaStringField.value ?? ""}
         disabled={isGeneratingSchema}
         onChange={(e) => handleChange(e.target.value)}
       />

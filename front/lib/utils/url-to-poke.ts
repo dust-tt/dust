@@ -9,9 +9,13 @@ interface RouteMapping {
 }
 
 const ROUTE_MAPPINGS: RouteMapping[] = [
-  // Conversations
+  // Conversations (both old /assistant/ and new /agent/ URLs)
   {
     pattern: /^\/w\/([^/]+)\/assistant\/([^/]+)$/,
+    pokePath: "/poke/$1/conversations/$2",
+  },
+  {
+    pattern: /^\/w\/([^/]+)\/agent\/([^/]+)$/,
     pokePath: "/poke/$1/conversations/$2",
   },
 
@@ -193,8 +197,8 @@ export function convertPokeToUrl(pokeUrl: string): string | null {
 
     // Define reverse mappings
     const reverseMappings: Array<[RegExp, string]> = [
-      [/^([^/]+)\/conversations\/([^/]+)$/, "/w/$1/assistant/$2"],
-      [/^([^/]+)\/assistants\/([^/]+)$/, "/w/$1/builder/assistants/$2"],
+      [/^([^/]+)\/conversations\/([^/]+)$/, "/w/$1/agent/$2"],
+      [/^([^/]+)\/agents\/([^/]+)$/, "/w/$1/builder/agents/$2"],
       [/^([^/]+)\/spaces\/([^/]+)\/apps\/([^/]+)$/, "/w/$1/spaces/$2/apps/$3"],
       [
         /^([^/]+)\/spaces\/([^/]+)\/data_source_views\/([^/]+)$/,

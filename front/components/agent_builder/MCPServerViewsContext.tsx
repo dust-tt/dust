@@ -13,7 +13,6 @@ import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 export type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
-
 // Sort MCP server views based on priority order.
 // Order: Search -> Include Data -> Query Tables -> Extract Data -> Others (alphabetically).
 export const sortMCPServerViewsByPriority = (
@@ -43,8 +42,7 @@ export const sortMCPServerViewsByPriority = (
 interface MCPServerViewsContextType {
   mcpServerViews: MCPServerViewType[];
   mcpServerViewsWithKnowledge: MCPServerViewTypeWithLabel[];
-  defaultMCPServerViews: MCPServerViewTypeWithLabel[];
-  nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
+  mcpServerViewsWithoutKnowledge: MCPServerViewTypeWithLabel[];
   isMCPServerViewsLoading: boolean;
   isMCPServerViewsError: boolean;
 }
@@ -63,8 +61,7 @@ function getGroupedMCPServerViews({
   if (!mcpServerViews || !Array.isArray(mcpServerViews)) {
     return {
       mcpServerViewsWithKnowledge: [],
-      defaultMCPServerViews: [],
-      nonDefaultMCPServerViews: [],
+      mcpServerViewsWithoutKnowledge: [],
     };
   }
 
@@ -101,18 +98,23 @@ function getGroupedMCPServerViews({
 
   const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
     groupBy(mcpServerViewsWithLabel, (view) => {
-      const requirements = getMCPServerRequirements(view);
+      const {
+        requiresDataSourceConfiguration,
+        requiresDataWarehouseConfiguration,
+        requiresTableConfiguration,
+      } = getMCPServerRequirements(view);
 
-      // Special handling for content_creation server:
-      // The content_creation server includes list and cat tools for convenience, but its primary purpose is
+      // Special handling for interactive_content server:
+      // The interactive_content server includes list and cat tools for convenience, but its primary purpose is
       // not data source operations. We don't want it to be classified as requiring knowledge.
-      const isContentCreationServer = view.server.name === "content_creation";
+      const isInteractiveContentServer =
+        view.server.name === "interactive_content";
 
       const isWithKnowledge =
-        !isContentCreationServer &&
-        (requirements.requiresDataSourceConfiguration ||
-          requirements.requiresDataWarehouseConfiguration ||
-          requirements.requiresTableConfiguration);
+        !isInteractiveContentServer &&
+        (requiresDataSourceConfiguration ||
+          requiresDataWarehouseConfiguration ||
+          requiresTableConfiguration);
 
       return isWithKnowledge
         ? "mcpServerViewsWithKnowledge"
@@ -128,8 +130,10 @@ function getGroupedMCPServerViews({
     mcpServerViewsWithKnowledge: sortMCPServerViewsByPriority(
       mcpServerViewsWithKnowledge || []
     ),
-    defaultMCPServerViews: grouped.auto || [],
-    nonDefaultMCPServerViews: grouped.manual || [],
+    mcpServerViewsWithoutKnowledge: [
+      ...(grouped.manual || []),
+      ...(grouped.auto || []),
+    ],
   };
 }
 
@@ -168,31 +172,26 @@ export const MCPServerViewsProvider = ({
     [mcpServerViews]
   );
 
-  const {
-    mcpServerViewsWithKnowledge,
-    defaultMCPServerViews,
-    nonDefaultMCPServerViews,
-  } = useMemo(() => {
-    return getGroupedMCPServerViews({
-      mcpServerViews: sortedMCPServerViews,
-      spaces,
-    });
-  }, [sortedMCPServerViews, spaces]);
+  const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
+    useMemo(() => {
+      return getGroupedMCPServerViews({
+        mcpServerViews: sortedMCPServerViews,
+        spaces,
+      });
+    }, [sortedMCPServerViews, spaces]);
 
   const value: MCPServerViewsContextType = useMemo(() => {
     return {
       mcpServerViews: sortedMCPServerViews,
       mcpServerViewsWithKnowledge,
-      defaultMCPServerViews,
-      nonDefaultMCPServerViews,
+      mcpServerViewsWithoutKnowledge,
       isMCPServerViewsLoading: isLoading || isSpacesLoading, // Spaces is required to fetch server views so we check isSpacesLoading too.
       isMCPServerViewsError,
     };
   }, [
     sortedMCPServerViews,
     mcpServerViewsWithKnowledge,
-    defaultMCPServerViews,
-    nonDefaultMCPServerViews,
+    mcpServerViewsWithoutKnowledge,
     isLoading,
     isMCPServerViewsError,
     isSpacesLoading,

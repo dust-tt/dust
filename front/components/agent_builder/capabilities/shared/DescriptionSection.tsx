@@ -1,7 +1,7 @@
 import { TextArea } from "@dust-tt/sparkle";
-import { useController, useFormContext } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 
-import type { CapabilityFormData } from "@app/components/agent_builder/types";
+import { BaseFormFieldSection } from "@app/components/agent_builder/capabilities/shared/BaseFormFieldSection";
 
 interface DescriptionSectionProps {
   title: string;
@@ -9,40 +9,47 @@ interface DescriptionSectionProps {
   label?: string;
   placeholder: string;
   maxLength?: number;
+  triggerValidationOnChange?: boolean;
 }
 
-const FIELD_NAME = "description";
+const DESCRIPTION_FIELD_NAME = "description";
 
 export function DescriptionSection({
   title,
   description,
   label,
   placeholder,
+  maxLength,
+  triggerValidationOnChange = false,
 }: DescriptionSectionProps) {
-  const { register } = useFormContext();
-  const { fieldState } = useController<CapabilityFormData, typeof FIELD_NAME>({
-    name: FIELD_NAME,
-  });
+  const { formState } = useFormContext();
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="mb-2 text-lg font-semibold">{title}</h3>
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {description}
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        {label && <label className="text-sm font-medium">{label}</label>}
-        <TextArea
-          placeholder={placeholder}
-          {...register(FIELD_NAME)}
-          rows={4}
-          showErrorLabel={true}
-          error={fieldState.error?.message}
-        />
-      </div>
-    </div>
+    <BaseFormFieldSection
+      title={title}
+      description={description}
+      fieldName={DESCRIPTION_FIELD_NAME}
+      triggerValidationOnChange={triggerValidationOnChange}
+    >
+      {({ registerRef, registerProps, onChange, errorMessage }) => (
+        <>
+          {label && <label className="text-sm font-medium">{label}</label>}
+          <TextArea
+            ref={registerRef}
+            placeholder={placeholder}
+            rows={4}
+            maxLength={maxLength}
+            showErrorLabel={formState.isSubmitted || formState.isDirty}
+            error={
+              formState.isSubmitted || formState.isDirty
+                ? errorMessage
+                : undefined
+            }
+            onChange={onChange}
+            {...registerProps}
+          />
+        </>
+      )}
+    </BaseFormFieldSection>
   );
 }

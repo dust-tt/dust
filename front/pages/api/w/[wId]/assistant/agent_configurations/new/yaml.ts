@@ -111,6 +111,7 @@ async function handler(
     name: yamlConfig.agent.handle,
     description: yamlConfig.agent.description,
     instructions: yamlConfig.instructions,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     pictureUrl: yamlConfig.agent.avatar_url || "",
     status: "active" as const,
     scope: yamlConfig.agent.scope,
@@ -120,6 +121,7 @@ async function handler(
       temperature: yamlConfig.generation_settings.temperature,
       reasoningEffort: yamlConfig.generation_settings.reasoning_effort,
       responseFormat:
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         yamlConfig.generation_settings.response_format || undefined,
     },
     maxStepsPerRun: yamlConfig.agent.max_steps_per_run,

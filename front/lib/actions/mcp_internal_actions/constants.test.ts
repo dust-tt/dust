@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { INTERNAL_MCP_SERVERS } from "./constants";
+import {
+  INTERNAL_MCP_SERVERS,
+  LEGACY_INTERNAL_MCP_SERVER_IDS,
+} from "./constants";
 
 describe("INTERNAL_MCP_SERVERS", () => {
   it("should have unique IDs for all servers", () => {
@@ -8,6 +11,16 @@ describe("INTERNAL_MCP_SERVERS", () => {
     const uniqueIds = new Set(ids);
 
     expect(ids.length).toBe(uniqueIds.size);
+  });
+
+  it("should not have any legacy servers", () => {
+    const legacyServers = Object.values(INTERNAL_MCP_SERVERS).filter((server) =>
+      LEGACY_INTERNAL_MCP_SERVER_IDS.includes(server.id)
+    );
+    expect(
+      legacyServers.length,
+      "Legacy servers should not be present in the INTERNAL_MCP_SERVERS object."
+    ).toBe(0);
   });
 
   it("manipulating the list of auto internal tools may requires a migration", () => {
@@ -24,9 +37,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
     const HARD_CODED_AUTO_INTERNAL_TOOLS = [
       { name: "image_generation", id: 2 },
       { name: "file_generation", id: 3 },
-      { name: "query_tables", id: 4 },
       { name: "web_search_&_browse", id: 5 },
-      { name: "think", id: 6 },
       { name: "agent_router", id: 8 },
       { name: "include_data", id: 9 },
       { name: "run_dust_app", id: 10 },
@@ -34,7 +45,9 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "missing_action_catcher", id: 13 },
       { name: "conversation_files", id: 17 },
       { name: "agent_memory", id: 21 },
-      { name: "content_creation", id: 23 },
+      { name: "interactive_content", id: 23 },
+      { name: "slideshow", id: 28 },
+      { name: "deep_dive", id: 29 },
       { name: "search", id: 1006 },
       { name: "run_agent", id: 1008 },
       { name: "reasoning", id: 1007 },

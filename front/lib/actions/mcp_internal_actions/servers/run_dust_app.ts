@@ -15,15 +15,18 @@ import type {
   LightServerSideMCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type {
+  AgentLoopContextType,
+  AgentLoopRunContextType,
+} from "@app/lib/actions/types";
 import {
-  makeInternalMCPServer,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { isMCPConfigurationForDustAppRun } from "@app/lib/actions/types/guards";
-import { isMCPInternalDustAppRun } from "@app/lib/actions/types/guards";
+  isMCPConfigurationForDustAppRun,
+  isMCPInternalDustAppRun,
+} from "@app/lib/actions/types/guards";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getDatasetSchema } from "@app/lib/api/datasets";
@@ -42,9 +45,11 @@ import type {
   SupportedFileContentType,
 } from "@app/types";
 import {
+  Err,
   extensionsForContentType,
   getHeaderFromGroupIds,
   getHeaderFromRole,
+  Ok,
   safeParseJSON,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
@@ -82,6 +87,7 @@ function convertDatasetSchemaToZodRawShape(
   const shape: ZodRawShape = {};
   if (datasetSchema) {
     for (const entry of datasetSchema) {
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const desc = entry.description || "";
       switch (entry.type) {
         case "string":
@@ -118,6 +124,7 @@ async function prepareAppContext(
     logger.error(
       {
         workspaceId: auth.getNonNullableWorkspace().sId,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         userId: auth.user()?.sId || "no_user",
         role: auth.role(),
         groupIds: auth.groups().map((g) => g.sId),
@@ -138,6 +145,7 @@ async function prepareAppContext(
     logger.error(
       {
         workspaceId: auth.getNonNullableWorkspace().sId,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         userId: auth.user()?.sId || "no_user",
         role: auth.role(),
         groupIds: auth.groups().map((g) => g.sId),
@@ -361,17 +369,18 @@ export default async function createServer(
       app.name,
       app.description,
       convertDatasetSchemaToZodRawShape(schema),
-      async () => {
-        return {
-          isError: false,
-          content: [
+      withToolLogging(
+        auth,
+        { toolNameForMonitoring: "run_dust_app", agentLoopContext },
+        async () => {
+          return new Ok([
             {
               type: "text",
               text: "Successfully list Dust App configuration",
             },
-          ],
-        };
-      }
+          ]);
+        }
+      )
     );
   } else if (agentLoopContext && agentLoopContext.runContext) {
     if (
@@ -393,111 +402,112 @@ export default async function createServer(
       app.name,
       app.description,
       convertDatasetSchemaToZodRawShape(schema),
-      async (params) => {
-        const content: (
-          | TextContent
-          | { type: "resource"; resource: ToolGeneratedFileType }
-        )[] = [];
+      withToolLogging(
+        auth,
+        { toolNameForMonitoring: "run_dust_app", agentLoopContext },
+        async (params) => {
+          const content: (
+            | TextContent
+            | { type: "resource"; resource: ToolGeneratedFileType }
+          )[] = [];
 
-        params = await prepareParamsWithHistory(
-          params,
-          schema,
-          agentLoopContext.runContext,
-          auth
-        );
-
-        const requestedGroupIds = auth.groups().map((g) => g.sId);
-
-        const prodCredentials = await prodAPICredentialsForOwner(owner);
-        const apiConfig = config.getDustAPIConfig();
-        const api = new DustAPI(
-          apiConfig,
-          {
-            ...prodCredentials,
-            extraHeaders: {
-              ...getHeaderFromGroupIds(requestedGroupIds),
-              ...getHeaderFromRole(auth.role()),
-            },
-          },
-          logger,
-          apiConfig.nodeEnv === "development" ? "http://localhost:3000" : null
-        );
-
-        const runRes = await api.runAppStreamed(
-          {
-            workspaceId: owner.sId,
-            appId: app.sId,
-            appSpaceId: app.space.sId,
-            appHash: "latest",
-          },
-          appConfig,
-          [params],
-          { useWorkspaceCredentials: true }
-        );
-
-        if (runRes.isErr()) {
-          return makeMCPToolTextError(
-            `Error running Dust app: ${runRes.error.message}`
+          params = await prepareParamsWithHistory(
+            params,
+            schema,
+            agentLoopContext.runContext,
+            auth
           );
-        }
 
-        const { eventStream } = runRes.value;
-        let lastBlockOutput = null;
+          const requestedGroupIds = auth.groups().map((g) => g.sId);
 
-        for await (const event of eventStream) {
-          if (event.type === "error") {
-            return makeMCPToolTextError(
-              `Error running Dust app: ${event.content.message}`
+          const prodCredentials = await prodAPICredentialsForOwner(owner);
+          const apiConfig = config.getDustAPIConfig();
+          const api = new DustAPI(
+            apiConfig,
+            {
+              ...prodCredentials,
+              extraHeaders: {
+                ...getHeaderFromGroupIds(requestedGroupIds),
+                ...getHeaderFromRole(auth.role()), // Keep the user's role for api.runApp call only
+              },
+            },
+            logger,
+            apiConfig.nodeEnv === "development" ? "http://localhost:3000" : null
+          );
+
+          const runRes = await api.runAppStreamed(
+            {
+              workspaceId: owner.sId,
+              appId: app.sId,
+              appSpaceId: app.space.sId,
+              appHash: "latest",
+            },
+            appConfig,
+            [params],
+            { useWorkspaceCredentials: true }
+          );
+
+          if (runRes.isErr()) {
+            return new Err(
+              new MCPError(`Error running Dust app: ${runRes.error.message}`)
             );
           }
 
-          if (event.type === "block_execution") {
-            const e = event.content.execution[0][0];
-            if (e.error) {
-              return makeMCPToolTextError(
-                `Error in block execution: ${e.error}`
+          const { eventStream } = runRes.value;
+          let lastBlockOutput = null;
+
+          for await (const event of eventStream) {
+            if (event.type === "error") {
+              return new Err(
+                new MCPError(`Error running Dust app: ${event.content.message}`)
               );
             }
-            lastBlockOutput = e.value;
+
+            if (event.type === "block_execution") {
+              const e = event.content.execution[0][0];
+              if (e.error) {
+                return new Err(
+                  new MCPError(`Error in block execution: ${e.error}`)
+                );
+              }
+              lastBlockOutput = e.value;
+            }
           }
+
+          const sanitizedOutput = sanitizeJSONOutput(lastBlockOutput);
+
+          const containsFileOutput = (
+            output: unknown
+          ): output is DustFileOutput =>
+            typeof output === "object" &&
+            output !== null &&
+            "__dust_file" in output &&
+            typeof output.__dust_file === "object" &&
+            output.__dust_file !== null &&
+            "type" in output.__dust_file &&
+            "content" in output.__dust_file;
+
+          if (
+            containsFileOutput(sanitizedOutput) &&
+            agentLoopContext.runContext?.conversation
+          ) {
+            const fileContent = await processDustFileOutput(
+              auth,
+              sanitizedOutput,
+              agentLoopContext.runContext.conversation,
+              app.name
+            );
+            content.push(...fileContent);
+          }
+
+          content.push({
+            type: "text",
+            text: JSON.stringify(sanitizedOutput, null, 2),
+          });
+
+          return new Ok(content);
         }
-
-        const sanitizedOutput = sanitizeJSONOutput(lastBlockOutput);
-
-        const containsFileOutput = (
-          output: unknown
-        ): output is DustFileOutput =>
-          typeof output === "object" &&
-          output !== null &&
-          "__dust_file" in output &&
-          typeof output.__dust_file === "object" &&
-          output.__dust_file !== null &&
-          "type" in output.__dust_file &&
-          "content" in output.__dust_file;
-
-        if (
-          containsFileOutput(sanitizedOutput) &&
-          agentLoopContext.runContext?.conversation
-        ) {
-          const fileContent = await processDustFileOutput(
-            auth,
-            sanitizedOutput,
-            agentLoopContext.runContext.conversation,
-            app.name
-          );
-          content.push(...fileContent);
-        }
-
-        content.push({
-          type: "text",
-          text: JSON.stringify(sanitizedOutput, null, 2),
-        });
-
-        return {
-          isError: false,
-          content,
-        };
-      }
+      )
     );
   } else {
     server.tool(
@@ -507,17 +517,18 @@ export default async function createServer(
         dustApp:
           ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP],
       },
-      async () => {
-        return {
-          isError: false,
-          content: [
+      withToolLogging(
+        auth,
+        { toolNameForMonitoring: "run_dust_app", agentLoopContext },
+        async () => {
+          return new Ok([
             {
               type: "text",
               text: "Successfully saved Dust App configuration",
             },
-          ],
-        };
-      }
+          ]);
+        }
+      )
     );
   }
 

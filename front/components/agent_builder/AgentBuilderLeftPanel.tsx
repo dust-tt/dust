@@ -1,6 +1,11 @@
 import type { ButtonProps } from "@dust-tt/sparkle";
-import { BarFooter, BarHeader, Button, ScrollArea } from "@dust-tt/sparkle";
-import { XMarkIcon } from "@dust-tt/sparkle";
+import {
+  BarFooter,
+  BarHeader,
+  Button,
+  ScrollArea,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import React from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -8,7 +13,6 @@ import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/cap
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
 import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface AgentBuilderLeftPanelProps {
   title: string;
@@ -28,7 +32,6 @@ export function AgentBuilderLeftPanel({
   isTriggersLoading,
 }: AgentBuilderLeftPanelProps) {
   const { owner } = useAgentBuilderContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const handleCancel = async () => {
     onCancel();
@@ -40,7 +43,12 @@ export function AgentBuilderLeftPanel({
         className="mx-4"
         title={title}
         rightActions={
-          <Button icon={XMarkIcon} onClick={handleCancel} variant="ghost" />
+          <Button
+            icon={XMarkIcon}
+            onClick={handleCancel}
+            variant="ghost"
+            type="button"
+          />
         }
       />
       <ScrollArea className="flex-1">
@@ -49,13 +57,13 @@ export function AgentBuilderLeftPanel({
             agentConfigurationId={agentConfigurationId}
           />
           <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
-          {hasFeature("hootl") && (
-            <AgentBuilderTriggersBlock
-              owner={owner}
-              isTriggersLoading={isTriggersLoading}
-            />
-          )}
-          <AgentBuilderSettingsBlock />
+          <AgentBuilderTriggersBlock
+            owner={owner}
+            isTriggersLoading={isTriggersLoading}
+          />
+          <AgentBuilderSettingsBlock
+            agentConfigurationId={agentConfigurationId}
+          />
         </div>
       </ScrollArea>
       <BarFooter

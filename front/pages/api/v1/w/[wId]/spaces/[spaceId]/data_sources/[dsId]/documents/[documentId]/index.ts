@@ -441,7 +441,8 @@ async function handler(
               content: r.data.text,
               sections: [],
             }
-          : r.data.section || null;
+          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            r.data.section || null;
 
       if (!section) {
         return apiError(req, res, {
@@ -584,6 +585,7 @@ async function handler(
       const documentId = req.query.documentId as string;
       const mimeType = r.data.mime_type ?? "application/octet-stream";
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const tags = r.data.tags || [];
       const titleInTags = tags
         .find((t) => t.startsWith("title:"))
@@ -591,6 +593,7 @@ async function handler(
         ?.trim();
 
       // Use titleInTags if no title is provided.
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const title = r.data.title?.trim() || titleInTags || UNTITLED_TITLE;
 
       if (!titleInTags) {
@@ -611,11 +614,14 @@ async function handler(
             dataSourceId: dataSource.sId,
             documentId,
             tags,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             parentId: r.data.parent_id || null,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             parents: r.data.parents || [documentId],
             timestamp: cleanTimestamp(r.data.timestamp),
             sourceUrl,
             section,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             upsertContext: r.data.upsert_context || null,
             title,
             mimeType,
@@ -650,8 +656,11 @@ async function handler(
           projectId: dataSource.dustAPIProjectId,
           dataSourceId: dataSource.dustAPIDataSourceId,
           documentId: req.query.documentId as string,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           tags: (r.data.tags || []).map((tag) => safeSubstring(tag, 0)),
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           parentId: r.data.parent_id || null,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           parents: r.data.parents || [documentId],
           sourceUrl,
           timestamp: cleanTimestamp(r.data.timestamp),
@@ -683,7 +692,9 @@ async function handler(
           dataSourceId: dataSource.sId,
           documentId: req.query.documentId as string,
           documentHash: upsertRes.value.document.hash,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           dataSourceConnectorProvider: dataSource.connectorProvider || null,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           upsertContext: r.data.upsert_context || undefined,
         });
         return;

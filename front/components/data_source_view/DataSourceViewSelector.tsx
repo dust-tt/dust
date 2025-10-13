@@ -1,3 +1,5 @@
+// All mime types are okay to use from the public API.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
   Button,
@@ -161,6 +163,7 @@ const getNodesFromConfig = (
       [r.internalId]: {
         isSelected: true,
         node: r,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         parents: r.parentInternalIds || [],
       },
       ...acc,
@@ -210,6 +213,7 @@ const updateSelection = ({
           {
             ...item,
             dataSourceView: dsv,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             parentInternalIds: item.parentInternalIds || [],
           },
         ],
@@ -227,6 +231,7 @@ const updateSelection = ({
         {
           ...item,
           dataSourceView: dsv,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           parentInternalIds: item.parentInternalIds || [],
         },
       ];

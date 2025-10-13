@@ -200,10 +200,10 @@ export function compareAgentsForSort(
     return 1;
   }
 
-  if (a.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
+  if (a.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return -1;
   }
-  if (b.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
+  if (b.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return 1;
   }
 
@@ -239,6 +239,15 @@ export function compareAgentsForSort(
   // Default: sort alphabetically.
   return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
 }
+
+export const formatTimestring = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString("en-US", {
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
 export function getWeekBoundaries(date: Date): {
   startDate: Date;

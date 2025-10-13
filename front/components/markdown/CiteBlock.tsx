@@ -2,13 +2,13 @@ import React, { useEffect } from "react";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import { visit } from "unist-util-visit";
 
-import type { MarkdownCitation } from "./MarkdownCitation";
+import type { MCPReferenceCitation } from "./MCPReferenceCitation";
 
 export type CitationsContextType = {
   references: {
-    [key: string]: MarkdownCitation;
+    [key: string]: MCPReferenceCitation;
   };
-  updateActiveReferences: (doc: MarkdownCitation, index: number) => void;
+  updateActiveReferences: (doc: MCPReferenceCitation, index: number) => void;
 };
 
 export const CitationsContext = React.createContext<CitationsContextType>({
@@ -52,17 +52,20 @@ export function CiteBlock(props: ReactMarkdownProps) {
           const link = document.href;
 
           return (
-            <sup key={`${r.ref}-${i}`}>
+            <div key={`${r.ref}-${i}`}>
               <a
                 href={link ?? undefined}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="flex h-4 w-4 items-center justify-center rounded-full bg-primary-600 text-xs font-medium text-primary-200">
-                  {r.counter}
+                <div className="group flex flex-row items-center justify-center space-x-1 rounded-lg bg-muted-background p-1 text-xs font-medium text-muted-foreground dark:bg-muted-background-night dark:text-muted-foreground-night">
+                  <span className="grayscale-[100%] transition-all duration-150 ease-in-out group-hover:grayscale-0">
+                    {document.icon}
+                  </span>
+                  <span>{r.counter}</span>
                 </div>
               </a>
-            </sup>
+            </div>
           );
         })}
       </span>

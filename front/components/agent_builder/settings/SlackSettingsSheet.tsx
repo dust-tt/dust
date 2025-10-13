@@ -1,6 +1,7 @@
 import {
   Button,
   Checkbox,
+  ContentMessage,
   ExternalLinkIcon,
   Icon,
   SearchInput,
@@ -15,6 +16,7 @@ import {
   SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
@@ -23,6 +25,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { DataSourceType, WorkspaceType } from "@app/types";
+import { isAdmin } from "@app/types/user";
 
 const SLACK_CHANNEL_INTERNAL_ID_PREFIX = "slack-channel-";
 
@@ -214,6 +217,7 @@ export function SlackSettingsSheet({
   useEffect(() => {
     setLocalSlackChannels([...(slackChannels || [])]);
     const currentAutoRespondWithoutMention =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       (slackChannels || [])[0]?.autoRespondWithoutMention || false;
     setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
   }, [slackChannels]);
@@ -222,6 +226,7 @@ export function SlackSettingsSheet({
     if (isOpen) {
       setLocalSlackChannels([...(slackChannels || [])]);
       const currentAutoRespondWithoutMention =
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         (slackChannels || [])[0]?.autoRespondWithoutMention || false;
       setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
     }
@@ -245,6 +250,7 @@ export function SlackSettingsSheet({
   const handleClose = () => {
     setLocalSlackChannels([...(slackChannels || [])]);
     const currentAutoRespondWithoutMention =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       (slackChannels || [])[0]?.autoRespondWithoutMention || false;
     setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
     onOpenChange();
@@ -267,6 +273,7 @@ export function SlackSettingsSheet({
     );
 
     const currentAutoRespondWithoutMention =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       (slackChannels || [])[0]?.autoRespondWithoutMention || false;
     const autoRespondWithoutMentionChanged =
       autoRespondWithoutMentionEnabled !== currentAutoRespondWithoutMention;
@@ -296,12 +303,28 @@ export function SlackSettingsSheet({
               <span className="font-bold">@Dust</span> Slack bot is mentioned in
               these channels.
             </div>
-            <SlackChannelsList
-              existingSelection={localSlackChannels}
-              onSelectionChange={handleSelectionChange}
-              owner={owner}
-              slackDataSource={slackDataSource}
-            />
+            {!isAdmin(owner) && (
+              <ContentMessage
+                size="md"
+                variant="warning"
+                title="Admin Access Required"
+                icon={InformationCircleIcon}
+              >
+                <p>
+                  Only administrators can enable default agents for specific
+                  Slack channels.
+                </p>
+              </ContentMessage>
+            )}
+
+            {isAdmin(owner) && (
+              <SlackChannelsList
+                existingSelection={localSlackChannels}
+                onSelectionChange={handleSelectionChange}
+                owner={owner}
+                slackDataSource={slackDataSource}
+              />
+            )}
           </div>
         </SheetContainer>
         <SheetFooter
@@ -317,12 +340,12 @@ export function SlackSettingsSheet({
             disabled: !hasUnsavedChanges,
           }}
         >
-          {hasFeature("slack_enhanced_default_agent") && (
+          {hasFeature("slack_enhanced_default_agent") && isAdmin(owner) && (
             <div className="flex flex-col border-t p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                    Enhanced Default Agent
+                    Respond to all messages in channel
                   </span>
                   <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                     Agent will automatically respond to all messages and thread

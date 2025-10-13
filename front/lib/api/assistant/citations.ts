@@ -1,22 +1,23 @@
-import { removeNulls } from "@dust-tt/client";
-
-import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isRunAgentResultResourceType,
   isSearchResultResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getFaviconUrl } from "@app/lib/utils/favicon";
 import { rand } from "@app/lib/utils/seeded_random";
 import type {
   AgentMessageType,
+  AllSupportedFileContentType,
   CitationType,
   LightAgentMessageType,
 } from "@app/types";
+import { removeNulls } from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 let REFS: string[] | null = null;
 const getRand = rand("chawarma");
 
-export const getRefs = () => {
+export function getRefs() {
   const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789".split("");
   if (REFS === null) {
     REFS = [];
@@ -31,7 +32,7 @@ export const getRefs = () => {
     REFS.sort(() => (getRand() > 0.5 ? 1 : -1));
   }
   return REFS;
-};
+}
 
 /**
  * Prompt to remind agents how to cite documents or web pages.
@@ -49,9 +50,14 @@ export function citationMetaPrompt(isUsingRunAgent: boolean) {
   );
 }
 
-export const getCitationsFromActions = (
-  actions: MCPActionType[]
-): Record<string, CitationType> => {
+export function getCitationsFromActions(
+  actions: Omit<
+    AgentMCPActionWithOutputType,
+    // TODO(2025-09-22 aubin): add proper typing for the statuses in the SDK (not really needed but
+    //  nice to have IMHO).
+    "internalMCPServerName" | "status"
+  >[]
+): Record<string, CitationType> {
   const searchResultsWithDocs = removeNulls(
     actions.flatMap((action) =>
       action.output?.filter(isSearchResultResourceType).map((o) => o.resource)
@@ -64,6 +70,7 @@ export const getCitationsFromActions = (
       href: d.uri,
       title: d.text,
       provider: d.source.provider ?? "document",
+      contentType: d.mimeType,
     };
   });
 
@@ -75,10 +82,13 @@ export const getCitationsFromActions = (
 
   const websearchRefs: Record<string, CitationType> = {};
   websearchResultsWithDocs.forEach((d) => {
+    const faviconUrl = getFaviconUrl(d.resource.uri);
     websearchRefs[d.resource.reference] = {
       href: d.resource.uri,
       title: d.resource.title,
-      provider: "document",
+      provider: "webcrawler",
+      ...(faviconUrl && { faviconUrl }),
+      contentType: d.resource.mimeType,
     };
   });
 
@@ -92,10 +102,18 @@ export const getCitationsFromActions = (
   runAgentResultsWithRefs.forEach((result) => {
     if (result.resource.refs) {
       Object.entries(result.resource.refs).forEach(([ref, citation]) => {
+        const href = citation.href ?? "";
+        const faviconUrl =
+          citation.provider === "webcrawler" && href
+            ? getFaviconUrl(href)
+            : undefined;
+
         runAgentRefs[ref] = {
-          href: citation.href ?? "",
+          href,
           title: citation.title,
           provider: citation.provider,
+          ...(faviconUrl && { faviconUrl }),
+          contentType: citation.mimeType as AllSupportedFileContentType,
         };
       });
     }
@@ -106,16 +124,20 @@ export const getCitationsFromActions = (
     ...websearchRefs,
     ...runAgentRefs,
   };
-};
+}
 
-export const getLightAgentMessageFromAgentMessage = (
+export function getLightAgentMessageFromAgentMessage(
   agentMessage: AgentMessageType
-): LightAgentMessageType => {
+): LightAgentMessageType {
   return {
     type: "agent_message",
     sId: agentMessage.sId,
+    created: agentMessage.created,
+    completedTs: agentMessage.completedTs,
     version: agentMessage.version,
+    rank: agentMessage.rank,
     parentMessageId: agentMessage.parentMessageId,
+    parentAgentMessageId: agentMessage.parentAgentMessageId,
     content: agentMessage.content,
     chainOfThought: agentMessage.chainOfThought,
     error: agentMessage.error,
@@ -135,6 +157,7 @@ export const getLightAgentMessageFromAgentMessage = (
         fileId: f.fileId,
         title: f.title,
         contentType: f.contentType,
+        ...(f.hidden ? { hidden: true } : {}),
       })),
   };
-};
+}

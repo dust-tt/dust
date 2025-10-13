@@ -1,7 +1,8 @@
 import {
   AnimatedText,
-  ClockIcon,
+  ArrowRightIcon,
   ContentMessage,
+  DotIcon,
   Input,
   Label,
   Sheet,
@@ -14,15 +15,14 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import cronstrue from "cronstrue";
-import uniqueId from "lodash/uniqueId";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { z } from "zod";
 
 import type {
+  AgentBuilderScheduleTriggerType,
   AgentBuilderTriggerType,
-  ScheduleFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { scheduleFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTextAsCronRule } from "@app/lib/swr/agent_triggers";
 import { useUser } from "@app/lib/swr/user";
@@ -30,11 +30,51 @@ import { debounce } from "@app/lib/utils/debounce";
 import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
+const scheduleFormSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255, "Name is too long"),
+  customPrompt: z.string(),
+  cron: z.string().min(1, "Cron expression is required"),
+  timezone: z.string().min(1, "Timezone is required"),
+});
+
+// a ScheduleFormData must be a TriggerFormData with a cron field
+type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
+
 const MIN_DESCRIPTION_LENGTH = 10;
+
+function formatTimezone(timezone: string): string {
+  const parts = timezone.split("/");
+  if (parts.length < 2) {
+    return timezone;
+  }
+  const city = parts[parts.length - 1].replace(/_/g, " ");
+  return `${city} (${timezone})`;
+}
+
+function isErrorWithMessage(
+  err: unknown
+): err is { error: { message: string } } {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "error" in err &&
+    typeof err.error === "object" &&
+    err.error !== null &&
+    "message" in err.error &&
+    typeof err.error.message === "string"
+  );
+}
+
+function extractErrorMessage(error: unknown): string {
+  if (isErrorWithMessage(error)) {
+    return error.error.message;
+  }
+  return "Unable to generate a schedule. Please try rephrasing.";
+}
 
 interface ScheduleEditionModalProps {
   owner: LightWorkspaceType;
-  trigger?: AgentBuilderTriggerType;
+  trigger?: AgentBuilderScheduleTriggerType;
   isOpen: boolean;
   onClose: () => void;
   onSave: (trigger: AgentBuilderTriggerType) => void;
@@ -48,7 +88,8 @@ export function ScheduleEditionModal({
   onSave,
 }: ScheduleEditionModalProps) {
   const { user } = useUser();
-  const isEditor = !trigger?.editor || trigger?.editor === user?.id;
+
+  const isEditor = (trigger?.editor ?? user?.id) === user?.id;
 
   const defaultValues: ScheduleFormData = {
     name: "Schedule",
@@ -67,6 +108,10 @@ export function ScheduleEditionModal({
     naturalDescriptionToCronRuleStatus,
     setNaturalDescriptionToCronRuleStatus,
   ] = useState<"idle" | "loading" | "error">("idle");
+  const [cronErrorMessage, setCronErrorMessage] = useState<string | null>(null);
+  const [generatedTimezone, setGeneratedTimezone] = useState<string | null>(
+    null
+  );
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const textAsCronRule = useTextAsCronRule({
     workspace: owner,
@@ -74,10 +119,16 @@ export function ScheduleEditionModal({
 
   const { reset } = form;
   useEffect(() => {
+    const scheduleConfig =
+      trigger?.kind === "schedule" &&
+      trigger?.configuration &&
+      "cron" in trigger.configuration
+        ? trigger.configuration
+        : null;
     reset({
       name: trigger?.name ?? defaultValues.name,
-      cron: trigger?.configuration?.cron ?? defaultValues.cron,
-      timezone: trigger?.configuration?.timezone ?? defaultValues.timezone,
+      cron: scheduleConfig?.cron ?? defaultValues.cron,
+      timezone: scheduleConfig?.timezone ?? defaultValues.timezone,
       customPrompt: trigger?.customPrompt ?? defaultValues.customPrompt,
     });
   }, [
@@ -98,13 +149,17 @@ export function ScheduleEditionModal({
       case "loading":
         return "Generating schedule...";
       case "error":
-        return "Unable to generate a schedule (note: it can't be more frequent than hourly).";
+        return cronErrorMessage;
       case "idle":
         if (!cron) {
-          return `Please describe above... (minimum ${MIN_DESCRIPTION_LENGTH} characters)`;
+          return undefined;
         }
         try {
-          return `${cronstrue.toString(cron)}.`;
+          const cronDesc = cronstrue.toString(cron);
+          if (generatedTimezone) {
+            return `${cronDesc}, in ${formatTimezone(generatedTimezone)} timezone.`;
+          }
+          return cronDesc;
         } catch (error) {
           setNaturalDescriptionToCronRuleStatus("error");
         }
@@ -112,7 +167,12 @@ export function ScheduleEditionModal({
       default:
         assertNever(naturalDescriptionToCronRuleStatus);
     }
-  }, [naturalDescriptionToCronRuleStatus, cron]);
+  }, [
+    naturalDescriptionToCronRuleStatus,
+    cron,
+    generatedTimezone,
+    cronErrorMessage,
+  ]);
 
   const handleCancel = () => {
     onClose();
@@ -121,7 +181,7 @@ export function ScheduleEditionModal({
 
   const onSubmit = (data: ScheduleFormData) => {
     const triggerData: AgentBuilderTriggerType = {
-      sId: trigger?.sId ?? uniqueId(),
+      sId: trigger?.sId,
       name: data.name.trim(),
       kind: "schedule",
       configuration: {
@@ -130,6 +190,7 @@ export function ScheduleEditionModal({
       },
       editor: trigger?.editor ?? user?.id ?? null,
       customPrompt: data.customPrompt.trim() ?? null,
+      editorEmail: trigger?.editorEmail ?? user?.email,
     };
 
     onSave(triggerData);
@@ -150,10 +211,21 @@ export function ScheduleEditionModal({
         </SheetHeader>
 
         <SheetContainer>
+          {trigger && !isEditor && (
+            <ContentMessage variant="info">
+              You cannot edit this schedule. It is managed by{" "}
+              <span className="font-semibold">
+                {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
+                {trigger.editorEmail || "another user"}
+              </span>
+              .
+            </ContentMessage>
+          )}
+
           <FormProvider form={form} onSubmit={onSubmit}>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="trigger-name">Trigger Name</Label>
+              <div className="space-y-1">
+                <Label htmlFor="trigger-name">Name</Label>
                 <Input
                   id="trigger-name"
                   {...form.register("name")}
@@ -164,17 +236,8 @@ export function ScheduleEditionModal({
                 />
               </div>
 
-              <div>
-                <div className="pb-2">
-                  <Label htmlFor="trigger-description">Scheduler</Label>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    The trigger will run in the{" "}
-                    {trigger?.configuration?.timezone ||
-                      Intl.DateTimeFormat().resolvedOptions().timeZone}{" "}
-                    timezone.
-                  </p>
-                </div>
-
+              <div className="space-y-1">
+                <Label htmlFor="trigger-description">Scheduler</Label>
                 <TextArea
                   id="schedule-description"
                   placeholder='Describe when you want the agent to run in natural language. e.g. "run every day at 9 AM", or "Late afternoon on business days"...'
@@ -193,11 +256,15 @@ export function ScheduleEditionModal({
                         async () => {
                           form.setValue("cron", "");
                           try {
-                            const cronRule = await textAsCronRule(txt);
-                            form.setValue("cron", cronRule);
+                            const result = await textAsCronRule(txt);
+                            form.setValue("cron", result.cron);
+                            form.setValue("timezone", result.timezone);
+                            setGeneratedTimezone(result.timezone);
                             setNaturalDescriptionToCronRuleStatus("idle");
                           } catch (error) {
                             setNaturalDescriptionToCronRuleStatus("error");
+                            setCronErrorMessage(extractErrorMessage(error));
+                            setGeneratedTimezone(null);
                           }
                         },
                         500
@@ -210,30 +277,35 @@ export function ScheduleEditionModal({
                     }
                   }}
                 />
-                <div className="my-2">
-                  <ContentMessage variant="outline" size="lg">
-                    <div className="flex flex-row items-start gap-2 text-foreground dark:text-foreground-night">
-                      <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 self-start" />
-                      {naturalDescriptionToCronRuleStatus === "loading" ? (
-                        <AnimatedText variant="primary">
-                          {cronDescription}
-                        </AnimatedText>
-                      ) : (
-                        <p>Agent will run {cronDescription}</p>
-                      )}
-                    </div>
-                  </ContentMessage>
-                </div>
+
+                {cronDescription && (
+                  <div className="my-2">
+                    <ContentMessage variant="outline" size="lg">
+                      <div className="flex flex-row items-start gap-2 text-foreground dark:text-foreground-night">
+                        {naturalDescriptionToCronRuleStatus === "loading" ? (
+                          <>
+                            <DotIcon className="mt-0.5 h-4 w-4 shrink-0 self-start" />
+                            <AnimatedText variant="primary">
+                              {cronDescription}
+                            </AnimatedText>
+                          </>
+                        ) : (
+                          <>
+                            <ArrowRightIcon className="mt-0.5 h-4 w-4 shrink-0 self-start" />
+                            <p>{cronDescription}</p>
+                          </>
+                        )}
+                      </div>
+                    </ContentMessage>
+                  </div>
+                )}
               </div>
 
-              <div>
-                <div className="pb-2">
-                  <Label htmlFor="trigger-description">Custom Message</Label>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    (optional) A custom message that will be sent to the agent
-                    when triggered.
-                  </p>
-                </div>
+              <div className="space-y-1">
+                <Label htmlFor="trigger-description">Message (Optional)</Label>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Add context or instructions for the agent when triggered.
+                </p>
                 <TextArea
                   id="schedule-custom-prompt"
                   placeholder='e.g. "Provide a summary of the latest sales figures."'

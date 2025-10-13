@@ -1,20 +1,19 @@
 import {
   AnimatedText,
-  Button,
   Card,
   cn,
-  CommandLineIcon,
   ContentMessage,
   Markdown,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useEffect, useRef } from "react";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type {
   ActionProgressState,
   AgentStateClassification,
-} from "@app/lib/assistant/state/messageReducer";
+} from "@app/components/assistant/conversation/types";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
@@ -35,7 +34,7 @@ export function AgentMessageActions({
   actionProgress,
   owner,
 }: AgentMessageActionsProps) {
-  const { openPanel } = useConversationSidePanelContext();
+  const { openPanel, currentPanel, data } = useConversationSidePanelContext();
 
   const isAgentMessageWithActions =
     isLightAgentMessageWithActionsType(agentMessage);
@@ -43,8 +42,10 @@ export function AgentMessageActions({
     ? agentMessage.actions[agentMessage.actions.length - 1]
     : null;
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const chainOfThought = agentMessage.chainOfThought || "";
 
+  const firstRender = useRef<boolean>(true);
   const onClick = () => {
     openPanel({
       type: "actions",
@@ -52,11 +53,30 @@ export function AgentMessageActions({
     });
   };
 
+  useEffect(() => {
+    // Only if we are in the first rendering, message is empty and panel is open on another message.
+    if (
+      currentPanel === "actions" &&
+      data !== agentMessage.sId &&
+      agentMessage.content === null &&
+      firstRender.current
+    ) {
+      openPanel({
+        type: "actions",
+        messageId: agentMessage.sId,
+      });
+    }
+    firstRender.current = false;
+  }, [agentMessage, currentPanel, data, openPanel]);
+
   const lastNotification = lastAction
     ? actionProgress.get(lastAction.id)?.progress ?? null
     : null;
 
-  return lastAgentStateClassification !== "done" ? (
+  const showMessageBreakdownButton =
+    lastAgentStateClassification === "done" || agentMessage.status === "failed";
+
+  return !showMessageBreakdownButton ? (
     <div
       onClick={onClick}
       className={cn(
@@ -100,15 +120,5 @@ export function AgentMessageActions({
         </div>
       )}
     </div>
-  ) : (
-    <div className="flex flex-col items-start gap-y-4">
-      <Button
-        size="sm"
-        label="Message Breakdown"
-        icon={CommandLineIcon}
-        variant="outline"
-        onClick={onClick}
-      />
-    </div>
-  );
+  ) : null;
 }

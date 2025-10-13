@@ -1,13 +1,13 @@
 import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
   fetcher,
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { PublicFileResponseBody } from "@app/pages/api/v1/public/files/[token]";
 import type {
   UpsertFileToDataSourceRequestBody,
   UpsertFileToDataSourceResponseBody,
@@ -22,7 +22,7 @@ import type {
 
 export const getFileProcessedUrl = (
   owner: LightWorkspaceType,
-  fileId: string
+  fileId: string | null | undefined
 ) => `/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`;
 
 export const getProcessedFileDownloadUrl = (
@@ -30,14 +30,26 @@ export const getProcessedFileDownloadUrl = (
   fileId: string
 ) => `/api/w/${owner.sId}/files/${fileId}?action=download&version=processed`;
 
-export function useFileProcessedContent(
+export const getFileDownloadUrl = (owner: LightWorkspaceType, fileId: string) =>
+  `/api/w/${owner.sId}/files/${fileId}?action=download`;
+
+export const getFileViewUrl = (
   owner: LightWorkspaceType,
-  fileId: string | null,
+  fileId: string | null | undefined
+) => `/api/w/${owner.sId}/files/${fileId}?action=view`;
+
+export function useFileProcessedContent({
+  owner,
+  fileId,
+  config,
+}: {
+  owner: LightWorkspaceType;
+  fileId: string | null | undefined;
   config?: SWRConfiguration & {
     disabled?: boolean;
-  }
-) {
-  const isDisabled = config?.disabled || fileId === null;
+  };
+}) {
+  const isDisabled = config?.disabled ?? !fileId;
 
   const {
     data: response,
@@ -86,6 +98,7 @@ export function useUpsertFileAsDatasourceEntry(
     });
 
   const sendNotification = useSendNotification();
+  const { startPeriodicRefresh } = usePeriodicRefresh(mutateContentNodes);
 
   const doCreate = async (body: UpsertFileToDataSourceRequestBody) => {
     const upsertUrl = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.sId}/files`;
@@ -106,6 +119,7 @@ export function useUpsertFileAsDatasourceEntry(
       return null;
     } else {
       void mutateContentNodes();
+      startPeriodicRefresh();
 
       sendNotification({
         type: "success",
@@ -155,18 +169,30 @@ export function useFileMetadata({
 export function useFileContent({
   fileId,
   owner,
+  cacheKey,
+  config,
 }: {
-  fileId: string;
+  fileId: string | null | undefined;
   owner: LightWorkspaceType;
+  cacheKey?: string;
+  config?: SWRConfiguration & {
+    disabled?: boolean;
+  };
 }) {
+  // Include cacheKey in the SWR key if provided to force cache invalidation.
+  const swrKey = cacheKey
+    ? `/api/w/${owner.sId}/files/${fileId}?action=view&v=${cacheKey}`
+    : `/api/w/${owner.sId}/files/${fileId}?action=view`;
+
   const { data, error, mutate } = useSWRWithDefaults<string, string>(
-    `/api/w/${owner.sId}/files/${fileId}?action=view`,
+    swrKey,
     async (url: string) => {
       // Use custom fetcher to parse as text.
       const response = await fetch(url);
 
       return response.text();
-    }
+    },
+    { disabled: !fileId || config?.disabled, ...config }
   );
 
   return {
@@ -177,7 +203,7 @@ export function useFileContent({
   };
 }
 
-export function useShareContentCreationFile({
+export function useShareInteractiveContentFile({
   fileId,
   owner,
 }: {
@@ -205,7 +231,7 @@ export function useShareContentCreationFile({
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Failed to share the Content Creation file.",
+        title: "Failed to share the Frame file.",
         description: `Error: ${errorData.message}`,
       });
       return null;
@@ -224,36 +250,5 @@ export function useShareContentCreationFile({
     isFileShareLoading: !error && !data,
     isFileShareError: error,
     mutateFileShare: mutate,
-  };
-}
-
-/**
- * Public file access hook (no authentication required). We exceptionaly use the v1 API here.
- */
-
-export function usePublicFile({
-  includeContent,
-  shareToken,
-}: {
-  includeContent?: boolean;
-  shareToken: string | null;
-}) {
-  const fileMetadataFetcher: Fetcher<PublicFileResponseBody> = fetcher;
-
-  const swrKey = shareToken
-    ? `/api/v1/public/files/${shareToken}?includeContent=${includeContent}`
-    : null;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    swrKey,
-    fileMetadataFetcher
-  );
-
-  return {
-    fileMetadata: data?.file,
-    fileContent: data?.content,
-    isFileLoading: !error && !data,
-    isFileError: error,
-    mutateFile: mutate,
   };
 }

@@ -1,5 +1,4 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { Logger } from "pino";
 
 import {
@@ -14,25 +13,20 @@ import {
 } from "@app/lib/actions/action_output_limits";
 import type {
   LightMCPToolConfigurationType,
-  MCPApproveExecutionEvent,
   MCPToolConfigurationType,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
-import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
-import type { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import { augmentInputsWithConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isBlobResource,
-  isMCPProgressNotificationType,
   isResourceWithName,
+  isRunAgentQueryProgressOutput,
+  isStoreResourceProgressOutput,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ToolBlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
-import type {
-  ActionGeneratedFileType,
-  AgentLoopRunContextType,
-} from "@app/lib/actions/types";
+import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
@@ -45,7 +39,6 @@ import type {
   ConversationType,
   FileUseCase,
   FileUseCaseMetadata,
-  Result,
   SupportedFileContentType,
 } from "@app/types";
 import {
@@ -56,72 +49,59 @@ import {
   stripNullBytes,
 } from "@app/types";
 
-/**
- * Executes the MCP tool and handles progress notifications.
- * Returns the tool execution result.
- */
-export async function* executeMCPTool({
-  auth,
-  inputs,
-  agentLoopRunContext,
-  action,
-  agentConfiguration,
-  conversation,
-  agentMessage,
-}: {
-  auth: Authenticator;
-  inputs: Record<string, unknown>;
-  agentLoopRunContext: AgentLoopRunContextType;
-  action: AgentMCPActionResource;
-  agentConfiguration: AgentConfigurationType;
-  conversation: ConversationType;
-  agentMessage: AgentMessageType;
-}): AsyncGenerator<
-  ToolNotificationEvent | MCPApproveExecutionEvent,
-  Result<
-    CallToolResult["content"],
-    | Error
-    | McpError
-    | MCPServerPersonalAuthenticationRequiredError
-    | ToolBlockedAwaitingInputError
-  > | null,
-  unknown
-> {
-  await action.updateStatus("running");
+export async function processToolNotification(
+  notification: MCPProgressNotificationType,
+  {
+    action,
+    agentConfiguration,
+    conversation,
+    agentMessage,
+  }: {
+    action: AgentMCPActionResource;
+    agentConfiguration: AgentConfigurationType;
+    conversation: ConversationType;
+    agentMessage: AgentMessageType;
+  }
+): Promise<ToolNotificationEvent> {
+  const output = notification.params.data.output;
 
-  let toolCallResult: Result<
-    CallToolResult["content"],
-    Error | McpError | MCPServerPersonalAuthenticationRequiredError
-  > | null = null;
-
-  for await (const event of tryCallMCPTool(auth, inputs, agentLoopRunContext, {
-    progressToken: action.id,
-  })) {
-    if (event.type === "result") {
-      toolCallResult = event.result;
-    } else if (event.type === "notification") {
-      const { notification } = event;
-      if (isMCPProgressNotificationType(notification)) {
-        // Regular notifications, we yield them as is with the type "tool_notification".
-        yield {
-          type: "tool_notification",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          conversationId: conversation.sId,
-          messageId: agentMessage.sId,
-          action: {
-            ...action.toJSON(),
-            // TODO(2025-08-29 aubin): cleanup as soon as the SDK type is updated.
-            output: null,
-            generatedFiles: [],
-          },
-          notification: notification.params,
-        };
-      }
-    }
+  // Handle store_resource notifications by creating output items immediately
+  if (isStoreResourceProgressOutput(output)) {
+    await AgentMCPActionOutputItem.bulkCreate(
+      output.contents.map((content) => ({
+        workspaceId: action.workspaceId,
+        agentMCPActionId: action.id,
+        content,
+      }))
+    );
   }
 
-  return toolCallResult;
+  // Specific handling for run_agent notifications indicating the tool has
+  // started and can be resumed: the action is updated to save the resumeState.
+  if (isRunAgentQueryProgressOutput(output)) {
+    await action.updateStepContext({
+      ...action.stepContext,
+      resumeState: {
+        userMessageId: output.userMessageId,
+        conversationId: output.conversationId,
+      },
+    });
+  }
+
+  // Regular notifications, we yield them as is with the type "tool_notification".
+  return {
+    type: "tool_notification",
+    created: Date.now(),
+    configurationId: agentConfiguration.sId,
+    conversationId: conversation.sId,
+    messageId: agentMessage.sId,
+    action: {
+      ...action.toJSON(),
+      output: null,
+      generatedFiles: [],
+    },
+    notification: notification.params,
+  };
 }
 
 /**
@@ -134,13 +114,13 @@ export async function processToolResults(
     action,
     conversation,
     localLogger,
-    toolCallResult,
+    toolCallResultContent,
     toolConfiguration,
   }: {
     action: AgentMCPActionResource;
     conversation: ConversationType;
     localLogger: Logger;
-    toolCallResult: CallToolResult["content"];
+    toolCallResultContent: CallToolResult["content"];
     toolConfiguration: LightMCPToolConfigurationType;
   }
 ): Promise<{
@@ -156,7 +136,7 @@ export async function processToolResults(
     content: CallToolResult["content"][number];
     file: FileResource | null;
   }[] = await concurrentExecutor(
-    toolCallResult,
+    toolCallResultContent,
     async (block) => {
       switch (block.type) {
         case "text": {
@@ -247,7 +227,7 @@ export async function processToolResults(
             if (isBlobResource(block)) {
               const fileName = isResourceWithName(block)
                 ? block.name
-                : `generated-file-${Date.now()}${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0]}`;
+                : `generated-file-${Date.now()}${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0] || ""}`;
 
               return handleBase64Upload(auth, {
                 base64Data: block.resource.blob,
@@ -359,13 +339,23 @@ export async function processToolResults(
   );
 
   const generatedFiles: ActionGeneratedFileType[] = removeNulls(
-    cleanContent.map((c) => c.file)
-  ).map((f) => ({
-    contentType: f.contentType,
-    fileId: f.sId,
-    snippet: f.snippet,
-    title: f.fileName,
-  }));
+    cleanContent.map((c) => {
+      if (!c.file) {
+        return null;
+      }
+      const isHidden =
+        c.content.type === "resource" &&
+        isToolGeneratedFile(c.content) &&
+        c.content.resource.hidden === true;
+      return {
+        contentType: c.file.contentType,
+        fileId: c.file.sId,
+        snippet: c.file.snippet,
+        title: c.file.fileName,
+        ...(isHidden ? { hidden: true } : {}),
+      } satisfies ActionGeneratedFileType;
+    })
+  );
 
   return { outputItems, generatedFiles };
 }

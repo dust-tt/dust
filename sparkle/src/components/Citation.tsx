@@ -85,7 +85,7 @@ const CitationIndex = React.forwardRef<
       ref={ref}
       className={cn(
         "s-z-10",
-        "s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-text-xs s-font-semibold",
+        "s-heading-xs s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full",
         "s-text-primary-200 dark:s-text-primary-200-night",
         "s-bg-primary-600 dark:s-bg-primary-600-night",
         className
@@ -229,7 +229,7 @@ const CitationLoading = React.forwardRef<
       )}
       {...props}
     >
-      <Spinner variant="dark" size="md" />
+      <Spinner size="md" />
     </div>
   );
 });
@@ -247,7 +247,7 @@ const CitationTitle = React.forwardRef<HTMLDivElement, CitationTitleProps>(
         className={cn(
           "s-z-10",
           "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all",
-          "s-text-sm s-font-semibold",
+          "s-heading-sm",
           "s-text-foreground dark:s-text-foreground-night",
           className
         )}

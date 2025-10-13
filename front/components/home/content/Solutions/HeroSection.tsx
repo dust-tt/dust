@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { FC } from "react";
 
 import { Grid, H1, H3, P } from "@app/components/home/ContentComponents";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 
 interface Visual {
   src: string;
@@ -26,6 +27,7 @@ interface HeroSectionProps {
       href: string;
     };
   };
+  trackingPrefix?: string;
 }
 
 export const HeroSection: FC<HeroSectionProps> = ({
@@ -35,6 +37,7 @@ export const HeroSection: FC<HeroSectionProps> = ({
   visuals,
   accentColor = "text-brand-hunter-green",
   ctaButtons,
+  trackingPrefix = "hero",
 }) => {
   const MainVisual = () => (
     <Hover3D depth={-40} perspective={1000} className="relative">
@@ -73,6 +76,10 @@ export const HeroSection: FC<HeroSectionProps> = ({
                     size="md"
                     label={ctaButtons.primary.label}
                     icon={RocketIcon}
+                    onClick={withTracking(
+                      TRACKING_AREAS.SOLUTIONS,
+                      `${trackingPrefix}_cta_primary`
+                    )}
                   />
                 </Link>
               )}
@@ -82,6 +89,10 @@ export const HeroSection: FC<HeroSectionProps> = ({
                     variant="outline"
                     size="md"
                     label={ctaButtons.secondary.label}
+                    onClick={withTracking(
+                      TRACKING_AREAS.SOLUTIONS,
+                      `${trackingPrefix}_cta_secondary`
+                    )}
                   />
                 </Link>
               )}

@@ -35,6 +35,7 @@ function getAgentPictureUrl(
   emoji: string | undefined,
   backgroundColor: `bg-${string}`
 ): string {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const selectedEmoji = emoji || "🤖";
   const emojiData = buildSelectedEmojiType(selectedEmoji);
 

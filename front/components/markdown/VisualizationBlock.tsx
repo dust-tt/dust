@@ -29,6 +29,7 @@ export function VisualizationBlock({
 
   const visualizationRenderer = useMemo(() => {
     return (
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       customRenderer?.visualization ||
       (() => (
         <div className="pb-2 pt-4 font-medium text-warning">
@@ -56,11 +57,26 @@ export function getVisualizationPlugin(
   conversationId: string,
   messageId: string
 ) {
+  const getFileBlob = async (fileId: string): Promise<Blob | null> => {
+    const response = await fetch(
+      `/api/w/${owner.sId}/files/${fileId}?action=view`
+    );
+    if (!response.ok) {
+      return null;
+    }
+
+    const resBuffer = await response.arrayBuffer();
+
+    return new Blob([resBuffer], {
+      type: response.headers.get("Content-Type") ?? undefined,
+    });
+  };
+
   const customRenderer = {
     visualization: (code: string, complete: boolean, lineStart: number) => {
       return (
         <VisualizationActionIframe
-          workspace={owner}
+          workspaceId={owner.sId}
           visualization={{
             code,
             complete,
@@ -69,6 +85,7 @@ export function getVisualizationPlugin(
           key={`viz-${messageId}-${lineStart}`}
           conversationId={conversationId}
           agentConfigurationId={agentConfigurationId}
+          getFileBlob={getFileBlob}
         />
       );
     },

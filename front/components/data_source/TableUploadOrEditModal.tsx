@@ -34,6 +34,7 @@ import {
   isBigFileSize,
   isSlugified,
   MAX_FILE_SIZES,
+  truncate,
 } from "@app/types";
 
 interface Table {
@@ -302,6 +303,7 @@ export const TableUploadOrEditModal = ({
     const isNameValid =
       tableState.name.trim() !== "" && isSlugified(tableState.name);
     const isDescriptionValid = tableState.description.trim() !== "";
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const fileOrInitialId = initialId || fileId;
     setIsValidTable(isNameValid && isDescriptionValid && !!fileOrInitialId);
   }, [tableState, initialId, fileId]);
@@ -411,7 +413,7 @@ export const TableUploadOrEditModal = ({
                         label: fileUploaderService.isProcessingFiles
                           ? "Uploading..."
                           : tableState.file
-                            ? tableState.file.name
+                            ? truncate(tableState.file.name, 24)
                             : initialId
                               ? "Replace file"
                               : "Upload file",

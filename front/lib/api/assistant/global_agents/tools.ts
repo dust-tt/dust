@@ -1,5 +1,3 @@
-import type { DataSourceViewType } from "@dust-tt/client";
-
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
@@ -11,6 +9,7 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { DataSourceViewType } from "@app/types";
 import type { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
 export type PrefetchedDataSourcesType = {
@@ -52,8 +51,6 @@ export function _getDefaultWebActionsForGlobalAgent({
       sId: agentId + "-websearch-browse-action",
       type: "mcp_server_configuration",
       name: DEFAULT_WEBSEARCH_ACTION_NAME satisfies InternalMCPServerNameType,
-      // Putting a description here is important as it prevents the global agent being detected as
-      // a legacy agent (see isLegacyAgent) and being capped to 1 action.
       description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
       mcpServerViewId: webSearchBrowseMCPServerView.sId,
       internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
@@ -65,6 +62,7 @@ export function _getDefaultWebActionsForGlobalAgent({
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     },
   ];
 }
@@ -98,6 +96,7 @@ export function _getToolsetsToolsConfiguration({
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     },
   ];
 }
@@ -127,6 +126,40 @@ export function _getAgentRouterToolsConfiguration(
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
+    },
+  ];
+}
+
+export function _getInteractiveContentToolConfiguration({
+  agentId,
+  interactiveContentMCPServerView,
+}: {
+  agentId: GLOBAL_AGENTS_SID;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
+}): ServerSideMCPServerConfigurationType[] {
+  if (!interactiveContentMCPServerView) {
+    return [];
+  }
+
+  return [
+    {
+      id: -1,
+      sId: agentId + "-interactive-content",
+      type: "mcp_server_configuration",
+      name: "interactive_content",
+      description: "Create & update Interactive Content files.",
+      mcpServerViewId: interactiveContentMCPServerView.sId,
+      internalMCPServerId: interactiveContentMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      secretName: null,
     },
   ];
 }

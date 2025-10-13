@@ -1,14 +1,14 @@
 import type { InternalToolInputMimeType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { Ajv } from "ajv";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import zip from "lodash/zip";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  ConfigurableToolInputJSONSchemas,
+  validateConfiguredJsonSchema,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type {
   DataSourceConfiguration,
@@ -17,13 +17,16 @@ import type {
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   areSchemasEqual,
+  ensurePathExists,
   findSchemaAtPath,
   followInternalRef,
+  getValueAtPath,
   isJSONSchemaObject,
+  iterateOverSchemaPropertiesRecursive,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
-import type { WorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
+import type { WhitelistableFeature, WorkspaceType } from "@app/types";
+import { assertNever, isString } from "@app/types";
 
 function getDataSourceURI(config: DataSourceConfiguration): string {
   const { workspaceId, sId, dataSourceViewId, filter } = config;
@@ -62,13 +65,60 @@ function generateConfiguredInput({
     "Action configuration must be a server-side MCP tool configuration"
   );
 
+  type PrimitiveType = string | number | boolean | string[];
+
+  /*
+   * Get a validated value from the action configuration.
+   * If the value is not provided, we look for a default value in the input schema.
+   * If the value is provided, we validate it against the expected type.
+   * If the value is not provided and there is no default value, we throw an error.
+   */
+  // TODO(2025-10-10 aubin): remove this function.
+  const getValidatedValue = <U extends PrimitiveType>(
+    actionConfiguration: MCPToolConfigurationType,
+    keyPath: string,
+    value: PrimitiveType | undefined,
+    expectedType: string,
+    typeGuard: (val: unknown) => val is U
+  ): U => {
+    if (value === undefined) {
+      const propSchema = findSchemaAtPath(
+        actionConfiguration.inputSchema,
+        keyPath.split(".")
+      );
+      if (propSchema) {
+        // Handle both object-level default {value, mimeType}
+        if (
+          propSchema.default &&
+          typeof propSchema.default === "object" &&
+          "value" in propSchema.default
+        ) {
+          if (typeGuard(propSchema.default.value)) {
+            value = propSchema.default.value;
+          } else {
+            // Invalid object-level default type - throw specific error
+            throw new Error(
+              `Expected ${expectedType} value for key ${keyPath}, got ${typeof propSchema.default.value}`
+            );
+          }
+        }
+      }
+    }
+    if (!typeGuard(value)) {
+      throw new Error(
+        `Expected ${expectedType} value for key ${keyPath}, got ${typeof value}`
+      );
+    }
+    return value;
+  };
+
   switch (mimeType) {
     case INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE: {
       return (
         actionConfiguration.dataSources?.map((config) => ({
           uri: getDataSourceURI(config),
           mimeType,
-        })) || []
+        })) ?? []
       );
     }
 
@@ -77,7 +127,7 @@ function generateConfiguredInput({
         actionConfiguration.dataSources?.map((config) => ({
           uri: getDataSourceURI(config),
           mimeType,
-        })) || []
+        })) ?? []
       );
     }
 
@@ -86,7 +136,7 @@ function generateConfiguredInput({
         actionConfiguration.tables?.map((config) => ({
           uri: getTableURI(config),
           mimeType,
-        })) || []
+        })) ?? []
       );
     }
 
@@ -115,10 +165,10 @@ function generateConfiguredInput({
       return { modelId, providerId, temperature, reasoningEffort, mimeType };
     }
 
-    case INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME: {
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME: {
       const { timeFrame } = actionConfiguration;
       if (!timeFrame) {
-        return null;
+        return undefined;
       }
 
       const { duration, unit } = timeFrame;
@@ -128,7 +178,7 @@ function generateConfiguredInput({
     case INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA: {
       const { jsonSchema } = actionConfiguration;
       if (!jsonSchema) {
-        return null;
+        return undefined;
       }
       const validationResult = validateConfiguredJsonSchema(jsonSchema);
       if (validationResult.isErr()) {
@@ -142,53 +192,94 @@ function generateConfiguredInput({
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
       // For primitive types, we have rendered the key from the path and use it to look up the value.
-      const value = actionConfiguration.additionalConfiguration[keyPath];
-      if (typeof value !== "string") {
-        throw new Error(
-          `Expected string value for key ${keyPath}, got ${typeof value}`
-        );
-      }
+      const value = getValidatedValue<string>(
+        actionConfiguration,
+        keyPath,
+        actionConfiguration.additionalConfiguration[keyPath],
+        "string",
+        (val): val is string => typeof val === "string"
+      );
+
       return { value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER: {
-      const value = actionConfiguration.additionalConfiguration[keyPath];
-      if (typeof value !== "number") {
-        throw new Error(
-          `Expected number value for key ${keyPath}, got ${typeof value}`
-        );
-      }
+      const value = getValidatedValue<number>(
+        actionConfiguration,
+        keyPath,
+        actionConfiguration.additionalConfiguration[keyPath],
+        "number",
+        (val): val is number => typeof val === "number"
+      );
+
       return { value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN: {
-      const value = actionConfiguration.additionalConfiguration[keyPath];
-      if (typeof value !== "boolean") {
-        throw new Error(
-          `Expected boolean value for key ${keyPath}, got ${typeof value}`
-        );
-      }
+      const value = getValidatedValue<boolean>(
+        actionConfiguration,
+        keyPath,
+        actionConfiguration.additionalConfiguration[keyPath],
+        "boolean",
+        (val): val is boolean => typeof val === "boolean"
+      );
+
       return { value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM: {
-      const value = actionConfiguration.additionalConfiguration[keyPath];
-      if (typeof value !== "string") {
-        throw new Error(
-          `Expected string value for key ${keyPath}, got ${typeof value}`
-        );
-      }
+      const value = getValidatedValue<string>(
+        actionConfiguration,
+        keyPath,
+        actionConfiguration.additionalConfiguration[keyPath],
+        "string",
+        (val): val is string => typeof val === "string"
+      );
       return { value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.LIST: {
-      const value = actionConfiguration.additionalConfiguration[keyPath];
-      if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) {
+      let values = actionConfiguration.additionalConfiguration[keyPath];
+      if (
+        values === undefined ||
+        (Array.isArray(values) && values.length === 0)
+      ) {
+        const propSchema = findSchemaAtPath(
+          actionConfiguration.inputSchema,
+          keyPath.split(".")
+        );
+        if (propSchema) {
+          // Handle both object-level default {values, mimeType}
+          if (
+            propSchema.default &&
+            typeof propSchema.default === "object" &&
+            "values" in propSchema.default
+          ) {
+            if (
+              Array.isArray(propSchema.default.values) &&
+              propSchema.default.values.every(isString)
+            ) {
+              values = propSchema.default.values;
+            } else {
+              // Invalid object-level default type - throw specific error
+              throw new Error(
+                `Expected array of string values for key ${keyPath}, got ${
+                  Array.isArray(propSchema.default.values)
+                    ? "array with non-string elements"
+                    : typeof propSchema.default.values
+                }`
+              );
+            }
+          }
+        }
+      }
+      if (!Array.isArray(values) || values.some((v) => !isString(v))) {
         throw new Error(
-          `Expected array of string values for key ${keyPath}, got ${typeof value} for mime type ${mimeType}`
+          `Expected array of string values for key ${keyPath}, got ${typeof values}`
         );
       }
-      return { values: value, mimeType };
+
+      return { values: values, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP: {
@@ -203,6 +294,16 @@ function generateConfiguredInput({
       return { appId, mimeType };
     }
 
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.SECRET: {
+      const secretName = actionConfiguration.secretName;
+
+      if (!secretName) {
+        throw new Error("Invalid Secret configuration");
+      }
+
+      return { secretName, mimeType };
+    }
+
     default:
       assertNever(mimeType);
   }
@@ -212,7 +313,7 @@ function generateConfiguredInput({
  * Returns all paths in a server's tools' inputSchemas that match the schema for the specified mimeType.
  * @returns A record of paths where the schema matches the specified mimeType
  */
-function findPathsToConfiguration({
+export function findPathsToConfiguration({
   mcpServerView,
   mimeType,
 }: {
@@ -232,12 +333,14 @@ function findPathsToConfiguration({
     }
 
     if (tool.inputSchema) {
+      const inlinedSchema = inlineAllRefs(tool.inputSchema);
       matches = {
         ...matches,
-        ...findMatchingSubSchemas(tool.inputSchema, mimeType),
+        ...findMatchingSubSchemas(inlinedSchema, mimeType),
       };
     }
   }
+
   return matches;
 }
 
@@ -338,55 +441,49 @@ export function augmentInputsWithConfiguration({
   }
 
   const inputs = { ...rawInputs };
-
-  const ajv = new Ajv({ allErrors: true, strict: false });
-
-  // Note: When using AJV validation, string patterns must use regex syntax (e.g. /^fil_/) instead
-  // of startsWith() to avoid "Invalid escape" errors. This is important because our Zod schemas are
-  // converted to JSON Schema for AJV validation, and AJV requires regex patterns for string
-  // validation.
-  const validate = ajv.compile(inputSchema);
-  const isValid = validate(inputs);
-
-  if (!isValid && validate.errors) {
-    for (const error of validate.errors) {
-      if (error.keyword !== "required" || !error.params.missingProperty) {
-        continue;
-      }
-
-      const missingProp = error.params.missingProperty;
-
-      const parentPath = error.instancePath
-        ? error.instancePath.split("/").filter(Boolean)
-        : [];
-
-      const fullPath = [...parentPath, missingProp];
-      let propSchema = findSchemaAtPath(inputSchema, fullPath);
-      // If the schema we found is a reference, follow it.
-      if (propSchema?.$ref) {
-        propSchema = followInternalRef(inputSchema, propSchema.$ref);
-      }
-
-      // If we found a schema and it has a matching MIME type, inject the value
-      if (propSchema) {
-        for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
-          if (isSchemaConfigurable(propSchema, mimeType)) {
-            const value = generateConfiguredInput({
-              owner,
-              actionConfiguration,
-              mimeType,
-              keyPath: fullPath.join("."),
-            });
-
-            // We found a matching mimeType, augment the inputs
-            setValueAtPath(inputs, fullPath, value);
-          }
+  iterateOverSchemaPropertiesRecursive(inputSchema, (fullPath, propSchema) => {
+    for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
+      if (isSchemaConfigurable(propSchema, mimeType)) {
+        const valueAtPath = getValueAtPath(inputs, fullPath);
+        if (valueAtPath) {
+          return false;
         }
+
+        const value = generateConfiguredInput({
+          owner,
+          actionConfiguration,
+          mimeType,
+          keyPath: fullPath.join("."),
+        });
+
+        // Ensure intermediate path exists
+        ensurePathExists(inputs, fullPath);
+        // We found a matching mimeType, augment the inputs
+        setValueAtPath(inputs, fullPath, value);
+        return false;
       }
     }
-  }
+    return true;
+  });
 
   return inputs;
+}
+
+function extractSchemaDefault<T>(
+  schema: JSONSchema,
+  typeGuard: (value: unknown) => value is T
+): T | undefined {
+  // Try object-level default first: { value: T, mimeType: "..." }
+  if (
+    schema.default &&
+    typeof schema.default === "object" &&
+    "value" in schema.default &&
+    typeGuard(schema.default.value)
+  ) {
+    return schema.default.value;
+  }
+
+  return undefined;
 }
 
 export interface MCPServerRequirements {
@@ -397,20 +494,47 @@ export interface MCPServerRequirements {
   requiresReasoningConfiguration: boolean;
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
-  requiredStrings: Array<{ key: string; description?: string }>;
-  requiredNumbers: Array<{ key: string; description?: string }>;
-  requiredBooleans: Array<{ key: string; description?: string }>;
-  requiredEnums: Record<string, { options: string[]; description?: string }>;
+  // TODO(2025-10-10 aubin): align type with enums and lists by using Records.
+  requiredStrings: {
+    key: string;
+    description?: string;
+    default?: string;
+  }[];
+  requiredNumbers: {
+    key: string;
+    description?: string;
+    default?: number;
+  }[];
+  requiredBooleans: {
+    key: string;
+    description?: string;
+    default?: boolean;
+  }[];
+  requiredEnums: Record<
+    string,
+    {
+      options: { value: string; label: string; description?: string }[];
+      description?: string;
+      default?: string;
+    }
+  >;
   requiredLists: Record<
     string,
-    { options: Record<string, string>; description?: string }
+    {
+      options: { value: string; label: string; description?: string }[];
+      description?: string;
+      values?: string[];
+      default?: string;
+    }
   >;
   requiresDustAppConfiguration: boolean;
+  requiresSecretConfiguration: boolean;
   noRequirement: boolean;
 }
 
 export function getMCPServerRequirements(
-  mcpServerView: MCPServerViewType | null | undefined
+  mcpServerView: MCPServerViewType | null | undefined,
+  featureFlags?: WhitelistableFeature[]
 ): MCPServerRequirements {
   if (!mcpServerView) {
     return {
@@ -427,6 +551,7 @@ export function getMCPServerRequirements(
       requiredEnums: {},
       requiredLists: {},
       requiresDustAppConfiguration: false,
+      requiresSecretConfiguration: false,
       noRequirement: false,
     };
   }
@@ -472,14 +597,16 @@ export function getMCPServerRequirements(
       })
     ).length > 0;
 
-  const enabledToolNames =
+  // If there is no toolsMetadata (= undefined or empty array), it means everything is enabled
+  const disabledToolNames =
     mcpServerView.toolsMetadata
-      ?.filter((tool) => tool.enabled)
+      ?.filter((tool) => tool.enabled === false)
       .map((tool) => tool.toolName) ?? [];
 
-  const enabledTools = server.tools.filter((tool) =>
-    enabledToolNames.includes(tool.name)
-  );
+  const enabledTools =
+    disabledToolNames.length > 0
+      ? server.tools.filter((tool) => !disabledToolNames.includes(tool.name))
+      : server.tools;
 
   const mayRequireTimeFrameConfiguration = enabledTools.some(
     (tool) => tool.inputSchema?.properties?.timeFrame
@@ -497,6 +624,7 @@ export function getMCPServerRequirements(
   ).map(([key, schema]) => ({
     key,
     description: schema.description,
+    default: extractSchemaDefault(schema, isString),
   }));
 
   const requiredNumbers = Object.entries(
@@ -507,6 +635,10 @@ export function getMCPServerRequirements(
   ).map(([key, schema]) => ({
     key,
     description: schema.description,
+    default: extractSchemaDefault(
+      schema,
+      (v: unknown): v is number => typeof v === "number"
+    ),
   }));
 
   const requiredBooleans = Object.entries(
@@ -514,36 +646,94 @@ export function getMCPServerRequirements(
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
     })
-  ).map(([key, schema]) => ({
-    key,
-    description: schema.description,
-  }));
+  )
+    .map(([key, schema]) => ({
+      key,
+      description: schema.description,
+      default: extractSchemaDefault(
+        schema,
+        (v: unknown): v is boolean => typeof v === "boolean"
+      ),
+    }))
+    // Exclude useSummary if the user doesn't have the web_summarization feature flag.
+    .filter(
+      ({ key }) =>
+        key !== "useSummary" || featureFlags?.includes("web_summarization")
+    );
 
-  const requiredEnums = Object.fromEntries(
+  const requiredEnums: Record<
+    string,
+    {
+      options: { value: string; label: string; description?: string }[];
+      description?: string;
+      default?: string;
+    }
+  > = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
         mcpServerView,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
       })
     ).map(([key, schema]) => {
-      const valueProperty = schema.properties?.value;
-      if (!valueProperty || !isJSONSchemaObject(valueProperty)) {
+      const optionsProperty = schema.properties?.options;
+      if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
         return [key, { options: [], description: schema.description }];
       }
+
+      const defaultValue = extractSchemaDefault(schema, isString);
+
+      const options = Array.isArray(optionsProperty.anyOf)
+        ? (optionsProperty.anyOf
+            .map((v) => {
+              if (
+                isJSONSchemaObject(v) &&
+                isJSONSchemaObject(v.properties?.value) &&
+                isJSONSchemaObject(v.properties?.label) &&
+                v.properties.value.const &&
+                v.properties.label.const
+              ) {
+                return {
+                  value: v.properties.value.const,
+                  label: v.properties.label.const,
+                  description:
+                    typeof v.description === "string"
+                      ? v.description
+                      : undefined,
+                };
+              }
+              return null;
+            })
+            .filter((v) => v !== null) as {
+            value: string;
+            label: string;
+            description?: string;
+          }[])
+        : [];
+
+      if (options.length === 0) {
+        throw new Error(`No valid enum options found for key ${key}`);
+      }
+
       return [
         key,
         {
-          options:
-            valueProperty.enum?.filter(
-              (v): v is string => typeof v === "string"
-            ) ?? [],
+          options,
           description: schema.description,
+          default: defaultValue,
         },
       ];
     })
   );
 
-  const requiredLists = Object.fromEntries(
+  const requiredLists: Record<
+    string,
+    {
+      options: { value: string; label: string; description?: string }[];
+      description?: string;
+      values?: string[];
+      default?: string;
+    }
+  > = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
         mcpServerView,
@@ -553,46 +743,61 @@ export function getMCPServerRequirements(
       const optionsProperty = schema.properties?.options;
 
       if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
-        return [key, { options: {}, description: schema.description }];
+        return [key, { options: [], description: schema.description }];
       }
 
-      const values =
-        optionsProperty.anyOf?.map(
-          (v) =>
-            isJSONSchemaObject(v) &&
-            isJSONSchemaObject(v.properties?.value) &&
-            v.properties.value.const
-        ) ?? [];
-      const labels =
-        optionsProperty.anyOf?.map(
-          (v) =>
-            isJSONSchemaObject(v) &&
-            isJSONSchemaObject(v.properties?.label) &&
-            v.properties.label.const
-        ) ?? [];
+      const options =
+        (optionsProperty.anyOf
+          ?.map((v) => {
+            if (
+              isJSONSchemaObject(v) &&
+              isJSONSchemaObject(v.properties?.value) &&
+              isJSONSchemaObject(v.properties?.label) &&
+              v.properties.value.const &&
+              v.properties.label.const
+            ) {
+              return {
+                value: v.properties.value.const,
+                label: v.properties.label.const,
+                description:
+                  typeof v.description === "string" ? v.description : undefined,
+              };
+            }
+            return null;
+          })
+          .filter((v) => v !== null) as {
+          value: string;
+          label: string;
+          description?: string;
+        }[]) ?? [];
 
-      if (values.length !== labels.length) {
-        throw new Error(
-          `Expected the same number of values and labels for key ${key}, got ${values.length} values and ${labels.length} labels`
-        );
+      if (options.length === 0) {
+        throw new Error(`No valid list options found for key ${key}`);
       }
 
-      // Create a record of values to labels
-      const valueToLabel: Record<string, string> = Object.fromEntries(
-        zip(labels, values).map(([label, value]) => [value, label])
-      );
+      const defaultValue = extractSchemaDefault(schema, isString);
 
-      return [key, { options: valueToLabel, description: schema.description }];
+      return [
+        key,
+        {
+          options,
+          description: schema.description,
+          default: defaultValue,
+        },
+      ];
     })
   );
 
-  const requiredDustAppConfiguration =
+  const requiresDustAppConfiguration =
     Object.keys(
       findPathsToConfiguration({
         mcpServerView,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
       })
     ).length > 0;
+
+  const requiresSecretConfiguration =
+    mcpServerView.server.requiresSecret === true;
 
   return {
     requiresDataSourceConfiguration,
@@ -607,20 +812,23 @@ export function getMCPServerRequirements(
     requiredBooleans,
     requiredEnums,
     requiredLists,
-    requiresDustAppConfiguration: requiredDustAppConfiguration,
+    requiresDustAppConfiguration,
+    requiresSecretConfiguration,
     noRequirement:
       !requiresDataSourceConfiguration &&
       !requiresDataWarehouseConfiguration &&
       !requiresTableConfiguration &&
       !requiresChildAgentConfiguration &&
       !requiresReasoningConfiguration &&
-      !requiredDustAppConfiguration &&
       !mayRequireTimeFrameConfiguration &&
-      requiredStrings.length === 0 &&
-      requiredNumbers.length === 0 &&
-      requiredBooleans.length === 0 &&
-      Object.keys(requiredEnums).length === 0 &&
-      Object.keys(requiredLists).length === 0,
+      !mayRequireJsonSchemaConfiguration &&
+      !requiredStrings.some((c) => c.default === undefined) &&
+      !requiredNumbers.some((c) => c.default === undefined) &&
+      !requiredBooleans.some((c) => c.default === undefined) &&
+      !Object.values(requiredEnums).some((c) => c.default === undefined) &&
+      !Object.values(requiredLists).some((c) => c.default === undefined) &&
+      !requiresDustAppConfiguration &&
+      !requiresSecretConfiguration,
   };
 }
 
@@ -632,9 +840,10 @@ function isSchemaConfigurable(
   mimeType: InternalToolInputMimeType
 ): boolean {
   if (mimeType === INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM) {
-    // We only check that the schema has a `value` property and a `mimeType` property with the correct value.
+    // We check that the schema has an `options` property, a `value` property and a `mimeType` property with the correct value.
     const mimeTypeProperty = schema.properties?.mimeType;
     if (
+      schema.properties?.options &&
       schema.properties?.value &&
       mimeTypeProperty &&
       isJSONSchemaObject(mimeTypeProperty)
@@ -692,15 +901,6 @@ export function findMatchingSubSchemas(
         // Check if this property's schema matches the target
         if (isSchemaConfigurable(propSchema, mimeType)) {
           matches[key] = propSchema;
-        }
-
-        // Following references within the main schema.
-        // zodToJsonSchema generates references if the same subSchema is repeated.
-        if (propSchema.$ref) {
-          const refSchema = followInternalRef(inputSchema, propSchema.$ref);
-          if (refSchema && isSchemaConfigurable(refSchema, mimeType)) {
-            matches[key] = refSchema;
-          }
         }
 
         // Recursively check this property's schema
@@ -780,4 +980,76 @@ export function findMatchingSubSchemas(
   // since we entirely hide the configuration from the agent.
 
   return matches;
+}
+
+function recursiveInlineAllRefs(
+  schema: JSONSchema,
+  rootSchema: JSONSchema
+): JSONSchema {
+  let outputSchema: JSONSchema = { ...schema };
+
+  // If this schema is a direct reference, resolve it fully and continue inlining recursively
+  if (schema.$ref) {
+    const refSchema = followInternalRef(rootSchema, schema.$ref);
+    if (refSchema && isJSONSchemaObject(refSchema)) {
+      return recursiveInlineAllRefs(refSchema, rootSchema);
+    }
+    return schema;
+  }
+
+  if (schema.properties) {
+    outputSchema.properties = {};
+    for (const [key, propSchema] of Object.entries(schema.properties)) {
+      if (isJSONSchemaObject(propSchema)) {
+        outputSchema.properties[key] = recursiveInlineAllRefs(
+          propSchema,
+          rootSchema
+        );
+      } else {
+        outputSchema.properties[key] = propSchema;
+      }
+    }
+  }
+
+  if (schema.type == "array" && schema.items) {
+    if (isJSONSchemaObject(schema.items)) {
+      outputSchema.items = recursiveInlineAllRefs(schema.items, rootSchema);
+    } else if (Array.isArray(schema.items)) {
+      outputSchema.items = schema.items.map((item) =>
+        isJSONSchemaObject(item)
+          ? recursiveInlineAllRefs(item, rootSchema)
+          : item
+      );
+    }
+  }
+
+  // Handle all other keys
+  for (const [key, value] of Object.entries(schema)) {
+    // Skip properties and items as they are handled separately above
+    if (
+      key === "properties" ||
+      key === "required" ||
+      key === "anyOf" ||
+      key === "enum" ||
+      key === "type" ||
+      (key === "items" && outputSchema.type === "array")
+    ) {
+      continue;
+    }
+    if (isJSONSchemaObject(value)) {
+      outputSchema = {
+        ...outputSchema,
+        [key]: recursiveInlineAllRefs(value, rootSchema),
+      };
+    } else {
+      outputSchema = { ...outputSchema, [key]: value };
+    }
+  }
+
+  return outputSchema;
+}
+
+// TODO(2025-10-10 aubin): remove this.
+function inlineAllRefs(schema: JSONSchema): JSONSchema {
+  return recursiveInlineAllRefs(schema, schema);
 }

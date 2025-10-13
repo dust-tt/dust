@@ -587,6 +587,24 @@ export const TreeExample = () => {
                   />
                 </Tree>
               </Tree.Item>
+
+              <Tree.Item
+                label="Item 8 (loading, with existing nodes)"
+                visual={FolderIcon}
+              >
+                <Tree isLoading>
+                  <Tree.Item
+                    type="leaf"
+                    label="Item 1"
+                    checkbox={{
+                      checked: checked["Item 1"],
+                      onCheckedChange: () => {
+                        check("Item 1");
+                      },
+                    }}
+                  />
+                </Tree>
+              </Tree.Item>
             </Tree>
           </div>
         </div>

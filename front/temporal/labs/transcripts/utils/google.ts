@@ -1,4 +1,3 @@
-import { Err, Ok } from "@dust-tt/client";
 import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
 
@@ -7,7 +6,7 @@ import { getTranscriptsGoogleAuth } from "@app/lib/labs/transcripts/utils/helper
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
-import { normalizeError } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 export async function retrieveRecentGoogleTranscripts(
   {

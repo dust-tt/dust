@@ -3,6 +3,10 @@ import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type {
+  WebhookSourceKind,
+  WebhookSourceSignatureAlgorithm,
+} from "@app/types/triggers/webhooks";
 
 export class WebhookSourceModel extends WorkspaceAwareModel<WebhookSourceModel> {
   declare createdAt: CreationOptional<Date>;
@@ -11,8 +15,11 @@ export class WebhookSourceModel extends WorkspaceAwareModel<WebhookSourceModel> 
   declare name: string;
 
   declare secret: string | null;
+  declare urlSecret: string;
   declare signatureHeader: string | null;
-  declare signatureAlgorithm: "sha1" | "sha256" | "sha512" | null;
+  declare signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
+  declare kind: WebhookSourceKind;
+  declare subscribedEvents: string[];
 
   declare customHeaders: Record<string, string> | null;
 }
@@ -37,6 +44,10 @@ WebhookSourceModel.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    urlSecret: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
     signatureHeader: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -45,9 +56,17 @@ WebhookSourceModel.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    kind: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     customHeaders: {
       type: DataTypes.JSONB,
       allowNull: true,
+    },
+    subscribedEvents: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
     },
   },
   {

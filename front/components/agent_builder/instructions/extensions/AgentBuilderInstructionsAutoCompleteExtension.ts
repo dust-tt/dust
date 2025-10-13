@@ -1,10 +1,11 @@
-import type { LightWorkspaceType } from "@dust-tt/client";
 import { Extension } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import debounce from "lodash/debounce";
+
+import type { LightWorkspaceType } from "@app/types";
 
 /**
  * Minimal interface for autocomplete - we only need name, handle, description and actions with name/description.
@@ -61,6 +62,7 @@ const fetchAgentBuilderSuggestions = async (
               builderState?.actions?.map((action) => ({
                 name: action.name,
                 description: action.description,
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               })) || []
             ),
           },

@@ -164,7 +164,7 @@ benefits from higher rate limits.
 
 `;
     viewsUsedByAgents.forEach((agent) => {
-      email += `${agent.name} - ${workspaceUrl(auth)}assistant/new?assistantDetails=${agent.sId}\n`;
+      email += `${agent.name} - ${workspaceUrl(auth)}agent/new?agentDetails=${agent.sId}\n`;
     });
 
     email += `

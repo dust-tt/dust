@@ -13,7 +13,9 @@ export async function getStaticProps() {
 }
 
 export default function Insurance() {
-  return <IndustryTemplate config={insuranceConfig} />;
+  return (
+    <IndustryTemplate config={insuranceConfig} trackingPrefix="insurance" />
+  );
 }
 
 Insurance.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {

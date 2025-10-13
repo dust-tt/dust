@@ -3,9 +3,10 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
+import { AgentActionSummary } from "@app/components/assistant/conversation/actions/AgentActionsPanelSummary";
 import { PanelAgentStep } from "@app/components/assistant/conversation/actions/PanelAgentStep";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
+import { useAgentMessageStreamLegacy } from "@app/hooks/useAgentMessageStreamLegacy";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
@@ -16,7 +17,7 @@ import type {
 } from "@app/types";
 
 interface AgentActionsPanelProps {
-  conversation: ConversationWithoutContentType | null;
+  conversation: ConversationWithoutContentType;
   owner: LightWorkspaceType;
 }
 
@@ -40,7 +41,7 @@ function AgentActionsPanelContent({
   const [currentStreamingStep, setCurrentStreamingStep] = useState(1);
 
   const { messageStreamState, shouldStream, isFreshMountWithContent } =
-    useAgentMessageStream({
+    useAgentMessageStreamLegacy({
       message: getLightAgentMessageFromAgentMessage(fullAgentMessage),
       conversationId: conversation?.sId ?? null,
       owner,
@@ -74,9 +75,13 @@ function AgentActionsPanelContent({
       ? fullAgentMessage.parsedContents
       : {};
 
+  const nbSteps = Object.entries(steps || {}).filter(
+    ([, entries]) => Array.isArray(entries) && entries.length > 0
+  ).length;
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // Track whether the user is currently scrolled to the bottom of the panel
-  const isUserAtBottomRef = useRef<boolean>(true);
+  const shouldAutoScroll = useRef<boolean>(true);
 
   /**
    * Preserve chain of thought content to prevent flickering during state transitions.
@@ -107,7 +112,7 @@ function AgentActionsPanelContent({
       return;
     }
 
-    if (isUserAtBottomRef.current) {
+    if (shouldAutoScroll.current) {
       el.scrollTo({
         top: el.scrollHeight,
         behavior: "smooth",
@@ -117,13 +122,19 @@ function AgentActionsPanelContent({
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
+    const scrollUp =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      Number(el.scrollTop) < Number(el.dataset.lastScrollTop || 0);
+
+    el.dataset.lastScrollTop = el.scrollTop.toString();
     /**
      * 1000px threshold is used to determine if the user is at the bottom of the panel.
      * If the user is within 1000px of the bottom, we consider them to be at the bottom.
      * This is to prevent losing auto-scroll when we receive a visually BIG chunk.
      */
     const threshold = 1000;
-    isUserAtBottomRef.current =
+    shouldAutoScroll.current =
+      !scrollUp &&
       el.scrollHeight - el.clientHeight <= el.scrollTop + threshold;
   };
 
@@ -149,7 +160,7 @@ function AgentActionsPanelContent({
 
   const streamActionProgress = messageStreamState?.actionProgress ?? new Map();
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-background dark:bg-background-night">
       <AgentActionsPanelHeader
         title="Breakdown of the tools used"
         onClose={closePanel}
@@ -160,15 +171,6 @@ function AgentActionsPanelContent({
         onScroll={handleScroll}
       >
         <div className="flex h-full flex-col gap-4">
-          {!shouldStream &&
-            agentMessageToRender.actions.length === 0 &&
-            !agentMessageToRender.chainOfThought && (
-              <div className="flex h-full items-center justify-center">
-                <span className="text-sm text-muted-foreground">
-                  There's no step to display for this message.
-                </span>
-              </div>
-            )}
           {/* Render all parsed steps in order */}
           {Object.entries(steps || {})
             .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
@@ -202,7 +204,7 @@ function AgentActionsPanelContent({
                 reasoningContent={
                   lastChainOfThoughtRef.current.step === currentStreamingStep
                     ? lastChainOfThoughtRef.current.content
-                    : ""
+                    : "Thinking..."
                 }
                 isStreaming={messageStreamState.agentState === "thinking"}
                 streamingActions={
@@ -227,6 +229,13 @@ function AgentActionsPanelContent({
                 showSeparator={currentStreamingStep > 1}
               />
             )}
+          {!shouldStream && (
+            <AgentActionSummary
+              agentMessageToRender={agentMessageToRender}
+              nbSteps={nbSteps}
+            />
+          )}
+          <div>&nbsp;</div>
         </div>
       </div>
     </div>
@@ -244,7 +253,7 @@ export function AgentActionsPanel({
     isMessageLoading,
     mutateMessage,
   } = useConversationMessage({
-    conversationId: conversation?.sId ?? null,
+    conversationId: conversation.sId,
     workspaceId: owner.sId,
     messageId: messageId ?? null,
   });

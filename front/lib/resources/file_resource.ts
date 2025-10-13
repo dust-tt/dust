@@ -4,6 +4,7 @@
 import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import type { Readable, Writable } from "stream";
+import { validate } from "uuid";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,7 +13,6 @@ import {
   getPublicUploadBucket,
   getUpsertQueueBucket,
 } from "@app/lib/file_storage";
-import { isFileUsingConversationFiles } from "@app/lib/files";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import {
   FileModel,
@@ -36,7 +36,8 @@ import type {
 import {
   ALL_FILE_FORMATS,
   Err,
-  isContentCreationFileContentType,
+  frameContentType,
+  isInteractiveContentFileContentType,
   normalizeError,
   Ok,
   removeNulls,
@@ -130,6 +131,10 @@ export class FileResource extends BaseResource<FileModel> {
     content: string;
     shareScope: FileShareScope;
   } | null> {
+    if (!validate(token)) {
+      return null;
+    }
+
     const shareableFile = await ShareableFileModel.findOne({
       where: { token },
     });
@@ -141,6 +146,7 @@ export class FileResource extends BaseResource<FileModel> {
     const [workspace] = await WorkspaceResource.fetchByModelIds([
       shareableFile.workspaceId,
     ]);
+
     if (!workspace) {
       return null;
     }
@@ -166,16 +172,30 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
-    if (isFileUsingConversationFiles(content)) {
-      // If the file is using conversation files, we don't want to make it accessible.
-      return null;
-    }
-
     return {
       file: fileRes,
       content,
       shareScope: shareableFile.shareScope,
     };
+  }
+
+  static async unsafeFetchByIdInWorkspace(
+    workspace: LightWorkspaceType,
+    id: string
+  ): Promise<FileResource | null> {
+    const fileModelId = getResourceIdFromSId(id);
+    if (!fileModelId) {
+      return null;
+    }
+
+    const file = await this.model.findOne({
+      where: {
+        workspaceId: workspace.id,
+        id: fileModelId,
+      },
+    });
+
+    return file ? new this(this.model, file.get()) : null;
   }
 
   static async deleteAllForWorkspace(auth: Authenticator) {
@@ -296,12 +316,12 @@ export class FileResource extends BaseResource<FileModel> {
 
     const updateResult = await this.update({ status: "ready" });
 
-    // For Content Creation conversation files, automatically create a ShareableFileModel with
-    // default conversation_participants scope.
-    if (this.isContentCreation) {
+    // For Interactive Content conversation files, automatically create a ShareableFileModel with
+    // default workspace scope.
+    if (this.isInteractiveContent) {
       await ShareableFileModel.upsert({
         fileId: this.id,
-        shareScope: "conversation_participants",
+        shareScope: "workspace",
         sharedBy: this.userId ?? null,
         workspaceId: this.workspaceId,
         sharedAt: new Date(),
@@ -328,10 +348,10 @@ export class FileResource extends BaseResource<FileModel> {
     return this.updatedAt.getTime();
   }
 
-  get isContentCreation(): boolean {
+  get isInteractiveContent(): boolean {
     return (
       this.useCase === "conversation" &&
-      isContentCreationFileContentType(this.contentType)
+      isInteractiveContentFileContentType(this.contentType)
     );
   }
 
@@ -450,10 +470,10 @@ export class FileResource extends BaseResource<FileModel> {
   /**
    * Get read stream for shared access without authentication.
    */
-  private async getSharedReadStream(
+  getSharedReadStream(
     owner: LightWorkspaceType,
     version: FileVersion
-  ): Promise<Readable> {
+  ): Readable {
     const cloudPath = FileResource.getCloudStoragePathForId({
       fileId: this.sId,
       workspaceId: owner.sId,
@@ -471,7 +491,7 @@ export class FileResource extends BaseResource<FileModel> {
     version: FileVersion = "original"
   ): Promise<string | null> {
     try {
-      const readStream = await this.getSharedReadStream(owner, version);
+      const readStream = this.getSharedReadStream(owner, version);
 
       // Convert stream to string.
       const chunks: Buffer[] = [];
@@ -512,15 +532,34 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ snippet });
   }
 
+  rename(newFileName: string) {
+    return this.update({ fileName: newFileName });
+  }
+
   // Sharing logic.
+
+  private getShareUrlForShareableFile(
+    shareableFile: ShareableFileModel
+  ): string {
+    assert(
+      this.isInteractiveContent,
+      "getShareUrlForShareableFile called on non-interactive content file"
+    );
+
+    if (this.contentType === frameContentType) {
+      return `${config.getClientFacingUrl()}/share/frame/${shareableFile.token}`;
+    }
+
+    return `${config.getClientFacingUrl()}/share/file/${shareableFile.token}`;
+  }
 
   async setShareScope(
     auth: Authenticator,
     scope: FileShareScope
   ): Promise<void> {
-    // Only Content Creation files can be shared.
-    if (!this.isContentCreation) {
-      throw new Error("Only Content Creation files can be shared");
+    // Only Interactive Content files can be shared.
+    if (!this.isInteractiveContent) {
+      throw new Error("Only Interactive Content files can be shared");
     }
 
     const user = auth.getNonNullableUser();
@@ -547,7 +586,7 @@ export class FileResource extends BaseResource<FileModel> {
     sharedAt: Date;
     shareUrl: string;
   } | null> {
-    if (!this.isContentCreation) {
+    if (!this.isInteractiveContent) {
       return null;
     }
 
@@ -559,11 +598,26 @@ export class FileResource extends BaseResource<FileModel> {
       return {
         scope: shareableFile.shareScope,
         sharedAt: shareableFile.sharedAt,
-        shareUrl: `${config.getClientFacingUrl()}/share/file/${shareableFile.token}`,
+        shareUrl: this.getShareUrlForShareableFile(shareableFile),
       };
     }
 
     return null;
+  }
+
+  static async revokePublicSharingInWorkspace(auth: Authenticator) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    return ShareableFileModel.update(
+      {
+        shareScope: "workspace",
+      },
+      {
+        where: {
+          workspaceId,
+          shareScope: "public",
+        },
+      }
+    );
   }
 
   // Serialization logic.

@@ -24,6 +24,7 @@ export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
 
 export const OAUTH_PROVIDERS = [
   "confluence",
+  "confluence_tools",
   "freshservice",
   "github",
   "google_drive",
@@ -45,6 +46,7 @@ export const OAUTH_PROVIDERS = [
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
+  confluence_tools: "Confluence Tools",
   freshservice: "Freshservice",
   github: "GitHub",
   gmail: "Gmail",
@@ -184,6 +186,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "monday":
     case "notion":
     case "confluence":
+    case "confluence_tools":
     case "github":
     case "google_drive":
     case "intercom":
@@ -432,61 +435,10 @@ export type ConnectionCredentials =
   | LinearCredentials
   | NotionCredentials;
 
-export function isSnowflakeCredentials(
-  credentials: ConnectionCredentials
-): credentials is SnowflakeCredentials {
-  return (
-    "username" in credentials &&
-    "account" in credentials &&
-    "role" in credentials &&
-    "warehouse" in credentials &&
-    (("password" in credentials &&
-      (!("auth_type" in credentials) ||
-        credentials.auth_type === "password")) ||
-      ("auth_type" in credentials &&
-        credentials.auth_type === "keypair" &&
-        "private_key" in credentials))
-  );
-}
-
 export function isModjoCredentials(
   credentials: ConnectionCredentials
 ): credentials is ModjoCredentials {
   return "api_key" in credentials;
-}
-
-export function isHubspotCredentials(
-  credentials: ConnectionCredentials
-): credentials is HubspotCredentials {
-  return "accessToken" in credentials && "portalId" in credentials;
-}
-
-export function isLinearCredentials(
-  credentials: ConnectionCredentials
-): credentials is LinearCredentials {
-  return "api_key" in credentials;
-}
-
-export function isBigQueryWithLocationCredentials(
-  credentials: ConnectionCredentials
-): credentials is BigQueryCredentialsWithLocation {
-  return (
-    "type" in credentials &&
-    "project_id" in credentials &&
-    "location" in credentials
-  );
-}
-
-export function isSalesforceCredentials(
-  credentials: ConnectionCredentials
-): credentials is SalesforceCredentials {
-  return "client_id" in credentials && "client_secret" in credentials;
-}
-
-export function isNotionCredentials(
-  credentials: ConnectionCredentials
-): credentials is NotionCredentials {
-  return "integration_token" in credentials;
 }
 
 export type OauthAPIPostCredentialsResponse = {

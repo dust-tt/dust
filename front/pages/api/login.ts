@@ -91,8 +91,11 @@ async function handler(
     },
   });
 
+  const isInviteOnOtherWorkspace =
+    membershipInvite && membershipInvite.workspace.sId !== workspaceId;
+
   // Prioritize enterprise connections.
-  if (workspaceId && isSSO) {
+  if (workspaceId && isSSO && !isInviteOnOtherWorkspace) {
     const { flow, workspace } = await handleEnterpriseSignUpFlow(
       user,
       workspaceId
@@ -100,7 +103,7 @@ async function handler(
     if (flow === "unauthorized") {
       // Only happen if the workspace associated with workOSOrganizationId is not found.
       res.redirect(
-        `/api/auth/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
+        `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
       );
       return;
     }
@@ -142,7 +145,7 @@ async function handler(
           "Error during login flow."
         );
         res.redirect(
-          `/api/auth/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`
+          `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`
         );
         return;
       }
@@ -153,7 +156,7 @@ async function handler(
       }
 
       res.redirect(
-        `/api/auth/logout?returnTo=/sso-enforced?workspaceId=${error.workspaceId}`
+        `/api/workos/logout?returnTo=/sso-enforced?workspaceId=${error.workspaceId}`
       );
       return;
     }

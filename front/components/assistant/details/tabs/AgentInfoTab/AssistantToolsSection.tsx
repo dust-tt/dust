@@ -1,4 +1,4 @@
-import { Avatar, BarChartIcon, CommandIcon } from "@dust-tt/sparkle";
+import { Avatar, BarChartIcon, CommandIcon, Spinner } from "@dust-tt/sparkle";
 import _ from "lodash";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
@@ -6,6 +6,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   getMcpServerDisplayName,
+  getMcpServerViewDisplayName,
   getServerTypeAndIdFromSId,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -17,6 +18,7 @@ import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import type { AgentConfigurationType, LightWorkspaceType } from "@app/types";
 import {
+  asDisplayName,
   assertNever,
   GLOBAL_AGENTS_SID,
   removeNulls,
@@ -44,12 +46,15 @@ export function AssistantToolsSection({
   owner,
 }: AssistantToolsSectionProps) {
   const { isDark } = useTheme();
-  const { mcpServers } = useMCPServers({ owner });
+  const { mcpServers, isMCPServersLoading: isLoading } = useMCPServers({
+    owner,
+  });
 
+  const nonHiddenActions = agentConfiguration.actions.filter(
+    (action) => !isHiddenDustAction(agentConfiguration, action)
+  );
   const actions = removeNulls(
-    agentConfiguration.actions
-      .filter((action) => !isHiddenDustAction(agentConfiguration, action))
-      .map((action) => renderOtherAction(action, mcpServers))
+    nonHiddenActions.map((action) => renderOtherAction(action, mcpServers))
   );
   if (agentConfiguration.visualizationEnabled) {
     actions.push({
@@ -73,27 +78,9 @@ export function AssistantToolsSection({
 
   const filteredModels = removeNulls(models);
   return (
-    <div className="flex flex-row gap-2">
-      {sortedActions.length > 0 && (
-        <div className="flex flex-[1_0_0] flex-col gap-5">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Tools
-          </div>
-          <div className="flex flex-col gap-2">
-            {sortedActions.map((action) => (
-              <div
-                className="flex flex-row items-center gap-2"
-                key={action.title}
-              >
-                {action.avatar}
-                <div>{action.title}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+    <div className="flex flex-col gap-5">
       {filteredModels.length > 0 && (
-        <div className="flex flex-[1_0_0] flex-col gap-5">
+        <div className="flex flex-col gap-5">
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Models
           </div>
@@ -113,6 +100,31 @@ export function AssistantToolsSection({
           </div>
         </div>
       )}
+
+      {nonHiddenActions.length > 0 && (
+        <div className="flex flex-col gap-5">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            Tools
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {isLoading ? (
+              <div className="flex flex-row items-center gap-2">
+                <Spinner size="xs" />
+              </div>
+            ) : (
+              sortedActions.map((action) => (
+                <div
+                  className="flex flex-row items-center gap-2"
+                  key={action.title}
+                >
+                  {action.avatar}
+                  <div>{action.title}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -128,16 +140,20 @@ function renderOtherAction(
     if (!mcpServer) {
       return null;
     }
+    const view = mcpServer.views.find((v) => v.sId === action.mcpServerViewId);
     const { serverType } = getServerTypeAndIdFromSId(mcpServer.sId);
     const avatar = getAvatar(mcpServer, "xs");
+    const title = view
+      ? getMcpServerViewDisplayName(view, action)
+      : getMcpServerDisplayName(mcpServer, action);
     return {
-      title: getMcpServerDisplayName(mcpServer),
+      title,
       avatar,
       order: serverType === "internal" ? 1 : 3,
     };
   } else if (isMCPServerConfiguration(action)) {
     return {
-      title: action.name,
+      title: asDisplayName(action.name),
       avatar: <Avatar icon={CommandIcon} size="xs" />,
       order: 3,
     };

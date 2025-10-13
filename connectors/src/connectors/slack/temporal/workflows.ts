@@ -26,7 +26,6 @@ export type JoinChannelUseCaseType = (typeof JOIN_CHANNEL_USE_CASES)[number];
 function getSlackActivities() {
   const {
     getChannel,
-    fetchUsers,
     saveSuccessSyncActivity,
     syncChannelMetadata,
     reportInitialSyncProgressActivity,
@@ -46,6 +45,10 @@ function getSlackActivities() {
     },
   });
 
+  const { autoReadChannelActivity } = proxyActivities<typeof activities>({
+    startToCloseTimeout: "10 minutes",
+  });
+
   const { deleteChannel, syncThread, syncChannel } = proxyActivities<
     typeof activities
   >({
@@ -61,9 +64,9 @@ function getSlackActivities() {
 
   return {
     attemptChannelJoinActivity,
+    autoReadChannelActivity,
     deleteChannel,
     deleteChannelsFromConnectorDb,
-    fetchUsers,
     getChannel,
     getChannelsToGarbageCollect,
     migrateChannelsFromLegacyBotToNewBotActivity,
@@ -107,8 +110,6 @@ export async function workspaceFullSync(
     // Add signal to queue
     signalQueue.push(input);
   });
-
-  await getSlackActivities().fetchUsers(connectorId);
 
   while (signalQueue.length > 0) {
     const signal = signalQueue.shift();
@@ -284,7 +285,8 @@ export async function syncOneMessageDebounced(
     await getSlackActivities().syncChannelMetadata(
       connectorId,
       channelId,
-      endTsMs
+      // endTsMs can be in the future so we cap it to now for the channel metadata.
+      Math.min(new Date().getTime(), endTsMs)
     );
 
     await getSlackActivities().syncNonThreaded({
@@ -391,20 +393,33 @@ export async function joinChannelWorkflow(
   channelId: string,
   useCase: JoinChannelUseCaseType
 ): Promise<{ success: boolean; error?: string }> {
-  if (useCase === "auto-read") {
-    throw new Error("auto-read use case not implemented");
-  }
   if (useCase === "set-permission") {
     throw new Error("set-permission use case not implemented");
   }
 
-  // Handle join-only use case
   try {
-    const success = await getSlackActivities().attemptChannelJoinActivity(
+    if (useCase === "auto-read") {
+      await getSlackActivities().autoReadChannelActivity(
+        connectorId,
+        channelId
+      );
+
+      return { success: true };
+    }
+
+    const joinSuccess = await getSlackActivities().attemptChannelJoinActivity(
       connectorId,
       channelId
     );
-    return { success };
+
+    if (!joinSuccess) {
+      return {
+        success: false,
+        error: "Channel is archived or could not be joined",
+      };
+    }
+
+    return { success: true };
   } catch (error) {
     return {
       success: false,

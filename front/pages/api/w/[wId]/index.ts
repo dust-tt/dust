@@ -7,6 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { updateWorkOSOrganizationName } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { apiError } from "@app/logger/withlogging";
@@ -47,6 +48,10 @@ const WorkspaceInteractiveContentSharingUpdateBodySchema = t.type({
   allowContentCreationFileSharing: t.boolean,
 });
 
+const WorkspaceVoiceTranscriptionUpdateBodySchema = t.type({
+  allowVoiceTranscription: t.boolean,
+});
+
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
@@ -54,6 +59,7 @@ const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceProvidersUpdateBodySchema,
   WorkspaceWorkOSUpdateBodySchema,
   WorkspaceInteractiveContentSharingUpdateBodySchema,
+  WorkspaceVoiceTranscriptionUpdateBodySchema,
 ]);
 
 async function handler(
@@ -147,10 +153,23 @@ async function handler(
         });
         owner.workOSOrganizationId = body.workOSOrganizationId;
       } else if ("allowContentCreationFileSharing" in body) {
-        const previousMetadata = owner.metadata || {};
+        const previousMetadata = owner.metadata ?? {};
         const newMetadata = {
           ...previousMetadata,
           allowContentCreationFileSharing: body.allowContentCreationFileSharing,
+        };
+        await w.update({ metadata: newMetadata });
+        owner.metadata = newMetadata;
+
+        // if public sharing is disabled, downgrade share scope of all public files to workspace
+        if (!body.allowContentCreationFileSharing) {
+          await FileResource.revokePublicSharingInWorkspace(auth);
+        }
+      } else if ("allowVoiceTranscription" in body) {
+        const previousMetadata = owner.metadata ?? {};
+        const newMetadata = {
+          ...previousMetadata,
+          allowVoiceTranscription: body.allowVoiceTranscription,
         };
         await w.update({ metadata: newMetadata });
         owner.metadata = newMetadata;

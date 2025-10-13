@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
-use tracing::info;
+use tracing::{info, warn};
 
 use super::{
     chat_messages::{
@@ -220,6 +220,7 @@ fn strip_null_chars(s: &str) -> String {
 fn responses_api_input_from_chat_messages(
     messages: &Vec<ChatMessage>,
     transform_system_messages: TransformSystemMessages,
+    use_openai_eu_host: bool,
 ) -> Result<Vec<OpenAIResponseInputItem>> {
     let mut input_items = Vec::new();
 
@@ -274,6 +275,28 @@ fn responses_api_input_from_chat_messages(
                 for item in assistant_msg.contents.as_ref().unwrap_or(&vec![]) {
                     match item {
                         AssistantContentItem::Reasoning { value } => {
+                            // The encrypted content is only usable if it was generated in the same region
+                            // as the one being used to call the API, since OpenAI uses different keys per region.
+                            // So if we find a mismatch, we skip adding this reasoning item to the input.
+                            // This might degrade the quality, but it's better than blowing up.
+                            let region = value.region.as_deref();
+                            let is_mismatch = match (use_openai_eu_host, region) {
+                                // We treat no region as US
+                                (true, Some("us")) | (true, None) => true,
+                                (false, Some("eu")) => true,
+                                _ => false,
+                            };
+
+                            if is_mismatch {
+                                warn!(
+                                    region,
+                                    use_openai_eu_host,
+                                    model = assistant_msg.name.as_deref().unwrap_or("unknown"),
+                                    "Skipping reasoning metadata due to region mismatch. This is expected if a conversation was started with OpenAI US and is now being continued with OpenAI EU, or vice versa."
+                                );
+                                continue;
+                            }
+
                             // Parse metadata JSON to extract ID and encrypted content
                             let metadata: Value =
                                 serde_json::from_str(&value.metadata).map_err(|e| {
@@ -376,6 +399,7 @@ fn assistant_chat_message_from_responses_api_output(
                     value: ReasoningContent {
                         reasoning,
                         metadata: metadata.to_string(),
+                        region: None,
                     },
                 });
             }
@@ -445,6 +469,7 @@ pub async fn openai_responses_api_completion(
     event_sender: Option<UnboundedSender<Value>>,
     transform_system_messages: TransformSystemMessages,
     provider_name: String,
+    use_openai_eu_host: bool,
 ) -> Result<LLMChatGeneration> {
     let is_reasoning_model = model_id.starts_with("o3")
         || model_id.starts_with("o1")
@@ -487,7 +512,11 @@ pub async fn openai_responses_api_completion(
         ),
     };
 
-    let input = responses_api_input_from_chat_messages(messages, transform_system_messages)?;
+    let input = responses_api_input_from_chat_messages(
+        messages,
+        transform_system_messages,
+        use_openai_eu_host,
+    )?;
 
     let tools: Vec<OpenAIResponseAPITool> = functions
         .iter()
@@ -1192,7 +1221,7 @@ mod tests {
 
         let messages = vec![user_message];
         let result =
-            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep)
+            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep, false)
                 .unwrap();
 
         assert_eq!(result.len(), 1);
@@ -1230,7 +1259,7 @@ mod tests {
 
         let messages = vec![user_message];
         let result =
-            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep)
+            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep, false)
                 .unwrap();
 
         assert_eq!(result.len(), 1);
@@ -1286,7 +1315,7 @@ mod tests {
         ];
 
         let result =
-            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep)
+            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep, false)
                 .unwrap();
 
         assert_eq!(result.len(), 2);
@@ -1324,4 +1353,111 @@ mod tests {
         assert_eq!(json["type"], "input_text");
         assert_eq!(json["text"], "Hello world");
     }
+
+    // Macro to generate parameterized region mismatch/match tests
+    macro_rules! region_test {
+        (
+            $test_name:ident,
+            region: $region:expr,
+            use_eu_host: $use_eu_host:literal,
+            expected_len: $expected_len:literal,
+            $description:expr
+        ) => {
+            #[test]
+            fn $test_name() {
+                let assistant_message = ChatMessage::Assistant(AssistantChatMessage {
+                    content: None,
+                    role: ChatMessageRole::Assistant,
+                    name: Some("test-model".to_string()),
+                    function_call: None,
+                    function_calls: None,
+                    contents: Some(vec![AssistantContentItem::Reasoning {
+                        value: ReasoningContent {
+                            reasoning: Some("This is reasoning content".to_string()),
+                            metadata: r#"{"id": "reasoning_123", "encrypted_content": "encrypted_data"}"#
+                                .to_string(),
+                            region: $region,
+                        },
+                    }]),
+                });
+
+                let messages = vec![assistant_message];
+                let result = responses_api_input_from_chat_messages(
+                    &messages,
+                    TransformSystemMessages::Keep,
+                    $use_eu_host,
+                )
+                .unwrap();
+
+                assert_eq!(result.len(), $expected_len, $description);
+
+                // If we expect content to pass through, validate it
+                if $expected_len == 1 {
+                    if let OpenAIResponseInputItem::Reasoning {
+                        id,
+                        encrypted_content,
+                        summary,
+                    } = &result[0]
+                    {
+                        assert_eq!(id, "reasoning_123");
+                        assert_eq!(encrypted_content, "encrypted_data");
+                        assert_eq!(summary.len(), 1);
+                        assert_eq!(summary[0].text, "This is reasoning content");
+                    } else {
+                        panic!("Expected reasoning input item");
+                    }
+                }
+            }
+        };
+    }
+
+    // Region mismatch tests (should be filtered out)
+    region_test!(
+        test_reasoning_region_mismatch_us_host_eu_region,
+        region: Some("eu".to_string()),
+        use_eu_host: false,
+        expected_len: 0,
+        "US host with EU region reasoning content should be filtered out due to region mismatch"
+    );
+
+    region_test!(
+        test_reasoning_region_mismatch_eu_host_us_region,
+        region: Some("us".to_string()),
+        use_eu_host: true,
+        expected_len: 0,
+        "EU host with US region reasoning content should be filtered out due to region mismatch"
+    );
+
+    region_test!(
+        test_reasoning_region_mismatch_eu_host_no_region,
+        region: None,
+        use_eu_host: true,
+        expected_len: 0,
+        "EU host with no region reasoning content should be filtered out (no region defaults to US)"
+    );
+
+    // Region match tests (should pass through)
+    region_test!(
+        test_reasoning_region_match_us_host_us_region,
+        region: Some("us".to_string()),
+        use_eu_host: false,
+        expected_len: 1,
+        "US host with US region reasoning content should pass through"
+    );
+
+    region_test!(
+        test_reasoning_region_match_eu_host_eu_region,
+        region: Some("eu".to_string()),
+        use_eu_host: true,
+        expected_len: 1,
+        "EU host with EU region reasoning content should pass through"
+    );
+
+    region_test!(
+        test_reasoning_region_match_us_host_no_region,
+        region: None,
+        use_eu_host: false,
+        expected_len: 1,
+        "US host with no region reasoning content should pass through (no region defaults to US)"
+    );
 }

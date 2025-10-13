@@ -1,13 +1,11 @@
-import type { ActionApprovalStateType } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
 import assert from "assert";
 
+import type { ActionApprovalStateType } from "@app/lib/actions/mcp";
 import {
   getMCPApprovalStateFromUserApprovalState,
   isMCPApproveExecutionEvent,
 } from "@app/lib/actions/mcp";
 import { setUserAlwaysApprovedTool } from "@app/lib/actions/utils";
-import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
@@ -16,9 +14,9 @@ import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import logger from "@app/logger/logger";
-import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { ConversationType, Result } from "@app/types";
-import { getRunAgentData } from "@app/types/assistant/agent_run";
+import { Err, Ok } from "@app/types";
 
 async function getUserMessageIdFromMessageId(
   auth: Authenticator,
@@ -131,25 +129,11 @@ export async function validateAction(
   if (approvalState === "always_approved") {
     const user = auth.user();
     if (user) {
-      const toolServerId = action.toolConfiguration?.toolServerId;
-      const actionBaseParams = await buildActionBaseParams({
-        agentMessageId: action.agentMessageId,
-        citationsAllocated: action.citationsAllocated,
-        mcpServerConfigurationId: action.mcpServerConfigurationId,
+      await setUserAlwaysApprovedTool({
+        user,
         mcpServerId: action.toolConfiguration.toolServerId,
-        step: agentStepContent.step,
-        stepContentId: action.stepContentId,
-        status: action.status,
+        functionCallName: action.functionCallName,
       });
-      const toolName = actionBaseParams.functionCallName;
-
-      if (toolName) {
-        await setUserAlwaysApprovedTool({
-          user,
-          mcpServerId: toolServerId,
-          toolName,
-        });
-      }
     }
   }
 
@@ -174,9 +158,9 @@ export async function validateAction(
       : false;
   }, getMessageChannelId(messageId));
 
-  const runAgentDataRes = await getRunAgentData(auth.toJSON(), {
-    sync: false,
-    idArgs: {
+  await launchAgentLoopWorkflow({
+    auth,
+    agentLoopArgs: {
       agentMessageId,
       agentMessageVersion,
       conversationId,
@@ -184,31 +168,9 @@ export async function validateAction(
       userMessageId,
       userMessageVersion,
     },
+    // Resume from the step where the action was created.
+    startStep: agentStepContent.step,
   });
-
-  if (runAgentDataRes.isErr()) {
-    logger.error(
-      {
-        error: runAgentDataRes.error,
-      },
-      "Error getting run agent data"
-    );
-    return new Err(
-      new DustError("internal_error", runAgentDataRes.error.message)
-    );
-  }
-
-  await runAgentLoop(
-    auth,
-    {
-      sync: true,
-      inMemoryData: runAgentDataRes.value,
-    },
-    {
-      // Resume from the step where the action was created.
-      startStep: agentStepContent.step,
-    }
-  );
 
   logger.info(
     {

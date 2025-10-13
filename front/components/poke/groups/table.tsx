@@ -6,13 +6,15 @@ import type { WorkspaceType } from "@app/types";
 
 interface GroupDataTableProps {
   owner: WorkspaceType;
+  loadOnInit?: boolean;
 }
 
-export function GroupDataTable({ owner }: GroupDataTableProps) {
+export function GroupDataTable({ owner, loadOnInit }: GroupDataTableProps) {
   return (
     <PokeDataTableConditionalFetch
       header="Groups"
       owner={owner}
+      loadOnInit={loadOnInit}
       useSWRHook={usePokeGroups}
     >
       {(data) => (

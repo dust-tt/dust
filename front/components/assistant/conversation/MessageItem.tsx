@@ -2,44 +2,41 @@ import React from "react";
 import { useSWRConfig } from "swr";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
-import {
-  AttachmentCitation,
-  contentFragmentToAttachmentCitation,
-} from "@app/components/assistant/conversation/AttachmentCitation";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { contentFragmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
+import { MessageDateIndicator } from "@app/components/assistant/conversation/MessageDateIndicator";
+import type {
+  VirtuosoMessage,
+  VirtuosoMessageListContext,
+} from "@app/components/assistant/conversation/types";
+import {
+  getMessageDate,
+  getMessageSId,
+  isHandoverUserMessage,
+  isMessageTemporayState,
+  isUserMessage,
+} from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import type {
-  MessageWithContentFragmentsType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+import { classNames } from "@app/lib/utils";
 
 interface MessageItemProps {
-  conversationId: string;
-  messageFeedback: AgentMessageFeedbackType | undefined;
-  isInModal: boolean;
-  isLastMessage: boolean;
-  message: MessageWithContentFragmentsType;
-  owner: WorkspaceType;
-  user: UserType;
+  data: VirtuosoMessage;
+  context: VirtuosoMessageListContext;
+  index: number;
+  nextData: VirtuosoMessage | null;
+  prevData: VirtuosoMessage | null;
 }
 
-const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
+export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
-    {
-      conversationId,
-      messageFeedback,
-      isLastMessage,
-      message,
-      owner,
-      user,
-    }: MessageItemProps,
+    { data, context, prevData, nextData }: MessageItemProps,
     ref
   ) {
-    const { sId, type } = message;
+    const sId = getMessageSId(data);
+
     const sendNotification = useSendNotification();
 
     const { mutate } = useSWRConfig();
@@ -57,7 +54,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           isConversationShared: boolean;
         }) => {
           const res = await fetch(
-            `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/feedbacks`,
+            `/api/w/${context.owner.sId}/assistant/conversations/${context.conversationId}/messages/${sId}/feedbacks`,
             {
               method: shouldRemoveExistingFeedback ? "DELETE" : "POST",
               headers: {
@@ -80,12 +77,13 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               });
             }
             await mutate(
-              `/api/w/${owner.sId}/assistant/conversations/${conversationId}/feedbacks`
+              `/api/w/${context.owner.sId}/assistant/conversations/${context.conversationId}/feedbacks`
             );
           }
         }
       );
 
+    const messageFeedback = context.feedbacksByMessageId[sId];
     const messageFeedbackWithSubmit: FeedbackSelectorProps = {
       feedback: messageFeedback
         ? {
@@ -98,60 +96,67 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       isSubmittingThumb,
     };
 
-    switch (type) {
-      case "user_message":
-        const citations = message.contenFragments
-          ? message.contenFragments.map((contentFragment) => {
-              const attachmentCitation =
-                contentFragmentToAttachmentCitation(contentFragment);
+    const citations =
+      isUserMessage(data) && data.contentFragments.length > 0
+        ? data.contentFragments.map((contentFragment) => {
+            const attachmentCitation =
+              contentFragmentToAttachmentCitation(contentFragment);
 
-              return (
-                <AttachmentCitation
-                  key={attachmentCitation.id}
-                  attachmentCitation={attachmentCitation}
-                />
-              );
-            })
-          : undefined;
+            return (
+              <AttachmentCitation
+                owner={context.owner}
+                key={attachmentCitation.id}
+                attachmentCitation={attachmentCitation}
+                conversationId={context.conversationId}
+              />
+            );
+          })
+        : undefined;
 
-        return (
-          <div
-            key={`message-id-${sId}`}
-            ref={ref}
-            className="min-w-60 max-w-full"
-          >
+    const areSameDate =
+      prevData &&
+      getMessageDate(prevData).toDateString() ===
+        getMessageDate(data).toDateString();
+
+    if (isHandoverUserMessage(data)) {
+      // This is hacky but in case of handover we generate a user message from the agent and we want to hide it in the conversation
+      // because it has no value to display.
+      return null;
+    }
+
+    return (
+      <>
+        {!areSameDate && <MessageDateIndicator message={data} />}
+        <div
+          key={`message-id-${sId}`}
+          ref={ref}
+          className={classNames(
+            "mx-auto min-w-60",
+            "pt-6 md:pt-10",
+            "max-w-3xl"
+          )}
+        >
+          {isUserMessage(data) && (
             <UserMessage
               citations={citations}
-              conversationId={conversationId}
-              isLastMessage={isLastMessage}
-              message={message}
-              owner={owner}
+              conversationId={context.conversationId}
+              isLastMessage={!nextData}
+              message={data}
+              owner={context.owner}
             />
-          </div>
-        );
-
-      case "agent_message":
-        return (
-          <div
-            key={`message-id-${sId}`}
-            ref={ref}
-            className="mt-6 w-full md:mt-10"
-          >
+          )}
+          {isMessageTemporayState(data) && (
             <AgentMessage
-              conversationId={conversationId}
-              isLastMessage={isLastMessage}
-              message={message}
+              user={context.user}
+              conversationId={context.conversationId}
+              isLastMessage={!nextData}
+              messageStreamState={data}
               messageFeedback={messageFeedbackWithSubmit}
-              owner={owner}
-              user={user}
+              owner={context.owner}
             />
-          </div>
-        );
-
-      default:
-        console.error("Unknown message type", message);
-    }
+          )}
+        </div>
+      </>
+    );
   }
 );
-
-export default MessageItem;

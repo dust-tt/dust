@@ -27,7 +27,7 @@ export const menuStyleClasses = {
   ),
   item: cva(
     cn(
-      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-text-sm s-font-semibold s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
+      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-heading-sm s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
       "data-[disabled]:s-text-primary-400 dark:data-[disabled]:s-text-primary-400-night"
     ),
     {
@@ -35,15 +35,15 @@ export const menuStyleClasses = {
         variant: {
           default: cn(
             "s-p-2",
+            "hover:s-bg-muted-background dark:hover:s-bg-muted-night",
             "focus:s-text-foreground dark:focus:s-text-foreground-night",
-            "hover:s-bg-muted-background dark:hover:s-bg-primary-900",
-            "focus:s-bg-muted-background dark:focus:s-bg-primary-900"
+            "focus:s-bg-muted-background dark:focus:s-bg-muted-night"
           ),
           tags: cn(
             "s-p-0.5",
+            "hover:s-bg-muted-background dark:hover:s-bg-muted-night",
             "focus:s-text-foreground dark:focus:s-text-foreground-night",
-            "hover:s-bg-muted-background dark:hover:s-bg-primary-900",
-            "focus:s-bg-muted-background dark:focus:s-bg-primary-900"
+            "focus:s-bg-muted-background dark:focus:s-bg-muted-night"
           ),
           warning: cn(
             "s-p-2",
@@ -67,7 +67,7 @@ export const menuStyleClasses = {
     span: "s-absolute s-left-2 s-flex s-h-3.5 s-w-3.5 s-items-center s-justify-center",
   },
   label: cn(
-    "s-font-semibold s-px-2 s-py-2 s-text-xs",
+    "s-px-2 s-py-2 s-heading-xs",
     "s-text-muted-foreground dark:s-text-muted-foreground-night"
   ),
   description: cn(
@@ -291,7 +291,7 @@ const DropdownMenuContent = React.forwardRef<
         onCloseAutoFocus={handleCloseAutoFocus}
         {...props}
       >
-        <div className="s-sticky s-top-0 s-bg-background dark:s-bg-background-night">
+        <div className="s-sticky s-top-0 s-bg-background dark:s-bg-muted-background-night">
           {dropdownHeaders && dropdownHeaders}
         </div>
         <ScrollArea
@@ -698,7 +698,7 @@ const DropdownMenuStaticItem = React.forwardRef<
       className
     )}
   >
-    <span className="s-grow s-font-semibold">{label}</span>
+    <span className="s-grow s-font-medium">{label}</span>
     {value && (
       <span
         className={cn(

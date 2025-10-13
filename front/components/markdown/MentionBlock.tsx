@@ -10,7 +10,7 @@ import { useRouter } from "next/router";
 import { visit } from "unist-util-visit";
 
 import { useURLSheet } from "@app/hooks/useURLSheet";
-import { setQueryParam } from "@app/lib/utils/router";
+import { getAgentRoute, setQueryParam } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
 // Not exported, the one exported is getMentionPlugin since we need to pass the owner.
@@ -25,15 +25,15 @@ function MentionBlock({
 }) {
   const router = useRouter();
   const { onOpenChange: onOpenChangeAssistantModal } =
-    useURLSheet("assistantDetails");
+    useURLSheet("agentDetails");
 
   const handleStartConversation = async () => {
-    await router.push(`/w/${owner.sId}/assistant/new?assistant=${agentSId}`);
+    await router.push(getAgentRoute(owner.sId, "new", `agent=${agentSId}`));
   };
 
   const handleSeeDetails = () => {
     onOpenChangeAssistantModal(true);
-    setQueryParam(router, "assistantDetails", agentSId);
+    setQueryParam(router, "agentDetails", agentSId);
   };
 
   return (
@@ -43,7 +43,7 @@ function MentionBlock({
           @{agentName}
         </span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent align="start">
         <DropdownMenuItem
           onClick={handleStartConversation}
           icon={() => <ChatBubbleBottomCenterTextIcon />}

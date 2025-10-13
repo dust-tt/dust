@@ -23,6 +23,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useMCPActions } from "@app/lib/swr/mcp_actions";
+import { getAgentRoute } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
   SubscriptionType,
@@ -147,7 +148,7 @@ export default function AgentMCPActions({
     messageId: string
   ) => {
     if (conversationId && messageId) {
-      window.open(`/w/${owner.sId}/assistant/${conversationId}`, "_blank");
+      window.open(getAgentRoute(owner.sId, conversationId), "_blank");
     }
   };
 
@@ -221,6 +222,7 @@ export default function AgentMCPActions({
                       {actions.map((action) => (
                         <ContextItem
                           key={action.sId}
+                          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                           title={action.functionCallName || "Unknown Action"}
                           visual={<Icon visual={ActionCodeBoxIcon} />}
                           action={

@@ -15,6 +15,7 @@ export class GroupMembershipModel extends WorkspaceAwareModel<GroupMembershipMod
 
   declare groupId: ForeignKey<GroupModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
+  declare status: "active" | "suspended";
 }
 GroupMembershipModel.init(
   {
@@ -36,11 +37,19 @@ GroupMembershipModel.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "active",
+    },
   },
   {
     modelName: "group_memberships",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["userId", "groupId"] }],
+    indexes: [
+      { fields: ["userId", "groupId"] },
+      { fields: ["workspaceId"], concurrently: true },
+    ],
   }
 );
 UserModel.hasMany(GroupMembershipModel, {

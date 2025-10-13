@@ -1,3 +1,4 @@
+import type { GetSpacesResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -9,14 +10,6 @@ import type { SpaceType, WithAPIErrorResponse } from "@app/types";
 type LegacySpacesResponseBody = {
   vaults: SpaceType[];
 };
-
-type NewGetSpacesResponseBody = {
-  spaces: SpaceType[];
-};
-
-export type GetSpacesResponseBody =
-  | LegacySpacesResponseBody
-  | NewGetSpacesResponseBody;
 
 /**
  * @swagger
@@ -60,7 +53,9 @@ export type GetSpacesResponseBody =
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetSpacesResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetSpacesResponseType | LegacySpacesResponseBody>
+  >,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {

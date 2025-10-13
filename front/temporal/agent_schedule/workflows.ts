@@ -1,16 +1,26 @@
 import { proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "@app/temporal/agent_schedule/activities";
+import type { ContentFragmentInputWithFileIdType } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
-const { runScheduledAgentsActivity } = proxyActivities<typeof activities>({
+const { runTriggeredAgentsActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
+  retry: {
+    nonRetryableErrorTypes: ["TriggerNonRetryableError"],
+  },
 });
 
-export async function agentScheduleWorkflow(
+export async function agentTriggerWorkflow(
   userId: string,
   workspaceId: string,
-  trigger: TriggerType
+  trigger: TriggerType,
+  contentFragment?: ContentFragmentInputWithFileIdType
 ) {
-  await runScheduledAgentsActivity(userId, workspaceId, trigger);
+  await runTriggeredAgentsActivity({
+    userId,
+    workspaceId,
+    trigger,
+    contentFragment,
+  });
 }

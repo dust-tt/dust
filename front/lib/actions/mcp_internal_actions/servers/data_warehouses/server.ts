@@ -22,7 +22,7 @@ import {
   getSchemaContent,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import { executeQuery } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
-import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -78,8 +78,9 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolNameForMonitoring: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
       async ({ nodeId, limit, nextPageCursor, dataSources }) => {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
 
         const dataSourceConfigurationsResult =
@@ -117,7 +118,7 @@ const createServer = (
               });
 
         if (result.isErr()) {
-          return new Err(new MCPError(result.error.message));
+          return new Err(result.error);
         }
 
         const { nodes, nextPageCursor: newCursor } = result.value;
@@ -180,8 +181,9 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolNameForMonitoring: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
       async ({ query, rootNodeId, limit, nextPageCursor, dataSources }) => {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
 
         const dataSourceConfigurationsResult =
@@ -255,7 +257,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolNameForMonitoring: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
       async ({ dataSources, tableIds }) => {
         const dataSourceConfigurationsResult =
           await getAgentDataSourceConfigurations(
@@ -299,7 +301,7 @@ const createServer = (
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const schemaResult = await coreAPI.getDatabaseSchema({
           tables: validatedNodes.map((node) => ({
-            project_id: parseInt(dataSource.dustAPIProjectId),
+            project_id: parseInt(dataSource.dustAPIProjectId, 10),
             data_source_id: dataSource.dustAPIDataSourceId,
             table_id: node.node_id,
           })),
@@ -350,7 +352,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolNameForMonitoring: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
       async ({ dataSources, tableIds, query, fileName }) => {
         if (!agentLoopContext?.runContext) {
           return new Err(
@@ -403,7 +405,7 @@ const createServer = (
 
         return executeQuery(auth, {
           tables: validatedNodes.map((node) => ({
-            project_id: parseInt(dataSource.dustAPIProjectId),
+            project_id: parseInt(dataSource.dustAPIProjectId, 10),
             data_source_id: dataSource.dustAPIDataSourceId,
             table_id: node.node_id,
           })),

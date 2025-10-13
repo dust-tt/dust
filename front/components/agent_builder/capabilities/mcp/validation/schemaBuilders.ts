@@ -9,6 +9,7 @@ import {
   mcpServerViewIdSchema,
   mcpTimeFrameSchema,
   reasoningModelSchema,
+  secretNameSchema,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { VALIDATION_MESSAGES } from "@app/components/agent_builder/capabilities/mcp/utils/validationMessages";
 import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -51,25 +52,31 @@ export function createBaseConfigurationFields() {
  * Uses direct conditional logic for clarity
  */
 export function createDynamicConfigurationFields(
-  requirements: MCPServerRequirements
+  toolsConfigurations: MCPServerRequirements
 ) {
   return {
-    childAgentId: requirements.requiresChildAgentConfiguration
+    childAgentId: toolsConfigurations.requiresChildAgentConfiguration
       ? childAgentIdSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.childAgent.required,
         })
       : z.null(),
-    reasoningModel: requirements.requiresReasoningConfiguration
+    reasoningModel: toolsConfigurations.requiresReasoningConfiguration
       ? reasoningModelSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.reasoningModel.required,
         })
       : z.null(),
-    dustAppConfiguration: requirements.requiresDustAppConfiguration
+    dustAppConfiguration: toolsConfigurations.requiresDustAppConfiguration
       ? dustAppConfigurationSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.dustApp.required,
         })
       : z.null(),
-    additionalConfiguration: createAdditionalConfigurationSchema(requirements),
+    secretName: toolsConfigurations.requiresSecretConfiguration
+      ? secretNameSchema.refine((val) => val !== null, {
+          message: VALIDATION_MESSAGES.secret.required,
+        })
+      : z.null(),
+    additionalConfiguration:
+      createAdditionalConfigurationSchema(toolsConfigurations),
   };
 }
 
@@ -121,27 +128,28 @@ function createAdditionalConfigurationSchema(
       if (nestedKeys[rootKey] && nestedKeys[rootKey].length > 0) {
         // This is a nested object
         nestedStructure[rootKey] = buildNestedSchema(nestedKeys[rootKey], path);
-      } else {
-        // This is a leaf value - determine type based on requirements
-        if (requirements.requiredStrings.some((item) => item.key === path)) {
-          nestedStructure[rootKey] = z.string().min(1);
-        } else if (
-          requirements.requiredNumbers.some((item) => item.key === path)
-        ) {
-          nestedStructure[rootKey] = z.coerce.number();
-        } else if (
-          requirements.requiredBooleans.some((item) => item.key === path)
-        ) {
-          nestedStructure[rootKey] = z.coerce.boolean();
-        } else if (requirements.requiredEnums[path]) {
-          nestedStructure[rootKey] = z.enum(
-            requirements.requiredEnums[path].options as [string, ...string[]]
-          );
-        } else if (requirements.requiredLists[rootKey]) {
-          nestedStructure[rootKey] = z
-            .array(z.string())
-            .min(1, `You must select at least one value for "${rootKey}"`);
-        }
+      } else if (
+        requirements.requiredStrings.some((item) => item.key === path)
+      ) {
+        nestedStructure[rootKey] = z.string().min(1);
+      } else if (
+        requirements.requiredNumbers.some((item) => item.key === path)
+      ) {
+        nestedStructure[rootKey] = z.coerce.number();
+      } else if (
+        requirements.requiredBooleans.some((item) => item.key === path)
+      ) {
+        nestedStructure[rootKey] = z.coerce.boolean();
+      } else if (requirements.requiredEnums[path]) {
+        nestedStructure[rootKey] = z.enum(
+          requirements.requiredEnums[path].options.map(
+            (item) => item.value
+          ) as [string, ...string[]]
+        );
+      } else if (requirements.requiredLists[rootKey]) {
+        nestedStructure[rootKey] = z
+          .array(z.string())
+          .min(1, `You must select at least one value for "${rootKey}"`);
       }
     });
 

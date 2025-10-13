@@ -78,6 +78,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const spec = dumpSpecification(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     JSON.parse(app.savedSpecification || "[]"),
     latestDatasets
   );

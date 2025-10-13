@@ -14,6 +14,7 @@ const ToolGeneratedFileSchema = z.object({
   title: z.string(),
   contentType: z.string(),
   snippet: z.string().nullable(),
+  hidden: z.boolean().optional(),
 });
 
 export type ToolGeneratedFileType = z.infer<typeof ToolGeneratedFileSchema>;
@@ -515,23 +516,39 @@ export function isImageProgressOutput(
 
 // Canvas file.
 
-export const NotificationContentCreationFileContentSchema = z.object({
-  type: z.literal("content_creation_file"),
+export const NotificationInteractiveContentFileContentSchema = z.object({
+  type: z.literal("interactive_content_file"),
   fileId: z.string(),
   mimeType: z.string(),
   title: z.string(),
   updatedAt: z.string(),
 });
 
-type ContentCreationFileContentOutput = z.infer<
-  typeof NotificationContentCreationFileContentSchema
+type InteractiveContentFileContentOutput = z.infer<
+  typeof NotificationInteractiveContentFileContentSchema
 >;
 
-export function isContentCreationFileContentOutput(
+export function isInteractiveContentFileContentOutput(
   output: ProgressNotificationOutput
-): output is ContentCreationFileContentOutput {
-  return output !== undefined && output.type === "content_creation_file";
+): output is InteractiveContentFileContentOutput {
+  return output !== undefined && output.type === "interactive_content_file";
 }
+
+const NotificationStoreResourceContentSchema = z.object({
+  type: z.literal("store_resource"),
+  contents: z.array(
+    z.object({
+      type: z.literal("resource"),
+      resource: z
+        .object({
+          mimeType: z.string(),
+          text: z.string(),
+          uri: z.string(),
+        })
+        .passthrough(),
+    }) // Allow additional properties
+  ),
+});
 
 const NotificationTextContentSchema = z.object({
   type: z.literal("text"),
@@ -545,11 +562,22 @@ const NotificationRunAgentContentSchema = z.object({
   query: z.string(),
 });
 
+type StoreResourceProgressOutput = z.infer<
+  typeof NotificationStoreResourceContentSchema
+>;
+
+export function isStoreResourceProgressOutput(
+  output: ProgressNotificationOutput
+): output is StoreResourceProgressOutput {
+  return output !== undefined && output.type === "store_resource";
+}
+
 export const ProgressNotificationOutputSchema = z
   .union([
+    NotificationInteractiveContentFileContentSchema,
     NotificationImageContentSchema,
-    NotificationContentCreationFileContentSchema,
     NotificationRunAgentContentSchema,
+    NotificationStoreResourceContentSchema,
     NotificationTextContentSchema,
   ])
   .optional();
@@ -588,3 +616,53 @@ export function isMCPProgressNotificationType(
 ): notification is MCPProgressNotificationType {
   return MCPProgressNotificationSchema.safeParse(notification).success;
 }
+
+// Internal tool output.
+
+export const AuthRequiredOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_personal_auth_required"),
+  provider: z.string(),
+  scope: z.string().optional(),
+  text: z.string(),
+  uri: z.string(),
+});
+
+export const BlockedAwaitingInputOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_blocked_awaiting_input"),
+  text: z.string(),
+  uri: z.string(),
+  blockingEvents: z.array(z.any()),
+  state: z.any(),
+});
+
+export const EarlyExitOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_early_exit"),
+  text: z.string(),
+  isError: z.boolean(),
+  uri: z.string(),
+});
+
+export const AgentPauseOutputResourceSchema = z.union([
+  AuthRequiredOutputResourceSchema,
+  BlockedAwaitingInputOutputResourceSchema,
+  EarlyExitOutputResourceSchema,
+]);
+
+export type AgentPauseOutputResourceType = z.infer<
+  typeof AgentPauseOutputResourceSchema
+>;
+
+export const isAgentPauseOutputResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: AgentPauseOutputResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    AgentPauseOutputResourceSchema.safeParse(outputBlock.resource).success
+  );
+};

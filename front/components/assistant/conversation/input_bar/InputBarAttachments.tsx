@@ -1,16 +1,21 @@
+// Okay to use public API types because it's front/connectors communication.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isFolder, isWebsite } from "@dust-tt/client";
 import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import type {
   Attachment,
   FileAttachment,
   NodeAttachment,
-} from "@app/components/assistant/conversation/AttachmentCitation";
+} from "@app/components/assistant/conversation/attachment/types";
+import { attachmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import {
-  AttachmentCitation,
-  attachmentToAttachmentCitation,
-} from "@app/components/assistant/conversation/AttachmentCitation";
+  getDisplayDateFromPastedFileId,
+  getDisplayNameFromPastedFileId,
+  isPastedFile,
+} from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
@@ -33,14 +38,16 @@ interface NodeAttachmentsProps {
 
 interface InputBarAttachmentsProps {
   owner: LightWorkspaceType;
-  files?: FileAttachmentsProps;
+  files: FileAttachmentsProps;
   nodes?: NodeAttachmentsProps;
+  conversationId: string | null;
 }
 
 export function InputBarAttachments({
   owner,
   files,
   nodes,
+  conversationId,
 }: InputBarAttachmentsProps) {
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
@@ -63,14 +70,26 @@ export function InputBarAttachments({
   // Convert file blobs to FileAttachment objects
   const fileAttachments: FileAttachment[] = useMemo(() => {
     return (
-      files?.service.fileBlobs.map((blob) => ({
-        type: "file",
-        id: blob.id,
-        title: blob.id,
-        preview: blob.preview,
-        isUploading: blob.isUploading,
-        onRemove: () => files.service.removeFile(blob.id),
-      })) || []
+      files?.service.fileBlobs.map((blob) => {
+        const isPasted = isPastedFile(blob.contentType);
+        const title = isPasted
+          ? getDisplayNameFromPastedFileId(blob.id)
+          : blob.id;
+        const uploadDate = isPasted
+          ? getDisplayDateFromPastedFileId(blob.id)
+          : undefined;
+        return {
+          type: "file",
+          id: blob.id,
+          title,
+          sourceUrl: blob.sourceUrl,
+          contentType: blob.contentType,
+          isUploading: blob.isUploading,
+          description: uploadDate,
+          fileId: blob.id,
+          onRemove: () => files.service.removeFile(blob.id),
+        };
+      }) ?? []
     );
   }, [files?.service]);
 
@@ -108,7 +127,7 @@ export function InputBarAttachments({
           visual,
           onRemove: () => nodes.onRemove(node),
         };
-      }) || []
+      }) ?? []
     );
   }, [nodes, spacesMap]);
 
@@ -119,17 +138,20 @@ export function InputBarAttachments({
   }
 
   return (
-    <CitationGrid className="border-b border-separator px-3 pb-3 pt-3">
-      {allAttachments.map((attachment) => {
-        const attachmentCitation = attachmentToAttachmentCitation(attachment);
-        return (
-          <AttachmentCitation
-            key={attachmentCitation.id}
-            attachmentCitation={attachmentCitation}
-            onRemove={attachment.onRemove}
-          />
-        );
-      })}
-    </CitationGrid>
+    <>
+      <CitationGrid className="border-b border-separator px-3 pb-3 pt-3 dark:border-separator-night">
+        {allAttachments.map((attachment) => {
+          const attachmentCitation = attachmentToAttachmentCitation(attachment);
+          return (
+            <AttachmentCitation
+              key={attachmentCitation.id}
+              owner={owner}
+              attachmentCitation={attachmentCitation}
+              conversationId={conversationId}
+            />
+          );
+        })}
+      </CitationGrid>
+    </>
   );
 }

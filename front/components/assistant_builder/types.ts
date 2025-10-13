@@ -3,6 +3,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import uniqueId from "lodash/uniqueId";
 import type React from "react";
 
+import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
@@ -24,18 +25,6 @@ import type {
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
-export type AssistantBuilderTriggerType = {
-  sId?: string;
-  name: string;
-  kind: "schedule";
-  customPrompt: string | null;
-  editor: UserType["id"] | null;
-  configuration: {
-    cron: string;
-    timezone: string;
-  } | null;
-};
-
 // MCP configuration
 export type AssistantBuilderMCPServerConfiguration = {
   mcpServerViewId: string;
@@ -48,6 +37,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   dustAppConfiguration: DustAppRunConfigurationType | null;
   jsonSchema: JSONSchema | null;
   _jsonSchemaString: string | null;
+  secretName: string | null;
 };
 
 export type AssistantBuilderMCPConfiguration = {
@@ -55,7 +45,7 @@ export type AssistantBuilderMCPConfiguration = {
   configuration: AssistantBuilderMCPServerConfiguration;
   name: string;
   description: string;
-  noConfigurationRequired?: boolean;
+  configurable?: boolean;
 };
 
 export type AssistantBuilderMCPConfigurationWithId =
@@ -68,7 +58,7 @@ export interface AssistantBuilderDataVisualizationConfiguration {
   configuration: null;
   name: string;
   description: string;
-  noConfigurationRequired: true;
+  configurable: false;
 }
 
 // DATA_VISUALIZATION is not an action, but we need to show it in the UI like an action.
@@ -94,7 +84,7 @@ export type AssistantBuilderState = {
     responseFormat?: string;
   };
   actions: AssistantBuilderMCPOrVizState[];
-  triggers: AssistantBuilderTriggerType[];
+  triggers: AgentBuilderTriggerType[];
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
@@ -115,7 +105,7 @@ export function getDataVisualizationConfiguration(): AssistantBuilderDataVisuali
     configuration: null,
     name: DEFAULT_DATA_VISUALIZATION_NAME,
     description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-    noConfigurationRequired: true,
+    configurable: false,
   } satisfies AssistantBuilderDataVisualizationConfiguration;
 }
 
@@ -137,6 +127,7 @@ export function getDefaultMCPServerActionConfiguration(
       dustAppConfiguration: null,
       jsonSchema: null,
       _jsonSchemaString: null,
+      secretName: null,
     },
     name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:
@@ -147,7 +138,8 @@ export function getDefaultMCPServerActionConfiguration(
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    noConfigurationRequired: requirements.noRequirement,
+    // TODO(2025-10-10 aubin): rename back to noConfigurationRequired.
+    configurable: !requirements.noRequirement,
   };
 }
 

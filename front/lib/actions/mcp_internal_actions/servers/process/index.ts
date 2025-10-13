@@ -20,11 +20,9 @@ import {
   ConfigurableToolInputSchemas,
   JsonSchemaSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
-import {
-  getDataSourceConfiguration,
-  shouldAutoGenerateTags,
-} from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
+import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
+import { getDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -42,6 +40,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -49,8 +48,7 @@ import type {
   TimeFrame,
   UserMessageType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
-import { isUserMessageType, timeFrameFromNow } from "@app/types";
+import { Err, isUserMessageType, Ok, timeFrameFromNow } from "@app/types";
 
 import { applyDataSourceFilters, getExtractFileTitle } from "./utils";
 
@@ -89,7 +87,7 @@ function makeExtractInformationFromDocumentsTool(
 ) {
   return withToolLogging(
     auth,
-    { toolName: PROCESS_TOOL_NAME, agentLoopContext },
+    { toolNameForMonitoring: PROCESS_TOOL_NAME, agentLoopContext },
     async ({
       dataSources,
       objective,
@@ -101,14 +99,14 @@ function makeExtractInformationFromDocumentsTool(
       dataSources: DataSourcesToolConfigurationType[number][];
       objective: string;
       jsonSchema: JSONSchema;
-      timeFrame: TimeFrame | null;
+      timeFrame?: TimeFrame;
       tagsIn?: string[];
       tagsNot?: string[];
     }) => {
       // Unwrap and prepare variables.
       assert(
         agentLoopContext?.runContext,
-        "agentLoopContext is required where the tool is called."
+        "agentLoopContext is required to run the extract_data tool"
       );
       const { agentConfiguration, conversation } = agentLoopContext.runContext;
       const { model } = agentConfiguration;
@@ -137,8 +135,10 @@ function makeExtractInformationFromDocumentsTool(
         auth,
         model,
         dataSources,
-        timeFrame,
+        timeFrame: timeFrame ?? null,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         tagsIn: tagsIn || undefined,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         tagsNot: tagsNot || undefined,
       });
 
@@ -172,6 +172,13 @@ function makeExtractInformationFromDocumentsTool(
       let outputs: ProcessActionOutputsType | null = null;
       for await (const event of res.value.eventStream) {
         if (event.type === "error") {
+          logger.error(
+            {
+              error: event.content.message,
+              dustRunId: res.value.dustRunId,
+            },
+            "[Extract MCP Server] Received an error while streaming dust app"
+          );
           return new Err(
             new MCPError(
               `"Error running extract data action": ${event.content.message ?? "Unknown error from event stream."}`
@@ -182,6 +189,15 @@ function makeExtractInformationFromDocumentsTool(
         if (event.type === "block_execution") {
           const e = event.content.execution[0][0];
           if (e.error) {
+            logger.error(
+              {
+                error: e.error,
+                blockName: event.content.block_name,
+                dustRunId: res.value.dustRunId,
+              },
+              "[Extract MCP Server] Get a block execution error while streaming dust app"
+            );
+
             return new Err(
               new MCPError(
                 `"Error running extract data action": ${e.error ?? "An unknown error occurred during block execution."}`
@@ -201,7 +217,7 @@ function makeExtractInformationFromDocumentsTool(
         conversation,
         outputs,
         jsonSchema,
-        timeFrame,
+        timeFrame: timeFrame ?? null,
         objective,
       });
       // Upload the file to the conversation data source.
@@ -228,6 +244,7 @@ function createServer(
         agentLoopContext.listToolsContext.agentActionConfiguration
       ) &&
       agentLoopContext.listToolsContext.agentActionConfiguration.jsonSchema !==
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         null) ||
     (agentLoopContext?.runContext &&
       isLightServerSideMCPToolConfiguration(
@@ -241,6 +258,7 @@ function createServer(
         agentLoopContext.listToolsContext.agentActionConfiguration
       ) &&
       agentLoopContext.listToolsContext.agentActionConfiguration.timeFrame !==
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         null) ||
     (agentLoopContext?.runContext &&
       isLightServerSideMCPToolConfiguration(
@@ -287,8 +305,8 @@ function createServer(
         ),
     timeFrame: isTimeFrameConfigured
       ? ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
-        ]
+          INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+        ].optional()
       : z
           .object({
             duration: z.number(),
@@ -297,8 +315,7 @@ function createServer(
           .describe(
             "The time frame to use for documents retrieval (e.g. last 7 days, last 2 months). Leave null to search all documents regardless of time."
           )
-          .nullable()
-          .default(null),
+          .optional(),
   };
 
   const toolDescription =
@@ -380,7 +397,9 @@ async function getConfigForProcessDustApp({
     config,
     dataSourceConfigurations,
     dataSourceViewsMap,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     tagsIn || null,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     tagsNot || null
   );
 

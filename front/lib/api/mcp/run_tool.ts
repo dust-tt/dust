@@ -1,23 +1,23 @@
-import { McpError } from "@modelcontextprotocol/sdk/types.js";
-
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type {
-  ActionBaseParams,
   MCPApproveExecutionEvent,
   MCPErrorEvent,
   MCPParamsEvent,
   MCPSuccessEvent,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
-import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
+import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import {
-  executeMCPTool,
+  processToolNotification,
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
-import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
-import { ToolBlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import type {
+  ToolEarlyExitEvent,
+  ToolPersonalAuthRequiredEvent,
+} from "@app/lib/actions/mcp_internal_actions/events";
+import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/utils";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
-import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -41,13 +41,11 @@ export async function* runToolWithStreaming(
   auth: Authenticator,
   {
     action,
-    actionBaseParams,
     agentConfiguration,
     agentMessage,
     conversation,
   }: {
     action: AgentMCPActionResource;
-    actionBaseParams: ActionBaseParams;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
     conversation: ConversationType;
@@ -58,7 +56,8 @@ export async function* runToolWithStreaming(
   | MCPParamsEvent
   | MCPSuccessEvent
   | ToolNotificationEvent
-  | ToolPersonalAuthRequiredEvent,
+  | ToolPersonalAuthRequiredEvent
+  | ToolEarlyExitEvent,
   void
 > {
   const owner = auth.getNonNullableWorkspace();
@@ -87,104 +86,34 @@ export async function* runToolWithStreaming(
     toolConfiguration,
   };
 
-  const toolCallResult = yield* executeMCPTool({
+  const toolCallResult = yield* tryCallMCPTool(
     auth,
     inputs,
     agentLoopRunContext,
-    action,
-    agentConfiguration,
-    conversation,
-    agentMessage,
-  });
+    {
+      progressToken: action.id,
+      makeToolNotificationEvent: (notification) =>
+        processToolNotification(notification, {
+          action,
+          agentConfiguration,
+          conversation,
+          agentMessage,
+        }),
+    }
+  );
 
-  if (!toolCallResult || toolCallResult.isErr()) {
+  // Err here means an exception ahead of calling the tool, like a connection error, an input
+  // validation error, or any other kind of error from MCP, but not a tool error, which are returned
+  // as content.
+  if (toolCallResult.isError) {
     statsDClient.increment("mcp_actions_error.count", 1, tags);
-    localLogger.error(
-      {
-        error: toolCallResult
-          ? toolCallResult.error.message
-          : "No tool call result",
-      },
-      "Error calling MCP tool on run."
-    );
-
-    const { error: toolErr } = toolCallResult ?? {};
-
-    // If we got a personal authentication error, we emit a specific event that will be
-    // deferred until after all tools complete, then converted to a tool_error.
-    if (MCPServerPersonalAuthenticationRequiredError.is(toolErr)) {
-      const authErrorMessage =
-        `The tool ${actionBaseParams.functionCallName} requires personal ` +
-        `authentication, please authenticate to use it.`;
-
-      // Update the action to mark it as blocked because of a personal authentication error.
-      await action.updateStatus("blocked_authentication_required");
-
-      yield {
-        type: "tool_personal_auth_required",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        conversationId: conversation.sId,
-        authError: {
-          mcpServerId: toolErr.mcpServerId,
-          provider: toolErr.provider,
-          toolName: actionBaseParams.functionCallName ?? "unknown",
-          message: authErrorMessage,
-          ...(toolErr.scope && {
-            scope: toolErr.scope,
-          }),
-        },
-      };
-
-      return;
-    } else if (toolErr instanceof ToolBlockedAwaitingInputError) {
-      // Update the action status to blocked_child_action_input_required to break the agent loop.
-      await action.updateStatus("blocked_child_action_input_required");
-
-      // Update the step context to save the resume state.
-      await action.updateStepContext({
-        ...action.stepContext,
-        resumeState: toolErr.resumeState,
-      });
-
-      // Yield the blocking events.
-      for (const event of toolErr.blockingEvents) {
-        yield event;
-      }
-
-      return;
-    }
-
-    let errorMessage: string;
-
-    // We don't want to expose the MCP full error message to the user.
-    if (toolErr && toolErr instanceof McpError && toolErr.code === -32001) {
-      // MCP Error -32001: Request timed out.
-      errorMessage = `The tool ${actionBaseParams.functionCallName} timed out. `;
-
-      // If the tool should be retried on interrupt, we throw an error so the workflow retries the
-      // `runTool` activity. If the tool should not be retried on interrupt, the error is returned to
-      // the model, to let it decide what to do.
-      const retryPolicy =
-        getRetryPolicyFromToolConfiguration(toolConfiguration);
-      if (retryPolicy === "retry_on_interrupt") {
-        errorMessage += "Error: " + JSON.stringify(toolErr);
-        throw new Error(errorMessage);
-      }
-    } else {
-      errorMessage = `The tool ${actionBaseParams.functionCallName} returned an error. `;
-    }
-
-    errorMessage +=
-      "An error occurred while executing the tool. You can inform the user of this issue.";
 
     yield await handleMCPActionError({
       action,
       agentConfiguration,
       agentMessage,
       status,
-      errorMessage,
+      errorContent: toolCallResult.content,
     });
     return;
   }
@@ -193,23 +122,40 @@ export async function* runToolWithStreaming(
     action,
     conversation,
     localLogger,
-    toolCallResult: toolCallResult.value,
+    toolCallResultContent: toolCallResult.content,
     toolConfiguration,
   });
 
-  statsDClient.increment("mcp_actions_success.count", 1, tags);
+  // Parse the output resources to check if we find special events that require the agent loop to pause.
+  // This could be an authentication, validation, or unconditional exit from the action.
+  const agentPauseEvents = await getExitOrPauseEvents({
+    outputItems,
+    action,
+    agentConfiguration,
+    agentMessage,
+    conversation,
+  });
 
-  await action.updateStatus("succeeded");
+  if (agentPauseEvents.length > 0) {
+    for (const event of agentPauseEvents) {
+      yield event;
+    }
+    return;
+  } else {
+    statsDClient.increment("mcp_actions_success.count", 1, tags);
 
-  yield {
-    type: "tool_success",
-    created: Date.now(),
-    configurationId: agentConfiguration.sId,
-    messageId: agentMessage.sId,
-    action: {
-      ...action.toJSON(),
-      output: removeNulls(outputItems.map(hideFileFromActionOutput)),
-      generatedFiles,
-    },
-  };
+    await action.updateStatus("succeeded");
+
+    yield {
+      type: "tool_success",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      action: {
+        ...action.toJSON(),
+        output: removeNulls(outputItems.map(hideFileFromActionOutput)),
+        generatedFiles,
+      },
+    };
+  }
 }

@@ -1,3 +1,4 @@
+import type { TokenizeResponseType } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -10,7 +11,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { CoreAPITokenType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
 import { CoreAPI } from "@app/types";
 
 export type PostDatasourceTokenizeBody = {
@@ -21,19 +22,16 @@ const PostDatasourceTokenizeBodySchema = t.type({
   text: t.string,
 });
 
-type PostDatasourceTokenizeResponseBody = {
-  tokens: CoreAPITokenType[];
-};
-
 /**
  * @ignoreswagger
  * This endpoint is not to be included in the public API docs.
  */
+// At 5mn, likeliness of connection close increases significantly. The timeout is set at 4mn30.
+const CORE_TOKENIZE_TIMEOUT_MS = 270000;
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<PostDatasourceTokenizeResponseBody>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<TokenizeResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   const { dsId } = req.query;
@@ -109,14 +107,18 @@ async function handler(
       }
       const text = bodyValidation.right.text;
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const coreTokenizeRes = await coreAPI.dataSourceTokenize({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        text,
-      });
+      const coreTokenizeRes = await coreAPI.dataSourceTokenize(
+        {
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+          text,
+        },
+        { timeoutMs: CORE_TOKENIZE_TIMEOUT_MS }
+      );
       if (coreTokenizeRes.isErr()) {
+        const isTimeout = coreTokenizeRes.error.code === "request_timeout";
         return apiError(req, res, {
-          status_code: 500,
+          status_code: isTimeout ? 504 : 500,
           api_error: {
             type: "internal_server_error",
             message: `Error tokenizing text: ${coreTokenizeRes.error.message}`,

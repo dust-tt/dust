@@ -6,6 +6,8 @@ import { pipeline } from "stream/promises";
 
 import config from "@app/lib/file_storage/config";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
+import type { AllSupportedFileContentType } from "@app/types";
+import { frameContentType, stripNullBytes } from "@app/types";
 
 const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
 
@@ -51,13 +53,15 @@ export class FileStorage {
     contentType,
     filePath,
   }: {
-    content: string | Buffer;
-    contentType: string;
+    content: string;
+    contentType: AllSupportedFileContentType;
     filePath: string;
   }) {
     const gcsFile = this.file(filePath);
 
-    await gcsFile.save(content, {
+    const contentToSave = Buffer.from(stripNullBytes(content), "utf8");
+
+    await gcsFile.save(contentToSave, {
       contentType,
     });
   }
@@ -70,8 +74,30 @@ export class FileStorage {
     const gcsFile = this.file(filePath);
 
     const [content] = await gcsFile.download();
+    const [metadata] = await gcsFile.getMetadata();
+    const contentType = metadata.contentType;
+
+    if (this.isTextBasedContentType(contentType)) {
+      return stripNullBytes(content.toString());
+    }
 
     return content.toString();
+  }
+
+  private isTextBasedContentType(contentType?: string): boolean {
+    if (!contentType) {
+      return true;
+    }
+
+    const textTypes = [
+      frameContentType,
+      "text/",
+      "application/json",
+      "application/xml",
+      "image/svg+xml",
+    ];
+
+    return textTypes.some((type) => contentType.startsWith(type));
   }
 
   async getFileContentType(filename: string): Promise<string | undefined> {

@@ -9,12 +9,23 @@ export type ScheduleConfig = {
   timezone: string;
 };
 
-export type TriggerConfigurationType = ScheduleConfig;
-
-export type TriggerConfiguration = {
-  kind: "schedule";
-  configuration: ScheduleConfig;
+export type WebhookConfig = {
+  includePayload: boolean;
+  event?: string;
+  filter?: string;
 };
+
+export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
+
+export type TriggerConfiguration =
+  | {
+      kind: "schedule";
+      configuration: ScheduleConfig;
+    }
+  | {
+      kind: "webhook";
+      configuration: WebhookConfig;
+    };
 
 export type TriggerType = {
   id: ModelId;
@@ -24,13 +35,36 @@ export type TriggerType = {
   editor: UserType["id"];
   customPrompt: string | null;
   enabled: boolean;
+  webhookSourceViewSId?: string | null;
   createdAt: number;
 } & TriggerConfiguration;
 
 export type TriggerKind = TriggerType["kind"];
 
 export function isValidTriggerKind(kind: string): kind is TriggerKind {
-  return ["schedule"].includes(kind);
+  return ["schedule", "webhook"].includes(kind);
+}
+
+export type WebhookTriggerType = TriggerType & {
+  kind: "webhook";
+  webhookSourceViewSId: string;
+};
+
+export type ScheduleTriggerType = TriggerType & {
+  kind: "schedule";
+  configuration: ScheduleConfig;
+};
+
+export function isWebhookTrigger(
+  trigger: TriggerType
+): trigger is WebhookTriggerType {
+  return trigger.kind === "webhook";
+}
+
+export function isScheduleTrigger(
+  trigger: TriggerType
+): trigger is ScheduleTriggerType {
+  return trigger.kind === "schedule";
 }
 
 const ScheduleConfigSchema = t.type({
@@ -38,9 +72,30 @@ const ScheduleConfigSchema = t.type({
   timezone: t.string,
 });
 
-export const TriggerSchema = t.type({
-  name: t.string,
-  kind: t.literal("schedule"),
-  customPrompt: t.string,
-  configuration: ScheduleConfigSchema,
-});
+const WebhookConfigSchema = t.intersection([
+  t.type({
+    includePayload: t.boolean,
+  }),
+  t.partial({
+    event: t.string,
+    filter: t.string,
+  }),
+]);
+
+export const TriggerSchema = t.union([
+  t.type({
+    name: t.string,
+    kind: t.literal("schedule"),
+    customPrompt: t.string,
+    configuration: ScheduleConfigSchema,
+    editor: t.union([t.number, t.undefined]),
+  }),
+  t.type({
+    name: t.string,
+    kind: t.literal("webhook"),
+    customPrompt: t.string,
+    configuration: WebhookConfigSchema,
+    webhookSourceViewSId: t.string,
+    editor: t.union([t.number, t.undefined]),
+  }),
+]);

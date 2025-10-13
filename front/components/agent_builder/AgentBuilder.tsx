@@ -43,9 +43,10 @@ import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
-import logger from "@app/logger/logger";
+import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types";
 import { isBuilder, removeNulls } from "@app/types";
+import { normalizeError } from "@app/types";
 
 function processActionsFromStorage(
   actions: AssistantBuilderMCPConfigurationWithId[],
@@ -99,7 +100,7 @@ export default function AgentBuilder({
   const { mcpServerViews } = useMCPServerViewsContext();
 
   const router = useRouter();
-  const sendNotification = useSendNotification();
+  const sendNotification = useSendNotification(true);
   const [isSaving, setIsSaving] = useState(false);
 
   const { actions, isActionsLoading } = useAgentConfigurationActions(
@@ -107,7 +108,7 @@ export default function AgentBuilder({
     duplicateAgentId ?? agentConfiguration?.sId ?? null
   );
 
-  const { triggers, isTriggersLoading } = useAgentTriggers({
+  const { triggers, isTriggersLoading, mutateTriggers } = useAgentTriggers({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
@@ -177,11 +178,26 @@ export default function AgentBuilder({
     return {
       ...baseValues,
       actions: processedActions,
-      triggers: triggers ?? emptyArray(),
+      triggersToCreate: duplicateAgentId
+        ? triggers.map((trigger) => ({
+            ...trigger,
+            editor: user.id,
+          }))
+        : emptyArray(),
+      triggersToUpdate: duplicateAgentId
+        ? emptyArray()
+        : triggers ?? emptyArray(),
+      triggersToDelete: [],
+
       agentSettings: {
         ...baseValues.agentSettings,
         slackProvider,
-        editors: agentConfiguration || editors.length > 0 ? editors : [user],
+        editors: duplicateAgentId
+          ? [user]
+          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            agentConfiguration || editors.length > 0
+            ? editors
+            : [user],
         slackChannels: agentSlackChannels,
       },
     };
@@ -226,12 +242,17 @@ export default function AgentBuilder({
       }
 
       const result = await submitAgentBuilderForm({
+        user,
         formData,
         owner,
         isDraft: false,
         agentConfigurationId: duplicateAgentId
           ? null
-          : agentConfiguration?.sId || null,
+          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            agentConfiguration?.sId || null,
+        areSlackChannelsChanged: form.getFieldState(
+          "agentSettings.slackChannels"
+        ).isDirty,
       });
 
       if (!result.isOk()) {
@@ -247,15 +268,32 @@ export default function AgentBuilder({
       }
 
       const createdAgent = result.value;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const isCreatingNew = duplicateAgentId || !agentConfiguration;
 
-      sendNotification({
-        title: isCreatingNew ? "Agent created" : "Agent saved",
-        description: isCreatingNew
-          ? "Your agent has been successfully created"
-          : "Your agent has been successfully saved",
-        type: "success",
-      });
+      // Check if there's a warning about Slack channel linking
+      if (
+        "_warning" in createdAgent &&
+        createdAgent._warning === "slack_channel_linking_in_progress"
+      ) {
+        sendNotification({
+          title: isCreatingNew ? "Agent created" : "Agent saved",
+          description:
+            "The agent has been saved successfully. Some channels are currently being linked, the operation will complete shortly.",
+          type: "info",
+        });
+      } else {
+        sendNotification({
+          title: isCreatingNew ? "Agent created" : "Agent saved",
+          description: isCreatingNew
+            ? "Your agent has been successfully created"
+            : "Your agent has been successfully saved",
+          type: "success",
+        });
+      }
+
+      // Mutate triggers to refresh from backend (ensures newly created triggers have sIds)
+      await mutateTriggers();
 
       if (isCreatingNew && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
@@ -269,13 +307,51 @@ export default function AgentBuilder({
 
       setIsSaving(false);
     } catch (error) {
-      logger.error("Unexpected error:", error);
+      datadogLogger.error("Unexpected error:", {
+        error: normalizeError(error),
+      });
       setIsSaving(false);
     }
   };
 
+  const handleFormErrors = (errors: Record<string, any>) => {
+    const getFirstErrorMessage = (errorObj: Record<string, any>): string => {
+      for (const key in errorObj) {
+        if (errorObj[key]) {
+          if (typeof errorObj[key] === "string") {
+            return errorObj[key];
+          }
+          if (errorObj[key].message) {
+            return errorObj[key].message;
+          }
+          if (typeof errorObj[key] === "object") {
+            const nestedError = getFirstErrorMessage(errorObj[key]);
+            if (nestedError) {
+              return nestedError;
+            }
+          }
+        }
+      }
+      return "Unknown error";
+    };
+    const errorMessage = getFirstErrorMessage(errors);
+    datadogLogger.error(
+      {
+        errorMessage,
+        agentConfigurationId: agentConfiguration?.sId,
+      },
+      "[Agent builder] - Form validation error"
+    );
+    sendNotification({
+      title: `Agent ${agentConfiguration ? "edition" : "creation"} failed.`,
+      description: "There was an error validating the form.",
+      type: "error",
+    });
+    setIsSaving(false);
+  };
+
   const handleSave = () => {
-    void form.handleSubmit(handleSubmit)();
+    void form.handleSubmit(handleSubmit, handleFormErrors)();
   };
 
   const handleCancel = async () => {
@@ -323,6 +399,7 @@ export default function AgentBuilder({
                 onClick: handleSave,
                 disabled: isSaveDisabled,
               }}
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               agentConfigurationId={agentConfiguration?.sId || null}
               isActionsLoading={isActionsLoading}
               isTriggersLoading={isTriggersLoading}

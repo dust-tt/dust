@@ -1,14 +1,14 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type {
   LightMCPToolConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type {
-  CustomServerIconType,
-  InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
 import type {
   InternalMCPServerNameType,
   MCPServerAvailability,
@@ -73,12 +73,13 @@ export type MCPServerType = {
   name: string;
   version: string;
   description: string;
-  icon: CustomServerIconType | InternalAllowedIconType;
+  icon: CustomResourceIconType | InternalAllowedIconType;
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
   availability: MCPServerAvailability;
   allowMultipleInstances: boolean;
   documentationUrl: string | null;
+  requiresSecret?: boolean;
 };
 
 export type RemoteMCPServerType = MCPServerType & {
@@ -86,7 +87,8 @@ export type RemoteMCPServerType = MCPServerType & {
   sharedSecret?: string | null;
   lastSyncAt?: Date | null;
   lastError?: string | null;
-  icon: CustomServerIconType | InternalAllowedIconType;
+  customHeaders?: Record<string, string> | null;
+  icon: CustomResourceIconType | InternalAllowedIconType;
   // Always manual and allow multiple instances.
   availability: "manual";
   allowMultipleInstances: true;

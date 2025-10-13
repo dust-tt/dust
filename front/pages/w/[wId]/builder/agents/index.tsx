@@ -1,19 +1,16 @@
 import {
   Button,
   Chip,
-  DustIcon,
+  ContactsRobotIcon,
   ListSelectIcon,
   MagnifyingGlassIcon,
   Page,
-  PencilSquareIcon,
   PlusIcon,
-  RobotIcon,
   SearchInput,
   Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
-  TrashIcon,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -53,25 +50,21 @@ export const AGENT_MANAGER_TABS = [
   {
     id: "all_custom",
     label: "All",
-    icon: RobotIcon,
     description: "All custom agents.",
   },
   {
     id: "editable_by_me",
     label: "Editable by me",
-    icon: PencilSquareIcon,
     description: "Edited or created by you.",
   },
   {
     id: "global",
     label: "Default",
-    icon: DustIcon,
     description: "Default agents provided by Dust.",
   },
   {
     id: "archived",
     label: "Archived",
-    icon: TrashIcon,
     description: "Archived agents.",
   },
   {
@@ -161,7 +154,7 @@ export default function WorkspaceAssistants({
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "manage",
-    includes: ["authors", "usage", "feedbacks"],
+    includes: ["authors", "usage", "feedbacks", "editors"],
   });
 
   const selectedAgents = agentConfigurations.filter((a) =>
@@ -174,7 +167,7 @@ export default function WorkspaceAssistants({
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "archived",
-    includes: ["usage", "feedbacks"],
+    includes: ["usage", "feedbacks", "editors"],
     disabled: selectedTab !== "archived",
   });
 
@@ -279,6 +272,13 @@ export default function WorkspaceAssistants({
   const searchBarRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (searchBarRef.current) {
+      searchBarRef.current.focus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchBarRef.current]);
+
+  useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.key === "/") {
         event.preventDefault();
@@ -304,18 +304,19 @@ export default function WorkspaceAssistants({
         <AssistantDetails
           owner={owner}
           user={user}
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           assistantId={showDetails?.sId || null}
           onClose={() => setShowDetails(null)}
         />
         <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
-          <Page.Header title="Manage Agents" icon={RobotIcon} />
+          <Page.Header title="Manage Agents" icon={ContactsRobotIcon} />
           <Page.Vertical gap="md" align="stretch">
             <div className="flex flex-row gap-2">
               <SearchInput
                 ref={searchBarRef}
                 className="flex-grow"
                 name="search"
-                placeholder="Search (Name)"
+                placeholder="Search (Name, Editors)"
                 value={assistantSearch}
                 onChange={(s) => {
                   setAssistantSearch(s);
@@ -388,9 +389,6 @@ export default function WorkspaceAssistants({
                         tooltip={
                           AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
                             ?.description
-                        }
-                        icon={
-                          AGENT_MANAGER_TABS.find((t) => t.id === tab.id)?.icon
                         }
                         isCounter={tab.id !== "archived"}
                         counterValue={`${agentsByTab[tab.id].length}`}

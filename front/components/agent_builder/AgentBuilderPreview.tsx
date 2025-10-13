@@ -1,5 +1,5 @@
-import { ArrowPathIcon, Button, Spinner } from "@dust-tt/sparkle";
-import { useContext, useEffect, useMemo, useRef } from "react";
+import { Spinner } from "@dust-tt/sparkle";
+import { useEffect, useMemo, useRef } from "react";
 import { useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -12,20 +12,16 @@ import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPan
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
-import {
-  GenerationContext,
-  GenerationContextProvider,
-} from "@app/components/assistant/conversation/GenerationContextProvider";
-import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
+import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
+import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type { DustError } from "@app/lib/error";
 import { useUser } from "@app/lib/swr/user";
 import type {
-  AgentMention,
   ContentFragmentsType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
-  MentionType,
   Result,
   UserType,
   WorkspaceType,
@@ -71,13 +67,11 @@ interface PreviewContentProps {
   owner: WorkspaceType;
   currentPanel: ConversationSidePanelType;
   resetConversation: () => void;
-  handleSubmit: (
+  createConversation: (
     input: string,
-    mentions: MentionType[],
+    mentions: EditorMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
-  setStickyMentions: (mentions: AgentMention[]) => void;
-  stickyMentions: AgentMention[];
   draftAgent: LightAgentConfigurationType | null;
   isSavingDraftAgent: boolean;
 }
@@ -88,15 +82,10 @@ function PreviewContent({
   owner,
   currentPanel,
   resetConversation,
-  handleSubmit,
-  setStickyMentions,
-  stickyMentions,
+  createConversation,
   draftAgent,
   isSavingDraftAgent,
 }: PreviewContentProps) {
-  const generationContext = useContext(GenerationContext);
-  const isGenerating = !!generationContext?.generatingMessages.length;
-
   return (
     <>
       <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
@@ -106,42 +95,43 @@ function PreviewContent({
               owner={owner}
               user={user}
               conversationId={conversation.sId}
-              onStickyMentionsChange={setStickyMentions}
-              isInModal
+              agentBuilderContext={{
+                draftAgent: draftAgent ?? undefined,
+                isSavingDraftAgent,
+                resetConversation,
+                actionsToShow: ["attachment"],
+              }}
               key={conversation.sId}
             />
           )}
         </div>
-        {conversation && !isGenerating && (
-          <div className="flex justify-center px-4">
-            <Button
-              variant="outline"
-              icon={ArrowPathIcon}
-              onClick={resetConversation}
-              label="Clear conversation"
+
+        {!conversation && (
+          <div className="mx-4 flex-shrink-0 py-4">
+            <InputBar
+              disable={isSavingDraftAgent}
+              owner={owner}
+              onSubmit={createConversation}
+              stickyMentions={
+                draftAgent ? [{ configurationId: draftAgent.sId }] : []
+              }
+              conversationId={null}
+              additionalAgentConfiguration={draftAgent ?? undefined}
+              actions={["attachment"]}
+              disableAutoFocus
+              isFloating={false}
             />
           </div>
         )}
-        <div className="flex-shrink-0 py-4">
-          <AssistantInputBar
-            disable={isSavingDraftAgent}
-            owner={owner}
-            onSubmit={handleSubmit}
-            stickyMentions={stickyMentions}
-            conversationId={conversation?.sId ?? null}
-            additionalAgentConfiguration={draftAgent ?? undefined}
-            actions={["attachment"]}
-            disableAutoFocus
-            isFloating={false}
-          />
-        </div>
       </div>
 
-      <ConversationSidePanelContent
-        conversation={conversation}
-        owner={owner}
-        currentPanel={currentPanel}
-      />
+      {conversation && (
+        <ConversationSidePanelContent
+          conversation={conversation}
+          owner={owner}
+          currentPanel={currentPanel}
+        />
+      )}
     </>
   );
 }
@@ -171,11 +161,9 @@ export function AgentBuilderPreview() {
     getDraftAgent,
     isSavingDraftAgent,
     draftCreationFailed,
-    stickyMentions,
-    setStickyMentions,
   } = useDraftAgent();
 
-  const { conversation, handleSubmit, resetConversation } =
+  const { conversation, createConversation, resetConversation } =
     useDraftConversation({
       draftAgent,
       getDraftAgent,
@@ -208,6 +196,7 @@ export function AgentBuilderPreview() {
       // Update existing draft if agent name changed (with debouncing)
       // Normalize names for comparison (empty string becomes "Preview")
       const normalizedCurrentName = agentName?.trim() || "Preview";
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const normalizedDraftName = draftAgent?.name?.trim() || "Preview";
 
       if (draftAgent && normalizedCurrentName !== normalizedDraftName) {
@@ -220,7 +209,6 @@ export function AgentBuilderPreview() {
           const newDraft = await createDraftAgent();
           if (newDraft) {
             setDraftAgent(newDraft);
-            setStickyMentions([{ configurationId: newDraft.sId }]);
           }
           isUpdatingDraftRef.current = false;
         }, 500);
@@ -242,7 +230,6 @@ export function AgentBuilderPreview() {
     agentName,
     createDraftAgent,
     setDraftAgent,
-    setStickyMentions,
   ]);
 
   // Show loading spinner only when the first time we create a draft agent. After that the spinner is shown
@@ -280,9 +267,7 @@ export function AgentBuilderPreview() {
         owner={owner}
         currentPanel={currentPanel}
         resetConversation={resetConversation}
-        handleSubmit={handleSubmit}
-        setStickyMentions={setStickyMentions}
-        stickyMentions={stickyMentions}
+        createConversation={createConversation}
         draftAgent={draftAgent}
         isSavingDraftAgent={isSavingDraftAgent}
       />

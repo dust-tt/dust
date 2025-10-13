@@ -1,7 +1,9 @@
+// Okay to use public API types because it's front/connectors communication.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type { ConnectorsAPIError } from "@dust-tt/client";
 
-import { CONVERSATION_ERROR_TYPES } from "./assistant/conversation";
-import type { CoreAPIError } from "./core/core_api";
+import { CONVERSATION_ERROR_TYPES } from "@app/types/assistant/conversation";
+import type { CoreAPIError } from "@app/types/core/core_api";
 
 export type InternalErrorWithStatusCode = {
   status_code: number;
@@ -55,6 +57,7 @@ const API_ERROR_TYPES = [
   "connector_oauth_user_missing_rights",
   "connector_provider_not_supported",
   "connector_credentials_error",
+  "connector_operation_in_progress",
   "agent_configuration_not_found",
   "agent_group_permission_error",
   "agent_message_error",
@@ -112,6 +115,12 @@ const API_ERROR_TYPES = [
   "tracker_not_found",
   // Triggers:
   "trigger_not_found",
+  "webhook_source_not_found",
+  "webhook_source_view_auth_error",
+  "webhook_source_auth_error",
+  "webhook_source_view_not_found",
+  "webhook_source_view_triggering_agent",
+  "webhook_source_misconfiguration",
   // MCP Server Connections:
   "mcp_server_connection_not_found",
   "mcp_server_view_not_found",

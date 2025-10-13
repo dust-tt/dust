@@ -41,6 +41,8 @@ describe("GET /api/w/[wId]/mcp/[serverId]", () => {
 
     const responseData = res._getJSONData();
     expect(responseData).toHaveProperty("server");
+    expect(responseData.server).toHaveProperty("customHeaders");
+    expect(responseData.server.customHeaders).toBeNull(); // No headers set initially
   });
 
   it("should return 404 when server doesn't exist", async () => {
@@ -58,6 +60,32 @@ describe("GET /api/w/[wId]/mcp/[serverId]", () => {
         type: "data_source_not_found",
         message: "Remote MCP Server not found",
       },
+    });
+  });
+});
+
+describe("PATCH /api/w/[wId]/mcp/[serverId]", () => {
+  it("should return update headers when headers are provided", async () => {
+    const { req, res, workspace } = await setupTest("admin", "PATCH");
+
+    const server = await RemoteMCPServerFactory.create(workspace);
+    req.query.serverId = server.sId;
+    req.body = {
+      customHeaders: [
+        { key: "test-key-1", value: "value1" },
+        { key: "test-key-2", value: "value2" },
+      ],
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const responseData = res._getJSONData();
+    expect(responseData.server).toHaveProperty("customHeaders");
+    expect(responseData.server.customHeaders).toBeDefined();
+    expect(responseData.server.customHeaders).toMatchObject({
+      "test-key-1": "value1",
+      "test-key-2": "value2",
     });
   });
 });

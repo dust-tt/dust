@@ -40,7 +40,6 @@ import {
   isContentFragmentInputWithInlinedContent,
   isEmptyString,
 } from "@app/types";
-import { ExecutionModeSchema } from "@app/types/assistant/agent_run";
 
 const MAX_CONVERSATION_DEPTH = 4;
 
@@ -140,13 +139,6 @@ async function handler(
         blocking,
       } = r.data;
 
-      const executionModeParseResult = ExecutionModeSchema.safeParse(
-        req.query.execution
-      );
-      const executionMode = executionModeParseResult.success
-        ? executionModeParseResult.data
-        : undefined;
-
       const hasReachedLimits = await hasReachedPublicAPILimits(auth);
       if (hasReachedLimits) {
         return apiError(req, res, {
@@ -215,6 +207,20 @@ async function handler(
               },
             });
           }
+        }
+
+        const isRunAgent =
+          message.context.origin === "run_agent" ||
+          message.context.origin === "agent_handover";
+        if (isRunAgent && !auth.isSystemKey()) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Messages from run_agent or agent_handover must come from a system key.",
+            },
+          });
         }
       }
 
@@ -355,6 +361,7 @@ async function handler(
           profilePictureUrl: message.context.profilePictureUrl ?? null,
           timezone: message.context.timezone,
           username: message.context.username,
+          originMessageId: message.context.originMessageId ?? null,
         };
 
         // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
@@ -390,7 +397,6 @@ async function handler(
                 content: message.content,
                 context: ctx,
                 conversation,
-                executionMode,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
               })
@@ -398,7 +404,6 @@ async function handler(
                 content: message.content,
                 context: ctx,
                 conversation,
-                executionMode,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
               });
@@ -410,6 +415,7 @@ async function handler(
         newMessage = messageRes.value.userMessage;
       }
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (newContentFragment || newMessage) {
         // If we created a user message or a content fragment (or both) we retrieve the
         // conversation. If a user message was posted, we know that the agent messages have been

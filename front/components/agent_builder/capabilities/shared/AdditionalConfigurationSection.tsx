@@ -15,8 +15,10 @@ import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import React, { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { asDisplayName } from "@app/types";
 
 type OptionalDescribedKey = { key: string; description?: string };
@@ -70,7 +72,7 @@ function BooleanConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="cursor-help text-gray-400 hover:text-gray-600"
+                className="cursor-help text-gray-400 hover:text-gray-600 dark:text-gray-400-night dark:hover:text-gray-600-night"
               />
             }
             label={description}
@@ -87,15 +89,15 @@ function BooleanConfigurationInput({
 }
 
 function BooleanConfigurationSection({
-  requiredBooleans,
+  booleanConfigurations,
 }: {
-  requiredBooleans: OptionalDescribedKey[];
+  booleanConfigurations: OptionalDescribedKey[];
 }) {
-  if (requiredBooleans.length === 0) {
+  if (booleanConfigurations.length === 0) {
     return null;
   }
 
-  return requiredBooleans.map(({ key, description }) => (
+  return booleanConfigurations.map(({ key, description }) => (
     <BooleanConfigurationInput
       key={key}
       configKey={key}
@@ -127,7 +129,7 @@ function NumberConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="cursor-help text-gray-400 hover:text-gray-600"
+                className="cursor-help text-gray-400 hover:text-gray-600 dark:text-gray-400-night dark:hover:text-gray-600-night"
               />
             }
             label={description}
@@ -139,6 +141,7 @@ function NumberConfigurationInput({
           id={`number-${configKey}`}
           type="number"
           {...field}
+          value={field.value || null}
           placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
           isError={!!fieldState.error}
           message={fieldState.error?.message}
@@ -149,15 +152,15 @@ function NumberConfigurationInput({
 }
 
 function NumberConfigurationSection({
-  requiredNumbers,
+  numberConfigurations,
 }: {
-  requiredNumbers: OptionalDescribedKey[];
+  numberConfigurations: OptionalDescribedKey[];
 }) {
-  if (requiredNumbers.length === 0) {
+  if (numberConfigurations.length === 0) {
     return null;
   }
 
-  return requiredNumbers.map(({ key, description }) => (
+  return numberConfigurations.map(({ key, description }) => (
     <NumberConfigurationInput
       key={key}
       configKey={key}
@@ -189,7 +192,7 @@ function StringConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="cursor-help text-gray-400 hover:text-gray-600"
+                className="cursor-help text-gray-400 hover:text-gray-600 dark:text-gray-400-night dark:hover:text-gray-600-night"
               />
             }
             label={description}
@@ -201,6 +204,7 @@ function StringConfigurationInput({
           id={`string-${configKey}`}
           type="text"
           {...field}
+          value={field.value || null}
           placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
           isError={!!fieldState.error}
           message={fieldState.error?.message}
@@ -211,15 +215,15 @@ function StringConfigurationInput({
 }
 
 function StringConfigurationSection({
-  requiredStrings,
+  stringConfigurations,
 }: {
-  requiredStrings: OptionalDescribedKey[];
+  stringConfigurations: OptionalDescribedKey[];
 }) {
-  if (requiredStrings.length === 0) {
+  if (stringConfigurations.length === 0) {
     return null;
   }
 
-  return requiredStrings.map(({ key, description }) => (
+  return stringConfigurations.map(({ key, description }) => (
     <StringConfigurationInput
       key={key}
       configKey={key}
@@ -230,11 +234,11 @@ function StringConfigurationSection({
 
 function EnumConfigurationInput({
   configKey,
-  enumValues,
+  enumOptions,
   description,
 }: {
   configKey: string;
-  enumValues: string[];
+  enumOptions: Array<{ value: string; label: string; description?: string }>;
   description?: string;
 }) {
   const { field, fieldState } = useController<MCPFormData>({
@@ -242,71 +246,91 @@ function EnumConfigurationInput({
   });
 
   const displayLabel = `Select ${formatKeyForDisplay(configKey)}`;
+  const currentValue = field.value?.toString();
+  const currentOption = currentValue
+    ? enumOptions.find((option) => option.value === currentValue)
+    : undefined;
+  const currentLabel = currentOption ? currentOption.label : displayLabel;
+  const currentDescription = currentOption?.description;
+
   return (
-    <div key={configKey} className="mb-2 flex items-center gap-4">
-      <div className="flex w-1/5 items-center gap-2">
-        <Label className="text-sm font-medium">
-          {formatKeyForDisplay(configKey)}
-        </Label>
-        {description && (
-          <Tooltip
-            trigger={
-              <Icon
-                visual={InformationCircleIcon}
-                size="xs"
-                className="cursor-help text-gray-400 hover:text-gray-600"
-              />
-            }
-            label={description}
-          />
-        )}
-      </div>
-      <div className="flex-1">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              isSelect
-              label={field.value?.toString() ?? displayLabel}
-              size="sm"
-              tooltip={displayLabel}
-              variant="outline"
+    <div className="flex flex-col gap-1">
+      <div key={configKey} className="mb-2 flex items-center gap-4">
+        <div className="flex w-1/5 items-center gap-2">
+          <Label className="text-sm font-medium">
+            {formatKeyForDisplay(configKey)}
+          </Label>
+          {description && (
+            <Tooltip
+              trigger={
+                <Icon
+                  visual={InformationCircleIcon}
+                  size="xs"
+                  className="cursor-help text-gray-400 hover:text-gray-600 dark:text-gray-400-night dark:hover:text-gray-600-night"
+                />
+              }
+              label={description}
             />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {enumValues.map((enumValue) => (
-              <DropdownMenuItem
-                key={enumValue}
-                label={enumValue}
-                onSelect={() => field.onChange(enumValue)}
+          )}
+        </div>
+        <div className="flex-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                isSelect
+                label={currentLabel}
+                size="sm"
+                tooltip={displayLabel}
+                variant="outline"
               />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {!!fieldState.error && (
-          <div className={"error flex items-center gap-1 text-xs"}>
-            {fieldState.error.message}
-          </div>
-        )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {enumOptions.map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  label={option.label}
+                  onSelect={() => field.onChange(option.value)}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {!!fieldState.error && (
+            <div className={"error flex items-center gap-1 text-xs"}>
+              {fieldState.error.message}
+            </div>
+          )}
+        </div>
       </div>
+      {currentDescription && (
+        <div className="mt-1 whitespace-pre-line text-sm text-gray-600 dark:text-gray-600-night">
+          {currentDescription}
+        </div>
+      )}
     </div>
   );
 }
 
 function EnumConfigurationSection({
-  requiredEnums,
+  enumConfigurations,
 }: {
-  requiredEnums: Record<string, { options: string[]; description?: string }>;
+  enumConfigurations: Record<
+    string,
+    {
+      options: Array<{ value: string; label: string; description?: string }>;
+      description?: string;
+    }
+  >;
 }) {
-  if (Object.keys(requiredEnums).length === 0) {
+  if (Object.keys(enumConfigurations).length === 0) {
     return null;
   }
 
-  return Object.entries(requiredEnums).map(
+  return Object.entries(enumConfigurations).map(
     ([key, { options, description }]) => (
       <EnumConfigurationInput
         key={key}
         configKey={key}
-        enumValues={options}
+        enumOptions={options}
         description={description}
       />
     )
@@ -315,11 +339,11 @@ function EnumConfigurationSection({
 
 function ListConfigurationInput({
   configKey,
-  listValues,
+  listOptions,
   description,
 }: {
   configKey: string;
-  listValues: Record<string, string>;
+  listOptions: Array<{ value: string; label: string; description?: string }>;
   description?: string;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -331,14 +355,14 @@ function ListConfigurationInput({
     return Array.isArray(field.value) ? field.value : [];
   }, [field.value]);
 
-  const filteredValues = useMemo(() => {
+  const filteredOptions = useMemo(() => {
     if (searchQuery.trim() === "") {
-      return Object.entries(listValues);
+      return listOptions;
     }
-    return Object.entries(listValues).filter(([, label]) =>
-      label.toLowerCase().includes(searchQuery.toLowerCase())
+    return listOptions.filter((option) =>
+      option.label.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [listValues, searchQuery]);
+  }, [listOptions, searchQuery]);
 
   return (
     <div className="mb-4 flex flex-col gap-2">
@@ -358,35 +382,42 @@ function ListConfigurationInput({
           onChange={setSearchQuery}
         />
         <div className="space-y-1">
-          {filteredValues.length === 0 ? (
+          {filteredOptions.length === 0 ? (
             <div className="py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
               {searchQuery.trim() === ""
                 ? "No options available"
                 : `No options match "${searchQuery}"`}
             </div>
           ) : (
-            filteredValues.map(([value, label]) => (
+            filteredOptions.map((option) => (
               <div
-                key={value}
+                key={option.value}
                 className="group flex items-center justify-between rounded-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 <div className="flex items-center space-x-3">
                   <Checkbox
-                    checked={currentValue.includes(value)}
+                    checked={currentValue.includes(option.value)}
                     size="xs"
                     onCheckedChange={(checked) => {
                       const current = Array.isArray(field.value)
                         ? field.value
                         : [];
                       const newValues = checked
-                        ? [...current, value]
-                        : current.filter((v) => v !== value);
+                        ? [...current, option.value]
+                        : current.filter((v) => v !== option.value);
                       field.onChange(newValues);
                     }}
                   />
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {label}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {option.label}
+                    </span>
+                    {option.description && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {option.description}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))
@@ -403,23 +434,26 @@ function ListConfigurationInput({
 }
 
 function ListConfigurationSection({
-  requiredLists,
+  listConfigurations,
 }: {
-  requiredLists: Record<
+  listConfigurations: Record<
     string,
-    { options: Record<string, string>; description?: string }
+    {
+      options: Array<{ value: string; label: string; description?: string }>;
+      description?: string;
+    }
   >;
 }) {
-  if (Object.keys(requiredLists).length === 0) {
+  if (Object.keys(listConfigurations).length === 0) {
     return null;
   }
 
-  return Object.entries(requiredLists).map(
+  return Object.entries(listConfigurations).map(
     ([key, { options, description }]) => (
       <ListConfigurationInput
         key={key}
         configKey={key}
-        listValues={options}
+        listOptions={options}
         description={description}
       />
     )
@@ -428,30 +462,39 @@ function ListConfigurationSection({
 
 interface GroupedConfigurationSectionProps {
   prefix: string;
-  requiredStrings: OptionalDescribedKey[];
-  requiredNumbers: OptionalDescribedKey[];
-  requiredBooleans: OptionalDescribedKey[];
-  requiredEnums: Record<string, { options: string[]; description?: string }>;
-  requiredLists: Record<
+  stringConfigurations: OptionalDescribedKey[];
+  numberConfigurations: OptionalDescribedKey[];
+  booleanConfigurations: OptionalDescribedKey[];
+  enumConfigurations: Record<
     string,
-    { options: Record<string, string>; description?: string }
+    {
+      options: Array<{ value: string; label: string; description?: string }>;
+      description?: string;
+    }
+  >;
+  listConfigurations: Record<
+    string,
+    {
+      options: Array<{ value: string; label: string; description?: string }>;
+      description?: string;
+    }
   >;
 }
 
 function GroupedConfigurationSection({
   prefix,
-  requiredStrings,
-  requiredNumbers,
-  requiredBooleans,
-  requiredEnums,
-  requiredLists,
+  stringConfigurations,
+  numberConfigurations,
+  booleanConfigurations,
+  enumConfigurations,
+  listConfigurations,
 }: GroupedConfigurationSectionProps) {
   const hasConfiguration =
-    requiredStrings.length > 0 ||
-    requiredNumbers.length > 0 ||
-    requiredBooleans.length > 0 ||
-    Object.keys(requiredEnums).length > 0 ||
-    Object.keys(requiredLists).length > 0;
+    stringConfigurations.length > 0 ||
+    numberConfigurations.length > 0 ||
+    booleanConfigurations.length > 0 ||
+    Object.keys(enumConfigurations).length > 0 ||
+    Object.keys(listConfigurations).length > 0;
 
   if (!hasConfiguration) {
     return null;
@@ -465,53 +508,92 @@ function GroupedConfigurationSection({
         </Label>
       )}
       <div className="w-full space-y-4">
-        <StringConfigurationSection requiredStrings={requiredStrings} />
-        <NumberConfigurationSection requiredNumbers={requiredNumbers} />
-        <BooleanConfigurationSection requiredBooleans={requiredBooleans} />
-        <EnumConfigurationSection requiredEnums={requiredEnums} />
-        <ListConfigurationSection requiredLists={requiredLists} />
+        <StringConfigurationSection
+          stringConfigurations={stringConfigurations}
+        />
+        <NumberConfigurationSection
+          numberConfigurations={numberConfigurations}
+        />
+        <BooleanConfigurationSection
+          booleanConfigurations={booleanConfigurations}
+        />
+        <EnumConfigurationSection enumConfigurations={enumConfigurations} />
+        <ListConfigurationSection listConfigurations={listConfigurations} />
       </div>
     </div>
   );
 }
 
 interface AdditionalConfigurationSectionProps {
-  requiredStrings: OptionalDescribedKey[];
-  requiredNumbers: OptionalDescribedKey[];
-  requiredBooleans: OptionalDescribedKey[];
-  requiredEnums: Record<string, { options: string[]; description?: string }>;
-  requiredLists: Record<
+  stringConfigurations: OptionalDescribedKey[];
+  numberConfigurations: OptionalDescribedKey[];
+  booleanConfigurations: OptionalDescribedKey[];
+  enumConfigurations: Record<
     string,
-    { options: Record<string, string>; description?: string }
+    {
+      options: Array<{ value: string; label: string; description?: string }>;
+      description?: string;
+    }
+  >;
+  listConfigurations: Record<
+    string,
+    {
+      options: Array<{ value: string; label: string; description?: string }>;
+      description?: string;
+    }
   >;
 }
 
 export function AdditionalConfigurationSection({
-  requiredStrings,
-  requiredNumbers,
-  requiredBooleans,
-  requiredEnums,
-  requiredLists,
+  stringConfigurations,
+  numberConfigurations,
+  booleanConfigurations,
+  enumConfigurations,
+  listConfigurations,
 }: AdditionalConfigurationSectionProps) {
+  const { owner } = useAgentBuilderContext();
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const hasWebSummarizationFlag = featureFlags.includes("web_summarization");
+
+  const filteredBooleanConfigurations = useMemo(
+    () =>
+      booleanConfigurations.filter(
+        ({ key }) => !(key === "useSummary" && !hasWebSummarizationFlag)
+      ),
+    [booleanConfigurations, hasWebSummarizationFlag]
+  );
+
   // Group configuration fields by prefix.
   const groupedStrings = useMemo(
-    () => groupKeysByPrefix(requiredStrings),
-    [requiredStrings]
+    () => groupKeysByPrefix(stringConfigurations),
+    [stringConfigurations]
   );
   const groupedNumbers = useMemo(
-    () => groupKeysByPrefix(requiredNumbers),
-    [requiredNumbers]
+    () => groupKeysByPrefix(numberConfigurations),
+    [numberConfigurations]
   );
   const groupedBooleans = useMemo(
-    () => groupKeysByPrefix(requiredBooleans),
-    [requiredBooleans]
+    () => groupKeysByPrefix(filteredBooleanConfigurations),
+    [filteredBooleanConfigurations]
   );
   const groupedEnums = useMemo(() => {
     const groups: Record<
       string,
-      Record<string, { options: string[]; description?: string }>
+      Record<
+        string,
+        {
+          options: Array<{
+            value: string;
+            label: string;
+            description?: string;
+          }>;
+          description?: string;
+        }
+      >
     > = {};
-    Object.entries(requiredEnums).forEach(([key, values]) => {
+    Object.entries(enumConfigurations).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {
         groups[prefix] = {};
@@ -519,14 +601,24 @@ export function AdditionalConfigurationSection({
       groups[prefix][key] = values;
     });
     return groups;
-  }, [requiredEnums]);
+  }, [enumConfigurations]);
 
   const groupedLists = useMemo(() => {
     const groups: Record<
       string,
-      Record<string, { options: Record<string, string>; description?: string }>
+      Record<
+        string,
+        {
+          options: Array<{
+            value: string;
+            label: string;
+            description?: string;
+          }>;
+          description?: string;
+        }
+      >
     > = {};
-    Object.entries(requiredLists).forEach(([key, values]) => {
+    Object.entries(listConfigurations).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {
         groups[prefix] = {};
@@ -534,7 +626,7 @@ export function AdditionalConfigurationSection({
       groups[prefix][key] = values;
     });
     return groups;
-  }, [requiredLists]);
+  }, [listConfigurations]);
 
   // Get all unique prefixes
   const allPrefixes = useMemo(() => {
@@ -556,34 +648,32 @@ export function AdditionalConfigurationSection({
   ]);
 
   const hasConfiguration =
-    requiredStrings.length > 0 ||
-    requiredNumbers.length > 0 ||
-    requiredBooleans.length > 0 ||
-    Object.keys(requiredEnums).length > 0 ||
-    Object.keys(requiredLists).length > 0;
+    stringConfigurations.length > 0 ||
+    numberConfigurations.length > 0 ||
+    filteredBooleanConfigurations.length > 0 ||
+    Object.keys(enumConfigurations).length > 0 ||
+    Object.keys(listConfigurations).length > 0;
 
   if (!hasConfiguration) {
     return null;
   }
 
   return (
-    <>
-      <ConfigurationSectionContainer
-        title="Additional configuration"
-        description="Configure additional parameters required by this action."
-      >
-        {allPrefixes.map((prefix) => (
-          <GroupedConfigurationSection
-            key={prefix || "general"}
-            prefix={prefix}
-            requiredStrings={groupedStrings[prefix] || []}
-            requiredNumbers={groupedNumbers[prefix] || []}
-            requiredBooleans={groupedBooleans[prefix] || []}
-            requiredEnums={groupedEnums[prefix] || {}}
-            requiredLists={groupedLists[prefix] || {}}
-          />
-        ))}
-      </ConfigurationSectionContainer>
-    </>
+    <ConfigurationSectionContainer
+      title="Additional configuration"
+      description="Configure additional parameters required by this action."
+    >
+      {allPrefixes.map((prefix) => (
+        <GroupedConfigurationSection
+          key={prefix || "general"}
+          prefix={prefix}
+          stringConfigurations={groupedStrings[prefix] || []}
+          numberConfigurations={groupedNumbers[prefix] || []}
+          booleanConfigurations={groupedBooleans[prefix] || []}
+          enumConfigurations={groupedEnums[prefix] || {}}
+          listConfigurations={groupedLists[prefix] || {}}
+        />
+      ))}
+    </ConfigurationSectionContainer>
   );
 }

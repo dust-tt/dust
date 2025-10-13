@@ -84,7 +84,7 @@ async function handler(
         });
       }
 
-      // Agressively rate limit file uploads.
+      // Aggressively rate limit file uploads.
       const remaining = await rateLimiter({
         key: `workspace:${owner.id}:file_uploads`,
         maxPerTimeframe: 40,
@@ -114,7 +114,7 @@ async function handler(
         });
       }
 
-      if (!isUploadSupported({ contentType, useCase })) {
+      if (!isUploadSupported({ auth, contentType, useCase })) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

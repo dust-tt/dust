@@ -7,12 +7,12 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import type {
-  CustomServerIconType,
-  InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
 import type { MCPToolType, RemoteMCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -267,14 +267,16 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     {
       icon,
       sharedSecret,
+      customHeaders,
       cachedName,
       cachedDescription,
       cachedTools,
       lastSyncAt,
       clearError,
     }: {
-      icon?: CustomServerIconType | InternalAllowedIconType;
+      icon?: CustomResourceIconType | InternalAllowedIconType;
       sharedSecret?: string;
+      customHeaders?: Record<string, string>;
       cachedName?: string;
       cachedDescription?: string;
       cachedTools?: MCPToolType[];
@@ -297,6 +299,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     await this.update({
       icon,
       sharedSecret,
+      customHeaders,
       cachedName,
       cachedDescription,
       cachedTools,
@@ -343,6 +346,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     lastSyncAt: number | null;
     lastError: string | null;
     sharedSecret: string | null;
+    customHeaders: Record<string, string> | null;
   } {
     const currentTime = new Date();
     const createdAt = new Date(this.createdAt);
@@ -374,6 +378,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       lastSyncAt: this.lastSyncAt?.getTime() ?? null,
       lastError: this.lastError,
       sharedSecret: secret,
+      customHeaders: this.customHeaders,
       documentationUrl: null,
     };
   }

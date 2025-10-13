@@ -65,6 +65,7 @@ export async function createAgentActionConfiguration(
         singleToolDescriptionOverride:
           serverDescription !== action.description ? action.description : null,
         appId: action.dustAppConfiguration?.appId ?? null,
+        secretName: action.secretName ?? null,
       },
       { transaction: t }
     );
@@ -114,6 +115,7 @@ export async function createAgentActionConfiguration(
       timeFrame: action.timeFrame,
       additionalConfiguration: action.additionalConfiguration,
       dustAppConfiguration: action.dustAppConfiguration,
+      secretName: action.secretName,
       jsonSchema: action.jsonSchema,
     });
   });
@@ -189,6 +191,7 @@ async function createAgentDataSourcesConfiguration(
         parentsIn: dsConfig.filter.parents?.in,
         parentsNotIn: dsConfig.filter.parents?.not,
         dataSourceViewId: dataSourceView.id,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         mcpServerConfigurationId: mcpServerConfiguration?.id || null,
         tagsMode,
         tagsIn,

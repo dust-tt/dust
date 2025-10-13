@@ -77,7 +77,7 @@ const AgentBuilderEmojiPicker = React.forwardRef<
       <Avatar
         emoji={selectedEmoji?.native}
         backgroundColor={selectedBgColor}
-        size="xxl"
+        size="2xl"
       />
       <div className="flex flex-row gap-2">
         <PopoverRoot>

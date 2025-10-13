@@ -4,11 +4,9 @@ import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
 import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
-import {
-  MODEL_IDS,
-  MODEL_PROVIDER_IDS,
-  REASONING_EFFORT_IDS,
-} from "@app/types/assistant/assistant";
+import { MODEL_IDS } from "@app/types/assistant/models/models";
+import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import { REASONING_EFFORT_IDS } from "@app/types/assistant/models/reasoning";
 
 const modelIdSchema = z.enum(MODEL_IDS);
 const providerIdSchema = z.enum(MODEL_PROVIDER_IDS);
@@ -61,6 +59,8 @@ export const dustAppConfigurationSchema = z
   })
   .nullable();
 
+export const secretNameSchema = z.string().nullable();
+
 export const jsonSchemaFieldSchema = z.custom<JSONSchema>().nullable();
 
 export const jsonSchemaStringSchema = z.string().nullable();
@@ -98,7 +98,7 @@ const baseActionSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
-  noConfigurationRequired: z.boolean().optional(),
+  configurable: z.boolean().optional(),
 });
 
 const TAG_KINDS = z.union([z.literal("standard"), z.literal("protected")]);
@@ -131,6 +131,7 @@ export const mcpServerConfigurationSchema = z.object({
   timeFrame: mcpTimeFrameSchema,
   additionalConfiguration: additionalConfigurationSchema,
   dustAppConfiguration: dustAppConfigurationSchema,
+  secretName: secretNameSchema,
   jsonSchema: jsonSchemaFieldSchema,
   reasoningModel: reasoningModelSchema,
   _jsonSchemaString: jsonSchemaStringSchema,
@@ -191,34 +192,70 @@ const scheduleConfigSchema = z.object({
   timezone: z.string(),
 });
 
-const triggerSchema = z.object({
+const webhookConfigSchema = z.object({
+  includePayload: z.boolean(),
+  event: z.string().optional(),
+  filter: z.string().optional(),
+});
+
+const webhookTriggerSchema = z.object({
+  sId: z.string().optional(),
+  name: z.string(),
+  kind: z.enum(["webhook"]),
+  customPrompt: z.string().nullable(),
+  configuration: webhookConfigSchema,
+  editor: z.number().nullable(),
+  webhookSourceViewSId: z.string().nullable().optional(),
+  editorEmail: z.string().optional(),
+});
+
+const scheduleTriggerSchema = z.object({
   sId: z.string().optional(),
   name: z.string(),
   kind: z.enum(["schedule"]),
   customPrompt: z.string().nullable(),
-  configuration: z.union([scheduleConfigSchema, z.null()]),
+  configuration: scheduleConfigSchema,
   editor: z.number().nullable(),
+  editorEmail: z.string().optional(),
 });
+
+const triggerSchema = z.discriminatedUnion("kind", [
+  webhookTriggerSchema,
+  scheduleTriggerSchema,
+]);
+
+export type AgentBuilderWebhookTriggerType = z.infer<
+  typeof webhookTriggerSchema
+>;
+export type AgentBuilderScheduleTriggerType = z.infer<
+  typeof scheduleTriggerSchema
+>;
+
+export function isAgentBuilderWebhookTriggerType(
+  trigger: AgentBuilderTriggerType
+): trigger is AgentBuilderWebhookTriggerType {
+  return trigger.kind === "webhook";
+}
+
+export function isAgentBuilderScheduleTriggerType(
+  trigger: AgentBuilderTriggerType
+): trigger is AgentBuilderScheduleTriggerType {
+  return trigger.kind === "schedule";
+}
 
 export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
   actions: z.array(actionSchema),
-  triggers: z.array(triggerSchema),
+  triggersToCreate: z.array(triggerSchema),
+  triggersToUpdate: z.array(triggerSchema),
+  triggersToDelete: z.array(z.string()),
   maxStepsPerRun: z
     .number()
     .min(1, "Max steps per run must be at least 1")
     .default(8),
 });
-
-export const scheduleFormSchema = z.object({
-  name: z.string().min(1, "Name is required").max(255, "Name is too long"),
-  cron: z.string().min(9, "Cron expression is required"),
-  timezone: z.string().min(1, "Timezone is required"),
-  customPrompt: z.string(),
-});
-export type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
 
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
@@ -244,6 +281,7 @@ export interface MCPFormData {
     } | null;
     additionalConfiguration: AdditionalConfigurationInBuilderType;
     dustAppConfiguration: any;
+    secretName: string | null;
     jsonSchema: any;
     _jsonSchemaString: string | null;
   };

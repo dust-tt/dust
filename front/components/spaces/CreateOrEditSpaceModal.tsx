@@ -45,6 +45,7 @@ import {
   useSpaceInfo,
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
+import { useUser } from "@app/lib/swr/user";
 import type {
   GroupType,
   LightWorkspaceType,
@@ -99,6 +100,7 @@ export function CreateOrEditSpaceModal({
   const [isDirty, setIsDirty] = useState(false);
 
   const planAllowsSCIM = plan.limits.users.isSCIMAllowed;
+  const { user } = useUser();
 
   useEffect(() => {
     if (!planAllowsSCIM) {
@@ -115,6 +117,7 @@ export function CreateOrEditSpaceModal({
   const { spaceInfo, mutateSpaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: space?.sId ?? null,
+    includeAllMembers: true, // Always include all members so we can see suspended ones when switching modes
   });
 
   const { groups } = useGroups({
@@ -134,12 +137,6 @@ export function CreateOrEditSpaceModal({
         setManagementType("manual");
       }
 
-      if (spaceMembers && spaceInfo?.isRestricted) {
-        setSelectedMembers(spaceMembers);
-      } else {
-        setSelectedMembers([]);
-      }
-
       // Initialize selected groups based on space's groupIds (only if workos feature is enabled)
       if (
         planAllowsSCIM &&
@@ -157,11 +154,34 @@ export function CreateOrEditSpaceModal({
 
       setSpaceName(spaceInfo?.name ?? "");
 
-      setIsRestricted(
-        spaceInfo ? spaceInfo.isRestricted : defaultRestricted ?? false
-      );
+      const isRestricted = spaceInfo
+        ? spaceInfo.isRestricted
+        : defaultRestricted ?? false;
+      setIsRestricted(isRestricted);
+
+      let initialMembers: UserType[] = [];
+      if (spaceMembers && isRestricted) {
+        initialMembers = spaceMembers;
+      } else if (!space) {
+        initialMembers = [];
+      }
+
+      // Auto-add current user when opening with restricted access for new spaces
+      if (isRestricted && !space && user && initialMembers.length === 0) {
+        initialMembers = [user];
+      }
+
+      setSelectedMembers(initialMembers);
     }
-  }, [defaultRestricted, groups, isOpen, planAllowsSCIM, spaceInfo]);
+  }, [
+    defaultRestricted,
+    groups,
+    isOpen,
+    planAllowsSCIM,
+    spaceInfo,
+    user,
+    space,
+  ]);
 
   const handleClose = useCallback(() => {
     // Call the original onClose function.
@@ -450,8 +470,19 @@ export function CreateOrEditSpaceModal({
               <SliderToggle
                 selected={isRestricted}
                 onClick={() => {
-                  setIsRestricted(!isRestricted);
+                  const newRestricted = !isRestricted;
+                  setIsRestricted(newRestricted);
                   setIsDirty(true);
+
+                  // Auto-add current user when enabling restricted access for new spaces
+                  if (
+                    newRestricted &&
+                    !space &&
+                    user &&
+                    selectedMembers.length === 0
+                  ) {
+                    setSelectedMembers([user, ...selectedMembers]);
+                  }
                 }}
               />
             </div>

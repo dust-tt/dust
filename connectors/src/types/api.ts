@@ -24,6 +24,7 @@ const CONNECTORS_API_ERROR_TYPES = [
   "connector_rate_limit_error",
   "slack_configuration_not_found",
   "google_drive_webhook_not_found",
+  "connector_operation_in_progress",
 ] as const;
 export type ConnectorsAPIErrorType =
   (typeof CONNECTORS_API_ERROR_TYPES)[number];
@@ -158,20 +159,4 @@ export function isScheduleAlreadyRunning(err: unknown) {
   );
 }
 
-function errorToString(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  } else if (typeof error === "string") {
-    return error;
-  }
-
-  return JSON.stringify(error);
-}
-
-export function normalizeError(error: unknown): Error {
-  if (error instanceof Error) {
-    return error;
-  }
-
-  return new Error(errorToString(error));
-}
+export { errorToString, normalizeError } from "@dust-tt/client";

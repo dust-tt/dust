@@ -13,6 +13,7 @@ import { fetch as undiciFetch, ProxyAgent } from "undici";
 import {
   isBadCredentials,
   isGithubIssueWasDeletedError,
+  isGithubIssueWasDisabledError,
   isGithubRequestErrorNotFound,
   isGithubRequestRedirectCountExceededError,
 } from "@connectors/connectors/github/lib/errors";
@@ -296,7 +297,8 @@ export async function getIssue(
     if (
       isGithubRequestRedirectCountExceededError(err) ||
       isGithubRequestErrorNotFound(err) ||
-      isGithubIssueWasDeletedError(err)
+      isGithubIssueWasDeletedError(err) ||
+      isGithubIssueWasDisabledError(err)
     ) {
       logger.info({ err: err.message }, "Failed to get issue.");
       return null;

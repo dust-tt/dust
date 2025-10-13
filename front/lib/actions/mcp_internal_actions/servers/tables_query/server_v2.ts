@@ -1,4 +1,4 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { assertNever, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
@@ -28,15 +28,8 @@ import {
   getQueryWritingInstructionsContent,
   getSchemaContent,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
-import {
-  getSectionColumnsPrefix,
-  TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH,
-} from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
-import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import {
-  makeInternalMCPServer,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -47,6 +40,39 @@ import logger from "@app/logger/logger";
 import type { ConnectorProvider } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { CoreAPI } from "@app/types/core/core_api";
+
+/**
+ * Get the prefix for a row in a section file.
+ * This prefix is used to identify the row in the section file.
+ * We currently only support Salesforce since it's the only connector for which we can generate a prefix.
+ */
+function getSectionColumnsPrefix(
+  provider: ConnectorProvider | null
+): string[] | null {
+  switch (provider) {
+    case "salesforce":
+      return ["Id", "Name"];
+    case "confluence":
+    case "github":
+    case "google_drive":
+    case "intercom":
+    case "notion":
+    case "slack_bot":
+    case "slack":
+    case "microsoft":
+    case "webcrawler":
+    case "snowflake":
+    case "zendesk":
+    case "bigquery":
+    case "gong":
+    case null:
+      return null;
+    default:
+      assertNever(provider);
+  }
+}
+
+const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
 
 // Types for the resources that are output by the tools of this server.
 type TablesQueryOutputResources =
@@ -68,66 +94,71 @@ function createServer(
       tables:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
     },
-    async ({ tables }) => {
-      // Fetch table configurations
-      const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
-        auth,
-        tables
-      );
-      if (tableConfigurationsRes.isErr()) {
-        return makeMCPToolTextError(
-          `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: GET_DATABASE_SCHEMA_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ tables }) => {
+        // Fetch table configurations
+        const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
+          auth,
+          tables
         );
-      }
-      const tableConfigurations = tableConfigurationsRes.value;
-      if (tableConfigurations.length === 0) {
-        return {
-          isError: false,
-          content: [
+        if (tableConfigurationsRes.isErr()) {
+          return new Err(
+            new MCPError(
+              `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
+            )
+          );
+        }
+        const tableConfigurations = tableConfigurationsRes.value;
+        if (tableConfigurations.length === 0) {
+          return new Ok([
             {
               type: "text",
               text: "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool.",
             },
-          ],
-        };
-      }
-      const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
-        ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
-      ]);
-      const dataSourceViewsMap = new Map(
-        dataSourceViews.map((dsv) => [dsv.sId, dsv])
-      );
-
-      // Call Core API's /database_schema endpoint
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const schemaResult = await coreAPI.getDatabaseSchema({
-        tables: tableConfigurations.map((t) => {
-          const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
-          if (
-            !dataSourceView ||
-            !dataSourceView.dataSource.dustAPIDataSourceId
-          ) {
-            throw new Error(
-              `Missing data source ID for view ${t.dataSourceViewId}`
-            );
-          }
-          return {
-            project_id: parseInt(dataSourceView.dataSource.dustAPIProjectId),
-            data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
-            table_id: t.tableId,
-          };
-        }),
-      });
-
-      if (schemaResult.isErr()) {
-        return makeMCPToolTextError(
-          `Error retrieving database schema: ${schemaResult.error.message}`
+          ]);
+        }
+        const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
+          ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
+        ]);
+        const dataSourceViewsMap = new Map(
+          dataSourceViews.map((dsv) => [dsv.sId, dsv])
         );
-      }
 
-      return {
-        isError: false,
-        content: [
+        // Call Core API's /database_schema endpoint
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+        const schemaResult = await coreAPI.getDatabaseSchema({
+          tables: tableConfigurations.map((t) => {
+            const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
+            if (
+              !dataSourceView ||
+              !dataSourceView.dataSource.dustAPIDataSourceId
+            ) {
+              throw new Error(
+                `Missing data source ID for view ${t.dataSourceViewId}`
+              );
+            }
+            return {
+              project_id: parseInt(dataSourceView.dataSource.dustAPIProjectId),
+              data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
+              table_id: t.tableId,
+            };
+          }),
+        });
+
+        if (schemaResult.isErr()) {
+          return new Err(
+            new MCPError(
+              `Error retrieving database schema: ${schemaResult.error.message}`
+            )
+          );
+        }
+
+        return new Ok([
           {
             type: "resource",
             resource: {
@@ -139,9 +170,9 @@ function createServer(
           ...getSchemaContent(schemaResult.value.schemas),
           ...getQueryWritingInstructionsContent(schemaResult.value.dialect),
           ...getDatabaseExampleRowsContent(schemaResult.value.schemas),
-        ],
-      };
-    }
+        ]);
+      }
+    )
   );
 
   server.tool(
@@ -161,7 +192,10 @@ function createServer(
     },
     withToolLogging(
       auth,
-      { toolName: EXECUTE_DATABASE_QUERY_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: EXECUTE_DATABASE_QUERY_TOOL_NAME,
+        agentLoopContext,
+      },
       async ({ tables, query, fileName }) => {
         // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
         if (!agentLoopContext?.runContext) {

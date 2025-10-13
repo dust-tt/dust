@@ -1,10 +1,11 @@
-import type { Organization } from "@workos-inc/node";
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import type { WorkOSOrganizationType } from "@dust-tt/client";
 import * as t from "io-ts";
 
 import type {
   EmbeddingProviderIdType,
   ModelProviderIdType,
-} from "./assistant/assistant";
+} from "./assistant/models/types";
 import type { MembershipOriginType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import { assertNever } from "./shared/utils/assert_never";
@@ -108,14 +109,14 @@ export type UserTypeWithWorkspace = UserType & {
 
 export type UserTypeWithWorkspaces = UserType & {
   workspaces: WorkspaceType[];
-  organizations?: Organization[];
+  organizations?: WorkOSOrganizationType[];
   origin?: MembershipOriginType;
   selectedWorkspace?: string;
 };
 
 export type UserTypeWithExtensionWorkspaces = UserType & {
   workspaces: ExtensionWorkspaceType[];
-  organizations: Organization[];
+  organizations: WorkOSOrganizationType[];
   selectedWorkspace?: string;
 };
 

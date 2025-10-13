@@ -42,14 +42,17 @@ const useHandleMentions = (
           mentionsToInsert.push({
             id: agentConfiguration.sId,
             label: agentConfiguration.name,
+            description: agentConfiguration.description,
           });
         }
       }
 
       if (mentionsToInsert.length !== 0) {
-        editorService.resetWithMentions(mentionsToInsert, disableAutoFocus);
-        stickyMentionsTextContent.current =
-          editorService.getTrimmedText() ?? null;
+        queueMicrotask(() => {
+          editorService.resetWithMentions(mentionsToInsert, disableAutoFocus);
+          stickyMentionsTextContent.current =
+            editorService.getTrimmedText() ?? null;
+        });
       }
     }
   }, [agentConfigurations, editorService, stickyMentions, disableAutoFocus]);
@@ -67,6 +70,7 @@ const useHandleMentions = (
       const mention = {
         id: agentConfiguration.sId,
         label: agentConfiguration.name,
+        description: agentConfiguration.description,
       };
 
       if (!editorService.hasMention(mention)) {

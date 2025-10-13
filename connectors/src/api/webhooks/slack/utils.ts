@@ -1,4 +1,3 @@
-import type { Result } from "@dust-tt/client";
 import tracer from "dd-trace";
 import type { Request, Response } from "express";
 
@@ -101,13 +100,7 @@ export function isSlackWebhookEventReqBody(
 }
 
 export const withTrace =
-  <
-    T =
-      | typeof handleChatBotWithMessageSplitting
-      | typeof handleChatBotWithMessageTruncation,
-  >(
-    tags: tracer.SpanOptions["tags"]
-  ) =>
+  <T = typeof handleChatBot>(tags: tracer.SpanOptions["tags"]) =>
   (fn: T) =>
     tracer.wrap(
       "slack.webhook.app_mention.handleChatBot",
@@ -146,21 +139,10 @@ export async function isAppMentionMessage(
   }
 }
 
-async function handleChatBot(
+export async function handleChatBot(
   req: Request,
   res: Response,
-  logger: Logger,
-  botAnswerFunction: (
-    message: string,
-    params: {
-      slackTeamId: string;
-      slackChannel: string;
-      slackUserId: string;
-      slackBotId?: string;
-      slackMessageTs: string;
-      slackThreadTs?: string;
-    }
-  ) => Promise<Result<undefined, Error>>
+  logger: Logger
 ) {
   const { event } = req.body;
 
@@ -220,7 +202,7 @@ async function handleChatBot(
     slackMessageTs,
     slackThreadTs,
   };
-  const botRes = await botAnswerFunction(slackMessage, params);
+  const botRes = await botAnswerMessage(slackMessage, params);
   if (botRes.isErr()) {
     logger.error(
       {
@@ -230,24 +212,4 @@ async function handleChatBot(
       "Failed to answer to Slack message"
     );
   }
-}
-
-export async function handleChatBotWithMessageTruncation(
-  req: Request,
-  res: Response,
-  logger: Logger
-) {
-  return handleChatBot(req, res, logger, (message, params) =>
-    botAnswerMessage(message, { ...params, enabledMessageSplitting: false })
-  );
-}
-
-export async function handleChatBotWithMessageSplitting(
-  req: Request,
-  res: Response,
-  logger: Logger
-) {
-  return handleChatBot(req, res, logger, (message, params) =>
-    botAnswerMessage(message, { ...params, enabledMessageSplitting: true })
-  );
 }

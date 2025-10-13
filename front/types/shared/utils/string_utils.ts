@@ -113,6 +113,10 @@ export function stripNullBytes(text: string): string {
   return text.replace(/\0/g, "");
 }
 
+export function stripCRLF(text: string): string {
+  return text.replace(/[\r\n]+/g, " ");
+}
+
 // Checks for an escaped null Unicode character.
 export function hasNullUnicodeCharacter(text: string): boolean {
   return text.includes("\u0000");
@@ -122,6 +126,8 @@ const SPECIAL_CASES = {
   github: "GitHub",
   hubspot: "HubSpot",
   mcp: "MCP",
+  // TODO(cc): remove this once we have settled on a name.
+  "interactive content": "Frame",
 };
 
 // Create a single regex pattern for all special cases

@@ -111,13 +111,11 @@ export const fetchDatasets = async ({
     return new Ok(
       removeNulls(
         datasets.map((dataset) => {
-          // We want to filter out datasets that are in a different location than the credentials.
-          // But, for example, we want to keep dataset in "us" (multi-region) when selected location is "us-central1" (regional)
-          if (
-            !credentials.location
-              .toLowerCase()
-              .startsWith(dataset.location?.toLowerCase() ?? "")
-          ) {
+          // Strict location matching: only keep datasets whose location exactly matches
+          // the credential's location (case-insensitive). No regional/multi-region expansion.
+          const datasetLocation = dataset.location?.toLowerCase();
+          const credentialLocation = credentials.location.toLowerCase();
+          if (!datasetLocation || datasetLocation !== credentialLocation) {
             return null;
           }
 
@@ -295,7 +293,7 @@ export const fetchTree = async ({
                 tables,
               };
             },
-            { concurrency: 4 }
+            { concurrency: 2 }
           ),
         };
       },

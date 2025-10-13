@@ -36,6 +36,27 @@ const isEnumerationProperty = (
   propertyTypes?: Record<string, string>
 ) => propertyTypes?.[propertyName] === "enumeration";
 
+const isDateProperty = (
+  propertyName: string,
+  propertyTypes?: Record<string, string>
+): boolean => {
+  // If we have property type metadata, use it (most reliable).
+  if (propertyTypes?.[propertyName]) {
+    const type = propertyTypes[propertyName];
+    return type === "date" || type === "datetime";
+  }
+
+  // Fallback to name-based detection.
+  return (
+    propertyName.includes("date") ||
+    propertyName.includes("time") ||
+    propertyName.includes("timestamp") ||
+    propertyName === "createdate" ||
+    propertyName === "lastmodifieddate" ||
+    propertyName === "hs_lastmodifieddate"
+  );
+};
+
 export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
 type SimpleObjectType = (typeof SIMPLE_OBJECTS)[number];
 
@@ -89,6 +110,49 @@ export const getObjectProperties = async ({
   });
 };
 
+const getAllOwners = async (accessToken: string): Promise<PublicOwner[]> => {
+  const hubspotClient = new Client({ accessToken });
+  const allOwners: PublicOwner[] = [];
+  let after: string | undefined = undefined;
+  let hasMore = true;
+
+  while (hasMore) {
+    const owners = await hubspotClient.crm.owners.ownersApi.getPage(
+      undefined, // email
+      after, // after for pagination
+      100, // limit (max 100 per page)
+      undefined // archived
+    );
+
+    allOwners.push(...owners.results);
+
+    if (owners.paging?.next?.after) {
+      after = owners.paging.next.after;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return allOwners;
+};
+
+const getOwnerByEmail = async (
+  accessToken: string,
+  email: string
+): Promise<PublicOwner | null> => {
+  const hubspotClient = new Client({ accessToken });
+
+  // The getPage method can filter by email directly
+  const owners = await hubspotClient.crm.owners.ownersApi.getPage(
+    email, // email filter
+    undefined, // after
+    1, // limit - we only need one
+    undefined // archived
+  );
+
+  return owners.results.length > 0 ? owners.results[0] : null;
+};
+
 export const getObjectByEmail = async (
   accessToken: string,
   objectType: SimpleObjectType | SpecialObjectType,
@@ -97,12 +161,7 @@ export const getObjectByEmail = async (
   const hubspotClient = new Client({ accessToken });
 
   if (objectType === "owners") {
-    const owners = await hubspotClient.crm.owners.ownersApi.getPage();
-    const owner = owners.results.find((owner) => owner.email === email);
-    if (owner) {
-      return owner;
-    }
-    return null;
+    return getOwnerByEmail(accessToken, email);
   }
 
   const properties =
@@ -144,9 +203,9 @@ export const listOwners = async (
     archived: boolean;
   }[]
 > => {
-  const hubspotClient = new Client({ accessToken });
-  const owners = await hubspotClient.crm.owners.ownersApi.getPage();
-  return owners.results.map((owner) => ({
+  const allOwners = await getAllOwners(accessToken);
+
+  return allOwners.map((owner) => ({
     id: owner.id,
     email: owner.email ?? null,
     firstName: owner.firstName ?? null,
@@ -169,17 +228,19 @@ export const searchOwners = async (
     archived: boolean;
   }[]
 > => {
-  const hubspotClient = new Client({ accessToken });
-  const owners = await hubspotClient.crm.owners.ownersApi.getPage();
-
+  const allOwners = await getAllOwners(accessToken);
   const query = searchQuery.toLowerCase();
 
-  const filteredOwners = owners.results.filter((owner) => {
+  const filteredOwners = allOwners.filter((owner) => {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const emailMatch = owner.email?.toLowerCase().includes(query) || false;
     const firstNameMatch =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       owner.firstName?.toLowerCase().includes(query) || false;
     const lastNameMatch =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       owner.lastName?.toLowerCase().includes(query) || false;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const fullNameMatch = `${owner.firstName || ""} ${owner.lastName || ""}`
       .toLowerCase()
       .includes(query);
@@ -260,16 +321,8 @@ function buildHubspotFilters(
       ) {
         // For string properties, values must be lowercase, but not for date or enumeration properties
         if (values?.length) {
-          // Check if this is a date property to avoid lowercasing dates
-          const isDateProperty =
-            propertyName.includes("date") ||
-            propertyName.includes("time") ||
-            propertyName.includes("timestamp") ||
-            propertyName === "createdate" ||
-            propertyName === "lastmodifieddate" ||
-            propertyName === "hs_lastmodifieddate";
-
-          // Check if this is an enumeration property that should preserve case
+          // Check if this is a date or enumeration property that should preserve case
+          const isDateProp = isDateProperty(propertyName, propertyTypes);
           const isEnumProperty = isEnumerationProperty(
             propertyName,
             propertyTypes
@@ -280,26 +333,71 @@ function buildHubspotFilters(
             .filter((v) => v !== undefined && v !== null)
             .map((v) => String(v));
           filter.values =
-            isDateProperty || isEnumProperty
+            isDateProp || isEnumProperty
               ? cleanValues
               : cleanValues.map((v) => v.toLowerCase());
         } else {
           throw new Error(`Values array is required for ${operator} operator`);
         }
       } else if (operator === FilterOperatorEnum.Between) {
-        // BETWEEN operator needs separate value and highValue fields
+        // Date properties need to be converted to Unix timestamps in milliseconds
+        const isDateProp = isDateProperty(propertyName, propertyTypes);
+
         if (values?.length === 2) {
-          const cleanValues = values
+          let cleanValues = values
             .filter((v) => v !== undefined && v !== null)
             .map((v) => String(v));
+
+          // Convert date strings to timestamps for date properties
+          if (isDateProp) {
+            cleanValues = cleanValues.map((dateStr) => {
+              // Check if it's already a timestamp (all digits)
+              if (/^\d+$/.test(dateStr)) {
+                return dateStr;
+              }
+              // Convert ISO date string to timestamp
+              const timestamp = new Date(dateStr).getTime();
+              if (isNaN(timestamp)) {
+                throw new Error(
+                  `Invalid date format for BETWEEN operator: ${dateStr}`
+                );
+              }
+              return String(timestamp);
+            });
+          }
+
           filter.value = cleanValues[0];
           filter.highValue = cleanValues[1];
         } else if (value !== undefined && value !== null) {
           // If single value provided, assume it's semicolon-separated
           const parts = String(value).split(";");
           if (parts.length === 2) {
-            filter.value = parts[0];
-            filter.highValue = parts[1];
+            let [lowValue, highValue] = parts;
+
+            // Convert date strings to timestamps for date properties
+            if (isDateProp) {
+              if (!/^\d+$/.test(lowValue)) {
+                const timestamp = new Date(lowValue).getTime();
+                if (isNaN(timestamp)) {
+                  throw new Error(
+                    `Invalid date format for BETWEEN operator: ${lowValue}`
+                  );
+                }
+                lowValue = String(timestamp);
+              }
+              if (!/^\d+$/.test(highValue)) {
+                const timestamp = new Date(highValue).getTime();
+                if (isNaN(timestamp)) {
+                  throw new Error(
+                    `Invalid date format for BETWEEN operator: ${highValue}`
+                  );
+                }
+                highValue = String(timestamp);
+              }
+            }
+
+            filter.value = lowValue;
+            filter.highValue = highValue;
           } else {
             throw new Error(
               `BETWEEN operator with single value requires semicolon-separated format (e.g., "100;200")`
@@ -313,16 +411,8 @@ function buildHubspotFilters(
       } else {
         // Handle all single-value operators: EQ, NEQ, LT, LTE, GT, GTE, CONTAINS_TOKEN, NOT_CONTAINS_TOKEN
         if (value !== undefined && value !== null) {
-          // Check if this is a date property to preserve proper formatting
-          const isDateProperty =
-            propertyName.includes("date") ||
-            propertyName.includes("time") ||
-            propertyName.includes("timestamp") ||
-            propertyName === "createdate" ||
-            propertyName === "lastmodifieddate" ||
-            propertyName === "hs_lastmodifieddate";
-
-          // Check if this is an enumeration property that should preserve case
+          // Check if this is a date or enumeration property that should preserve case
+          const isDateProp = isDateProperty(propertyName, propertyTypes);
           const isEnumProperty = isEnumerationProperty(
             propertyName,
             propertyTypes
@@ -331,7 +421,7 @@ function buildHubspotFilters(
           const stringValue = String(value);
           // For string comparison operators, lowercase non-date, non-enumeration values for consistency
           if (
-            !isDateProperty &&
+            !isDateProp &&
             !isEnumProperty &&
             (operator === FilterOperatorEnum.Eq ||
               operator === FilterOperatorEnum.Neq ||
@@ -1023,8 +1113,10 @@ export const getCompany = async (
 ): Promise<SimplePublicObject | null> => {
   const hubspotClient = new Client({ accessToken });
   try {
-    const company =
-      await hubspotClient.crm.companies.basicApi.getById(companyId);
+    const company = await hubspotClient.crm.companies.basicApi.getById(
+      companyId,
+      ["createdate", "domain", "name", "hubspot_owner_id"]
+    );
     return company;
   } catch (error: any) {
     if (error.code === 404) {

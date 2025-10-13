@@ -1,4 +1,3 @@
-import type { LightWorkspaceType } from "@dust-tt/client";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
@@ -16,6 +15,7 @@ import type {
   PostTextAsCronRuleResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/text_as_cron_rule";
 import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
+import type { LightWorkspaceType } from "@app/types";
 
 export function useAgentTriggers({
   workspaceId,
@@ -82,11 +82,12 @@ export function useTextAsCronRule({
           method: "POST",
           body: JSON.stringify({
             naturalDescription,
+            defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           } as PostTextAsCronRuleRequestBody),
         }
       );
 
-      return r.cronRule;
+      return { cron: r.cronRule, timezone: r.timezone };
     },
     [workspace]
   );
@@ -192,6 +193,7 @@ export function useRemoveTriggerSubscriber({
   const sendNotification = useSendNotification();
   const { mutateTriggers: mutateAgentTriggers } = useAgentTriggers({
     workspaceId,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     agentConfigurationId: agentConfigurationId || null,
     disabled: !agentConfigurationId,
   });
@@ -206,6 +208,7 @@ export function useRemoveTriggerSubscriber({
       triggerAgentConfigurationId?: string
     ): Promise<boolean> => {
       const targetAgentConfigurationId =
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         triggerAgentConfigurationId || agentConfigurationId;
 
       try {

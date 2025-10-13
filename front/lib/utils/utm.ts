@@ -50,6 +50,7 @@ export const appendUTMParams = (
     return url;
   }
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const params = utmParams || getStoredUTMParams();
 
   if (Object.keys(params).length === 0) {

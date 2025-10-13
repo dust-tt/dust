@@ -1,22 +1,27 @@
 import { Button, Spinner } from "@dust-tt/sparkle";
 import { useState } from "react";
-import type { KeyedMutator } from "swr";
 
+import type { useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types";
 
+type MutatorType<TData> = ReturnType<
+  typeof useSWRWithDefaults<string, TData>
+>["mutate"];
+
 interface PokeDataTableConditionalFetchProps<T, M> {
   buttonText?: string;
-  children: (data: T, mutate: KeyedMutator<M>) => React.ReactNode;
+  children: (data: T, mutate: MutatorType<M>) => React.ReactNode;
   globalActions?: React.ReactNode;
   header: string;
   loadOnInit?: boolean;
   owner: LightWorkspaceType;
+  showSensitiveDataWarning?: boolean;
   useSWRHook: (props: PokeConditionalFetchProps) => {
     data: T;
     isError: any;
     isLoading: boolean;
-    mutate: KeyedMutator<M>;
+    mutate: MutatorType<M>;
   };
 }
 
@@ -27,6 +32,7 @@ export function PokeDataTableConditionalFetch<T, M>({
   header,
   loadOnInit = false,
   owner,
+  showSensitiveDataWarning = false,
   useSWRHook,
 }: PokeDataTableConditionalFetchProps<T, M>) {
   const [shouldLoad, setShouldLoad] = useState(loadOnInit);
@@ -36,7 +42,17 @@ export function PokeDataTableConditionalFetch<T, M>({
   });
 
   const handleLoadClick = () => {
-    setShouldLoad(true);
+    if (showSensitiveDataWarning) {
+      if (
+        window.confirm(
+          "Are you sure you want to access this sensitive user data? (Access will be logged)"
+        )
+      ) {
+        setShouldLoad(true);
+      }
+    } else {
+      setShouldLoad(true);
+    }
   };
 
   let content;
@@ -68,7 +84,7 @@ export function PokeDataTableConditionalFetch<T, M>({
   }
 
   return (
-    <div className="border-material-200 my-4 flex min-h-48 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
+    <div className="border-material-200 my-4 flex min-h-24 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
       <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
         <h2 className="text-md font-bold">{header}</h2>
         {globalActions}

@@ -9,6 +9,7 @@ import type { MCPOAuthConnectionMetadataType } from "@app/lib/api/oauth/provider
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { headersArrayToRecord } from "@app/types";
 
 export type DiscoverOAuthMetadataResponseBody =
   | {
@@ -21,6 +22,10 @@ export type DiscoverOAuthMetadataResponseBody =
 
 const PostQueryParamsSchema = t.type({
   url: t.string,
+  customHeaders: t.union([
+    t.array(t.type({ key: t.string, value: t.string })),
+    t.undefined,
+  ]),
 });
 
 /**
@@ -52,12 +57,17 @@ async function handler(
         });
       }
 
-      const { url } = r.right;
+      const { url, customHeaders } = r.right;
+
+      const headers = headersArrayToRecord(customHeaders, {
+        stripAuthorization: false,
+      });
 
       const r2 = await connectToMCPServer(auth, {
         params: {
           type: "remoteMCPServerUrl",
           remoteMCPServerUrl: url,
+          headers,
         },
       });
       if (r2.isErr()) {

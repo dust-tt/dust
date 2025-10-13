@@ -228,10 +228,13 @@ async function handler(
     });
   }
 
-  // This variable is used in the context of the DustAppRun action to use the workspace credentials
-  // instead of our managed credentials when running an app with a system API key.
-  const useWorkspaceCredentials =
-    req.query["use_workspace_credentials"] === "true";
+  // This variable defines whether to use the dust managed credentials or the workspace credentials.
+  // Dust managed credentials can only be used with a system API key.
+  // The `use_workspace_credentials` query parameter is used in the context of the DustAppRun action, to
+  // use the workspace credentials even though we use a system API key.
+  const useDustCredentials =
+    auth.isSystemKey() && req.query["use_workspace_credentials"] !== "true";
+
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   const runFlavor: RunFlavor = req.body.stream
     ? "streaming"
@@ -268,8 +271,13 @@ async function handler(
         }
       }
 
+      // Fetch the feature flags for the owner of the run.
+      const keyWorkspaceFlags = await getFeatureFlags(
+        keyAuth.getNonNullableWorkspace()
+      );
+
       let credentials: CredentialsType | null = null;
-      if (auth.isSystemKey() && !useWorkspaceCredentials) {
+      if (useDustCredentials) {
         // Dust managed credentials: system API key (packaged apps).
         credentials = dustManagedCredentials();
       } else {
@@ -298,11 +306,6 @@ async function handler(
       const flags = await getFeatureFlags(owner);
       const storeBlocksResults = !flags.includes("disable_run_logs");
 
-      // Fetch the feature flags for the owner of the run.
-      const keyWorkspaceFlags = await getFeatureFlags(
-        keyAuth.getNonNullableWorkspace()
-      );
-
       logger.info(
         {
           workspace: {
@@ -310,6 +313,8 @@ async function handler(
             name: owner.name,
           },
           app: app.sId,
+          useOpenAIEUEndpoint: credentials?.OPENAI_USE_EU_ENDPOINT,
+          userWorkspace: keyAuth.getNonNullableWorkspace().sId,
         },
         "App run creation"
       );
@@ -445,6 +450,7 @@ async function handler(
           appId: app.id,
           runType: "deploy",
           workspaceId: keyWorkspaceId,
+          useWorkspaceCredentials: !useDustCredentials,
         });
 
         await run.recordRunUsage(usages);

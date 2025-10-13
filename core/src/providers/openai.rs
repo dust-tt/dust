@@ -31,6 +31,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
+use tracing::info;
 
 use super::azure_openai::AzureOpenAIEmbedder;
 use super::openai_compatible_helpers::{
@@ -688,24 +689,35 @@ pub async fn embed(
 
 pub struct OpenAILLM {
     id: String,
+    host: Option<String>,
+    use_eu_endpoint: bool,
     api_key: Option<String>,
 }
 
 impl OpenAILLM {
     pub fn new(id: String) -> Self {
-        OpenAILLM { id, api_key: None }
+        OpenAILLM {
+            id,
+            host: None,
+            use_eu_endpoint: false,
+            api_key: None,
+        }
     }
 
     fn uri(&self) -> Result<Uri> {
-        Ok(format!("https://api.openai.com/v1/completions",).parse::<Uri>()?)
+        Ok(format!("https://{}/v1/completions", self.host.as_ref().unwrap()).parse::<Uri>()?)
     }
 
     fn chat_uri(&self) -> Result<Uri> {
-        Ok(format!("https://api.openai.com/v1/chat/completions",).parse::<Uri>()?)
+        Ok(format!(
+            "https://{}/v1/chat/completions",
+            self.host.as_ref().unwrap()
+        )
+        .parse::<Uri>()?)
     }
 
     fn responses_uri(&self) -> Result<Uri> {
-        Ok(format!("https://api.openai.com/v1/responses",).parse::<Uri>()?)
+        Ok(format!("https://{}/v1/responses", self.host.as_ref().unwrap()).parse::<Uri>()?)
     }
 
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
@@ -786,6 +798,27 @@ impl LLM for OpenAILLM {
                 ))?,
             },
         }
+        self.use_eu_endpoint = match credentials.get("OPENAI_USE_EU_ENDPOINT") {
+            Some(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
+            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_USE_EU_ENDPOINT"))
+                .await?
+            {
+                Ok(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
+                Err(_) => false,
+            },
+        };
+
+        self.host = if self.use_eu_endpoint {
+            Some("eu.api.openai.com".to_string())
+        } else {
+            Some("api.openai.com".to_string())
+        };
+        info!(
+            model = self.id,
+            openai_host = self.host,
+            "OpenAILLM.initialize"
+        );
+
         Ok(())
     }
 
@@ -1076,6 +1109,7 @@ impl LLM for OpenAILLM {
                 event_sender,
                 transform_system_messages,
                 provider_name,
+                self.use_eu_endpoint,
             )
             .await
         } else {
@@ -1124,16 +1158,21 @@ pub struct Embeddings {
 
 pub struct OpenAIEmbedder {
     id: String,
+    host: Option<String>,
     api_key: Option<String>,
 }
 
 impl OpenAIEmbedder {
     pub fn new(id: String) -> Self {
-        OpenAIEmbedder { id, api_key: None }
+        OpenAIEmbedder {
+            id,
+            host: None,
+            api_key: None,
+        }
     }
 
     fn uri(&self) -> Result<Uri> {
-        Ok(format!("https://api.openai.com/v1/embeddings",).parse::<Uri>()?)
+        Ok(format!("https://{}/v1/embeddings", self.host.as_ref().unwrap()).parse::<Uri>()?)
     }
 
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
@@ -1161,25 +1200,45 @@ impl Embedder for OpenAIEmbedder {
             ));
         }
 
-        // Give priority to `CORE_DATA_SOURCES_OPENAI_API_KEY` env variable
-        match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
-            Ok(key) => {
-                self.api_key = Some(key);
-            }
+        // For the Embedder, we deliberately don't rely on passed credentials, to avoid using
+        // user creds in Dust app scenarios (unlike in LLM scenarios, where we want to use them).
+        // We only use it as a fallback for local development.
+        let raw_openai_key_env = match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
+            Ok(v) => v,
             Err(_) => match credentials.get("OPENAI_API_KEY") {
-                Some(api_key) => {
-                    self.api_key = Some(api_key.clone());
+                Some(api_key) => api_key.clone(),
+                None => {
+                    return Err(anyhow!(
+                        "CORE_DATA_SOURCES_OPENAI_API_KEY or OPENAI_API_KEY must be set."
+                    ));
                 }
-                None => match std::env::var("OPENAI_API_KEY") {
-                    Ok(key) => {
-                        self.api_key = Some(key);
-                    }
-                    Err(_) => Err(anyhow!(
-                        "Credentials or environment variable `OPENAI_API_KEY` is not set."
-                    ))?,
-                },
             },
+        };
+
+        // The env variable can take two forms:
+        // - just the API key (e.g. sk-xxxx)
+        // - the API key followed by a semicolon and a custom host (e.g. sk-xxxx;eu.api.openai.com)
+        let (key_part, host_part) = match raw_openai_key_env.split_once(';') {
+            Some((k, h)) => (k.trim(), h.trim()),
+            None => (raw_openai_key_env.trim(), "api.openai.com"),
+        };
+
+        self.api_key = Some(key_part.to_string());
+        self.host = Some(host_part.to_string());
+
+        // Check host validity to protect against SSRF
+        if !self.host.as_ref().unwrap().ends_with(".openai.com") {
+            return Err(anyhow!(
+                "Invalid OpenAI host `{}`: must end with `.openai.com`",
+                self.host.as_ref().unwrap()
+            ));
         }
+
+        info!(
+            model = self.id,
+            openai_host = self.host,
+            "OpenAIEmbedder.initialize"
+        );
         Ok(())
     }
 

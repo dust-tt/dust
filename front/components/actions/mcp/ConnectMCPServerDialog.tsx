@@ -82,7 +82,12 @@ export function ConnectMCPServerDialog({
         ) {
           setIsLoading(true);
           const discoverOAuthMetadataRes = await discoverOAuthMetadata(
-            mcpServerView.server.url
+            mcpServerView.server.url,
+            mcpServerView.server.customHeaders
+              ? Object.entries(mcpServerView.server.customHeaders).map(
+                  ([key, value]) => ({ key, value: String(value) })
+                )
+              : undefined
           );
 
           if (
@@ -232,6 +237,7 @@ export function ConnectMCPServerDialog({
                 void handleSave();
               }
             },
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             disabled: !isFormValid || (authorization && !useCase) || isLoading,
           }}
         />

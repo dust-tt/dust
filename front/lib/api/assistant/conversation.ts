@@ -2,7 +2,6 @@ import assert from "assert";
 import _, { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
 
-import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   getAgentConfiguration,
@@ -43,12 +42,15 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid, normalizeArrays } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import {
+  getTimeframeSecondsFromLiteral,
+  rateLimiter,
+} from "@app/lib/utils/rate_limiter";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   AgentMessageType,
-  AgentMessageWithRankType,
   APIErrorWithStatusCode,
   ContentFragmentContextType,
   ContentFragmentInputWithContentNode,
@@ -58,14 +60,12 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
-  MaxMessagesTimeframeType,
   MentionType,
   ModelId,
   PlanType,
   Result,
   UserMessageContext,
   UserMessageType,
-  UserMessageWithRankType,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -74,7 +74,6 @@ import {
   ConversationError,
   Err,
   isAgentMention,
-  isAgentMessageType,
   isContentFragmentInputWithContentNode,
   isContentFragmentType,
   isProviderWhitelisted,
@@ -83,26 +82,9 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-import type { ExecutionMode } from "@app/types/assistant/agent_run";
 
 // Soft assumption that we will not have more than 10 mentions in the same user message.
 const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
-
-function getTimeframeSecondsFromLiteral(
-  timeframeLiteral: MaxMessagesTimeframeType
-): number {
-  switch (timeframeLiteral) {
-    case "day":
-      return 60 * 60 * 24; // 1 day.
-
-    // Lifetime is intentionally mapped to a 30-day period.
-    case "lifetime":
-      return 60 * 60 * 24 * 30; // 30 days.
-
-    default:
-      return 0;
-  }
-}
 
 /**
  * Conversation Creation, update and deletion
@@ -242,8 +224,9 @@ export async function deleteOrLeaveConversation(
   if (leaveRes.isErr()) {
     return new Err(leaveRes.error);
   }
-  // If the conversation is empty after the leave, soft-delete it.
-  if (leaveRes.value.affectedCount > 0 && leaveRes.value.isConversationEmpty) {
+
+  // If the user was the last member, soft-delete the conversation.
+  if (leaveRes.value.affectedCount === 0 && leaveRes.value.wasLastMember) {
     await conversation.updateVisibilityToDeleted();
   }
   return new Ok({ success: true });
@@ -385,18 +368,19 @@ export async function postUserMessage(
     mentions,
     context,
     skipToolsValidation,
-    executionMode,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
     skipToolsValidation: boolean;
-    executionMode?: ExecutionMode;
   }
 ): Promise<
   Result<
-    { userMessage: UserMessageType; agentMessages: AgentMessageType[] },
+    {
+      userMessage: UserMessageType;
+      agentMessages: AgentMessageType[];
+    },
     APIErrorWithStatusCode
   >
 > {
@@ -525,6 +509,16 @@ export async function postUserMessage(
           transaction: t,
         })) ?? -1) + 1;
 
+      // Fetch originMessage to ensure it exists
+      const originMessage = context.originMessageId
+        ? await Message.findOne({
+            where: {
+              workspaceId: owner.id,
+              sId: context.originMessageId,
+            },
+          })
+        : null;
+
       async function createMessageAndUserMessage(workspace: WorkspaceType) {
         return Message.create(
           {
@@ -544,6 +538,10 @@ export async function postUserMessage(
                   userContextEmail: context.email,
                   userContextProfilePictureUrl: context.profilePictureUrl,
                   userContextOrigin: context.origin,
+                  userContextOriginMessageId: originMessage?.sId ?? null,
+                  userContextLastTriggerRunAt: context.lastTriggerRunAt
+                    ? new Date(context.lastTriggerRunAt)
+                    : null,
                   userId: user
                     ? user.id
                     : (
@@ -566,7 +564,7 @@ export async function postUserMessage(
       }
 
       const m = await createMessageAndUserMessage(owner);
-      const userMessage: UserMessageWithRankType = {
+      const userMessage: UserMessageType = {
         id: m.id,
         created: m.createdAt.getTime(),
         sId: m.sId,
@@ -633,17 +631,24 @@ export async function postUserMessage(
                 }
               );
 
+              const parentAgentMessageId =
+                userMessage.context.origin === "agent_handover"
+                  ? userMessage.context.originMessageId ?? null
+                  : null;
+
               return {
                 row: agentMessageRow,
                 m: {
                   id: messageRow.id,
                   agentMessageId: agentMessageRow.id,
                   created: agentMessageRow.createdAt.getTime(),
+                  completedTs: agentMessageRow.completedAt?.getTime() ?? null,
                   sId: messageRow.sId,
                   type: "agent_message",
                   visibility: "visible",
                   version: 0,
                   parentMessageId: userMessage.sId,
+                  parentAgentMessageId,
                   status: "created",
                   actions: [],
                   content: null,
@@ -655,7 +660,7 @@ export async function postUserMessage(
                   skipToolsValidation: agentMessageRow.skipToolsValidation,
                   contents: [],
                   parsedContents: {},
-                } satisfies AgentMessageWithRankType,
+                } satisfies AgentMessageType,
               };
             })();
           })
@@ -663,7 +668,7 @@ export async function postUserMessage(
 
       const nonNullResults = results.filter((r) => r !== null) as {
         row: AgentMessage;
-        m: AgentMessageWithRankType;
+        m: AgentMessageType;
       }[];
 
       await updateConversationRequestedGroupIds(auth, {
@@ -717,13 +722,6 @@ export async function postUserMessage(
   await concurrentExecutor(
     agentMessages,
     async (agentMessage) => {
-      // We stitch the conversation to add the user message and only that agent message
-      // so that it can be used to prompt the agent.
-      const enrichedConversation = {
-        ...conversation,
-        content: [...conversation.content, [userMessage], [agentMessage]],
-      };
-
       // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
       const agentMessageRow = agentMessageRowById.get(
         agentMessage.agentMessageId
@@ -743,19 +741,18 @@ export async function postUserMessage(
         "Unreachable: could not find detailed configuration for agent"
       );
 
-      const inMemoryData = {
-        agentConfiguration,
-        conversation: enrichedConversation,
-        userMessage,
-        agentMessage,
-        agentMessageRow,
-      };
-
-      void runAgentLoop(
+      void launchAgentLoopWorkflow({
         auth,
-        { sync: true, inMemoryData },
-        { executionMode, startStep: 0 }
-      );
+        agentLoopArgs: {
+          agentMessageId: agentMessage.sId,
+          agentMessageVersion: agentMessage.version,
+          conversationId: conversation.sId,
+          conversationTitle: conversation.title,
+          userMessageId: userMessage.sId,
+          userMessageVersion: userMessage.version,
+        },
+        startStep: 0,
+      });
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );
@@ -873,8 +870,8 @@ export async function editUserMessage(
     });
   }
 
-  let userMessage: UserMessageWithRankType | null = null;
-  let agentMessages: AgentMessageWithRankType[] = [];
+  let userMessage: UserMessageType | null = null;
+  let agentMessages: AgentMessageType[] = [];
   let agentMessageRows: AgentMessage[] = [];
 
   const results = await Promise.all([
@@ -989,6 +986,8 @@ export async function editUserMessage(
                   userContextProfilePictureUrl:
                     userMessageRow.userContextProfilePictureUrl,
                   userContextOrigin: userMessageRow.userContextOrigin,
+                  userContextLastTriggerRunAt:
+                    userMessageRow.userContextLastTriggerRunAt,
                   userId: userMessageRow.userId
                     ? userMessageRow.userId
                     : (
@@ -1012,7 +1011,7 @@ export async function editUserMessage(
 
       const m = await createMessageAndUserMessage(owner, messageRow);
 
-      const userMessage: UserMessageWithRankType = {
+      const userMessage: UserMessageType = {
         id: m.id,
         created: m.createdAt.getTime(),
         sId: m.sId,
@@ -1044,7 +1043,7 @@ export async function editUserMessage(
         })) ?? -1) + 1;
       const results: ({
         row: AgentMessage;
-        m: AgentMessageWithRankType;
+        m: AgentMessageType;
       } | null)[] = await Promise.all(
         mentions.filter(isAgentMention).map((mention) => {
           // For each assistant/agent mention, create an "empty" agent message.
@@ -1091,17 +1090,24 @@ export async function editUserMessage(
               }
             );
 
+            const parentAgentMessageId =
+              userMessage.context.origin === "agent_handover"
+                ? userMessage.context.originMessageId ?? null
+                : null;
+
             return {
               row: agentMessageRow,
               m: {
                 id: messageRow.id,
                 agentMessageId: agentMessageRow.id,
                 created: agentMessageRow.createdAt.getTime(),
+                completedTs: agentMessageRow.completedAt?.getTime() ?? null,
                 sId: messageRow.sId,
                 type: "agent_message",
                 visibility: "visible",
                 version: 0,
                 parentMessageId: userMessage.sId,
+                parentAgentMessageId,
                 status: "created",
                 actions: [],
                 content: null,
@@ -1113,7 +1119,7 @@ export async function editUserMessage(
                 skipToolsValidation: agentMessageRow.skipToolsValidation,
                 contents: [],
                 parsedContents: {},
-              } satisfies AgentMessageWithRankType,
+              } satisfies AgentMessageType,
             };
           })();
         })
@@ -1121,7 +1127,7 @@ export async function editUserMessage(
 
       const nonNullResults = results.filter((r) => r !== null) as {
         row: AgentMessage;
-        m: AgentMessageWithRankType;
+        m: AgentMessageType;
       }[];
 
       await updateConversationRequestedGroupIds(auth, {
@@ -1178,13 +1184,6 @@ export async function editUserMessage(
   await concurrentExecutor(
     agentMessages,
     async (agentMessage) => {
-      // We stitch the conversation to add the user message and only that agent message
-      // so that it can be used to prompt the agent.
-      const enrichedConversation = {
-        ...conversation,
-        content: [...conversation.content, [userMessage], [agentMessage]],
-      };
-
       // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
       const agentMessageRow = agentMessageRowById.get(
         agentMessage.agentMessageId
@@ -1204,15 +1203,18 @@ export async function editUserMessage(
         "Unreachable: could not find detailed configuration for agent"
       );
 
-      const inMemoryData = {
-        agentConfiguration,
-        conversation: enrichedConversation,
-        userMessage,
-        agentMessage,
-        agentMessageRow,
-      };
-
-      void runAgentLoop(auth, { sync: true, inMemoryData }, { startStep: 0 });
+      void launchAgentLoopWorkflow({
+        auth,
+        agentLoopArgs: {
+          agentMessageId: agentMessage.sId,
+          agentMessageVersion: agentMessage.version,
+          conversationId: conversation.sId,
+          conversationTitle: conversation.title,
+          userMessageId: userMessage.sId,
+          userMessageVersion: userMessage.version,
+        },
+        startStep: 0,
+      });
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );
@@ -1245,7 +1247,7 @@ export async function retryAgentMessage(
     conversation: ConversationType;
     message: AgentMessageType;
   }
-): Promise<Result<AgentMessageWithRankType, APIErrorWithStatusCode>> {
+): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
   if (!canReadMessage(auth, message)) {
     return new Err({
       status_code: 403,
@@ -1257,7 +1259,7 @@ export async function retryAgentMessage(
   }
 
   let agentMessageResult: {
-    agentMessage: AgentMessageWithRankType;
+    agentMessage: AgentMessageType;
     agentMessageRow: AgentMessage;
   } | null = null;
   try {
@@ -1329,15 +1331,17 @@ export async function retryAgentMessage(
         t,
       });
 
-      const agentMessage: AgentMessageWithRankType = {
+      const agentMessage: AgentMessageType = {
         id: m.id,
         agentMessageId: agentMessageRow.id,
         created: m.createdAt.getTime(),
+        completedTs: agentMessageRow.completedAt?.getTime() ?? null,
         sId: m.sId,
         type: "agent_message",
         visibility: m.visibility,
         version: m.version,
         parentMessageId: message.parentMessageId,
+        parentAgentMessageId: message.parentAgentMessageId,
         status: "created",
         actions: [],
         content: null,
@@ -1380,10 +1384,7 @@ export async function retryAgentMessage(
     });
   }
 
-  const { agentMessage, agentMessageRow } = agentMessageResult;
-
-  // We stitch the conversation to retry the agent message correctly: no other
-  // messages than this agent's past its parent message.
+  const { agentMessage } = agentMessageResult;
 
   // First, find the array of the parent message in conversation.content.
   const parentMessageIndex = conversation.content.findIndex((messages) => {
@@ -1395,18 +1396,6 @@ export async function retryAgentMessage(
     );
   }
 
-  // Then, find this agentmessage's array in conversation.content and add the
-  // new agent message to it.
-  const agentMessageArray = conversation.content.find((messages) => {
-    return messages.some((m) => m.sId === message.sId && isAgentMessageType(m));
-  }) as AgentMessageType[];
-
-  // Finally, stitch the conversation.
-  const newContent = [
-    ...conversation.content.slice(0, parentMessageIndex + 1),
-    [...agentMessageArray, agentMessage],
-  ];
-
   const userMessage =
     conversation.content[parentMessageIndex][
       conversation.content[parentMessageIndex].length - 1
@@ -1414,11 +1403,6 @@ export async function retryAgentMessage(
   if (!isUserMessageType(userMessage)) {
     throw new Error("Unreachable: parent message must be a user message");
   }
-
-  const enrichedConversation = {
-    ...conversation,
-    content: newContent,
-  };
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: agentMessage.configuration.sId,
@@ -1430,15 +1414,18 @@ export async function retryAgentMessage(
     "Unreachable: could not find detailed configuration for agent"
   );
 
-  const inMemoryData = {
-    agentConfiguration,
-    conversation: enrichedConversation,
-    userMessage,
-    agentMessage,
-    agentMessageRow,
-  };
-
-  void runAgentLoop(auth, { sync: true, inMemoryData }, { startStep: 0 });
+  void launchAgentLoopWorkflow({
+    auth,
+    agentLoopArgs: {
+      agentMessageId: agentMessage.sId,
+      agentMessageVersion: agentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      userMessageId: userMessage.sId,
+      userMessageVersion: userMessage.version,
+    },
+    startStep: 0,
+  });
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
@@ -1594,15 +1581,25 @@ async function isMessagesLimitReached({
   }
 
   // Checking plan limit
-  if (mentions.length === 0) {
+  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
+
+  if (plan.limits.assistant.maxMessages === -1) {
     return {
       isLimitReached: false,
       limitType: null,
     };
   }
-  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
 
-  if (plan.limits.assistant.maxMessages === -1) {
+  // If no mentions, check general message limit against the plan
+  if (mentions.length === 0) {
+    // Block messages if maxMessages is 0 (no plan or very restrictive plan)
+    if (maxMessages === 0) {
+      return {
+        isLimitReached: true,
+        limitType: "plan_message_limit_exceeded",
+      };
+    }
+    // Otherwise allow non-mention messages for users with a valid plan
     return {
       isLimitReached: false,
       limitType: null,

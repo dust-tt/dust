@@ -9,9 +9,7 @@ use gcp_bigquery_client::{
     model::{
         field_type::FieldType, get_query_results_parameters::GetQueryResultsParameters, job::Job,
         job_configuration::JobConfiguration, job_configuration_query::JobConfigurationQuery,
-        job_reference::JobReference, query_parameter::QueryParameter,
-        query_parameter_type::QueryParameterType, query_parameter_value::QueryParameterValue,
-        query_request::QueryRequest, table_row::TableRow,
+        job_reference::JobReference, table_row::TableRow,
     },
     yup_oauth2::ServiceAccountKey,
     Client,

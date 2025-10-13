@@ -17,24 +17,22 @@ import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServe
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import {
+  InternalActionIcons,
+  isInternalAllowedIcon,
+} from "@app/components/resources/resources_icons";
+import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
-import {
-  getAvatar,
-  InternalActionIcons,
-  isInternalAllowedIcon,
-} from "@app/lib/actions/mcp_icons";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
+  isInternalMCPServerOfName,
   SEARCH_SERVER_NAME,
-  TABLE_QUERY_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-
-const tablesServer = [TABLE_QUERY_SERVER_NAME, TABLE_QUERY_V2_SERVER_NAME];
 
 function isRemoteDatabaseItem(item: DataSourceBuilderTreeItemType): boolean {
   return (
@@ -92,8 +90,14 @@ export function ProcessingMethodSection() {
 
     if (mcpServerView) {
       const isTableOrWarehouseServer =
-        tablesServer.includes(mcpServerView.server.name) ||
-        mcpServerView.server.name === DATA_WAREHOUSE_SERVER_NAME;
+        isInternalMCPServerOfName(
+          mcpServerView.server.sId,
+          TABLE_QUERY_V2_SERVER_NAME
+        ) ||
+        isInternalMCPServerOfName(
+          mcpServerView.server.sId,
+          DATA_WAREHOUSE_SERVER_NAME
+        );
 
       if (isTableOrWarehouseServer) {
         // Warning for tables query or data warehouse servers with non-table data
@@ -103,6 +107,10 @@ export function ProcessingMethodSection() {
               <strong>{getMcpServerViewDisplayName(mcpServerView)}</strong> will
               ignore text documents and files in your selection. Create a
               separated knowledge tools if you need both.
+              <br />
+              <strong>Note:</strong> When you select a folder, only tables
+              directly inside it will be included. Tables in nested subfolders
+              won't be automatically added.
             </>
           );
         }
@@ -131,9 +139,10 @@ export function ProcessingMethodSection() {
 
       if (allTablesOrDatabases) {
         const tableQueryServer = serversToDisplay.find((server) =>
-          hasFeature("exploded_tables_query")
-            ? server.server.name === TABLE_QUERY_V2_SERVER_NAME
-            : server.server.name === TABLE_QUERY_SERVER_NAME
+          isInternalMCPServerOfName(
+            server.server.sId,
+            TABLE_QUERY_V2_SERVER_NAME
+          )
         );
         if (tableQueryServer) {
           setValue("mcpServerView", tableQueryServer, { shouldDirty: false });

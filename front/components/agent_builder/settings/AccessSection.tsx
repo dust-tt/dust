@@ -51,7 +51,7 @@ export function AccessSection() {
     : null;
 
   return (
-    <SettingSectionContainer title="Access">
+    <SettingSectionContainer title="Editors & Access">
       <div className="mt-2 flex items-center gap-2">
         <EditorsSheet />
         <DropdownMenu>

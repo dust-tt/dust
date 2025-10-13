@@ -22,10 +22,11 @@ import React, {
   useState,
 } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
+import datadogLogger from "@app/logger/datadogLogger";
 import type {
   CommandResultMap,
-  LightWorkspaceType,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types";
@@ -65,39 +66,22 @@ const getExtensionFromBlob = (blob: Blob): string => {
 
 // Custom hook to encapsulate the logic for handling visualization messages.
 function useVisualizationDataHandler({
-  visualization,
+  getFileBlob,
+  setCodeDrawerOpened,
   setContentHeight,
   setErrorMessage,
-  setCodeDrawerOpened,
+  visualization,
   vizIframeRef,
-  workspaceId,
 }: {
-  visualization: Visualization;
+  getFileBlob: (fileId: string) => Promise<Blob | null>;
+  setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
   setContentHeight: (v: SetStateAction<number>) => void;
   setErrorMessage: (v: SetStateAction<string | null>) => void;
-  setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
+  visualization: Visualization;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
-  workspaceId: string | null;
 }) {
-  const code = visualization.code;
-
-  const getFileBlob = useCallback(
-    async (fileId: string) => {
-      const response = await fetch(
-        `/api/w/${workspaceId}/files/${fileId}?action=view`
-      );
-      if (!response.ok) {
-        return null;
-      }
-
-      const resBuffer = await response.arrayBuffer();
-
-      return new Blob([resBuffer], {
-        type: response.headers.get("Content-Type") || undefined,
-      });
-    },
-    [workspaceId]
-  );
+  const sendNotification = useSendNotification();
+  const { code } = visualization;
 
   const downloadFileFromBlob = useCallback(
     (blob: Blob, filename?: string) => {
@@ -124,6 +108,22 @@ function useVisualizationDataHandler({
 
       const isOriginatingFromViz =
         event.source && event.source === vizIframeRef.current?.contentWindow;
+
+      // Handle EXPORT_ERROR messages
+      if (
+        data.type === "EXPORT_ERROR" &&
+        isOriginatingFromViz &&
+        data.identifier === visualization.identifier
+      ) {
+        sendNotification({
+          title: "Export Failed",
+          type: "error",
+          description:
+            data.errorMessage ||
+            "An error occurred while exporting the content.",
+        });
+        return;
+      }
 
       if (
         !isVisualizationRPCRequest(data) ||
@@ -152,6 +152,11 @@ function useVisualizationDataHandler({
           break;
 
         case "setErrorMessage":
+          datadogLogger.info("Visualization error", {
+            errorMessage: data.params.errorMessage,
+            fileId: data.params.fileId,
+            isInteractiveContent: data.params.isInteractiveContent,
+          });
           setErrorMessage(data.params.errorMessage);
           break;
 
@@ -179,6 +184,7 @@ function useVisualizationDataHandler({
     setCodeDrawerOpened,
     visualization.identifier,
     vizIframeRef,
+    sendNotification,
   ]);
 }
 
@@ -212,38 +218,14 @@ export function CodeDrawer({
   );
 }
 
-// This interface represents the props for the VisualizationActionIframe component when it is used
-// in a public context.
-interface PublicVisualizationActionIframeProps {
-  agentConfigurationId: null;
-  conversationId: null;
+interface VisualizationActionIframeProps {
+  agentConfigurationId: string | null;
+  conversationId: string | null;
   isInDrawer?: boolean;
   visualization: Visualization;
-  workspace: null;
-}
-
-// This interface represents the props for the VisualizationActionIframe component when it is used
-// in a conversation context.
-interface ConversationVisualizationActionIframeProps {
-  agentConfigurationId: string;
-  conversationId: string;
-  isInDrawer?: boolean;
-  visualization: Visualization;
-  workspace: LightWorkspaceType;
-}
-
-type VisualizationActionIframeProps =
-  | ConversationVisualizationActionIframeProps
-  | PublicVisualizationActionIframeProps;
-
-function isPublicVisualization(
-  props: VisualizationActionIframeProps
-): props is PublicVisualizationActionIframeProps {
-  return (
-    props.agentConfigurationId === null &&
-    props.conversationId === null &&
-    props.workspace === null
-  );
+  workspaceId: string;
+  isPublic?: boolean;
+  getFileBlob: (fileId: string) => Promise<Blob | null>;
 }
 
 export const VisualizationActionIframe = forwardRef<
@@ -274,21 +256,22 @@ export const VisualizationActionIframe = forwardRef<
 
   const isErrored = !!errorMessage || retryClicked;
 
-  const isPublic = isPublicVisualization(props);
-
   const {
     agentConfigurationId,
     conversationId,
+    getFileBlob,
     isInDrawer = false,
+    isPublic = false,
     visualization,
+    workspaceId,
   } = props;
 
   useVisualizationDataHandler({
-    visualization,
-    workspaceId: isPublic ? null : props.workspace.sId,
+    getFileBlob,
+    setCodeDrawerOpened,
     setContentHeight,
     setErrorMessage,
-    setCodeDrawerOpened,
+    visualization,
     vizIframeRef,
   });
 
@@ -296,12 +279,12 @@ export const VisualizationActionIframe = forwardRef<
 
   const iframeLoaded = contentHeight > 0;
   const showSpinner = useMemo(
-    () => codeFullyGenerated && !iframeLoaded && !isErrored,
-    [codeFullyGenerated, iframeLoaded, isErrored]
+    () => (codeFullyGenerated && !iframeLoaded && !isErrored) || retryClicked,
+    [codeFullyGenerated, iframeLoaded, isErrored, retryClicked]
   );
 
   const { handleVisualizationRetry, canRetry } = useVisualizationRetry({
-    workspaceId: isPublic ? null : props.workspace.sId,
+    workspaceId,
     conversationId,
     agentConfigurationId,
     isPublic,
@@ -313,6 +296,7 @@ export const VisualizationActionIframe = forwardRef<
     }
 
     setRetryClicked(true);
+    setErrorMessage(null);
 
     const success = await handleVisualizationRetry(errorMessage);
     if (!success) {
@@ -372,20 +356,22 @@ export const VisualizationActionIframe = forwardRef<
                     ref={combinedRef}
                     className={cn("h-full w-full", !errorMessage && "min-h-96")}
                     src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}${isInDrawer ? "&fullHeight=true" : ""}`}
-                    sandbox="allow-scripts"
+                    sandbox="allow-scripts allow-popups"
                   />
                 </div>
               )}
-              {isErrored && (
+
+              {isErrored && !retryClicked && !isPublic && (
                 <div className="flex h-full w-full items-center justify-center p-6">
                   <ContentMessage
-                    title="Visualization Error"
+                    title="Visualization failed"
                     variant="warning"
                     icon={ExclamationCircleIcon}
-                    className="max-w-md text-center"
+                    className="max-w-md"
                   >
                     <div className="mb-4 text-sm">
-                      An error occurred while rendering the visualization.
+                      The visualization failed due to an error in the generated
+                      code.
                     </div>
 
                     {errorMessage && (
@@ -395,16 +381,35 @@ export const VisualizationActionIframe = forwardRef<
                     )}
 
                     {canRetry && (
-                      <div className="flex justify-center">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          label="Retry Visualization"
-                          onClick={handleRetryClick}
-                        />
-                      </div>
+                      <Button
+                        variant="outline"
+                        label="Ask agent to fix"
+                        onClick={handleRetryClick}
+                        disabled={retryClicked}
+                      />
                     )}
                   </ContentMessage>
+                </div>
+              )}
+
+              {isErrored && isPublic && (
+                <div className="flex h-full w-full items-center justify-center p-6">
+                  <div className="flex flex-col gap-3 text-center">
+                    <div className="flex flex-col items-center gap-2 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <ExclamationCircleIcon className="h-8 w-8" />
+                        <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
+                          Visualization Error
+                        </p>
+                      </div>
+                      <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
+                        This visualization encountered an error and cannot be
+                        displayed.
+                        <br /> Please contact the creator of this visualization
+                        for assistance.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

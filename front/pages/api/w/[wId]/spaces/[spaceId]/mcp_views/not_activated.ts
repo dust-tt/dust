@@ -1,4 +1,3 @@
-import { removeNulls } from "@dust-tt/client";
 import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -10,6 +9,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { removeNulls } from "@app/types";
 
 export type GetMCPServerViewsNotActivatedResponseBody = {
   success: boolean;

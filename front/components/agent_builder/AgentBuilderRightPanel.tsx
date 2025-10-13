@@ -48,7 +48,6 @@ function PanelHeader({
                   variant="ghost-secondary"
                   tooltip="Hide preview"
                   onClick={onTogglePanel}
-                  className="ml-4"
                 />
                 <TabsTrigger
                   value="testing"
@@ -190,14 +189,16 @@ export function AgentBuilderRightPanel({
   };
 
   return (
-    <div className="mx-4 flex h-full flex-col">
-      <PanelHeader
-        isPreviewPanelOpen={isPreviewPanelOpen}
-        selectedTab={selectedTab}
-        onTogglePanel={handleTogglePanel}
-        onTabChange={handleTabChange}
-        hasTemplate={hasTemplate}
-      />
+    <div className="flex h-full flex-col">
+      <div className="mx-4">
+        <PanelHeader
+          isPreviewPanelOpen={isPreviewPanelOpen}
+          selectedTab={selectedTab}
+          onTogglePanel={handleTogglePanel}
+          onTabChange={handleTabChange}
+          hasTemplate={hasTemplate}
+        />
+      </div>
       {isPreviewPanelOpen ? (
         <ExpandedContent
           selectedTab={selectedTab}

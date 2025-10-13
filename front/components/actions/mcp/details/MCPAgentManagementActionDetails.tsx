@@ -65,6 +65,7 @@ export function MCPAgentManagementActionDetails({
               content={
                 toolOutput
                   ?.map((o) => (o.type === "text" ? o.text : ""))
+                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   .join("\n") || "Agent creation completed."
               }
             />

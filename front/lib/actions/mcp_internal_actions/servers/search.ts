@@ -14,12 +14,12 @@ import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_inte
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
-import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import {
   checkConflictingTags,
-  getCoreSearchArgs,
-} from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+  shouldAutoGenerateTags,
+} from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
+import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -30,10 +30,11 @@ import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
+  Err,
+  Ok,
   parseTimeFrame,
   removeNulls,
   stripNullBytes,
@@ -58,6 +59,7 @@ export async function searchFunction({
   agentLoopContext?: AgentLoopContextType;
 }): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
 
@@ -100,7 +102,10 @@ export async function searchFunction({
   if (coreSearchArgs.length === 0) {
     return new Err(
       new MCPError(
-        "Search action must have at least one data source configured."
+        "Search action must have at least one data source configured.",
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -265,7 +270,7 @@ function createServer(
       commonInputsSchema,
       withToolLogging(
         auth,
-        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        { toolNameForMonitoring: SEARCH_TOOL_NAME, agentLoopContext },
         async (args) => searchFunction({ ...args, auth, agentLoopContext })
       )
     );
@@ -281,7 +286,7 @@ function createServer(
       },
       withToolLogging(
         auth,
-        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        { toolNameForMonitoring: SEARCH_TOOL_NAME, agentLoopContext },
         async (args) => searchFunction({ ...args, auth, agentLoopContext })
       )
     );

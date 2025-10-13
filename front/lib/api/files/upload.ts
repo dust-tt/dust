@@ -1,14 +1,18 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isDustMimeType } from "@dust-tt/client";
 import ConvertAPI from "convertapi";
+import fs from "fs";
 import type { IncomingMessage } from "http";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
+import { fileSync } from "tmp";
 
 import config from "@app/lib/api/config";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { transcribeFile } from "@app/lib/utils/transcribe_service";
 import logger from "@app/logger/logger";
 import type {
   AllSupportedFileContentType,
@@ -18,7 +22,11 @@ import type {
   SupportedFileContentType,
   SupportedImageContentType,
 } from "@app/types";
-import { isContentCreationFileContentType, normalizeError } from "@app/types";
+import { isSupportedAudioContentType } from "@app/types";
+import {
+  isInteractiveContentFileContentType,
+  normalizeError,
+} from "@app/types";
 import {
   assertNever,
   Err,
@@ -221,6 +229,90 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
   }
 };
 
+export const extractTextFromAudioAndUpload: ProcessingFunction = async (
+  auth: Authenticator,
+  file: FileResource
+) => {
+  // Only handle supported audio types via getProcessingFunction gate.
+  // Strategy:
+  // 1) Buffer original audio stream to a temporary file on disk.
+  // 2) Build a minimal formidable-like File pointing to that temp filepath.
+  // 3) Use transcribeFile to obtain transcript text.
+  // 4) Write transcript to the processed version in file storage.
+  // 5) Ensure cleanup of the temporary file.
+  const readStream = file.getReadStream({ auth, version: "original" });
+
+  // Determine a helpful extension from content type for tmp filename.
+  const ext = extensionsForContentType(file.contentType)[0] || "";
+  const tmpFile = fileSync({ postfix: ext });
+
+  try {
+    // 1) Persist the audio to disk for the transcribe service (expects a formidable-like File).
+    const ws = fs.createWriteStream(tmpFile.name);
+    await pipeline(readStream, ws);
+
+    // 2) Build a minimal formidable-like File. The transcribe service only requires
+    //    `filepath` and `originalFilename` to create a FileLike stream.
+    const fLike = {
+      filepath: tmpFile.name,
+      originalFilename: file.fileName,
+    };
+
+    // 3) Transcribe.
+    const tr = await transcribeFile(fLike);
+    if (tr.isErr()) {
+      logger.error(
+        {
+          fileModelId: file.id,
+          workspaceId: auth.workspace()?.sId,
+          error: tr.error,
+        },
+        "Failed to transcribe audio file."
+      );
+      return new Err(
+        new Error(`Failed transcribing audio file. ${tr.error.message}`)
+      );
+    }
+
+    // 4) Store transcript in processed version as plain text.
+    const transcript = tr.value;
+    const writeStream = file.getWriteStream({
+      auth,
+      version: "processed",
+      overrideContentType: "text/plain", // Explicitly set content type to plain text as it's a transcription
+    });
+    await pipeline(Readable.from(transcript), writeStream);
+
+    return new Ok(undefined);
+  } catch (err) {
+    logger.error(
+      {
+        fileModelId: file.id,
+        workspaceId: auth.workspace()?.sId,
+        error: err,
+      },
+      "Failed to extract text from Audio."
+    );
+
+    const errorMessage =
+      err instanceof Error ? err.message : "Unexpected error";
+    return new Err(
+      new Error(`Failed extracting text from Audio. ${errorMessage}`)
+    );
+  } finally {
+    // 5) Cleanup temp file.
+    try {
+      tmpFile.removeCallback();
+    } catch (e) {
+      // Best-effort cleanup; log but do not fail the processing on cleanup error.
+      logger.warn(
+        { err: e },
+        "Failed to remove temp audio file after transcription."
+      );
+    }
+  }
+};
+
 // Other text files processing.
 
 // We don't apply any processing to these files, we just store the raw text.
@@ -265,14 +357,16 @@ type ProcessingFunction = (
 ) => Promise<Result<undefined, Error>>;
 
 const getProcessingFunction = ({
+  auth,
   contentType,
   useCase,
 }: {
+  auth: Authenticator;
   contentType: AllSupportedFileContentType;
   useCase: FileUseCase;
 }): ProcessingFunction | undefined => {
-  // Content Creation file types are not processed.
-  if (isContentCreationFileContentType(contentType)) {
+  // Interactive Content file types are not processed.
+  if (isInteractiveContentFileContentType(contentType)) {
     return undefined;
   }
 
@@ -304,6 +398,17 @@ const getProcessingFunction = ({
       ].includes(useCase)
     ) {
       return storeRawText;
+    }
+    return undefined;
+  }
+
+  if (isSupportedAudioContentType(contentType)) {
+    if (
+      useCase === "conversation" &&
+      // Only handle voice transcription if the workspace has enabled it.
+      auth.getNonNullableWorkspace().metadata?.allowVoiceTranscription !== false
+    ) {
+      return extractTextFromAudioAndUpload;
     }
     return undefined;
   }
@@ -372,6 +477,11 @@ const getProcessingFunction = ({
         return storeRawText;
       }
       break;
+    case "text/vnd.dust.attachment.pasted":
+      if (useCase === "conversation") {
+        return storeRawText;
+      }
+      break;
     case "application/vnd.dust.section.json":
       if (useCase === "tool_output") {
         return storeRawText;
@@ -389,6 +499,7 @@ const getProcessingFunction = ({
 };
 
 export const isUploadSupported = (arg: {
+  auth: Authenticator;
   contentType: SupportedFileContentType;
   useCase: FileUseCase;
 }): boolean => {
@@ -402,7 +513,7 @@ const maybeApplyProcessing: ProcessingFunction = async (
 ) => {
   const start = performance.now();
 
-  const processing = getProcessingFunction(file);
+  const processing = getProcessingFunction({ auth, ...file });
   if (!processing) {
     return new Err(
       new Error(
@@ -567,7 +678,9 @@ export async function processAndStoreFromUrl(
 
     const contentLength = response.headers.get("content-length");
     const finalContentType =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       contentType ||
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       response.headers.get("content-type") ||
       "application/octet-stream";
 
@@ -583,6 +696,7 @@ export async function processAndStoreFromUrl(
       workspaceId: auth.getNonNullableWorkspace().id,
       userId: auth.user()?.id ?? null,
       contentType: finalContentType,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       fileName: fileName || new URL(url).pathname.split("/").pop() || "file",
       fileSize: contentLength ? parseInt(contentLength) : 1024 * 1024 * 10, // Default 10MB if no content-length
       useCase,

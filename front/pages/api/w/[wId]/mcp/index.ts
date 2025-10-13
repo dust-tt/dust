@@ -2,10 +2,8 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  DEFAULT_MCP_SERVER_ICON,
-  isCustomServerIconType,
-} from "@app/lib/actions/mcp_icons";
+import { isCustomResourceIconType } from "@app/components/resources/resources_icons";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   isInternalMCPServerName,
@@ -28,6 +26,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { headersArrayToRecord } from "@app/types";
 import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
 
 export type GetMCPServersResponseBody = {
@@ -52,6 +51,10 @@ const PostQueryParamsSchema = t.union([
       t.undefined,
     ]),
     connectionId: t.union([t.string, t.undefined]),
+    customHeaders: t.union([
+      t.array(t.type({ key: t.string, value: t.string })),
+      t.undefined,
+    ]),
   }),
   t.type({
     serverType: t.literal("internal"),
@@ -132,6 +135,7 @@ async function handler(
         }
 
         // Default to the shared secret if it exists.
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         let bearerToken = sharedSecret || null;
         let authorization: AuthorizationInfo | null = null;
 
@@ -160,15 +164,21 @@ async function handler(
           }
         }
 
-        const r = await fetchRemoteServerMetaDataByURL(
-          auth,
-          url,
-          bearerToken
-            ? {
-                Authorization: `Bearer ${bearerToken}`,
-              }
-            : undefined
+        // Merge custom headers (if any) with Authorization when probing the server.
+        // Note: Authorization from OAuth/sharedSecret takes precedence over custom headers.
+        const sanitizedCustomHeaders = headersArrayToRecord(
+          body.customHeaders,
+          { stripAuthorization: false }
         );
+
+        const headers = bearerToken
+          ? {
+              ...(sanitizedCustomHeaders ?? {}),
+              Authorization: `Bearer ${bearerToken}`,
+            }
+          : sanitizedCustomHeaders;
+
+        const r = await fetchRemoteServerMetaDataByURL(auth, url, headers);
         if (r.isErr()) {
           return apiError(req, res, {
             status_code: 400,
@@ -185,21 +195,29 @@ async function handler(
           (config) => config.url === url
         );
 
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const name = defaultConfig?.name || metadata.name;
 
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
           workspaceId: auth.getNonNullableWorkspace().id,
           url: url,
           cachedName: name,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           cachedDescription: defaultConfig?.description || metadata.description,
           cachedTools: metadata.tools,
           icon:
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             defaultConfig?.icon ||
-            (isCustomServerIconType(metadata.icon)
+            (isCustomResourceIconType(metadata.icon)
               ? metadata.icon
               : DEFAULT_MCP_SERVER_ICON),
           version: metadata.version,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           sharedSecret: sharedSecret || null,
+          // Persist only user-provided custom headers (exclude Authorization)
+          customHeaders: headersArrayToRecord(body.customHeaders, {
+            stripAuthorization: true,
+          }),
           authorization,
           oAuthUseCase: body.useCase ?? null,
         });

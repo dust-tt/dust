@@ -69,6 +69,7 @@ export function TagSearchSection({
             tag: tag.tag,
             dustAPIDataSourceId: dataSourceId,
             connectorProvider:
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               dataSourceView?.dataSource.connectorProvider || null,
           });
         }

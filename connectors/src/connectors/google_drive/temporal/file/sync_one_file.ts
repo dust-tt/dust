@@ -62,8 +62,8 @@ export async function syncOneFile(
         connectorId,
         documentId,
         fileId: file.id,
-        title: file.name,
         mimeType: file.mimeType,
+        fileSize: file.size,
       });
 
       // Early return if lastSeenTs is greater than workflow start.

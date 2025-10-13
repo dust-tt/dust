@@ -172,6 +172,7 @@ export const GithubCommandSchema = t.type({
   majorCommand: t.literal("github"),
   command: t.union([
     t.literal("resync-repo"),
+    t.literal("resync-repo-code"),
     t.literal("code-sync"),
     t.literal("sync-issue"),
     t.literal("force-daily-code-sync"),

@@ -4,15 +4,15 @@ import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
-import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
-import type { RunAgentArgs } from "@app/types/assistant/agent_run";
-import { getRunAgentData } from "@app/types/assistant/agent_run";
+import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
+import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
 export async function runToolActivity(
   authType: AuthenticatorType,
@@ -20,16 +20,18 @@ export async function runToolActivity(
     actionId,
     runAgentArgs,
     step,
+    runIds,
   }: {
     actionId: ModelId;
-    runAgentArgs: RunAgentArgs;
+    runAgentArgs: AgentLoopArgsWithTiming;
     step: number;
+    runIds?: string[];
   }
 ): Promise<ToolExecutionResult> {
   const auth = await Authenticator.fromJSON(authType);
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
-  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
+  const runAgentDataRes = await getAgentLoopData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
     throw runAgentDataRes.error;
   }
@@ -60,21 +62,8 @@ export async function runToolActivity(
   );
   assert(action, "Action not found");
 
-  const mcpServerId = action.toolConfiguration.toolServerId;
-
-  const actionBaseParams = await buildActionBaseParams({
-    agentMessageId: action.agentMessageId,
-    citationsAllocated: action.citationsAllocated,
-    mcpServerConfigurationId: action.mcpServerConfigurationId,
-    mcpServerId,
-    step,
-    stepContentId: action.stepContentId,
-    status: action.status,
-  });
-
   const eventStream = runToolWithStreaming(auth, {
     action,
-    actionBaseParams,
     agentConfiguration,
     agentMessage,
     conversation,
@@ -104,6 +93,59 @@ export async function runToolActivity(
         });
 
         return { deferredEvents };
+      case "tool_early_exit":
+        if (!event.isError && event.text && !agentMessage.content) {
+          // Save and post the tool's text content only if the execution stopped
+          // before any text was generated.
+          await AgentStepContentResource.createNewVersion({
+            workspaceId: conversation.owner.id,
+            agentMessageId: agentMessage.agentMessageId,
+            step: step + 1,
+            index: 0,
+            type: "text_content",
+            value: {
+              type: "text_content",
+              value: event.text,
+            },
+          });
+        }
+
+        await updateResourceAndPublishEvent(auth, {
+          event: event.isError
+            ? {
+                type: "tool_error",
+                created: event.created,
+                configurationId: agentConfiguration.sId,
+                messageId: agentMessage.sId,
+                conversationId: conversation.sId,
+                error: {
+                  code: "early_exit",
+                  message: event.text,
+                  metadata: {
+                    errorTitle: "Early exit",
+                  },
+                },
+                isLastBlockingEventForStep: true,
+              }
+            : {
+                type: "agent_message_success",
+                created: event.created,
+                configurationId: agentConfiguration.sId,
+                messageId: agentMessage.sId,
+                message: {
+                  ...agentMessage,
+                  content: agentMessage.content ?? event.text,
+                  completedTs: event.created,
+                },
+                runIds: runIds ?? [],
+              },
+
+          agentMessageRow,
+          conversation,
+          step,
+        });
+
+        return { deferredEvents, shouldPauseAgentLoop: true };
 
       case "tool_personal_auth_required":
       case "tool_approve_execution":

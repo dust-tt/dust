@@ -6,18 +6,17 @@ import type {
 import { NotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import type {
-  CustomServerIconType,
+  CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
+} from "@app/components/resources/resources_icons";
 import {
-  CUSTOM_SERVER_ALLOWED,
+  CUSTOM_RESOURCE_ALLOWED,
   INTERNAL_ALLOWED_ICONS,
-} from "@app/lib/actions/mcp_icons";
+} from "@app/components/resources/resources_icons";
+import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import type { AllSupportedFileContentType } from "@app/types";
-import { CONNECTOR_PROVIDERS } from "@app/types";
-import { ALL_FILE_FORMATS } from "@app/types";
+import { ALL_FILE_FORMATS, CONNECTOR_PROVIDERS } from "@app/types";
 
 export function isBlobResource(
   outputBlock: CallToolResult["content"][number]
@@ -47,6 +46,8 @@ const ToolGeneratedFileSchema = z.object({
     ]
   ),
   snippet: z.string().nullable(),
+  // Optional UI hint to hide file from generic generated files sections.
+  hidden: z.boolean().optional(),
 });
 
 export type ToolGeneratedFileType = z.infer<typeof ToolGeneratedFileSchema>;
@@ -580,6 +581,7 @@ export const RunAgentResultResourceSchema = z.object({
         href: z.string().optional(),
         title: z.string(),
         provider: z.string(),
+        mimeType: z.string(),
       })
     )
     .optional(),
@@ -598,6 +600,28 @@ export const isRunAgentResultResourceType = (
   return (
     outputBlock.type === "resource" &&
     RunAgentResultResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+export const RunAgentHandoverResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_HANDOVER),
+  text: z.string(),
+  uri: z.string(),
+});
+
+export type RunAgentHandoverResourceType = z.infer<
+  typeof RunAgentHandoverResourceSchema
+>;
+
+export const isRunAgentHandoverResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: RunAgentHandoverResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    RunAgentHandoverResourceSchema.safeParse(outputBlock.resource).success
   );
 };
 
@@ -791,24 +815,24 @@ export function isImageProgressOutput(
   return output !== undefined && output.type === "image";
 }
 
-// Content creation file.
+// Interactive content file.
 
-const NotificationContentCreationFileContentSchema = z.object({
-  type: z.literal("content_creation_file"),
+const NotificationInteractiveContentFileContentSchema = z.object({
+  type: z.literal("interactive_content_file"),
   fileId: z.string(),
   mimeType: z.string(),
   title: z.string(),
   updatedAt: z.string(),
 });
 
-type ContentCreationFileContentProgressOutput = z.infer<
-  typeof NotificationContentCreationFileContentSchema
+type InteractiveContentFileContentProgressOutput = z.infer<
+  typeof NotificationInteractiveContentFileContentSchema
 >;
 
-export function isContentCreationFileContentOutput(
+export function isInteractiveContentFileContentOutput(
   output: ProgressNotificationOutput
-): output is ContentCreationFileContentProgressOutput {
-  return output !== undefined && output.type === "content_creation_file";
+): output is InteractiveContentFileContentProgressOutput {
+  return output !== undefined && output.type === "interactive_content_file";
 }
 
 const InternalAllowedIconSchema = z.enum(
@@ -818,8 +842,11 @@ const InternalAllowedIconSchema = z.enum(
   ]
 );
 
-const CustomServerIconSchema = z.enum(
-  CUSTOM_SERVER_ALLOWED as [CustomServerIconType, ...CustomServerIconType[]]
+const CustomResourceIconSchema = z.enum(
+  CUSTOM_RESOURCE_ALLOWED as [
+    CustomResourceIconType,
+    ...CustomResourceIconType[],
+  ]
 );
 
 // Schema for the resource of a notification where the tool is asking for tool approval.
@@ -838,9 +865,25 @@ const NotificationToolApproveBubbleUpContentSchema = z.object({
     toolName: z.string(),
     agentName: z.string(),
     icon: z
-      .union([InternalAllowedIconSchema, CustomServerIconSchema])
+      .union([InternalAllowedIconSchema, CustomResourceIconSchema])
       .optional(),
   }),
+});
+
+const NotificationStoreResourceContentSchema = z.object({
+  type: z.literal("store_resource"),
+  contents: z.array(
+    z.object({
+      type: z.literal("resource"),
+      resource: z
+        .object({
+          mimeType: z.string(),
+          text: z.string(),
+          uri: z.string(),
+        })
+        .passthrough(),
+    }) // Allow additional properties
+  ),
 });
 
 const NotificationTextContentSchema = z.object({
@@ -853,6 +896,7 @@ const NotificationRunAgentContentSchema = z.object({
   childAgentId: z.string(),
   conversationId: z.string(),
   query: z.string(),
+  userMessageId: z.string(),
 });
 
 type RunAgentQueryProgressOutput = z.infer<
@@ -925,13 +969,24 @@ export function isRunAgentProgressOutput(
   );
 }
 
+type StoreResourceProgressOutput = z.infer<
+  typeof NotificationStoreResourceContentSchema
+>;
+
+export function isStoreResourceProgressOutput(
+  output: ProgressNotificationOutput
+): output is StoreResourceProgressOutput {
+  return output !== undefined && output.type === "store_resource";
+}
+
 export const ProgressNotificationOutputSchema = z
   .union([
-    NotificationContentCreationFileContentSchema,
     NotificationImageContentSchema,
+    NotificationInteractiveContentFileContentSchema,
     NotificationRunAgentChainOfThoughtSchema,
     NotificationRunAgentContentSchema,
     NotificationRunAgentGenerationTokensSchema,
+    NotificationStoreResourceContentSchema,
     NotificationTextContentSchema,
     NotificationToolApproveBubbleUpContentSchema,
   ])
@@ -1008,4 +1063,54 @@ export const getOutputText = (
     return output.resource.text;
   }
   return "";
+};
+
+// Internal tool output.
+
+export const AuthRequiredOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_personal_auth_required"),
+  provider: z.string(),
+  scope: z.string().optional(),
+  text: z.string(),
+  uri: z.string(),
+});
+
+export const BlockedAwaitingInputOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_blocked_awaiting_input"),
+  text: z.string(),
+  uri: z.string(),
+  blockingEvents: z.array(z.any()),
+  state: z.any(),
+});
+
+export const EarlyExitOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_early_exit"),
+  text: z.string(),
+  isError: z.boolean(),
+  uri: z.string(),
+});
+
+export const AgentPauseOutputResourceSchema = z.union([
+  AuthRequiredOutputResourceSchema,
+  BlockedAwaitingInputOutputResourceSchema,
+  EarlyExitOutputResourceSchema,
+]);
+
+export type AgentPauseOutputResourceType = z.infer<
+  typeof AgentPauseOutputResourceSchema
+>;
+
+export const isAgentPauseOutputResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: AgentPauseOutputResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    AgentPauseOutputResourceSchema.safeParse(outputBlock.resource).success
+  );
 };

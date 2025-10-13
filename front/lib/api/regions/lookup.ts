@@ -52,6 +52,7 @@ export async function lookupUserRegionByEmail(
   }
 
   // Return true if there is either a valid pending invite or workspace with verified domain
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return Boolean(pendingInvite || workspaceWithVerifiedDomain);
 }
 

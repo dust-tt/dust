@@ -184,6 +184,7 @@ async function renderDataSourcesConfigurations(
     resources: ds.filter.parents?.in ?? null,
     excludedResources: ds.filter.parents?.not ?? null,
     isSelectAll: !ds.filter.parents,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     tagsFilter: ds.filter.tags || null, // todo(TAF) Remove this when we don't need to support optional tags from builder.
   }));
 

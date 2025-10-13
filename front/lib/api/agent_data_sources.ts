@@ -69,6 +69,9 @@ export async function getDataSourceViewsUsageByCategory({
     case "actions":
       connectorProvider = null;
       break;
+    case "triggers":
+      connectorProvider = null;
+      break;
     default:
       assertNever(category);
   }

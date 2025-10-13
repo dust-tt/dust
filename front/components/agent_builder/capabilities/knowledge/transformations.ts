@@ -144,6 +144,28 @@ export function transformSelectionConfigurationsToTree(
       continue;
     }
 
+    // UI reconstruction guard:
+    // When a configuration only contains exclusions (selectedResources empty
+    // and excludedResources non-empty), it represents "select all in the
+    // data source except the excluded ones". Historically some payloads may
+    // serialize this with `isSelectAll: false`. To faithfully reconstruct the
+    // UI selection state, we still need to include the parent data source in
+    // the `in` paths so the list shows a selected source with partial state
+    // and the footer appears.
+    if (
+      !config.isSelectAll &&
+      config.selectedResources.length === 0 &&
+      config.excludedResources.length > 0
+    ) {
+      inPaths.push({
+        path: baseParts,
+        name: dataSourceView.dataSource.name,
+        type: "data_source",
+        dataSourceView,
+        tagsFilter: config.tagsFilter,
+      });
+    }
+
     if (config.selectedResources.length > 0) {
       for (const node of config.selectedResources) {
         if (node.parentInternalId) {
@@ -164,25 +186,15 @@ export function transformSelectionConfigurationsToTree(
           });
         } else {
           const pathParts = [baseParts, node.internalId];
-          // For table nodes without parents, we should still create a "node" type
-          // so that ProcessingMethodSection can properly detect them
-          if (node.type === "table") {
-            inPaths.push({
-              path: pathParts.join("/"),
-              name: node.title,
-              type: "node",
-              node,
-              tagsFilter: config.tagsFilter,
-            });
-          } else {
-            inPaths.push({
-              path: pathParts.join("/"),
-              name: node.title,
-              type: "data_source",
-              dataSourceView: node.dataSourceView,
-              tagsFilter: config.tagsFilter,
-            });
-          }
+          // All selected resources should be treated as "node" type
+          // to ensure they're not incorrectly marked as full data source selections
+          inPaths.push({
+            path: pathParts.join("/"),
+            name: node.title,
+            type: "node",
+            node,
+            tagsFilter: config.tagsFilter,
+          });
         }
       }
     }
@@ -212,8 +224,8 @@ export function transformSelectionConfigurationsToTree(
           notInPaths.push({
             path: pathParts.join("/"),
             name: node.title,
-            type: "data_source",
-            dataSourceView: node.dataSourceView,
+            type: "node",
+            node,
             tagsFilter: null,
           });
         }

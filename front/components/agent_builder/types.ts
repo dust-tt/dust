@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { mcpServerConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { nameToStorageFormat } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
@@ -61,9 +62,6 @@ export const TOOLS_SHEET_PAGE_IDS = {
   CONFIGURATION: "configuration",
   INFO: "info",
 };
-
-export type ConfigurationSheetPageId =
-  (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
 
 export type ConfigurationPagePageId =
   (typeof TOOLS_SHEET_PAGE_IDS)[keyof typeof TOOLS_SHEET_PAGE_IDS];
@@ -127,14 +125,13 @@ export const capabilityFormSchema = z
     configuration: mcpServerConfigurationSchema,
   })
   .superRefine((val, ctx) => {
-    const requirements = getMCPServerRequirements(val.mcpServerView);
+    const {
+      mayRequireTimeFrameConfiguration,
+      mayRequireJsonSchemaConfiguration,
+    } = getMCPServerRequirements(val.mcpServerView);
     const configuration = val.configuration;
 
-    if (!requirements) {
-      return true;
-    }
-
-    if (requirements.mayRequireTimeFrameConfiguration) {
+    if (mayRequireTimeFrameConfiguration) {
       if (
         configuration.timeFrame !== null &&
         (configuration.timeFrame.duration === null ||
@@ -150,7 +147,7 @@ export const capabilityFormSchema = z
     }
 
     if (
-      requirements.mayRequireJsonSchemaConfiguration &&
+      mayRequireJsonSchemaConfiguration &&
       configuration._jsonSchemaString !== null
     ) {
       const parsedSchema = validateConfiguredJsonSchema(
@@ -172,23 +169,32 @@ export const capabilityFormSchema = z
 export function getDefaultMCPAction(
   mcpServerView?: MCPServerViewType
 ): AgentBuilderAction {
-  const requirements = getMCPServerRequirements(mcpServerView);
+  const {
+    requiresDataSourceConfiguration,
+    requiresDataWarehouseConfiguration,
+    requiresTableConfiguration,
+    noRequirement,
+  } = getMCPServerRequirements(mcpServerView);
   const configuration = getDefaultConfiguration(mcpServerView);
+  const rawName = mcpServerView?.name ?? mcpServerView?.server.name ?? "";
+  const sanitizedName = rawName ? nameToStorageFormat(rawName) : "";
 
   return {
     id: uniqueId(),
     type: "MCP",
     configuration,
-    name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
+    // Ensure default name always matches validation regex (^[a-z0-9_]+$)
+    name: sanitizedName,
     description:
-      requirements.requiresDataSourceConfiguration ||
-      requirements.requiresDataWarehouseConfiguration ||
-      requirements.requiresTableConfiguration
+      requiresDataSourceConfiguration ||
+      requiresDataWarehouseConfiguration ||
+      requiresTableConfiguration
         ? ""
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    noConfigurationRequired: requirements.noRequirement,
+    // TODO(2025-10-10 aubin): rename back to noConfigurationRequired.
+    configurable: !noRequirement,
   };
 }
 

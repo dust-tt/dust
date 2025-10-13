@@ -15,6 +15,7 @@ import { useState } from "react";
 
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -44,6 +45,7 @@ export const CreateAgentButton = ({
           label="Create"
           data-gtm-label="assistantCreationButton"
           data-gtm-location={dataGtmLocation}
+          onClick={withTracking(TRACKING_AREAS.BUILDER, "create_menu")}
           size="sm"
           isSelect
           isLoading={isLoading}
@@ -54,18 +56,26 @@ export const CreateAgentButton = ({
         <DropdownMenuItem
           label="agent from scratch"
           icon={DocumentIcon}
-          onClick={() => {
-            setIsLoading(true);
-            void router.push(getAgentBuilderRoute(owner.sId, "new"));
-          }}
+          onClick={withTracking(
+            TRACKING_AREAS.BUILDER,
+            "create_from_scratch",
+            () => {
+              setIsLoading(true);
+              void router.push(getAgentBuilderRoute(owner.sId, "new"));
+            }
+          )}
         />
         <DropdownMenuItem
           label="agent from template"
           icon={MagicIcon}
-          onClick={() => {
-            setIsLoading(true);
-            void router.push(getAgentBuilderRoute(owner.sId, "create"));
-          }}
+          onClick={withTracking(
+            TRACKING_AREAS.BUILDER,
+            "create_from_template",
+            () => {
+              setIsLoading(true);
+              void router.push(getAgentBuilderRoute(owner.sId, "create"));
+            }
+          )}
         />
         {hasFeature("agent_to_yaml") && (
           <DropdownMenuItem

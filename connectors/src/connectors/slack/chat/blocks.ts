@@ -1,11 +1,13 @@
 import type { LightAgentConfigurationType } from "@dust-tt/client";
 
-import type { RequestToolPermissionActionValueParsed } from "@connectors/api/webhooks/webhook_slack_interaction";
+import type { RequestToolPermissionActionValueParsed } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import {
   APPROVE_TOOL_EXECUTION,
+  LEAVE_FEEDBACK_DOWN,
+  LEAVE_FEEDBACK_UP,
   REJECT_TOOL_EXECUTION,
   STATIC_AGENT_CONFIG,
-} from "@connectors/api/webhooks/webhook_slack_interaction";
+} from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
 import { truncate } from "@connectors/types";
@@ -96,6 +98,68 @@ function makeContextSectionBlocks({
   return resultBlocks;
 }
 
+export function makeFeedbackButtonBlock({
+  conversationId,
+  messageId,
+  workspaceId,
+}: {
+  conversationId: string;
+  messageId: string;
+  workspaceId: string;
+}) {
+  return [
+    {
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "👍",
+            emoji: true,
+          },
+          action_id: LEAVE_FEEDBACK_UP,
+          value: JSON.stringify({
+            conversationId,
+            messageId,
+            workspaceId,
+            preselectedThumb: "up",
+          }),
+        },
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "👎",
+            emoji: true,
+          },
+          action_id: LEAVE_FEEDBACK_DOWN,
+          value: JSON.stringify({
+            conversationId,
+            messageId,
+            workspaceId,
+            preselectedThumb: "down",
+          }),
+        },
+      ],
+    },
+  ];
+}
+
+export function makeFeedbackSubmittedBlock() {
+  return [
+    {
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: "✅ Feedback submitted",
+        },
+      ],
+    },
+  ];
+}
+
 function makeThinkingBlock({
   isThinking,
   thinkingText,
@@ -118,32 +182,74 @@ function makeThinkingBlock({
 
 export function makeAssistantSelectionBlock(
   agentConfigurations: LightAgentConfigurationType[],
-  id: string
+  id: string,
+  feedbackParams?: {
+    conversationId: string;
+    messageId: string;
+    workspaceId: string;
+  }
 ) {
+  const elements: Array<Record<string, unknown>> = [];
+
+  // Add feedback buttons if parameters are provided
+  if (feedbackParams) {
+    elements.push(
+      {
+        type: "button",
+        text: {
+          type: "plain_text",
+          text: "👍",
+          emoji: true,
+        },
+        action_id: LEAVE_FEEDBACK_UP,
+        value: JSON.stringify({
+          ...feedbackParams,
+          preselectedThumb: "up",
+        }),
+      },
+      {
+        type: "button",
+        text: {
+          type: "plain_text",
+          text: "👎",
+          emoji: true,
+        },
+        action_id: LEAVE_FEEDBACK_DOWN,
+        value: JSON.stringify({
+          ...feedbackParams,
+          preselectedThumb: "down",
+        }),
+      }
+    );
+  }
+
+  // Add agent selection dropdown if we have agent configurations
+  if (agentConfigurations.length > 0) {
+    elements.push({
+      type: "static_select",
+      placeholder: {
+        type: "plain_text",
+        text: "Ask another agent",
+        emoji: true,
+      },
+      options: agentConfigurations.map((ac) => {
+        return {
+          text: {
+            type: "plain_text",
+            text: ac.name,
+          },
+          value: ac.sId,
+        };
+      }),
+      action_id: STATIC_AGENT_CONFIG,
+    });
+  }
+
   return [
     {
       type: "actions",
       block_id: id,
-      elements: [
-        {
-          type: "static_select",
-          placeholder: {
-            type: "plain_text",
-            text: "Ask another agent",
-            emoji: true,
-          },
-          options: agentConfigurations.map((ac) => {
-            return {
-              text: {
-                type: "plain_text",
-                text: ac.name,
-              },
-              value: ac.sId,
-            };
-          }),
-          action_id: STATIC_AGENT_CONFIG,
-        },
-      ],
+      elements: elements,
     },
   ];
 }
@@ -155,6 +261,8 @@ export type SlackMessageUpdate = {
   agentConfigurations: LightAgentConfigurationType[];
   text?: string;
   footnotes?: SlackMessageFootnotes;
+  conversationId?: string;
+  messageId?: string;
 };
 
 export function makeFooterBlock({
@@ -168,35 +276,42 @@ export function makeFooterBlock({
   conversationUrl: string | null;
   workspaceId: string;
 }) {
-  const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/assistant/new`);
-  const baseHeader = `<${assistantsUrl}|Browse agents> | <${SLACK_HELP_URL}|Use Dust in Slack> | <${DUST_URL}|Learn more>`;
+  const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/agent/new`);
   let attribution = "";
   if (assistantName) {
     if (state === "thinking") {
-      attribution = `*${assistantName}* is thinking... | `;
+      attribution = `*${assistantName}* is thinking...`;
     } else if (state === "error") {
-      attribution = `*${assistantName}* encountered an error | `;
+      attribution = `*${assistantName}* encountered an error`;
     } else if (state === "answered") {
-      attribution = `Answered by *${assistantName}* | `;
+      attribution = `Answered by *${assistantName}*`;
     }
   } else {
     if (state === "thinking") {
-      attribution = "Thinking... | ";
+      attribution = "Thinking...";
     } else if (state === "error") {
-      attribution = "Error | ";
+      attribution = "Error";
     } else if (state === "answered") {
-      attribution = "Answered | ";
+      attribution = "Answered";
     }
   }
+
+  const links = [];
+  if (conversationUrl) {
+    links.push(`<${conversationUrl}|View full conversation>`);
+  }
+  links.push(`<${assistantsUrl}|Browse agents>`);
+
+  const fullText = attribution
+    ? `${attribution} | ${links.join(" · ")}`
+    : links.join(" · ");
 
   return {
     type: "context",
     elements: [
       {
         type: "mrkdwn",
-        text: conversationUrl
-          ? `${attribution}<${conversationUrl}|Go to full conversation> | ${baseHeader}`
-          : baseHeader,
+        text: fullText,
       },
     ],
   };

@@ -2,12 +2,13 @@ import {
   ActionIncludeIcon,
   ActionScanIcon,
   BarChartIcon,
-  BoltIcon,
   MagnifyingGlassIcon,
+  ToolsIcon,
 } from "@dust-tt/sparkle";
 
 import type { ActionSpecification } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { DEFAULT_DATA_VISUALIZATION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import {
@@ -33,14 +34,14 @@ export const RUN_AGENT_ACTION_NUM_RESULTS = 64;
 export const MCP_SPECIFICATION: ActionSpecification = {
   label: "More...",
   description: "Add additional sets of tools",
-  cardIcon: BoltIcon,
-  dropDownIcon: BoltIcon,
+  cardIcon: ToolsIcon,
+  dropDownIcon: ToolsIcon,
   flag: null,
 };
 
 export const DATA_VISUALIZATION_SPECIFICATION: ActionSpecification = {
   label: "Data Visualization",
-  description: "Generate a data visualization",
+  description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   cardIcon: BarChartIcon,
   dropDownIcon: BarChartIcon,
   flag: null,
@@ -279,7 +280,7 @@ export async function getExecutionStatusFromConfig(
         (await hasUserAlwaysApprovedTool({
           user,
           mcpServerId: actionConfiguration.toolServerId,
-          toolName: actionConfiguration.name,
+          functionCallName: actionConfiguration.name,
         }))
       ) {
         return { status: "ready_allowed_implicitly" };
@@ -298,46 +299,52 @@ const TOOLS_VALIDATION_WILDCARD = "*";
 const getToolsValidationKey = (mcpServerId: string) =>
   `toolsValidations:${mcpServerId}`;
 
+// The function call name is scoped by MCP servers so that the same tool name on different servers
+// does not conflict, which is why we use it here instead of the tool name.
 export async function setUserAlwaysApprovedTool({
   user,
   mcpServerId,
-  toolName,
+  functionCallName,
 }: {
   user: UserResource;
   mcpServerId: string;
-  toolName: string;
+  functionCallName: string;
 }) {
-  if (!toolName) {
-    throw new Error("toolName is required");
+  if (!functionCallName) {
+    throw new Error("functionCallName is required");
   }
   if (!mcpServerId) {
     throw new Error("mcpServerId is required");
   }
 
-  await user.upsertMetadataArray(getToolsValidationKey(mcpServerId), toolName);
+  await user.upsertMetadataArray(
+    getToolsValidationKey(mcpServerId),
+    functionCallName
+  );
 }
 
 export async function hasUserAlwaysApprovedTool({
   user,
   mcpServerId,
-  toolName,
+  functionCallName,
 }: {
   user: UserResource;
   mcpServerId: string;
-  toolName: string;
+  functionCallName: string;
 }) {
   if (!mcpServerId) {
     throw new Error("mcpServerId is required");
   }
 
-  if (!toolName) {
-    throw new Error("toolName is required");
+  if (!functionCallName) {
+    throw new Error("functionCallName is required");
   }
 
   const metadata = await user.getMetadataAsArray(
     getToolsValidationKey(mcpServerId)
   );
   return (
-    metadata.includes(toolName) || metadata.includes(TOOLS_VALIDATION_WILDCARD)
+    metadata.includes(functionCallName) ||
+    metadata.includes(TOOLS_VALIDATION_WILDCARD)
   );
 }

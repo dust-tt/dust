@@ -9,7 +9,7 @@ export function makeConversationUrl(
   conversationId?: string | null
 ) {
   if (workspaceId && conversationId) {
-    return makeDustAppUrl(`/w/${workspaceId}/assistant/${conversationId}`);
+    return makeDustAppUrl(`/w/${workspaceId}/agent/${conversationId}`);
   }
   return null;
 }

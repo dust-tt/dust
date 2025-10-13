@@ -20,7 +20,7 @@ import type {
   Result,
   SearchWarningCode,
 } from "@app/types";
-import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
+import { CoreAPI, DATA_SOURCE_NODE_ID, Err, Ok, removeNulls } from "@app/types";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -31,6 +31,7 @@ export type SearchResult = {
   nodes: DataSourceContentNode[];
   warningCode: SearchWarningCode | null;
   nextPageCursor: string | null;
+  resultsCount: number | null;
 };
 
 type SearchError = {
@@ -38,6 +39,12 @@ type SearchError = {
   error: APIError;
 };
 
+const SearchSort = t.array(
+  t.type({
+    field: t.union([t.literal("title"), t.literal("timestamp")]),
+    direction: t.union([t.literal("asc"), t.literal("desc")]),
+  })
+);
 const BaseSearchBody = t.refinement(
   t.intersection([
     t.type({
@@ -73,6 +80,7 @@ const BaseSearchBody = t.refinement(
        */
       allowAdminSearch: t.boolean,
       parentId: t.string,
+      searchSort: SearchSort,
     }),
   ]),
   ({ spaceIds, dataSourceViewIdsBySpaceId }) => {
@@ -127,6 +135,7 @@ export async function handleSearch(
     allowAdminSearch,
     dataSourceViewIdsBySpaceId,
     parentId,
+    searchSort,
   } = searchParams;
 
   const spaces = allowAdminSearch
@@ -182,6 +191,7 @@ export async function handleSearch(
     : allDatasourceViews;
 
   const excludedNodeMimeTypes =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     nodeIds || searchSourceUrls ? [] : NON_SEARCHABLE_NODES_MIME_TYPES;
 
   const searchFilterRes = getSearchFilterFromDataSourceViews(
@@ -226,6 +236,7 @@ export async function handleSearch(
       cursor: paginationRes.value?.cursor ?? undefined,
       limit: paginationRes.value?.limit,
       search_source_urls: searchSourceUrls,
+      sort: searchSort,
     },
   });
 
@@ -244,7 +255,8 @@ export async function handleSearch(
       const matchingViews = allDatasourceViews.filter(
         (dsv) =>
           dsv.dataSource.dustAPIDataSourceId === node.data_source_id &&
-          (!dsv.parentsIn ||
+          (node.node_id === DATA_SOURCE_NODE_ID ||
+            !dsv.parentsIn ||
             node.parents?.some(
               (p) => !dsv.parentsIn || dsv.parentsIn.includes(p)
             ))
@@ -264,6 +276,7 @@ export async function handleSearch(
 
   return new Ok({
     nodes,
+    resultsCount: searchRes.value.hit_count,
     warningCode: searchRes.value.warning_code,
     nextPageCursor: searchRes.value.next_page_cursor,
   });

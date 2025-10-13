@@ -14,7 +14,6 @@ import type { InferGetServerSidePropsType } from "next";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AccountSettings } from "@app/components/me/AccountSettings";
-import { Preferences } from "@app/components/me/Preferences";
 import { ProfileTriggersTab } from "@app/components/me/ProfileTriggersTab";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
@@ -64,22 +63,23 @@ export default function ProfilePage({
           <Page.Header title="Profile Settings" icon={UserIcon} />
           <Page.Layout direction="vertical">
             <Page.SectionHeader title="Account Settings" />
-            <AccountSettings user={user} isUserLoading={isUserLoading} />
-
-            <Separator />
-
-            <Page.SectionHeader title="Preferences" />
-            <Preferences />
+            <AccountSettings
+              user={user}
+              isUserLoading={isUserLoading}
+              owner={owner}
+            />
 
             <Separator />
 
             <Page.SectionHeader
-              title={hasFeature("hootl") ? "Tools & Triggers" : "Tools"}
+              title={
+                hasFeature("hootl_subscriptions") ? "Tools & Triggers" : "Tools"
+              }
             />
             <Tabs defaultValue="tools" className="w-full">
               <TabsList>
                 <TabsTrigger value="tools" label="Tools" icon={BoltIcon} />
-                {hasFeature("hootl") && (
+                {hasFeature("hootl_subscriptions") && (
                   <TabsTrigger
                     value="triggers"
                     label="Triggers"
@@ -90,7 +90,7 @@ export default function ProfilePage({
               <TabsContent value="tools" className="mt-4">
                 <UserToolsTable owner={owner} />
               </TabsContent>
-              {hasFeature("hootl") && (
+              {hasFeature("hootl_subscriptions") && (
                 <TabsContent value="triggers" className="mt-4">
                   <ProfileTriggersTab owner={owner} />
                 </TabsContent>

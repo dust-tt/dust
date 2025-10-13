@@ -13,7 +13,7 @@ type RawConfluenceEntity = {
   spaceId: string;
   type: "page" | "folder";
   parentId: string | null;
-  parentType: "page" | "folder" | null;
+  parentType: "page" | "folder" | null | undefined;
 };
 
 export type ConfluenceContentWithType = Pick<

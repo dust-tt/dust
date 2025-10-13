@@ -34,6 +34,9 @@ WorkspaceHasDomainModel.init(
   {
     modelName: "workspace_has_domains",
     sequelize: frontSequelize,
-    indexes: [{ unique: true, fields: ["domain"] }],
+    indexes: [
+      { unique: true, fields: ["domain"] },
+      { fields: ["workspaceId"], concurrently: true },
+    ],
   }
 );

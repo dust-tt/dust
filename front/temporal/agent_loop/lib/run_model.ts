@@ -1,4 +1,4 @@
-import { removeNulls } from "@dust-tt/client";
+import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
 import assert from "assert";
 
 import { buildToolSpecification } from "@app/lib/actions/mcp";
@@ -28,10 +28,11 @@ import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
+import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
-import { getRedisClient } from "@app/lib/api/redis";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -43,21 +44,20 @@ import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent, ModelId } from "@app/types";
+import { removeNulls } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
-import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
-const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_AUTO_RETRY = 3;
 
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.
 //
 // TODO(DURABLE-AGENTS 2025-07-20): The method mutates agentMessage, this must
-
 // be refactored in a follow up PR.
 export async function runModelActivity(
   auth: Authenticator,
@@ -68,7 +68,7 @@ export async function runModelActivity(
     functionCallStepContentIds,
     autoRetryCount = 0,
   }: {
-    runAgentData: RunAgentExecutionData;
+    runAgentData: AgentLoopExecutionData;
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
@@ -448,9 +448,6 @@ export async function runModelActivity(
     >;
   } | null = null;
 
-  let shouldYieldCancel = false;
-  let lastCheckCancellation = Date.now();
-  const redis = await getRedisClient({ origin: "assistant_generation" });
   let isGeneration = true;
 
   const contentParser = new AgentMessageContentParser(
@@ -458,27 +455,6 @@ export async function runModelActivity(
     agentMessage.sId,
     getDelimitersConfiguration({ agentConfiguration })
   );
-
-  async function checkCancellation() {
-    try {
-      const cancelled = await redis.get(
-        `assistant:generation:cancelled:${agentMessage.sId}`
-      );
-      if (cancelled === "1") {
-        shouldYieldCancel = true;
-        await redis.set(
-          `assistant:generation:cancelled:${agentMessage.sId}`,
-          0,
-          {
-            EX: 3600, // 1 hour
-          }
-        );
-      }
-    } catch (error) {
-      localLogger.error({ error }, "Error checking cancellation");
-      return false;
-    }
-  }
 
   let nativeChainOfThought = "";
 
@@ -495,31 +471,20 @@ export async function runModelActivity(
       return handlePossiblyRetryableError(event.content.message);
     }
 
-    const currentTimestamp = Date.now();
-    if (
-      currentTimestamp - lastCheckCancellation >=
-      CANCELLATION_CHECK_INTERVAL
-    ) {
-      void checkCancellation(); // Trigger the async function without awaiting
-      lastCheckCancellation = currentTimestamp;
-    }
-
-    if (shouldYieldCancel) {
-      await flushParserTokens();
-      await updateResourceAndPublishEvent(auth, {
-        event: {
-          type: "agent_generation_cancelled",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-        },
-        agentMessageRow,
-        conversation,
-        step,
-      });
-      localLogger.error("Agent generation cancelled");
-
-      return null;
+    // Heartbeat & sleep allow the activity to be cancelled, e.g. on a "Stop
+    // agent" request. Upon experimentation, both are needed to ensure the
+    // activity receives the cancellation signal. The delay until which is the
+    // signal is received is governed by heartbeat
+    // [throttling](https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling).
+    heartbeat();
+    try {
+      await sleep(1);
+    } catch (err) {
+      if (err instanceof CancelledFailure) {
+        logger.info("Activity cancelled, stopping");
+        return null;
+      }
+      throw err;
     }
 
     if (event.type === "tokens" && isGeneration) {
@@ -598,7 +563,21 @@ export async function runModelActivity(
             cached_tokens?: number;
           };
         } | null;
-        const reasoningTokens = meta?.token_usage?.reasoning_tokens || 0;
+        const reasoningTokens = meta?.token_usage?.reasoning_tokens ?? 0;
+
+        // Pass the current region, which helps decide whether encrypted blocks are usable
+        const currentRegion = regionsConfig.getCurrentRegion();
+        let region: "us" | "eu";
+        switch (currentRegion) {
+          case "europe-west1":
+            region = "eu";
+            break;
+          case "us-central1":
+            region = "us";
+            break;
+          default:
+            throw new Error(`Unexpected region: ${currentRegion}`);
+        }
 
         const contents = (block.message.contents ?? []).map((content) => {
           if (content.type === "reasoning") {
@@ -608,6 +587,7 @@ export async function runModelActivity(
                 ...content.value,
                 tokens: 0, // Will be updated for the last reasoning item
                 provider: model.providerId,
+                region,
               },
             } satisfies ReasoningContentType;
           }
@@ -662,6 +642,20 @@ export async function runModelActivity(
     return handlePossiblyRetryableError("Agent execution didn't complete.");
   }
 
+  // It is possible that temporal requested activity cancellation but the
+  // activity has not yet received the signal. In that case, the agent message
+  // row would have status to cancelled (done via finalizeCancellationActivity).
+  const message = await fetchMessageInConversation(
+    auth,
+    conversation,
+    agentMessage.sId,
+    agentMessage.version
+  );
+  if (message?.agentMessage?.status === "cancelled") {
+    logger.info("Agent message cancelled, stopping");
+    return null;
+  }
+
   // Create AgentStepContent for each content item (reasoning, text, function calls)
   // This replaces the original agent_step_content event emission
   for (const [index, content] of output.contents.entries()) {
@@ -714,6 +708,7 @@ export async function runModelActivity(
     }
     agentMessage.content = (agentMessage.content ?? "") + processedContent;
     agentMessage.status = "succeeded";
+    agentMessage.completedTs = Date.now();
 
     await updateResourceAndPublishEvent(auth, {
       event: {
@@ -740,6 +735,30 @@ export async function runModelActivity(
     },
     "[ASSISTANT_TRACE] Action inputs generation"
   );
+
+  // Inject a single newline boundary if we streamed visible content in this iteration
+  // before yielding actions. This prevents the next iteration's streamed tokens from
+  // being appended without whitespace. Only do this if generation tokens are non-empty
+  // and the last character is not already whitespace.
+  const streamedContentSoFar = contentParser.getContent() ?? "";
+  if (
+    streamedContentSoFar.length > 0 &&
+    !/\s/.test(streamedContentSoFar[streamedContentSoFar.length - 1])
+  ) {
+    await updateResourceAndPublishEvent(auth, {
+      event: {
+        type: "generation_tokens",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        text: "\n",
+        classification: "tokens",
+      },
+      agentMessageRow,
+      conversation,
+      step,
+    });
+  }
 
   // If we have actions and we are on the last step, we error since returning actions would require
   // doing one more step.
@@ -823,6 +842,7 @@ export async function runModelActivity(
         reasoningModel: null,
         timeFrame: null,
         jsonSchema: null,
+        secretName: null,
         additionalConfiguration: {},
         mcpServerViewId: mcpServerView.sId,
         dustAppConfiguration: null,

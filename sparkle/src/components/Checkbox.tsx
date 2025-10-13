@@ -10,12 +10,7 @@ import { Label } from "./Label";
 import { Tooltip } from "./Tooltip";
 
 export const CHECKBOX_SIZES = ["xs", "sm"] as const;
-type CheckboxSizeType = (typeof CHECKBOX_SIZES)[number];
-
-const checkboxSizeVariant: Record<CheckboxSizeType, string> = {
-  xs: "s-h-4 s-w-4 s-rounded",
-  sm: "s-h-5 s-w-5 s-rounded-md",
-};
+export type CheckboxSizeType = (typeof CHECKBOX_SIZES)[number];
 
 const checkboxStyles = cva(
   cn(
@@ -34,7 +29,10 @@ const checkboxStyles = cva(
           "data-[state=indeterminate]:s-bg-primary dark:data-[state=indeterminate]:s-bg-primary-night data-[state=indeterminate]:s-text-white data-[state=indeterminate]:s-border-primary",
         false: "",
       },
-      size: checkboxSizeVariant,
+      size: {
+        xs: "s-h-4 s-w-4 s-rounded",
+        sm: "s-h-5 s-w-5 s-rounded-md",
+      },
     },
     defaultVariants: {
       size: "sm",
@@ -58,7 +56,7 @@ interface CheckboxProps
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
->(({ className, size, checked, id, ...props }, ref) => {
+>(({ className, size, checked, id, tooltip, ...props }, ref) => {
   const checkbox = (
     <CheckboxPrimitive.Root
       ref={ref}
@@ -79,7 +77,11 @@ const Checkbox = React.forwardRef<
     </CheckboxPrimitive.Root>
   );
 
-  return checkbox;
+  return tooltip ? (
+    <Tooltip label={tooltip} trigger={checkbox} tooltipTriggerAsChild />
+  ) : (
+    checkbox
+  );
 });
 
 Checkbox.displayName = CheckboxPrimitive.Root.displayName;

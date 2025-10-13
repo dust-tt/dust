@@ -1,13 +1,9 @@
-import {
-  Checkbox,
-  DataTable,
-  ScrollableDataTable,
-  Spinner,
-} from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
-import React, { useContext, useMemo } from "react";
+import { Spinner } from "@dust-tt/sparkle";
+import React, { useCallback, useContext, useMemo } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
@@ -46,79 +42,55 @@ export function DataSourceCategoryBrowser({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
-  const { setCategoryEntry, removeNode, isRowSelected } =
-    useDataSourceBuilderContext();
+  const { setCategoryEntry, removeNode } = useDataSourceBuilderContext();
 
   const confirm = useContext(ConfirmContext);
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
-  const categoryRows = useMemo(() => {
+  const categoryItems = useMemo((): DataSourceListItem[] => {
     if (!isSpaceInfoLoading && spaceInfo) {
-      return getCategoryRows(spaceInfo.categories, hasFeature, (category) => {
-        if (isDataSourceViewCategoryWithoutApps(category)) {
-          setCategoryEntry(category);
+      const categoryRows = getCategoryRows(
+        spaceInfo.categories,
+        hasFeature,
+        (category) => {
+          if (isDataSourceViewCategoryWithoutApps(category)) {
+            setCategoryEntry(category);
+          }
         }
-      });
+      );
+
+      return categoryRows.map((category) => ({
+        id: category.id,
+        title: category.title,
+        icon: category.icon,
+        onClick: category.onClick,
+        entry: {
+          type: "category",
+          category: category.id,
+        },
+      }));
     }
-    return emptyArray<CategoryRowData>();
+    return emptyArray<DataSourceListItem>();
   }, [hasFeature, isSpaceInfoLoading, setCategoryEntry, spaceInfo]);
 
-  const columns: ColumnDef<CategoryRowData>[] = useMemo(
-    () => [
-      {
-        id: "select",
-        enableSorting: false,
-        enableHiding: false,
-        cell: ({ row }) => {
-          const selectionState = isRowSelected(row.original.id);
-          if (selectionState !== "partial") {
-            return undefined;
-          }
-          return (
-            <div className="flex h-full w-full items-center">
-              <Checkbox
-                size="xs"
-                checked={selectionState}
-                onClick={(event) => event.stopPropagation()}
-                onCheckedChange={async () => {
-                  const confirmed = await confirm({
-                    title: "Are you sure?",
-                    message: `Do you want to unselect all of "${row.original.title}"?`,
-                    validateLabel: "Unselect all",
-                    validateVariant: "warning",
-                  });
-                  if (confirmed) {
-                    removeNode({
-                      type: "category",
-                      category: row.original.id,
-                    });
-                  }
-                }}
-              />
-            </div>
-          );
-        },
-        meta: {
-          sizeRatio: 5,
-        },
-      },
-      {
-        accessorKey: "title",
-        id: "name",
-        header: "Name",
-        cell: ({ row }) => (
-          <DataTable.CellContent icon={row.original.icon}>
-            {row.original.title}
-          </DataTable.CellContent>
-        ),
-        meta: {
-          sizeRatio: 100,
-        },
-      },
-    ],
-    [confirm, isRowSelected, removeNode]
+  const handleCategorySelectionChange = useCallback(
+    async (item: DataSourceListItem, selectionState: boolean | "partial") => {
+      // Categories only show checkboxes for partial selections to unselect all
+      if (selectionState === "partial") {
+        const confirmed = await confirm({
+          title: "Are you sure?",
+          message: `Do you want to unselect all of "${item.title}"?`,
+          validateLabel: "Unselect all",
+          validateVariant: "warning",
+        });
+        if (confirmed) {
+          removeNode(item.entry);
+        }
+      }
+    },
+    [confirm, removeNode]
   );
 
   if (isSpaceInfoLoading) {
@@ -130,11 +102,10 @@ export function DataSourceCategoryBrowser({
   }
 
   return (
-    <ScrollableDataTable
-      data={categoryRows}
-      columns={columns}
-      getRowId={(originalRow) => originalRow.id}
-      maxHeight
+    <DataSourceList
+      items={categoryItems}
+      showCheckboxOnlyForPartialSelection
+      onSelectionChange={handleCategorySelectionChange}
     />
   );
 }

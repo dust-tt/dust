@@ -1,8 +1,8 @@
-import { Button, cn, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import _ from "lodash";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
-import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer, {
@@ -15,28 +15,27 @@ import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useAddDeleteConversationTool,
-  useConversation,
   useConversationTools,
 } from "@app/lib/swr/conversations";
+import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
   ContentFragmentsType,
   DataSourceViewContentNode,
   LightAgentConfigurationType,
-  MentionType,
   Result,
   WorkspaceType,
 } from "@app/types";
-import { compareAgentsForSort, isEqualNode } from "@app/types";
+import { compareAgentsForSort, isEqualNode, isGlobalAgentId } from "@app/types";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
-interface AssistantInputBarProps {
+interface InputBarProps {
   owner: WorkspaceType;
   onSubmit: (
     input: string,
-    mentions: MentionType[],
+    mentions: EditorMention[],
     contentFragments: ContentFragmentsType,
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
@@ -56,7 +55,7 @@ interface AssistantInputBarProps {
  * need to pass the agent configuration to the input bar (it may not be in the
  * user's list of agents)
  */
-export function AssistantInputBar({
+export const InputBar = React.memo(function InputBar({
   owner,
   onSubmit,
   conversationId,
@@ -66,38 +65,12 @@ export function AssistantInputBar({
   disableAutoFocus = false,
   isFloating = true,
   disable = false,
-}: AssistantInputBarProps) {
+}: InputBarProps) {
   const [disableSendButton, setDisableSendButton] = useState(disable);
-  const [isFocused, setIsFocused] = useState(false);
-  const rainbowEffectRef = useRef<HTMLDivElement>(null);
 
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
   >([]);
-
-  useEffect(() => {
-    const container = rainbowEffectRef.current;
-    if (!container) {
-      return;
-    }
-
-    const onFocusIn = () => setIsFocused(true);
-    const onFocusOut = () => setIsFocused(false);
-
-    container.addEventListener("focusin", onFocusIn);
-    container.addEventListener("focusout", onFocusOut);
-
-    return () => {
-      container.removeEventListener("focusin", onFocusIn);
-      container.removeEventListener("focusout", onFocusOut);
-    };
-  }, []);
-
-  const { mutateConversation } = useConversation({
-    conversationId,
-    workspaceId: owner.sId,
-    options: { disabled: true }, // We just want to get the mutation function
-  });
 
   // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations: baseAgentConfigurations } =
@@ -129,6 +102,7 @@ export function AssistantInputBar({
     if (
       baseAgentConfigurations.find(
         (a) => a.sId === additionalAgentConfiguration?.sId
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ) ||
       !additionalAgentConfiguration
     ) {
@@ -138,11 +112,13 @@ export function AssistantInputBar({
   }, [baseAgentConfigurations, additionalAgentConfiguration]);
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const { animate, selectedAssistant } = useContext(InputBarContext);
+  const { animate, setAnimate, selectedAssistant } =
+    useContext(InputBarContext);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (animate && !isAnimating) {
+      setAnimate(false);
       setIsAnimating(true);
 
       // Clear any existing timeout to ensure animations do not overlap.
@@ -157,7 +133,7 @@ export function AssistantInputBar({
         animationTimeoutRef.current = null;
       }, 700);
     }
-  }, [animate, isAnimating]);
+  }, [animate, isAnimating, setAnimate]);
 
   // Cleanup timeout on component unmount.
   useEffect(() => {
@@ -170,8 +146,8 @@ export function AssistantInputBar({
 
   // Tools selection
 
-  const [selectedMCPServerViewIds, setSelectedMCPServerViewIds] = useState<
-    string[]
+  const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
+    MCPServerViewType[]
   >([]);
 
   const { conversationTools } = useConversationTools({
@@ -181,7 +157,7 @@ export function AssistantInputBar({
 
   // The truth is in the conversationTools, we need to update the selectedMCPServerViewIds when the conversationTools change.
   useEffect(() => {
-    setSelectedMCPServerViewIds(conversationTools.map((tool) => tool.sId));
+    setSelectedMCPServerViews(conversationTools);
   }, [conversationTools]);
 
   const { addTool, deleteTool } = useAddDeleteConversationTool({
@@ -191,14 +167,14 @@ export function AssistantInputBar({
 
   const handleMCPServerViewSelect = (serverView: MCPServerViewType) => {
     // Optimistic update
-    setSelectedMCPServerViewIds((prev) => [...prev, serverView.sId]);
+    setSelectedMCPServerViews((prev) => [...prev, serverView]);
     void addTool(serverView.sId);
   };
 
   const handleMCPServerViewDeselect = (serverView: MCPServerViewType) => {
     // Optimistic update
-    setSelectedMCPServerViewIds((prev) =>
-      prev.filter((sv) => sv !== serverView.sId)
+    setSelectedMCPServerViews((prev) =>
+      prev.filter((sv) => sv.sId !== serverView.sId)
     );
     void deleteTool(serverView.sId);
   };
@@ -217,9 +193,29 @@ export function AssistantInputBar({
     }
 
     const { mentions: rawMentions, markdown } = markdownAndMentions;
-    const mentions: MentionType[] = [
-      ...new Set(rawMentions.map((mention) => mention.id)),
-    ].map((id) => ({ configurationId: id }));
+    const mentions: EditorMention[] = _.uniqBy(rawMentions, "id");
+
+    const uploadedFiles = fileUploaderService.getFileBlobs();
+    const mentionedAgents = agentConfigurations.filter((a) =>
+      mentions.some((m) => m.id === a.sId)
+    );
+
+    trackEvent({
+      area: TRACKING_AREAS.CONVERSATION,
+      object: "message_send",
+      action: "submit",
+      extra: {
+        has_attachments: attachedNodes.length > 0 || uploadedFiles.length > 0,
+        has_tools: selectedMCPServerViews.length > 0,
+        has_agents: mentionedAgents.length > 0,
+        has_default_agent: mentionedAgents.some((a) => isGlobalAgentId(a.sId)),
+        has_custom_agent: mentionedAgents.some((a) => !isGlobalAgentId(a.sId)),
+        is_new_conversation: !conversationId,
+        agent_count: mentions.length,
+        attachment_count: attachedNodes.length + uploadedFiles.length,
+        tool_count: selectedMCPServerViews.length,
+      },
+    });
 
     // When we are creating a new conversation, we will disable the input bar, show a loading
     // spinner and in case of error, re-enable the input bar
@@ -235,13 +231,14 @@ export function AssistantInputBar({
             return {
               title: cf.filename,
               fileId: cf.fileId,
+              contentType: cf.contentType,
             };
           }),
           contentNodes: attachedNodes,
         },
         // Only send the selectedMCPServerViewIds if we are creating a new conversation.
         // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-        selectedMCPServerViewIds
+        selectedMCPServerViews.map((sv) => sv.sId)
       );
 
       setLoading(false);
@@ -256,6 +253,7 @@ export function AssistantInputBar({
           return {
             title: cf.filename,
             fileId: cf.fileId,
+            contentType: cf.contentType,
           };
         }),
         contentNodes: attachedNodes,
@@ -280,180 +278,68 @@ export function AssistantInputBar({
     setAttachedNodes((prev) => prev.filter((n) => !isEqualNode(n, node)));
   };
 
-  const [isStopping, setIsStopping] = useState<boolean>(false);
-
-  // GenerationContext: to know if we are generating or not
-  const generationContext = useContext(GenerationContext);
-  if (!generationContext) {
-    throw new Error(
-      "FixedAssistantInputBar must be used within a GenerationContextProvider"
-    );
-  }
-
-  const handleStopGeneration = async () => {
-    if (!conversationId) {
-      return;
-    }
-    setIsStopping(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
-    await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "cancel",
-          messageIds: generationContext.generatingMessages
-            .filter((m) => m.conversationId === conversationId)
-            .map((m) => m.messageId),
-        }),
-      }
-    );
-    mutateConversation();
-  };
-
-  useEffect(() => {
-    if (
-      isStopping &&
-      !generationContext.generatingMessages.some(
-        (m) => m.conversationId === conversationId
-      )
-    ) {
-      setIsStopping(false);
-    }
-  }, [isStopping, generationContext.generatingMessages, conversationId]);
-
   useEffect(() => {
     setDisableSendButton(disable);
   }, [disable]);
 
   return (
     <div className="flex w-full flex-col">
-      {generationContext.generatingMessages.some(
-        (m) => m.conversationId === conversationId
-      ) && (
-        <div className="flex justify-center px-4 pb-4">
-          <Button
-            variant="outline"
-            label={isStopping ? "Stopping generation..." : "Stop generation"}
-            icon={StopIcon}
-            onClick={handleStopGeneration}
-            disabled={isStopping}
+      <div
+        className={classNames(
+          "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch sm:flex-row",
+          "rounded-2xl transition-all",
+          "bg-muted-background dark:bg-muted-background-night",
+          "border",
+          "border-border-dark dark:border-border-dark/10",
+          "sm:border-border-dark/50 sm:focus-within:border-border-dark",
+          "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
+          disable && "cursor-not-allowed opacity-75",
+          isFloating
+            ? classNames(
+                "focus-within:ring-1 dark:focus-within:ring-1",
+                "dark:focus-within:ring-highlight/30-night focus-within:ring-highlight/30",
+                "sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
+              )
+            : classNames(
+                "focus-within:border-highlight-300",
+                "dark:focus-within:border-highlight-300-night"
+              ),
+          isAnimating ? "duration-600 animate-shake" : "duration-300"
+        )}
+      >
+        <div className="relative flex w-full flex-1 flex-col">
+          <InputBarAttachments
+            owner={owner}
+            files={{ service: fileUploaderService }}
+            nodes={{
+              items: attachedNodes,
+              onRemove: handleNodesAttachmentRemove,
+            }}
+            conversationId={conversationId}
+          />
+          <InputBarContainer
+            actions={actions}
+            disableAutoFocus={disableAutoFocus}
+            allAssistants={activeAgents}
+            agentConfigurations={agentConfigurations}
+            owner={owner}
+            selectedAssistant={selectedAssistant}
+            onEnterKeyDown={handleSubmit}
+            stickyMentions={stickyMentions}
+            fileUploaderService={fileUploaderService}
+            disableSendButton={
+              disableSendButton || fileUploaderService.isProcessingFiles
+            }
+            disableTextInput={disable}
+            onNodeSelect={handleNodesAttachmentSelect}
+            onNodeUnselect={handleNodesAttachmentRemove}
+            selectedMCPServerViews={selectedMCPServerViews}
+            onMCPServerViewSelect={handleMCPServerViewSelect}
+            onMCPServerViewDeselect={handleMCPServerViewDeselect}
+            attachedNodes={attachedNodes}
           />
         </div>
-      )}
-
-      <div ref={rainbowEffectRef} className="flex w-full flex-col">
-        <RainbowEffect
-          className="w-full"
-          containerClassName="w-full"
-          size={isFocused ? "large" : "medium"}
-          disabled={disable || !isFloating}
-        >
-          <div
-            className={classNames(
-              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch sm:flex-row",
-              "rounded-2xl transition-all",
-              "bg-muted-background dark:bg-muted-background-night",
-              "border",
-              "border-border-dark dark:border-border-dark-night",
-              "sm:border-border-dark/50 sm:focus-within:border-border-dark",
-              "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
-              disable && "cursor-not-allowed opacity-75",
-              isFloating
-                ? classNames(
-                    "focus-within:ring-1 dark:focus-within:ring-1",
-                    "dark:focus-within:ring-highlight/30-night focus-within:ring-highlight/30",
-                    "sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
-                  )
-                : classNames(
-                    "focus-within:border-highlight-300",
-                    "dark:focus-within:border-highlight-300-night"
-                  ),
-              isAnimating ? "duration-600 animate-shake" : "duration-300"
-            )}
-          >
-            <div className="relative flex w-full flex-1 flex-col">
-              <InputBarAttachments
-                owner={owner}
-                files={{ service: fileUploaderService }}
-                nodes={{
-                  items: attachedNodes,
-                  onRemove: handleNodesAttachmentRemove,
-                }}
-              />
-              <InputBarContainer
-                actions={actions}
-                disableAutoFocus={disableAutoFocus}
-                allAssistants={activeAgents}
-                agentConfigurations={agentConfigurations}
-                owner={owner}
-                selectedAssistant={selectedAssistant}
-                onEnterKeyDown={handleSubmit}
-                stickyMentions={stickyMentions}
-                fileUploaderService={fileUploaderService}
-                disableSendButton={
-                  disableSendButton || fileUploaderService.isProcessingFiles
-                }
-                disableTextInput={disable}
-                onNodeSelect={handleNodesAttachmentSelect}
-                onNodeUnselect={handleNodesAttachmentRemove}
-                selectedMCPServerViewIds={selectedMCPServerViewIds}
-                onMCPServerViewSelect={handleMCPServerViewSelect}
-                onMCPServerViewDeselect={handleMCPServerViewDeselect}
-                attachedNodes={attachedNodes}
-              />
-            </div>
-          </div>
-        </RainbowEffect>
       </div>
     </div>
   );
-}
-
-export function FixedAssistantInputBar({
-  owner,
-  onSubmit,
-  stickyMentions,
-  conversationId,
-  additionalAgentConfiguration,
-  actions = DEFAULT_INPUT_BAR_ACTIONS,
-  disableAutoFocus = false,
-  disable = false,
-}: {
-  owner: WorkspaceType;
-  onSubmit: (
-    input: string,
-    mentions: MentionType[],
-    contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[]
-  ) => Promise<Result<undefined, DustError>>;
-  stickyMentions?: AgentMention[];
-  conversationId: string | null;
-  additionalAgentConfiguration?: LightAgentConfigurationType;
-  actions?: InputBarContainerProps["actions"];
-  disableAutoFocus?: boolean;
-  disable?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "sticky bottom-0 z-20 flex max-h-screen w-full",
-        "pb-2",
-        "sm:w-full sm:max-w-3xl sm:pb-4"
-      )}
-    >
-      <AssistantInputBar
-        owner={owner}
-        onSubmit={onSubmit}
-        conversationId={conversationId}
-        stickyMentions={stickyMentions}
-        additionalAgentConfiguration={additionalAgentConfiguration}
-        actions={actions}
-        disableAutoFocus={disableAutoFocus}
-        disable={disable}
-      />
-    </div>
-  );
-}
+});

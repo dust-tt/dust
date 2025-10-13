@@ -14,6 +14,7 @@ export const FIELD_MAPPINGS = {
   assignee: { jqlField: "assignee" },
   created: { jqlField: "created", supportsOperators: true },
   dueDate: { jqlField: "dueDate", supportsOperators: true },
+  fixVersion: { jqlField: "fixVersion" },
   issueType: { jqlField: "issueType" },
   labels: { jqlField: "labels" },
   priority: { jqlField: "priority" },
@@ -170,6 +171,16 @@ export const JiraProjectSchema = z.object({
   id: z.string(),
   key: z.string(),
   name: z.string(),
+});
+
+export const JiraProjectVersionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  released: z.boolean().optional(),
+  releaseDate: z.string().optional(),
+  startDate: z.string().optional(),
+  archived: z.boolean().optional(),
 });
 
 export const JiraTransitionSchema = z.object({
@@ -482,6 +493,31 @@ export const JiraCommentSchema = z.object({
   body: ADFDocumentSchema,
 });
 
+export const JiraAttachmentSchema = z.object({
+  id: z.string(),
+  filename: z.string(),
+  author: z.object({
+    accountId: z.string(),
+    displayName: z.string().optional(),
+    emailAddress: z.string().optional(),
+  }),
+  created: z.string(),
+  size: z.number(),
+  mimeType: z.string(),
+  content: z.string().optional(),
+  thumbnail: z.string().optional(),
+  self: z.string(),
+});
+export const JiraAttachmentsResultSchema = z.array(JiraAttachmentSchema);
+
+export const JiraIssueWithAttachmentsSchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  fields: z.object({
+    attachment: z.array(JiraAttachmentSchema).optional(),
+  }),
+});
+
 // Inferred types
 export type JiraSearchResult = z.infer<typeof JiraSearchResultSchema>;
 export type JiraErrorResult = string;
@@ -501,4 +537,9 @@ export type JiraIssueLink = z.infer<typeof JiraIssueLinkSchema>;
 export type JiraIssueLinkType = z.infer<typeof JiraIssueLinkTypeSchema>;
 export type JiraCreateIssueLinkRequest = z.infer<
   typeof JiraCreateIssueLinkRequestSchema
+>;
+export type JiraAttachment = z.infer<typeof JiraAttachmentSchema>;
+export type JiraAttachmentsResult = z.infer<typeof JiraAttachmentsResultSchema>;
+export type JiraIssueWithAttachments = z.infer<
+  typeof JiraIssueWithAttachmentsSchema
 >;

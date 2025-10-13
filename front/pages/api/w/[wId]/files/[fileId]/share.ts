@@ -2,14 +2,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { isFileUsingConversationFiles } from "@app/lib/files";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { FileShareScope, WithAPIErrorResponse } from "@app/types";
-import { fileShareScopeSchema } from "@app/types";
+import { fileShareScopeSchema, frameContentType } from "@app/types";
 
 const ShareFileRequestBodySchema = z.object({
   shareScope: fileShareScopeSchema,
@@ -68,13 +66,13 @@ async function handler(
     }
   }
 
-  // Only allow sharing Content Creation files.
-  if (!file.isContentCreation) {
+  // Only allow sharing Frame files.
+  if (!file.isInteractiveContent && file.contentType === frameContentType) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Only Content Creation files can be shared publicly.",
+        message: "Only Frame files can be shared publicly.",
       },
     });
   }
@@ -93,31 +91,6 @@ async function handler(
       }
 
       const { shareScope } = parseResult.data;
-
-      // For workspace/public sharing, check if file uses conversation files.
-      if (shareScope !== "conversation_participants") {
-        const fileContent = await getFileContent(auth, file, "original");
-        if (!fileContent) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "file_not_found",
-              message: "File not found.",
-            },
-          });
-        }
-
-        if (isFileUsingConversationFiles(fileContent)) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Content Creation files that use files from the conversation cannot be shared publicly.",
-            },
-          });
-        }
-      }
 
       await file.setShareScope(auth, shareScope);
 

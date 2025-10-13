@@ -1,3 +1,5 @@
+// All mime types are okay to use from the public API.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { CodeBlock, TableIcon } from "@dust-tt/sparkle";
 
@@ -26,7 +28,10 @@ export function MCPTablesQueryActionDetails({
   const sqlQueryBlocks =
     toolOutput?.filter(isSqlQueryOutput).map((o) => o.resource) ?? [];
   const generatedFiles =
-    toolOutput?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
+    toolOutput
+      ?.filter(isToolGeneratedFile)
+      .map((o) => o.resource)
+      .filter((r) => !r.hidden) ?? [];
   const errorBlocks =
     toolOutput
       ?.filter(isExecuteTablesQueryErrorResourceType)

@@ -79,7 +79,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     this.remoteToolsMetadata = includes?.remoteToolsMetadata;
   }
 
-  private async init(auth: Authenticator): Promise<Result<void, DustError>> {
+  private async init(
+    auth: Authenticator,
+    systemSpace: SpaceResource
+  ): Promise<Result<void, DustError>> {
     if (this.remoteMCPServerId) {
       const remoteServer = await RemoteMCPServerResource.findByPk(
         auth,
@@ -101,7 +104,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     if (this.internalMCPServerId) {
       const internalServer = await InternalMCPServerInMemoryResource.fetchById(
         auth,
-        this.internalMCPServerId
+        this.internalMCPServerId,
+        systemSpace
       );
       if (!internalServer) {
         return new Err(
@@ -157,8 +161,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     );
 
     const resource = new this(MCPServerViewResource.model, server.get(), space);
-
-    const r = await resource.init(auth);
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+    const r = await resource.init(auth, systemSpace);
     if (r.isErr()) {
       throw r.error;
     }
@@ -224,6 +228,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       includes: [
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         ...(options.includes || []),
         {
           model: UserModel,
@@ -233,11 +238,17 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           model: RemoteMCPServerToolMetadataModel,
           as: "internalToolsMetadata",
           required: false,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
         },
         {
           model: RemoteMCPServerToolMetadataModel,
           as: "remoteToolsMetadata",
           required: false,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
         },
       ],
     });
@@ -249,10 +260,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     if (options.includeDeleted) {
       filteredViews.push(...views);
     } else {
+      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
       await concurrentExecutor(
         views,
         async (view) => {
-          const r = await view.init(auth);
+          const r = await view.init(auth, systemSpace);
           if (r.isOk()) {
             filteredViews.push(view);
           }
@@ -779,8 +791,18 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         this.editedByUser,
         this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt
       ),
-      toolsMetadata:
-        this.internalToolsMetadata || this.remoteToolsMetadata || [],
+      toolsMetadata: [
+        ...(this.internalToolsMetadata ?? []).map((t) => ({
+          toolName: t.toolName,
+          permission: t.permission,
+          enabled: t.enabled,
+        })),
+        ...(this.remoteToolsMetadata ?? []).map((t) => ({
+          toolName: t.toolName,
+          permission: t.permission,
+          enabled: t.enabled,
+        })),
+      ],
     };
   }
 }

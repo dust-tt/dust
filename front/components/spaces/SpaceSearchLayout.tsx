@@ -1,14 +1,20 @@
+// All mime types are okay to use from the public API.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import type { MenuItem } from "@dust-tt/sparkle";
 import { cn, ScrollableDataTable, SearchInput } from "@dust-tt/sparkle";
+import type { SortingState } from "@tanstack/table-core";
 import { useRouter } from "next/router";
-import React from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import { getMenuItems } from "@app/components/spaces/ContentActions";
-import { makeColumnsForSearchResults } from "@app/components/spaces/search/columns";
+import {
+  makeColumnsForSearchResults,
+  SORTING_KEYS,
+} from "@app/components/spaces/search/columns";
 import { SearchLocation } from "@app/components/spaces/search/SearchingInSpace";
 import type { SpaceSearchContextType } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
@@ -18,6 +24,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useQueryParams } from "@app/hooks/useQueryParams";
+import type { SortingParams } from "@app/lib/api/pagination";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import {
   getViewTypeForURLNodeCandidateAccountingForNotion,
@@ -170,6 +177,7 @@ function BackendSearch({
     React.useState<DataSourceViewType | null>(null);
   const [effectiveContentNode, setEffectiveContentNode] =
     React.useState<LightContentNode | null>(null);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const effectiveDataSourceView = dataSourceView || searchResultDataSourceView;
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = React.useState<
     UrlCandidate | NodeCandidate | null
@@ -195,6 +203,7 @@ function BackendSearch({
     debouncedValue: debouncedSearch,
     isDebouncing,
     setValue: setSearchValue,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   } = useDebounce(searchParam.value || "", {
     delay: 300,
     minLength: MIN_SEARCH_QUERY_SIZE,
@@ -226,6 +235,8 @@ function BackendSearch({
   const [isChanging, setIsChanging] = React.useState(false);
   const [showSearch, setShowSearch] = React.useState(shouldShowSearchResults);
   const [searchHitCount, setSearchHitCount] = React.useState(0);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const scrollableDataTableRef = useRef<HTMLDivElement>(null);
 
   const {
     cursorPagination,
@@ -237,7 +248,21 @@ function BackendSearch({
   // Reset pagination when debounced search changes
   React.useEffect(() => {
     resetPagination();
-  }, [debouncedSearch, resetPagination]);
+    if (scrollableDataTableRef.current) {
+      scrollableDataTableRef.current.scrollTo({
+        top: 0,
+      });
+    }
+  }, [debouncedSearch, resetPagination, sorting]);
+
+  const handleSortingChange = useCallback(
+    (sorting: SortingState) => {
+      // Reset pagination early to avoid 2 queries being sent.
+      resetPagination();
+      setSorting(sorting);
+    },
+    [resetPagination, setSorting]
+  );
 
   const commonSearchParams = {
     owner,
@@ -253,6 +278,17 @@ function BackendSearch({
           }
         : undefined,
   };
+
+  const searchSort: SortingParams = useMemo(
+    () =>
+      sorting
+        .filter((sort) => SORTING_KEYS[sort.id])
+        .map((sort) => ({
+          field: SORTING_KEYS[sort.id],
+          direction: sort.desc ? "desc" : "asc",
+        })),
+    [sorting]
+  );
 
   // Use the spaces search hook for backend search with URL/node support
   const {
@@ -270,6 +306,7 @@ function BackendSearch({
             viewType,
             nodeOrUrlCandidate.node
           ),
+          searchSort,
         }
       : {
           ...commonSearchParams,
@@ -277,6 +314,7 @@ function BackendSearch({
           searchSourceUrls: isUrlCandidate(nodeOrUrlCandidate),
           includeDataSources: true,
           viewType,
+          searchSort,
         }
   );
 
@@ -404,6 +442,9 @@ function BackendSearch({
               onOpenDocument={handleOpenDocument}
               setEffectiveContentNode={setEffectiveContentNode}
               onClearSearch={handleClearSearch}
+              sorting={sorting}
+              setSorting={handleSortingChange}
+              scrollableDataTableRef={scrollableDataTableRef}
             />
           </div>
         ) : (
@@ -440,6 +481,7 @@ function FrontendSearch({
   parentId,
 }: FullFrontendSearchProps) {
   const { q: searchParam } = useQueryParams(["q"]);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const searchTerm = searchParam.value || "";
 
   return (
@@ -487,11 +529,14 @@ interface SearchResultsTableProps {
   owner: LightWorkspaceType;
   searchResultNodes: DataSourceViewContentNode[];
   totalNodesCount: number;
+  sorting: SortingState;
+  setSorting: (sorting: SortingState) => void;
   onLoadMore: () => void;
   isLoading: boolean;
   onOpenDocument?: (node: DataSourceViewContentNode) => void;
   setEffectiveContentNode: (node: DataSourceViewContentNode) => void;
   onClearSearch: () => void;
+  scrollableDataTableRef: React.Ref<HTMLDivElement>;
 }
 
 function SearchResultsTable({
@@ -502,11 +547,14 @@ function SearchResultsTable({
   owner,
   searchResultNodes,
   totalNodesCount,
+  sorting,
+  setSorting,
   onLoadMore,
   isLoading,
   onOpenDocument,
   setEffectiveContentNode,
   onClearSearch,
+  scrollableDataTableRef,
 }: SearchResultsTableProps) {
   const router = useRouter();
 
@@ -642,7 +690,10 @@ function SearchResultsTable({
 
   return (
     <ScrollableDataTable
+      containerRef={scrollableDataTableRef}
       data={rows}
+      sorting={sorting}
+      setSorting={setSorting}
       columns={makeColumnsForSearchResults()}
       className={cn(
         "pb-4",

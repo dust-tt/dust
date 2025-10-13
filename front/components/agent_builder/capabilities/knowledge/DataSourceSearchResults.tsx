@@ -1,8 +1,11 @@
+// All mime types are okay to use from the public API.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
-import { Checkbox, cn, DataTable, ScrollableDataTable } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import { cn } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 
+import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
@@ -19,7 +22,6 @@ import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { DataSourceViewContentNode } from "@app/types";
 import { isDataSourceViewCategoryWithoutApps } from "@app/types";
 
@@ -28,119 +30,6 @@ interface DataSourceSearchResultsProps {
   isLoading: boolean;
   onClearSearch: () => void;
   error?: Error | null;
-}
-
-interface SearchResultRowData extends DataSourceViewContentNode {
-  id: string;
-  icon: React.ComponentType;
-  location: string;
-  entry: NavigationHistoryEntryType;
-  onClick?: () => void;
-}
-
-function makeSearchResultColumnsWithSelection(
-  isRowSelected: (
-    rowId: string,
-    node: DataSourceViewContentNode
-  ) => boolean | "partial",
-  selectNode: (
-    entry: NavigationHistoryEntryType,
-    node: DataSourceViewContentNode
-  ) => void,
-  removeNode: (
-    entry: NavigationHistoryEntryType,
-    node: DataSourceViewContentNode
-  ) => void
-): ColumnDef<SearchResultRowData>[] {
-  return [
-    {
-      id: "selection",
-      header: "",
-      enableSorting: false,
-      enableHiding: false,
-      cell: ({ row }) => {
-        const selectionState = isRowSelected(row.original.id, row.original);
-
-        return (
-          <div className="flex h-full items-center">
-            <Checkbox
-              checked={selectionState}
-              onCheckedChange={(state) => {
-                if (selectionState === "partial" || state) {
-                  selectNode(row.original.entry, row.original);
-                } else {
-                  removeNode(row.original.entry, row.original);
-                }
-              }}
-            />
-          </div>
-        );
-      },
-    },
-    {
-      header: "Name",
-      accessorKey: "title",
-      id: "title",
-      enableSorting: false,
-      cell: ({ row }) => (
-        <DataTable.CellContent icon={row.original.icon}>
-          <DataTable.BasicCellContent
-            label={row.original.title}
-            tooltip={row.original.title}
-            className="p-0"
-          />
-        </DataTable.CellContent>
-      ),
-      meta: {
-        sizeRatio: 50,
-      },
-    },
-    {
-      header: "Location",
-      accessorKey: "location",
-      id: "location",
-      enableSorting: false,
-      cell: ({ row }) => {
-        const locationText =
-          row.original.dataSourceView.category === "folder"
-            ? row.original.dataSourceView.dataSource.name
-            : row.original.location;
-
-        return (
-          <DataTable.BasicCellContent
-            label={locationText}
-            tooltip={locationText}
-            className="pr-2"
-          />
-        );
-      },
-      meta: {
-        sizeRatio: 35,
-      },
-    },
-    {
-      header: "Last updated",
-      id: "lastUpdatedAt",
-      accessorKey: "lastUpdatedAt",
-      enableSorting: false,
-      cell: ({ row }) => (
-        <DataTable.BasicCellContent
-          className="justify-end"
-          label={
-            row.original.lastUpdatedAt
-              ? formatTimestampToFriendlyDate(
-                  row.original.lastUpdatedAt,
-                  "compact"
-                )
-              : "-"
-          }
-        />
-      ),
-      meta: {
-        sizeRatio: 15,
-      },
-    },
-  ];
 }
 
 export function DataSourceSearchResults({
@@ -169,22 +58,27 @@ export function DataSourceSearchResults({
         return [];
       }
 
-      // Build path using IDs: ["root", spaceId, category, dataSourceViewId, nodeId]
-      return [
+      // Build path using IDs: ["root", spaceId, category, dataSourceViewId, nodeId?]
+      // For full datasources, we stop at dataSourceViewId
+      const path = [
         "root",
         space.sId, // Use space ID, not name
         dataSourceView.category,
         dataSourceView.sId, // Use dataSourceView ID
-        node.internalId,
       ];
+
+      // Only add nodeId if this is not a full datasource
+      if (node.mimeType !== DATA_SOURCE_MIME_TYPE) {
+        path.push(node.internalId);
+      }
+
+      return path;
     },
     [spaces]
   );
 
-  // Custom isRowSelected for search results that uses the actual node path
   const isSearchRowSelected = useCallback(
-    (rowId: string, node: DataSourceViewContentNode) => {
-      // Return false if field is not available (not in form context)
+    (node: DataSourceViewContentNode) => {
       if (!field?.value) {
         return false;
       }
@@ -329,28 +223,30 @@ export function DataSourceSearchResults({
     }
   };
 
-  const searchTableRows = useMemo((): SearchResultRowData[] => {
-    return searchResults.map((node) => ({
-      ...node,
-      id: node.internalId,
-      icon: getVisualForDataSourceViewContentNode(node),
-      location: getLocationForDataSourceViewContentNode(node),
-      entry: createNavigationEntry(node),
-      onClick: node.expandable
-        ? () => handleSearchResultClick(node)
-        : undefined,
-    }));
-  }, [searchResults, handleSearchResultClick]);
+  const itemNodeMap = useMemo(() => {
+    const m = new Map<string, DataSourceViewContentNode>();
+    // Use composite ID to avoid collisions across data sources
+    for (const node of searchResults) {
+      const id = `${node.dataSourceView.sId}:${node.internalId}`;
+      m.set(id, node);
+    }
+    return m;
+  }, [searchResults]);
 
-  const columns = useMemo(
-    () =>
-      makeSearchResultColumnsWithSelection(
-        isSearchRowSelected,
-        selectSearchNode,
-        removeSearchNode
-      ),
-    [isSearchRowSelected, selectSearchNode, removeSearchNode]
-  );
+  const listItems: DataSourceListItem[] = useMemo(() => {
+    return searchResults.map((node) => {
+      const id = `${node.dataSourceView.sId}:${node.internalId}`;
+      return {
+        id,
+        title: node.title,
+        icon: getVisualForDataSourceViewContentNode(node),
+        onClick: node.expandable
+          ? () => handleSearchResultClick(node)
+          : undefined,
+        entry: createNavigationEntry(node),
+      } satisfies DataSourceListItem;
+    });
+  }, [searchResults, handleSearchResultClick]);
 
   if (!error && !isLoading && searchResults.length === 0) {
     return (
@@ -374,12 +270,45 @@ export function DataSourceSearchResults({
           Error searching results.
         </div>
       ) : (
-        <ScrollableDataTable
-          data={searchTableRows}
-          columns={columns}
+        <DataSourceList
+          items={listItems}
+          isLoading={isLoading}
           className={cn("pb-4", isLoading && "pointer-events-none opacity-50")}
-          totalRowCount={searchResults.length}
-          maxHeight
+          isItemSelected={(item) => {
+            const node = itemNodeMap.get(item.id);
+            if (!node) {
+              return false;
+            }
+
+            return isSearchRowSelected(node);
+          }}
+          onSelectionChange={async (item, selectionState, state) => {
+            const node = itemNodeMap.get(item.id);
+            if (!node) {
+              return;
+            }
+            if (selectionState === "partial" || state) {
+              selectSearchNode(item.entry, node);
+            } else {
+              removeSearchNode(item.entry, node);
+            }
+          }}
+          headerTitle="Name"
+          showSelectAllHeader={false}
+          additionalColumns={[
+            {
+              title: "Location",
+              render: (item) => {
+                const node = itemNodeMap.get(item.id);
+                if (!node) {
+                  return "";
+                }
+                return node.dataSourceView.category === "folder"
+                  ? node.dataSourceView.dataSource.name
+                  : getLocationForDataSourceViewContentNode(node);
+              },
+            },
+          ]}
         />
       )}
     </>

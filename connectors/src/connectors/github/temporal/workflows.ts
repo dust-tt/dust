@@ -18,6 +18,7 @@ import {
   getCodeSyncStatelessWorkflowId,
   getFullSyncWorkflowId,
   getReposSyncWorkflowId,
+  getRepoSyncWorkflowId,
 } from "./utils";
 
 const {
@@ -151,8 +152,7 @@ export async function githubReposSyncWorkflow(
   const promises: Promise<void>[] = [];
 
   for (const repo of repos) {
-    const reposSyncWorkflowId = getReposSyncWorkflowId(connectorId);
-    const childWorkflowId = `${reposSyncWorkflowId}-repo-${repo.id}`;
+    const childWorkflowId = getRepoSyncWorkflowId(connectorId, repo.id);
     promises.push(
       queue.add(() =>
         executeChild(githubRepoSyncWorkflow, {
@@ -506,6 +506,14 @@ export async function githubCodeSyncStatelessWorkflow({
     return;
   }
 
+  // upserting the root folder for the repository
+  await githubUpsertRepositoryFolderActivity({
+    connectorId,
+    repoId,
+    repoName,
+    repoLogin,
+  });
+
   // First, get the tar file from the GitHub API and upload it to GCS.
   const extractResult = await githubExtractToGcsActivity({
     connectorId,
@@ -607,6 +615,15 @@ export async function githubIssueSyncWorkflow(
       debounceCount += 1;
       continue;
     }
+
+    // upserting the root folder for the repository
+    await githubUpsertRepositoryFolderActivity({
+      connectorId,
+      repoId,
+      repoName,
+      repoLogin,
+    });
+
     await githubUpsertIssueActivity(
       connectorId,
       repoName,
@@ -642,6 +659,15 @@ export async function githubDiscussionSyncWorkflow(
       debounceCount += 1;
       continue;
     }
+
+    // upserting the root folder for the repository
+    await githubUpsertRepositoryFolderActivity({
+      connectorId,
+      repoId,
+      repoName,
+      repoLogin,
+    });
+
     await githubUpsertDiscussionActivity(
       connectorId,
       repoName,

@@ -1,3 +1,4 @@
+import type { RetryMessageResponseType } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -9,7 +10,7 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { AgentMessageType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
 import { isAgentMessageType } from "@app/types";
 
 export const PostRetryRequestBodySchema = t.union([
@@ -27,7 +28,7 @@ export const PostRetryRequestBodySchema = t.union([
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<{ message: AgentMessageType }>>,
+  res: NextApiResponse<WithAPIErrorResponse<RetryMessageResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   if (!(typeof req.query.cId === "string")) {

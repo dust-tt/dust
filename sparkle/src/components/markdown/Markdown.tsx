@@ -10,7 +10,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 
-import { Checkbox } from "@sparkle/components";
+import { Checkbox, Chip } from "@sparkle/components";
 import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
 import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
 import { LiBlock, OlBlock, UlBlock } from "@sparkle/components/markdown/List";
@@ -27,14 +27,18 @@ import {
 import { sanitizeContent } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
 
-const sizes = {
-  p: "s-copy-sm @sm:s-text-base @sm:s-leading-7",
+export const markdownHeaderClasses = {
   h1: "s-heading-2xl",
   h2: "s-heading-xl",
   h3: "s-heading-lg",
   h4: "s-text-base s-font-semibold",
   h5: "s-text-sm s-font-semibold",
   h6: "s-text-sm s-font-regular s-italic",
+};
+
+const sizes = {
+  p: "s-text-base s-leading-7",
+  ...markdownHeaderClasses,
 };
 
 function showUnsupportedDirective() {
@@ -219,26 +223,37 @@ export function Markdown({
 
   const rehypePlugins = [[rehypeKatex, { output: "mathml" }]] as PluggableList;
 
-  return (
-    <div className={cn("s-w-full", isStreaming ? "s-blinking-cursor" : "")}>
-      <MarkdownContentContext.Provider
-        value={{
-          content: processedContent,
-          isStreaming,
-          isLastMessage,
-        }}
-      >
-        <ReactMarkdown
-          linkTarget="_blank"
-          components={markdownComponents}
-          remarkPlugins={markdownPlugins}
-          rehypePlugins={rehypePlugins}
+  try {
+    return (
+      <div className="s-w-full">
+        <MarkdownContentContext.Provider
+          value={{
+            content: processedContent,
+            isStreaming,
+            isLastMessage,
+          }}
         >
-          {processedContent}
-        </ReactMarkdown>
-      </MarkdownContentContext.Provider>
-    </div>
-  );
+          <ReactMarkdown
+            linkTarget="_blank"
+            components={markdownComponents}
+            remarkPlugins={markdownPlugins}
+            rehypePlugins={rehypePlugins}
+          >
+            {processedContent}
+          </ReactMarkdown>
+        </MarkdownContentContext.Provider>
+      </div>
+    );
+  } catch (error) {
+    return (
+      <div className="s-w-full">
+        <Chip color="warning">
+          There was an error parsing this markdown content
+        </Chip>
+        {processedContent}
+      </div>
+    );
+  }
 }
 
 function LinkBlock({

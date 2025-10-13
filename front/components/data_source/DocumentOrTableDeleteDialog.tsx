@@ -24,12 +24,14 @@ interface DocumentOrTableDeleteDialogProps {
   dataSourceView: DataSourceViewType | null;
   owner: LightWorkspaceType;
   contentNode: LightContentNode | null;
+  onDeleteSuccess?: () => void;
 }
 
 export const DocumentOrTableDeleteDialog = ({
   dataSourceView,
   owner,
   contentNode,
+  onDeleteSuccess,
 }: DocumentOrTableDeleteDialogProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const params = useQueryParams(["viewType", DocumentDeletionKey]);
@@ -78,6 +80,11 @@ export const DocumentOrTableDeleteDialog = ({
           `Deletion of ${contentNode.type} ${contentNode.title} is ongoing, ` +
           `it will complete shortly.`,
       });
+
+      if (onDeleteSuccess) {
+        onDeleteSuccess();
+      }
+
       closeDialog();
     } catch (error) {
       sendNotification({

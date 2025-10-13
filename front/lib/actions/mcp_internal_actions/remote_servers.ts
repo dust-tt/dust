@@ -1,6 +1,5 @@
+import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPOAuthUseCase } from "@app/types";
-
-import type { InternalAllowedIconType } from "../mcp_icons";
 
 export type DefaultRemoteMCPServerConfig = {
   id: number;
@@ -207,6 +206,7 @@ export const getDefaultRemoteMCPServerByURL = (
   url: string | undefined
 ): DefaultRemoteMCPServerConfig | null => {
   return (
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     DEFAULT_REMOTE_MCP_SERVERS.find((server) => server.url === url) || null
   );
 };
@@ -214,6 +214,7 @@ export const getDefaultRemoteMCPServerByURL = (
 export const getDefaultRemoteMCPServerById = (
   id: number
 ): DefaultRemoteMCPServerConfig | null => {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return DEFAULT_REMOTE_MCP_SERVERS.find((server) => server.id === id) || null;
 };
 
@@ -221,6 +222,7 @@ export const getDefaultRemoteMCPServerByName = (
   name: string
 ): DefaultRemoteMCPServerConfig | null => {
   return (
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     DEFAULT_REMOTE_MCP_SERVERS.find((server) => server.name === name) || null
   );
 };

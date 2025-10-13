@@ -15,10 +15,6 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 export function getDefaultConfiguration(
   mcpServerView?: MCPServerViewType | null
 ): MCPServerConfigurationType {
-  const requirements = mcpServerView
-    ? getMCPServerRequirements(mcpServerView)
-    : null;
-
   const defaults: MCPServerConfigurationType = {
     mcpServerViewId: mcpServerView?.sId ?? "not-a-valid-sId",
     dataSourceConfigurations: null,
@@ -30,30 +26,57 @@ export function getDefaultConfiguration(
     dustAppConfiguration: null,
     jsonSchema: null,
     _jsonSchemaString: null,
+    secretName: null,
   };
 
-  if (!requirements) {
+  if (!mcpServerView) {
     return defaults;
   }
 
+  const {
+    requiredLists,
+    requiredEnums,
+    requiredBooleans,
+    requiredStrings,
+    requiredNumbers,
+  } = getMCPServerRequirements(mcpServerView);
+
   const additionalConfig: AdditionalConfigurationInBuilderType = {};
 
-  // Set default values only for boolean and enums
-  // Strings and numbers should be left empty to trigger validation
-  for (const { key } of requirements.requiredBooleans) {
-    set(additionalConfig, key, false);
+  for (const { key, default: defaultValue } of requiredBooleans) {
+    set(additionalConfig, key, defaultValue ?? false);
   }
 
-  for (const [key, { options: enumValues }] of Object.entries(
-    requirements.requiredEnums
+  for (const [key, { options, default: defaultValue }] of Object.entries(
+    requiredEnums
   )) {
-    if (enumValues.length > 0) {
-      set(additionalConfig, key, enumValues[0]);
+    if (defaultValue !== undefined) {
+      set(additionalConfig, key, defaultValue);
+    } else if (options.length > 0) {
+      set(additionalConfig, key, options[0].value);
     }
   }
 
-  for (const [key] of Object.entries(requirements.requiredLists)) {
-    set(additionalConfig, key, []);
+  for (const [key, { default: defaultValue }] of Object.entries(
+    requiredLists
+  )) {
+    set(
+      additionalConfig,
+      key,
+      defaultValue !== undefined ? [defaultValue] : []
+    );
+  }
+
+  for (const { key, default: defaultValue } of requiredStrings) {
+    if (defaultValue !== undefined) {
+      set(additionalConfig, key, defaultValue);
+    }
+  }
+
+  for (const { key, default: defaultValue } of requiredNumbers) {
+    if (defaultValue !== undefined) {
+      set(additionalConfig, key, defaultValue);
+    }
   }
 
   defaults.additionalConfiguration = additionalConfig;

@@ -17,6 +17,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { getAgentRoute } from "@app/lib/utils/router";
 import mainLogger from "@app/logger/logger";
 import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
 import {
@@ -41,6 +42,8 @@ import {
 import { Err } from "@app/types";
 import { CoreAPI } from "@app/types";
 
+class TranscriptNonRetryableError extends Error {}
+
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: string
 ): Promise<string[]> {
@@ -60,7 +63,7 @@ export async function retrieveNewTranscriptsActivity(
   }
 
   const localLogger = mainLogger.child({
-    transcriptsConfigurationId,
+    transcriptsConfigurationId: transcriptsConfiguration.id,
     transcriptsConfigurationSid: transcriptsConfiguration.sId,
   });
 
@@ -70,7 +73,7 @@ export async function retrieveNewTranscriptsActivity(
 
   if (!workspace) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    throw new Error(
+    throw new TranscriptNonRetryableError(
       `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
   }
@@ -80,8 +83,9 @@ export async function retrieveNewTranscriptsActivity(
   );
   if (!user) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    localLogger.error({}, "[retrieveNewTranscripts] User not found. Stopping.");
-    return [];
+    throw new TranscriptNonRetryableError(
+      `Could not find user for id ${transcriptsConfiguration.userId}.`
+    );
   }
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,
@@ -90,11 +94,9 @@ export async function retrieveNewTranscriptsActivity(
 
   if (!auth.workspace()) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    localLogger.error(
-      {},
-      "[retrieveNewTranscripts] Workspace not found. Stopping."
+    throw new TranscriptNonRetryableError(
+      `Workspace not found for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
-    return [];
   }
 
   const transcriptsIdsToProcess: string[] = [];
@@ -108,8 +110,9 @@ export async function retrieveNewTranscriptsActivity(
       );
       if (googleTranscriptsRes.isErr()) {
         await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-        await transcriptsConfiguration.setIsActive(false);
-        throw googleTranscriptsRes.error;
+        throw new TranscriptNonRetryableError(
+          `Error retrieving Google transcripts: ${googleTranscriptsRes.error.message}`
+        );
       }
       const googleTranscriptsIds = googleTranscriptsRes.value;
       transcriptsIdsToProcess.push(...googleTranscriptsIds);
@@ -215,7 +218,7 @@ export async function processTranscriptActivity(
 
   if (!workspace) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    throw new Error(
+    throw new TranscriptNonRetryableError(
       `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
   }
@@ -226,7 +229,7 @@ export async function processTranscriptActivity(
 
   if (!user) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    throw new Error(
+    throw new TranscriptNonRetryableError(
       `Could not find user for id ${transcriptsConfiguration.userId}.`
     );
   }
@@ -238,14 +241,14 @@ export async function processTranscriptActivity(
   const owner = auth.workspace();
   if (!owner) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    throw new Error(
+    throw new TranscriptNonRetryableError(
       `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
   }
 
   if (!auth.user() || !auth.isUser()) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    throw new Error(
+    throw new TranscriptNonRetryableError(
       `Could not find user for id ${transcriptsConfiguration.userId}.`
     );
   }
@@ -273,16 +276,16 @@ export async function processTranscriptActivity(
     return;
   }
 
+  localLogger.info(
+    {},
+    "[processTranscriptActivity] No history found. Starting to process transcript."
+  );
+
   let transcriptTitle = "";
   let transcriptContent = "";
   let userParticipated = true;
   let fileContentIsAccessible = true;
   let additionalTags: string[] = [];
-
-  localLogger.info(
-    {},
-    "[processTranscriptActivity] No history found. Proceeding."
-  );
 
   switch (transcriptsConfiguration.provider) {
     case "google_drive":
@@ -350,37 +353,6 @@ export async function processTranscriptActivity(
       "[processTranscriptActivity] File content is not accessible. Stopping."
     );
     return;
-  }
-
-  try {
-    const labsTranscriptsHistory = await transcriptsConfiguration.recordHistory(
-      {
-        fileId,
-        fileName: transcriptTitle.substring(0, 255),
-        workspace: owner,
-      }
-    );
-    localLogger.info(
-      {
-        labsTranscriptsHistoryId: labsTranscriptsHistory.id,
-        fileName: labsTranscriptsHistory.fileName,
-        fileId: labsTranscriptsHistory.fileId,
-        conversationId: labsTranscriptsHistory.conversationId,
-        stored: labsTranscriptsHistory.stored,
-        createdAt: labsTranscriptsHistory.createdAt,
-        updatedAt: labsTranscriptsHistory.updatedAt,
-      },
-      "[processTranscriptActivity] History record created."
-    );
-  } catch (error) {
-    if (error instanceof UniqueConstraintError) {
-      localLogger.info(
-        {},
-        "[processTranscriptActivity] History record already exists. Stopping."
-      );
-      return;
-    }
-    throw error;
   }
 
   let fullStorageDataSourceViewId = null;
@@ -730,7 +702,7 @@ export async function processTranscriptActivity(
       },
       subject: `[DUST] Transcripts - ${transcriptTitle.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")}`,
       body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
-    <a href="${config.getClientFacingUrl()}/w/${owner.sId}/assistant/${conversation.sId}"
+    <a href="${getAgentRoute(owner.sId, conversation.sId, config.getClientFacingUrl())}"
       style="display: inline-block;
               padding: 10px 20px;
               background-color: #000000;
@@ -750,5 +722,37 @@ export async function processTranscriptActivity(
       },
       "[processTranscriptActivity] Sent processed transcript email."
     );
+  }
+
+  // Mark file as processed only after all processing succeeds
+  try {
+    const labsTranscriptsHistory = await transcriptsConfiguration.recordHistory(
+      {
+        fileId,
+        fileName: transcriptTitle.substring(0, 255),
+        workspace: owner,
+      }
+    );
+    localLogger.info(
+      {
+        labsTranscriptsHistoryId: labsTranscriptsHistory.id,
+        fileName: labsTranscriptsHistory.fileName,
+        fileId: labsTranscriptsHistory.fileId,
+        conversationId: labsTranscriptsHistory.conversationId,
+        stored: labsTranscriptsHistory.stored,
+        createdAt: labsTranscriptsHistory.createdAt,
+        updatedAt: labsTranscriptsHistory.updatedAt,
+      },
+      "[processTranscriptActivity] History record created."
+    );
+  } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      localLogger.info(
+        {},
+        "[processTranscriptActivity] History record already exists. File was already processed successfully."
+      );
+      return;
+    }
+    throw error;
   }
 }

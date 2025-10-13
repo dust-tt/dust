@@ -12,6 +12,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
@@ -97,6 +98,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       includeConversationsSpace: true,
     });
     const systemSpace =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingSpaces.find((s) => s.isSystem()) ||
       (await SpaceResource.makeNew(
         {
@@ -109,6 +111,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ));
 
     const globalSpace =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingSpaces.find((s) => s.isGlobal()) ||
       (await SpaceResource.makeNew(
         {
@@ -121,6 +124,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ));
 
     const conversationsSpace =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingSpaces.find((s) => s.isConversations()) ||
       (await SpaceResource.makeNew(
         {
@@ -174,6 +178,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       {
         model: GroupResource.model,
       },
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ...(includes || []),
     ];
 
@@ -497,7 +502,22 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           await this.removeGroup(globalGroup);
         }
 
+        const previousManagementMode = this.managementMode;
         await this.update({ managementMode }, t);
+
+        // Handle member status updates based on management mode changes
+        if (previousManagementMode !== managementMode) {
+          if (managementMode === "group") {
+            // When switching to group mode, suspend all active members of the default group
+            await this.suspendDefaultGroupMembers(auth, t);
+          } else if (
+            managementMode === "manual" &&
+            previousManagementMode === "group"
+          ) {
+            // When switching from group to manual mode, restore suspended members
+            await this.restoreDefaultGroupMembers(auth, t);
+          }
+        }
 
         if (managementMode === "manual") {
           const memberIds = params.memberIds;
@@ -791,7 +811,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const groupFilter =
       this.managementMode === "manual"
         ? (group: GroupResource) => !group.isProvisioned()
-        : (group: GroupResource) => group.isProvisioned();
+        : () => true;
 
     // Open space.
     // Currently only using global group for simplicity.
@@ -894,6 +914,54 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   // Serialization.
+
+  /**
+   * Suspends all active members of the default group when switching to group management mode
+   */
+  private async suspendDefaultGroupMembers(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<void> {
+    const defaultSpaceGroup = this.getDefaultSpaceGroup();
+
+    await GroupMembershipModel.update(
+      { status: "suspended" },
+      {
+        where: {
+          groupId: defaultSpaceGroup.id,
+          workspaceId: this.workspaceId,
+          status: "active",
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+        transaction,
+      }
+    );
+  }
+
+  /**
+   * Restores all suspended members of the default group when switching to manual management mode
+   */
+  private async restoreDefaultGroupMembers(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<void> {
+    const defaultSpaceGroup = this.getDefaultSpaceGroup();
+
+    await GroupMembershipModel.update(
+      { status: "active" },
+      {
+        where: {
+          groupId: defaultSpaceGroup.id,
+          workspaceId: this.workspaceId,
+          status: "suspended",
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+        transaction,
+      }
+    );
+  }
 
   toJSON(): SpaceType {
     return {

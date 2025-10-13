@@ -9,43 +9,20 @@ import React, { useMemo } from "react";
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { ActionSpecification } from "@app/components/agent_builder/types";
-import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import {
   InternalActionIcons,
-  isCustomServerIconType,
-} from "@app/lib/actions/mcp_icons";
+  isCustomResourceIconType,
+} from "@app/components/resources/resources_icons";
+import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-
-interface DataVisualizationCardProps {
-  specification: ActionSpecification;
-  isSelected: boolean;
-  onClick: () => void;
-}
-
-function DataVisualizationCard({
-  specification,
-  isSelected,
-  onClick,
-}: DataVisualizationCardProps) {
-  return (
-    <ToolCard
-      icon={specification.dropDownIcon}
-      label={specification.label}
-      description={specification.description}
-      isSelected={isSelected}
-      canAdd={!isSelected}
-      onClick={onClick}
-      cardContainerClassName="h-36"
-    />
-  );
-}
+import type { WhitelistableFeature } from "@app/types";
 
 interface MCPServerCardProps {
   view: MCPServerViewTypeWithLabel;
   isSelected: boolean;
   onClick: () => void;
   onToolInfoClick: () => void;
+  featureFlags?: WhitelistableFeature[];
 }
 
 function MCPServerCard({
@@ -53,11 +30,12 @@ function MCPServerCard({
   isSelected,
   onClick,
   onToolInfoClick,
+  featureFlags,
 }: MCPServerCardProps) {
-  const requirement = getMCPServerRequirements(view);
-  const canAdd = requirement.noRequirement ? !isSelected : true;
+  const requirements = getMCPServerRequirements(view, featureFlags);
+  const canAdd = requirements.noRequirement ? !isSelected : true;
 
-  const icon = isCustomServerIconType(view.server.icon)
+  const icon = isCustomResourceIconType(view.server.icon)
     ? ActionIcons[view.server.icon]
     : InternalActionIcons[view.server.icon] || BookOpenIcon;
 
@@ -96,9 +74,10 @@ function MCPServerCard({
         onClick={onClick}
         cardContainerClassName="h-36"
         mountPortal
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         mountPortalContainer={containerRef.current || undefined}
         toolInfo={{
-          label: "Tool details",
+          label: "More info",
           onClick: onToolInfoClick,
         }}
       />
@@ -107,23 +86,25 @@ function MCPServerCard({
 }
 
 interface MCPServerSelectionPageProps {
-  defaultMcpServerViews: MCPServerViewTypeWithLabel[];
-  nonDefaultMcpServerViews: MCPServerViewTypeWithLabel[];
-  onItemClick: (mcpServerView: MCPServerViewType) => void;
+  topMCPServerViews: MCPServerViewTypeWithLabel[];
+  nonTopMCPServerViews: MCPServerViewTypeWithLabel[];
+  onItemClick: (mcpServerView: MCPServerViewTypeWithLabel) => void;
   dataVisualization?: ActionSpecification | null;
   onDataVisualizationClick?: () => void;
   selectedToolsInSheet?: SelectedTool[];
   onToolDetailsClick?: (tool: SelectedTool) => void;
+  featureFlags?: WhitelistableFeature[];
 }
 
 export function MCPServerSelectionPage({
-  defaultMcpServerViews,
-  nonDefaultMcpServerViews,
+  topMCPServerViews,
+  nonTopMCPServerViews,
   onItemClick,
   dataVisualization,
   onDataVisualizationClick,
   selectedToolsInSheet = [],
   onToolDetailsClick,
+  featureFlags,
 }: MCPServerSelectionPageProps) {
   // Optimize selection lookup with Set-based approach
   const selectedMCPIds = useMemo(() => {
@@ -136,15 +117,12 @@ export function MCPServerSelectionPage({
     return mcpIds;
   }, [selectedToolsInSheet]);
 
-  const isDataVisualizationSelected = selectedToolsInSheet.some(
-    (tool) => tool.type === "DATA_VISUALIZATION"
-  );
-
   const hasDataVisualization = dataVisualization && onDataVisualizationClick;
-  const hasDefaultViews = defaultMcpServerViews.length > 0;
-  const hasNonDefaultViews = nonDefaultMcpServerViews.length > 0;
+  const hasTopViews = topMCPServerViews.length > 0;
+  const hasNonTopViews = nonTopMCPServerViews.length > 0;
   const hasAnyResults =
-    hasDataVisualization || hasDefaultViews || hasNonDefaultViews;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    hasDataVisualization || hasTopViews || hasNonTopViews;
 
   if (!hasAnyResults) {
     return (
@@ -164,20 +142,13 @@ export function MCPServerSelectionPage({
   return (
     <>
       <div className="flex flex-col gap-4 py-2">
+        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
         {((dataVisualization && onDataVisualizationClick) ||
-          defaultMcpServerViews) && (
+          topMCPServerViews) && (
           <span className="text-lg font-semibold">Top tools</span>
         )}
         <div className="grid grid-cols-2 gap-3">
-          {dataVisualization && onDataVisualizationClick && (
-            <DataVisualizationCard
-              key="data-visualization"
-              specification={dataVisualization}
-              isSelected={isDataVisualizationSelected}
-              onClick={onDataVisualizationClick}
-            />
-          )}
-          {defaultMcpServerViews.map((view) => (
+          {topMCPServerViews.map((view) => (
             <MCPServerCard
               key={view.id}
               view={view}
@@ -188,14 +159,15 @@ export function MCPServerSelectionPage({
                   onToolDetailsClick({ type: "MCP", view });
                 }
               }}
+              featureFlags={featureFlags}
             />
           ))}
         </div>
-        {nonDefaultMcpServerViews.length ? (
+        {nonTopMCPServerViews.length ? (
           <span className="text-lg font-semibold">Other tools</span>
         ) : null}
         <div className="grid grid-cols-2 gap-3">
-          {nonDefaultMcpServerViews.map((view) => (
+          {nonTopMCPServerViews.map((view) => (
             <MCPServerCard
               key={view.id}
               view={view}
@@ -206,6 +178,7 @@ export function MCPServerSelectionPage({
                   onToolDetailsClick({ type: "MCP", view });
                 }
               }}
+              featureFlags={featureFlags}
             />
           ))}
         </div>

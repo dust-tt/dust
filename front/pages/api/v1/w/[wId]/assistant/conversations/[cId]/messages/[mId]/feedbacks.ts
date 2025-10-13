@@ -1,3 +1,4 @@
+import type { PostMessageFeedbackResponseType } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -12,8 +13,11 @@ import {
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { getUserEmailFromHeaders } from "@app/types/user";
 
 export const MessageFeedbackRequestBodySchema = t.type({
   thumbDirection: t.string,
@@ -134,14 +138,47 @@ export const MessageFeedbackRequestBodySchema = t.type({
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<{
-      success: boolean;
-    }>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<PostMessageFeedbackResponseType>>,
   auth: Authenticator
 ): Promise<void> {
-  const user = auth.getNonNullableUser();
+  // Try to get user from auth, or from email header if using API key
+  let userResource = auth.user();
+  let user = userResource ? userResource.toJSON() : null;
+
+  if (!user && auth.isKey()) {
+    // Check if we have a user email header (used by Slack integration)
+    const userEmail = getUserEmailFromHeaders(req.headers);
+    if (userEmail) {
+      // Find user by email
+      const users = await UserResource.listByEmail(userEmail);
+      if (users.length > 0) {
+        // Get the first user (there might be multiple with same email)
+        const workspace = auth.getNonNullableWorkspace();
+        for (const u of users) {
+          const memberships = await MembershipResource.getActiveMemberships({
+            users: [u],
+            workspace,
+          });
+          if (memberships.memberships.length > 0) {
+            userResource = u;
+            user = u.toJSON();
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (!user) {
+    return apiError(req, res, {
+      status_code: 401,
+      api_error: {
+        type: "not_authenticated",
+        message:
+          "The user does not have an active session or is not authenticated.",
+      },
+    });
+  }
 
   if (!(typeof req.query.cId === "string")) {
     return apiError(req, res, {
@@ -195,9 +232,10 @@ async function handler(
       const created = await upsertMessageFeedback(auth, {
         messageId,
         conversation,
-        user: user.toJSON(),
+        user,
         thumbDirection: bodyValidation.right
           .thumbDirection as AgentMessageFeedbackDirection,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         content: bodyValidation.right.feedbackContent || "",
         isConversationShared: bodyValidation.right.isConversationShared,
       });
@@ -218,7 +256,7 @@ async function handler(
       const deleted = await deleteMessageFeedback(auth, {
         messageId,
         conversation,
-        user: user.toJSON(),
+        user,
       });
 
       if (deleted) {

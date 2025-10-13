@@ -2,8 +2,9 @@ import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { normalizeError, type LightWorkspaceType } from "@app/types";
 import logger from "@app/logger/logger";
+import type { LightWorkspaceType } from "@app/types";
+import { normalizeError } from "@app/types";
 
 interface UseYAMLUploadOptions {
   owner: LightWorkspaceType;

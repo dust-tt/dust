@@ -18,9 +18,10 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { ModelId, Result } from "@app/types";
 import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
-import type { WebhookSourcesViewType } from "@app/types/triggers/webhooks";
+import type { WebhookSourceView } from "@app/types/triggers/webhooks";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -128,6 +129,8 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       {
         webhookSourceId: systemView.webhookSourceId,
         customName: systemView.customName,
+        description: systemView.description,
+        icon: normalizeWebhookIcon(systemView.icon),
       },
       space,
       auth.user() ?? undefined
@@ -147,6 +150,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       includes: [
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         ...(options.includes || []),
         {
           model: UserModel,
@@ -286,6 +290,27 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     });
   }
 
+  static async getWebhookSourceViewForSystemSpace(
+    auth: Authenticator,
+    webhookSourceSId: string
+  ): Promise<WebhookSourcesViewResource | null> {
+    const webhookSourceId = getResourceIdFromSId(webhookSourceSId);
+    if (!webhookSourceId) {
+      return null;
+    }
+
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+
+    const views = await this.baseFetch(auth, {
+      where: {
+        vaultId: systemSpace.id,
+        webhookSourceId,
+      },
+    });
+
+    return views[0] ?? null;
+  }
+
   public async updateName(
     auth: Authenticator,
     name?: string
@@ -301,6 +326,94 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       editedAt: new Date(),
       editedByUserId: auth.getNonNullableUser().id,
     });
+    return new Ok(affectedCount);
+  }
+
+  public static async bulkUpdateName(
+    auth: Authenticator,
+    viewIds: ModelId[],
+    name?: string
+  ): Promise<void> {
+    if (viewIds.length === 0) {
+      return;
+    }
+
+    await this.model.update(
+      {
+        customName: name ?? null,
+        editedAt: new Date(),
+        editedByUserId: auth.getNonNullableUser().id,
+      },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: {
+            [Op.in]: viewIds,
+          },
+        },
+      }
+    );
+  }
+
+  public static async bulkUpdateDescriptionAndIcon(
+    auth: Authenticator,
+    viewIds: ModelId[],
+    description?: string,
+    icon?: string
+  ): Promise<void> {
+    if (viewIds.length === 0) {
+      return;
+    }
+
+    const updateData: Partial<Attributes<WebhookSourcesViewModel>> = {
+      editedAt: new Date(),
+      editedByUserId: auth.getNonNullableUser().id,
+    };
+
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+    if (icon !== undefined) {
+      updateData.icon = normalizeWebhookIcon(icon);
+    }
+
+    await this.model.update(updateData, {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: {
+          [Op.in]: viewIds,
+        },
+      },
+    });
+  }
+
+  public async updateDescriptionAndIcon(
+    auth: Authenticator,
+    description?: string,
+    icon?: string
+  ): Promise<Result<number, DustError<"unauthorized">>> {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Not allowed to update description and icon."
+        )
+      );
+    }
+
+    const updateData: Partial<Attributes<WebhookSourcesViewModel>> = {
+      editedAt: new Date(),
+      editedByUserId: auth.getNonNullableUser().id,
+    };
+
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+    if (icon !== undefined) {
+      updateData.icon = normalizeWebhookIcon(icon);
+    }
+
+    const [affectedCount] = await this.update(updateData);
     return new Ok(affectedCount);
   }
 
@@ -405,11 +518,13 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
   }
 
   // Serialization.
-  toJSON(): WebhookSourcesViewType {
+  toJSON(): WebhookSourceView {
     return {
       id: this.id,
       sId: this.sId,
       customName: this.customName,
+      description: this.description,
+      icon: normalizeWebhookIcon(this.icon),
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,

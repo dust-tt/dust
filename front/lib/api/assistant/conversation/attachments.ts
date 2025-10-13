@@ -1,4 +1,6 @@
-import { assertNever, CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
+// All mime types are okay to use from the public API.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
 
 import {
   isConversationIncludableFileContentType,
@@ -17,6 +19,7 @@ import type {
   SupportedFileContentType,
 } from "@app/types";
 import {
+  assertNever,
   DATA_SOURCE_NODE_ID,
   isContentNodeContentFragment,
   isFileContentFragment,

@@ -31,9 +31,9 @@ export function validateMCPActionConfiguration(
   serverView: MCPServerViewType
 ): { isValid: boolean; errorMessage?: string } {
   try {
-    const requirements = getMCPServerRequirements(serverView);
+    const { noRequirement } = getMCPServerRequirements(serverView);
 
-    if (requirements.noRequirement) {
+    if (noRequirement) {
       return { isValid: true };
     }
 

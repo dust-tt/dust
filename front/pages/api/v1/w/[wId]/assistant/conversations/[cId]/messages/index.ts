@@ -18,7 +18,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { UserMessageContext, WithAPIErrorResponse } from "@app/types";
 import { isEmptyString } from "@app/types";
-import { ExecutionModeSchema } from "@app/types/assistant/agent_run";
 
 /**
  * @swagger
@@ -103,13 +102,6 @@ async function handler(
         });
       }
 
-      const executionModeParseResult = ExecutionModeSchema.safeParse(
-        req.query.execution
-      );
-      const executionMode = executionModeParseResult.success
-        ? executionModeParseResult.data
-        : undefined;
-
       const hasReachedLimits = await hasReachedPublicAPILimits(auth);
       if (hasReachedLimits) {
         return apiError(req, res, {
@@ -170,11 +162,24 @@ async function handler(
         }
       }
 
+      const isRunAgent =
+        context.origin === "run_agent" || context.origin === "agent_handover";
+      if (isRunAgent && !auth.isSystemKey()) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Messages from run_agent or agent_handover must come from a system key.",
+          },
+        });
+      }
       const ctx: UserMessageContext = {
         clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
         email: context.email?.toLowerCase() ?? null,
         fullName: context.fullName ?? null,
         origin: context.origin ?? "api",
+        originMessageId: context.originMessageId ?? null,
         profilePictureUrl: context.profilePictureUrl ?? null,
         timezone: context.timezone,
         username: context.username,
@@ -186,7 +191,6 @@ async function handler(
               content,
               context: ctx,
               conversation,
-              executionMode,
               mentions,
               skipToolsValidation: skipToolsValidation ?? false,
             })
@@ -194,7 +198,6 @@ async function handler(
               content,
               context: ctx,
               conversation,
-              executionMode,
               mentions,
               skipToolsValidation: skipToolsValidation ?? false,
             });
@@ -204,7 +207,7 @@ async function handler(
 
       res.status(200).json({
         message: messageRes.value.userMessage,
-        agentMessages: messageRes.value.agentMessages ?? undefined,
+        agentMessages: messageRes.value.agentMessages,
       });
       return;
 
