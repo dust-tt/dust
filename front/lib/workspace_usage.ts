@@ -626,7 +626,8 @@ export async function getAssistantsUsageData(
              LEFT JOIN "users" u ON um."userId" = u."id"
              JOIN "agent_configurations" ac ON a."agentConfigurationId" = ac."sId"
              JOIN "users" aut ON ac."authorId" = aut."id"
-      WHERE a."createdAt" BETWEEN :startDate AND :endDate
+      WHERE a."status" = 'succeeded'
+        AND a."createdAt" BETWEEN :startDate AND :endDate
         AND ac."workspaceId" = :wId
         AND ac."status" = 'active'
         AND ac."scope" != 'hidden'
