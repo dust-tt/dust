@@ -61,7 +61,7 @@ import {
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useAgentMessageStreamVirtuoso } from "@app/hooks/useAgentMessageStreamVirtuoso";
+import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { useCancelMessage } from "@app/lib/swr/conversations";
 import { useConversationMessage } from "@app/lib/swr/conversations";
@@ -92,7 +92,7 @@ interface AgentMessageProps {
   user: UserType;
 }
 
-export function AgentMessageVirtuoso({
+export function AgentMessage({
   conversationId,
   isLastMessage,
   messageStreamState,
@@ -133,7 +133,7 @@ export function AgentMessageVirtuoso({
     },
   });
 
-  const { shouldStream } = useAgentMessageStreamVirtuoso({
+  const { shouldStream } = useAgentMessageStream({
     messageStreamState,
     conversationId,
     owner,

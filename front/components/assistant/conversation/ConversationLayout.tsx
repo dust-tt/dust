@@ -46,7 +46,7 @@ export interface ConversationLayoutProps {
   isAdmin: boolean;
 }
 
-export default function ConversationLayoutVirtuoso({
+export function ConversationLayout({
   children,
   pageProps,
 }: {

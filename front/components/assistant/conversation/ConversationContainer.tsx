@@ -12,9 +12,9 @@ import { AgentBrowserContainer } from "@app/components/assistant/conversation/Ag
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import ConversationViewerVirtuoso from "@app/components/assistant/conversation/ConversationViewerVirtuoso";
+import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
-import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
@@ -26,6 +26,7 @@ import {
   useConversationMessages,
   useConversations,
 } from "@app/lib/swr/conversations";
+import { classNames } from "@app/lib/utils";
 import { getAgentRoute } from "@app/lib/utils/router";
 import type {
   ContentFragmentsType,
@@ -193,7 +194,7 @@ export function ConversationContainerVirtuoso({
     >
       {activeConversationId ? (
         <>
-          <ConversationViewerVirtuoso
+          <ConversationViewer
             owner={owner}
             user={user}
             conversationId={activeConversationId}
@@ -228,12 +229,21 @@ export function ConversationContainerVirtuoso({
           >
             <Page.Header title={greeting} />
           </div>
-          <FixedAssistantInputBar
-            owner={owner}
-            onSubmit={handleConversationCreation}
-            conversationId={null}
-            disable={false}
-          />
+          <div
+            className={classNames(
+              "max-h-dvh sticky bottom-0 z-20 flex w-full",
+              "pb-2",
+              "sm:w-full sm:max-w-3xl sm:pb-4"
+            )}
+          >
+            <InputBar
+              owner={owner}
+              onSubmit={handleConversationCreation}
+              conversationId={null}
+              disable={false}
+              disableAutoFocus={false}
+            />
+          </div>
           <AgentBrowserContainer
             onAgentConfigurationClick={(agentId) => {
               setSelectedAssistant({ configurationId: agentId });

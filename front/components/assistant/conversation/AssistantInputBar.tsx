@@ -11,7 +11,7 @@ import {
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
@@ -25,7 +25,7 @@ import { isAgentMention } from "@app/types";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
-export const AssistantInputBarVirtuoso = ({
+export const AssistantInputBar = ({
   context,
 }: {
   context: VirtuosoMessageListContext;
@@ -166,7 +166,7 @@ export const AssistantInputBarVirtuoso = ({
           />
         )}
       </div>
-      <AssistantInputBar
+      <InputBar
         owner={context.owner}
         onSubmit={context.handleSubmit}
         stickyMentions={agentMentions}

@@ -1,7 +1,7 @@
 import React from "react";
 import { useSWRConfig } from "swr";
 
-import { AgentMessageVirtuoso } from "@app/components/assistant/conversation/AgentMessageVirtuoso";
+import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { contentFragmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -31,7 +31,7 @@ interface MessageItemProps {
   prevData: VirtuosoMessage | null;
 }
 
-const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
+export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
     { data, context, prevData, nextData }: MessageItemProps,
     ref
@@ -153,7 +153,7 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
             />
           )}
           {isMessageTemporayState(data) && (
-            <AgentMessageVirtuoso
+            <AgentMessage
               user={context.user}
               conversationId={context.conversationId}
               isLastMessage={!nextData}
@@ -167,5 +167,3 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
     );
   }
 );
-
-export default MessageItemVirtuoso;

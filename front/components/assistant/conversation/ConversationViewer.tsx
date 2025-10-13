@@ -16,7 +16,7 @@ import React, {
   useState,
 } from "react";
 
-import { AssistantInputBarVirtuoso } from "@app/components/assistant/conversation/AssistantInputBarVirtuoso";
+import { AssistantInputBar } from "@app/components/assistant/conversation/AssistantInputBar";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
@@ -25,7 +25,7 @@ import {
   createPlaceholderUserMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
-import MessageItemVirtuoso from "@app/components/assistant/conversation/MessageItemVirtuoso";
+import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
@@ -99,7 +99,7 @@ function customSmoothScroll() {
  * @param isInModal is the conversation happening in a side modal, i.e. when testing an assistant?
  * @returns
  */
-const ConversationViewerVirtuoso = ({
+export const ConversationViewer = ({
   owner,
   user,
   conversationId,
@@ -600,8 +600,8 @@ const ConversationViewerVirtuoso = ({
             behavior: "instant",
           }}
           ref={ref}
-          ItemContent={MessageItemVirtuoso}
-          StickyFooter={AssistantInputBarVirtuoso}
+          ItemContent={MessageItem}
+          StickyFooter={AssistantInputBar}
           // Note: do NOT put any verticalpadding here as it will mess with the auto scroll to bottom.
           className={classNames(
             "dd-privacy-mask",
@@ -623,8 +623,6 @@ const ConversationViewerVirtuoso = ({
     </>
   );
 };
-
-export default ConversationViewerVirtuoso;
 
 const convertLightMessageTypeToVirtuosoMessages = (
   messages: LightMessageType[]
