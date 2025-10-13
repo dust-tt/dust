@@ -22,10 +22,10 @@ const streamingMessages = new Map<string, string>(); // conversationId -> activi
 
 // CloudAdapter configuration - simplified for incoming message validation only
 const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication({
-  MicrosoftAppId: process.env.BOT_ID,
-  MicrosoftAppPassword: process.env.BOT_PASSWORD,
+  MicrosoftAppId: process.env.MICROSOFT_BOT_ID,
+  MicrosoftAppPassword: process.env.MICROSOFT_BOT_PASSWORD,
   MicrosoftAppType: "MultiTenant",
-  MicrosoftAppTenantId: process.env.BOT_TENANT_ID,
+  MicrosoftAppTenantId: process.env.MICROSOFT_BOT_TENANT_ID,
 });
 
 const adapter = new CloudAdapter(botFrameworkAuthentication);
@@ -36,8 +36,8 @@ adapter.onTurnError = async (context, error) => {
     {
       error: error.message,
       stack: error.stack,
-      botId: process.env.BOT_ID,
-      hasPassword: !!process.env.BOT_PASSWORD,
+      botId: process.env.MICROSOFT_BOT_ID,
+      hasPassword: !!process.env.MICROSOFT_BOT_PASSWORD,
     },
     "Bot Framework adapter error"
   );
@@ -187,8 +187,8 @@ async function handleTextMessage(
         conversationId: context.activity.conversation?.id,
         cardType: "ThinkingCard",
         credentials: {
-          hasAppId: !!process.env.BOT_ID,
-          hasAppPassword: !!process.env.BOT_PASSWORD,
+          hasAppId: !!process.env.MICROSOFT_BOT_ID,
+          hasAppPassword: !!process.env.MICROSOFT_BOT_PASSWORD,
         },
       },
       "About to send thinking card to Bot Framework"

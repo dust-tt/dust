@@ -5,7 +5,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 // Check if required environment variables are set
-const requiredEnvs = ['BOT_ID'];
+const requiredEnvs = ['MICROSOFT_BOT_ID'];
 const missingEnvs = requiredEnvs.filter(env => !process.env[env]);
 
 if (missingEnvs.length > 0) {
@@ -17,9 +17,9 @@ if (missingEnvs.length > 0) {
 
 const crypto = require('crypto');
 
-const BOT_ID = process.env.BOT_ID;
-const BOT_NAME = process.env.BOT_NAME || 'dust';
-const APP_ID = process.env.TEAMS_APP_ID || generateUUID();
+const BOT_ID = process.env.MICROSOFT_BOT_ID;
+const BOT_NAME = process.env.MICROSOFT_BOT_NAME || 'dust';
+const APP_ID = process.env.MICROSOFT_BOT_APP_ID || generateUUID();
 
 console.log('🚀 Creating Teams app package...');
 

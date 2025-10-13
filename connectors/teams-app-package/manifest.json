@@ -2,10 +2,10 @@
     "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.21/MicrosoftTeams.schema.json",
     "version": "1.0.0",
     "manifestVersion": "1.21",
-    "id": "<APP_ID>",
+    "id": "<MICROSOFT_BOT_APP_ID>",
     "name": {
-        "short": "<BOT_NAME>",
-        "full": "<BOT_NAME>"
+        "short": "<MICROSOFT_BOT_NAME>",
+        "full": "<MICROSOFT_BOT_NAME>"
     },
     "developer": {
         "name": "Dust",
@@ -24,7 +24,7 @@
     "accentColor": "#FF6B47",
     "bots": [
         {
-            "botId": "<BOT_ID>",
+            "botId": "<MICROSOFT_BOT_ID>",
             "scopes": [
                 "personal",
                 "team",
@@ -70,7 +70,7 @@
     ],
     "composeExtensions": [
         {
-            "botId": "<BOT_ID>",
+            "botId": "<MICROSOFT_BOT_ID>",
             "commands": [
                 {
                     "id": "searchAgents",

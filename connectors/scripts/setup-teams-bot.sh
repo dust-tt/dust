@@ -160,10 +160,10 @@ fi
 
 # Create new .env file
 cat > "$ENV_FILE" << EOF
-export BOT_NAME=$BOT_NAME
-export BOT_ID=$APP_ID
-export BOT_PASSWORD=$APP_PASSWORD
-export BOT_TENANT_ID=$TENANT_ID
+export MICROSOFT_BOT_NAME=$BOT_NAME
+export MICROSOFT_BOT_ID=$APP_ID
+export MICROSOFT_BOT_PASSWORD=$APP_PASSWORD
+export MICROSOFT_BOT_TENANT_ID=$TENANT_ID
 export WEBHOOK_SECRET=$WEBHOOK_SECRET
 EOF
 
@@ -182,7 +182,7 @@ print_status "✅ Teams channel enabled"
 print_status "✅ Environment variables configured"
 echo ""
 print_warning "📋 Next Steps:"
-echo "   1. Source the .env file: source .env (if needed, copy to your global env file)"
+echo "   1. Add content of .env file to your global env file"
 echo "   2. Restart connectors service with new env"
 echo "   3. Deploy the Teams app package teams-app-package/teams-app.zip to Teams: https://dev.teams.microsoft.com/apps"
 echo ""
