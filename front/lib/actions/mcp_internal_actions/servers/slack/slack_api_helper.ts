@@ -143,7 +143,10 @@ export async function executePostMessage(
     if (!channel) {
       return new Err(
         new MCPError(
-          `Unable to resolve channel id for "${to}". Please use a channel id or a valid channel name.`
+          `Unable to resolve channel id for "${to}". Please use a channel id or a valid channel name.`,
+          {
+            tracked: false,
+          }
         )
       );
     }
