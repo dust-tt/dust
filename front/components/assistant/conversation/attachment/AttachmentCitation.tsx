@@ -16,20 +16,19 @@ import {
   isAudioContentType,
   isTextualContentType,
 } from "@app/components/assistant/conversation/attachment/utils";
-import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { LightWorkspaceType } from "@app/types";
 import { isSupportedImageContentType } from "@app/types";
 
 interface AttachmentCitationProps {
   owner: LightWorkspaceType;
   attachmentCitation: AttachmentCitation;
-  fileUploaderService: FileUploaderService;
+  conversationId: string | null;
 }
 
 export function AttachmentCitation({
   owner,
   attachmentCitation,
-  fileUploaderService,
+  conversationId,
 }: AttachmentCitationProps) {
   const [viewerOpen, setViewerOpen] = useState(false);
 
@@ -120,7 +119,7 @@ export function AttachmentCitation({
           setViewerOpen={setViewerOpen}
           viewerOpen={viewerOpen}
           attachmentCitation={attachmentCitation}
-          fileUploaderService={fileUploaderService}
+          conversationId={conversationId}
           owner={owner}
         />
       )}

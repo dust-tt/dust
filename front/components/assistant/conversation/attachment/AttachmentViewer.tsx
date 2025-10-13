@@ -13,7 +13,7 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import type { FileAttachmentCitation } from "@app/components/assistant/conversation/attachment/types";
 import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
-import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import {
   getFileDownloadUrl,
   getFileViewUrl,
@@ -26,15 +26,22 @@ export const AttachmentViewer = ({
   viewerOpen,
   setViewerOpen,
   attachmentCitation,
-  fileUploaderService,
+  conversationId,
   owner,
 }: {
   viewerOpen: boolean;
   setViewerOpen: (open: boolean) => void;
   attachmentCitation: FileAttachmentCitation;
-  fileUploaderService: FileUploaderService;
+  conversationId: string | null;
   owner: LightWorkspaceType;
 }) => {
+  const fileUploaderService = useFileUploaderService({
+    owner: owner,
+    useCase: "conversation",
+    useCaseMetadata: {
+      conversationId: conversationId ?? undefined,
+    },
+  });
   const [text, setText] = useState<string | undefined>();
 
   const isAudio = isAudioContentType(attachmentCitation);
