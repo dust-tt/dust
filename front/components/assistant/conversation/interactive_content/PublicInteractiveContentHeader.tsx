@@ -13,7 +13,6 @@ import type { UserTypeWithWorkspaces } from "@app/types";
 interface PublicInteractiveContentHeaderProps {
   title: string;
   user: UserTypeWithWorkspaces | null;
-  workspaceId?: string;
   conversationUrl: string | null;
 }
 
@@ -24,7 +23,6 @@ interface PublicInteractiveContentHeaderProps {
 export function PublicInteractiveContentHeader({
   title,
   user,
-  workspaceId,
   conversationUrl,
 }: PublicInteractiveContentHeaderProps) {
   return (
@@ -56,7 +54,7 @@ export function PublicInteractiveContentHeader({
               className="hidden sm:flex"
             />
           )}
-          {user && workspaceId && conversationUrl && (
+          {user && conversationUrl && (
             <Button
               label="Go to conversation"
               href={conversationUrl}
