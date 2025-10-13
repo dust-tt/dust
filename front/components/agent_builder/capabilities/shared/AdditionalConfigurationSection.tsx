@@ -72,7 +72,7 @@ function BooleanConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="cursor-help text-gray-400 hover:text-gray-600"
+                className="cursor-help text-gray-400 hover:text-gray-600 dark:text-gray-400-night dark:hover:text-gray-600-night"
               />
             }
             label={description}
@@ -129,7 +129,7 @@ function NumberConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="cursor-help text-gray-400 hover:text-gray-600"
+                className="cursor-help text-gray-400 hover:text-gray-600 dark:text-gray-400-night dark:hover:text-gray-600-night"
               />
             }
             label={description}
@@ -192,7 +192,7 @@ function StringConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="cursor-help text-gray-400 hover:text-gray-600"
+                className="cursor-help text-gray-400 hover:text-gray-600 dark:text-gray-400-night dark:hover:text-gray-600-night"
               />
             }
             label={description}
@@ -266,7 +266,7 @@ function EnumConfigurationInput({
                 <Icon
                   visual={InformationCircleIcon}
                   size="xs"
-                  className="cursor-help text-gray-400 hover:text-gray-600"
+                  className="cursor-help text-gray-400 hover:text-gray-600 dark:text-gray-400-night dark:hover:text-gray-600-night"
                 />
               }
               label={description}
@@ -302,7 +302,9 @@ function EnumConfigurationInput({
         </div>
       </div>
       {currentDescription && (
-        <div className="mt-1 text-sm text-gray-600">{currentDescription}</div>
+        <div className="mt-1 text-sm text-gray-600 dark:text-gray-600-night">
+          {currentDescription}
+        </div>
       )}
     </div>
   );
@@ -657,23 +659,21 @@ export function AdditionalConfigurationSection({
   }
 
   return (
-    <>
-      <ConfigurationSectionContainer
-        title="Additional configuration"
-        description="Configure additional parameters required by this action."
-      >
-        {allPrefixes.map((prefix) => (
-          <GroupedConfigurationSection
-            key={prefix || "general"}
-            prefix={prefix}
-            stringConfigurations={groupedStrings[prefix] || []}
-            numberConfigurations={groupedNumbers[prefix] || []}
-            booleanConfigurations={groupedBooleans[prefix] || []}
-            enumConfigurations={groupedEnums[prefix] || {}}
-            listConfigurations={groupedLists[prefix] || {}}
-          />
-        ))}
-      </ConfigurationSectionContainer>
-    </>
+    <ConfigurationSectionContainer
+      title="Additional configuration"
+      description="Configure additional parameters required by this action."
+    >
+      {allPrefixes.map((prefix) => (
+        <GroupedConfigurationSection
+          key={prefix || "general"}
+          prefix={prefix}
+          stringConfigurations={groupedStrings[prefix] || []}
+          numberConfigurations={groupedNumbers[prefix] || []}
+          booleanConfigurations={groupedBooleans[prefix] || []}
+          enumConfigurations={groupedEnums[prefix] || {}}
+          listConfigurations={groupedLists[prefix] || {}}
+        />
+      ))}
+    </ConfigurationSectionContainer>
   );
 }
