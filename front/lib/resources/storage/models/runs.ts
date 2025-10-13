@@ -11,6 +11,7 @@ export class RunModel extends WorkspaceAwareModel<RunModel> {
 
   declare dustRunId: string;
   declare runType: string;
+  declare useWorkspaceCredentials: boolean | null;
 
   declare appId: ForeignKey<AppModel["id"]>;
 
@@ -36,6 +37,10 @@ RunModel.init(
     runType: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    useWorkspaceCredentials: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
     },
   },
   {
