@@ -18,7 +18,7 @@ import { InputBar } from "@app/components/assistant/conversation/input_bar/Input
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type { Result, RoleType, UserType, WorkspaceType } from "@app/types";
 import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
 
@@ -160,7 +160,7 @@ export function HelpDrawer({
         });
       } else {
         // We start the push before creating the message to optimize for instantaneity as well.
-        void router.push(getAgentRoute(owner.sId, conversationRes.value.sId));
+        void router.push(getConversationRoute(owner.sId, conversationRes.value.sId));
         return new Ok(undefined);
       }
     },

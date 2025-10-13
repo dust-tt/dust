@@ -174,11 +174,11 @@ export function UserMenu({
               <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
-                  {router.route === "/w/[wId]/agent/[cId]" && (
+                  {router.route === "/w/[wId]/conversation/[cId]" && (
                     <DropdownMenuItem
                       label="Debug conversation"
                       onClick={() => {
-                        const regexp = new RegExp(`/w/([^/]+)/agent/([^/]+)`);
+                        const regexp = new RegExp(`/w/([^/]+)/conversation/([^/]+)`);
                         const match = window.location.href.match(regexp);
                         if (match) {
                           window.open(

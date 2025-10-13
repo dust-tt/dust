@@ -15,7 +15,7 @@ import { useRouter } from "next/router";
 import React from "react";
 
 import { useURLSheet } from "@app/hooks/useURLSheet";
-import { getAgentRoute, setQueryParam } from "@app/lib/utils/router";
+import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
 interface MentionComponentProps {
@@ -40,7 +40,7 @@ export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
     if (!owner) {
       return;
     }
-    await router.push(getAgentRoute(owner.sId, "new", `agent=${agentSId}`));
+    await router.push(getConversationRoute(owner.sId, "new", `agent=${agentSId}`));
   };
 
   const handleSeeDetails = () => {

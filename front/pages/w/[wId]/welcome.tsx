@@ -19,7 +19,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { usePatchUser } from "@app/lib/swr/user";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type { UserType, WorkspaceType } from "@app/types";
 import type { JobType } from "@app/types/job_type";
 import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/job_type";
@@ -103,7 +103,7 @@ export default function Welcome({
     const queryParams = `welcome=true${
       conversationId ? `&cId=${conversationId}` : ""
     }`;
-    await router.push(getAgentRoute(owner.sId, "new", queryParams));
+    await router.push(getConversationRoute(owner.sId, "new", queryParams));
   });
 
   return (

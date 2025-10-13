@@ -19,7 +19,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   AgentMention,
   MentionType,
@@ -48,7 +48,7 @@ export function HelpDropdown({
     } else {
       // Otherwise we just push the route and prefill the input bar with the @help mention.
       void router.push(
-        getAgentRoute(owner.sId, "new", `agent=${GLOBAL_AGENTS_SID.HELPER}`)
+        getConversationRoute(owner.sId, "new", `agent=${GLOBAL_AGENTS_SID.HELPER}`)
       );
     }
   };

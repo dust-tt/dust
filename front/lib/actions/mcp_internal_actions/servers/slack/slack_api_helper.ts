@@ -11,7 +11,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { removeDiacritics } from "@app/lib/utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
 
@@ -98,7 +98,7 @@ export async function executePostMessage(
   const slackClient = await getSlackClient(accessToken);
   const originalMessage = message;
 
-  const agentUrl = getAgentRoute(
+  const agentUrl = getConversationRoute(
     auth.getNonNullableWorkspace().sId,
     "new",
     `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,

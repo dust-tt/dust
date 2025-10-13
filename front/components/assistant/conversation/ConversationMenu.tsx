@@ -27,7 +27,7 @@ import {
   useJoinConversation,
 } from "@app/lib/swr/conversations";
 import { useUser } from "@app/lib/swr/user";
-import { getAgentRoute, setQueryParam } from "@app/lib/utils/router";
+import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
@@ -157,7 +157,7 @@ export function ConversationMenu({
   const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   const shareLink =
     baseUrl !== undefined
-      ? getAgentRoute(owner.sId, activeConversationId, undefined, baseUrl)
+      ? getConversationRoute(owner.sId, activeConversationId, undefined, baseUrl)
       : undefined;
 
   const doDelete = useDeleteConversation(owner);
@@ -165,7 +165,7 @@ export function ConversationMenu({
     const res = await doDelete(conversation);
     isConversationDisplayed &&
       res &&
-      void router.push(getAgentRoute(owner.sId));
+      void router.push(getConversationRoute(owner.sId));
   }, [conversation, doDelete, owner.sId, router, isConversationDisplayed]);
 
   const copyConversationLink = useCallback(async () => {
