@@ -15,8 +15,8 @@ import {
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import {
-  DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
+  DEEP_DIVE_SERVER_INSTRUCTIONS,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import type {
   InternalMCPServerDefinitionType,
@@ -934,11 +934,11 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "deep_dive",
       version: "0.1.0",
-      description: `Handoff the query to the @${DEEP_DIVE_NAME} agent.`,
+      description: `Launch a handoff of the user's query to the @${DEEP_DIVE_NAME} agent.`,
       authorization: null,
       icon: "ActionAtomIcon",
       documentationUrl: null,
-      instructions: `This tool performs a complete handoff to the @${DEEP_DIVE_NAME} agent: ${DEEP_DIVE_DESC}`,
+      instructions: DEEP_DIVE_SERVER_INSTRUCTIONS,
     },
   },
   slack_bot: {
