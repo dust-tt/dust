@@ -129,24 +129,25 @@ export function EditorsSheet() {
       });
     });
 
-    allMembers.forEach((member) => {
-      if (!memberMap.has(member.sId)) {
-        memberMap.set(member.sId, {
-          sId: member.sId,
-          fullName: member.fullName,
-          email: member.email,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          image: member.image || "",
-          isEditor: localEditorsSet.has(member.sId),
-          onToggleEditor: localEditorsSet.has(member.sId)
-            ? () => onRemoveEditor(member)
-            : () => onAddEditor(member),
-        });
-      }
-    });
+    if (searchTerm) {
+      allMembers.forEach((member) => {
+        if (!memberMap.has(member.sId)) {
+          memberMap.set(member.sId, {
+            sId: member.sId,
+            fullName: member.fullName,
+            email: member.email,
+            image: member.image ?? "",
+            isEditor: localEditorsSet.has(member.sId),
+            onToggleEditor: localEditorsSet.has(member.sId)
+              ? () => onRemoveEditor(member)
+              : () => onAddEditor(member),
+          });
+        }
+      });
+    }
 
     return Array.from(memberMap.values());
-  }, [workspaceMembers, localEditors, onRemoveEditor, onAddEditor]);
+  }, [workspaceMembers, localEditors, onRemoveEditor, onAddEditor, searchTerm]);
 
   const columns: ColumnDef<RowData>[] = useMemo(
     () => [
@@ -237,14 +238,16 @@ export function EditorsSheet() {
 
         <SheetContainer>
           <div className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
-            <SearchInput
-              ref={searchInputRef}
-              value={searchTerm}
-              onChange={setSearchTerm}
-              name="search-editors"
-              placeholder="Search members to add as editors..."
-              isLoading={isWorkspaceMembersLoading}
-            />
+            <div className="flex flex-col gap-3">
+              <SearchInput
+                ref={searchInputRef}
+                value={searchTerm}
+                onChange={setSearchTerm}
+                name="search-editors"
+                placeholder="Search members to add as editors..."
+                isLoading={isWorkspaceMembersLoading}
+              />
+            </div>
 
             {isWorkspaceMembersLoading ? (
               <div className="flex justify-center py-8">
