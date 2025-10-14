@@ -680,6 +680,13 @@ export const notion = async ({
         throw new Error("Invalid --method argument (must be GET or POST)");
       }
 
+      // Restrict POST to only the search endpoint, to prevent data modification
+      if (method === "POST" && url !== "search") {
+        throw new Error(
+          "POST method is only allowed for the 'search' endpoint"
+        );
+      }
+
       logger.info(
         { url, method, connectorId: connector.id },
         "[Admin] Making Notion API request"
