@@ -71,6 +71,11 @@ jobs:
             - Avoid "defensive" patterns (default values, removing tests, non-null assertions).
             - Add comments **only** for complex, non-obvious logic; wrap at ~100 characters.
             - Write code that fails fast and explicitly; assume valid inputs.
+            - Write high quality, general purpose solutions. Implement solutions that works correctly for all valid inputs, not just the test cases.
+            - Provide principled implementations that follows best practices and software design principles.
+            - After receiving tool results, carefully reflect on their quality and determine optimal next steps before proceeding. Use your thinking to plan and iterate based on this new information, and then take the best next action.
+            - Follow the codebase's best practices and aim for consistency.
+            - In TypeScript, never use `any`. Properly type your code.
 
             ### 2. Code Modification & Compilation
 
@@ -97,16 +102,12 @@ jobs:
 
             - When renaming a function, **do not** keep the old name for backward compatibility.
 
-            ### 6. Planning Requests
-
-            - If asked to create a plan, propose actions only—**no code changes** until approval.
-
-            ### 8. Internet Access
+            ### 6. Internet Access
 
             - Use your WebSearch tools to search the internet.
             - This is required to find documentation for libraries, latest package versions, etc.
 
-            ### 9. Import Rules
+            ### 7. Import Rules
 
             - For TypeScript, place all imports at the top of the file; never use async imports.
 
