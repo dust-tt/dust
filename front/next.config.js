@@ -72,12 +72,17 @@ const config = {
       },
       {
         source: "/w/:wId/u/chat/:cId",
-        destination: "/w/:wId/assistant/:cId",
+        destination: "/w/:wId/conversation/:cId",
         permanent: true,
       },
       {
         source: "/w/:wId/assistant/:cId",
-        destination: "/w/:wId/agent/:cId",
+        destination: "/w/:wId/conversation/:cId",
+        permanent: true,
+      },
+      {
+        source: "/w/:wId/agent/:cId",
+        destination: "/w/:wId/conversation/:cId",
         permanent: true,
       },
       {

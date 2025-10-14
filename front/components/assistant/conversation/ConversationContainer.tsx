@@ -27,7 +27,7 @@ import {
   useConversations,
 } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   ContentFragmentsType,
   Result,
@@ -130,7 +130,7 @@ export function ConversationContainerVirtuoso({
       } else {
         // We start the push before creating the message to optimize for instantaneity as well.
         await router.push(
-          getAgentRoute(owner.sId, conversationRes.value.sId),
+          getConversationRoute(owner.sId, conversationRes.value.sId),
           undefined,
           { shallow: true }
         );

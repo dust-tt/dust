@@ -17,7 +17,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 import mainLogger from "@app/logger/logger";
 import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
 import {
@@ -407,7 +407,7 @@ export async function processTranscriptActivity(
     );
 
     const dataSourceViewId =
-      fullStorageDataSourceViewId || transcriptsConfiguration.dataSourceViewId;
+      fullStorageDataSourceViewId ?? transcriptsConfiguration.dataSourceViewId;
 
     if (!dataSourceViewId) {
       localLogger.error(
@@ -702,7 +702,7 @@ export async function processTranscriptActivity(
       },
       subject: `[DUST] Transcripts - ${transcriptTitle.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")}`,
       body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
-    <a href="${getAgentRoute(owner.sId, conversation.sId, config.getClientFacingUrl())}"
+    <a href="${getConversationRoute(owner.sId, conversation.sId, config.getClientFacingUrl())}"
       style="display: inline-block;
               padding: 10px 20px;
               background-color: #000000;
