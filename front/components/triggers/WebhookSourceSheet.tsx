@@ -42,7 +42,7 @@ import datadogLogger from "@app/logger/datadogLogger";
 import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
 import type {
   WebhookSourceKind,
-  WebhookSourceWithSystemView,
+  WebhookSourceWithSystemViewType,
 } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
@@ -51,7 +51,7 @@ export type WebhookSourceSheetMode = { kind: WebhookSourceKind } & (
   | {
       type: "edit";
       webhookSource: RequireAtLeastOne<
-        WebhookSourceWithSystemView,
+        WebhookSourceWithSystemViewType,
         "systemView"
       >;
     }

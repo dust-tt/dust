@@ -32,6 +32,10 @@ vi.mock("@app/temporal/agent_schedule/client", () => ({
   })),
 }));
 
+vi.mock("@app/lib/file_storage", () => ({
+  getWebhookRequestsBucket: vi.fn(() => ({})),
+}));
+
 import handler from ".";
 
 describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUrlSecret]", () => {
