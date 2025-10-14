@@ -215,6 +215,62 @@ const createServer = (auth: Authenticator): McpServer => {
   );
 
   server.tool(
+    "update_object",
+    "Update one or more records in Salesforce",
+    {
+      objectName: z
+        .string()
+        .describe("The name of the Salesforce object (e.g., Account, Contact)"),
+      records: z
+        .array(z.object({}).passthrough())
+        .describe(
+          "Record(s) to update. Must include Id field and any fields to update"
+        ),
+      allOrNone: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("If true, all updates must succeed or all fail"),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
+        skipAlerting: true,
+      },
+      async ({ objectName, records, allOrNone }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
+
+        const conn = new jsforce.Connection({
+          instanceUrl,
+          accessToken,
+          version: SF_API_VERSION,
+        });
+        await conn.identity();
+
+        const result = await conn
+          .sobject(objectName)
+          .update(records as Array<Record<string, any> & { Id: string }>, {
+            allOrNone,
+          });
+
+        const results = Array.isArray(result) ? result : [result];
+        const successCount = results.filter((r) => r.success).length;
+        const failureCount = results.length - successCount;
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Update completed: ${successCount} successful, ${failureCount} failed`,
+          },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ]);
+      }
+    )
+  );
+
+  server.tool(
     "list_attachments",
     "List all attachments and files for a Salesforce record.",
     {
