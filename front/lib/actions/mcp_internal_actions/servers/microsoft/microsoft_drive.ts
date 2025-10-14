@@ -7,7 +7,6 @@ import { z } from "zod";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { Err, Ok } from "@app/types";
@@ -70,11 +69,9 @@ const createServer = (auth: any): McpServer => {
             .api(endpoint)
             .version("beta")
             .post(requestBody);
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: response.retrievalHits,
-            }).content
-          );
+          return new Ok([
+            {type: "text" as const, text: JSON.stringify(response.retrievalHits, null, 2)}
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
