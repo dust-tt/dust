@@ -263,7 +263,10 @@ function StatusBanner({
   );
 }
 
-function AppStatusBanner({ appStatus }: { appStatus: AppStatus }) {
+interface AppStatusBannerProps {
+  appStatus: AppStatus;
+}
+function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   const { providersStatus, dustStatus } = appStatus;
 
   if (dustStatus) {
