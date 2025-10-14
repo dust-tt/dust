@@ -37,6 +37,7 @@ export function getTableIdForContentNode(
     case "github":
     case "gong":
     case "intercom":
+    case "microsoft_bot":
     case "slack":
     case "slack_bot":
     case "webcrawler":

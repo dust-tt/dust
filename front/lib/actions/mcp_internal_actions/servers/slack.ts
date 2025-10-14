@@ -16,7 +16,7 @@ import {
   executeListUsers,
   executePostMessage,
   getSlackClient,
-} from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_api_helper";
+} from "@app/lib/actions/mcp_internal_actions/servers/slack_bot/slack_api_helper";
 import {
   makeInternalMCPServer,
   makePersonalAuthenticationError,
@@ -773,15 +773,13 @@ const createServer = async (
         }
 
         try {
-          return await executePostMessage(
+          return await executePostMessage(auth, agentLoopContext, {
             to,
             message,
             threadTs,
             fileId,
             accessToken,
-            agentLoopContext,
-            auth
-          );
+          });
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
             return new Ok(makePersonalAuthenticationError("slack").content);

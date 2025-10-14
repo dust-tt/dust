@@ -3,6 +3,7 @@ import { assertNever } from "@dust-tt/client";
 
 import { BigQueryConnectorManager } from "@connectors/connectors/bigquery";
 import { ConfluenceConnectorManager } from "@connectors/connectors/confluence";
+import { DiscordBotConnectorManager } from "@connectors/connectors/discord_bot";
 import { GithubConnectorManager } from "@connectors/connectors/github";
 import { GongConnectorManager } from "@connectors/connectors/gong";
 import { GoogleDriveConnectorManager } from "@connectors/connectors/google_drive";
@@ -12,6 +13,7 @@ import type {
   CreateConnectorErrorCode,
 } from "@connectors/connectors/interface";
 import { MicrosoftConnectorManager } from "@connectors/connectors/microsoft";
+import { MicrosoftBotConnectorManager } from "@connectors/connectors/microsoft_bot";
 import { NotionConnectorManager } from "@connectors/connectors/notion";
 import { SalesforceConnectorManager } from "@connectors/connectors/salesforce";
 import { SlackConnectorManager } from "@connectors/connectors/slack";
@@ -20,6 +22,7 @@ import { SnowflakeConnectorManager } from "@connectors/connectors/snowflake";
 import { WebcrawlerConnectorManager } from "@connectors/connectors/webcrawler";
 import { ZendeskConnectorManager } from "@connectors/connectors/zendesk";
 import type {
+  DiscordBotConfigurationType,
   SlackConfigurationType,
   WebCrawlerConfiguration,
 } from "@connectors/types";
@@ -31,6 +34,7 @@ type ConnectorManager =
   | ConfluenceConnectorManager
   | WebcrawlerConnectorManager
   | MicrosoftConnectorManager
+  | MicrosoftBotConnectorManager
   | SlackConnectorManager
   | IntercomConnectorManager
   | GithubConnectorManager
@@ -55,6 +59,8 @@ export function getConnectorManager({
       return new IntercomConnectorManager(connectorId);
     case "microsoft":
       return new MicrosoftConnectorManager(connectorId);
+    case "microsoft_bot":
+      return new MicrosoftBotConnectorManager(connectorId);
     case "notion":
       return new NotionConnectorManager(connectorId);
     case "slack":
@@ -73,6 +79,8 @@ export function getConnectorManager({
       return new SalesforceConnectorManager(connectorId);
     case "gong":
       return new GongConnectorManager(connectorId);
+    case "discord_bot":
+      return new DiscordBotConnectorManager(connectorId);
     default:
       assertNever(connectorProvider);
   }
@@ -85,7 +93,7 @@ export function createConnector({
   | {
       connectorProvider: Exclude<
         ConnectorProvider,
-        "webcrawler" | "slack" | "slack_bot"
+        "webcrawler" | "slack" | "slack_bot" | "discord_bot"
       >;
       params: {
         dataSourceConfig: DataSourceConfig;
@@ -108,6 +116,14 @@ export function createConnector({
         connectionId: string;
         configuration: SlackConfigurationType;
       };
+    }
+  | {
+      connectorProvider: "discord_bot";
+      params: {
+        dataSourceConfig: DataSourceConfig;
+        connectionId: string;
+        configuration: DiscordBotConfigurationType;
+      };
     }): Promise<
   Result<string, ConnectorManagerError<CreateConnectorErrorCode>>
 > {
@@ -122,6 +138,8 @@ export function createConnector({
       return IntercomConnectorManager.create(params);
     case "microsoft":
       return MicrosoftConnectorManager.create(params);
+    case "microsoft_bot":
+      return MicrosoftBotConnectorManager.create();
     case "notion":
       return NotionConnectorManager.create(params);
     case "slack":
@@ -140,6 +158,8 @@ export function createConnector({
       return SalesforceConnectorManager.create(params);
     case "gong":
       return GongConnectorManager.create(params);
+    case "discord_bot":
+      return DiscordBotConnectorManager.create(params);
     default:
       assertNever(connectorProvider);
   }

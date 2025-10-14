@@ -369,6 +369,7 @@ const Timezone = z.string().refine((s) => TIMEZONE_NAMES.includes(s), {
 
 const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "confluence"
+  | "discord_bot"
   | "github"
   | "google_drive"
   | "intercom"
@@ -376,6 +377,7 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "slack"
   | "slack_bot"
   | "microsoft"
+  | "microsoft_bot"
   | "webcrawler"
   | "snowflake"
   | "zendesk"
@@ -666,6 +668,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
+  | "microsoft_teams_bot"
   | "monday_tool"
   | "notion_private_integration"
   | "openai_o1_custom_assistants_feature"
@@ -687,6 +690,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "web_summarization"
   | "xai_feature"
   | "noop_model_feature"
+  | "discord_bot"
   | "elevenlabs_tool"
 >();
 

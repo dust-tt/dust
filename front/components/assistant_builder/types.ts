@@ -45,7 +45,7 @@ export type AssistantBuilderMCPConfiguration = {
   configuration: AssistantBuilderMCPServerConfiguration;
   name: string;
   description: string;
-  configurable?: boolean;
+  configurationRequired?: boolean;
 };
 
 export type AssistantBuilderMCPConfigurationWithId =
@@ -58,7 +58,7 @@ export interface AssistantBuilderDataVisualizationConfiguration {
   configuration: null;
   name: string;
   description: string;
-  configurable: false;
+  configurationRequired: false;
 }
 
 // DATA_VISUALIZATION is not an action, but we need to show it in the UI like an action.
@@ -105,7 +105,7 @@ export function getDataVisualizationConfiguration(): AssistantBuilderDataVisuali
     configuration: null,
     name: DEFAULT_DATA_VISUALIZATION_NAME,
     description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-    configurable: false,
+    configurationRequired: false,
   } satisfies AssistantBuilderDataVisualizationConfiguration;
 }
 
@@ -138,8 +138,7 @@ export function getDefaultMCPServerActionConfiguration(
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    // TODO(2025-10-10 aubin): rename back to noConfigurationRequired.
-    configurable: !requirements.noRequirement,
+    configurationRequired: !requirements.noRequirement,
   };
 }
 

@@ -119,7 +119,7 @@ const createServer = (auth: Authenticator): McpServer => {
 
         const item = await getItemDetails(accessToken, itemId);
         if (!item) {
-          return new Err(new MCPError("Item not found"));
+          return new Err(new MCPError("Item not found", { tracked: false }));
         }
         return new Ok(
           makeMCPToolJSONSuccess({
@@ -281,7 +281,9 @@ const createServer = (auth: Authenticator): McpServer => {
         }
 
         if (!columnValues || Object.keys(columnValues).length === 0) {
-          return new Err(new MCPError("Invalid column values format"));
+          return new Err(
+            new MCPError("Invalid column values format", { tracked: false })
+          );
         }
         const item = await updateItem(accessToken, itemId, columnValues);
         return new Ok(

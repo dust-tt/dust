@@ -472,7 +472,11 @@ const createServer = (auth: Authenticator): McpServer => {
         if (!response.ok) {
           const errorText = await getErrorText(response);
           if (response.status === 404) {
-            return new Err(new MCPError(`Message not found: ${messageId}`));
+            return new Err(
+              new MCPError(`Message not found: ${messageId}`, {
+                tracked: false,
+              })
+            );
           }
           return new Err(
             new MCPError(
@@ -803,7 +807,11 @@ const createServer = (auth: Authenticator): McpServer => {
         if (!response.ok) {
           const errorText = await getErrorText(response);
           if (response.status === 404) {
-            return new Err(new MCPError(`Contact not found: ${contactId}`));
+            return new Err(
+              new MCPError(`Contact not found: ${contactId}`, {
+                tracked: false,
+              })
+            );
           }
           return new Err(
             new MCPError(
