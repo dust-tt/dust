@@ -90,23 +90,23 @@ export async function getInternalMCPServer(
 ): Promise<McpServer> {
   switch (internalMCPServerName) {
     case "github":
-      return githubServer(auth);
+      return githubServer(auth, agentLoopContext);
     case "hubspot":
       return hubspotServer();
     case "image_generation":
-      return imageGenerationServer(auth);
+      return imageGenerationServer(auth, agentLoopContext);
     case "elevenlabs":
       return elevenlabsServer(auth, agentLoopContext);
     case "file_generation":
-      return generateFileServer(auth);
+      return generateFileServer(auth, agentLoopContext);
     case "interactive_content":
       return interactiveContentServer(auth, agentLoopContext);
     case "query_tables_v2":
       return tablesQueryServerV2(auth, agentLoopContext);
     case "primitive_types_debugger":
-      return primitiveTypesDebuggerServer(auth);
+      return primitiveTypesDebuggerServer(auth, agentLoopContext);
     case "jit_testing":
-      return jitTestingServer(auth);
+      return jitTestingServer(auth, agentLoopContext);
     case "web_search_&_browse":
       return webtoolsServer(auth, agentLoopContext);
     case "search":
@@ -132,19 +132,19 @@ export async function getInternalMCPServer(
     case "run_dust_app":
       return dustAppServer(auth, agentLoopContext);
     case "agent_router":
-      return agentRouterServer(auth);
+      return agentRouterServer(auth, agentLoopContext);
     case "extract_data":
       return extractDataServer(auth, agentLoopContext);
     case "salesforce":
-      return salesforceServer(auth);
+      return salesforceServer(auth, agentLoopContext);
     case "gmail":
-      return gmailServer(auth);
+      return gmailServer(auth, agentLoopContext);
     case "google_calendar":
       return calendarServer(auth, agentLoopContext);
     case "google_drive":
-      return driveServer(auth);
+      return driveServer(auth, agentLoopContext);
     case "google_sheets":
-      return sheetsServer(auth);
+      return sheetsServer(auth, agentLoopContext);
     case "data_sources_file_system":
       return dataSourcesFileSystemServer(auth, agentLoopContext);
     case "conversation_files":
@@ -152,7 +152,7 @@ export async function getInternalMCPServer(
     case "jira":
       return jiraServer(auth, agentLoopContext);
     case "monday":
-      return mondayServer(auth);
+      return mondayServer(auth, agentLoopContext);
     case "slack":
       return slackServer(auth, mcpServerId, agentLoopContext);
     case "slack_bot":
@@ -160,15 +160,15 @@ export async function getInternalMCPServer(
     case AGENT_MEMORY_SERVER_NAME:
       return agentMemoryServer(auth, agentLoopContext);
     case "confluence":
-      return confluenceServer(auth);
+      return confluenceServer(auth, agentLoopContext);
     case "outlook":
-      return outlookServer(auth);
+      return outlookServer(auth, agentLoopContext);
     case "outlook_calendar":
-      return outlookCalendarServer(auth);
+      return outlookCalendarServer(auth, agentLoopContext);
     case "agent_management":
       return agentManagementServer(auth, agentLoopContext);
     case "freshservice":
-      return freshserviceServer(auth);
+      return freshserviceServer(auth, agentLoopContext);
     case "data_warehouses":
       return dataWarehousesServer(auth, agentLoopContext);
     case "toolsets":

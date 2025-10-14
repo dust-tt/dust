@@ -11,6 +11,7 @@ import {
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 
@@ -19,7 +20,10 @@ const SF_API_VERSION = "57.0";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const SALESFORCE_TOOL_LOG_NAME = "salesforce";
 
-const createServer = (auth: Authenticator): McpServer => {
+const createServer = (
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer => {
   const server = makeInternalMCPServer("salesforce");
 
   server.tool(
@@ -33,6 +37,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ query }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -70,6 +75,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ filter }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -113,6 +119,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ objectName }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -225,6 +232,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ recordId }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -290,6 +298,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ recordId, attachmentId }, { authInfo }) => {
         const accessToken = authInfo?.token;

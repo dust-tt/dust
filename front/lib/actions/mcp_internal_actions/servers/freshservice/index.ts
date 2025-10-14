@@ -5,6 +5,7 @@ import { z } from "zod";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -18,7 +19,10 @@ import { FreshserviceTicketSchema } from "./freshservice_api_helper";
 
 const FRESHSERVICE_TOOL_NAME = "freshservice";
 
-function createServer(auth: Authenticator): McpServer {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("freshservice");
 
   // Helper function to make authenticated API calls
@@ -203,6 +207,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ filter, fields, page, per_page }, { authInfo }) => {
         return withAuth({
@@ -282,6 +287,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ ticket_id, fields, include }, { authInfo }) => {
         return withAuth({
@@ -342,6 +348,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (_, { authInfo }) => {
         return withAuth({
@@ -396,6 +403,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         {
@@ -514,6 +522,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         {
@@ -591,6 +600,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ ticket_id, body, private: isPrivate }, { authInfo }) => {
         return withAuth({
@@ -634,6 +644,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ ticket_id, body }, { authInfo }) => {
         return withAuth({
@@ -675,6 +686,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ ticket_id }, { authInfo }) => {
         return withAuth({
@@ -714,6 +726,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ ticket_id, task_id }, { authInfo }) => {
         return withAuth({
@@ -768,6 +781,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         {
@@ -865,6 +879,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         {
@@ -944,6 +959,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ ticket_id, task_id }, { authInfo }) => {
         return withAuth({
@@ -984,6 +1000,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ page, per_page }, { authInfo }) => {
         return withAuth({
@@ -1029,6 +1046,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ page, per_page }, { authInfo }) => {
         return withAuth({
@@ -1074,6 +1092,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ page, per_page }, { authInfo }) => {
         return withAuth({
@@ -1119,6 +1138,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ page, per_page }, { authInfo }) => {
         return withAuth({
@@ -1169,6 +1189,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ category_id, page, per_page }, { authInfo }) => {
         return withAuth({
@@ -1235,6 +1256,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         { search_term, workspace_id, user_email, page, per_page },
@@ -1291,6 +1313,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ display_id }, { authInfo }) => {
         return withAuth({
@@ -1331,6 +1354,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ display_id }, { authInfo }) => {
         return withAuth({
@@ -1399,6 +1423,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         { display_id, email, quantity, requested_for, fields },
@@ -1503,6 +1528,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ page, per_page }, { authInfo }) => {
         return withAuth({
@@ -1548,6 +1574,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ category_id, page, per_page }, { authInfo }) => {
         return withAuth({
@@ -1605,6 +1632,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ folder_id, category_id, page, per_page }, { authInfo }) => {
         return withAuth({
@@ -1667,6 +1695,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ article_id }, { authInfo }) => {
         return withAuth({
@@ -1716,6 +1745,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ title, description, folder_id, status, tags }, { authInfo }) => {
         return withAuth({
@@ -1776,6 +1806,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ email, mobile, phone, page, per_page }, { authInfo }) => {
         return withAuth({
@@ -1829,6 +1860,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ requester_id }, { authInfo }) => {
         return withAuth({
@@ -1869,6 +1901,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ page, per_page }, { authInfo }) => {
         return withAuth({
@@ -1911,6 +1944,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (_, { authInfo }) => {
         return withAuth({
@@ -1952,6 +1986,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ search }, { authInfo }) => {
         return withAuth({
@@ -2021,6 +2056,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         { search, category_id, folder_id, is_public, page, per_page },
@@ -2080,6 +2116,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ response_id }, { authInfo }) => {
         return withAuth({
@@ -2119,6 +2156,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ ticket_id, approval_id }, { authInfo }) => {
         return withAuth({
@@ -2157,6 +2195,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ ticket_id }, { authInfo }) => {
         return withAuth({
@@ -2216,6 +2255,7 @@ function createServer(auth: Authenticator): McpServer {
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         { ticket_id, approver_id, approval_type, email_content },

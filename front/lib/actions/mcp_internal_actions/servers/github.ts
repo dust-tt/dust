@@ -10,6 +10,7 @@ import { z } from "zod";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
@@ -45,7 +46,10 @@ const createOctokit = async (
   });
 };
 
-const createServer = (auth: Authenticator): McpServer => {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("github");
 
   server.tool(
@@ -71,7 +75,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github" },
+      { toolNameForMonitoring: "github", agentLoopContext },
       async ({ owner, repo, title, body, assignees, labels }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -119,7 +123,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github" },
+      { toolNameForMonitoring: "github", agentLoopContext },
       async ({ owner, repo, pullNumber }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -435,7 +439,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github" },
+      { toolNameForMonitoring: "github", agentLoopContext },
       async (
         { owner, repo, pullNumber, body, event, comments = [] },
         { authInfo }
@@ -486,7 +490,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github" },
+      { toolNameForMonitoring: "github", agentLoopContext },
       async ({ owner }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -627,7 +631,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github" },
+      { toolNameForMonitoring: "github", agentLoopContext },
       async ({ owner, repo, issueNumber, projectId, field }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -740,7 +744,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github" },
+      { toolNameForMonitoring: "github", agentLoopContext },
       async ({ owner, repo, issueNumber, body }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -788,7 +792,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github" },
+      { toolNameForMonitoring: "github", agentLoopContext },
       async ({ owner, repo, issueNumber }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -945,7 +949,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github" },
+      { toolNameForMonitoring: "github", agentLoopContext },
       async (
         {
           owner,
@@ -1109,7 +1113,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github" },
+      { toolNameForMonitoring: "github", agentLoopContext },
       async (
         {
           owner,
@@ -1318,6 +1322,6 @@ const createServer = (auth: Authenticator): McpServer => {
   );
 
   return server;
-};
+}
 
 export default createServer;

@@ -36,13 +36,17 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/monday/monday_api_helper";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const MONDAY_TOOL_NAME = "monday";
 
-const createServer = (auth: Authenticator): McpServer => {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("monday");
 
   server.tool(
@@ -54,6 +58,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: MONDAY_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (_params, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -82,6 +87,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: MONDAY_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ boardId }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -110,6 +116,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: MONDAY_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ itemId }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -170,6 +177,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: MONDAY_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         {
@@ -243,6 +251,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: MONDAY_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ boardId, itemName, groupId, columnValues }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -282,6 +291,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: MONDAY_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ itemId, columnValues }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -316,6 +326,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: MONDAY_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ itemId, body }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -1055,6 +1066,6 @@ const createServer = (auth: Authenticator): McpServer => {
   );
 
   return server;
-};
+}
 
 export default createServer;
