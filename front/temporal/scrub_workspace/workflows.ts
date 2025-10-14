@@ -6,8 +6,8 @@ import {
   startChild,
 } from "@temporalio/workflow";
 
-import type * as activities from "@app/temporal/scrub_workspace/activities";
-import { runScrubFreeEndedWorkspacesSignal } from "@app/temporal/scrub_workspace/signals";
+import type * as activities from "./activities";
+import { runScrubFreeEndedWorkspacesSignal } from "./signals";
 
 const { shouldStillScrubData } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minutes",
