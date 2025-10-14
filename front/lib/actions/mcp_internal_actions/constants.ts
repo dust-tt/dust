@@ -90,7 +90,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "interactive_content",
   "slideshow",
   "jira",
-  "microsoft",
+  "microsoft_drive",
   "missing_action_catcher",
   "monday",
   "notion",
@@ -1060,11 +1060,13 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
-  microsoft: {
+  microsoft_drive: {
     id: 35,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: undefined,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("microsoft_drive_mcp_server");
+    },
     isPreview: false,
     tools_stakes: {
       search_files: "never_ask",
@@ -1072,7 +1074,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "microsoft",
+      name: "microsoft_drive",
       version: "1.0.0",
       description: "Tools for managing Microsoft files.",
       authorization: {

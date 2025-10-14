@@ -27,7 +27,7 @@ import { default as includeDataServer } from "@app/lib/actions/mcp_internal_acti
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
 import { default as jitTestingServer } from "@app/lib/actions/mcp_internal_actions/servers/jit_testing";
-import { default as microsoftServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft";
+import { default as microsoftDriveServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_drive";
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
 import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday";
 import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
@@ -152,8 +152,8 @@ export async function getInternalMCPServer(
       return conversationFilesServer(auth, agentLoopContext);
     case "jira":
       return jiraServer(auth, agentLoopContext);
-    case "microsoft":
-      return microsoftServer(auth);
+    case "microsoft_drive":
+      return microsoftDriveServer(auth);
     case "monday":
       return mondayServer(auth);
     case "slack":

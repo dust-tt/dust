@@ -14,7 +14,7 @@ import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const createServer = (auth: any): McpServer => {
-  const server = makeInternalMCPServer("microsoft");
+  const server = makeInternalMCPServer("microsoft_drive");
 
   async function getGraphClient(authInfo?: AuthInfo): Promise<Client | null> {
     const accessToken = authInfo?.token;
