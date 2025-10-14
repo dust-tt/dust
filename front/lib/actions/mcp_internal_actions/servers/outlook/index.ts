@@ -2,10 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -146,16 +143,21 @@ const createServer = (auth: Authenticator): McpServer => {
 
         const result = await response.json();
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Messages fetched successfully",
-            result: {
-              messages: (result.value || []) as OutlookMessage[],
-              nextLink: result["@odata.nextLink"],
-              totalCount: result["@odata.count"],
-            },
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Messages fetched successfully" },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                messages: (result.value || []) as OutlookMessage[],
+                nextLink: result["@odata.nextLink"],
+                totalCount: result["@odata.count"],
+              },
+              null,
+              2
+            ),
+          },
+        ]);
       }
     )
   );
@@ -229,15 +231,20 @@ const createServer = (auth: Authenticator): McpServer => {
           { concurrency: 10 }
         );
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Drafts fetched successfully",
-            result: {
-              drafts: draftDetails.filter(Boolean) as OutlookMessage[],
-              nextLink: result["@odata.nextLink"],
-            },
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Drafts fetched successfully" },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                drafts: draftDetails.filter(Boolean) as OutlookMessage[],
+                nextLink: result["@odata.nextLink"],
+              },
+              null,
+              2
+            ),
+          },
+        ]);
       }
     )
   );
@@ -319,15 +326,20 @@ const createServer = (auth: Authenticator): McpServer => {
 
         const result = await response.json();
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Draft created successfully",
-            result: {
-              messageId: result.id,
-              conversationId: result.conversationId,
-            },
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Draft created successfully" },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                messageId: result.id,
+                conversationId: result.conversationId,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
       }
     )
   );
@@ -366,12 +378,10 @@ const createServer = (auth: Authenticator): McpServer => {
           return new Err(new MCPError("Failed to delete draft"));
         }
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Draft deleted successfully",
-            result: "",
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Draft deleted successfully" },
+          { type: "text" as const, text: JSON.stringify("", null, 2) },
+        ]);
       }
     )
   );
@@ -487,17 +497,22 @@ const createServer = (auth: Authenticator): McpServer => {
 
         const result = await response.json();
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Reply draft created successfully",
-            result: {
-              messageId: result.id,
-              conversationId: result.conversationId,
-              originalMessageId: messageId,
-              subject: result.subject,
-            },
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Reply draft created successfully" },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                messageId: result.id,
+                conversationId: result.conversationId,
+                originalMessageId: messageId,
+                subject: result.subject,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
       }
     )
   );
@@ -571,16 +586,21 @@ const createServer = (auth: Authenticator): McpServer => {
 
         const result = await response.json();
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Contacts fetched successfully",
-            result: {
-              contacts: (result.value || []) as OutlookContact[],
-              nextLink: result["@odata.nextLink"],
-              totalCount: result["@odata.count"],
-            },
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Contacts fetched successfully" },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                contacts: (result.value || []) as OutlookContact[],
+                nextLink: result["@odata.nextLink"],
+                totalCount: result["@odata.count"],
+              },
+              null,
+              2
+            ),
+          },
+        ]);
       }
     )
   );
@@ -690,12 +710,13 @@ const createServer = (auth: Authenticator): McpServer => {
 
         const result = await response.json();
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Contact created successfully",
-            result: result as OutlookContact,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Contact created successfully" },
+          {
+            type: "text" as const,
+            text: JSON.stringify(result as OutlookContact, null, 2),
+          },
+        ]);
       }
     )
   );
@@ -822,12 +843,13 @@ const createServer = (auth: Authenticator): McpServer => {
 
         const result = await response.json();
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Contact updated successfully",
-            result: result as OutlookContact,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Contact updated successfully" },
+          {
+            type: "text" as const,
+            text: JSON.stringify(result as OutlookContact, null, 2),
+          },
+        ]);
       }
     )
   );

@@ -8,11 +8,7 @@ import {
   extractTextFromSalesforceAttachment,
   getAllSalesforceAttachments,
 } from "@app/lib/actions/mcp_internal_actions/servers/salesforce/salesforce_api_helper";
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-  makeMCPToolTextSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -48,12 +44,10 @@ const createServer = (auth: Authenticator): McpServer => {
 
         const result = await conn.query(query);
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Operation completed successfully",
-            result: result,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Operation completed successfully" },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ]);
       }
     )
   );
@@ -94,12 +88,10 @@ const createServer = (auth: Authenticator): McpServer => {
           .map((object) => `${object.name} (display_name="${object.label}")`)
           .join("\n");
 
-        return new Ok(
-          makeMCPToolTextSuccess({
-            message: "Operation completed successfully",
-            result: objects,
-          }).content
-        );
+        return new Ok([
+          { type: "text", text: "Operation completed successfully" },
+          { type: "text", text: objects },
+        ]);
       }
     )
   );
@@ -202,12 +194,10 @@ const createServer = (auth: Authenticator): McpServer => {
         summary +=
           "\nNote: For custom relationships in SOQL, names often end with '__r' (e.g., MyCustomChildren__r). Use the 'RelationshipName' listed above.\n";
 
-        return new Ok(
-          makeMCPToolTextSuccess({
-            message: "Object described successfully. Summary provided.",
-            result: summary,
-          }).content
-        );
+        return new Ok([
+          { type: "text", text: "Object described successfully. Summary provided." },
+          { type: "text", text: summary },
+        ]);
       }
     )
   );
@@ -251,14 +241,22 @@ const createServer = (auth: Authenticator): McpServer => {
           author: att.author,
         }));
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: `Found ${attachments.length} attachment(s) for record ${recordId}`,
-            result: {
-              attachments: attachmentSummary,
-            },
-          }).content
-        );
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Found ${attachments.length} attachment(s) for record ${recordId}`,
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                attachments: attachmentSummary,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
       }
     )
   );

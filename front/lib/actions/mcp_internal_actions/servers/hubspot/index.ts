@@ -53,12 +53,7 @@ import {
   validateRequests,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-  makeMCPToolTextError,
-  makeMCPToolTextSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 
 const createServer = (): McpServer => {
   const server = makeInternalMCPServer("hubspot");
@@ -83,10 +78,13 @@ const createServer = (): McpServer => {
             objectType,
             creatableOnly
           );
-          return makeMCPToolTextSuccess({
-            message: "Properties retrieved successfully",
-            result: formattedText,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: "Properties retrieved successfully" },
+              { type: "text", text: formattedText },
+            ],
+          };
         },
         authInfo,
       });
@@ -119,7 +117,13 @@ const createServer = (): McpServer => {
             associations,
           });
           const formatted = formatHubSpotCreateSuccess(result, "contacts");
-          return makeMCPToolJSONSuccess(formatted);
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: formatted.message },
+              { type: "text", text: JSON.stringify(formatted.result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -138,7 +142,10 @@ const createServer = (): McpServer => {
         action: async (accessToken) => {
           const object = await getObjectByEmail(accessToken, objectType, email);
           if (!object) {
-            return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
+            return {
+              isError: true,
+              content: [{ type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND }],
+            };
           }
           // Handle different object types properly
           if ("email" in object) {
@@ -147,19 +154,28 @@ const createServer = (): McpServer => {
               object as any,
               objectType
             );
-            return makeMCPToolJSONSuccess(formatted);
+            return {
+              isError: false,
+              content: [
+                { type: "text", text: formatted.message },
+                { type: "text", text: JSON.stringify(formatted.result, null, 2) },
+              ],
+            };
           } else {
             // This is a PublicOwner - return simpler format
             const owner = object as any;
-            return makeMCPToolJSONSuccess({
-              message: `${objectType.slice(0, -1)} retrieved successfully`,
-              result: {
-                id: owner.id,
-                email: owner.email,
-                firstName: owner.firstName,
-                lastName: owner.lastName,
-              },
-            });
+            return {
+              isError: false,
+              content: [
+                { type: "text", text: `${objectType.slice(0, -1)} retrieved successfully` },
+                { type: "text", text: JSON.stringify({
+                  id: owner.id,
+                  email: owner.email,
+                  firstName: owner.firstName,
+                  lastName: owner.lastName,
+                }, null, 2) },
+              ],
+            };
           }
         },
         authInfo,
@@ -178,12 +194,18 @@ const createServer = (): McpServer => {
         action: async (accessToken) => {
           const owners = await listOwners(accessToken);
           if (!owners.length) {
-            return makeMCPToolTextError("No owners found.");
+            return {
+              isError: true,
+              content: [{ type: "text", text: "No owners found." }],
+            };
           }
-          return makeMCPToolJSONSuccess({
-            message: "Owners retrieved successfully.",
-            result: owners,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: "Owners retrieved successfully." },
+              { type: "text", text: JSON.stringify(owners, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -207,14 +229,18 @@ const createServer = (): McpServer => {
         action: async (accessToken) => {
           const owners = await searchOwners(accessToken, searchQuery);
           if (!owners.length) {
-            return makeMCPToolTextError(
-              `No owners found matching "${searchQuery}".`
-            );
+            return {
+              isError: true,
+              content: [{ type: "text", text: `No owners found matching "${searchQuery}".` }],
+            };
           }
-          return makeMCPToolJSONSuccess({
-            message: `Found ${owners.length} owner(s) matching "${searchQuery}".`,
-            result: owners,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: `Found ${owners.length} owner(s) matching "${searchQuery}".` },
+              { type: "text", text: JSON.stringify(owners, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -258,18 +284,27 @@ const createServer = (): McpServer => {
             filters
           );
           if (!count) {
-            return makeMCPToolTextError(ERROR_MESSAGES.NO_OBJECTS_FOUND);
+            return {
+              isError: true,
+              content: [{ type: "text", text: ERROR_MESSAGES.NO_OBJECTS_FOUND }],
+            };
           }
           if (count >= MAX_COUNT_LIMIT) {
-            return makeMCPToolTextSuccess({
-              message: `Found ${MAX_COUNT_LIMIT}+ ${objectType} matching the filters (exact count unavailable due to API limits)`,
-              result: `${MAX_COUNT_LIMIT}+`,
-            });
+            return {
+              isError: false,
+              content: [
+                { type: "text", text: `Found ${MAX_COUNT_LIMIT}+ ${objectType} matching the filters (exact count unavailable due to API limits)` },
+                { type: "text", text: `${MAX_COUNT_LIMIT}+` },
+              ],
+            };
           }
-          return makeMCPToolTextSuccess({
-            message: `Found ${count} ${objectType} matching the specified filters`,
-            result: count.toString(),
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: `Found ${count} ${objectType} matching the specified filters` },
+              { type: "text", text: count.toString() },
+            ],
+          };
         },
         authInfo,
       });
@@ -292,13 +327,19 @@ const createServer = (): McpServer => {
             limit
           );
           if (!objects.length) {
-            return makeMCPToolTextError(ERROR_MESSAGES.NO_OBJECTS_FOUND);
+            return {
+              isError: true,
+              content: [{ type: "text", text: ERROR_MESSAGES.NO_OBJECTS_FOUND }],
+            };
           }
           const formattedText = formatHubSpotObjectsAsText(objects, objectType);
-          return makeMCPToolTextSuccess({
-            message: "Latest objects retrieved successfully",
-            result: formattedText,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: "Latest objects retrieved successfully" },
+              { type: "text", text: formattedText },
+            ],
+          };
         },
         authInfo,
       });
@@ -331,7 +372,13 @@ const createServer = (): McpServer => {
             associations,
           });
           const formatted = formatHubSpotCreateSuccess(result, "companies");
-          return makeMCPToolJSONSuccess(formatted);
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: formatted.message },
+              { type: "text", text: JSON.stringify(formatted.result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -363,10 +410,13 @@ const createServer = (): McpServer => {
             properties,
             associations,
           });
-          return makeMCPToolJSONSuccess({
-            message: "Deal created successfully.",
-            result,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: "Deal created successfully." },
+              { type: "text", text: JSON.stringify(result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -400,10 +450,13 @@ const createServer = (): McpServer => {
             properties,
             associations,
           });
-          return makeMCPToolJSONSuccess({
-            message: "Lead (as Deal) created successfully.",
-            result,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: "Lead (as Deal) created successfully." },
+              { type: "text", text: JSON.stringify(result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -439,10 +492,13 @@ const createServer = (): McpServer => {
             properties: input.properties,
             associations: input.associations,
           });
-          return makeMCPToolJSONSuccess({
-            message: "Task created successfully.",
-            result,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: "Task created successfully." },
+              { type: "text", text: JSON.stringify(result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -482,10 +538,13 @@ const createServer = (): McpServer => {
             properties,
             associations,
           });
-          return makeMCPToolJSONSuccess({
-            message: "Note created successfully.",
-            result,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: "Note created successfully." },
+              { type: "text", text: JSON.stringify(result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -518,10 +577,13 @@ const createServer = (): McpServer => {
             properties,
             associations,
           });
-          return makeMCPToolJSONSuccess({
-            message: `Communication (channel: ${properties.hs_communication_channel_type || "unknown"}) created successfully.`,
-            result,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: `Communication (channel: ${properties.hs_communication_channel_type || "unknown"}) created successfully.` },
+              { type: "text", text: JSON.stringify(result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -554,10 +616,13 @@ const createServer = (): McpServer => {
             properties,
             associations,
           });
-          return makeMCPToolJSONSuccess({
-            message: "Meeting created successfully.",
-            result,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: "Meeting created successfully." },
+              { type: "text", text: JSON.stringify(result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -576,10 +641,19 @@ const createServer = (): McpServer => {
         action: async (accessToken) => {
           const result = await getContact(accessToken, contactId);
           if (!result) {
-            return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
+            return {
+              isError: true,
+              content: [{ type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND }],
+            };
           }
           const formatted = formatHubSpotGetSuccess(result, "contacts");
-          return makeMCPToolJSONSuccess(formatted);
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: formatted.message },
+              { type: "text", text: JSON.stringify(formatted.result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -598,10 +672,19 @@ const createServer = (): McpServer => {
         action: async (accessToken) => {
           const result = await getCompany(accessToken, companyId);
           if (!result) {
-            return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
+            return {
+              isError: true,
+              content: [{ type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND }],
+            };
           }
           const formatted = formatHubSpotGetSuccess(result, "companies");
-          return makeMCPToolJSONSuccess(formatted);
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: formatted.message },
+              { type: "text", text: JSON.stringify(formatted.result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -620,12 +703,18 @@ const createServer = (): McpServer => {
         action: async (accessToken) => {
           const result = await getDeal(accessToken, dealId);
           if (!result) {
-            return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
+            return {
+              isError: true,
+              content: [{ type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND }],
+            };
           }
-          return makeMCPToolJSONSuccess({
-            message: "Deal retrieved successfully.",
-            result,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: "Deal retrieved successfully." },
+              { type: "text", text: JSON.stringify(result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -646,14 +735,18 @@ const createServer = (): McpServer => {
         action: async (accessToken) => {
           const result = await getMeeting(accessToken, meetingId);
           if (!result) {
-            return makeMCPToolTextError(
-              ERROR_MESSAGES.OBJECT_NOT_FOUND + " Or it was not a meeting."
-            );
+            return {
+              isError: true,
+              content: [{ type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND + " Or it was not a meeting." }],
+            };
           }
-          return makeMCPToolJSONSuccess({
-            message: "Meeting retrieved successfully.",
-            result,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: "Meeting retrieved successfully." },
+              { type: "text", text: JSON.stringify(result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -672,14 +765,18 @@ const createServer = (): McpServer => {
         action: async (accessToken) => {
           const result = await getFilePublicUrl(accessToken, fileId);
           if (!result) {
-            return makeMCPToolTextError(
-              "File not found or public URL not available."
-            );
+            return {
+              isError: true,
+              content: [{ type: "text", text: "File not found or public URL not available." }],
+            };
           }
-          return makeMCPToolJSONSuccess({
-            message: "File public URL retrieved successfully.",
-            result: { url: result }, // Return as an object for consistency
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: "File public URL retrieved successfully." },
+              { type: "text", text: JSON.stringify({ url: result }, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -705,14 +802,18 @@ const createServer = (): McpServer => {
             fromObjectId
           );
           if (result === null) {
-            return makeMCPToolTextError(
-              "Error retrieving associated meetings."
-            );
+            return {
+              isError: true,
+              content: [{ type: "text", text: "Error retrieving associated meetings." }],
+            };
           }
-          return makeMCPToolJSONSuccess({
-            message: "Associated meetings retrieved successfully.",
-            result,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: "Associated meetings retrieved successfully." },
+              { type: "text", text: JSON.stringify(result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -755,7 +856,13 @@ const createServer = (): McpServer => {
             properties,
           });
           const formatted = formatHubSpotUpdateSuccess(result, "contacts");
-          return makeMCPToolJSONSuccess(formatted);
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: formatted.message },
+              { type: "text", text: JSON.stringify(formatted.result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -781,9 +888,12 @@ const createServer = (): McpServer => {
             companyId,
             properties,
           });
-          return makeMCPToolJSONSuccess({
-            result,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: JSON.stringify(result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -809,9 +919,12 @@ const createServer = (): McpServer => {
             dealId,
             properties,
           });
-          return makeMCPToolJSONSuccess({
-            result,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: JSON.stringify(result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -859,9 +972,10 @@ const createServer = (): McpServer => {
             after: input.after,
           });
           if (!result || result.results.length === 0) {
-            return makeMCPToolTextError(
-              "Search failed or returned no results."
-            );
+            return {
+              isError: true,
+              content: [{ type: "text", text: "Search failed or returned no results." }],
+            };
           }
 
           const searchResults = formatHubSpotSearchResults(
@@ -945,12 +1059,16 @@ const createServer = (): McpServer => {
           }
         }
       } catch (err) {
-        return makeMCPToolTextError(
-          `Failed to fetch objects from HubSpot: ${err instanceof Error ? err.message : String(err)}`
-        );
+        return {
+          isError: true,
+          content: [{ type: "text", text: `Failed to fetch objects from HubSpot: ${err instanceof Error ? err.message : String(err)}` }],
+        };
       }
       if (!allResults.length) {
-        return makeMCPToolTextError("No objects found for export.");
+        return {
+          isError: true,
+          content: [{ type: "text", text: "No objects found for export." }],
+        };
       }
       // Convert to CSVRecord[]
       const csvRows = allResults.map((obj) => {
@@ -979,10 +1097,13 @@ const createServer = (): McpServer => {
         .join("\n");
       const fullCsv = `${csvHeader}\n${csvContent}`;
 
-      return makeMCPToolTextSuccess({
-        message: `Exported ${csvRows.length} ${input.objectType} to CSV`,
-        result: fullCsv,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: `Exported ${csvRows.length} ${input.objectType} to CSV` },
+          { type: "text", text: fullCsv },
+        ],
+      };
     }
   );
 
@@ -1026,14 +1147,20 @@ const createServer = (): McpServer => {
           );
         }
 
-        return makeMCPToolTextError(JSON.stringify(errorResponse, null, 2));
+        return {
+          isError: true,
+          content: [{ type: "text", text: JSON.stringify(errorResponse, null, 2) }],
+        };
       }
       const urlResults = generateUrls(portalId, uiDomain, pageRequests);
 
-      return makeMCPToolJSONSuccess({
-        message: "HubSpot links generated successfully.",
-        result: urlResults,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "HubSpot links generated successfully." },
+          { type: "text", text: JSON.stringify(urlResults, null, 2) },
+        ],
+      };
     }
   );
 
@@ -1045,10 +1172,13 @@ const createServer = (): McpServer => {
       return withAuth({
         action: async (accessToken) => {
           const result = await getUserDetails(accessToken);
-          return makeMCPToolTextSuccess({
-            message: "Portal information retrieved successfully",
-            result: `Portal ID: ${result.hub_id}\nUI Domain: app.hubspot.com`,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: "Portal information retrieved successfully" },
+              { type: "text", text: `Portal ID: ${result.hub_id}\nUI Domain: app.hubspot.com` },
+            ],
+          };
         },
         authInfo,
       });
@@ -1081,10 +1211,13 @@ const createServer = (): McpServer => {
             toObjectType,
             toObjectId,
           });
-          return makeMCPToolJSONSuccess({
-            message: `Association created successfully between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}`,
-            result,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: `Association created successfully between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}` },
+              { type: "text", text: JSON.stringify(result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -1113,10 +1246,13 @@ const createServer = (): McpServer => {
             objectId,
             toObjectType,
           });
-          return makeMCPToolJSONSuccess({
-            message: `Associations retrieved successfully for ${objectType}:${objectId}`,
-            result,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: `Associations retrieved successfully for ${objectType}:${objectId}` },
+              { type: "text", text: JSON.stringify(result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -1149,10 +1285,13 @@ const createServer = (): McpServer => {
             toObjectType,
             toObjectId,
           });
-          return makeMCPToolJSONSuccess({
-            message: `Association removed successfully between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}`,
-            result: { success: true },
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: `Association removed successfully between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}` },
+              { type: "text", text: JSON.stringify({ success: true }, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -1169,10 +1308,13 @@ const createServer = (): McpServer => {
       return withAuth({
         action: async (accessToken) => {
           const result = await getCurrentUserId(accessToken);
-          return makeMCPToolJSONSuccess({
-            message: "Current user information retrieved successfully",
-            result,
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: "Current user information retrieved successfully" },
+              { type: "text", text: JSON.stringify(result, null, 2) },
+            ],
+          };
         },
         authInfo,
       });
@@ -1223,19 +1365,25 @@ const createServer = (): McpServer => {
           });
 
           if (!result.results || result.results.length === 0) {
-            return makeMCPToolTextSuccess({
-              message: `No activities found for owner ${ownerId} between ${startDate} and ${endDate}`,
-              result: `No activities found for the specified period. Summary: ${JSON.stringify(result.summary, null, 2)}`,
-            });
+            return {
+              isError: false,
+              content: [
+                { type: "text", text: `No activities found for owner ${ownerId} between ${startDate} and ${endDate}` },
+                { type: "text", text: `No activities found for the specified period. Summary: ${JSON.stringify(result.summary, null, 2)}` },
+              ],
+            };
           }
 
-          return makeMCPToolJSONSuccess({
-            message: `Found ${result.results.length} activities for owner ${ownerId} between ${startDate} and ${endDate}`,
-            result: {
-              activities: result.results,
-              summary: result.summary,
-            },
-          });
+          return {
+            isError: false,
+            content: [
+              { type: "text", text: `Found ${result.results.length} activities for owner ${ownerId} between ${startDate} and ${endDate}` },
+              { type: "text", text: JSON.stringify({
+                activities: result.results,
+                summary: result.summary,
+              }, null, 2) },
+            ],
+          };
         },
         authInfo,
       });

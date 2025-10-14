@@ -3,10 +3,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types";
@@ -242,12 +239,10 @@ function createServer(auth: Authenticator): McpServer {
               pickFields(ticket, selectedFields)
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${filteredTickets.length} tickets`,
-                result: filteredTickets,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${filteredTickets.length} tickets` },
+              { type: "text" as const, text: JSON.stringify(filteredTickets, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -312,12 +307,10 @@ function createServer(auth: Authenticator): McpServer {
             );
             const filteredTicket = pickFields(ticket, unionSelected);
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Ticket retrieved successfully",
-                result: filteredTicket,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Ticket retrieved successfully" },
+              { type: "text" as const, text: JSON.stringify(filteredTicket, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -337,12 +330,10 @@ function createServer(auth: Authenticator): McpServer {
           action: async () => {
             // Currently static based on documentation. In the future, we can get this from the Freshservice API.
             // This will require additional authentication scopes, so avoiding in the short term.
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Base ticket field ids (without includes)",
-                result: FreshserviceTicketSchema.keyof().options,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Base ticket field ids (without includes)" },
+              { type: "text" as const, text: JSON.stringify(FreshserviceTicketSchema.keyof().options, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -449,12 +440,10 @@ function createServer(auth: Authenticator): McpServer {
             const apiDomain = normalizeApiDomain(freshserviceDomain);
             const ticketUrl = `https://${apiDomain}/support/tickets/${ticket.id}`;
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Ticket created successfully. View ticket at: ${ticketUrl}`,
-                result: ticketUrl,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Ticket created successfully. View ticket at: ${ticketUrl}` },
+              { type: "text" as const, text: JSON.stringify(ticketUrl, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -531,12 +520,10 @@ function createServer(auth: Authenticator): McpServer {
               }
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Ticket updated successfully",
-                result: result.ticket,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Ticket updated successfully" },
+              { type: "text" as const, text: JSON.stringify(result.ticket, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -575,12 +562,10 @@ function createServer(auth: Authenticator): McpServer {
               }
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Note added successfully",
-                result: result.conversation,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Note added successfully" },
+              { type: "text" as const, text: JSON.stringify(result.conversation, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -613,12 +598,10 @@ function createServer(auth: Authenticator): McpServer {
               }
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Reply added successfully",
-                result: result.conversation,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Reply added successfully" },
+              { type: "text" as const, text: JSON.stringify(result.conversation, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -644,12 +627,10 @@ function createServer(auth: Authenticator): McpServer {
               `tickets/${ticket_id}/tasks`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${result.tasks?.length || 0} tasks for ticket ${ticket_id}`,
-                result: result.tasks || [],
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${result.tasks?.length || 0} tasks for ticket ${ticket_id}` },
+              { type: "text" as const, text: JSON.stringify(result.tasks || [], null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -676,12 +657,10 @@ function createServer(auth: Authenticator): McpServer {
               `tickets/${ticket_id}/tasks/${task_id}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Task retrieved successfully",
-                result: result.task,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Task retrieved successfully" },
+              { type: "text" as const, text: JSON.stringify(result.task, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -765,12 +744,10 @@ function createServer(auth: Authenticator): McpServer {
               }
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Task created successfully",
-                result: result.task,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Task created successfully" },
+              { type: "text" as const, text: JSON.stringify(result.task, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -862,12 +839,10 @@ function createServer(auth: Authenticator): McpServer {
               }
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Task updated successfully",
-                result: result.task,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Task updated successfully" },
+              { type: "text" as const, text: JSON.stringify(result.task, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -897,12 +872,10 @@ function createServer(auth: Authenticator): McpServer {
               }
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Task deleted successfully",
-                result: { deleted_task_id: task_id },
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Task deleted successfully" },
+              { type: "text" as const, text: JSON.stringify({ deleted_task_id: task_id }, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -935,12 +908,10 @@ function createServer(auth: Authenticator): McpServer {
               `departments?${params.toString()}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${result.departments?.length || 0} departments`,
-                result: result.departments || [],
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${result.departments?.length || 0} departments` },
+              { type: "text" as const, text: JSON.stringify(result.departments || [], null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -973,12 +944,10 @@ function createServer(auth: Authenticator): McpServer {
               `products?${params.toString()}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${result.products?.length || 0} products`,
-                result: result.products || [],
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${result.products?.length || 0} products` },
+              { type: "text" as const, text: JSON.stringify(result.products || [], null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1011,12 +980,10 @@ function createServer(auth: Authenticator): McpServer {
               `oncall_schedules?${params.toString()}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${result.oncall_schedules?.length || 0} on-call schedules`,
-                result: result.oncall_schedules || [],
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${result.oncall_schedules?.length || 0} on-call schedules` },
+              { type: "text" as const, text: JSON.stringify(result.oncall_schedules || [], null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1049,12 +1016,10 @@ function createServer(auth: Authenticator): McpServer {
               `service_catalog/categories?${params.toString()}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${result.service_categories?.length || 0} service categories`,
-                result: result.service_categories || [],
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${result.service_categories?.length || 0} service categories` },
+              { type: "text" as const, text: JSON.stringify(result.service_categories || [], null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1096,12 +1061,10 @@ function createServer(auth: Authenticator): McpServer {
               `service_catalog/items?${params.toString()}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${result.service_items?.length || 0} service items`,
-                result: result.service_items || [],
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${result.service_items?.length || 0} service items` },
+              { type: "text" as const, text: JSON.stringify(result.service_items || [], null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1162,12 +1125,10 @@ function createServer(auth: Authenticator): McpServer {
               `service_catalog/items/search?${params.toString()}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Found ${result.service_items?.length || 0} service items matching '${search_term}'`,
-                result: result.service_items || [],
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Found ${result.service_items?.length || 0} service items matching '${search_term}'` },
+              { type: "text" as const, text: JSON.stringify(result.service_items || [], null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1195,12 +1156,10 @@ function createServer(auth: Authenticator): McpServer {
               `service_catalog/items/${display_id}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Service item retrieved successfully",
-                result: result.service_item,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Service item retrieved successfully" },
+              { type: "text" as const, text: JSON.stringify(result.service_item, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1234,14 +1193,12 @@ function createServer(auth: Authenticator): McpServer {
               (field: FreshserviceServiceItemField) => field.required
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${requiredFields.length} service item required fields for item ${display_id}`,
-                result: {
-                  fields,
-                },
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${requiredFields.length} service item required fields for item ${display_id}` },
+              { type: "text" as const, text: JSON.stringify({
+                fields,
+              }, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1340,17 +1297,15 @@ function createServer(auth: Authenticator): McpServer {
             const apiDomain = normalizeApiDomain(freshserviceDomain);
             const ticketUrl = `https://${apiDomain}/support/tickets/${serviceRequest.id}`;
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Service request created successfully. View ticket at: ${ticketUrl}`,
-                result: {
-                  service_request: serviceRequest,
-                  ticket_id: serviceRequest.id,
-                  ticket_url: ticketUrl,
-                  service_item_name: serviceItem.name,
-                },
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Service request created successfully. View ticket at: ${ticketUrl}` },
+              { type: "text" as const, text: JSON.stringify({
+                service_request: serviceRequest,
+                ticket_id: serviceRequest.id,
+                ticket_url: ticketUrl,
+                service_item_name: serviceItem.name,
+              }, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1383,12 +1338,10 @@ function createServer(auth: Authenticator): McpServer {
               `solutions/categories?${params.toString()}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${result.categories?.length || 0} solution categories`,
-                result: result.categories || [],
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${result.categories?.length || 0} solution categories` },
+              { type: "text" as const, text: JSON.stringify(result.categories || [], null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1425,12 +1378,10 @@ function createServer(auth: Authenticator): McpServer {
               `solutions/folders?${params.toString()}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${result.folders?.length || 0} solution folders`,
-                result: result.folders || [],
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${result.folders?.length || 0} solution folders` },
+              { type: "text" as const, text: JSON.stringify(result.folders || [], null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1490,12 +1441,10 @@ function createServer(auth: Authenticator): McpServer {
               // Exclude description/description_text to reduce payload
             }));
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${articlesMetadata.length} solution articles (metadata only)`,
-                result: articlesMetadata,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${articlesMetadata.length} solution articles (metadata only)` },
+              { type: "text" as const, text: JSON.stringify(articlesMetadata, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1521,12 +1470,10 @@ function createServer(auth: Authenticator): McpServer {
               `solutions/articles/${article_id}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Solution article retrieved successfully",
-                result: result.article,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Solution article retrieved successfully" },
+              { type: "text" as const, text: JSON.stringify(result.article, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1580,12 +1527,10 @@ function createServer(auth: Authenticator): McpServer {
               }
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Solution article created successfully",
-                result: result.article,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Solution article created successfully" },
+              { type: "text" as const, text: JSON.stringify(result.article, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1631,12 +1576,10 @@ function createServer(auth: Authenticator): McpServer {
               `requesters?${params.toString()}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${result.requesters?.length || 0} requesters`,
-                result: result.requesters || [],
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${result.requesters?.length || 0} requesters` },
+              { type: "text" as const, text: JSON.stringify(result.requesters || [], null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1662,12 +1605,10 @@ function createServer(auth: Authenticator): McpServer {
               `requesters/${requester_id}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Requester retrieved successfully",
-                result: result.requester,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Requester retrieved successfully" },
+              { type: "text" as const, text: JSON.stringify(result.requester, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1700,12 +1641,10 @@ function createServer(auth: Authenticator): McpServer {
               `purchase_orders?${params.toString()}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${result.purchase_orders?.length || 0} purchase orders`,
-                result: result.purchase_orders || [],
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${result.purchase_orders?.length || 0} purchase orders` },
+              { type: "text" as const, text: JSON.stringify(result.purchase_orders || [], null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1730,12 +1669,10 @@ function createServer(auth: Authenticator): McpServer {
               "sla_policies"
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${result.sla_policies?.length || 0} SLA policies`,
-                result: result.sla_policies || [],
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${result.sla_policies?.length || 0} SLA policies` },
+              { type: "text" as const, text: JSON.stringify(result.sla_policies || [], null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1777,15 +1714,13 @@ function createServer(auth: Authenticator): McpServer {
               );
             }
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${filteredFields.length} ticket fields${search ? ` matching "${search}"` : ""}`,
-                result: {
-                  ticket_fields: filteredFields,
-                  total_ticket_fields: filteredFields.length,
-                },
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${filteredFields.length} ticket fields${search ? ` matching "${search}"` : ""}` },
+              { type: "text" as const, text: JSON.stringify({
+                ticket_fields: filteredFields,
+                total_ticket_fields: filteredFields.length,
+              }, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1843,12 +1778,10 @@ function createServer(auth: Authenticator): McpServer {
               `canned_responses?${params.toString()}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${result.canned_responses?.length || 0} canned responses`,
-                result: result.canned_responses || [],
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${result.canned_responses?.length || 0} canned responses` },
+              { type: "text" as const, text: JSON.stringify(result.canned_responses || [], null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1874,12 +1807,10 @@ function createServer(auth: Authenticator): McpServer {
               `canned_responses/${response_id}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Canned response retrieved successfully",
-                result: result.canned_response,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Canned response retrieved successfully" },
+              { type: "text" as const, text: JSON.stringify(result.canned_response, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1906,12 +1837,10 @@ function createServer(auth: Authenticator): McpServer {
               `tickets/${ticket_id}/approvals/${approval_id}`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Ticket approval retrieved successfully",
-                result: result.approval,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Ticket approval retrieved successfully" },
+              { type: "text" as const, text: JSON.stringify(result.approval, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -1937,15 +1866,13 @@ function createServer(auth: Authenticator): McpServer {
               `tickets/${ticket_id}/approvals`
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Retrieved ${result.approvals?.length || 0} approval(s) for ticket ${ticket_id}`,
-                result: {
-                  approvals: result.approvals || [],
-                  total_approvals: result.approvals?.length || 0,
-                },
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: `Retrieved ${result.approvals?.length || 0} approval(s) for ticket ${ticket_id}` },
+              { type: "text" as const, text: JSON.stringify({
+                approvals: result.approvals || [],
+                total_approvals: result.approvals?.length || 0,
+              }, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -2028,12 +1955,10 @@ function createServer(auth: Authenticator): McpServer {
               }
             );
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Service request approval created successfully",
-                result: result.approval || result,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Service request approval created successfully" },
+              { type: "text" as const, text: JSON.stringify(result.approval || result, null, 2) },
+            ]);
           },
           authInfo,
         });

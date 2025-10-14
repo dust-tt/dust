@@ -8,10 +8,7 @@ import { fetch as undiciFetch, ProxyAgent } from "undici";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  makeInternalMCPServer,
-  makeMCPToolTextSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
@@ -93,11 +90,9 @@ const createServer = (auth: Authenticator): McpServer => {
             }
           );
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Issue created: #${issue.number}`,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: `Issue created: #${issue.number}` },
+          ]);
         } catch (e) {
           return new Err(
             new MCPError(
@@ -380,12 +375,10 @@ const createServer = (auth: Authenticator): McpServer => {
               )
               .join("\n")}`;
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Retrieved pull request #${pullNumber}`,
-              result: content,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: `Retrieved pull request #${pullNumber}` },
+            { type: "text" as const, text: JSON.stringify(content, null, 2) },
+          ]);
         } catch (e) {
           return new Err(
             new MCPError(
@@ -461,11 +454,9 @@ const createServer = (auth: Authenticator): McpServer => {
             }
           );
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Review created with ID ${review.id}`,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: `Review created with ID ${review.id}` },
+          ]);
         } catch (e) {
           return new Err(
             new MCPError(
@@ -573,19 +564,15 @@ const createServer = (auth: Authenticator): McpServer => {
           });
 
           if (!content) {
-            return new Ok(
-              makeMCPToolTextSuccess({
-                message: "No open projects found",
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "No open projects found" },
+            ]);
           }
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Retrieved ${projects.length} open projects`,
-              result: content,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: `Retrieved ${projects.length} open projects` },
+            { type: "text" as const, text: JSON.stringify(content, null, 2) },
+          ]);
         } catch (e) {
           return new Err(
             new MCPError(
@@ -710,11 +697,9 @@ const createServer = (auth: Authenticator): McpServer => {
             });
           }
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Issue #${issueNumber} added to project`,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: `Issue #${issueNumber} added to project` },
+          ]);
         } catch (e) {
           return new Err(
             new MCPError(
@@ -760,11 +745,9 @@ const createServer = (auth: Authenticator): McpServer => {
             }
           );
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Comment added to issue #${issueNumber} with ID ${comment.id}`,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: `Comment added to issue #${issueNumber} with ID ${comment.id}` },
+          ]);
         } catch (e) {
           return new Err(
             new MCPError(
@@ -894,12 +877,10 @@ const createServer = (auth: Authenticator): McpServer => {
             })),
           };
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Retrieved issue #${issueNumber}`,
-              result: JSON.stringify(formattedIssue, null, 2),
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: `Retrieved issue #${issueNumber}` },
+            { type: "text" as const, text: JSON.stringify(formattedIssue, null, 2) },
+          ]);
         } catch (e) {
           return new Err(
             new MCPError(
@@ -1056,12 +1037,10 @@ const createServer = (auth: Authenticator): McpServer => {
             })
           );
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Retrieved ${formattedIssues.length} issues`,
-              result: JSON.stringify(formattedIssues, null, 2),
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: `Retrieved ${formattedIssues.length} issues` },
+            { type: "text" as const, text: JSON.stringify(formattedIssues, null, 2) },
+          ]);
         } catch (e) {
           return new Err(
             new MCPError(
@@ -1286,19 +1265,17 @@ const createServer = (auth: Authenticator): McpServer => {
               reviewCount: pr.reviews.totalCount,
             }));
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Retrieved ${formattedPullRequests.length} pull requests`,
-              result: JSON.stringify(
-                {
-                  pullRequests: formattedPullRequests,
-                  pageInfo: pullRequests.repository.pullRequests.pageInfo,
-                },
-                null,
-                2
-              ),
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: `Retrieved ${formattedPullRequests.length} pull requests` },
+            { type: "text" as const, text: JSON.stringify(
+              {
+                pullRequests: formattedPullRequests,
+                pageInfo: pullRequests.repository.pullRequests.pageInfo,
+              },
+              null,
+              2
+            ) },
+          ]);
         } catch (e) {
           return new Err(
             new MCPError(

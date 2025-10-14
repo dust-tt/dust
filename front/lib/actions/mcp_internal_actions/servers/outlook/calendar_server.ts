@@ -3,10 +3,7 @@ import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import * as OutlookApi from "@app/lib/actions/mcp_internal_actions/servers/outlook/outlook_api_helper";
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
@@ -32,16 +29,24 @@ const createServer = (auth: Authenticator): McpServer => {
         const result = await OutlookApi.getUserTimezone(accessToken);
 
         if (typeof result === "string") {
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              message: "User timezone retrieved successfully",
-              result: {
-                timezone: result,
-                description:
-                  "Use this timezone value when creating, updating, or searching for calendar events to ensure times are displayed correctly.",
-              },
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text: "User timezone retrieved successfully",
+            },
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  timezone: result,
+                  description:
+                    "Use this timezone value when creating, updating, or searching for calendar events to ensure times are displayed correctly.",
+                },
+                null,
+                2
+              ),
+            },
+          ]);
         } else {
           return new Err(new MCPError(result.error));
         }
@@ -87,12 +92,10 @@ const createServer = (auth: Authenticator): McpServer => {
           return new Err(new MCPError(result.error));
         }
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Calendars listed successfully",
-            result,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Calendars listed successfully" },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ]);
       }
     )
   );
@@ -170,12 +173,10 @@ const createServer = (auth: Authenticator): McpServer => {
           return new Err(new MCPError(result.error));
         }
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Events searched successfully",
-            result,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Events searched successfully" },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ]);
       }
     )
   );
@@ -217,12 +218,10 @@ const createServer = (auth: Authenticator): McpServer => {
           return new Err(new MCPError(result.error));
         }
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Event fetched successfully",
-            result,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Event fetched successfully" },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ]);
       }
     )
   );
@@ -325,12 +324,10 @@ const createServer = (auth: Authenticator): McpServer => {
           return new Err(new MCPError(result.error));
         }
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Event created successfully",
-            result,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Event created successfully" },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ]);
       }
     )
   );
@@ -427,12 +424,10 @@ const createServer = (auth: Authenticator): McpServer => {
           return new Err(new MCPError(result.error));
         }
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Event updated successfully",
-            result,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Event updated successfully" },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ]);
       }
     )
   );
@@ -474,12 +469,10 @@ const createServer = (auth: Authenticator): McpServer => {
           return new Err(new MCPError(result.error));
         }
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Event deleted successfully",
-            result: "",
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Event deleted successfully" },
+          { type: "text" as const, text: JSON.stringify("", null, 2) },
+        ]);
       }
     )
   );
@@ -536,12 +529,10 @@ const createServer = (auth: Authenticator): McpServer => {
           return new Err(new MCPError(result.error));
         }
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Availability checked successfully",
-            result,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Availability checked successfully" },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ]);
       }
     )
   );

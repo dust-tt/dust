@@ -3,10 +3,7 @@ import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import {
-  makeInternalMCPServer,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -98,9 +95,15 @@ const createServer = (_auth: Authenticator): McpServer => {
           { err: normalizeError(e) },
           "Error generating text-to-speech with ElevenLabs."
         );
-        return makeMCPToolTextError(
-          `Error generating speech audio with ElevenLabs: ${normalizeError(e).message}`
-        );
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error generating speech audio with ElevenLabs: ${normalizeError(e).message}`,
+            },
+          ],
+        };
       }
     }
   );
@@ -164,9 +167,15 @@ const createServer = (_auth: Authenticator): McpServer => {
           { err: normalizeError(e) },
           "Error generating music with ElevenLabs."
         );
-        return makeMCPToolTextError(
-          `Error generating music with ElevenLabs: ${normalizeError(e).message}`
-        );
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error generating music with ElevenLabs: ${normalizeError(e).message}`,
+            },
+          ],
+        };
       }
     }
   );

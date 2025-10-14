@@ -36,8 +36,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/monday/monday_api_helper";
 import {
   makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-  makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -64,12 +62,10 @@ const createServer = (auth: Authenticator): McpServer => {
         }
 
         const boards = await getBoards(accessToken);
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Boards retrieved successfully",
-            result: boards,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Boards retrieved successfully" },
+          { type: "text" as const, text: JSON.stringify(boards, null, 2) },
+        ]);
       }
     )
   );
@@ -91,12 +87,10 @@ const createServer = (auth: Authenticator): McpServer => {
         }
 
         const items = await getBoardItems(accessToken, boardId);
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Board items retrieved successfully",
-            result: items,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Board items retrieved successfully" },
+          { type: "text" as const, text: JSON.stringify(items, null, 2) },
+        ]);
       }
     )
   );
@@ -121,12 +115,10 @@ const createServer = (auth: Authenticator): McpServer => {
         if (!item) {
           return new Err(new MCPError("Item not found", { tracked: false }));
         }
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Item details retrieved successfully",
-            result: item,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Item details retrieved successfully" },
+          { type: "text" as const, text: JSON.stringify(item, null, 2) },
+        ]);
       }
     )
   );
@@ -205,12 +197,10 @@ const createServer = (auth: Authenticator): McpServer => {
         }
 
         const items = await searchItems(accessToken, filters);
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: `Found ${items.length} items (max 100 returned)`,
-            result: items,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: `Found ${items.length} items (max 100 returned)` },
+          { type: "text" as const, text: JSON.stringify(items, null, 2) },
+        ]);
       }
     )
   );
@@ -249,12 +239,10 @@ const createServer = (auth: Authenticator): McpServer => {
           groupId,
           columnValues
         );
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Item created successfully",
-            result: item,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Item created successfully" },
+          { type: "text" as const, text: JSON.stringify(item, null, 2) },
+        ]);
       }
     )
   );
@@ -286,12 +274,10 @@ const createServer = (auth: Authenticator): McpServer => {
           );
         }
         const item = await updateItem(accessToken, itemId, columnValues);
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Item updated successfully",
-            result: item,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Item updated successfully" },
+          { type: "text" as const, text: JSON.stringify(item, null, 2) },
+        ]);
       }
     )
   );
@@ -314,12 +300,10 @@ const createServer = (auth: Authenticator): McpServer => {
         }
 
         const update = await createUpdate(accessToken, itemId, body);
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Update added successfully",
-            result: update,
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Update added successfully" },
+          { type: "text" as const, text: JSON.stringify(update, null, 2) },
+        ]);
       }
     )
   );
@@ -338,10 +322,13 @@ const createServer = (auth: Authenticator): McpServer => {
       }
 
       const result = await deleteItem(accessToken, itemId);
-      return makeMCPToolJSONSuccess({
-        message: "Item deleted successfully",
-        result,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Item deleted successfully" },
+          { type: "text", text: JSON.stringify(result, null, 2) },
+        ],
+      };
     }
   );
 
@@ -360,10 +347,13 @@ const createServer = (auth: Authenticator): McpServer => {
       }
 
       const item = await updateItemName(accessToken, itemId, name);
-      return makeMCPToolJSONSuccess({
-        message: "Item name updated successfully",
-        result: item,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Item name updated successfully" },
+          { type: "text", text: JSON.stringify(item, null, 2) },
+        ],
+      };
     }
   );
 
@@ -403,10 +393,13 @@ const createServer = (auth: Authenticator): McpServer => {
         workspaceId,
         description
       );
-      return makeMCPToolJSONSuccess({
-        message: "Board created successfully",
-        result: board,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Board created successfully" },
+          { type: "text", text: JSON.stringify(board, null, 2) },
+        ],
+      };
     }
   );
 
@@ -438,10 +431,13 @@ const createServer = (auth: Authenticator): McpServer => {
         columnType,
         description
       );
-      return makeMCPToolJSONSuccess({
-        message: "Column created successfully",
-        result: column,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Column created successfully" },
+          { type: "text", text: JSON.stringify(column, null, 2) },
+        ],
+      };
     }
   );
 
@@ -469,10 +465,13 @@ const createServer = (auth: Authenticator): McpServer => {
         groupName,
         position
       );
-      return makeMCPToolJSONSuccess({
-        message: "Group created successfully",
-        result: group,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Group created successfully" },
+          { type: "text", text: JSON.stringify(group, null, 2) },
+        ],
+      };
     }
   );
 
@@ -500,10 +499,13 @@ const createServer = (auth: Authenticator): McpServer => {
         itemName,
         columnValues
       );
-      return makeMCPToolJSONSuccess({
-        message: "Subitem created successfully",
-        result: subitem,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Subitem created successfully" },
+          { type: "text", text: JSON.stringify(subitem, null, 2) },
+        ],
+      };
     }
   );
 
@@ -522,10 +524,13 @@ const createServer = (auth: Authenticator): McpServer => {
       }
 
       const result = await deleteGroup(accessToken, boardId, groupId);
-      return makeMCPToolJSONSuccess({
-        message: "Group deleted successfully",
-        result,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Group deleted successfully" },
+          { type: "text", text: JSON.stringify(result, null, 2) },
+        ],
+      };
     }
   );
 
@@ -558,10 +563,13 @@ const createServer = (auth: Authenticator): McpServer => {
         addToTop,
         groupTitle
       );
-      return makeMCPToolJSONSuccess({
-        message: "Group duplicated successfully",
-        result: group,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Group duplicated successfully" },
+          { type: "text", text: JSON.stringify(group, null, 2) },
+        ],
+      };
     }
   );
 
@@ -582,10 +590,13 @@ const createServer = (auth: Authenticator): McpServer => {
       }
 
       const subitem = await updateSubitem(accessToken, subitemId, columnValues);
-      return makeMCPToolJSONSuccess({
-        message: "Subitem updated successfully",
-        result: subitem,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Subitem updated successfully" },
+          { type: "text", text: JSON.stringify(subitem, null, 2) },
+        ],
+      };
     }
   );
 
@@ -610,10 +621,13 @@ const createServer = (auth: Authenticator): McpServer => {
         columnId,
         file
       );
-      return makeMCPToolJSONSuccess({
-        message: "File uploaded successfully",
-        result,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "File uploaded successfully" },
+          { type: "text", text: JSON.stringify(result, null, 2) },
+        ],
+      };
     }
   );
 
@@ -638,10 +652,13 @@ const createServer = (auth: Authenticator): McpServer => {
         columnId,
         columnValue
       );
-      return makeMCPToolJSONSuccess({
-        message: "Items retrieved successfully",
-        result: items,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Items retrieved successfully" },
+          { type: "text", text: JSON.stringify(items, null, 2) },
+        ],
+      };
     }
   );
 
@@ -660,12 +677,18 @@ const createServer = (auth: Authenticator): McpServer => {
 
       const user = await findUserByName(accessToken, name);
       if (!user) {
-        return makeMCPToolTextError("User not found");
+        return {
+          isError: true,
+          content: [{ type: "text", text: "User not found" }],
+        };
       }
-      return makeMCPToolJSONSuccess({
-        message: "User found successfully",
-        result: user,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "User found successfully" },
+          { type: "text", text: JSON.stringify(user, null, 2) },
+        ],
+      };
     }
   );
 
@@ -683,10 +706,13 @@ const createServer = (auth: Authenticator): McpServer => {
       }
 
       const board = await getBoardValues(accessToken, boardId);
-      return makeMCPToolJSONSuccess({
-        message: "Board details retrieved successfully",
-        result: board,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Board details retrieved successfully" },
+          { type: "text", text: JSON.stringify(board, null, 2) },
+        ],
+      };
     }
   );
 
@@ -712,12 +738,18 @@ const createServer = (auth: Authenticator): McpServer => {
         columnId
       );
       if (!columnValue) {
-        return makeMCPToolTextError("Column value not found");
+        return {
+          isError: true,
+          content: [{ type: "text", text: "Column value not found" }],
+        };
       }
-      return makeMCPToolJSONSuccess({
-        message: "Column values retrieved successfully",
-        result: columnValue,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Column values retrieved successfully" },
+          { type: "text", text: JSON.stringify(columnValue, null, 2) },
+        ],
+      };
     }
   );
 
@@ -742,10 +774,13 @@ const createServer = (auth: Authenticator): McpServer => {
         itemId,
         columnId
       );
-      return makeMCPToolJSONSuccess({
-        message: "File column values retrieved successfully",
-        result: fileColumnValue,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "File column values retrieved successfully" },
+          { type: "text", text: JSON.stringify(fileColumnValue, null, 2) },
+        ],
+      };
     }
   );
 
@@ -765,12 +800,18 @@ const createServer = (auth: Authenticator): McpServer => {
 
       const group = await getGroupDetails(accessToken, boardId, groupId);
       if (!group) {
-        return makeMCPToolTextError("Group not found");
+        return {
+          isError: true,
+          content: [{ type: "text", text: "Group not found" }],
+        };
       }
-      return makeMCPToolJSONSuccess({
-        message: "Group details retrieved successfully",
-        result: group,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Group details retrieved successfully" },
+          { type: "text", text: JSON.stringify(group, null, 2) },
+        ],
+      };
     }
   );
 
@@ -788,10 +829,13 @@ const createServer = (auth: Authenticator): McpServer => {
       }
 
       const subitems = await getSubitemValues(accessToken, itemId);
-      return makeMCPToolJSONSuccess({
-        message: "Subitems retrieved successfully",
-        result: subitems,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Subitems retrieved successfully" },
+          { type: "text", text: JSON.stringify(subitems, null, 2) },
+        ],
+      };
     }
   );
 
@@ -810,12 +854,18 @@ const createServer = (auth: Authenticator): McpServer => {
 
       const user = await getUserDetails(accessToken, userId);
       if (!user) {
-        return makeMCPToolTextError("User not found");
+        return {
+          isError: true,
+          content: [{ type: "text", text: "User not found" }],
+        };
       }
-      return makeMCPToolJSONSuccess({
-        message: "User details retrieved successfully",
-        result: user,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "User details retrieved successfully" },
+          { type: "text", text: JSON.stringify(user, null, 2) },
+        ],
+      };
     }
   );
 
@@ -859,10 +909,13 @@ const createServer = (auth: Authenticator): McpServer => {
         targetGroupId,
         columnsMapping
       );
-      return makeMCPToolJSONSuccess({
-        message: "Item moved to board successfully",
-        result: item,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Item moved to board successfully" },
+          { type: "text", text: JSON.stringify(item, null, 2) },
+        ],
+      };
     }
   );
 
@@ -895,10 +948,13 @@ const createServer = (auth: Authenticator): McpServer => {
       }
 
       const createdItems = await createMultipleItems(accessToken, items);
-      return makeMCPToolJSONSuccess({
-        message: `Created ${createdItems.length} items successfully`,
-        result: createdItems,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: `Created ${createdItems.length} items successfully` },
+          { type: "text", text: JSON.stringify(createdItems, null, 2) },
+        ],
+      };
     }
   );
 
@@ -936,10 +992,13 @@ const createServer = (auth: Authenticator): McpServer => {
         to ? new Date(to) : undefined,
         limit
       );
-      return makeMCPToolJSONSuccess({
-        message: "Activity logs retrieved successfully",
-        result: logs,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Activity logs retrieved successfully" },
+          { type: "text", text: JSON.stringify(logs, null, 2) },
+        ],
+      };
     }
   );
 
@@ -957,10 +1016,13 @@ const createServer = (auth: Authenticator): McpServer => {
       }
 
       const analytics = await getBoardAnalytics(accessToken, boardId);
-      return makeMCPToolJSONSuccess({
-        message: "Board analytics retrieved successfully",
-        result: analytics,
-      });
+      return {
+        isError: false,
+        content: [
+          { type: "text", text: "Board analytics retrieved successfully" },
+          { type: "text", text: JSON.stringify(analytics, null, 2) },
+        ],
+      };
     }
   );
 
