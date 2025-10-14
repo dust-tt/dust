@@ -17,7 +17,7 @@ function getDescriptionForContentType(
   file: LightAgentMessageType["generatedFiles"][number]
 ) {
   if (file.contentType === frameContentType) {
-    return "Frame";
+    return "Frames";
   }
 
   return null;
