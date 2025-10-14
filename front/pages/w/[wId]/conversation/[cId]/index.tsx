@@ -22,6 +22,20 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const subscription = auth.subscription();
   const isAdmin = auth.isAdmin();
 
+  // Redirect old ?assistant= query param to ?agent=
+  if (context.query.assistant && !context.query.agent) {
+    const { assistant, wId, cId, ...restQuery } = context.query;
+    const params = new URLSearchParams(restQuery as Record<string, string>);
+    params.set("agent", assistant as string);
+
+    return {
+      redirect: {
+        destination: `/w/${wId}/conversation/${cId}?${params.toString()}`,
+        permanent: true,
+      },
+    };
+  }
+
   if (!owner || !user || !auth.isUser() || !subscription) {
     const { cId } = context.query;
 
