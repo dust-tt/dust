@@ -28,7 +28,7 @@ const GRID_SECTION_CLASSES = classNames(
 const DEMO_VIDEO = {
   sectionTitle: "See how it works",
   // TODO: Replace video URL with Marketing one.
-  videoUrl: "https://youtu.be/qM5JXmTwc80",
+  videoUrl: "https://fast.wistia.net/embed/iframe/4prx3jilqq",
   showCaptions: true,
 };
 
