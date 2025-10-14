@@ -37,10 +37,7 @@ import {
   JiraSortSchema,
   SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -77,12 +74,13 @@ const createServer = (
                 new MCPError(`Error retrieving fields: ${result.error}`)
               );
             }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Fields retrieved successfully",
-                result: result.value,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Fields retrieved successfully" },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
+            ]);
           },
           authInfo,
         });
@@ -118,24 +116,29 @@ const createServer = (
               fields,
             });
             if (issue.isOk() && issue.value === null) {
-              return new Ok(
-                makeMCPToolJSONSuccess({
-                  message: "No issue found with the specified key",
-                  result: { found: false, issueKey },
-                }).content
-              );
+              return new Ok([
+                {
+                  type: "text" as const,
+                  text: "No issue found with the specified key",
+                },
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({ found: false, issueKey }, null, 2),
+                },
+              ]);
             }
             if (issue.isErr()) {
               return new Err(
                 new MCPError(`Error retrieving issue: ${issue.error}`)
               );
             }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Issue retrieved successfully",
-                result: { issue: issue.value },
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Issue retrieved successfully" },
+              {
+                type: "text" as const,
+                text: JSON.stringify({ issue: issue.value }, null, 2),
+              },
+            ]);
           },
           authInfo,
         });
@@ -162,12 +165,13 @@ const createServer = (
                 new MCPError(`Error retrieving projects: ${result.error}`)
               );
             }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Projects retrieved successfully",
-                result,
-              }).content
-            );
+            return new Ok([
+              {
+                type: "text" as const,
+                text: "Projects retrieved successfully",
+              },
+              { type: "text" as const, text: JSON.stringify(result, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -203,12 +207,13 @@ const createServer = (
                 )
               );
             }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Project retrieved successfully",
-                result: result.value,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Project retrieved successfully" },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
+            ]);
           },
           authInfo,
         });
@@ -243,12 +248,16 @@ const createServer = (
                 )
               );
             }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Project versions retrieved successfully",
-                result: result.value,
-              }).content
-            );
+            return new Ok([
+              {
+                type: "text" as const,
+                text: "Project versions retrieved successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
+            ]);
           },
           authInfo,
         });
@@ -277,12 +286,13 @@ const createServer = (
                 new MCPError(`Error retrieving transitions: ${result.error}`)
               );
             }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Transitions retrieved successfully",
-                result,
-              }).content
-            );
+            return new Ok([
+              {
+                type: "text" as const,
+                text: "Transitions retrieved successfully",
+              },
+              { type: "text" as const, text: JSON.stringify(result, null, 2) },
+            ]);
           },
           authInfo,
         });
@@ -340,26 +350,35 @@ const createServer = (
               );
             }
             if (result.value === null) {
-              return new Ok(
-                makeMCPToolJSONSuccess({
-                  message: "Issue not found or no permission to add comment",
-                  result: { found: false, issueKey },
-                }).content
-              );
-            }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Comment added successfully",
-                result: {
-                  issueKey,
-                  comment:
-                    typeof comment === "string"
-                      ? comment
-                      : "[Rich ADF Content]",
-                  commentId: result.value.id,
+              return new Ok([
+                {
+                  type: "text" as const,
+                  text: "Issue not found or no permission to add comment",
                 },
-              }).content
-            );
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({ found: false, issueKey }, null, 2),
+                },
+              ]);
+            }
+            return new Ok([
+              { type: "text" as const, text: "Comment added successfully" },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    issueKey,
+                    comment:
+                      typeof comment === "string"
+                        ? comment
+                        : "[Rich ADF Content]",
+                    commentId: result.value.id,
+                  },
+                  null,
+                  2
+                ),
+              },
+            ]);
           },
           authInfo,
         });
@@ -405,12 +424,13 @@ const createServer = (
               result.value.issues.length === 0
                 ? "No issues found matching the search criteria"
                 : "Issues retrieved successfully";
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message,
-                result: result.value,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: message },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
+            ]);
           },
           authInfo,
         });
@@ -470,12 +490,13 @@ const createServer = (
               result.value.issues.length === 0
                 ? "No issues found matching the JQL query"
                 : "Issues retrieved successfully using JQL";
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message,
-                result: result.value,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: message },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
+            ]);
           },
           authInfo,
         });
@@ -510,12 +531,16 @@ const createServer = (
                   new MCPError(`Error retrieving issue types: ${result.error}`)
                 );
               }
-              return new Ok(
-                makeMCPToolJSONSuccess({
-                  message: "Issue types retrieved successfully",
-                  result,
-                }).content
-              );
+              return new Ok([
+                {
+                  type: "text" as const,
+                  text: "Issue types retrieved successfully",
+                },
+                {
+                  type: "text" as const,
+                  text: JSON.stringify(result, null, 2),
+                },
+              ]);
             } catch (error) {
               return new Err(
                 new MCPError(`Error retrieving issue types: ${error}`)
@@ -558,12 +583,16 @@ const createServer = (
                   new MCPError(`Error retrieving issue fields: ${result.error}`)
                 );
               }
-              return new Ok(
-                makeMCPToolJSONSuccess({
-                  message: "Issue fields retrieved successfully",
-                  result,
-                }).content
-              );
+              return new Ok([
+                {
+                  type: "text" as const,
+                  text: "Issue fields retrieved successfully",
+                },
+                {
+                  type: "text" as const,
+                  text: JSON.stringify(result, null, 2),
+                },
+              ]);
             } catch (error) {
               return new Err(
                 new MCPError(`Error retrieving issue fields: ${error}`)
@@ -601,12 +630,16 @@ const createServer = (
           );
         }
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Connection information retrieved successfully",
-            result: connectionInfo,
-          }).content
-        );
+        return new Ok([
+          {
+            type: "text" as const,
+            text: "Connection information retrieved successfully",
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(connectionInfo, null, 2),
+          },
+        ]);
       }
     )
   );
@@ -649,22 +682,34 @@ const createServer = (
               return new Err(new MCPError(errorMessage));
             }
             if (result.value === null) {
-              return new Ok(
-                makeMCPToolJSONSuccess({
-                  message: "Issue not found or no permission to transition it",
-                  result: { found: false, issueKey },
-                }).content
-              );
-            }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Issue transitioned successfully",
-                result: {
-                  issueKey,
-                  transitionId,
+              return new Ok([
+                {
+                  type: "text" as const,
+                  text: "Issue not found or no permission to transition it",
                 },
-              }).content
-            );
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({ found: false, issueKey }, null, 2),
+                },
+              ]);
+            }
+            return new Ok([
+              {
+                type: "text" as const,
+                text: "Issue transitioned successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    issueKey,
+                    transitionId,
+                  },
+                  null,
+                  2
+                ),
+              },
+            ]);
           },
           authInfo,
         });
@@ -700,12 +745,13 @@ const createServer = (
               }
               return new Err(new MCPError(errorMessage));
             }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Issue created successfully",
-                result: result.value,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Issue created successfully" },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
+            ]);
           },
           authInfo,
         });
@@ -744,22 +790,31 @@ const createServer = (
               );
             }
             if (result.value === null) {
-              return new Ok(
-                makeMCPToolJSONSuccess({
-                  message: "Issue not found or no permission to update it",
-                  result: { found: false, issueKey },
-                }).content
-              );
-            }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Issue updated successfully",
-                result: {
-                  ...result.value,
-                  updatedFields: Object.keys(updateData),
+              return new Ok([
+                {
+                  type: "text" as const,
+                  text: "Issue not found or no permission to update it",
                 },
-              }).content
-            );
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({ found: false, issueKey }, null, 2),
+                },
+              ]);
+            }
+            return new Ok([
+              { type: "text" as const, text: "Issue updated successfully" },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    ...result.value,
+                    updatedFields: Object.keys(updateData),
+                  },
+                  null,
+                  2
+                ),
+              },
+            ]);
           },
           authInfo,
         });
@@ -794,14 +849,22 @@ const createServer = (
                 new MCPError(`Error creating issue link: ${result.error}`)
               );
             }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Issue link created successfully",
-                result: {
-                  ...linkData,
-                },
-              }).content
-            );
+            return new Ok([
+              {
+                type: "text" as const,
+                text: "Issue link created successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    ...linkData,
+                  },
+                  null,
+                  2
+                ),
+              },
+            ]);
           },
           authInfo,
         });
@@ -830,12 +893,16 @@ const createServer = (
                 new MCPError(`Error deleting issue link: ${result.error}`)
               );
             }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Issue link deleted successfully",
-                result: { linkId },
-              }).content
-            );
+            return new Ok([
+              {
+                type: "text" as const,
+                text: "Issue link deleted successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify({ linkId }, null, 2),
+              },
+            ]);
           },
           authInfo,
         });
@@ -863,12 +930,16 @@ const createServer = (
                 )
               );
             }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Issue link types retrieved successfully",
-                result: result.value,
-              }).content
-            );
+            return new Ok([
+              {
+                type: "text" as const,
+                text: "Issue link types retrieved successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
+            ]);
           },
           authInfo,
         });
@@ -939,15 +1010,20 @@ const createServer = (
                 result.value.users.length === 0
                   ? "No users found with the specified email address"
                   : `Found ${result.value.users.length} exact match(es) for the specified email address`;
-              return new Ok(
-                makeMCPToolJSONSuccess({
-                  message,
-                  result: {
-                    users: result.value.users,
-                    nextStartAt: result.value.nextStartAt,
-                  },
-                }).content
-              );
+              return new Ok([
+                { type: "text" as const, text: message },
+                {
+                  type: "text" as const,
+                  text: JSON.stringify(
+                    {
+                      users: result.value.users,
+                      nextStartAt: result.value.nextStartAt,
+                    },
+                    null,
+                    2
+                  ),
+                },
+              ]);
             }
 
             const result = await listUsers(baseUrl, accessToken, {
@@ -969,15 +1045,20 @@ const createServer = (
                 : name
                   ? `Found ${result.value.users.length} user(s) matching the name`
                   : `Listed ${result.value.users.length} user(s)`;
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message,
-                result: {
-                  users: result.value.users,
-                  nextStartAt: result.value.nextStartAt,
-                },
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: message },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    users: result.value.users,
+                    nextStartAt: result.value.nextStartAt,
+                  },
+                  null,
+                  2
+                ),
+              },
+            ]);
           },
           authInfo,
         });
@@ -1106,24 +1187,32 @@ const createServer = (
 
             const uploadedAttachment = uploadResult.value[0];
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Successfully uploaded attachment to issue ${issueKey}`,
-                result: {
-                  issueKey,
-                  attachment: {
-                    id: uploadedAttachment.id,
-                    filename: uploadedAttachment.filename,
-                    size: uploadedAttachment.size,
-                    mimeType: uploadedAttachment.mimeType,
-                    created: uploadedAttachment.created,
-                    author:
-                      uploadedAttachment.author.displayName ??
-                      uploadedAttachment.author.accountId,
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Successfully uploaded attachment to issue ${issueKey}`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    issueKey,
+                    attachment: {
+                      id: uploadedAttachment.id,
+                      filename: uploadedAttachment.filename,
+                      size: uploadedAttachment.size,
+                      mimeType: uploadedAttachment.mimeType,
+                      created: uploadedAttachment.created,
+                      author:
+                        uploadedAttachment.author.displayName ??
+                        uploadedAttachment.author.accountId,
+                    },
                   },
-                },
-              }).content
-            );
+                  null,
+                  2
+                ),
+              },
+            ]);
           },
           authInfo,
         });
@@ -1168,20 +1257,28 @@ const createServer = (
               thumbnail: att.thumbnail,
             }));
 
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: `Found ${attachments.length} attachment(s) for issue ${issueKey}`,
-                result: {
-                  issueKey,
-                  attachments: attachmentSummary,
-                  totalAttachments: attachments.length,
-                  totalSize: attachments.reduce(
-                    (sum, att) => sum + (att.size || 0),
-                    0
-                  ),
-                },
-              }).content
-            );
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Found ${attachments.length} attachment(s) for issue ${issueKey}`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    issueKey,
+                    attachments: attachmentSummary,
+                    totalAttachments: attachments.length,
+                    totalSize: attachments.reduce(
+                      (sum, att) => sum + (att.size || 0),
+                      0
+                    ),
+                  },
+                  null,
+                  2
+                ),
+              },
+            ]);
           },
           authInfo,
         });

@@ -22,7 +22,6 @@ import type {
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -280,12 +279,10 @@ async function withNotionClient<T>(
     const notion = new Client({ auth: accessToken });
 
     const result = await fn(notion);
-    return new Ok(
-      makeMCPToolJSONSuccess({
-        message: "Success",
-        result: JSON.stringify(result),
-      }).content
-    );
+    return new Ok([
+      { type: "text" as const, text: "Success" },
+      { type: "text" as const, text: JSON.stringify(result, null, 2) },
+    ]);
   } catch (e) {
     const tracked =
       APIResponseError.isAPIResponseError(e) &&

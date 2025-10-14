@@ -4,10 +4,7 @@ import { google } from "googleapis";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
@@ -93,11 +90,9 @@ const createServer = (auth: Authenticator): McpServer => {
             corpora: "allDrives",
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -141,11 +136,9 @@ const createServer = (auth: Authenticator): McpServer => {
             includeGridData,
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -201,11 +194,9 @@ const createServer = (auth: Authenticator): McpServer => {
             valueRenderOption,
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -267,11 +258,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -345,11 +334,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(normalizeError(err).message || "Failed to append data")
@@ -390,11 +377,9 @@ const createServer = (auth: Authenticator): McpServer => {
             range,
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(normalizeError(err).message || "Failed to clear range")
@@ -443,11 +428,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -508,11 +491,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -559,11 +540,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -661,11 +640,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -721,11 +698,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(normalizeError(err).message || "Failed to copy sheet")
@@ -775,11 +750,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -836,11 +809,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(

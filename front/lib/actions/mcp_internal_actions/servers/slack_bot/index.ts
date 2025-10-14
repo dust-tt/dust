@@ -9,10 +9,7 @@ import {
   executePostMessage,
   getSlackClient,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack_bot/slack_api_helper";
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -241,20 +238,25 @@ const createServer = async (
           const hasMore = !!response.has_more;
           const nextCursor = response.response_metadata?.next_cursor;
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: {
-                messages: response.messages,
-                has_more: hasMore,
-                next_cursor: nextCursor,
-                pagination_info: {
-                  current_page_size: response.messages?.length ?? 0,
-                  has_more_pages: hasMore,
-                  next_cursor_for_pagination: nextCursor,
+          return new Ok([
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  messages: response.messages,
+                  has_more: hasMore,
+                  next_cursor: nextCursor,
+                  pagination_info: {
+                    current_page_size: response.messages?.length ?? 0,
+                    has_more_pages: hasMore,
+                    next_cursor_for_pagination: nextCursor,
+                  },
                 },
-              },
-            }).content
-          );
+                null,
+                2
+              ),
+            },
+          ]);
         } catch (error) {
           return new Err(
             new MCPError(
@@ -328,24 +330,32 @@ const createServer = async (
           const parentMessage = response.messages?.[0];
           const threadReplies = response.messages?.slice(1) ?? [];
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              message: `Retrieved thread with ${response.messages?.length} total messages (1 parent + ${threadReplies.length} replies)${hasMore ? ". More replies available." : ""}`,
-              result: {
-                parent_message: parentMessage,
-                thread_replies: threadReplies,
-                total_messages: response.messages?.length ?? 0,
-                has_more: hasMore,
-                next_cursor: nextCursor,
-                pagination_info: {
-                  current_page_size: response.messages?.length ?? 0,
-                  replies_in_this_page: threadReplies.length,
-                  has_more_pages: hasMore,
-                  next_cursor_for_pagination: nextCursor,
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Retrieved thread with ${response.messages?.length} total messages (1 parent + ${threadReplies.length} replies)${hasMore ? ". More replies available." : ""}`,
+            },
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  parent_message: parentMessage,
+                  thread_replies: threadReplies,
+                  total_messages: response.messages?.length ?? 0,
+                  has_more: hasMore,
+                  next_cursor: nextCursor,
+                  pagination_info: {
+                    current_page_size: response.messages?.length ?? 0,
+                    replies_in_this_page: threadReplies.length,
+                    has_more_pages: hasMore,
+                    next_cursor_for_pagination: nextCursor,
+                  },
                 },
-              },
-            }).content
-          );
+                null,
+                2
+              ),
+            },
+          ]);
         } catch (error) {
           return new Err(
             new MCPError(
@@ -399,12 +409,13 @@ const createServer = async (
             );
           }
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              message: `Successfully added ${name} reaction to message`,
-              result: response,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Successfully added ${name} reaction to message`,
+            },
+            { type: "text" as const, text: JSON.stringify(response, null, 2) },
+          ]);
         } catch (error) {
           return new Err(
             new MCPError(`Error adding reaction: ${normalizeError(error)}`)
@@ -456,12 +467,13 @@ const createServer = async (
             );
           }
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              message: `Successfully removed ${name} reaction from message`,
-              result: response,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Successfully removed ${name} reaction from message`,
+            },
+            { type: "text" as const, text: JSON.stringify(response, null, 2) },
+          ]);
         } catch (error) {
           return new Err(
             new MCPError(`Error removing reaction: ${normalizeError(error)}`)

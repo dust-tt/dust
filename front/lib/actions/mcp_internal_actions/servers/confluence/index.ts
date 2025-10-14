@@ -9,10 +9,7 @@ import {
   updatePage,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/confluence_api_helper";
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
@@ -41,12 +38,16 @@ const createServer = (auth: Authenticator): McpServer => {
                 new MCPError(`Error getting current user: ${result.error}`)
               );
             }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Current user information retrieved successfully",
-                result: result.value,
-              }).content
-            );
+            return new Ok([
+              {
+                type: "text" as const,
+                text: "Current user information retrieved successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
+            ]);
           },
           authInfo,
         });
@@ -87,15 +88,19 @@ const createServer = (auth: Authenticator): McpServer => {
                 new MCPError(`Error listing pages: ${result.error}`)
               );
             }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message:
+            return new Ok([
+              {
+                type: "text" as const,
+                text:
                   result.value.results.length === 0
                     ? "No pages found"
                     : `Found ${result.value.results.length} page(s)`,
-                result: result.value,
-              }).content
-            );
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
+            ]);
           },
           authInfo,
         });
@@ -147,12 +152,13 @@ const createServer = (auth: Authenticator): McpServer => {
                 new MCPError(`Error creating page: ${result.error}`)
               );
             }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Page created successfully",
-                result: result.value,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Page created successfully" },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
+            ]);
           },
           authInfo,
         });
@@ -218,12 +224,13 @@ const createServer = (auth: Authenticator): McpServer => {
                 new MCPError(`Error updating page: ${result.error}`)
               );
             }
-            return new Ok(
-              makeMCPToolJSONSuccess({
-                message: "Page updated successfully",
-                result: result.value,
-              }).content
-            );
+            return new Ok([
+              { type: "text" as const, text: "Page updated successfully" },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
+            ]);
           },
           authInfo,
         });
