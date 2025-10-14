@@ -657,6 +657,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_ai_studio_experimental_models_feature"
   | "google_sheets_tool"
   | "hootl_subscriptions"
+  | "llm_router_direct_requests"
   | "hootl_webhooks"
   | "hootl_dev_webhooks"
   | "index_private_slack_channel"

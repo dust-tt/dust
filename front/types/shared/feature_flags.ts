@@ -75,6 +75,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "MCP actions dashboard in Labs section",
     stage: "on_demand",
   },
+  llm_router_direct_requests: {
+    description: "Use direct LLM call over Dust app run in a conversation.",
+    stage: "on_demand",
+  },
   labs_trackers: {
     description:
       "Tracker feature. Check with Henry or eng oncall before activating to a new workspace.",
