@@ -19,7 +19,10 @@ const createServer = (auth: Authenticator): McpServer => {
     {},
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (_, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -75,7 +78,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ top = 250, skip = 0, userTimezone }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -141,7 +147,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (
         {
           calendarId,
@@ -201,7 +210,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ calendarId, eventId, userTimezone }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -280,7 +292,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (
         {
           calendarId,
@@ -378,7 +393,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (
         {
           calendarId,
@@ -452,7 +470,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ calendarId, eventId, userTimezone }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -506,7 +527,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (
         { emails, startTime, endTime, intervalInMinutes = 60, userTimezone },
         { authInfo }
