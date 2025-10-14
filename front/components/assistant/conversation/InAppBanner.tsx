@@ -38,7 +38,7 @@ export function InAppBanner() {
           Introducing Frames ✨
         </div>
         <h4 className="mb-4 text-sm font-medium leading-tight text-primary dark:text-primary-night">
-          Turn AI outputs into interactive content
+          Turn agent outputs into interactive content
         </h4>
         <Button
           variant="highlight"
