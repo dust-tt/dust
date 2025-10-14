@@ -9,7 +9,10 @@ import type { GithubConnectorState } from "@connectors/lib/models/github";
 import type { GongConfigurationModel } from "@connectors/lib/models/gong";
 import type { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
 import type { IntercomWorkspaceModel } from "@connectors/lib/models/intercom";
-import type { MicrosoftConfigurationModel } from "@connectors/lib/models/microsoft";
+import type {
+  MicrosoftBotConfigurationModel,
+  MicrosoftConfigurationModel,
+} from "@connectors/lib/models/microsoft";
 import type { NotionConnectorState } from "@connectors/lib/models/notion";
 import type { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
@@ -24,6 +27,7 @@ import { GongConnectorStrategy } from "@connectors/resources/connector/gong";
 import { GoogleDriveConnectorStrategy } from "@connectors/resources/connector/google_drive";
 import { IntercomConnectorStrategy } from "@connectors/resources/connector/intercom";
 import { MicrosoftConnectorStrategy } from "@connectors/resources/connector/microsoft";
+import { MicrosoftBotConnectorStrategy } from "@connectors/resources/connector/microsoft_bot";
 import { NotionConnectorStrategy } from "@connectors/resources/connector/notion";
 import { SalesforceConnectorStrategy } from "@connectors/resources/connector/salesforce";
 import { SlackConnectorStrategy } from "@connectors/resources/connector/slack";
@@ -51,6 +55,7 @@ export interface ConnectorProviderModelM {
   google_drive: GoogleDriveConfig;
   intercom: IntercomWorkspaceModel;
   microsoft: MicrosoftConfigurationModel;
+  microsoft_bot: MicrosoftBotConfigurationModel;
   notion: NotionConnectorState;
   slack: SlackConfigurationModel;
   slack_bot: SlackConfigurationModel;
@@ -90,6 +95,7 @@ export interface ConnectorProviderConfigurationTypeM {
   google_drive: null;
   intercom: null;
   microsoft: null;
+  microsoft_bot: null;
   notion: null;
   snowflake: null;
   slack: SlackConfigurationType;
@@ -150,6 +156,9 @@ export function getConnectorProviderStrategy(
 
     case "microsoft":
       return new MicrosoftConnectorStrategy();
+
+    case "microsoft_bot":
+      return new MicrosoftBotConnectorStrategy();
 
     case "notion":
       return new NotionConnectorStrategy();

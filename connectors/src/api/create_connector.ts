@@ -174,6 +174,7 @@ const _createConnectorAPIHandler = async (
       case "bigquery":
       case "zendesk":
       case "microsoft":
+      case "microsoft_bot":
       case "salesforce":
       case "gong": {
         connectorRes = await createConnector({
