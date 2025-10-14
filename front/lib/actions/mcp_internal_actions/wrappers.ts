@@ -51,8 +51,7 @@ export function withToolLogging<T>(
     > = {
       workspace: {
         sId: owner.sId,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        plan_code: auth.plan()?.code || null,
+        plan_code: auth.plan()?.code ?? null,
       },
       toolName: toolNameForMonitoring,
     };
@@ -80,8 +79,7 @@ export function withToolLogging<T>(
     const tags = [
       `tool:${toolNameForMonitoring}`,
       `workspace:${owner.sId}`,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      `workspace_plan_code:${auth.plan()?.code || null}`,
+      `workspace_plan_code:${auth.plan()?.code ?? null}`,
     ];
 
     if (!skipAlerting) {
