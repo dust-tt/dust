@@ -2,8 +2,8 @@ import type { estypes } from "@elastic/elasticsearch";
 import { Client, errors as esErrors } from "@elastic/elasticsearch";
 
 import config from "@app/lib/api/config";
-import { Err, Ok } from "@app/types/shared/result";
 import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 let esClient: Client | null = null;
 
@@ -94,4 +94,34 @@ export function formatUTCDateFromMillis(ms: number): string {
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
   const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+/**
+ * High-level analytics-specific interface.
+ * This interface enforces proper usage and makes it harder to accidentally
+ * query other Elasticsearch indexes from the front service.
+ */
+export async function searchAnalytics<
+  TDocument = unknown,
+  TAggregations = unknown,
+>(
+  query: estypes.QueryDslQueryContainer,
+  options?: {
+    aggregations?: Record<string, estypes.AggregationsAggregationContainer>;
+    size?: number;
+    from?: number;
+    sort?: estypes.Sort;
+  }
+): Promise<
+  Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
+> {
+  const analyticsIndex = config.getElasticsearchConfig().analyticsIndex;
+  return esSearch<TDocument, TAggregations>({
+    index: analyticsIndex,
+    query,
+    aggs: options?.aggregations,
+    size: options?.size,
+    from: options?.from,
+    sort: options?.sort,
+  });
 }
