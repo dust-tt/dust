@@ -442,7 +442,11 @@ const createServer = (auth: Authenticator): McpServer => {
         if (!messageResponse.ok) {
           const errorText = await getErrorText(messageResponse);
           if (messageResponse.status === 404) {
-            return new Err(new MCPError(`Message not found: ${messageId}`));
+            return new Err(
+              new MCPError(`Message not found: ${messageId}`, {
+                tracked: false,
+              })
+            );
           }
           return new Err(
             new MCPError(

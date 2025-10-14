@@ -13,7 +13,7 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import type {
   FileAttachmentCitation,
-  MarkdownAttachmentCitation,
+  MCPAttachmentCitation,
 } from "@app/components/assistant/conversation/attachment/types";
 import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -34,7 +34,7 @@ export const AttachmentViewer = ({
 }: {
   viewerOpen: boolean;
   setViewerOpen: (open: boolean) => void;
-  attachmentCitation: FileAttachmentCitation | MarkdownAttachmentCitation;
+  attachmentCitation: FileAttachmentCitation | MCPAttachmentCitation;
   conversationId: string | null;
   owner: LightWorkspaceType;
 }) => {

@@ -1,4 +1,4 @@
-import { ChevronRightIcon, cn } from "@dust-tt/sparkle";
+import { ChevronRightIcon, cn, Icon } from "@dust-tt/sparkle";
 import React from "react";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -55,7 +55,7 @@ export const AgentMessageCompletionStatus = ({
       onClick={onClick}
     >
       <span>{displayText}</span>
-      <ChevronRightIcon className="h-3 w-3" />
+      <Icon visual={ChevronRightIcon} size="xs" />
     </div>
   );
 };

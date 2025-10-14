@@ -3,6 +3,7 @@ import { assertNever } from "@dust-tt/client";
 
 import { BigQueryConnectorManager } from "@connectors/connectors/bigquery";
 import { ConfluenceConnectorManager } from "@connectors/connectors/confluence";
+import { DiscordBotConnectorManager } from "@connectors/connectors/discord_bot";
 import { GithubConnectorManager } from "@connectors/connectors/github";
 import { GongConnectorManager } from "@connectors/connectors/gong";
 import { GoogleDriveConnectorManager } from "@connectors/connectors/google_drive";
@@ -21,6 +22,7 @@ import { SnowflakeConnectorManager } from "@connectors/connectors/snowflake";
 import { WebcrawlerConnectorManager } from "@connectors/connectors/webcrawler";
 import { ZendeskConnectorManager } from "@connectors/connectors/zendesk";
 import type {
+  DiscordBotConfigurationType,
   SlackConfigurationType,
   WebCrawlerConfiguration,
 } from "@connectors/types";
@@ -77,6 +79,8 @@ export function getConnectorManager({
       return new SalesforceConnectorManager(connectorId);
     case "gong":
       return new GongConnectorManager(connectorId);
+    case "discord_bot":
+      return new DiscordBotConnectorManager(connectorId);
     default:
       assertNever(connectorProvider);
   }
@@ -89,7 +93,7 @@ export function createConnector({
   | {
       connectorProvider: Exclude<
         ConnectorProvider,
-        "webcrawler" | "slack" | "slack_bot"
+        "webcrawler" | "slack" | "slack_bot" | "discord_bot"
       >;
       params: {
         dataSourceConfig: DataSourceConfig;
@@ -111,6 +115,14 @@ export function createConnector({
         dataSourceConfig: DataSourceConfig;
         connectionId: string;
         configuration: SlackConfigurationType;
+      };
+    }
+  | {
+      connectorProvider: "discord_bot";
+      params: {
+        dataSourceConfig: DataSourceConfig;
+        connectionId: string;
+        configuration: DiscordBotConfigurationType;
       };
     }): Promise<
   Result<string, ConnectorManagerError<CreateConnectorErrorCode>>
@@ -146,6 +158,8 @@ export function createConnector({
       return SalesforceConnectorManager.create(params);
     case "gong":
       return GongConnectorManager.create(params);
+    case "discord_bot":
+      return DiscordBotConnectorManager.create(params);
     default:
       assertNever(connectorProvider);
   }

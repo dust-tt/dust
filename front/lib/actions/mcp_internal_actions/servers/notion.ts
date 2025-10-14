@@ -10,6 +10,7 @@ import type {
   QueryDatabaseParameters,
   RichTextItemResponse,
 } from "@notionhq/client/build/src/api-endpoints";
+import { APIResponseError } from "@notionhq/client/build/src/errors";
 import { parseISO } from "date-fns";
 import { z } from "zod";
 
@@ -286,7 +287,21 @@ async function withNotionClient<T>(
       }).content
     );
   } catch (e) {
-    return new Err(new MCPError(normalizeError(e).message));
+    const tracked =
+      APIResponseError.isAPIResponseError(e) &&
+      [
+        // Ignoring errors due to a malformed input passed by the model (e.g. invalid ID).
+        "restricted_resource",
+        "object_not_found",
+        "invalid_request",
+        "validation_error",
+      ].includes(e.code);
+    return new Err(
+      new MCPError(normalizeError(e).message, {
+        tracked,
+        cause: normalizeError(e),
+      })
+    );
   }
 }
 

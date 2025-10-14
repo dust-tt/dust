@@ -52,31 +52,30 @@ export function createBaseConfigurationFields() {
  * Uses direct conditional logic for clarity
  */
 export function createDynamicConfigurationFields(
-  toolsConfigurations: MCPServerRequirements
+  requirements: MCPServerRequirements
 ) {
   return {
-    childAgentId: toolsConfigurations.requiresChildAgentConfiguration
+    childAgentId: requirements.requiresChildAgentConfiguration
       ? childAgentIdSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.childAgent.required,
         })
       : z.null(),
-    reasoningModel: toolsConfigurations.requiresReasoningConfiguration
+    reasoningModel: requirements.requiresReasoningConfiguration
       ? reasoningModelSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.reasoningModel.required,
         })
       : z.null(),
-    dustAppConfiguration: toolsConfigurations.requiresDustAppConfiguration
+    dustAppConfiguration: requirements.requiresDustAppConfiguration
       ? dustAppConfigurationSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.dustApp.required,
         })
       : z.null(),
-    secretName: toolsConfigurations.requiresSecretConfiguration
+    secretName: requirements.requiresSecretConfiguration
       ? secretNameSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.secret.required,
         })
       : z.null(),
-    additionalConfiguration:
-      createAdditionalConfigurationSchema(toolsConfigurations),
+    additionalConfiguration: createAdditionalConfigurationSchema(requirements),
   };
 }
 

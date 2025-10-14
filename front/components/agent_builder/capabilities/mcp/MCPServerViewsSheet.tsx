@@ -192,7 +192,7 @@ export function MCPServerViewsSheet({
           action.type === "MCP" &&
           action.configuration &&
           action.configuration.mcpServerViewId &&
-          !action.configurable
+          !action.configurationRequired
         ) {
           const selectedView = allMcpServerViews.find(
             (mcpServerView) =>
@@ -493,7 +493,7 @@ export function MCPServerViewsSheet({
             configuration: null,
             name: DEFAULT_DATA_VISUALIZATION_NAME,
             description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-            configurable: false,
+            configurationRequired: false,
           };
         } else {
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -534,7 +534,7 @@ export function MCPServerViewsSheet({
     shouldUnregister: false,
   });
 
-  const toolsConfigurations = useMemo(
+  const requirements = useMemo(
     () =>
       mcpServerView
         ? getMCPServerRequirements(mcpServerView, featureFlags)
@@ -619,14 +619,11 @@ export function MCPServerViewsSheet({
         ? () => getAvatar(mcpServerView.server, "md")
         : undefined,
       content:
-        configurationTool &&
-        mcpServerView &&
-        toolsConfigurations &&
-        formSchema ? (
+        configurationTool && mcpServerView && requirements && formSchema ? (
           <FormProvider form={form} className="h-full">
             <div className="h-full">
               <div className="h-full space-y-6 pt-3">
-                {configurationTool.configurable && (
+                {configurationTool.configurationRequired && (
                   <NameSection
                     title="Name"
                     placeholder="My tool name…"
@@ -634,38 +631,36 @@ export function MCPServerViewsSheet({
                   />
                 )}
 
-                {toolsConfigurations.requiresReasoningConfiguration && (
+                {requirements.requiresReasoningConfiguration && (
                   <ReasoningModelSection />
                 )}
 
-                {toolsConfigurations.requiresChildAgentConfiguration && (
+                {requirements.requiresChildAgentConfiguration && (
                   <ChildAgentSection />
                 )}
 
-                {toolsConfigurations.mayRequireTimeFrameConfiguration && (
+                {requirements.mayRequireTimeFrameConfiguration && (
                   <TimeFrameSection actionType="search" />
                 )}
 
-                {toolsConfigurations.requiresDustAppConfiguration && (
+                {requirements.requiresDustAppConfiguration && (
                   <DustAppSection />
                 )}
 
-                {toolsConfigurations.requiresSecretConfiguration && (
-                  <SecretSection />
-                )}
+                {requirements.requiresSecretConfiguration && <SecretSection />}
 
-                {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
+                {requirements.mayRequireJsonSchemaConfiguration && (
                   <JsonSchemaSection
                     getAgentInstructions={getAgentInstructions}
                   />
                 )}
 
                 <AdditionalConfigurationSection
-                  stringConfigurations={toolsConfigurations.requiredStrings}
-                  numberConfigurations={toolsConfigurations.requiredNumbers}
-                  booleanConfigurations={toolsConfigurations.requiredBooleans}
-                  enumConfigurations={toolsConfigurations.requiredEnums}
-                  listConfigurations={toolsConfigurations.requiredLists}
+                  requiredStrings={requirements.requiredStrings}
+                  requiredNumbers={requirements.requiredNumbers}
+                  requiredBooleans={requirements.requiredBooleans}
+                  requiredEnums={requirements.requiredEnums}
+                  requiredLists={requirements.requiredLists}
                 />
               </div>
             </div>
