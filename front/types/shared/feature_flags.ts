@@ -168,7 +168,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   agent_builder_observability: {
-    description: "Observability tab in the Agent Builder (charts powered by Elasticsearch)",
+    description:
+      "Observability tab in the Agent Builder (charts powered by Elasticsearch)",
     stage: "on_demand",
   },
   slack_message_splitting: {

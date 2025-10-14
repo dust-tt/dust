@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { cn, Spinner } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 import {
   CartesianGrid,
@@ -11,12 +11,16 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
+import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
 import type {
   ObservabilityIntervalType,
   ObservabilityTimeRangeType,
 } from "@app/components/agent_builder/observability/constants";
+import {
+  OBSERVABILITY_INTERVALS,
+  OBSERVABILITY_TIME_RANGE,
+} from "@app/components/agent_builder/observability/constants";
 import { useAgentUsageMetrics } from "@app/lib/swr/assistants";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
 
 export function UsageMetricsChart({
   workspaceId,
@@ -55,32 +59,34 @@ export function UsageMetricsChart({
         <h3 className="text-lg font-medium text-foreground">Usage Metrics</h3>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            {(["7d", "14d", "30d"] as const).map((p) => (
+            {OBSERVABILITY_TIME_RANGE.map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
                 type="button"
-                className={`rounded px-2 py-1 text-xs ${
+                className={cn(
+                  "rounded px-2 py-1 text-xs",
                   period === p
                     ? "bg-foreground text-background"
                     : "text-muted-foreground hover:text-foreground"
-                }`}
+                )}
               >
                 {p}
               </button>
             ))}
           </div>
           <div className="flex items-center gap-2">
-            {(["day", "week"] as const).map((i) => (
+            {OBSERVABILITY_INTERVALS.map((i) => (
               <button
                 key={i}
                 onClick={() => setInterval(i)}
                 type="button"
-                className={`rounded px-2 py-1 text-xs ${
+                className={cn(
+                  "rounded px-2 py-1 text-xs",
                   interval === i
                     ? "bg-foreground text-background"
                     : "text-muted-foreground hover:text-foreground"
-                }`}
+                )}
               >
                 {i}
               </button>
@@ -111,7 +117,9 @@ export function UsageMetricsChart({
               cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
               content={(props: TooltipContentProps<number, string>) => {
                 const { active, payload, label } = props;
-                if (!active || !payload || payload.length === 0) return null;
+                if (!active || !payload || payload.length === 0) {
+                  return null;
+                }
                 type Item = NonNullable<typeof payload>[number];
                 const first = payload[0] as Item;
                 const row = first.payload as {
@@ -180,7 +188,10 @@ export function UsageMetricsChart({
         ).map(({ k, label }) => (
           <div key={k} className="flex items-center gap-2">
             <span
-              className={`inline-block h-3 w-3 rounded-sm bg-current ${palette[k]}`}
+              className={cn(
+                "inline-block h-3 w-3 rounded-sm bg-current",
+                palette[k]
+              )}
             />
             <span className="text-sm text-muted-foreground">{label}</span>
           </div>

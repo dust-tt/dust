@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { cn, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
@@ -11,13 +11,18 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
-import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
-import { OBSERVABILITY_PALETTE } from "@app/components/agent_builder/observability/constants";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
+import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import {
+  OBSERVABILITY_PALETTE,
+  OBSERVABILITY_TIME_RANGE,
+} from "@app/components/agent_builder/observability/constants";
 import {
   useAgentLatencyAvgByVersion,
   useAgentToolExecution,
 } from "@app/lib/swr/assistants";
+
+const TOOLS_NUMBER_LIMIT = 20;
 
 export function LatencyDistributionChart({
   workspaceId,
@@ -37,7 +42,7 @@ export function LatencyDistributionChart({
     workspaceId,
     agentConfigurationId,
     days,
-    size: 20,
+    size: TOOLS_NUMBER_LIMIT,
     disabled: !workspaceId || !agentConfigurationId,
   });
   const availableTools = useMemo(
@@ -87,16 +92,17 @@ export function LatencyDistributionChart({
         </h3>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            {(["7d", "14d", "30d"] as const).map((p) => (
+            {OBSERVABILITY_TIME_RANGE.map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
                 type="button"
-                className={`rounded px-2 py-1 text-xs ${
+                className={cn(
+                  "rounded px-2 py-1 text-xs",
                   period === p
                     ? "bg-foreground text-background"
                     : "text-muted-foreground hover:text-foreground"
-                }`}
+                )}
               >
                 {p}
               </button>
@@ -145,11 +151,13 @@ export function LatencyDistributionChart({
               cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
               content={(props: TooltipContentProps<number, string>) => {
                 const { active, payload, label } = props;
-                if (!active || !payload || payload.length === 0) return null;
+                if (!active || !payload || payload.length === 0) {
+                  return null;
+                }
                 type Item = NonNullable<typeof payload>[number];
                 const entries = payload.map((p: Item, i: number) => ({
                   label: String(p.name ?? p.dataKey),
-                  value: (p.value as number) ?? 0,
+                  value: p.value ?? 0,
                   colorClass:
                     OBSERVABILITY_PALETTE[i % OBSERVABILITY_PALETTE.length],
                 }));

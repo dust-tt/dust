@@ -1,5 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
+import { cn, Spinner } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 import {
   Bar,
@@ -12,8 +11,12 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
+import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import { OBSERVABILITY_TIME_RANGE } from "@app/components/agent_builder/observability/constants";
 import { useAgentToolExecution } from "@app/lib/swr/assistants";
+
+const TOOLS_NUMBER_LIMIT = 10;
 
 export function ToolExecutionChart({
   workspaceId,
@@ -33,7 +36,7 @@ export function ToolExecutionChart({
       workspaceId,
       agentConfigurationId,
       days,
-      size: 10,
+      size: TOOLS_NUMBER_LIMIT,
       disabled: !workspaceId || !agentConfigurationId,
     });
 
@@ -44,7 +47,9 @@ export function ToolExecutionChart({
 
   function CustomTooltip(props: TooltipContentProps<number, string>) {
     const { active, payload } = props;
-    if (!active || !payload || payload.length === 0) return null;
+    if (!active || !payload || payload.length === 0) {
+      return null;
+    }
 
     type Item = NonNullable<typeof payload>[number];
     const first = payload[0] as Item;
@@ -84,16 +89,17 @@ export function ToolExecutionChart({
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-medium text-foreground">Tool Executions</h3>
         <div className="flex items-center gap-2">
-          {(["7d", "14d", "30d"] as const).map((p) => (
+          {OBSERVABILITY_TIME_RANGE.map((p) => (
             <button
               key={p}
               onClick={() => setRange(p)}
               type="button"
-              className={`rounded px-2 py-1 text-xs ${
+              className={cn(
+                "rounded px-2 py-1 text-xs",
                 range === p
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+              )}
             >
               {p}
             </button>
