@@ -1,10 +1,16 @@
+import { DustAPI } from "@dust-tt/client";
+import type { TurnContext } from "botbuilder";
 import {
   CloudAdapter,
   ConfigurationBotFrameworkAuthentication,
-  TurnContext,
 } from "botbuilder";
 import type { Request, Response } from "express";
 
+import {
+  createErrorAdaptiveCard,
+  createThinkingAdaptiveCard,
+} from "@connectors/api/webhooks/teams/adaptive_cards";
+import { botAnswerMessage } from "@connectors/api/webhooks/teams/bot";
 import {
   sendActivity,
   sendTextMessage,
@@ -15,16 +21,10 @@ import {
   validateBotFrameworkToken,
 } from "@connectors/api/webhooks/teams/jwt_validation";
 import { getConnector } from "@connectors/api/webhooks/teams/utils";
+import { apiConfig } from "@connectors/lib/api/config";
 import logger from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { DustAPI } from "@dust-tt/client";
-import { apiConfig } from "@connectors/lib/api/config";
-import {
-  createErrorAdaptiveCard,
-  createThinkingAdaptiveCard,
-} from "@connectors/api/webhooks/teams/adaptive_cards";
-import { botAnswerTeamsMessage } from "@connectors/api/webhooks/teams/bot";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 // CloudAdapter configuration - simplified for incoming message validation only
 const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication({
@@ -243,7 +243,7 @@ async function handleAgentSelection(
     .trim();
   const agentMessage = `@${agentName} ${cleanMessage}`;
 
-  await processTeamsMessage(context, agentMessage, connector);
+  await processMicrosoftBotMessage(context, agentMessage, connector);
 }
 
 async function handleTextMessage(
@@ -292,7 +292,7 @@ async function handleTextMessage(
     );
   }
 
-  await processTeamsMessage(context, context.activity.text, connector);
+  await processMicrosoftBotMessage(context, context.activity.text, connector);
 }
 
 async function handleMessageExtension(
@@ -388,13 +388,13 @@ async function handleMessageExtension(
   }
 }
 
-async function processTeamsMessage(
+async function processMicrosoftBotMessage(
   context: TurnContext,
   message: string,
   connector: ConnectorResource
 ) {
   try {
-    const result = await botAnswerTeamsMessage(
+    const result = await botAnswerMessage(
       context,
       message,
       connector,

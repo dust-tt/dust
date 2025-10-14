@@ -12,7 +12,7 @@ import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import { getClient } from "@connectors/connectors/microsoft/index";
 import { apiConfig } from "@connectors/lib/api/config";
-import { TeamsMessage } from "@connectors/lib/models/microsoft_bot";
+import { MicrosoftBotMessage } from "@connectors/lib/models/microsoft_bot";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { getHeaderFromUserEmail } from "@connectors/types";
@@ -25,14 +25,14 @@ import {
 } from "./adaptive_cards";
 import { sendActivity, updateActivity } from "./bot_messaging_utils";
 
-export async function botAnswerTeamsMessage(
+export async function botAnswerMessage(
   context: TurnContext,
   message: string,
   connector: ConnectorResource,
   streamingMessages: Map<string, string>
 ): Promise<Result<undefined, Error>> {
   try {
-    const res = await answerTeamsMessage(
+    const res = await answerBotMessage(
       context,
       message,
       connector,
@@ -74,7 +74,7 @@ export async function botAnswerTeamsMessage(
   }
 }
 
-async function answerTeamsMessage(
+async function answerBotMessage(
   context: TurnContext,
   message: string,
   connector: ConnectorResource,
@@ -88,11 +88,11 @@ async function answerTeamsMessage(
     replyToId,
   } = context.activity;
   // Check for existing Dust conversation for this Teams conversation
-  let lastTeamsMessage: TeamsMessage | null = null;
+  let lastMicrosoftBotMessage: MicrosoftBotMessage | null = null;
 
   // Always look for previous messages in the same Teams conversation
   // to maintain conversation continuity - first try to find one with dustConversationId
-  const allTeamsMessages = await TeamsMessage.findAll({
+  const allMicrosoftBotMessages = await MicrosoftBotMessage.findAll({
     where: {
       connectorId: connector.id,
       conversationId: conversationId,
@@ -101,8 +101,8 @@ async function answerTeamsMessage(
   });
 
   // Find the most recent message that has a Dust conversation ID
-  lastTeamsMessage =
-    allTeamsMessages.find((msg) => msg.dustConversationId) || null;
+  lastMicrosoftBotMessage =
+    allMicrosoftBotMessages.find((msg) => msg.dustConversationId) || null;
 
   // Get Microsoft Graph client
   const client = await getClient(connector.connectionId);
@@ -143,7 +143,7 @@ async function answerTeamsMessage(
   const email =
     userInfo?.mail || userInfo?.userPrincipalName || "unknown@example.com";
 
-  const teamsMessage = await TeamsMessage.create({
+  const teamsMessage = await MicrosoftBotMessage.create({
     connectorId: connector.id,
     message: message,
     userId: userId,
@@ -154,7 +154,7 @@ async function answerTeamsMessage(
     activityId: activityId || "",
     channelId: channelId,
     replyToId: replyToId,
-    dustConversationId: lastTeamsMessage?.dustConversationId,
+    dustConversationId: lastMicrosoftBotMessage?.dustConversationId,
   });
 
   const dustAPI = new DustAPI(
@@ -282,25 +282,25 @@ async function answerTeamsMessage(
   let conversation: ConversationPublicType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
 
-  if (lastTeamsMessage?.dustConversationId) {
+  if (lastMicrosoftBotMessage?.dustConversationId) {
     logger.info(
       {
         connectorId: connector.id,
         teamsConversationId: conversationId,
-        dustConversationId: lastTeamsMessage.dustConversationId,
+        dustConversationId: lastMicrosoftBotMessage.dustConversationId,
       },
       "Reusing existing Dust conversation for Teams conversation"
     );
 
     // Check conversation existence (it might have been deleted between two messages).
     const existsRes = await dustAPI.getConversation({
-      conversationId: lastTeamsMessage.dustConversationId,
+      conversationId: lastMicrosoftBotMessage.dustConversationId,
     });
 
     // If it doesn't exist, we will create a new one later.
     if (existsRes.isOk()) {
       const messageRes = await dustAPI.postUserMessage({
-        conversationId: lastTeamsMessage.dustConversationId,
+        conversationId: lastMicrosoftBotMessage.dustConversationId,
         message: messageReqBody,
       });
       if (messageRes.isErr()) {
@@ -309,7 +309,7 @@ async function answerTeamsMessage(
       userMessage = messageRes.value;
 
       const conversationRes = await dustAPI.getConversation({
-        conversationId: lastTeamsMessage.dustConversationId,
+        conversationId: lastMicrosoftBotMessage.dustConversationId,
       });
       if (conversationRes.isErr()) {
         return new Err(new Error(conversationRes.error.message));
@@ -320,7 +320,7 @@ async function answerTeamsMessage(
         {
           connectorId: connector.id,
           teamsConversationId: conversationId,
-          dustConversationId: lastTeamsMessage.dustConversationId,
+          dustConversationId: lastMicrosoftBotMessage.dustConversationId,
         },
         "Dust conversation not found, will create new one"
       );

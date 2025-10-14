@@ -42,6 +42,10 @@ import {
   MicrosoftRootModel,
 } from "@connectors/lib/models/microsoft";
 import {
+  MicrosoftBotConfigurationModel,
+  MicrosoftBotMessage,
+} from "@connectors/lib/models/microsoft_bot";
+import {
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
   NotionConnectorResourcesToCheckCacheEntry,
@@ -84,7 +88,6 @@ import logger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import { sendInitDbMessage } from "@connectors/types";
-import { MicrosoftBotConfigurationModel } from "@connectors/lib/models/microsoft_bot";
 
 async function main(): Promise<void> {
   await sendInitDbMessage({
@@ -119,6 +122,7 @@ async function main(): Promise<void> {
   await MicrosoftRootModel.sync({ alter: true });
   await MicrosoftNodeModel.sync({ alter: true });
   await MicrosoftBotConfigurationModel.sync({ alter: true });
+  await MicrosoftBotMessage.sync({ alter: true });
   await NotionConnectorBlockCacheEntry.sync({ alter: true });
   await NotionConnectorPageCacheEntry.sync({ alter: true });
   await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });

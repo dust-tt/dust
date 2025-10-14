@@ -43,7 +43,7 @@ MicrosoftBotConfigurationModel.init(
   }
 );
 
-export class TeamsMessage extends ConnectorBaseModel<TeamsMessage> {
+export class MicrosoftBotMessage extends ConnectorBaseModel<MicrosoftBotMessage> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -59,7 +59,7 @@ export class TeamsMessage extends ConnectorBaseModel<TeamsMessage> {
   declare dustConversationId?: string;
 }
 
-TeamsMessage.init(
+MicrosoftBotMessage.init(
   {
     createdAt: {
       type: DataTypes.DATE,
