@@ -19,6 +19,11 @@ const SF_API_VERSION = "57.0";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const SALESFORCE_TOOL_LOG_NAME = "salesforce";
 
+interface SalesforceRecord {
+  Id: string;
+  [key: string]: any;
+}
+
 const createServer = (auth: Authenticator): McpServer => {
   const server = makeInternalMCPServer("salesforce");
 
@@ -251,7 +256,7 @@ const createServer = (auth: Authenticator): McpServer => {
 
         const result = await conn
           .sobject(objectName)
-          .update(records as Array<Record<string, any> & { Id: string }>, {
+          .update(records as SalesforceRecord[], {
             allOrNone,
           });
 
