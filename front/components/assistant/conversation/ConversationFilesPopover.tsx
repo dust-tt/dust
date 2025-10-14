@@ -32,7 +32,7 @@ interface FileGroup {
 
 // Configuration for content types that get their own groups.
 const GROUPED_CONTENT_TYPES = {
-  [frameContentType]: "Working document",
+  [frameContentType]: "Frames",
   "application/json": "JSON",
   "text/csv": "Tables",
   "text/plain": "Text",
