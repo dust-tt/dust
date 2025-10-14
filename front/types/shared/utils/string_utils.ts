@@ -136,11 +136,7 @@ const SPECIAL_CASES_PATTERN = new RegExp(
   "g"
 );
 
-export function asDisplayName(name?: string | null) {
-  if (!name) {
-    return "";
-  }
-
+function formatAsDisplayName(name: string): string {
   return slugify(name)
     .replace(/_/g, " ")
     .replace(
@@ -148,4 +144,36 @@ export function asDisplayName(name?: string | null) {
       (match) => SPECIAL_CASES[match as keyof typeof SPECIAL_CASES]
     )
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function asDisplayToolName(name?: string | null) {
+  if (!name) {
+    return "";
+  }
+
+  if (name === "interactive_content") {
+    return "Create Frames";
+  }
+
+  if (name === "image_generation") {
+    return "Create Images";
+  }
+
+  if (name === "file_generation") {
+    return "Create Files";
+  }
+
+  if (name === "slideshow") {
+    return "Create Slideshows";
+  }
+
+  return formatAsDisplayName(name);
+}
+
+export function asDisplayName(name?: string | null) {
+  if (!name) {
+    return "";
+  }
+
+  return formatAsDisplayName(name);
 }
