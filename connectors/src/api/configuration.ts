@@ -68,6 +68,7 @@ const _patchConnectorConfiguration = async (
     case "google_drive":
     case "intercom":
     case "microsoft":
+    case "microsoft_bot":
     case "snowflake":
     case "bigquery":
     case "zendesk":

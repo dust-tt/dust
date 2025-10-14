@@ -60,6 +60,7 @@ function getSectionColumnsPrefix(
     case "slack_bot":
     case "slack":
     case "microsoft":
+    case "microsoft_bot":
     case "webcrawler":
     case "snowflake":
     case "zendesk":

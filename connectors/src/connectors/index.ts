@@ -13,6 +13,7 @@ import type {
   CreateConnectorErrorCode,
 } from "@connectors/connectors/interface";
 import { MicrosoftConnectorManager } from "@connectors/connectors/microsoft";
+import { MicrosoftBotConnectorManager } from "@connectors/connectors/microsoft_bot";
 import { NotionConnectorManager } from "@connectors/connectors/notion";
 import { SalesforceConnectorManager } from "@connectors/connectors/salesforce";
 import { SlackConnectorManager } from "@connectors/connectors/slack";
@@ -33,6 +34,7 @@ type ConnectorManager =
   | ConfluenceConnectorManager
   | WebcrawlerConnectorManager
   | MicrosoftConnectorManager
+  | MicrosoftBotConnectorManager
   | SlackConnectorManager
   | IntercomConnectorManager
   | GithubConnectorManager
@@ -57,6 +59,8 @@ export function getConnectorManager({
       return new IntercomConnectorManager(connectorId);
     case "microsoft":
       return new MicrosoftConnectorManager(connectorId);
+    case "microsoft_bot":
+      return new MicrosoftBotConnectorManager(connectorId);
     case "notion":
       return new NotionConnectorManager(connectorId);
     case "slack":
@@ -134,6 +138,8 @@ export function createConnector({
       return IntercomConnectorManager.create(params);
     case "microsoft":
       return MicrosoftConnectorManager.create(params);
+    case "microsoft_bot":
+      return MicrosoftBotConnectorManager.create();
     case "notion":
       return NotionConnectorManager.create(params);
     case "slack":

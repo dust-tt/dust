@@ -37,6 +37,7 @@ import {
   IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import {
+  MicrosoftBotConfigurationModel,
   MicrosoftConfigurationModel,
   MicrosoftNodeModel,
   MicrosoftRootModel,
@@ -117,6 +118,7 @@ async function main(): Promise<void> {
   await MicrosoftConfigurationModel.sync({ alter: true });
   await MicrosoftRootModel.sync({ alter: true });
   await MicrosoftNodeModel.sync({ alter: true });
+  await MicrosoftBotConfigurationModel.sync({ alter: true });
   await NotionConnectorBlockCacheEntry.sync({ alter: true });
   await NotionConnectorPageCacheEntry.sync({ alter: true });
   await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });

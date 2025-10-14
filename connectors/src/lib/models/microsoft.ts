@@ -89,6 +89,45 @@ MicrosoftRootModel.init(
   }
 );
 
+export class MicrosoftBotConfigurationModel extends ConnectorBaseModel<MicrosoftBotConfigurationModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare botEnabled: boolean;
+  declare tenantId: string;
+}
+MicrosoftBotConfigurationModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    botEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    tenantId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    modelName: "microsoft_bot_configurations",
+    indexes: [
+      { fields: ["connectorId"], unique: true },
+      { fields: ["tenantId"], unique: true },
+    ],
+    relationship: "hasOne",
+  }
+);
+
 // MicrosftNode stores nodes (e.g. files, folder, channels, ...) synced from Microsoft.
 export class MicrosoftNodeModel extends ConnectorBaseModel<MicrosoftNodeModel> {
   declare createdAt: CreationOptional<Date>;
