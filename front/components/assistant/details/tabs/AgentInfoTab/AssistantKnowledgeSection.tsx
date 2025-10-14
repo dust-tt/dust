@@ -258,12 +258,9 @@ function getDataSourceConfigurationsForTableAction(
         }
 
         if (dataSourceView) {
-          const parents = dsConfigs[table.dataSourceViewId].filter.parents;
-          if (parents && parents.in) {
-            parents.in.push(
-              getContentNodeInternalIdFromTableId(dataSourceView, table.tableId)
-            );
-          }
+          dsConfigs[table.dataSourceViewId].filter.parents?.in?.push(
+            getContentNodeInternalIdFromTableId(dataSourceView, table.tableId)
+          );
         }
 
         return dsConfigs;
