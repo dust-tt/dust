@@ -139,7 +139,7 @@ export function createConnector({
     case "microsoft":
       return MicrosoftConnectorManager.create(params);
     case "microsoft_bot":
-      return MicrosoftBotConnectorManager.create();
+      return MicrosoftBotConnectorManager.create(params);
     case "notion":
       return NotionConnectorManager.create(params);
     case "slack":
