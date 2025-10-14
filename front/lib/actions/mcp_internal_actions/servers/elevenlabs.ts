@@ -3,11 +3,13 @@ import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
-import { dustManagedCredentials, normalizeError } from "@app/types";
+import { dustManagedCredentials, Err, normalizeError, Ok } from "@app/types";
 
 function getElevenLabsClient() {
   const credentials = dustManagedCredentials();
@@ -35,7 +37,10 @@ const VOICE_TO_VOICE_ID = {
   male: "bIHbv24MWmeRgasZH58o",
 };
 
-const createServer = (_auth: Authenticator): McpServer => {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("elevenlabs");
 
   server.tool(
@@ -60,24 +65,28 @@ const createServer = (_auth: Authenticator): McpServer => {
         .default("speech")
         .describe("Base filename (without extension) for the generated audio."),
     },
-    async ({ text, voice = "female", name = "speech" }) => {
-      try {
-        const client = getElevenLabsClient();
-        const voiceId = VOICE_TO_VOICE_ID[voice];
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "elevenlabs_text_to_speech",
+        agentLoopContext,
+      },
+      async ({ text, voice = "female", name = "speech" }) => {
+        try {
+          const client = getElevenLabsClient();
+          const voiceId = VOICE_TO_VOICE_ID[voice];
 
-        const stream = await client.textToSpeech.convert(voiceId, {
-          text,
-          enableLogging: false,
-          modelId: "eleven_multilingual_v2",
-          outputFormat: "mp3_44100_128",
-        });
+          const stream = await client.textToSpeech.convert(voiceId, {
+            text,
+            enableLogging: false,
+            modelId: "eleven_multilingual_v2",
+            outputFormat: "mp3_44100_128",
+          });
 
-        const base64 = await streamToBase64(stream);
-        const fileName = `${name}.mp3`;
+          const base64 = await streamToBase64(stream);
+          const fileName = `${name}.mp3`;
 
-        return {
-          isError: false,
-          content: [
+          return new Ok([
             {
               type: "resource" as const,
               resource: {
@@ -88,24 +97,20 @@ const createServer = (_auth: Authenticator): McpServer => {
                 uri: "",
               },
             },
-          ],
-        };
-      } catch (e) {
-        logger.error(
-          { err: normalizeError(e) },
-          "Error generating text-to-speech with ElevenLabs."
-        );
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: `Error generating speech audio with ElevenLabs: ${normalizeError(e).message}`,
-            },
-          ],
-        };
+          ]);
+        } catch (e) {
+          const cause = normalizeError(e);
+          return new Err(
+            new MCPError(
+              `Error generating speech audio with ElevenLabs: ${cause.message}`,
+              {
+                cause,
+              }
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -136,20 +141,24 @@ const createServer = (_auth: Authenticator): McpServer => {
         .default("music")
         .describe("Base filename (without extension) for the generated audio."),
     },
-    async ({ prompt, duration_ms = 20000, name = "music" }) => {
-      try {
-        const client = getElevenLabsClient();
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "elevenlabs_generate_music",
+        agentLoopContext,
+      },
+      async ({ prompt, duration_ms = 20000, name = "music" }) => {
+        try {
+          const client = getElevenLabsClient();
 
-        const stream = await client.music.compose({
-          prompt,
-          musicLengthMs: duration_ms,
-        });
+          const stream = await client.music.compose({
+            prompt,
+            musicLengthMs: duration_ms,
+          });
 
-        const base64 = await streamToBase64(stream);
+          const base64 = await streamToBase64(stream);
 
-        return {
-          isError: false,
-          content: [
+          return new Ok([
             {
               type: "resource" as const,
               resource: {
@@ -160,27 +169,23 @@ const createServer = (_auth: Authenticator): McpServer => {
                 uri: "",
               },
             },
-          ],
-        };
-      } catch (e) {
-        logger.error(
-          { err: normalizeError(e) },
-          "Error generating music with ElevenLabs."
-        );
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: `Error generating music with ElevenLabs: ${normalizeError(e).message}`,
-            },
-          ],
-        };
+          ]);
+        } catch (e) {
+          const cause = normalizeError(e);
+          return new Err(
+            new MCPError(
+              `Error generating music with ElevenLabs: ${cause.message}`,
+              {
+                cause,
+              }
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   return server;
-};
+}
 
 export default createServer;

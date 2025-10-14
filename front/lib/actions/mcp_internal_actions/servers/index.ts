@@ -96,7 +96,7 @@ export async function getInternalMCPServer(
     case "image_generation":
       return imageGenerationDallEServer(auth);
     case "elevenlabs":
-      return elevenlabsServer(auth);
+      return elevenlabsServer(auth, agentLoopContext);
     case "file_generation":
       return generateFileServer(auth);
     case "interactive_content":
