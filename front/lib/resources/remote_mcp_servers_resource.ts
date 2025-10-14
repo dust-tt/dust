@@ -299,7 +299,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     // If cachedTools is being updated, clean up tool metadata for tools that no longer exist
     if (cachedTools) {
       const newToolNames = new Set(cachedTools.map((tool) => tool.name));
-      
+
       // Delete tool metadata for tools that are no longer in the server's tool list
       await RemoteMCPServerToolMetadataModel.destroy({
         where: {
