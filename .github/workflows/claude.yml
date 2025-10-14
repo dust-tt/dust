@@ -58,7 +58,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
           claude_args: |
-            --model claude-4.5-sonnet-20251022
+            --model claude-sonnet-4-5-20250929
             --max-turns 12
             --allowed-tools Agent,Bash,Edit,Glob,Grep,LS,MultiEdit,NotebookEdit,NotebookRead,Read,TodoRead,TodoWrite,WebFetch,WebSearch,Write
             --system-prompt "
