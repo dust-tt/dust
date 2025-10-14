@@ -86,6 +86,11 @@ const config = {
         permanent: true,
       },
       {
+        source: "/frames",
+        destination: "/home/frames",
+        permanent: true,
+      },
+      {
         source: "/pricing",
         destination: "/home/pricing",
         permanent: true,
