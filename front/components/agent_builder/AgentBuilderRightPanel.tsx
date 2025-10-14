@@ -19,6 +19,7 @@ import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuil
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 type AgentBuilderRightPanelTabType =
   | "testing"
@@ -32,6 +33,7 @@ interface PanelHeaderProps {
   onTogglePanel: () => void;
   onTabChange: (tab: AgentBuilderRightPanelTabType) => void;
   hasTemplate: boolean;
+  showObservability: boolean;
 }
 
 function PanelHeader({
@@ -40,6 +42,7 @@ function PanelHeader({
   onTogglePanel,
   onTabChange,
   hasTemplate,
+  showObservability,
 }: PanelHeaderProps) {
   return (
     <div className="flex h-16 items-end">
@@ -67,12 +70,14 @@ function PanelHeader({
                   icon={BarChartIcon}
                   onClick={() => onTabChange("performance")}
                 />
-                <TabsTrigger
-                  value="observability"
-                  label="Observability"
-                  icon={ActivityIcon}
-                  onClick={() => onTabChange("observability")}
-                />
+                {showObservability && (
+                  <TabsTrigger
+                    value="observability"
+                    label="Observability"
+                    icon={ActivityIcon}
+                    onClick={() => onTabChange("observability")}
+                  />
+                )}
                 {hasTemplate && (
                   <TabsTrigger
                     value="template"
@@ -103,9 +108,14 @@ function PanelHeader({
 interface CollapsedTabsProps {
   onTabSelect: (tab: AgentBuilderRightPanelTabType) => void;
   hasTemplate: boolean;
+  showObservability: boolean;
 }
 
-function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
+function CollapsedTabs({
+  onTabSelect,
+  hasTemplate,
+  showObservability,
+}: CollapsedTabsProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
       <Button
@@ -122,13 +132,15 @@ function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
         tooltip="Performance"
         onClick={() => onTabSelect("performance")}
       />
-      <Button
-        icon={ActivityIcon}
-        variant="ghost"
-        size="sm"
-        tooltip="Observability"
-        onClick={() => onTabSelect("observability")}
-      />
+      {showObservability && (
+        <Button
+          icon={ActivityIcon}
+          variant="ghost"
+          size="sm"
+          tooltip="Observability"
+          onClick={() => onTabSelect("observability")}
+        />
+      )}
       {hasTemplate && (
         <Button
           icon={MagicIcon}
@@ -193,7 +205,9 @@ export function AgentBuilderRightPanel({
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
-  const { assistantTemplate } = useAgentBuilderContext();
+  const { assistantTemplate, owner } = useAgentBuilderContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const showObservability = hasFeature("agent_builder_observability");
 
   const hasTemplate = !!assistantTemplate;
 
@@ -223,6 +237,7 @@ export function AgentBuilderRightPanel({
           onTogglePanel={handleTogglePanel}
           onTabChange={handleTabChange}
           hasTemplate={hasTemplate}
+          showObservability={showObservability}
         />
       </div>
       {isPreviewPanelOpen ? (
@@ -234,6 +249,7 @@ export function AgentBuilderRightPanel({
         <CollapsedTabs
           onTabSelect={handleTabSelect}
           hasTemplate={hasTemplate}
+          showObservability={showObservability}
         />
       )}
     </div>

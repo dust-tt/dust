@@ -167,6 +167,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slideshow MCP tool",
     stage: "dust_only",
   },
+  agent_builder_observability: {
+    description: "Observability tab in the Agent Builder (charts powered by Elasticsearch)",
+    stage: "on_demand",
+  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
