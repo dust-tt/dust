@@ -240,8 +240,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${filteredTickets.length} tickets` },
-              { type: "text" as const, text: JSON.stringify(filteredTickets, null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${filteredTickets.length} tickets`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(filteredTickets, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -309,7 +315,10 @@ function createServer(auth: Authenticator): McpServer {
 
             return new Ok([
               { type: "text" as const, text: "Ticket retrieved successfully" },
-              { type: "text" as const, text: JSON.stringify(filteredTicket, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(filteredTicket, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -331,8 +340,18 @@ function createServer(auth: Authenticator): McpServer {
             // Currently static based on documentation. In the future, we can get this from the Freshservice API.
             // This will require additional authentication scopes, so avoiding in the short term.
             return new Ok([
-              { type: "text" as const, text: "Base ticket field ids (without includes)" },
-              { type: "text" as const, text: JSON.stringify(FreshserviceTicketSchema.keyof().options, null, 2) },
+              {
+                type: "text" as const,
+                text: "Base ticket field ids (without includes)",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  FreshserviceTicketSchema.keyof().options,
+                  null,
+                  2
+                ),
+              },
             ]);
           },
           authInfo,
@@ -441,8 +460,14 @@ function createServer(auth: Authenticator): McpServer {
             const ticketUrl = `https://${apiDomain}/support/tickets/${ticket.id}`;
 
             return new Ok([
-              { type: "text" as const, text: `Ticket created successfully. View ticket at: ${ticketUrl}` },
-              { type: "text" as const, text: JSON.stringify(ticketUrl, null, 2) },
+              {
+                type: "text" as const,
+                text: `Ticket created successfully. View ticket at: ${ticketUrl}`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(ticketUrl, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -522,7 +547,10 @@ function createServer(auth: Authenticator): McpServer {
 
             return new Ok([
               { type: "text" as const, text: "Ticket updated successfully" },
-              { type: "text" as const, text: JSON.stringify(result.ticket, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.ticket, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -564,7 +592,10 @@ function createServer(auth: Authenticator): McpServer {
 
             return new Ok([
               { type: "text" as const, text: "Note added successfully" },
-              { type: "text" as const, text: JSON.stringify(result.conversation, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.conversation, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -600,7 +631,10 @@ function createServer(auth: Authenticator): McpServer {
 
             return new Ok([
               { type: "text" as const, text: "Reply added successfully" },
-              { type: "text" as const, text: JSON.stringify(result.conversation, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.conversation, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -628,8 +662,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${result.tasks?.length || 0} tasks for ticket ${ticket_id}` },
-              { type: "text" as const, text: JSON.stringify(result.tasks || [], null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${result.tasks?.length || 0} tasks for ticket ${ticket_id}`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.tasks || [], null, 2),
+              },
             ]);
           },
           authInfo,
@@ -659,7 +699,10 @@ function createServer(auth: Authenticator): McpServer {
 
             return new Ok([
               { type: "text" as const, text: "Task retrieved successfully" },
-              { type: "text" as const, text: JSON.stringify(result.task, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.task, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -746,7 +789,10 @@ function createServer(auth: Authenticator): McpServer {
 
             return new Ok([
               { type: "text" as const, text: "Task created successfully" },
-              { type: "text" as const, text: JSON.stringify(result.task, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.task, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -841,7 +887,10 @@ function createServer(auth: Authenticator): McpServer {
 
             return new Ok([
               { type: "text" as const, text: "Task updated successfully" },
-              { type: "text" as const, text: JSON.stringify(result.task, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.task, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -874,7 +923,10 @@ function createServer(auth: Authenticator): McpServer {
 
             return new Ok([
               { type: "text" as const, text: "Task deleted successfully" },
-              { type: "text" as const, text: JSON.stringify({ deleted_task_id: task_id }, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify({ deleted_task_id: task_id }, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -909,8 +961,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${result.departments?.length || 0} departments` },
-              { type: "text" as const, text: JSON.stringify(result.departments || [], null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${result.departments?.length || 0} departments`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.departments || [], null, 2),
+              },
             ]);
           },
           authInfo,
@@ -945,8 +1003,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${result.products?.length || 0} products` },
-              { type: "text" as const, text: JSON.stringify(result.products || [], null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${result.products?.length || 0} products`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.products || [], null, 2),
+              },
             ]);
           },
           authInfo,
@@ -981,8 +1045,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${result.oncall_schedules?.length || 0} on-call schedules` },
-              { type: "text" as const, text: JSON.stringify(result.oncall_schedules || [], null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${result.oncall_schedules?.length || 0} on-call schedules`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.oncall_schedules || [], null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1017,8 +1087,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${result.service_categories?.length || 0} service categories` },
-              { type: "text" as const, text: JSON.stringify(result.service_categories || [], null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${result.service_categories?.length || 0} service categories`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.service_categories || [], null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1062,8 +1138,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${result.service_items?.length || 0} service items` },
-              { type: "text" as const, text: JSON.stringify(result.service_items || [], null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${result.service_items?.length || 0} service items`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.service_items || [], null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1126,8 +1208,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Found ${result.service_items?.length || 0} service items matching '${search_term}'` },
-              { type: "text" as const, text: JSON.stringify(result.service_items || [], null, 2) },
+              {
+                type: "text" as const,
+                text: `Found ${result.service_items?.length || 0} service items matching '${search_term}'`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.service_items || [], null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1157,8 +1245,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: "Service item retrieved successfully" },
-              { type: "text" as const, text: JSON.stringify(result.service_item, null, 2) },
+              {
+                type: "text" as const,
+                text: "Service item retrieved successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.service_item, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1194,10 +1288,20 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${requiredFields.length} service item required fields for item ${display_id}` },
-              { type: "text" as const, text: JSON.stringify({
-                fields,
-              }, null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${requiredFields.length} service item required fields for item ${display_id}`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    fields,
+                  },
+                  null,
+                  2
+                ),
+              },
             ]);
           },
           authInfo,
@@ -1298,13 +1402,23 @@ function createServer(auth: Authenticator): McpServer {
             const ticketUrl = `https://${apiDomain}/support/tickets/${serviceRequest.id}`;
 
             return new Ok([
-              { type: "text" as const, text: `Service request created successfully. View ticket at: ${ticketUrl}` },
-              { type: "text" as const, text: JSON.stringify({
-                service_request: serviceRequest,
-                ticket_id: serviceRequest.id,
-                ticket_url: ticketUrl,
-                service_item_name: serviceItem.name,
-              }, null, 2) },
+              {
+                type: "text" as const,
+                text: `Service request created successfully. View ticket at: ${ticketUrl}`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    service_request: serviceRequest,
+                    ticket_id: serviceRequest.id,
+                    ticket_url: ticketUrl,
+                    service_item_name: serviceItem.name,
+                  },
+                  null,
+                  2
+                ),
+              },
             ]);
           },
           authInfo,
@@ -1339,8 +1453,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${result.categories?.length || 0} solution categories` },
-              { type: "text" as const, text: JSON.stringify(result.categories || [], null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${result.categories?.length || 0} solution categories`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.categories || [], null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1379,8 +1499,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${result.folders?.length || 0} solution folders` },
-              { type: "text" as const, text: JSON.stringify(result.folders || [], null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${result.folders?.length || 0} solution folders`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.folders || [], null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1442,8 +1568,14 @@ function createServer(auth: Authenticator): McpServer {
             }));
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${articlesMetadata.length} solution articles (metadata only)` },
-              { type: "text" as const, text: JSON.stringify(articlesMetadata, null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${articlesMetadata.length} solution articles (metadata only)`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(articlesMetadata, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1471,8 +1603,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: "Solution article retrieved successfully" },
-              { type: "text" as const, text: JSON.stringify(result.article, null, 2) },
+              {
+                type: "text" as const,
+                text: "Solution article retrieved successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.article, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1528,8 +1666,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: "Solution article created successfully" },
-              { type: "text" as const, text: JSON.stringify(result.article, null, 2) },
+              {
+                type: "text" as const,
+                text: "Solution article created successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.article, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1577,8 +1721,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${result.requesters?.length || 0} requesters` },
-              { type: "text" as const, text: JSON.stringify(result.requesters || [], null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${result.requesters?.length || 0} requesters`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.requesters || [], null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1606,8 +1756,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: "Requester retrieved successfully" },
-              { type: "text" as const, text: JSON.stringify(result.requester, null, 2) },
+              {
+                type: "text" as const,
+                text: "Requester retrieved successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.requester, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1642,8 +1798,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${result.purchase_orders?.length || 0} purchase orders` },
-              { type: "text" as const, text: JSON.stringify(result.purchase_orders || [], null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${result.purchase_orders?.length || 0} purchase orders`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.purchase_orders || [], null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1670,8 +1832,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${result.sla_policies?.length || 0} SLA policies` },
-              { type: "text" as const, text: JSON.stringify(result.sla_policies || [], null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${result.sla_policies?.length || 0} SLA policies`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.sla_policies || [], null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1715,11 +1883,21 @@ function createServer(auth: Authenticator): McpServer {
             }
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${filteredFields.length} ticket fields${search ? ` matching "${search}"` : ""}` },
-              { type: "text" as const, text: JSON.stringify({
-                ticket_fields: filteredFields,
-                total_ticket_fields: filteredFields.length,
-              }, null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${filteredFields.length} ticket fields${search ? ` matching "${search}"` : ""}`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    ticket_fields: filteredFields,
+                    total_ticket_fields: filteredFields.length,
+                  },
+                  null,
+                  2
+                ),
+              },
             ]);
           },
           authInfo,
@@ -1779,8 +1957,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${result.canned_responses?.length || 0} canned responses` },
-              { type: "text" as const, text: JSON.stringify(result.canned_responses || [], null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${result.canned_responses?.length || 0} canned responses`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.canned_responses || [], null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1808,8 +1992,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: "Canned response retrieved successfully" },
-              { type: "text" as const, text: JSON.stringify(result.canned_response, null, 2) },
+              {
+                type: "text" as const,
+                text: "Canned response retrieved successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.canned_response, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1838,8 +2028,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: "Ticket approval retrieved successfully" },
-              { type: "text" as const, text: JSON.stringify(result.approval, null, 2) },
+              {
+                type: "text" as const,
+                text: "Ticket approval retrieved successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.approval, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -1867,11 +2063,21 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: `Retrieved ${result.approvals?.length || 0} approval(s) for ticket ${ticket_id}` },
-              { type: "text" as const, text: JSON.stringify({
-                approvals: result.approvals || [],
-                total_approvals: result.approvals?.length || 0,
-              }, null, 2) },
+              {
+                type: "text" as const,
+                text: `Retrieved ${result.approvals?.length || 0} approval(s) for ticket ${ticket_id}`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    approvals: result.approvals || [],
+                    total_approvals: result.approvals?.length || 0,
+                  },
+                  null,
+                  2
+                ),
+              },
             ]);
           },
           authInfo,
@@ -1956,8 +2162,14 @@ function createServer(auth: Authenticator): McpServer {
             );
 
             return new Ok([
-              { type: "text" as const, text: "Service request approval created successfully" },
-              { type: "text" as const, text: JSON.stringify(result.approval || result, null, 2) },
+              {
+                type: "text" as const,
+                text: "Service request approval created successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.approval || result, null, 2),
+              },
             ]);
           },
           authInfo,

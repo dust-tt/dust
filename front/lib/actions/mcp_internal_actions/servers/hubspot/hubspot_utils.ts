@@ -105,7 +105,12 @@ export const logAndReturnError = ({
   );
   return {
     isError: true,
-    content: [{ type: "text", text: error.response?.body?.message ?? error.message ?? message }],
+    content: [
+      {
+        type: "text",
+        text: error.response?.body?.message ?? error.message ?? message,
+      },
+    ],
   };
 };
 

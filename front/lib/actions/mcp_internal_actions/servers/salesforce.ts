@@ -195,7 +195,10 @@ const createServer = (auth: Authenticator): McpServer => {
           "\nNote: For custom relationships in SOQL, names often end with '__r' (e.g., MyCustomChildren__r). Use the 'RelationshipName' listed above.\n";
 
         return new Ok([
-          { type: "text", text: "Object described successfully. Summary provided." },
+          {
+            type: "text",
+            text: "Object described successfully. Summary provided.",
+          },
           { type: "text", text: summary },
         ]);
       }

@@ -34,9 +34,7 @@ import {
   updateSubitem,
   uploadFileToColumn,
 } from "@app/lib/actions/mcp_internal_actions/servers/monday/monday_api_helper";
-import {
-  makeInternalMCPServer,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
@@ -116,7 +114,10 @@ const createServer = (auth: Authenticator): McpServer => {
           return new Err(new MCPError("Item not found", { tracked: false }));
         }
         return new Ok([
-          { type: "text" as const, text: "Item details retrieved successfully" },
+          {
+            type: "text" as const,
+            text: "Item details retrieved successfully",
+          },
           { type: "text" as const, text: JSON.stringify(item, null, 2) },
         ]);
       }
@@ -198,7 +199,10 @@ const createServer = (auth: Authenticator): McpServer => {
 
         const items = await searchItems(accessToken, filters);
         return new Ok([
-          { type: "text" as const, text: `Found ${items.length} items (max 100 returned)` },
+          {
+            type: "text" as const,
+            text: `Found ${items.length} items (max 100 returned)`,
+          },
           { type: "text" as const, text: JSON.stringify(items, null, 2) },
         ]);
       }
@@ -951,7 +955,10 @@ const createServer = (auth: Authenticator): McpServer => {
       return {
         isError: false,
         content: [
-          { type: "text", text: `Created ${createdItems.length} items successfully` },
+          {
+            type: "text",
+            text: `Created ${createdItems.length} items successfully`,
+          },
           { type: "text", text: JSON.stringify(createdItems, null, 2) },
         ],
       };

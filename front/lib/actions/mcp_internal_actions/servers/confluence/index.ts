@@ -36,8 +36,14 @@ const createServer = (auth: Authenticator): McpServer => {
               );
             }
             return new Ok([
-              { type: "text" as const, text: "Current user information retrieved successfully" },
-              { type: "text" as const, text: JSON.stringify(result.value, null, 2) },
+              {
+                type: "text" as const,
+                text: "Current user information retrieved successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -84,7 +90,10 @@ const createServer = (auth: Authenticator): McpServer => {
                     ? "No pages found"
                     : `Found ${result.value.results.length} page(s)`,
               },
-              { type: "text" as const, text: JSON.stringify(result.value, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -136,7 +145,10 @@ const createServer = (auth: Authenticator): McpServer => {
             }
             return new Ok([
               { type: "text" as const, text: "Page created successfully" },
-              { type: "text" as const, text: JSON.stringify(result.value, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -202,7 +214,10 @@ const createServer = (auth: Authenticator): McpServer => {
             }
             return new Ok([
               { type: "text" as const, text: "Page updated successfully" },
-              { type: "text" as const, text: JSON.stringify(result.value, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
             ]);
           },
           authInfo,

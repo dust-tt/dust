@@ -73,7 +73,10 @@ const createServer = (
             }
             return new Ok([
               { type: "text" as const, text: "Fields retrieved successfully" },
-              { type: "text" as const, text: JSON.stringify(result.value, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -108,8 +111,14 @@ const createServer = (
             });
             if (issue.isOk() && issue.value === null) {
               return new Ok([
-                { type: "text" as const, text: "No issue found with the specified key" },
-                { type: "text" as const, text: JSON.stringify({ found: false, issueKey }, null, 2) },
+                {
+                  type: "text" as const,
+                  text: "No issue found with the specified key",
+                },
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({ found: false, issueKey }, null, 2),
+                },
               ]);
             }
             if (issue.isErr()) {
@@ -119,7 +128,10 @@ const createServer = (
             }
             return new Ok([
               { type: "text" as const, text: "Issue retrieved successfully" },
-              { type: "text" as const, text: JSON.stringify({ issue: issue.value }, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify({ issue: issue.value }, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -145,7 +157,10 @@ const createServer = (
               );
             }
             return new Ok([
-              { type: "text" as const, text: "Projects retrieved successfully" },
+              {
+                type: "text" as const,
+                text: "Projects retrieved successfully",
+              },
               { type: "text" as const, text: JSON.stringify(result, null, 2) },
             ]);
           },
@@ -182,7 +197,10 @@ const createServer = (
             }
             return new Ok([
               { type: "text" as const, text: "Project retrieved successfully" },
-              { type: "text" as const, text: JSON.stringify(result.value, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -216,8 +234,14 @@ const createServer = (
               );
             }
             return new Ok([
-              { type: "text" as const, text: "Project versions retrieved successfully" },
-              { type: "text" as const, text: JSON.stringify(result.value, null, 2) },
+              {
+                type: "text" as const,
+                text: "Project versions retrieved successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -245,7 +269,10 @@ const createServer = (
               );
             }
             return new Ok([
-              { type: "text" as const, text: "Transitions retrieved successfully" },
+              {
+                type: "text" as const,
+                text: "Transitions retrieved successfully",
+              },
               { type: "text" as const, text: JSON.stringify(result, null, 2) },
             ]);
           },
@@ -303,20 +330,33 @@ const createServer = (
             }
             if (result.value === null) {
               return new Ok([
-                { type: "text" as const, text: "Issue not found or no permission to add comment" },
-                { type: "text" as const, text: JSON.stringify({ found: false, issueKey }, null, 2) },
+                {
+                  type: "text" as const,
+                  text: "Issue not found or no permission to add comment",
+                },
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({ found: false, issueKey }, null, 2),
+                },
               ]);
             }
             return new Ok([
               { type: "text" as const, text: "Comment added successfully" },
-              { type: "text" as const, text: JSON.stringify({
-                issueKey,
-                comment:
-                  typeof comment === "string"
-                    ? comment
-                    : "[Rich ADF Content]",
-                commentId: result.value.id,
-              }, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    issueKey,
+                    comment:
+                      typeof comment === "string"
+                        ? comment
+                        : "[Rich ADF Content]",
+                    commentId: result.value.id,
+                  },
+                  null,
+                  2
+                ),
+              },
             ]);
           },
           authInfo,
@@ -362,7 +402,10 @@ const createServer = (
                 : "Issues retrieved successfully";
             return new Ok([
               { type: "text" as const, text: message },
-              { type: "text" as const, text: JSON.stringify(result.value, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -422,7 +465,10 @@ const createServer = (
                 : "Issues retrieved successfully using JQL";
             return new Ok([
               { type: "text" as const, text: message },
-              { type: "text" as const, text: JSON.stringify(result.value, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -456,8 +502,14 @@ const createServer = (
                 );
               }
               return new Ok([
-                { type: "text" as const, text: "Issue types retrieved successfully" },
-                { type: "text" as const, text: JSON.stringify(result, null, 2) },
+                {
+                  type: "text" as const,
+                  text: "Issue types retrieved successfully",
+                },
+                {
+                  type: "text" as const,
+                  text: JSON.stringify(result, null, 2),
+                },
               ]);
             } catch (error) {
               return new Err(
@@ -499,8 +551,14 @@ const createServer = (
                 );
               }
               return new Ok([
-                { type: "text" as const, text: "Issue fields retrieved successfully" },
-                { type: "text" as const, text: JSON.stringify(result, null, 2) },
+                {
+                  type: "text" as const,
+                  text: "Issue fields retrieved successfully",
+                },
+                {
+                  type: "text" as const,
+                  text: JSON.stringify(result, null, 2),
+                },
               ]);
             } catch (error) {
               return new Err(
@@ -537,8 +595,14 @@ const createServer = (
         }
 
         return new Ok([
-          { type: "text" as const, text: "Connection information retrieved successfully" },
-          { type: "text" as const, text: JSON.stringify(connectionInfo, null, 2) },
+          {
+            type: "text" as const,
+            text: "Connection information retrieved successfully",
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(connectionInfo, null, 2),
+          },
         ]);
       }
     )
@@ -580,16 +644,32 @@ const createServer = (
             }
             if (result.value === null) {
               return new Ok([
-                { type: "text" as const, text: "Issue not found or no permission to transition it" },
-                { type: "text" as const, text: JSON.stringify({ found: false, issueKey }, null, 2) },
+                {
+                  type: "text" as const,
+                  text: "Issue not found or no permission to transition it",
+                },
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({ found: false, issueKey }, null, 2),
+                },
               ]);
             }
             return new Ok([
-              { type: "text" as const, text: "Issue transitioned successfully" },
-              { type: "text" as const, text: JSON.stringify({
-                issueKey,
-                transitionId,
-              }, null, 2) },
+              {
+                type: "text" as const,
+                text: "Issue transitioned successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    issueKey,
+                    transitionId,
+                  },
+                  null,
+                  2
+                ),
+              },
             ]);
           },
           authInfo,
@@ -625,7 +705,10 @@ const createServer = (
             }
             return new Ok([
               { type: "text" as const, text: "Issue created successfully" },
-              { type: "text" as const, text: JSON.stringify(result.value, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -663,16 +746,29 @@ const createServer = (
             }
             if (result.value === null) {
               return new Ok([
-                { type: "text" as const, text: "Issue not found or no permission to update it" },
-                { type: "text" as const, text: JSON.stringify({ found: false, issueKey }, null, 2) },
+                {
+                  type: "text" as const,
+                  text: "Issue not found or no permission to update it",
+                },
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({ found: false, issueKey }, null, 2),
+                },
               ]);
             }
             return new Ok([
               { type: "text" as const, text: "Issue updated successfully" },
-              { type: "text" as const, text: JSON.stringify({
-                ...result.value,
-                updatedFields: Object.keys(updateData),
-              }, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    ...result.value,
+                    updatedFields: Object.keys(updateData),
+                  },
+                  null,
+                  2
+                ),
+              },
             ]);
           },
           authInfo,
@@ -706,10 +802,20 @@ const createServer = (
               );
             }
             return new Ok([
-              { type: "text" as const, text: "Issue link created successfully" },
-              { type: "text" as const, text: JSON.stringify({
-                ...linkData,
-              }, null, 2) },
+              {
+                type: "text" as const,
+                text: "Issue link created successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    ...linkData,
+                  },
+                  null,
+                  2
+                ),
+              },
             ]);
           },
           authInfo,
@@ -737,8 +843,14 @@ const createServer = (
               );
             }
             return new Ok([
-              { type: "text" as const, text: "Issue link deleted successfully" },
-              { type: "text" as const, text: JSON.stringify({ linkId }, null, 2) },
+              {
+                type: "text" as const,
+                text: "Issue link deleted successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify({ linkId }, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -765,8 +877,14 @@ const createServer = (
               );
             }
             return new Ok([
-              { type: "text" as const, text: "Issue link types retrieved successfully" },
-              { type: "text" as const, text: JSON.stringify(result.value, null, 2) },
+              {
+                type: "text" as const,
+                text: "Issue link types retrieved successfully",
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -837,10 +955,17 @@ const createServer = (
                   : `Found ${result.value.users.length} exact match(es) for the specified email address`;
               return new Ok([
                 { type: "text" as const, text: message },
-                { type: "text" as const, text: JSON.stringify({
-                  users: result.value.users,
-                  nextStartAt: result.value.nextStartAt,
-                }, null, 2) },
+                {
+                  type: "text" as const,
+                  text: JSON.stringify(
+                    {
+                      users: result.value.users,
+                      nextStartAt: result.value.nextStartAt,
+                    },
+                    null,
+                    2
+                  ),
+                },
               ]);
             }
 
@@ -865,10 +990,17 @@ const createServer = (
                   : `Listed ${result.value.users.length} user(s)`;
             return new Ok([
               { type: "text" as const, text: message },
-              { type: "text" as const, text: JSON.stringify({
-                users: result.value.users,
-                nextStartAt: result.value.nextStartAt,
-              }, null, 2) },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    users: result.value.users,
+                    nextStartAt: result.value.nextStartAt,
+                  },
+                  null,
+                  2
+                ),
+              },
             ]);
           },
           authInfo,
@@ -996,20 +1128,30 @@ const createServer = (
             const uploadedAttachment = uploadResult.value[0];
 
             return new Ok([
-              { type: "text" as const, text: `Successfully uploaded attachment to issue ${issueKey}` },
-              { type: "text" as const, text: JSON.stringify({
-                issueKey,
-                attachment: {
-                  id: uploadedAttachment.id,
-                  filename: uploadedAttachment.filename,
-                  size: uploadedAttachment.size,
-                  mimeType: uploadedAttachment.mimeType,
-                  created: uploadedAttachment.created,
-                  author:
-                    uploadedAttachment.author.displayName ??
-                    uploadedAttachment.author.accountId,
-                },
-              }, null, 2) },
+              {
+                type: "text" as const,
+                text: `Successfully uploaded attachment to issue ${issueKey}`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    issueKey,
+                    attachment: {
+                      id: uploadedAttachment.id,
+                      filename: uploadedAttachment.filename,
+                      size: uploadedAttachment.size,
+                      mimeType: uploadedAttachment.mimeType,
+                      created: uploadedAttachment.created,
+                      author:
+                        uploadedAttachment.author.displayName ??
+                        uploadedAttachment.author.accountId,
+                    },
+                  },
+                  null,
+                  2
+                ),
+              },
             ]);
           },
           authInfo,
@@ -1053,16 +1195,26 @@ const createServer = (
             }));
 
             return new Ok([
-              { type: "text" as const, text: `Found ${attachments.length} attachment(s) for issue ${issueKey}` },
-              { type: "text" as const, text: JSON.stringify({
-                issueKey,
-                attachments: attachmentSummary,
-                totalAttachments: attachments.length,
-                totalSize: attachments.reduce(
-                  (sum, att) => sum + (att.size || 0),
-                  0
+              {
+                type: "text" as const,
+                text: `Found ${attachments.length} attachment(s) for issue ${issueKey}`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(
+                  {
+                    issueKey,
+                    attachments: attachmentSummary,
+                    totalAttachments: attachments.length,
+                    totalSize: attachments.reduce(
+                      (sum, att) => sum + (att.size || 0),
+                      0
+                    ),
+                  },
+                  null,
+                  2
                 ),
-              }, null, 2) },
+              },
             ]);
           },
           authInfo,

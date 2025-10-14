@@ -177,7 +177,10 @@ export async function executePostMessage(
     }
 
     return new Ok([
-      { type: "text" as const, text: `Message with file uploaded to ${channelId}` },
+      {
+        type: "text" as const,
+        text: `Message with file uploaded to ${channelId}`,
+      },
       { type: "text" as const, text: JSON.stringify(uploadResp, null, 2) },
     ]);
   }
@@ -234,8 +237,14 @@ export async function executeListUsers(
       // Early return if we found a user
       if (filteredUsers.length > 0) {
         return new Ok([
-          { type: "text" as const, text: `The workspace has ${filteredUsers.length} users containing "${nameFilter}"` },
-          { type: "text" as const, text: JSON.stringify(filteredUsers, null, 2) },
+          {
+            type: "text" as const,
+            text: `The workspace has ${filteredUsers.length} users containing "${nameFilter}"`,
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(filteredUsers, null, 2),
+          },
         ]);
       }
     }
@@ -243,7 +252,10 @@ export async function executeListUsers(
 
   if (nameFilter) {
     return new Ok([
-      { type: "text" as const, text: `The workspace has ${users.length} users but none containing "${nameFilter}"` },
+      {
+        type: "text" as const,
+        text: `The workspace has ${users.length} users but none containing "${nameFilter}"`,
+      },
       { type: "text" as const, text: JSON.stringify(users, null, 2) },
     ]);
   }
@@ -293,20 +305,32 @@ export async function executeListPublicChannels(
     // Early return if we found a channel
     if (filteredChannels.length > 0) {
       return new Ok([
-        { type: "text" as const, text: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"` },
-        { type: "text" as const, text: JSON.stringify(filteredChannels, null, 2) },
+        {
+          type: "text" as const,
+          text: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify(filteredChannels, null, 2),
+        },
       ]);
     }
   }
   if (nameFilter) {
     return new Ok([
-      { type: "text" as const, text: `The workspace has ${channels.length} channels but none containing "${nameFilter}"` },
+      {
+        type: "text" as const,
+        text: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
+      },
       { type: "text" as const, text: JSON.stringify(channels, null, 2) },
     ]);
   }
 
   return new Ok([
-    { type: "text" as const, text: `The workspace has ${channels.length} channels` },
+    {
+      type: "text" as const,
+      text: `The workspace has ${channels.length} channels`,
+    },
     { type: "text" as const, text: JSON.stringify(channels, null, 2) },
   ]);
 }

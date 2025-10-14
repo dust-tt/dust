@@ -219,16 +219,23 @@ const createServer = async (
           const nextCursor = response.response_metadata?.next_cursor;
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify({
-              messages: response.messages,
-              has_more: hasMore,
-              next_cursor: nextCursor,
-              pagination_info: {
-                current_page_size: response.messages?.length ?? 0,
-                has_more_pages: hasMore,
-                next_cursor_for_pagination: nextCursor,
-              },
-            }, null, 2) },
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  messages: response.messages,
+                  has_more: hasMore,
+                  next_cursor: nextCursor,
+                  pagination_info: {
+                    current_page_size: response.messages?.length ?? 0,
+                    has_more_pages: hasMore,
+                    next_cursor_for_pagination: nextCursor,
+                  },
+                },
+                null,
+                2
+              ),
+            },
           ]);
         } catch (error) {
           return new Err(
@@ -300,20 +307,30 @@ const createServer = async (
           const threadReplies = response.messages?.slice(1) ?? [];
 
           return new Ok([
-            { type: "text" as const, text: `Retrieved thread with ${response.messages?.length} total messages (1 parent + ${threadReplies.length} replies)${hasMore ? ". More replies available." : ""}` },
-            { type: "text" as const, text: JSON.stringify({
-              parent_message: parentMessage,
-              thread_replies: threadReplies,
-              total_messages: response.messages?.length ?? 0,
-              has_more: hasMore,
-              next_cursor: nextCursor,
-              pagination_info: {
-                current_page_size: response.messages?.length ?? 0,
-                replies_in_this_page: threadReplies.length,
-                has_more_pages: hasMore,
-                next_cursor_for_pagination: nextCursor,
-              },
-            }, null, 2) },
+            {
+              type: "text" as const,
+              text: `Retrieved thread with ${response.messages?.length} total messages (1 parent + ${threadReplies.length} replies)${hasMore ? ". More replies available." : ""}`,
+            },
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  parent_message: parentMessage,
+                  thread_replies: threadReplies,
+                  total_messages: response.messages?.length ?? 0,
+                  has_more: hasMore,
+                  next_cursor: nextCursor,
+                  pagination_info: {
+                    current_page_size: response.messages?.length ?? 0,
+                    replies_in_this_page: threadReplies.length,
+                    has_more_pages: hasMore,
+                    next_cursor_for_pagination: nextCursor,
+                  },
+                },
+                null,
+                2
+              ),
+            },
           ]);
         } catch (error) {
           return new Err(
@@ -365,7 +382,10 @@ const createServer = async (
           }
 
           return new Ok([
-            { type: "text" as const, text: `Successfully added ${name} reaction to message` },
+            {
+              type: "text" as const,
+              text: `Successfully added ${name} reaction to message`,
+            },
             { type: "text" as const, text: JSON.stringify(response, null, 2) },
           ]);
         } catch (error) {
@@ -416,7 +436,10 @@ const createServer = async (
           }
 
           return new Ok([
-            { type: "text" as const, text: `Successfully removed ${name} reaction from message` },
+            {
+              type: "text" as const,
+              text: `Successfully removed ${name} reaction from message`,
+            },
             { type: "text" as const, text: JSON.stringify(response, null, 2) },
           ]);
         } catch (error) {

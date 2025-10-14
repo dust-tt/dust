@@ -376,7 +376,10 @@ const createServer = (auth: Authenticator): McpServer => {
               .join("\n")}`;
 
           return new Ok([
-            { type: "text" as const, text: `Retrieved pull request #${pullNumber}` },
+            {
+              type: "text" as const,
+              text: `Retrieved pull request #${pullNumber}`,
+            },
             { type: "text" as const, text: JSON.stringify(content, null, 2) },
           ]);
         } catch (e) {
@@ -455,7 +458,10 @@ const createServer = (auth: Authenticator): McpServer => {
           );
 
           return new Ok([
-            { type: "text" as const, text: `Review created with ID ${review.id}` },
+            {
+              type: "text" as const,
+              text: `Review created with ID ${review.id}`,
+            },
           ]);
         } catch (e) {
           return new Err(
@@ -570,7 +576,10 @@ const createServer = (auth: Authenticator): McpServer => {
           }
 
           return new Ok([
-            { type: "text" as const, text: `Retrieved ${projects.length} open projects` },
+            {
+              type: "text" as const,
+              text: `Retrieved ${projects.length} open projects`,
+            },
             { type: "text" as const, text: JSON.stringify(content, null, 2) },
           ]);
         } catch (e) {
@@ -698,7 +707,10 @@ const createServer = (auth: Authenticator): McpServer => {
           }
 
           return new Ok([
-            { type: "text" as const, text: `Issue #${issueNumber} added to project` },
+            {
+              type: "text" as const,
+              text: `Issue #${issueNumber} added to project`,
+            },
           ]);
         } catch (e) {
           return new Err(
@@ -746,7 +758,10 @@ const createServer = (auth: Authenticator): McpServer => {
           );
 
           return new Ok([
-            { type: "text" as const, text: `Comment added to issue #${issueNumber} with ID ${comment.id}` },
+            {
+              type: "text" as const,
+              text: `Comment added to issue #${issueNumber} with ID ${comment.id}`,
+            },
           ]);
         } catch (e) {
           return new Err(
@@ -879,7 +894,10 @@ const createServer = (auth: Authenticator): McpServer => {
 
           return new Ok([
             { type: "text" as const, text: `Retrieved issue #${issueNumber}` },
-            { type: "text" as const, text: JSON.stringify(formattedIssue, null, 2) },
+            {
+              type: "text" as const,
+              text: JSON.stringify(formattedIssue, null, 2),
+            },
           ]);
         } catch (e) {
           return new Err(
@@ -1038,8 +1056,14 @@ const createServer = (auth: Authenticator): McpServer => {
           );
 
           return new Ok([
-            { type: "text" as const, text: `Retrieved ${formattedIssues.length} issues` },
-            { type: "text" as const, text: JSON.stringify(formattedIssues, null, 2) },
+            {
+              type: "text" as const,
+              text: `Retrieved ${formattedIssues.length} issues`,
+            },
+            {
+              type: "text" as const,
+              text: JSON.stringify(formattedIssues, null, 2),
+            },
           ]);
         } catch (e) {
           return new Err(
@@ -1266,15 +1290,21 @@ const createServer = (auth: Authenticator): McpServer => {
             }));
 
           return new Ok([
-            { type: "text" as const, text: `Retrieved ${formattedPullRequests.length} pull requests` },
-            { type: "text" as const, text: JSON.stringify(
-              {
-                pullRequests: formattedPullRequests,
-                pageInfo: pullRequests.repository.pullRequests.pageInfo,
-              },
-              null,
-              2
-            ) },
+            {
+              type: "text" as const,
+              text: `Retrieved ${formattedPullRequests.length} pull requests`,
+            },
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  pullRequests: formattedPullRequests,
+                  pageInfo: pullRequests.repository.pullRequests.pageInfo,
+                },
+                null,
+                2
+              ),
+            },
           ]);
         } catch (e) {
           return new Err(

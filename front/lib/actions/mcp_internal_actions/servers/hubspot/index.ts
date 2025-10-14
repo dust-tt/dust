@@ -144,7 +144,9 @@ const createServer = (): McpServer => {
           if (!object) {
             return {
               isError: true,
-              content: [{ type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND }],
+              content: [
+                { type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND },
+              ],
             };
           }
           // Handle different object types properly
@@ -158,7 +160,10 @@ const createServer = (): McpServer => {
               isError: false,
               content: [
                 { type: "text", text: formatted.message },
-                { type: "text", text: JSON.stringify(formatted.result, null, 2) },
+                {
+                  type: "text",
+                  text: JSON.stringify(formatted.result, null, 2),
+                },
               ],
             };
           } else {
@@ -167,13 +172,23 @@ const createServer = (): McpServer => {
             return {
               isError: false,
               content: [
-                { type: "text", text: `${objectType.slice(0, -1)} retrieved successfully` },
-                { type: "text", text: JSON.stringify({
-                  id: owner.id,
-                  email: owner.email,
-                  firstName: owner.firstName,
-                  lastName: owner.lastName,
-                }, null, 2) },
+                {
+                  type: "text",
+                  text: `${objectType.slice(0, -1)} retrieved successfully`,
+                },
+                {
+                  type: "text",
+                  text: JSON.stringify(
+                    {
+                      id: owner.id,
+                      email: owner.email,
+                      firstName: owner.firstName,
+                      lastName: owner.lastName,
+                    },
+                    null,
+                    2
+                  ),
+                },
               ],
             };
           }
@@ -231,13 +246,21 @@ const createServer = (): McpServer => {
           if (!owners.length) {
             return {
               isError: true,
-              content: [{ type: "text", text: `No owners found matching "${searchQuery}".` }],
+              content: [
+                {
+                  type: "text",
+                  text: `No owners found matching "${searchQuery}".`,
+                },
+              ],
             };
           }
           return {
             isError: false,
             content: [
-              { type: "text", text: `Found ${owners.length} owner(s) matching "${searchQuery}".` },
+              {
+                type: "text",
+                text: `Found ${owners.length} owner(s) matching "${searchQuery}".`,
+              },
               { type: "text", text: JSON.stringify(owners, null, 2) },
             ],
           };
@@ -286,14 +309,19 @@ const createServer = (): McpServer => {
           if (!count) {
             return {
               isError: true,
-              content: [{ type: "text", text: ERROR_MESSAGES.NO_OBJECTS_FOUND }],
+              content: [
+                { type: "text", text: ERROR_MESSAGES.NO_OBJECTS_FOUND },
+              ],
             };
           }
           if (count >= MAX_COUNT_LIMIT) {
             return {
               isError: false,
               content: [
-                { type: "text", text: `Found ${MAX_COUNT_LIMIT}+ ${objectType} matching the filters (exact count unavailable due to API limits)` },
+                {
+                  type: "text",
+                  text: `Found ${MAX_COUNT_LIMIT}+ ${objectType} matching the filters (exact count unavailable due to API limits)`,
+                },
                 { type: "text", text: `${MAX_COUNT_LIMIT}+` },
               ],
             };
@@ -301,7 +329,10 @@ const createServer = (): McpServer => {
           return {
             isError: false,
             content: [
-              { type: "text", text: `Found ${count} ${objectType} matching the specified filters` },
+              {
+                type: "text",
+                text: `Found ${count} ${objectType} matching the specified filters`,
+              },
               { type: "text", text: count.toString() },
             ],
           };
@@ -329,7 +360,9 @@ const createServer = (): McpServer => {
           if (!objects.length) {
             return {
               isError: true,
-              content: [{ type: "text", text: ERROR_MESSAGES.NO_OBJECTS_FOUND }],
+              content: [
+                { type: "text", text: ERROR_MESSAGES.NO_OBJECTS_FOUND },
+              ],
             };
           }
           const formattedText = formatHubSpotObjectsAsText(objects, objectType);
@@ -580,7 +613,10 @@ const createServer = (): McpServer => {
           return {
             isError: false,
             content: [
-              { type: "text", text: `Communication (channel: ${properties.hs_communication_channel_type || "unknown"}) created successfully.` },
+              {
+                type: "text",
+                text: `Communication (channel: ${properties.hs_communication_channel_type || "unknown"}) created successfully.`,
+              },
               { type: "text", text: JSON.stringify(result, null, 2) },
             ],
           };
@@ -643,7 +679,9 @@ const createServer = (): McpServer => {
           if (!result) {
             return {
               isError: true,
-              content: [{ type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND }],
+              content: [
+                { type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND },
+              ],
             };
           }
           const formatted = formatHubSpotGetSuccess(result, "contacts");
@@ -674,7 +712,9 @@ const createServer = (): McpServer => {
           if (!result) {
             return {
               isError: true,
-              content: [{ type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND }],
+              content: [
+                { type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND },
+              ],
             };
           }
           const formatted = formatHubSpotGetSuccess(result, "companies");
@@ -705,7 +745,9 @@ const createServer = (): McpServer => {
           if (!result) {
             return {
               isError: true,
-              content: [{ type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND }],
+              content: [
+                { type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND },
+              ],
             };
           }
           return {
@@ -737,7 +779,14 @@ const createServer = (): McpServer => {
           if (!result) {
             return {
               isError: true,
-              content: [{ type: "text", text: ERROR_MESSAGES.OBJECT_NOT_FOUND + " Or it was not a meeting." }],
+              content: [
+                {
+                  type: "text",
+                  text:
+                    ERROR_MESSAGES.OBJECT_NOT_FOUND +
+                    " Or it was not a meeting.",
+                },
+              ],
             };
           }
           return {
@@ -767,7 +816,12 @@ const createServer = (): McpServer => {
           if (!result) {
             return {
               isError: true,
-              content: [{ type: "text", text: "File not found or public URL not available." }],
+              content: [
+                {
+                  type: "text",
+                  text: "File not found or public URL not available.",
+                },
+              ],
             };
           }
           return {
@@ -804,13 +858,18 @@ const createServer = (): McpServer => {
           if (result === null) {
             return {
               isError: true,
-              content: [{ type: "text", text: "Error retrieving associated meetings." }],
+              content: [
+                { type: "text", text: "Error retrieving associated meetings." },
+              ],
             };
           }
           return {
             isError: false,
             content: [
-              { type: "text", text: "Associated meetings retrieved successfully." },
+              {
+                type: "text",
+                text: "Associated meetings retrieved successfully.",
+              },
               { type: "text", text: JSON.stringify(result, null, 2) },
             ],
           };
@@ -890,9 +949,7 @@ const createServer = (): McpServer => {
           });
           return {
             isError: false,
-            content: [
-              { type: "text", text: JSON.stringify(result, null, 2) },
-            ],
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };
         },
         authInfo,
@@ -921,9 +978,7 @@ const createServer = (): McpServer => {
           });
           return {
             isError: false,
-            content: [
-              { type: "text", text: JSON.stringify(result, null, 2) },
-            ],
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };
         },
         authInfo,
@@ -974,7 +1029,9 @@ const createServer = (): McpServer => {
           if (!result || result.results.length === 0) {
             return {
               isError: true,
-              content: [{ type: "text", text: "Search failed or returned no results." }],
+              content: [
+                { type: "text", text: "Search failed or returned no results." },
+              ],
             };
           }
 
@@ -1061,7 +1118,12 @@ const createServer = (): McpServer => {
       } catch (err) {
         return {
           isError: true,
-          content: [{ type: "text", text: `Failed to fetch objects from HubSpot: ${err instanceof Error ? err.message : String(err)}` }],
+          content: [
+            {
+              type: "text",
+              text: `Failed to fetch objects from HubSpot: ${err instanceof Error ? err.message : String(err)}`,
+            },
+          ],
         };
       }
       if (!allResults.length) {
@@ -1100,7 +1162,10 @@ const createServer = (): McpServer => {
       return {
         isError: false,
         content: [
-          { type: "text", text: `Exported ${csvRows.length} ${input.objectType} to CSV` },
+          {
+            type: "text",
+            text: `Exported ${csvRows.length} ${input.objectType} to CSV`,
+          },
           { type: "text", text: fullCsv },
         ],
       };
@@ -1149,7 +1214,9 @@ const createServer = (): McpServer => {
 
         return {
           isError: true,
-          content: [{ type: "text", text: JSON.stringify(errorResponse, null, 2) }],
+          content: [
+            { type: "text", text: JSON.stringify(errorResponse, null, 2) },
+          ],
         };
       }
       const urlResults = generateUrls(portalId, uiDomain, pageRequests);
@@ -1175,8 +1242,14 @@ const createServer = (): McpServer => {
           return {
             isError: false,
             content: [
-              { type: "text", text: "Portal information retrieved successfully" },
-              { type: "text", text: `Portal ID: ${result.hub_id}\nUI Domain: app.hubspot.com` },
+              {
+                type: "text",
+                text: "Portal information retrieved successfully",
+              },
+              {
+                type: "text",
+                text: `Portal ID: ${result.hub_id}\nUI Domain: app.hubspot.com`,
+              },
             ],
           };
         },
@@ -1214,7 +1287,10 @@ const createServer = (): McpServer => {
           return {
             isError: false,
             content: [
-              { type: "text", text: `Association created successfully between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}` },
+              {
+                type: "text",
+                text: `Association created successfully between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}`,
+              },
               { type: "text", text: JSON.stringify(result, null, 2) },
             ],
           };
@@ -1249,7 +1325,10 @@ const createServer = (): McpServer => {
           return {
             isError: false,
             content: [
-              { type: "text", text: `Associations retrieved successfully for ${objectType}:${objectId}` },
+              {
+                type: "text",
+                text: `Associations retrieved successfully for ${objectType}:${objectId}`,
+              },
               { type: "text", text: JSON.stringify(result, null, 2) },
             ],
           };
@@ -1288,8 +1367,14 @@ const createServer = (): McpServer => {
           return {
             isError: false,
             content: [
-              { type: "text", text: `Association removed successfully between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}` },
-              { type: "text", text: JSON.stringify({ success: true }, null, 2) },
+              {
+                type: "text",
+                text: `Association removed successfully between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}`,
+              },
+              {
+                type: "text",
+                text: JSON.stringify({ success: true }, null, 2),
+              },
             ],
           };
         },
@@ -1311,7 +1396,10 @@ const createServer = (): McpServer => {
           return {
             isError: false,
             content: [
-              { type: "text", text: "Current user information retrieved successfully" },
+              {
+                type: "text",
+                text: "Current user information retrieved successfully",
+              },
               { type: "text", text: JSON.stringify(result, null, 2) },
             ],
           };
@@ -1368,8 +1456,14 @@ const createServer = (): McpServer => {
             return {
               isError: false,
               content: [
-                { type: "text", text: `No activities found for owner ${ownerId} between ${startDate} and ${endDate}` },
-                { type: "text", text: `No activities found for the specified period. Summary: ${JSON.stringify(result.summary, null, 2)}` },
+                {
+                  type: "text",
+                  text: `No activities found for owner ${ownerId} between ${startDate} and ${endDate}`,
+                },
+                {
+                  type: "text",
+                  text: `No activities found for the specified period. Summary: ${JSON.stringify(result.summary, null, 2)}`,
+                },
               ],
             };
           }
@@ -1377,11 +1471,21 @@ const createServer = (): McpServer => {
           return {
             isError: false,
             content: [
-              { type: "text", text: `Found ${result.results.length} activities for owner ${ownerId} between ${startDate} and ${endDate}` },
-              { type: "text", text: JSON.stringify({
-                activities: result.results,
-                summary: result.summary,
-              }, null, 2) },
+              {
+                type: "text",
+                text: `Found ${result.results.length} activities for owner ${ownerId} between ${startDate} and ${endDate}`,
+              },
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    activities: result.results,
+                    summary: result.summary,
+                  },
+                  null,
+                  2
+                ),
+              },
             ],
           };
         },
