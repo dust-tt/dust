@@ -49,9 +49,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
 type HttpMethod = "GET" | "POST";
 
-export default function NotionRequestsPage({
-  owner,
-  dataSource,
 interface NotionRequestsPageProps {
   owner: WorkspaceType;
   dataSource: DataSourceType;
