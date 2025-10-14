@@ -3,7 +3,7 @@ import { cn } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 const localStorageKey = "frame-announcement-dismissed";
-const docLink = "https://docs.dust.tt/";
+const docLink = "https://docs.dust.tt/docs/frames";
 
 export const InAppBanner = () => {
   const [showInAppBanner, setShowInAppBanner] = useState(
