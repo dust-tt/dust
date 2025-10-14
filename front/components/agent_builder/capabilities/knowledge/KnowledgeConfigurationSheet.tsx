@@ -420,7 +420,7 @@ function KnowledgeConfigurationSheetContent({
                 <CollapsibleContent className="m-1">
                   <CustomCheckboxSection
                     title="Enable exploratory search mode"
-                    description="Allows agents to navigate your data like a filesystem (list folders, browse files, explore hierarchies). Best for complex tasks with large datasets where thoroughness matters more than speed."
+                    description="Allow the agent to navigate the selected Data Sources like a filesystem (list folders, browse files, explore hierarchies). Best for complex tasks with large datasets where thoroughness matters more than speed."
                     targetMCPServerName={SEARCH_SERVER_NAME}
                     selectedMCPServerView={mcpServerView ?? undefined}
                     configurationKey={ADVANCED_SEARCH_SWITCH}
