@@ -102,12 +102,16 @@ jobs:
 
             - When renaming a function, **do not** keep the old name for backward compatibility.
 
-            ### 6. Internet Access
+            ### 6. Planning Requests
+
+            - If asked to create a plan, propose actions only—**no code changes** until approval.
+
+            ### 7. Internet Access
 
             - Use your WebSearch tools to search the internet.
             - This is required to find documentation for libraries, latest package versions, etc.
 
-            ### 7. Import Rules
+            ### 8. Import Rules
 
             - For TypeScript, place all imports at the top of the file; never use async imports.
 
