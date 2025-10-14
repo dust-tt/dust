@@ -3,17 +3,13 @@ import type { NextApiResponse } from "next";
 
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { Authenticator } from "@app/lib/auth";
-import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { checkWebhookRequestForRateLimit } from "@app/lib/triggers/webhook";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import {
-  getTimeframeSecondsFromLiteral,
-  rateLimiter,
-} from "@app/lib/utils/rate_limiter";
 import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
@@ -25,8 +21,6 @@ import type {
 } from "@app/types";
 import { Err } from "@app/types";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
-
-const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10%
 
 /**
  * @swagger
@@ -212,32 +206,15 @@ async function handler(
     }
   }
 
-  // Rate limiting: 10% of workspace message limit
-  const plan = auth.getNonNullablePlan();
-  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
-
-  if (maxMessages !== -1) {
-    const activeSeats = await countActiveSeatsInWorkspaceCached(workspace.sId);
-    const webhookLimit = Math.ceil(
-      maxMessages * activeSeats * WORKSPACE_MESSAGE_LIMIT_MULTIPLIER
-    ); // 10% of workspace message limit
-
-    const remaining = await rateLimiter({
-      key: `workspace:${workspace.sId}:webhook_triggers:${maxMessagesTimeframe}`,
-      maxPerTimeframe: webhookLimit,
-      timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
-      logger,
+  const rateLimiterRes = await checkWebhookRequestForRateLimit(auth);
+  if (rateLimiterRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 429,
+      api_error: {
+        type: "rate_limit_error",
+        message: rateLimiterRes.error.message,
+      },
     });
-
-    if (remaining <= 0) {
-      return apiError(req, res, {
-        status_code: 429,
-        api_error: {
-          type: "rate_limit_error",
-          message: `Webhook triggers rate limit exceeded. You can trigger up to ${webhookLimit} webhooks per ${maxMessagesTimeframe}.`,
-        },
-      });
-    }
   }
 
   // Filter out non-subscribed events
