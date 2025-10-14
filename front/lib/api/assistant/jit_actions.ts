@@ -109,6 +109,7 @@ export async function getJITServers(
     jitServers.push(conversationFilesServer);
   }
 
+<<<<<<< HEAD
   if (!commonUtilitiesView) {
     logger.warn(
       {
@@ -119,6 +120,16 @@ export async function getJITServers(
     );
   } else if (!agentMcpServerViewIds.includes(commonUtilitiesView.sId)) {
     const commonUtilitiesViewJSON = commonUtilitiesView.toJSON();
+=======
+  assert(
+    commonUtilitiesView,
+    "MCP server view not found for common_utilities. Ensure auto tools are created."
+  );
+
+  const commonUtilitiesViewJSON = commonUtilitiesView.toJSON();
+
+  if (!agentMcpServerViewIds.includes(commonUtilitiesViewJSON.sId)) {
+>>>>>>> 18c8701bcb (feat(front): add common utilities internal mcp server)
     const commonUtilitiesServer: ServerSideMCPServerConfigurationType = {
       id: -1,
       sId: generateRandomModelSId(),
