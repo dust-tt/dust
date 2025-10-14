@@ -42,21 +42,12 @@ function processDataSourceConfigurations(
     dataSourceViewId: config.dataSourceView.sId,
     workspaceId: owner.sId,
     filter: {
-      parents: config.isSelectAll
-        ? config.excludedResources.length > 0
-          ? {
-              in: null,
-              not: config.excludedResources.map(
-                (resource) => resource.internalId
-              ),
-            }
-          : null
-        : {
-            in: config.selectedResources.map((resource) => resource.internalId),
-            not: config.excludedResources.map(
-              (resource) => resource.internalId
-            ),
-          },
+      parents: {
+        in: config.isSelectAll
+          ? null
+          : config.selectedResources.map((resource) => resource.internalId),
+        not: config.excludedResources.map((resource) => resource.internalId),
+      },
       tags: config.tagsFilter
         ? {
             in: config.tagsFilter.in,
