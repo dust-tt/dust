@@ -3,10 +3,12 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 import type Stripe from "stripe";
 
+import config from "@app/lib/api/config";
+import { getDataSources } from "@app/lib/api/data_sources";
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
@@ -53,7 +55,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Ok, sendUserOperationMessage } from "@app/types";
+import { ConnectorsAPI, Ok, removeNulls, sendUserOperationMessage } from "@app/types";
 
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
@@ -286,11 +288,66 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
     await this.endActiveSubscription(workspace);
 
+    // Pause all connectors when downgrading to FREE_NO_PLAN
+    await this.pauseWorkspaceConnectors(workspaceId);
+
     return new SubscriptionResource(
       Subscription,
       this.createFreeNoPlanSubscription(workspace),
       renderPlanFromModel({ plan: FREE_NO_PLAN_DATA })
     );
+  }
+
+  /**
+   * Helper function to pause all connectors for a workspace.
+   * This is used when a workspace is downgraded to prevent further processing.
+   */
+  static async pauseWorkspaceConnectors(workspaceId: string): Promise<void> {
+    try {
+      const workspace = await this.findWorkspaceOrThrow(workspaceId);
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const dataSources = await getDataSources(auth);
+      const connectorIds = removeNulls(dataSources.map((ds) => ds.connectorId));
+
+      if (connectorIds.length === 0) {
+        logger.info(
+          { workspaceId },
+          "No connectors found for workspace, skipping pause"
+        );
+        return;
+      }
+
+      const connectorsApi = new ConnectorsAPI(
+        config.getConnectorsAPIConfig(),
+        logger
+      );
+
+      for (const connectorId of connectorIds) {
+        const result = await connectorsApi.pauseConnector(connectorId);
+        if (result.isErr()) {
+          logger.error(
+            { workspaceId, connectorId, error: result.error },
+            "Failed to pause connector during workspace downgrade"
+          );
+        } else {
+          logger.info(
+            { workspaceId, connectorId },
+            "Successfully paused connector during workspace downgrade"
+          );
+        }
+      }
+
+      logger.info(
+        { workspaceId, connectorCount: connectorIds.length },
+        "Completed pausing connectors for downgraded workspace"
+      );
+    } catch (error) {
+      logger.error(
+        { workspaceId, error },
+        "Failed to pause connectors for workspace during downgrade"
+      );
+      throw error;
+    }
   }
 
   /**

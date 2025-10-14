@@ -102,6 +102,9 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       await SubscriptionResource.internalSubscribeWorkspaceToFreeNoPlan({
         workspaceId: w.sId,
       });
+      
+      console.log(`Downgraded workspace and paused connectors: ${w.sId}`);
+
       await workspace("show", args);
       return;
     }
