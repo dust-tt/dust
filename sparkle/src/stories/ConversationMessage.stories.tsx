@@ -3,14 +3,13 @@ import React from "react";
 
 import {
   ArrowPathIcon,
-  Avatar,
+  BoltIcon,
   Button,
   ChevronRightIcon,
   Citation,
   CitationIcons,
   CitationTitle,
   ClipboardIcon,
-  ClockIcon,
   ConversationContainer,
   ConversationMessage,
   GithubIcon,
@@ -47,7 +46,9 @@ export const ConversationExample = () => {
               </Citation>,
             ]}
             infoChip={
-              <Avatar size="xs" visual={<ClockIcon className="h-4 w-4" />} />
+              <span className="s-translate-y-1 s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <Icon size="xs" visual={BoltIcon} />
+              </span>
             }
           >
             I only want to show citations if a citations reactnode has been

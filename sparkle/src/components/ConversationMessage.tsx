@@ -216,10 +216,10 @@ export const ConversationMessageHeader = React.forwardRef<
         <div className="s-inline-flex s-w-full s-justify-between s-gap-0.5">
           <div className="s-inline-flex s-items-baseline s-gap-2 s-text-foreground dark:s-text-foreground-night">
             <span className="s-heading-sm">{renderName(name)}</span>
-            {infoChip && infoChip}
             <span className="s-heading-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
               {timestamp}
             </span>
+            {infoChip && infoChip}
           </div>
           {completionStatus ?? null}
         </div>
