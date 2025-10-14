@@ -9,6 +9,7 @@ import type {
 } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { getClient } from "@connectors/connectors/microsoft";
+import { getOrganization } from "@connectors/connectors/microsoft/lib/graph_api";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftBotConfigurationResource } from "@connectors/resources/microsoft_resource";
@@ -26,17 +27,10 @@ export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const client = await getClient(connectionId);
 
-    let tenantId: string;
-    try {
-      // Get organization info to get tenant ID
-      const org = await client.api("/organization").get();
-      if (!org.value || !org.value[0] || !org.value[0].id) {
-        throw new Error("Could not retrieve Microsoft organization ID");
-      }
+    const org = await getOrganization(logger, client);
 
-      tenantId = org.value[0].id;
-    } catch (err) {
-      throw new Error("Error creating Microsoft Bot connector");
+    if (!org.id) {
+      throw new Error("Could not retrieve Microsoft organization ID");
     }
 
     const connector = await ConnectorResource.makeNew(
@@ -49,7 +43,7 @@ export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
       },
       {
         botEnabled: true,
-        tenantId,
+        tenantId: org.id,
       }
     );
 
