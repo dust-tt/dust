@@ -333,10 +333,9 @@ export function findPathsToConfiguration({
     }
 
     if (tool.inputSchema) {
-      const inlinedSchema = inlineAllRefs(tool.inputSchema);
       matches = {
         ...matches,
-        ...findMatchingSubSchemas(inlinedSchema, mimeType),
+        ...findMatchingSubSchemas(tool.inputSchema, mimeType),
       };
     }
   }
@@ -903,6 +902,15 @@ export function findMatchingSubSchemas(
           matches[key] = propSchema;
         }
 
+        // Following references within the main schema.
+        // zodToJsonSchema generates references if the same subSchema is repeated.
+        if (propSchema.$ref) {
+          const refSchema = followInternalRef(inputSchema, propSchema.$ref);
+          if (refSchema && isSchemaConfigurable(refSchema, mimeType)) {
+            matches[key] = refSchema;
+          }
+        }
+
         // Recursively check this property's schema
         const nestedMatches = findMatchingSubSchemas(propSchema, mimeType);
         // For nested matches, prefix with the current property key
@@ -980,76 +988,4 @@ export function findMatchingSubSchemas(
   // since we entirely hide the configuration from the agent.
 
   return matches;
-}
-
-function recursiveInlineAllRefs(
-  schema: JSONSchema,
-  rootSchema: JSONSchema
-): JSONSchema {
-  let outputSchema: JSONSchema = { ...schema };
-
-  // If this schema is a direct reference, resolve it fully and continue inlining recursively
-  if (schema.$ref) {
-    const refSchema = followInternalRef(rootSchema, schema.$ref);
-    if (refSchema && isJSONSchemaObject(refSchema)) {
-      return recursiveInlineAllRefs(refSchema, rootSchema);
-    }
-    return schema;
-  }
-
-  if (schema.properties) {
-    outputSchema.properties = {};
-    for (const [key, propSchema] of Object.entries(schema.properties)) {
-      if (isJSONSchemaObject(propSchema)) {
-        outputSchema.properties[key] = recursiveInlineAllRefs(
-          propSchema,
-          rootSchema
-        );
-      } else {
-        outputSchema.properties[key] = propSchema;
-      }
-    }
-  }
-
-  if (schema.type == "array" && schema.items) {
-    if (isJSONSchemaObject(schema.items)) {
-      outputSchema.items = recursiveInlineAllRefs(schema.items, rootSchema);
-    } else if (Array.isArray(schema.items)) {
-      outputSchema.items = schema.items.map((item) =>
-        isJSONSchemaObject(item)
-          ? recursiveInlineAllRefs(item, rootSchema)
-          : item
-      );
-    }
-  }
-
-  // Handle all other keys
-  for (const [key, value] of Object.entries(schema)) {
-    // Skip properties and items as they are handled separately above
-    if (
-      key === "properties" ||
-      key === "required" ||
-      key === "anyOf" ||
-      key === "enum" ||
-      key === "type" ||
-      (key === "items" && outputSchema.type === "array")
-    ) {
-      continue;
-    }
-    if (isJSONSchemaObject(value)) {
-      outputSchema = {
-        ...outputSchema,
-        [key]: recursiveInlineAllRefs(value, rootSchema),
-      };
-    } else {
-      outputSchema = { ...outputSchema, [key]: value };
-    }
-  }
-
-  return outputSchema;
-}
-
-// TODO(2025-10-10 aubin): remove this.
-function inlineAllRefs(schema: JSONSchema): JSONSchema {
-  return recursiveInlineAllRefs(schema, schema);
 }
