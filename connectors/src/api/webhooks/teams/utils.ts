@@ -1,6 +1,6 @@
 import type { TurnContext } from "botbuilder";
 
-import { sendActivity } from "@connectors/connectors/microsoft_bot/bot_messaging_utils";
+import { sendActivity } from "@connectors/api/webhooks/teams/bot_messaging_utils";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftBotConfigurationResource } from "@connectors/resources/microsoft_resource";

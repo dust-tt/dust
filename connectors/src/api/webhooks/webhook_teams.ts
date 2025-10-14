@@ -10,7 +10,7 @@ import {
   validateBotFrameworkToken,
 } from "@connectors/api/webhooks/teams/jwt_validation";
 import { getConnector } from "@connectors/api/webhooks/teams/utils";
-import { sendActivity } from "@connectors/connectors/microsoft_bot/bot_messaging_utils";
+import { sendActivity } from "@connectors/api/webhooks/teams/bot_messaging_utils";
 import logger from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
 
