@@ -91,6 +91,7 @@ print_status "App Object ID: $APP_OBJECT_ID"
 
 # Create app password/secret
 print_step "4. Creating app password..."
+sleep 5
 PASSWORD_RESULT=$(az ad app credential reset --id "$APP_ID" --display-name "bot-secret")
 APP_PASSWORD=$(echo "$PASSWORD_RESULT" | jq -r '.password')
 print_status "App password created (will be shown in .env file)"
