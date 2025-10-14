@@ -702,7 +702,7 @@ export async function processTranscriptActivity(
       },
       subject: `[DUST] Transcripts - ${transcriptTitle.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")}`,
       body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
-    <a href="${getConversationRoute(owner.sId, conversation.sId, config.getClientFacingUrl())}"
+    <a href="${getConversationRoute(owner.sId, conversation.sId, undefined, config.getClientFacingUrl())}"
       style="display: inline-block;
               padding: 10px 20px;
               background-color: #000000;
