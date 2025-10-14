@@ -4,7 +4,6 @@ import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 import type {
   ConversationType,
-  FunctionCallType,
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
@@ -286,10 +285,6 @@ async function countTokensForMessages(
   const textRepresentations: string[] = [];
   const additionalTokens: number[] = [];
 
-  const fcallAsText = (call: FunctionCallType): string => {
-    return `${call.name} ${call.arguments}`;
-  };
-
   for (const [i, m] of messages.entries()) {
     additionalTokens[i] = 0;
 
@@ -316,7 +311,7 @@ async function countTokensForMessages(
           } else if (c.type === "text_content") {
             text += c.value;
           } else if (c.type === "function_call") {
-            text += fcallAsText(c.value);
+            text += `${c.value.name} ${c.value.arguments}`;
           } else {
             assertNever(c);
           }
