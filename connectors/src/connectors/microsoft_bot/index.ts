@@ -163,7 +163,7 @@ export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
         await botConfig.update({ botEnabled: configValue === "true" });
         break;
       default:
-        throw new Error(`Configuration key ${configKey} is not modifiable`);
+        return new Err(new Error(`Invalid config key ${configKey}`));
     }
 
     return new Ok(undefined);
@@ -188,10 +188,8 @@ export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
     switch (configKey) {
       case "botEnabled":
         return new Ok(botConfig.botEnabled.toString());
-      case "tenantId":
-        return new Ok(botConfig.tenantId);
       default:
-        return new Ok(null);
+        return new Err(new Error(`Invalid config key ${configKey}`));
     }
   }
 
