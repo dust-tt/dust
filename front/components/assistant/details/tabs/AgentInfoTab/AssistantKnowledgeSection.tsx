@@ -99,19 +99,17 @@ export function AssistantKnowledgeSection({
             const existingFilter = acc[ds.dataSourceViewId].filter.parents;
             // Merge the filters if they are not null
             if (existingFilter) {
-              if (ds.filter.parents.in === null) {
-                // If the new filter has in: null, it means "all", so we keep null.
-                existingFilter.in = null;
-              } else if (existingFilter.in !== null) {
-                existingFilter.in = _.uniq(
-                  existingFilter.in.concat(ds.filter.parents.in)
+              if (existingFilter.in !== null || ds.filter.parents.in !== null) {
+                existingFilter.in = (existingFilter.in ?? []).concat(
+                  ds.filter.parents.in ?? []
                 );
               }
-              if (ds.filter.parents.not === null) {
-                existingFilter.not = null;
-              } else if (existingFilter.not !== null) {
-                existingFilter.not = _.uniq(
-                  existingFilter.not.concat(ds.filter.parents.not)
+              if (
+                existingFilter.not !== null ||
+                ds.filter.parents.not !== null
+              ) {
+                existingFilter.not = (existingFilter.not ?? []).concat(
+                  ds.filter.parents.not ?? []
                 );
               }
               // We need to remove duplicates
@@ -144,19 +142,17 @@ export function AssistantKnowledgeSection({
             const existingFilter = acc[ds.dataSourceViewId].filter.parents;
             // Merge the filters if they are not null
             if (existingFilter) {
-              if (ds.filter.parents.in === null) {
-                // If the new filter has in: null, it means "all", so we keep null.
-                existingFilter.in = null;
-              } else if (existingFilter.in !== null) {
-                existingFilter.in = _.uniq(
-                  existingFilter.in.concat(ds.filter.parents.in)
+              if (existingFilter.in !== null || ds.filter.parents.in !== null) {
+                existingFilter.in = (existingFilter.in ?? []).concat(
+                  ds.filter.parents.in ?? []
                 );
               }
-              if (ds.filter.parents.not === null) {
-                existingFilter.not = null;
-              } else if (existingFilter.not !== null) {
-                existingFilter.not = _.uniq(
-                  existingFilter.not.concat(ds.filter.parents.not)
+              if (
+                existingFilter.not !== null ||
+                ds.filter.parents.not !== null
+              ) {
+                existingFilter.not = (existingFilter.not ?? []).concat(
+                  ds.filter.parents.not ?? []
                 );
               }
               // We need to remove duplicates
