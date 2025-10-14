@@ -437,11 +437,12 @@ export function WebhookEditionModal({
                     Filter Description
                   </Label>
                   <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Describe in natural language what events you want to filter
+                    Describe in natural language the conditions under which the
+                    agent should trigger.
                   </p>
                   <TextArea
                     id="trigger-filter-description"
-                    placeholder='e.g. "Only issues with priority high or critical"'
+                    placeholder='e.g. "New pull requests that changes more than 500 lines of code, or have the `auto-review` label."'
                     rows={3}
                     value={naturalDescription}
                     disabled={!isEditor}
