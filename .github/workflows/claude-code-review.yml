@@ -47,10 +47,10 @@ jobs:
       - name: Run Code Review with Claude
         if: steps.should-run.outputs.result == 'true'
         id: code-review
-        uses: anthropics/claude-code-action@beta
+        uses: anthropics/claude-code-action@v1
         with:
           # Define the review focus areas
-          direct_prompt: >-
+          prompt: >-
             Code Review Agent
 
             ## Primary Objective:
@@ -114,6 +114,8 @@ jobs:
             - When our guidelines conflict with general best practices, our guidelines take precedence
 
           # Limited tools for safer review operations
-          allowed_tools: '["Bash(git diff --name-only HEAD~1)", "Bash(git diff HEAD~1)", "View", "GlobTool", "GrepTool"]'
+          claude_args: |
+            --model claude-4.5-sonnet-20251022
+            --allowed-tools Bash(git diff --name-only HEAD~1),Bash(git diff HEAD~1),View,GlobTool,GrepTool
 
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}

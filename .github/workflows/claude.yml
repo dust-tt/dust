@@ -53,39 +53,15 @@ jobs:
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@beta
+        uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
-          # Specify model (defaults to Claude Sonnet 4, using Claude Opus 4)
-          model: "claude-opus-4-20250514"
-
-          # Optional: Customize the trigger phrase (default: @claude)
-          # trigger_phrase: "/claude"
-
-          # Optional: Trigger when specific user is assigned to an issue
-          # assignee_trigger: "claude-bot"
-
-          # Allow Claude to use all available tools
-          allowed_tools: |
-            Agent,
-            Bash,
-            Edit,
-            Glob,
-            Grep,
-            LS,
-            MultiEdit,
-            NotebookEdit,
-            NotebookRead,
-            Read,
-            TodoRead,
-            TodoWrite,
-            WebFetch,
-            WebSearch,
-            Write
-
-          # Custom instructions based on CLAUDE.md
-          custom_instructions: |
+          claude_args: |
+            --model claude-4.5-sonnet-20251022
+            --max-turns 12
+            --allowed-tools Agent,Bash,Edit,Glob,Grep,LS,MultiEdit,NotebookEdit,NotebookRead,Read,TodoRead,TodoWrite,WebFetch,WebSearch,Write
+            --system-prompt "
             ### 1. General Principles
 
             - Never make changes to the codebase that the user did not ask for.
@@ -154,8 +130,15 @@ jobs:
             - Follow all CODING_RULES.md files in each project directory
             - Let exceptions propagate, avoid defensive patterns
             - Make minimal changes required
-            - Use normalizeError() instead of `err as Error`
+            - Use normalizeError() instead of `err as Error`"
+
+          # Optional: Customize the trigger phrase (default: @claude)
+          # trigger_phrase: "/claude"
 
           # Environment variables for Claude
-          claude_env: |
-            NODE_ENV: test
+          settings: |
+            {
+              "env": {
+                "NODE_ENV": "test"
+              }
+            }
