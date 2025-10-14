@@ -72,6 +72,8 @@ import {
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
 
+import { InAppBanner } from "./InAppBanner";
+
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;
 };
@@ -541,6 +543,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 </>
               )}
             </NavigationList>
+            <InAppBanner />
           </div>
         </div>
       </div>
