@@ -100,7 +100,8 @@ export function transformTreeToSelectionConfigurations(
         dataSourceView,
         selectedResources: [],
         excludedResources: [],
-        isSelectAll: false,
+        // By default, we consider the data source to be selected when we start by excluding nodes.
+        isSelectAll: true,
         tagsFilter: null,
       };
     }
