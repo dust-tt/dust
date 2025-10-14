@@ -14,7 +14,8 @@
     "tsc": "tsc",
     "cli": "npx tsx src/admin/cli.ts",
     "initdb": "./admin/init_db.sh",
-    "create-db-migration": "./create_db_migration_file.sh"
+    "create-db-migration": "./create_db_migration_file.sh",
+    "teams:create-app": "node ./scripts/create-teams-app.js"
   },
   "dependencies": {
     "@dust-tt/client": "file:../sdks/js",
@@ -22,6 +23,7 @@
     "@mendable/firecrawl-js": "^1.29.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@microsoft/microsoft-graph-types": "^2.40.0",
+    "@microsoft/teams-ai": "^1.7.4",
     "@notionhq/client": "^2.2.15",
     "@slack/web-api": "^7.10.0",
     "@temporalio/activity": "^1.12.1",
@@ -39,6 +41,7 @@
     "axios": "^1.7.9",
     "blake3": "^2.1.7",
     "body-parser": "^1.20.2",
+    "botbuilder": "^4.23.3",
     "cls-hooked": "^4.2.2",
     "crawlee": "^3.13.3-beta.10",
     "dd-trace": "^5.52.0",
@@ -52,6 +55,7 @@
     "io-ts": "^2.2.20",
     "io-ts-reporters": "^2.0.1",
     "io-ts-types": "^0.5.19",
+    "jose": "^6.1.0",
     "jsforce": "^3.6.4",
     "lodash": "^4.17.21",
     "mdast-util-gfm": "^3.0.0",
@@ -73,8 +77,8 @@
     "tar": "^6.2.0",
     "tar-stream": "^3.1.7",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
-    "tweetnacl": "^1.0.3",
     "turndown": "^7.1.2",
+    "tweetnacl": "^1.0.3",
     "undici": "^6.21.1",
     "uuid": "^9.0.0",
     "yargs": "^17.7.2"
@@ -96,12 +100,12 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-simple-import-sort": "^12.1.0",
+    "lint-staged": "^16.1.6",
     "prettier": "^3.0",
     "tsx": "^4.10.2",
     "typescript": "^5.4.5",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.0.8",
-    "lint-staged": "^16.1.6"
+    "vitest": "^3.0.8"
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}": [
