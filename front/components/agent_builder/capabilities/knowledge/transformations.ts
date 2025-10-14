@@ -53,8 +53,7 @@ export function transformTreeToSelectionConfigurations(
     // Check if this is a full data source selection or specific nodes
     const isFullDataSource =
       item.type === "data_source" &&
-      (isNodeSelected(tree, item.path.split("/")) === true ||
-        isNodeSelected(tree, item.path.split("/")) === "partial");
+      isNodeSelected(tree, item.path.split("/")) === true;
 
     // Initialize configuration if not exists
     if (!configurations[dataSourceView.sId]) {
@@ -101,8 +100,7 @@ export function transformTreeToSelectionConfigurations(
         dataSourceView,
         selectedResources: [],
         excludedResources: [],
-        // By default, we consider the data source to be selected when we start by excluding nodes.
-        isSelectAll: true,
+        isSelectAll: false,
         tagsFilter: null,
       };
     }
