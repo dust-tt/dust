@@ -1,6 +1,5 @@
 import type { TurnContext } from "botbuilder";
 
-import { createErrorAdaptiveCard } from "@connectors/connectors/teams/adaptive_cards";
 import { sendActivity } from "@connectors/connectors/teams/bot_messaging_utils";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -21,13 +20,10 @@ export async function getConnector(context: TurnContext) {
 
   if (!tenantId) {
     logger.error("No tenant ID found in Teams context");
-    await sendActivity(
-      context,
-      createErrorAdaptiveCard({
-        error: "Unable to identify tenant for this Teams message",
-        workspaceId: "unknown",
-      })
-    );
+    await sendActivity(context, {
+      type: "message",
+      text: "Unable to identify tenant for this Teams message",
+    });
     return;
   }
 
@@ -37,41 +33,15 @@ export async function getConnector(context: TurnContext) {
   const botConfig =
     await MicrosoftBotConfigurationResource.fetchByTenantId(tenantId);
 
-  if (!botConfig) {
+  if (!botConfig || !botConfig.botEnabled) {
     logger.error(
       { tenantId },
       "No Microsoft Bot configuration found for tenant"
     );
-    await sendActivity(
-      context,
-      createErrorAdaptiveCard({
-        error: "No connector configured for this Microsoft tenant",
-        workspaceId: "unknown",
-      })
-    );
-    return;
-  }
-
-  if (!botConfig.botEnabled) {
-    logger.warn(
-      {
-        connectorId: botConfig.connectorId,
-        tenantId,
-      },
-      "Found matching connector but bot is disabled"
-    );
-
-    // Get connector to access workspaceId for error message
-    const connector = await ConnectorResource.fetchById(botConfig.connectorId);
-    const workspaceId = connector?.workspaceId || "unknown";
-
-    await sendActivity(
-      context,
-      createErrorAdaptiveCard({
-        error: "Bot is disabled for this organization",
-        workspaceId,
-      })
-    );
+    await sendActivity(context, {
+      type: "message",
+      text: "Microsoft Teams Integration is not enabled for your Organization.",
+    });
     return;
   }
 
@@ -86,13 +56,10 @@ export async function getConnector(context: TurnContext) {
       },
       "Connector not found for bot configuration"
     );
-    await sendActivity(
-      context,
-      createErrorAdaptiveCard({
-        error: "Connector configuration error",
-        workspaceId: "unknown",
-      })
-    );
+    await sendActivity(context, {
+      type: "message",
+      text: "Microsoft Teams Integration is not enabled for your Organization.",
+    });
     return;
   }
 
