@@ -116,6 +116,6 @@ jobs:
           # Limited tools for safer review operations
           claude_args: |
             --model claude-4.5-sonnet-20251022
-            --allowed-tools Bash(git diff --name-only HEAD~1),Bash(git diff HEAD~1),View,GlobTool,GrepTool
+            --allowed-tools "Bash(git diff --name-only HEAD~1),Bash(git diff HEAD~1),View,GlobTool,GrepTool"
 
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
