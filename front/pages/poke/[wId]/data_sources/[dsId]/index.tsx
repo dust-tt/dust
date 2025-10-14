@@ -633,7 +633,25 @@ const DataSourcePage = ({
               />
             ) : null}
             {dataSource.connectorProvider === "notion" && (
-              <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        "Are you sure you want to access this sensitive user data? (Access will be logged)"
+                      )
+                    ) {
+                      void router.push(
+                        `/poke/${owner.sId}/data_sources/${dataSource.sId}/notion-requests`
+                      );
+                    }
+                  }}
+                  label="Notion Requests"
+                  icon={LockIcon}
+                />
+                <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
+              </>
             )}
             {dataSource.connectorProvider === "zendesk" && (
               <ZendeskTicketCheck owner={owner} dsId={dataSource.sId} />
