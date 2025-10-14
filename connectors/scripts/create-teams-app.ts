@@ -111,7 +111,7 @@ try {
   console.log("1. Upload teams-app.zip to Teams via Developer Portal");
   console.log("2. Make sure your ngrok tunnel is running");
   console.log(
-    `3. Update Bot Framework endpoint to: YOUR_NGROK_URL/webhooks/${process.env.WEBHOOK_SECRET || "mywebhooksecret"}/teams_messages`
+    `3. Update Bot Framework endpoint to: YOUR_NGROK_URL/webhooks/${process.env.DUST_CONNECTORS_WEBHOOKS_SECRET || "mywebhooksecret"}/teams_messages`
   );
 } catch (error) {
   console.error(
