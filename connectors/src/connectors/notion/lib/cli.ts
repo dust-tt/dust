@@ -130,11 +130,11 @@ export async function findNotionUrl({
   });
 
   if (page) {
-    logger.info({ pageOrDbId, url, page }, "Page found");
+    logger.info({ pageOrDbId, url, page }, "findNotionUrl: Page found");
     page._model;
     return { page: page.dataValues, db: null };
   } else {
-    logger.info({ pageOrDbId, url }, "Page not found");
+    logger.info({ pageOrDbId, url }, "findNotionUrl: Page not found");
   }
 
   const db = await NotionDatabase.findOne({
@@ -145,10 +145,10 @@ export async function findNotionUrl({
   });
 
   if (db) {
-    logger.info({ pageOrDbId, url, db }, "Database found");
+    logger.info({ pageOrDbId, url, db }, "findNotionUrl: Database found");
     return { page: null, db: db.dataValues };
   } else {
-    logger.info({ pageOrDbId, url }, "Database not found");
+    logger.info({ pageOrDbId, url }, "findNotionUrl: Database not found");
   }
 
   return { page: null, db: null };
@@ -219,10 +219,10 @@ export async function checkNotionUrl({
   });
 
   if (page) {
-    logger.info({ pageOrDbId, url, page }, "Page found");
+    logger.info({ pageOrDbId, url, page }, "checkNotionUrl: Page found");
     return { page, db: null };
   } else {
-    logger.info({ pageOrDbId, url }, "Page not found");
+    logger.info({ pageOrDbId, url }, "checkNotionUrl: Page not found");
   }
 
   const db = await getParsedDatabase(notionAccessToken, pageOrDbId, {
@@ -231,10 +231,10 @@ export async function checkNotionUrl({
   });
 
   if (db) {
-    logger.info({ pageOrDbId, url, db }, "Database found");
+    logger.info({ pageOrDbId, url, db }, "checkNotionUrl: Database found");
     return { page: null, db };
   } else {
-    logger.info({ pageOrDbId, url }, "Database not found");
+    logger.info({ pageOrDbId, url }, "checkNotionUrl: Database not found");
   }
 
   return { page: null, db: null };
