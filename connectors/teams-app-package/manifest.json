@@ -25,11 +25,7 @@
   "bots": [
     {
       "botId": "<MICROSOFT_BOT_ID>",
-      "scopes": [
-        "personal",
-        "team",
-        "groupChat"
-      ],
+      "scopes": ["personal", "team", "groupChat"],
       "commandLists": [
         {
           "commands": [
@@ -42,9 +38,7 @@
               "description": "Get help using Dust in Teams"
             }
           ],
-          "scopes": [
-            "personal"
-          ]
+          "scopes": ["personal"]
         },
         {
           "commands": [
@@ -57,9 +51,7 @@
               "description": "Get help using Dust in Teams"
             }
           ],
-          "scopes": [
-            "team"
-          ]
+          "scopes": ["team"]
         }
       ],
       "isNotificationOnly": false,
