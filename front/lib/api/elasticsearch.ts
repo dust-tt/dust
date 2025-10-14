@@ -2,10 +2,19 @@ import type { estypes } from "@elastic/elasticsearch";
 import { Client, errors as esErrors } from "@elastic/elasticsearch";
 
 import config from "@app/lib/api/config";
+import { normalizeError } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 let esClient: Client | null = null;
+
+export type ElasticsearchError = {
+  type: "connection_error" | "query_error" | "unknown_error";
+  message: string;
+  statusCode?: number;
+};
+
+type SearchParams = estypes.SearchRequest;
 
 function hasProp<K extends string>(
   obj: unknown,
@@ -37,14 +46,6 @@ function getClient(): Client {
   return esClient;
 }
 
-export type ElasticsearchError = {
-  type: "connection_error" | "query_error" | "unknown_error";
-  message: string;
-  statusCode?: number;
-};
-
-type SearchParams = estypes.SearchRequest;
-
 async function esSearch<TDocument = unknown, TAggregations = unknown>(
   params: SearchParams
 ): Promise<
@@ -74,7 +75,7 @@ async function esSearch<TDocument = unknown, TAggregations = unknown>(
     }
     return new Err({
       type: "unknown_error",
-      message: err instanceof Error ? err.message : String(err),
+      message: normalizeError(err).message,
     });
   }
 }
