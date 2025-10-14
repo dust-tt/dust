@@ -2803,6 +2803,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "OutlookLogo"
   | "JiraLogo"
   | "LinearLogo"
+  | "MicrosoftLogo"
   | "MondayLogo"
   | "NotionLogo"
   | "SalesforceLogo"
