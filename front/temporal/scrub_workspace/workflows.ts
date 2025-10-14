@@ -61,6 +61,10 @@ export async function scheduleWorkspaceScrubWorkflowV2({
 }: {
   workspaceId: string;
 }): Promise<boolean> {
+  if (!(await shouldStillScrubData({ workspaceId }))) {
+    return false;
+  }
+
   await pauseAllConnectors({ workspaceId });
   await pauseAllTriggers({ workspaceId });
   await sendDataDeletionEmail({
