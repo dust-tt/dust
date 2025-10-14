@@ -1,7 +1,9 @@
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { isSessionWithUserFromWorkspace } from "@app/lib/api/auth_wrappers";
+import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -87,14 +89,15 @@ async function handler(
     });
   }
 
+  const auth = await getAuthForSharedEndpointWorkspaceMembersOnly(
+    req,
+    res,
+    workspace.sId
+  );
+
   // For workspace sharing, check authentication.
   if (shareScope === "workspace") {
-    const isWorkspaceUser = await isSessionWithUserFromWorkspace(
-      req,
-      res,
-      workspace.sId
-    );
-    if (!isWorkspaceUser) {
+    if (!auth) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {
@@ -105,9 +108,30 @@ async function handler(
     }
   }
 
+  const conversationId = file.useCaseMetadata?.conversationId;
+  const user = auth && auth.user();
+
+  let isParticipant = false;
+
+  if (user && conversationId) {
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+
+    if (user && conversationResource) {
+      isParticipant =
+        await conversationResource.isConversationParticipant(user);
+    }
+  }
+
   res.status(200).json({
     content: fileContent,
     file: file.toJSON(),
+    // Only return the conversation URL if the user is a participant of the conversation.
+    conversationUrl: isParticipant
+      ? `${config.getClientFacingUrl()}/w/${workspace.sId}/agent/${conversationId}`
+      : null,
   });
 }
 

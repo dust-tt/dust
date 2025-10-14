@@ -2,13 +2,13 @@ import React, { useEffect } from "react";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import { visit } from "unist-util-visit";
 
-import type { MarkdownCitation } from "./MarkdownCitation";
+import type { MCPReferenceCitation } from "./MCPReferenceCitation";
 
 export type CitationsContextType = {
   references: {
-    [key: string]: MarkdownCitation;
+    [key: string]: MCPReferenceCitation;
   };
-  updateActiveReferences: (doc: MarkdownCitation, index: number) => void;
+  updateActiveReferences: (doc: MCPReferenceCitation, index: number) => void;
 };
 
 export const CitationsContext = React.createContext<CitationsContextType>({

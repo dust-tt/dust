@@ -21,9 +21,11 @@ export function PublicFrameRenderer({
   shareToken,
   workspaceId,
 }: PublicFrameRendererProps) {
-  const { frameContent, isFrameLoading, error } = usePublicFrame({
-    shareToken,
-  });
+  const { frameContent, conversationUrl, isFrameLoading, error } =
+    usePublicFrame({
+      shareToken,
+    });
+
   const { user } = useUser({
     revalidateOnFocus: false,
     revalidateIfStale: false,
@@ -68,6 +70,7 @@ export function PublicFrameRenderer({
       <PublicInteractiveContentHeader
         title={formatFilenameForDisplay(fileName ?? "Frame")}
         user={user}
+        conversationUrl={conversationUrl}
       />
 
       {/* Content */}

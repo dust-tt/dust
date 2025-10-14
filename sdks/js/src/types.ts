@@ -91,6 +91,8 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "grok-3-fast-latest" // xAI
   | "grok-3-mini-fast-latest" // xAI
   | "grok-4-latest" // xAI
+  | "grok-4-fast-non-reasoning-latest"
+  | "grok-4-fast-reasoning-latest"
   | "noop" // Noop
 >();
 
@@ -367,6 +369,7 @@ const Timezone = z.string().refine((s) => TIMEZONE_NAMES.includes(s), {
 
 const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "confluence"
+  | "discord_bot"
   | "github"
   | "google_drive"
   | "intercom"
@@ -374,6 +377,7 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "slack"
   | "slack_bot"
   | "microsoft"
+  | "microsoft_bot"
   | "webcrawler"
   | "snowflake"
   | "zendesk"
@@ -639,7 +643,6 @@ export type RetrievalDocumentPublicType = z.infer<
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
-  | "advanced_search"
   | "agent_builder_instructions_autocomplete"
   | "agent_management_tool"
   | "agent_to_yaml"
@@ -647,6 +650,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_opus_feature"
   | "co_edition"
   | "confluence_tool"
+  | "conversation_rendering_v2"
   | "deep_research_as_a_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
@@ -663,6 +667,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
+  | "microsoft_teams_bot"
   | "monday_tool"
   | "notion_private_integration"
   | "openai_o1_custom_assistants_feature"
@@ -670,6 +675,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
+  | "prune_previous_interactions"
   | "research_agent"
   | "salesforce_synced_queries"
   | "salesforce_tool"
@@ -683,6 +689,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "web_summarization"
   | "xai_feature"
   | "noop_model_feature"
+  | "discord_bot"
+  | "elevenlabs_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2608,6 +2616,7 @@ export type FileUploadedRequestResponseType = z.infer<
 export const PublicFrameResponseBodySchema = z.object({
   content: z.string().optional(),
   file: FileTypeSchema,
+  conversationUrl: z.string().nullable(),
 });
 
 export type PublicFrameResponseBodyType = z.infer<
@@ -2770,6 +2779,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionCloudArrowLeftRightIcon"
   | "ActionDocumentTextIcon"
   | "ActionEmotionLaughIcon"
+  | "ActionFrameIcon"
   | "ActionGitBranchIcon"
   | "ActionGlobeAltIcon"
   | "ActionImageIcon"
@@ -2846,6 +2856,7 @@ const CustomServerIconSchema = FlexibleEnumSchema<
   | "ActionExternalLinkIcon"
   | "ActionEyeIcon"
   | "ActionEyeSlashIcon"
+  | "ActionFrameIcon"
   | "ActionFilmIcon"
   | "ActionFilterIcon"
   | "ActionFingerprintIcon"

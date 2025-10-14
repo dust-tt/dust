@@ -5,15 +5,15 @@ import { google } from "googleapis";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+
+// We use a single tool name for monitoring given the high granularity (can be revisited).
+const GOOGLE_CALENDAR_TOOL_NAME = "google_calendar";
 
 interface GoogleCalendarEventDateTime {
   date?: string;
@@ -121,7 +121,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "google_calendar", agentLoopContext },
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ pageToken, maxResults }, { authInfo }) => {
         const calendar = await getCalendarClient(authInfo);
         assert(
@@ -134,12 +138,10 @@ const createServer = (
             pageToken,
             maxResults: maxResults ? Math.min(maxResults, 250) : undefined,
           });
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              message: "Calendars listed successfully",
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: "Calendars listed successfully" },
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -179,7 +181,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "google_calendar", agentLoopContext },
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async (
         { calendarId = "primary", q, timeMin, timeMax, maxResults, pageToken },
         { authInfo }
@@ -230,12 +236,13 @@ const createServer = (
               : undefined,
           };
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              message: "Events listed successfully",
-              result: enrichedData,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: "Events listed successfully" },
+            {
+              type: "text" as const,
+              text: JSON.stringify(enrichedData, null, 2),
+            },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -259,7 +266,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "google_calendar", agentLoopContext },
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ calendarId = "primary", eventId }, { authInfo }) => {
         const calendar = await getCalendarClient(authInfo);
         assert(
@@ -278,12 +289,13 @@ const createServer = (
             ? enrichEventWithDayOfWeek(res.data, userTimezone)
             : res.data;
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              message: "Event fetched successfully",
-              result: enrichedEvent,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: "Event fetched successfully" },
+            {
+              type: "text" as const,
+              text: JSON.stringify(enrichedEvent, null, 2),
+            },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(normalizeError(err).message || "Failed to get event")
@@ -318,7 +330,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "google_calendar", agentLoopContext },
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async (
         {
           calendarId = "primary",
@@ -372,12 +388,13 @@ const createServer = (
             ? enrichEventWithDayOfWeek(res.data, userTimezone)
             : res.data;
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              message: "Event created successfully",
-              result: enrichedEvent,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: "Event created successfully" },
+            {
+              type: "text" as const,
+              text: JSON.stringify(enrichedEvent, null, 2),
+            },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -417,7 +434,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "google_calendar", agentLoopContext },
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async (
         {
           calendarId = "primary",
@@ -480,12 +501,13 @@ const createServer = (
             ? enrichEventWithDayOfWeek(res.data, userTimezone)
             : res.data;
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              message: "Event updated successfully",
-              result: enrichedEvent,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: "Event updated successfully" },
+            {
+              type: "text" as const,
+              text: JSON.stringify(enrichedEvent, null, 2),
+            },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -509,7 +531,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "google_calendar", agentLoopContext },
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ calendarId = "primary", eventId }, { authInfo }) => {
         const calendar = await getCalendarClient(authInfo);
         assert(
@@ -522,12 +548,9 @@ const createServer = (
             calendarId,
             eventId,
           });
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              message: "Event deleted successfully",
-              result: "",
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: "Event deleted successfully" },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -561,7 +584,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "google_calendar", agentLoopContext },
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ email, startTime, endTime, timeZone }, { authInfo }) => {
         const calendar = await getCalendarClient(authInfo);
         assert(
@@ -597,18 +624,23 @@ const createServer = (
 
           const busySlots = calendarData?.busy ?? [];
           const available = busySlots.length === 0;
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: {
-                available,
-                busySlots: busySlots.map((slot) => ({
-                  start: slot.start ?? "",
+          return new Ok([
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  available,
+                  busySlots: busySlots.map((slot) => ({
+                    start: slot.start ?? "",
 
-                  end: slot.end ?? "",
-                })),
-              },
-            }).content
-          );
+                    end: slot.end ?? "",
+                  })),
+                },
+                null,
+                2
+              ),
+            },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(

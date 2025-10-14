@@ -10,6 +10,7 @@ import type {
   QueryDatabaseParameters,
   RichTextItemResponse,
 } from "@notionhq/client/build/src/api-endpoints";
+import { APIResponseError } from "@notionhq/client/build/src/errors";
 import { parseISO } from "date-fns";
 import { z } from "zod";
 
@@ -21,7 +22,6 @@ import type {
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -70,6 +70,9 @@ const allowedColors = [
   "pink_background",
   "red_background",
 ] as const;
+
+// We use a single tool name for monitoring given the high granularity (can be revisited).
+const NOTION_TOOL_NAME = "notion";
 
 const titleRichTextSchema = z
   .object({
@@ -276,14 +279,26 @@ async function withNotionClient<T>(
     const notion = new Client({ auth: accessToken });
 
     const result = await fn(notion);
-    return new Ok(
-      makeMCPToolJSONSuccess({
-        message: "Success",
-        result: JSON.stringify(result),
-      }).content
-    );
+    return new Ok([
+      { type: "text" as const, text: "Success" },
+      { type: "text" as const, text: JSON.stringify(result, null, 2) },
+    ]);
   } catch (e) {
-    return new Err(new MCPError(normalizeError(e).message));
+    const tracked =
+      APIResponseError.isAPIResponseError(e) &&
+      [
+        // Ignoring errors due to a malformed input passed by the model (e.g. invalid ID).
+        "restricted_resource",
+        "object_not_found",
+        "invalid_request",
+        "validation_error",
+      ].includes(e.code);
+    return new Err(
+      new MCPError(normalizeError(e).message, {
+        tracked,
+        cause: normalizeError(e),
+      })
+    );
   }
 }
 
@@ -313,7 +328,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ query, type, relativeTimeFrame }, { authInfo }) => {
         if (!agentLoopContext?.runContext) {
           return new Err(new MCPError("Agent loop run context is required"));
@@ -470,7 +488,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ pageId }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.pages.retrieve({ page_id: pageId }),
@@ -488,7 +509,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ databaseId }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.databases.retrieve({ database_id: databaseId }),
@@ -513,7 +537,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (
         { databaseId, filter, sorts, start_cursor, page_size },
         { authInfo }
@@ -548,7 +575,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (
         { databaseId, filter, sorts, start_cursor, page_size },
         { authInfo }
@@ -581,7 +611,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ parent, properties, icon, cover }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.pages.create({ parent, properties, icon, cover }),
@@ -602,7 +635,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ databaseId, properties, icon, cover }, { authInfo }) => {
         return withNotionClient(
           (notion) =>
@@ -636,7 +672,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ parent, title, properties, icon, cover }, { authInfo }) => {
         return withNotionClient(
           (notion) =>
@@ -656,7 +695,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ pageId, properties }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.pages.update({ page_id: pageId, properties }),
@@ -674,7 +716,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ blockId }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.blocks.retrieve({ block_id: blockId }),
@@ -697,7 +742,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ blockId, start_cursor, page_size }, { authInfo }) => {
         return withNotionClient(
           (notion) =>
@@ -725,7 +773,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ blockId, children }, { authInfo }) => {
         return withNotionClient(
           (notion) =>
@@ -760,7 +811,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ parent_page_id, discussion_id, comment }, { authInfo }) => {
         return withNotionClient((notion) => {
           if (!parent_page_id && !discussion_id) {
@@ -796,7 +850,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ blockId }, { authInfo }) => {
         return withNotionClient(
           (notion) =>
@@ -817,7 +874,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ blockId }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.comments.list({ block_id: blockId }),
@@ -836,7 +896,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ pageId, properties }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.pages.update({ page_id: pageId, properties }),
@@ -855,7 +918,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ databaseId, properties }, { authInfo }) => {
         return withNotionClient(
           (notion) =>
@@ -872,7 +938,10 @@ const createServer = (
     {},
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (_, { authInfo }) => {
         return withNotionClient((notion) => notion.users.list({}), authInfo);
       }
@@ -887,7 +956,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "notion" },
+      {
+        toolNameForMonitoring: NOTION_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ userId }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.users.retrieve({ user_id: userId }),

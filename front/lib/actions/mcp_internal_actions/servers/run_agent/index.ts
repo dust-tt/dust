@@ -44,7 +44,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { CitationType, Result } from "@app/types";
 import {
@@ -56,6 +56,41 @@ import {
 } from "@app/types";
 
 const RUN_AGENT_TOOL_LOG_NAME = "run_agent";
+
+function isRunAgentHandoffMode(
+  agentLoopContext?: AgentLoopContextType
+): boolean {
+  if (!agentLoopContext) {
+    return false;
+  }
+
+  // Check if we're in the listToolsContext (when presenting tools to the model).
+  if (agentLoopContext.listToolsContext) {
+    const agentActionConfig =
+      agentLoopContext.listToolsContext.agentActionConfiguration;
+    if (
+      isServerSideMCPServerConfiguration(agentActionConfig) &&
+      agentActionConfig.additionalConfiguration?.executionMode
+    ) {
+      return (
+        agentActionConfig.additionalConfiguration.executionMode === "handoff"
+      );
+    }
+  }
+
+  // Check if we're in the runContext (when executing the tool).
+  if (agentLoopContext.runContext) {
+    const toolConfig = agentLoopContext.runContext.toolConfiguration;
+    if (
+      isLightServerSideMCPToolConfiguration(toolConfig) &&
+      toolConfig.additionalConfiguration?.executionMode
+    ) {
+      return toolConfig.additionalConfiguration.executionMode === "handoff";
+    }
+  }
+
+  return false;
+}
 
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
@@ -128,10 +163,13 @@ const configurableProperties = {
           z
             .object({
               value: z.literal("run-agent"),
-              label: z.literal("Agent runs in background"),
+              label: z.literal("Agent runs in the background"),
             })
             .describe(
-              "The selected agent runs silently in a background conversation and passes results to the main agent."
+              "The selected agent runs in a background conversation and passes results back to " +
+                "the main agent.\nThis is the default behavior, well suited for breaking down " +
+                "complex work by delegating specific research/analysis subtasks while " +
+                "maintaining control of the overall response."
             ),
           z
             .object({
@@ -139,7 +177,9 @@ const configurableProperties = {
               label: z.literal("Agent responds in conversation"),
             })
             .describe(
-              "The selected agent takes over and responds directly in the conversation."
+              "The selected agent takes over and responds directly in the conversation." +
+                "\nWell suited for a routing use case where the sub-agent should handle " +
+                "the entire interaction going forward."
             ),
         ])
         .optional(),
@@ -164,8 +204,7 @@ export default async function createServer(
   let childAgentId: string | null = null;
 
   if (
-    agentLoopContext &&
-    agentLoopContext.listToolsContext &&
+    agentLoopContext?.listToolsContext &&
     isServerSideMCPServerConfiguration(
       agentLoopContext.listToolsContext.agentActionConfiguration
     ) &&
@@ -176,8 +215,7 @@ export default async function createServer(
   }
 
   if (
-    agentLoopContext &&
-    agentLoopContext.runContext &&
+    agentLoopContext?.runContext &&
     isLightServerSideMCPToolConfiguration(
       agentLoopContext.runContext.toolConfiguration
     ) &&
@@ -211,9 +249,16 @@ export default async function createServer(
     return server;
   }
 
+  const isHandoffConfiguration = isRunAgentHandoffMode(agentLoopContext);
+
+  const toolName = `run_${childAgentBlob.name}`;
+  const toolDescription = isHandoffConfiguration
+    ? `Handoff completely to ${childAgentBlob.name} (${childAgentBlob.description}). Inform the user that you are handing off to :mention[${childAgentBlob.name}]{sId=${childAgentId}} before calling the tool since this agent will respond in the conversation.`
+    : `Run ${childAgentBlob.name} in the background and pass results back to the main agent. You will have access to the results of the agent in the conversation.`;
+
   server.tool(
-    `run_${childAgentBlob.name}`,
-    `Run agent ${childAgentBlob.name} (${childAgentBlob.description})`,
+    toolName,
+    toolDescription,
     {
       query: z
         .string()
@@ -239,15 +284,6 @@ export default async function createServer(
         )
         .optional()
         .nullable(),
-      conversationId: z
-        .string()
-        .describe(
-          "The conversation id where the sub-agent will run. " +
-            "Can be used to continue an existing conversation of the sub-agent. " +
-            "Cannot be the same as the main conversation."
-        )
-        .optional()
-        .nullable(),
       ...configurableProperties,
     },
     withToolLogging(
@@ -260,7 +296,6 @@ export default async function createServer(
           executionMode,
           toolsetsToAdd,
           fileOrContentFragmentIds,
-          conversationId,
         },
         { sendNotification, _meta }
       ) => {
@@ -275,14 +310,6 @@ export default async function createServer(
           agentConfiguration: mainAgent,
           conversation: mainConversation,
         } = agentLoopContext.runContext;
-
-        if (conversationId === mainConversation.sId) {
-          return new Err(
-            new MCPError(
-              "Conversation id cannot be the same as the main conversation."
-            )
-          );
-        }
 
         const childAgentIdRes = parseAgentConfigurationUri(uri);
         if (childAgentIdRes.isErr()) {
@@ -350,17 +377,11 @@ export default async function createServer(
             mainAgent,
             mainConversation,
             query: isHandoff
-              ? `
-You have been summoned by @${mainAgent.name}. Its instructions are: <main_agent_instructions>
-${instructions ?? ""}
-</main_agent_instructions>
-${query}`
+              ? `The user's query is being handed off to you from @${mainAgent.name} within the same conversation. The calling agent's instructions are: <caller_agent_instructions>${instructions ?? ""}</caller_agent_instructions>. The tool ${toolName} is not available to you, do not attempt to use it.`
               : query,
             toolsetsToAdd: toolsetsToAdd ?? null,
             fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
-            conversationId: isHandoff
-              ? mainConversation.sId
-              : conversationId ?? null,
+            conversationId: isHandoff ? mainConversation.sId : null,
             originMessage: agentLoopContext.runContext.agentMessage,
           }
         );
@@ -372,7 +393,7 @@ ${query}`
         if (isHandoff) {
           return new Ok(
             makeMCPToolExit({
-              message: `Query delegated to agent @${childAgentBlob.name}`,
+              message: `Handoff from :mention[${mainAgent.name}]{sId=${mainAgent.sId}} to :mention[${childAgentBlob.name}]{sId=${childAgentId}} successfully launched.`,
               isError: false,
             }).content
           );
@@ -430,7 +451,7 @@ ${query}`
         }) => {
           let text = finalContent;
 
-          const convoUrl = getAgentRoute(
+          const convoUrl = getConversationRoute(
             auth.getNonNullableWorkspace().sId,
             conversationId,
             config.getClientFacingUrl()

@@ -8,6 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -171,50 +172,54 @@ export function UserMenu({
             <DropdownMenuLabel label="Advanced" />
             <DropdownMenuSub>
               <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
-              <DropdownMenuSubContent>
-                {router.route === "/w/[wId]/agent/[cId]" && (
-                  <DropdownMenuItem
-                    label="Debug conversation"
-                    onClick={() => {
-                      const regexp = new RegExp(`/w/([^/]+)/agent/([^/]+)`);
-                      const match = window.location.href.match(regexp);
-                      if (match) {
-                        window.open(
-                          `/poke/${match[1]}/conversations/${match[2]}`,
-                          "_blank"
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  {router.route === "/w/[wId]/conversation/[cId]" && (
+                    <DropdownMenuItem
+                      label="Debug conversation"
+                      onClick={() => {
+                        const regexp = new RegExp(
+                          `/w/([^/]+)/conversation/([^/]+)`
                         );
-                      }
-                    }}
-                    icon={ShapesIcon}
-                  />
-                )}
-                {!isOnlyAdmin(owner) && (
+                        const match = window.location.href.match(regexp);
+                        if (match) {
+                          window.open(
+                            `/poke/${match[1]}/conversations/${match[2]}`,
+                            "_blank"
+                          );
+                        }
+                      }}
+                      icon={ShapesIcon}
+                    />
+                  )}
+                  {!isOnlyAdmin(owner) && (
+                    <DropdownMenuItem
+                      label="Become Admin"
+                      onClick={() => forceRoleUpdate("admin")}
+                      icon={StarIcon}
+                    />
+                  )}
+                  {!isOnlyBuilder(owner) && (
+                    <DropdownMenuItem
+                      label="Become Builder"
+                      onClick={() => forceRoleUpdate("builder")}
+                      icon={LightbulbIcon}
+                    />
+                  )}
+                  {!isOnlyUser(owner) && (
+                    <DropdownMenuItem
+                      label="Become User"
+                      onClick={() => forceRoleUpdate("user")}
+                      icon={UserIcon}
+                    />
+                  )}
                   <DropdownMenuItem
-                    label="Become Admin"
-                    onClick={() => forceRoleUpdate("admin")}
-                    icon={StarIcon}
+                    label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
+                    onClick={privacyMask.toggle}
+                    icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
                   />
-                )}
-                {!isOnlyBuilder(owner) && (
-                  <DropdownMenuItem
-                    label="Become Builder"
-                    onClick={() => forceRoleUpdate("builder")}
-                    icon={LightbulbIcon}
-                  />
-                )}
-                {!isOnlyUser(owner) && (
-                  <DropdownMenuItem
-                    label="Become User"
-                    onClick={() => forceRoleUpdate("user")}
-                    icon={UserIcon}
-                  />
-                )}
-                <DropdownMenuItem
-                  label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
-                  onClick={privacyMask.toggle}
-                  icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
-                />
-              </DropdownMenuSubContent>
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
             </DropdownMenuSub>
           </>
         )}

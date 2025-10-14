@@ -4,11 +4,15 @@ import type { CreationAttributes, Model, Transaction } from "sequelize";
 
 import type { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import type { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
+import type { DiscordConfigurationModel } from "@connectors/lib/models/discord";
 import type { GithubConnectorState } from "@connectors/lib/models/github";
 import type { GongConfigurationModel } from "@connectors/lib/models/gong";
 import type { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
 import type { IntercomWorkspaceModel } from "@connectors/lib/models/intercom";
-import type { MicrosoftConfigurationModel } from "@connectors/lib/models/microsoft";
+import type {
+  MicrosoftBotConfigurationModel,
+  MicrosoftConfigurationModel,
+} from "@connectors/lib/models/microsoft";
 import type { NotionConnectorState } from "@connectors/lib/models/notion";
 import type { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
@@ -17,11 +21,13 @@ import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcra
 import type { ZendeskConfigurationModel } from "@connectors/lib/models/zendesk";
 import { BigQueryConnectorStrategy } from "@connectors/resources/connector/bigquery";
 import { ConfluenceConnectorStrategy } from "@connectors/resources/connector/confluence";
+import { DiscordConnectorStrategy } from "@connectors/resources/connector/discord";
 import { GithubConnectorStrategy } from "@connectors/resources/connector/github";
 import { GongConnectorStrategy } from "@connectors/resources/connector/gong";
 import { GoogleDriveConnectorStrategy } from "@connectors/resources/connector/google_drive";
 import { IntercomConnectorStrategy } from "@connectors/resources/connector/intercom";
 import { MicrosoftConnectorStrategy } from "@connectors/resources/connector/microsoft";
+import { MicrosoftBotConnectorStrategy } from "@connectors/resources/connector/microsoft_bot";
 import { NotionConnectorStrategy } from "@connectors/resources/connector/notion";
 import { SalesforceConnectorStrategy } from "@connectors/resources/connector/salesforce";
 import { SlackConnectorStrategy } from "@connectors/resources/connector/slack";
@@ -44,10 +50,12 @@ export type WithCreationAttributes<T extends Model> = CreationAttributes<T>;
 
 export interface ConnectorProviderModelM {
   confluence: ConfluenceConfiguration;
+  discord_bot: DiscordConfigurationModel;
   github: GithubConnectorState;
   google_drive: GoogleDriveConfig;
   intercom: IntercomWorkspaceModel;
   microsoft: MicrosoftConfigurationModel;
+  microsoft_bot: MicrosoftBotConfigurationModel;
   notion: NotionConnectorState;
   slack: SlackConfigurationModel;
   slack_bot: SlackConfigurationModel;
@@ -82,10 +90,12 @@ export type ConnectorProviderConfigurationResource =
 
 export interface ConnectorProviderConfigurationTypeM {
   confluence: null;
+  discord_bot: null;
   github: null;
   google_drive: null;
   intercom: null;
   microsoft: null;
+  microsoft_bot: null;
   notion: null;
   snowflake: null;
   slack: SlackConfigurationType;
@@ -132,6 +142,9 @@ export function getConnectorProviderStrategy(
     case "confluence":
       return new ConfluenceConnectorStrategy();
 
+    case "discord_bot":
+      return new DiscordConnectorStrategy();
+
     case "github":
       return new GithubConnectorStrategy();
 
@@ -143,6 +156,9 @@ export function getConnectorProviderStrategy(
 
     case "microsoft":
       return new MicrosoftConnectorStrategy();
+
+    case "microsoft_bot":
+      return new MicrosoftBotConnectorStrategy();
 
     case "notion":
       return new NotionConnectorStrategy();

@@ -29,6 +29,7 @@ import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type {
   AdminSuccessResponseType,
+  NotionApiRequestResponseType,
   NotionCheckUrlResponseType,
   NotionCommandType,
   NotionDeleteUrlResponseType,
@@ -130,11 +131,11 @@ export async function findNotionUrl({
   });
 
   if (page) {
-    logger.info({ pageOrDbId, url, page }, "Page found");
+    logger.info({ pageOrDbId, url, page }, "findNotionUrl: Page found");
     page._model;
     return { page: page.dataValues, db: null };
   } else {
-    logger.info({ pageOrDbId, url }, "Page not found");
+    logger.info({ pageOrDbId, url }, "findNotionUrl: Page not found");
   }
 
   const db = await NotionDatabase.findOne({
@@ -145,10 +146,10 @@ export async function findNotionUrl({
   });
 
   if (db) {
-    logger.info({ pageOrDbId, url, db }, "Database found");
+    logger.info({ pageOrDbId, url, db }, "findNotionUrl: Database found");
     return { page: null, db: db.dataValues };
   } else {
-    logger.info({ pageOrDbId, url }, "Database not found");
+    logger.info({ pageOrDbId, url }, "findNotionUrl: Database not found");
   }
 
   return { page: null, db: null };
@@ -219,10 +220,10 @@ export async function checkNotionUrl({
   });
 
   if (page) {
-    logger.info({ pageOrDbId, url, page }, "Page found");
+    logger.info({ pageOrDbId, url, page }, "checkNotionUrl: Page found");
     return { page, db: null };
   } else {
-    logger.info({ pageOrDbId, url }, "Page not found");
+    logger.info({ pageOrDbId, url }, "checkNotionUrl: Page not found");
   }
 
   const db = await getParsedDatabase(notionAccessToken, pageOrDbId, {
@@ -231,10 +232,10 @@ export async function checkNotionUrl({
   });
 
   if (db) {
-    logger.info({ pageOrDbId, url, db }, "Database found");
+    logger.info({ pageOrDbId, url, db }, "checkNotionUrl: Database found");
     return { page: null, db };
   } else {
-    logger.info({ pageOrDbId, url }, "Database not found");
+    logger.info({ pageOrDbId, url }, "checkNotionUrl: Database not found");
   }
 
   return { page: null, db: null };
@@ -274,6 +275,7 @@ export const notion = async ({
   args,
 }: NotionCommandType): Promise<
   | AdminSuccessResponseType
+  | NotionApiRequestResponseType
   | NotionUpsertResponseType
   | NotionSearchPagesResponseType
   | NotionCheckUrlResponseType
@@ -665,6 +667,57 @@ export const notion = async ({
         await stopNotionGarbageCollectorWorkflow(connector.id);
       }
       return { success: true };
+    }
+
+    case "api-request": {
+      const connector = await getConnector(args);
+      const { url, method, body } = args;
+
+      if (!url) {
+        throw new Error("Missing --url argument");
+      }
+      if (!method || !["GET", "POST"].includes(method)) {
+        throw new Error("Invalid --method argument (must be GET or POST)");
+      }
+
+      // Restrict POST to only the search endpoint, to prevent data modification
+      if (method === "POST" && url !== "search") {
+        throw new Error(
+          "POST method is only allowed for the 'search' endpoint"
+        );
+      }
+
+      logger.info(
+        { url, method, connectorId: connector.id },
+        "[Admin] Making Notion API request"
+      );
+
+      const notionAccessToken = await getNotionAccessToken(connector.id);
+      const fullUrl = `https://api.notion.com/v1/${url}`;
+
+      const response = await fetch(fullUrl, {
+        method,
+        headers: {
+          Authorization: `Bearer ${notionAccessToken}`,
+          "Notion-Version": "2022-06-28",
+          "Content-Type": "application/json",
+        },
+        ...(method === "POST" && body ? { body } : {}),
+      });
+
+      const data = await response.json();
+
+      logger.info(
+        {
+          url,
+          method,
+          status: response.status,
+          connectorId: connector.id,
+        },
+        "[Admin] Notion API request completed"
+      );
+
+      return { status: response.status, data };
     }
 
     default:

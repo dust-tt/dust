@@ -4,10 +4,7 @@ import { google } from "googleapis";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -48,7 +45,10 @@ const createServer = (auth: any): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "google_drive" },
+      {
+        toolNameForMonitoring: "google_drive",
+        skipAlerting: true,
+      },
       async ({ pageToken }, { authInfo }) => {
         const drive = await getDriveClient(authInfo);
         if (!drive) {
@@ -64,11 +64,9 @@ const createServer = (auth: any): McpServer => {
             fields: "nextPageToken, drives(id, name, createdTime)",
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(normalizeError(err).message || "Failed to list drives")
@@ -141,7 +139,10 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "google_drive" },
+      {
+        toolNameForMonitoring: "google_drive",
+        skipAlerting: true,
+      },
       async (
         { q, pageToken, pageSize, driveId, includeSharedDrives, orderBy },
         { authInfo }
@@ -189,16 +190,15 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
 
           const res = await drive.files.list(requestParams);
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
+          const error = normalizeError(err);
           return new Err(
-            new MCPError(
-              normalizeError(err).message || "Failed to search files"
-            )
+            new MCPError(error.message || "Failed to search files", {
+              cause: error,
+            })
           );
         }
       }
@@ -228,7 +228,10 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "google_drive" },
+      {
+        toolNameForMonitoring: "google_drive",
+        skipAlerting: true,
+      },
       async ({ fileId, offset, limit }, { authInfo }) => {
         const drive = await getDriveClient(authInfo);
         if (!drive) {
@@ -249,14 +252,20 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
           if (!file.mimeType || !SUPPORTED_MIMETYPES.includes(file.mimeType)) {
             return new Err(
               new MCPError(
-                `Unsupported file type: ${file.mimeType}. Supported types: ${SUPPORTED_MIMETYPES.join(", ")}`
+                `Unsupported file type: ${file.mimeType}. Supported types: ${SUPPORTED_MIMETYPES.join(", ")}`,
+                {
+                  tracked: false,
+                }
               )
             );
           }
-          if (file.size && parseInt(file.size) > MAX_FILE_SIZE) {
+          if (file.size && parseInt(file.size, 10) > MAX_FILE_SIZE) {
             return new Err(
               new MCPError(
-                `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
+                `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`,
+                {
+                  tracked: false,
+                }
               )
             );
           }
@@ -298,7 +307,9 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
             }
             default:
               return new Err(
-                new MCPError(`Unsupported file type: ${file.mimeType}`)
+                new MCPError(`Unsupported file type: ${file.mimeType}`, {
+                  tracked: false,
+                })
               );
           }
 
@@ -311,21 +322,26 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
           const hasMore = endIndex < content.length;
           const nextOffset = hasMore ? endIndex : undefined;
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: {
-                fileId,
-                fileName: file.name,
-                mimeType: file.mimeType,
-                content: truncatedContent,
-                returnedContentLength: truncatedContent.length,
-                totalContentLength,
-                offset: startIndex,
-                nextOffset,
-                hasMore,
-              },
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  fileId,
+                  fileName: file.name,
+                  mimeType: file.mimeType,
+                  content: truncatedContent,
+                  returnedContentLength: truncatedContent.length,
+                  totalContentLength,
+                  offset: startIndex,
+                  nextOffset,
+                  hasMore,
+                },
+                null,
+                2
+              ),
+            },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(

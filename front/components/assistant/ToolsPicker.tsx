@@ -160,7 +160,7 @@ export function ToolsPicker({
                 return (
                   <DropdownMenuItem
                     key={`tools-picker-${v.sId}`}
-                    icon={() => getAvatar(v.server, "xs")}
+                    icon={() => getAvatar(v.server)}
                     label={getMcpServerViewDisplayName(v)}
                     description={getMcpServerViewDescription(v)}
                     truncateText

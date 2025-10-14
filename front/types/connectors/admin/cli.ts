@@ -400,6 +400,7 @@ export const NotionCommandSchema = t.type({
     t.literal("update-parents-fields"),
     t.literal("clear-parents-last-updated-at"),
     t.literal("update-orphaned-resources-parents"),
+    t.literal("api-request"),
   ]),
   args: t.record(
     t.string,
@@ -460,6 +461,14 @@ export const NotionMeResponseSchema = t.type({
   botOwner: t.UnknownRecord, // notion type, can't be iots'd
 });
 export type NotionMeResponseType = t.TypeOf<typeof NotionMeResponseSchema>;
+
+export const NotionApiRequestResponseSchema = t.type({
+  status: t.number,
+  data: t.unknown, // notion API response type, can't be iots'd
+});
+export type NotionApiRequestResponseType = t.TypeOf<
+  typeof NotionApiRequestResponseSchema
+>;
 /**
  * </Notion>
  */
@@ -817,6 +826,7 @@ export const AdminResponseSchema = t.union([
   IntercomFetchArticlesResponseSchema,
   IntercomFetchConversationResponseSchema,
   IntercomForceResyncArticlesResponseSchema,
+  NotionApiRequestResponseSchema,
   NotionCheckUrlResponseSchema,
   NotionDeleteUrlResponseSchema,
   NotionMeResponseSchema,

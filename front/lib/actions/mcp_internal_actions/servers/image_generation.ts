@@ -110,7 +110,10 @@ const createServer = (
           return new Err(
             new MCPError(
               `Rate limit of ${maxImagesPerWeek} requests per week exceeded. Contact your ` +
-                "administrator to increase the limit."
+                "administrator to increase the limit.",
+              {
+                tracked: false,
+              }
             )
           );
         }
@@ -166,7 +169,10 @@ const createServer = (
             return new Err(
               new MCPError(
                 `Error generating image. Image generation service error: Status: ` +
-                  `${error.status}, Code: ${error.code}, Message: ${error.message}`
+                  `${error.status}, Code: ${error.code}, Message: ${error.message}`,
+                {
+                  tracked: error.code !== "moderation_blocked",
+                }
               )
             );
           }

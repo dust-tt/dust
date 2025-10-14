@@ -40,12 +40,14 @@ interface InputBarAttachmentsProps {
   owner: LightWorkspaceType;
   files: FileAttachmentsProps;
   nodes?: NodeAttachmentsProps;
+  conversationId: string | null;
 }
 
 export function InputBarAttachments({
   owner,
   files,
   nodes,
+  conversationId,
 }: InputBarAttachmentsProps) {
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
@@ -87,8 +89,7 @@ export function InputBarAttachments({
           fileId: blob.id,
           onRemove: () => files.service.removeFile(blob.id),
         };
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      }) || []
+      }) ?? []
     );
   }, [files?.service]);
 
@@ -126,8 +127,7 @@ export function InputBarAttachments({
           visual,
           onRemove: () => nodes.onRemove(node),
         };
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      }) || []
+      }) ?? []
     );
   }, [nodes, spacesMap]);
 
@@ -140,14 +140,14 @@ export function InputBarAttachments({
   return (
     <>
       <CitationGrid className="border-b border-separator px-3 pb-3 pt-3 dark:border-separator-night">
-        {allAttachments.map((attachment) => {
+        {allAttachments.map((attachment, index) => {
           const attachmentCitation = attachmentToAttachmentCitation(attachment);
           return (
             <AttachmentCitation
-              key={attachmentCitation.id}
+              key={index}
               owner={owner}
               attachmentCitation={attachmentCitation}
-              fileUploaderService={files.service}
+              conversationId={conversationId}
             />
           );
         })}

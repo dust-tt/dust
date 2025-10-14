@@ -112,6 +112,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         userId: user.id,
         workspaceId: workspace.id,
         startAt: new Date(),
+        status: "active" as const,
       },
       { transaction }
     );
@@ -838,6 +839,7 @@ export class GroupResource extends BaseResource<GroupModel> {
             workspaceId: workspace.id,
             startAt: { [Op.lte]: new Date() },
             [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+            status: "active",
           },
           required: true,
         },
@@ -873,13 +875,59 @@ export class GroupResource extends BaseResource<GroupModel> {
         startAt: { [Op.lte]: new Date() },
         [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
         userId: user.id,
+        status: "active",
       },
     });
 
     return !!membership;
   }
 
-  async getActiveMembers(auth: Authenticator): Promise<UserResource[]> {
+  async getActiveMembers(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<UserResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    let memberships: GroupMembershipModel[] | MembershipResource[];
+
+    // The global group does not have a DB entry for each workspace member.
+    if (this.isGlobal()) {
+      const { memberships: m } = await MembershipResource.getActiveMemberships({
+        workspace: auth.getNonNullableWorkspace(),
+        transaction,
+      });
+      memberships = m;
+    } else {
+      memberships = await GroupMembershipModel.findAll({
+        where: {
+          groupId: this.id,
+          workspaceId: owner.id,
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          status: "active",
+        },
+        transaction,
+      });
+    }
+
+    const users = await UserResource.fetchByModelIds(
+      memberships.map((m) => m.userId)
+    );
+
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getActiveMemberships({
+        users,
+        workspace: owner,
+        transaction,
+      });
+
+    // Only return users that have an active membership in the workspace.
+    return users.filter((user) =>
+      workspaceMemberships.some((m) => m.userId === user.id)
+    );
+  }
+
+  async getAllMembers(auth: Authenticator): Promise<UserResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
     let memberships: GroupMembershipModel[] | MembershipResource[];
@@ -891,12 +939,14 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
       memberships = m;
     } else {
+      // Get all members regardless of status (active, suspended)
       memberships = await GroupMembershipModel.findAll({
         where: {
           groupId: this.id,
           workspaceId: owner.id,
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          // Note: No status filter here - we want all statuses
         },
       });
     }
@@ -933,6 +983,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           workspaceId: owner.id,
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          status: "active",
         },
       });
     }
@@ -1030,6 +1081,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         userId: user.id,
         workspaceId: owner.id,
         startAt: new Date(),
+        status: "active" as const,
       })),
       { transaction }
     );
@@ -1178,7 +1230,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const userIds = users.map((u) => u.sId);
-    const currentMembers = await this.getActiveMembers(auth);
+    const currentMembers = await this.getActiveMembers(auth, { transaction });
     const currentMemberIds = currentMembers.map((member) => member.sId);
 
     // Add new members.

@@ -23,7 +23,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useMCPActions } from "@app/lib/swr/mcp_actions";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
   SubscriptionType,
@@ -148,7 +148,7 @@ export default function AgentMCPActions({
     messageId: string
   ) => {
     if (conversationId && messageId) {
-      window.open(getAgentRoute(owner.sId, conversationId), "_blank");
+      window.open(getConversationRoute(owner.sId, conversationId), "_blank");
     }
   };
 

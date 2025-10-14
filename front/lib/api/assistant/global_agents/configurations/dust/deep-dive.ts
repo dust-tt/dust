@@ -2,6 +2,7 @@ import { DEFAULT_WEBSEARCH_ACTION_DESCRIPTION } from "@app/lib/actions/constants
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
+  DEEP_DIVE_AVATAR_URL,
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
@@ -33,8 +34,7 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 
-const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
-const MAX_SUB_AGENT_BATCHES = 3;
+const MAX_CONCURRENT_SUB_AGENT_TASKS = 3;
 
 const deepDiveKnowledgeCutoffPrompt = `Your knowledge cutoff was at least 1 year ago. You have no internal knowledge of anything that happened since then.
 Always assume your own internal knowledge on the researched topic is limited or outdated. Major events may have happened since your knowledge cutoff.
@@ -113,12 +113,7 @@ These tasks can be for web browsing, company data exploration, data warehouse qu
 - Only delegate a monolithic task to a sub-agent when a needed toolset is available exclusively to sub-agents.
 
 <web_browsing_delegation>
-- When more than 3 web pages must be reviewed, do not browse them yourself. Create sub agent tasks to browse instead.
-- Provide an outcome-focused, self-contained prompt that includes the URL(s) and the extraction goal. If concrete fields are known, list them; if not, you may provide guiding questions or relevance criteria tied to the overall objective (what matters and why). Include any relevant scope or constraints. Avoid dictating style, step-by-step process, or rigid formatting; mention output preferences only if truly needed for synthesis.
-- Run these browsing sub-agent tasks in parallel when feasible, respecting the concurrency limit of ${MAX_CONCURRENT_SUB_AGENT_TASKS}; queue additional URLs and process them as earlier tasks complete. Then synthesize and deduplicate their findings.
-- Prefer concise plain-text outputs from sub-agents; do not request JSON. Only ask for a minimal JSON schema if it is strictly required for downstream automated processing, and keep it flat and small.
-- Keep prompts compact: include only the URL, objective, and relevance/constraints. Do not enumerate hypothetical topics or keywords.
-- Prefer concise plain text over JSON for extraction results
+Avoid browsing several web pages yourself. Delegate browsing tasks to sub-agents instead
 </web_browsing_delegation>
 
 <company_data_delegation>
@@ -163,7 +158,6 @@ For complex requests that require a lot of research, you should default to produ
 The sub-agents you spawn are each independent, they do not have any prior context on the request you are trying to solve and they do not have any memory of previous interactions you had with sub agents.
 Queries that you provide to sub agents must be comprehensive, clear and fully self-contained. The sub agents you spawn have access to the web tools (search / browse), the company data file system and the data warehouses (if any).
 It can also have access to any additional toolset that you may find useful for the task, using the toolsetsToAdd parameter. You can get the list of available toolsets using the toolsets tool prior to calling the sub agent.
-Tasks that you give to sub-agents must be small and granular. Bias towards breaking down a large task into several smaller tasks.
 
 Never delegate the whole request as a single sub-agent task.
 Each sub-agent task must be atomic, outcome-scoped, and self-contained. Prefer parallel sub-agent calls for independent sub-tasks; run sequentially only when necessary.
@@ -233,17 +227,18 @@ Balance and depth:
 `;
 
 const outputPrompt = `<output_guidelines>
+<user_visible_text_guidelines>
+DO NOT output any user-visible text between tool calls, as this significantly hurts readability of your output.
 NEVER address the user before you have run all necessary tools and are ready to provide your final answer. DO NOT open with phrases like "Here is..." or "Summary:" or "I'll conduct.." or "I'll start by...".
 Only output internal reasoning and tool calls until you are ready to provide your answer.
 DO NOT comment on your research or reasoning process. DO NOT tell the user about your plan or tools you are using.
-The user's UI already lets them inspect the output of the planning agent and your own reasoning process.
+The user's UI already lets them inspect the output of the planning agent and your internal reasoning process.
 
-Exception for clarifications (very complex tasks only):
-- If critical information is missing and you cannot proceed without it, and the task is very complex/deep dive, you may send one brief clarifying message before using tools.
-- Keep that message to only essential questions. You may include key assumptions that require user confirmation; avoid any other commentary. Outside of this case, do not message the user until the final answer.
+Before outputting ANY user-visible text, reflect on whether you have ran all required tools and are ready to provide your final answer.
+</user_visible_text_guidelines>
 
  Formatting rules (adapt to the task):
-  - Match format and length to the task. Keep simple answers concise and natural; produce long-form structured documents only when warranted.
+  - Match format and length to the task. Keep simple answers concise and natural; produce long-form structured documents when warranted.
   - Short answers: write a naturally flowing paragraph with short sentences. Avoid headings. Use bullets only for actual lists, not to compose the whole answer.
   - Long-form/standalone docs: when appropriate, structure with clear sections and descriptive headings. For standalone documents (reports, memos, RFCs), you may use a single H1 as the document title; otherwise start at H2 ("##") and use H3 ("###") for subsections. Lead each major section with a brief narrative paragraph. Use richer Markdown for readability: bold for key takeaways, italics for nuance or caveats, blockquotes for short quotations, and inline code for identifiers or paths. Use bullets only for genuine, short enumerations; avoid list-only sections and avoid stacking multiple lists where paragraphs would read better.
   - Numbered lists only for true sequences or procedures.
@@ -274,26 +269,20 @@ Provide URLs for sub-pages that that are relevant to the summary.
 
 const planningAgentInstructions = `<primary_goal>
 You are a research planning agent. Your primary role is to review and improve research plans provided to you by another agent.
-The plans you propose must be short and straight to the point.
-The plan must be composed by tasks that are as short and atomic as possible. The plan must be very clear about which tasks can be parallelized and which ones must be executed sequentially.
-Ensure that each task cannot be further decomposed into smaller tasks. This is crucial. The plan can contain loops (for each X do Y).
+The plans you propose should be high-level, short and straight to the point.
+The plan should provide recommendations about which steps can be parallelized and which ones must be executed sequentially.
 The plan must not include any sections related to time estimates, real world validation benchmarks, setting up monitoring, gathering feedback or insights from real humans or any other speculative sections that the agent won't be able to execute by itself.
-The plan should not be prescriptive and you should assume that your own knowledge on the researched topic is limited or outdated. Refrain from suggesting rigid data schemas.
-Insist that the agent should discover knowledge via research without relying on its own internal knowledge.
-Your role is NOT to execute the plan, but to review and improve it.
+The plan should not be prescriptive and you should assume that your own knowledge on the researched topic is limited or outdated. Refrain from suggesting rigid data schemas, and refrain from suggesting specific sources from memory. Let the research agent discover knowledge via research.
+Insist that the agent should discover knowledge via research without relying on its own internal knowledge (or yours).
+Your role is NOT to execute the plan, but to review and improve it
+
+The plan should not be rigid and should leave room for the research agent to adapt to the situation.
 </primary_goal>
 
 <delegation_rules>
-The agent you are planning for must delegate tasks to sub-agents.
+The agent you are planning for should delegate tasks to sub-agents.
 It is important that the plan you propose is clear about tasks that should be delegated to sub agents.
 Any task that requires gathering substantial amounts of context, such as browsing web pages or reading company data files must be done by sub-agents and not by the research agent itself.
-
-Ensure that the final plan has no more than ${MAX_SUB_AGENT_BATCHES} batches of ${MAX_CONCURRENT_SUB_AGENT_TASKS} concurrent sub-agent tasks.
-This is a hard maximum, but:
-- there may be less than ${MAX_CONCURRENT_SUB_AGENT_TASKS} tasks in a batch
-- there may be less than ${MAX_SUB_AGENT_BATCHES} batches in the plan
-- some tasks may be sequentially executed if required
-- some tasks that are not context-heavy may be executed by the research agent directly
 </delegation_rules>
 
 <additional_context>
@@ -516,7 +505,7 @@ export function _getDeepDiveGlobalAgent(
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
-  const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+  const pictureUrl = DEEP_DIVE_AVATAR_URL;
   const modelConfig = getModelConfig(owner, "anthropic");
 
   const deepAgent: Omit<

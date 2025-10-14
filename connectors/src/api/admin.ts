@@ -38,6 +38,10 @@ const whitelistedCommands = [
     command: "update-orphaned-resources-parents",
   },
   {
+    majorCommand: "notion",
+    command: "api-request",
+  },
+  {
     majorCommand: "slack",
     command: "whitelist-bot",
   },

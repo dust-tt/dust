@@ -7,6 +7,7 @@ import {
   ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
+import { DiscordConfigurationModel } from "@connectors/lib/models/discord";
 import {
   GithubCodeDirectory,
   GithubCodeFile,
@@ -36,6 +37,7 @@ import {
   IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import {
+  MicrosoftBotConfigurationModel,
   MicrosoftConfigurationModel,
   MicrosoftNodeModel,
   MicrosoftRootModel,
@@ -94,6 +96,7 @@ async function main(): Promise<void> {
   await ConfluenceFolder.sync({ alter: true });
   await ConfluencePage.sync({ alter: true });
   await ConfluenceSpace.sync({ alter: true });
+  await DiscordConfigurationModel.sync({ alter: true });
   await SlackConfigurationModel.sync({ alter: true });
   await SlackMessages.sync({ alter: true });
   await SlackChannel.sync({ alter: true });
@@ -115,6 +118,7 @@ async function main(): Promise<void> {
   await MicrosoftConfigurationModel.sync({ alter: true });
   await MicrosoftRootModel.sync({ alter: true });
   await MicrosoftNodeModel.sync({ alter: true });
+  await MicrosoftBotConfigurationModel.sync({ alter: true });
   await NotionConnectorBlockCacheEntry.sync({ alter: true });
   await NotionConnectorPageCacheEntry.sync({ alter: true });
   await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });

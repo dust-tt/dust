@@ -559,6 +559,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
               contentType: file.contentType,
               title: file.fileName,
               snippet: file.snippet,
+              createdAt: file.createdAt.getTime(),
               ...(hidden ? { hidden: true } : {}),
             };
           })

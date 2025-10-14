@@ -1,16 +1,20 @@
 import type { estypes } from "@elastic/elasticsearch";
 import { Client, errors as esErrors } from "@elastic/elasticsearch";
-import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-
-export function getAnalyticsIndex(): string {
-  return config.getElasticsearchConfig().analyticsIndex;
-}
+import { normalizeError } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 let esClient: Client | null = null;
+
+export type ElasticsearchError = {
+  type: "connection_error" | "query_error" | "unknown_error";
+  message: string;
+  statusCode?: number;
+};
+
+type SearchParams = estypes.SearchRequest;
 
 function hasProp<K extends string>(
   obj: unknown,
@@ -42,45 +46,37 @@ function getClient(): Client {
   return esClient;
 }
 
-export type SearchParams = estypes.SearchRequest;
-
-export async function esSearch<TDocument = unknown, TAggregations = unknown>(
+async function esSearch<TDocument = unknown, TAggregations = unknown>(
   params: SearchParams
-): Promise<estypes.SearchResponse<TDocument, TAggregations>> {
+): Promise<
+  Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
+> {
   const client = getClient();
   try {
-    return await client.search<TDocument, TAggregations>({
+    const result = await client.search<TDocument, TAggregations>({
       ...params,
     });
+    return new Ok(result);
   } catch (err) {
     if (err instanceof esErrors.ResponseError) {
-      const status = err.statusCode ?? "unknown";
+      const statusCode = err.statusCode ?? undefined;
       const reason = extractErrorReason(err);
-      throw new Error(`Elasticsearch query failed (${status}): ${reason}`);
+      return new Err({
+        type: "query_error",
+        message: reason,
+        statusCode,
+      });
     }
-    throw err;
-  }
-}
-
-export async function safeEsSearch<
-  TDocument = unknown,
-  TAggregations = unknown,
->(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<any>>,
-  params: SearchParams
-): Promise<estypes.SearchResponse<TDocument, TAggregations> | null> {
-  try {
-    return await esSearch<TDocument, TAggregations>(params);
-  } catch (err) {
-    apiError(req, res, {
-      status_code: 502,
-      api_error: {
-        type: "elasticsearch_error",
-        message: String(err),
-      },
+    if (err instanceof esErrors.ConnectionError) {
+      return new Err({
+        type: "connection_error",
+        message: "Failed to connect to Elasticsearch",
+      });
+    }
+    return new Err({
+      type: "unknown_error",
+      message: normalizeError(err).message,
     });
-    return null;
   }
 }
 
@@ -99,4 +95,34 @@ export function formatUTCDateFromMillis(ms: number): string {
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
   const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+/**
+ * High-level analytics-specific interface.
+ * This interface enforces proper usage and makes it harder to accidentally
+ * query other Elasticsearch indexes from the front service.
+ */
+export async function searchAnalytics<
+  TDocument = unknown,
+  TAggregations = unknown,
+>(
+  query: estypes.QueryDslQueryContainer,
+  options?: {
+    aggregations?: Record<string, estypes.AggregationsAggregationContainer>;
+    size?: number;
+    from?: number;
+    sort?: estypes.Sort;
+  }
+): Promise<
+  Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
+> {
+  const analyticsIndex = config.getElasticsearchConfig().analyticsIndex;
+  return esSearch<TDocument, TAggregations>({
+    index: analyticsIndex,
+    query,
+    aggs: options?.aggregations,
+    size: options?.size,
+    from: options?.from,
+    sort: options?.sort,
+  });
 }

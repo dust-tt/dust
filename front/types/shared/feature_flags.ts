@@ -12,11 +12,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
   },
-  advanced_search: {
-    description:
-      "Activates the advanced search option: browse selected data like a file system",
-    stage: "on_demand",
-  },
   agent_to_yaml: {
     description: "Export and Import agents to/from YAML format",
     stage: "dust_only",
@@ -36,6 +31,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   confluence_tool: {
     description: "Confluence MCP tool",
     stage: "on_demand",
+  },
+  conversation_rendering_v2: {
+    description: "Enhanced conversation rendering with pruning capabilities",
+    stage: "dust_only",
   },
   deepseek_feature: {
     description:
@@ -103,6 +102,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   openai_usage_mcp: {
     description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
+  },
+  prune_previous_interactions: {
+    description:
+      "Enable pruning of tool results from previous interactions in conversations",
+    stage: "dust_only",
   },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
@@ -192,6 +196,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   web_summarization: {
     description: "AI-powered web page summarization in the web browser tool",
     stage: "on_demand",
+  },
+  elevenlabs_tool: {
+    description: "Elevenlabs MCP tool for voice synthesis",
+    stage: "on_demand",
+  },
+  microsoft_teams_bot: {
+    description: "Microsoft Teams bot connector for workspace integration",
+    stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

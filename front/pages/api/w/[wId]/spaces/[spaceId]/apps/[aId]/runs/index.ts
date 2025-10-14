@@ -164,6 +164,7 @@ async function handler(
           appId: app.id,
           runType: "local",
           workspaceId: owner.id,
+          useWorkspaceCredentials: true,
         }),
         app.updateState(auth, {
           savedSpecification: req.body.specification,

@@ -27,7 +27,7 @@ const createServer = (
       {},
       withToolLogging(
         auth,
-        { toolNameForMonitoring: actionName, agentLoopContext },
+        { toolNameForMonitoring: "tool_not_found", agentLoopContext },
         async () => {
           return new Err(
             new MCPError(

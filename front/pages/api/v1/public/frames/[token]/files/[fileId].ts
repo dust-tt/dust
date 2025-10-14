@@ -1,7 +1,7 @@
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { isSessionWithUserFromWorkspace } from "@app/lib/api/auth_wrappers";
+import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -92,12 +92,12 @@ async function handler(
 
   // For workspace sharing, check authentication.
   if (shareScope === "workspace") {
-    const isWorkspaceUser = await isSessionWithUserFromWorkspace(
+    const auth = await getAuthForSharedEndpointWorkspaceMembersOnly(
       req,
       res,
       workspace.sId
     );
-    if (!isWorkspaceUser) {
+    if (!auth) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {
@@ -134,11 +134,15 @@ async function handler(
     });
   }
 
-  // Verify the file belongs to the same conversation as the frame.
-  const sameConversation =
-    targetFile.useCase === "conversation" &&
-    targetFile.useCaseMetadata?.conversationId === frameConversationId;
-  if (!sameConversation) {
+  const { useCase, useCaseMetadata } = targetFile;
+  const isSupportedUsecase =
+    useCase === "tool_output" || useCase === "conversation";
+
+  // Verify the file has a supported usecase and belongs to the same conversation as the frame.
+  const canAccessFileThroughFrame =
+    isSupportedUsecase &&
+    useCaseMetadata?.conversationId === frameConversationId;
+  if (!canAccessFileThroughFrame) {
     return apiError(req, res, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },

@@ -1,6 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ConfluenceCreatePageRequest,
   ConfluenceCurrentUser,
@@ -19,7 +20,6 @@ import {
   ConfluencePageSchema,
   CreatePagePayloadSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/types";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -86,32 +86,34 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
   }
 }
 
-export const withAuth = async ({
+export async function withAuth({
   authInfo,
   action,
-}: WithAuthParams): Promise<CallToolResult> => {
+}: WithAuthParams): Promise<Result<CallToolResult["content"], MCPError>> {
   const accessToken = authInfo?.token;
 
   if (!accessToken) {
-    return makeMCPToolTextError("No access token found");
+    return new Err(new MCPError("No access token found"));
   }
 
   try {
     const baseUrl = await getConfluenceBaseUrl(accessToken);
     if (!baseUrl) {
-      return makeMCPToolTextError(
-        "Failed to determine Confluence instance URL. Please check your connection."
+      return new Err(
+        new MCPError(
+          "Failed to determine Confluence instance URL. Please check your connection."
+        )
       );
     }
 
     return await action(baseUrl, accessToken);
   } catch (error) {
     logger.error("Error in withAuth", { error });
-    return makeMCPToolTextError(
-      `Authentication error: ${normalizeError(error).message}`
+    return new Err(
+      new MCPError(`Authentication error: ${normalizeError(error).message}`)
     );
   }
-};
+}
 
 async function getConfluenceBaseUrl(
   accessToken: string

@@ -33,6 +33,8 @@ import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
 import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
+import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
+import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
 import { WebhookSourceModel } from "@app/lib/models/assistant/triggers/webhook_source";
 import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
 import {
@@ -147,6 +149,8 @@ async function main() {
   await WebhookSourcesViewModel.sync({ alter: true });
   await TriggerModel.sync({ alter: true });
   await TriggerSubscriberModel.sync({ alter: true });
+  await WebhookRequestModel.sync({ alter: true });
+  await WebhookRequestTriggerModel.sync({ alter: true });
 
   await ConversationMCPServerViewModel.sync({ alter: true });
 

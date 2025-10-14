@@ -493,7 +493,7 @@ export function getFileFormatCategory(
   return null;
 }
 
-function getFileFormat(contentType: string): FileFormat | null {
+export function getFileFormat(contentType: string): FileFormat | null {
   if (isSupportedFileContentType(contentType)) {
     const format = FILE_FORMATS[contentType];
     if (format) {

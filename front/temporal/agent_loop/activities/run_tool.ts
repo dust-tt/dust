@@ -94,8 +94,9 @@ export async function runToolActivity(
 
         return { deferredEvents };
       case "tool_early_exit":
-        if (!event.isError && event.text) {
-          // Post message content
+        if (!event.isError && event.text && !agentMessage.content) {
+          // Save and post the tool's text content only if the execution stopped
+          // before any text was generated.
           await AgentStepContentResource.createNewVersion({
             workspaceId: conversation.owner.id,
             agentMessageId: agentMessage.agentMessageId,
@@ -133,7 +134,7 @@ export async function runToolActivity(
                 messageId: agentMessage.sId,
                 message: {
                   ...agentMessage,
-                  content: (agentMessage.content ?? "") + "\n\n" + event.text,
+                  content: agentMessage.content,
                   completedTs: event.created,
                 },
                 runIds: runIds ?? [],

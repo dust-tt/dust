@@ -8,30 +8,31 @@ import {
 import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
-import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actions/servers/confluence/server";
+import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actions/servers/confluence";
 import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
-import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/server";
+import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses";
 import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
+import { default as elevenlabsServer } from "@app/lib/actions/mcp_internal_actions/servers/elevenlabs";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
-import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice/server";
+import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
 import { default as calendarServer } from "@app/lib/actions/mcp_internal_actions/servers/google_calendar";
 import { default as driveServer } from "@app/lib/actions/mcp_internal_actions/servers/google_drive";
 import { default as sheetsServer } from "@app/lib/actions/mcp_internal_actions/servers/google_sheets";
-import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/server";
+import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
-import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira/server";
+import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
 import { default as jitTestingServer } from "@app/lib/actions/mcp_internal_actions/servers/jit_testing";
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
-import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday/server";
+import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday";
 import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
 import { default as openaiUsageServer } from "@app/lib/actions/mcp_internal_actions/servers/openai_usage";
+import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
-import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/server";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as extractDataServer } from "@app/lib/actions/mcp_internal_actions/servers/process";
 import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
@@ -40,9 +41,9 @@ import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack";
-import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_bot";
+import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack_bot";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
-import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
+import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -94,6 +95,8 @@ export async function getInternalMCPServer(
       return hubspotServer();
     case "image_generation":
       return imageGenerationDallEServer(auth);
+    case "elevenlabs":
+      return elevenlabsServer(auth, agentLoopContext);
     case "file_generation":
       return generateFileServer(auth);
     case "interactive_content":
@@ -157,15 +160,15 @@ export async function getInternalMCPServer(
     case AGENT_MEMORY_SERVER_NAME:
       return agentMemoryServer(auth, agentLoopContext);
     case "confluence":
-      return confluenceServer();
+      return confluenceServer(auth);
     case "outlook":
       return outlookServer(auth);
     case "outlook_calendar":
-      return outlookCalendarServer();
+      return outlookCalendarServer(auth);
     case "agent_management":
       return agentManagementServer(auth, agentLoopContext);
     case "freshservice":
-      return freshserviceServer();
+      return freshserviceServer(auth);
     case "data_warehouses":
       return dataWarehousesServer(auth, agentLoopContext);
     case "toolsets":

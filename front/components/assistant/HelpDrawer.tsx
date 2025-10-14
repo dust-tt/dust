@@ -14,11 +14,11 @@ import type { ComponentType } from "react";
 import { useCallback, useState } from "react";
 
 import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
-import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type { Result, RoleType, UserType, WorkspaceType } from "@app/types";
 import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
 
@@ -160,7 +160,9 @@ export function HelpDrawer({
         });
       } else {
         // We start the push before creating the message to optimize for instantaneity as well.
-        void router.push(getAgentRoute(owner.sId, conversationRes.value.sId));
+        void router.push(
+          getConversationRoute(owner.sId, conversationRes.value.sId)
+        );
         return new Ok(undefined);
       }
     },
@@ -220,7 +222,7 @@ export function HelpDrawer({
                   </div>
                 </div>
               </div>
-              <AssistantInputBar
+              <InputBar
                 owner={owner}
                 onSubmit={handleHelpSubmit}
                 conversationId={null}

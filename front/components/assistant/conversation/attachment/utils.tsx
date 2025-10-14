@@ -13,12 +13,16 @@ import React from "react";
 import type {
   Attachment,
   AttachmentCitation,
+  FileAttachmentCitation,
+  MCPAttachmentCitation,
+  NodeAttachmentCitation,
 } from "@app/components/assistant/conversation/attachment/types";
 import {
   getDisplayDateFromPastedFileId,
   getDisplayNameFromPastedFileId,
   isPastedFile,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
+import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import type { ContentFragmentType } from "@app/types";
 import {
@@ -30,7 +34,7 @@ import {
 export const isTextualContentType = (
   attachmentCitation: AttachmentCitation
 ) => {
-  if (attachmentCitation.type !== "file") {
+  if (attachmentCitation.type === "node") {
     return false;
   }
   const ct = attachmentCitation.contentType;
@@ -42,7 +46,7 @@ export const isTextualContentType = (
   );
 };
 export const isAudioContentType = (attachmentCitation: AttachmentCitation) => {
-  if (attachmentCitation.type !== "file") {
+  if (attachmentCitation.type === "node") {
     return false;
   }
   const ct = attachmentCitation.contentType;
@@ -71,7 +75,7 @@ function getContentTypeIcon(
 
 export function contentFragmentToAttachmentCitation(
   contentFragment: ContentFragmentType
-): AttachmentCitation {
+): FileAttachmentCitation | NodeAttachmentCitation {
   // Handle expired content fragments
   if (contentFragment.expiredReason) {
     return {
@@ -85,6 +89,8 @@ export function contentFragmentToAttachmentCitation(
           : null,
       contentType: contentFragment.contentType,
       attachmentCitationType: "fragment",
+      sourceUrl: contentFragment.sourceUrl,
+      description: null,
     };
   }
 
@@ -135,7 +141,7 @@ export function contentFragmentToAttachmentCitation(
       title,
       sourceUrl: contentFragment.sourceUrl,
       visual: <IconFromContentType contentType={contentFragment.contentType} />,
-      description,
+      description: description ?? null,
       fileId: contentFragment.fileId,
       contentType: contentFragment.contentType,
       attachmentCitationType: "fragment",
@@ -147,16 +153,16 @@ export function contentFragmentToAttachmentCitation(
 
 export function attachmentToAttachmentCitation(
   attachment: Attachment
-): AttachmentCitation {
+): FileAttachmentCitation | NodeAttachmentCitation {
   if (attachment.type === "file") {
     return {
       type: "file",
       id: attachment.id,
       title: attachment.title,
-      sourceUrl: attachment.sourceUrl,
+      sourceUrl: attachment.sourceUrl ?? null,
       isUploading: attachment.isUploading,
       visual: <IconFromContentType contentType={attachment.contentType} />,
-      description: attachment.description,
+      description: attachment.description ?? null,
       fileId: attachment.id,
       contentType: attachment.contentType,
       onRemove: attachment.onRemove,
@@ -176,6 +182,23 @@ export function attachmentToAttachmentCitation(
       attachmentCitationType: "inputBar",
     };
   }
+}
+
+export function markdownCitationToAttachmentCitation(
+  citation: MCPReferenceCitation
+): MCPAttachmentCitation {
+  return {
+    id: citation.fileId,
+    fileId: citation.fileId,
+    attachmentCitationType: "mcp",
+    contentType: citation.contentType,
+    sourceUrl: citation.href ?? null,
+    description: citation.description,
+    title: citation.title,
+    type: "file",
+    visual: <IconFromContentType contentType={citation.contentType} />,
+    isUploading: false,
+  };
 }
 
 export const IconFromContentType = ({

@@ -213,6 +213,10 @@ const ProductMenuConfig: MenuConfig = {
       title: "Chrome Extension",
       href: "/home/chrome-extension",
     },
+    {
+      title: "Frames",
+      href: "/home/frames",
+    },
   ],
 };
 

@@ -158,7 +158,7 @@ export function useConnector({
   };
 }
 
-export function useToggleSlackChatBot({
+export function useToggleChatBot({
   dataSource,
   owner,
 }: {

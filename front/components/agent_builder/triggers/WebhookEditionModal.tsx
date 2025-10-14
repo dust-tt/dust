@@ -2,6 +2,7 @@ import type { Icon } from "@dust-tt/sparkle";
 import {
   Button,
   Checkbox,
+  CollapsibleComponent,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +27,8 @@ import { z } from "zod";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
+import { useWebhookFilterGeneration } from "@app/components/agent_builder/triggers/useWebhookFilterGeneration";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useUser } from "@app/lib/swr/user";
@@ -155,6 +158,31 @@ export function WebhookEditionModal({
     );
   }, [selectedPreset, selectedWebhookSource]);
 
+  const selectedEventSchema = useMemo(() => {
+    if (!selectedEvent || !selectedPreset) {
+      return undefined;
+    }
+    return selectedPreset.events.find((event) => event.name === selectedEvent);
+  }, [selectedEvent, selectedPreset]);
+
+  const {
+    naturalDescription,
+    setNaturalDescription,
+    generatedFilter,
+    status: filterGenerationStatus,
+    errorMessage: filterErrorMessage,
+  } = useWebhookFilterGeneration({
+    workspace: owner,
+    eventSchema: selectedEventSchema,
+  });
+
+  // Sync generated filter to form.
+  useEffect(() => {
+    if (generatedFilter) {
+      form.setValue("filter", generatedFilter);
+    }
+  }, [generatedFilter, form]);
+
   useEffect(() => {
     if (!isOpen) {
       form.reset(defaultValues);
@@ -227,9 +255,45 @@ export function WebhookEditionModal({
     handleClose();
   };
 
+  const filterGenerationResult = useMemo(() => {
+    switch (filterGenerationStatus) {
+      case "idle":
+        if (generatedFilter) {
+          return (
+            <CollapsibleComponent
+              rootProps={{ defaultOpen: true }}
+              triggerChildren={
+                <Label className="cursor-pointer">Generated filter</Label>
+              }
+              contentChildren={<TriggerFilterRenderer data={generatedFilter} />}
+            />
+          );
+        }
+        return null;
+      case "loading":
+        return (
+          <div className="flex items-center gap-2">
+            <Spinner size="sm" />
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Generating filter...
+            </span>
+          </div>
+        );
+      case "error":
+        return (
+          <p className="text-sm text-warning">
+            {filterErrorMessage ??
+              "Unable to generate filter. Please try rephrasing."}
+          </p>
+        );
+      default:
+        return null;
+    }
+  }, [filterGenerationStatus, filterErrorMessage, generatedFilter]);
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <SheetContent size="lg">
+      <SheetContent size="xl">
         <SheetHeader>
           <SheetTitle>
             {trigger
@@ -369,16 +433,33 @@ export function WebhookEditionModal({
               {/* Filters input */}
               {selectedPreset && availableEvents.length > 0 && (
                 <div className="space-y-1">
-                  <Label htmlFor="trigger-filters">Filters (Optional)</Label>
+                  <Label htmlFor="trigger-filter-description">
+                    Filter Description
+                  </Label>
                   <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Add a filter string for the webhook event
+                    Describe in natural language the conditions under which the
+                    agent should trigger.
                   </p>
                   <TextArea
-                    id="trigger-filter"
-                    placeholder="Enter filter"
+                    id="trigger-filter-description"
+                    placeholder='e.g. "New pull requests that changes more than 500 lines of code, or have the `auto-review` label."'
+                    rows={3}
+                    value={naturalDescription}
                     disabled={!isEditor}
-                    {...form.register("filter")}
+                    onChange={(e) => {
+                      if (!selectedEvent || !selectedPreset) {
+                        form.setError("event", {
+                          type: "manual",
+                          message: "Please select an event first",
+                        });
+                        return;
+                      }
+
+                      setNaturalDescription(e.target.value);
+                    }}
                   />
+
+                  <div className="pt-2">{filterGenerationResult}</div>
                 </div>
               )}
 
@@ -417,6 +498,15 @@ export function WebhookEditionModal({
                 />
               </div>
             </div>
+
+            <TextArea
+              id="trigger-filter"
+              placeholder="Filter will be generated..."
+              disabled={true}
+              value={form.watch("filter")}
+              rows={3}
+              className="hidden"
+            />
           </FormProvider>
         </SheetContainer>
 

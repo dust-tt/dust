@@ -9,6 +9,7 @@ import type {
   Drive,
   Entity,
   ItemReference,
+  Organization,
   Site,
   Team,
   WorkbookRange,
@@ -621,4 +622,16 @@ export function extractPath(item: BaseItem) {
   } else {
     return "unknown";
   }
+}
+
+export async function getOrganization(
+  logger: LoggerInterface,
+  client: Client
+): Promise<Organization> {
+  const org = await clientApiGet(logger, client, "/organization");
+  if (!org.value || !org.value[0] || !org.value[0]) {
+    throw new Error("Unexpected: no organization found");
+  }
+
+  return org.value[0];
 }

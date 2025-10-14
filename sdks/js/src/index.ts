@@ -1225,6 +1225,57 @@ export class DustAPI {
     return new Ok(r.value);
   }
 
+  private _validateRedirectUrl(url: string): boolean {
+    const urlObj = new URL(url);
+    if (urlObj.protocol !== 'https:' || urlObj.hostname !== 'storage.googleapis.com') {
+      return false;
+    }
+    return true;
+  }
+
+  async downloadFile({ fileID }: { fileID: string }) {
+    const res = await this.request({
+      method: "GET",
+      path: `files/${fileID}?action=download`,
+    });
+    
+    if (res.isErr()) {
+      return res;
+    }
+
+    // Handle redirect response (the API redirects to a signed URL)
+    if (res.value.response.status >= 200 && res.value.response.status < 400) {
+      const redirectUrl = res.value.response.url;
+      
+      // Validate the redirect URL format to prevent SSRF attacks
+      if (!this._validateRedirectUrl(redirectUrl)) {
+        return new Err({
+          type: "unexpected_network_error",
+          message: `Invalid redirect URL format. Expected format: https://storage.googleapis.com/... Got: ${redirectUrl}`,
+        });
+      }
+      
+      // Fetch the actual file content from the signed URL
+      try {
+        const fileResponse = await fetch(redirectUrl);
+        if (!fileResponse.ok) {
+          return new Err({
+            type: "unexpected_network_error",
+            message: `Failed to download file from signed URL: ${fileResponse.status}`,
+          });
+        }
+        
+        const buffer = Buffer.from(await fileResponse.arrayBuffer());
+        return new Ok(buffer);
+      } catch (error) {
+        return new Err({
+          type: "unexpected_network_error",
+          message: `Failed to download file: ${error}`,
+        });
+      }
+    }
+  }
+
   async uploadFile({
     contentType,
     fileName,

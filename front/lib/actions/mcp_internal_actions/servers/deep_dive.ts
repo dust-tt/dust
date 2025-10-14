@@ -26,7 +26,7 @@ const createServer = (
 
   server.tool(
     "handoff",
-    `Handoff the query to the ${DEEP_DIVE_NAME} agent`,
+    `Launch a handoff to the :mention[${DEEP_DIVE_NAME}]{sId=${GLOBAL_AGENTS_SID.DEEP_DIVE}} agent`,
     {},
     withToolLogging(
       auth,
@@ -77,18 +77,8 @@ const createServer = (
           return new Err(convRes.error);
         }
 
-        // Determine what to display before the Deep Dive agent mention:
-        // - If agent already has content: display nothing (content is already shown)
-        // - If no content but has chain of thought: display the chain of thought
-        // - Otherwise: display nothing
-        const prefixContent = agentMessage.content
-          ? ""
-          : agentMessage.chainOfThought ?? "";
-        const mentionString = `\n:mention[${DEEP_DIVE_NAME}]{sId=${GLOBAL_AGENTS_SID.DEEP_DIVE}}`;
-        const responseText = prefixContent + mentionString;
-
         const response = makeMCPToolExit({
-          message: responseText,
+          message: `Handoff from :mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}} to :mention[${DEEP_DIVE_NAME}]{sId=${GLOBAL_AGENTS_SID.DEEP_DIVE}} successfully launched.`,
           isError: false,
         });
 

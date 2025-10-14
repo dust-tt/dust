@@ -76,7 +76,7 @@ import {
 } from "@app/lib/actions/constants";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -192,7 +192,7 @@ export function MCPServerViewsSheet({
           action.type === "MCP" &&
           action.configuration &&
           action.configuration.mcpServerViewId &&
-          !action.configurable
+          !action.configurationRequired
         ) {
           const selectedView = allMcpServerViews.find(
             (mcpServerView) =>
@@ -229,8 +229,9 @@ export function MCPServerViewsSheet({
       return filteredList;
     }
 
+    // You should not be able to select Reasoning if there is no reasoning model available.
     return filteredList.filter(
-      (view) => !getMCPServerToolsConfigurations(view).reasoningConfiguration
+      (view) => !getMCPServerRequirements(view).requiresReasoningConfiguration
     );
   }, [
     topMCPServerViews,
@@ -391,19 +392,16 @@ export function MCPServerViewsSheet({
 
   function onClickMCPServer(mcpServerView: MCPServerViewTypeWithLabel) {
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
-    const toolsConfigurations = getMCPServerToolsConfigurations(
-      mcpServerView,
-      featureFlags
-    );
+    const requirements = getMCPServerRequirements(mcpServerView, featureFlags);
 
-    if (toolsConfigurations.configurable !== "no") {
+    if (!requirements.noRequirement) {
       const action = getDefaultMCPAction(mcpServerView);
-      const isReasoning = toolsConfigurations.reasoningConfiguration
-        ? true
-        : false;
 
       let configuredAction = action;
-      if (action.type === "MCP" && isReasoning) {
+      if (
+        action.type === "MCP" &&
+        requirements.requiresReasoningConfiguration
+      ) {
         if (reasoningModels.length === 0) {
           sendNotification({
             title: "No reasoning model available",
@@ -416,14 +414,8 @@ export function MCPServerViewsSheet({
 
         const defaultReasoningModel =
           reasoningModels.find(
-            (model) =>
-              model.modelId ===
-              toolsConfigurations.reasoningConfiguration?.default?.modelId
-          ) ??
-          reasoningModels.find(
             (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
-          ) ??
-          reasoningModels[0];
+          ) ?? reasoningModels[0];
 
         configuredAction = {
           ...action,
@@ -501,7 +493,7 @@ export function MCPServerViewsSheet({
             configuration: null,
             name: DEFAULT_DATA_VISUALIZATION_NAME,
             description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-            configurable: false,
+            configurationRequired: false,
           };
         } else {
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -542,10 +534,10 @@ export function MCPServerViewsSheet({
     shouldUnregister: false,
   });
 
-  const toolsConfigurations = useMemo(
+  const requirements = useMemo(
     () =>
       mcpServerView
-        ? getMCPServerToolsConfigurations(mcpServerView, featureFlags)
+        ? getMCPServerRequirements(mcpServerView, featureFlags)
         : null,
     [mcpServerView, featureFlags]
   );
@@ -627,14 +619,11 @@ export function MCPServerViewsSheet({
         ? () => getAvatar(mcpServerView.server, "md")
         : undefined,
       content:
-        configurationTool &&
-        mcpServerView &&
-        toolsConfigurations &&
-        formSchema ? (
+        configurationTool && mcpServerView && requirements && formSchema ? (
           <FormProvider form={form} className="h-full">
             <div className="h-full">
               <div className="h-full space-y-6 pt-3">
-                {configurationTool.configurable && (
+                {configurationTool.configurationRequired && (
                   <NameSection
                     title="Name"
                     placeholder="My tool name…"
@@ -642,44 +631,36 @@ export function MCPServerViewsSheet({
                   />
                 )}
 
-                {toolsConfigurations.reasoningConfiguration && (
+                {requirements.requiresReasoningConfiguration && (
                   <ReasoningModelSection />
                 )}
 
-                {toolsConfigurations.childAgentConfiguration && (
+                {requirements.requiresChildAgentConfiguration && (
                   <ChildAgentSection />
                 )}
 
-                {toolsConfigurations.mayRequireTimeFrameConfiguration && (
+                {requirements.mayRequireTimeFrameConfiguration && (
                   <TimeFrameSection actionType="search" />
                 )}
 
-                {toolsConfigurations.mayRequireDustAppConfiguration && (
+                {requirements.requiresDustAppConfiguration && (
                   <DustAppSection />
                 )}
 
-                {toolsConfigurations.mayRequireSecretConfiguration && (
-                  <SecretSection />
-                )}
+                {requirements.requiresSecretConfiguration && <SecretSection />}
 
-                {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
+                {requirements.mayRequireJsonSchemaConfiguration && (
                   <JsonSchemaSection
                     getAgentInstructions={getAgentInstructions}
                   />
                 )}
 
                 <AdditionalConfigurationSection
-                  stringConfigurations={
-                    toolsConfigurations.stringConfigurations
-                  }
-                  numberConfigurations={
-                    toolsConfigurations.numberConfigurations
-                  }
-                  booleanConfigurations={
-                    toolsConfigurations.booleanConfigurations
-                  }
-                  enumConfigurations={toolsConfigurations.enumConfigurations}
-                  listConfigurations={toolsConfigurations.listConfigurations}
+                  requiredStrings={requirements.requiredStrings}
+                  requiredNumbers={requirements.requiredNumbers}
+                  requiredBooleans={requirements.requiredBooleans}
+                  requiredEnums={requirements.requiredEnums}
+                  requiredLists={requirements.requiredLists}
                 />
               </div>
             </div>

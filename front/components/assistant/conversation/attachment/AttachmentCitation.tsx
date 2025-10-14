@@ -16,20 +16,20 @@ import {
   isAudioContentType,
   isTextualContentType,
 } from "@app/components/assistant/conversation/attachment/utils";
-import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { LightWorkspaceType } from "@app/types";
+import { getFileFormat } from "@app/types";
 import { isSupportedImageContentType } from "@app/types";
 
 interface AttachmentCitationProps {
   owner: LightWorkspaceType;
   attachmentCitation: AttachmentCitation;
-  fileUploaderService: FileUploaderService;
+  conversationId: string | null;
 }
 
 export function AttachmentCitation({
   owner,
   attachmentCitation,
-  fileUploaderService,
+  conversationId,
 }: AttachmentCitationProps) {
   const [viewerOpen, setViewerOpen] = useState(false);
 
@@ -60,6 +60,7 @@ export function AttachmentCitation({
 
   const canOpenInDialog =
     attachmentCitation.type === "file" &&
+    getFileFormat(attachmentCitation.contentType)?.isSafeToDisplay &&
     (isTextualContentType(attachmentCitation) ||
       isAudioContentType(attachmentCitation));
 
@@ -115,12 +116,12 @@ export function AttachmentCitation({
         }
         label={tooltipContent}
       />
-      {attachmentCitation.type === "file" && (
+      {canOpenInDialog && (
         <AttachmentViewer
           setViewerOpen={setViewerOpen}
           viewerOpen={viewerOpen}
           attachmentCitation={attachmentCitation}
-          fileUploaderService={fileUploaderService}
+          conversationId={conversationId}
           owner={owner}
         />
       )}
