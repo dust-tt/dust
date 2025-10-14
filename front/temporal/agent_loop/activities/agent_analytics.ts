@@ -62,7 +62,7 @@ export async function storeAgentAnalyticsActivity(
       agent_id: agentConfiguration.sId,
       agent_version: agentConfiguration.version.toString(),
       user_id: userMessage.user?.sId ?? "unknown",
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(userMessage.created).toISOString(),
       status,
       latency_ms: latencyMs,
       tokens,
@@ -206,7 +206,7 @@ async function storeToElasticsearch(
 ): Promise<void> {
   const fs = await import("fs/promises");
   const path = await import("path");
-  
+
   // Create output directory if it doesn't exist
   const outputDir = path.join(process.cwd(), "analytics_output");
   try {
@@ -229,7 +229,8 @@ async function storeToElasticsearch(
   };
 
   // Write both the index action and the document (JSONL format)
-  const jsonlLine = JSON.stringify(indexAction) + "\n" + JSON.stringify(document) + "\n";
+  const jsonlLine =
+    JSON.stringify(indexAction) + "\n" + JSON.stringify(document) + "\n";
 
   try {
     await fs.appendFile(filePath, jsonlLine);
