@@ -1,5 +1,5 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
+import { Err, normalizeError, Ok } from "@dust-tt/client";
 
 import type {
   ConnectorManagerError,
@@ -108,7 +108,7 @@ export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
         { connectorId: this.connectorId, error },
         "Error cleaning up Microsoft Bot connector."
       );
-      return new Err(error as Error);
+      return new Err(normalizeError(error));
     }
   }
 
