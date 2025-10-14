@@ -49,12 +49,12 @@ export async function safeEsSearch<TResponse = unknown>(
 ): Promise<TResponse | null> {
   try {
     return await esSearch<TResponse>(body, index);
-  } catch (e: any) {
+  } catch (err) {
     apiError(req, res, {
       status_code: 502,
       api_error: {
         type: "elasticsearch_error",
-        message: String(e?.message || e),
+        message: String(err),
       },
     });
     return null;
