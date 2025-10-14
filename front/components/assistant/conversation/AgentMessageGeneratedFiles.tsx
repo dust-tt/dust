@@ -4,16 +4,11 @@ import {
   CitationGrid,
   CitationTitle,
 } from "@dust-tt/sparkle";
-import { format } from "date-fns";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { formatCalendarDate } from "@app/lib/utils/timestamps";
 import type { LightAgentMessageType } from "@app/types";
-import { frameContentType } from "@app/types";
-
-function getTime(date: number): string {
-  return format(new Date(date), "HH:mm");
-}
+import { frameContentType, getTime } from "@app/types";
 
 function getDescriptionForContentType(
   file: LightAgentMessageType["generatedFiles"][number]
