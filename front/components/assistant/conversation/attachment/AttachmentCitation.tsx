@@ -17,6 +17,7 @@ import {
   isTextualContentType,
 } from "@app/components/assistant/conversation/attachment/utils";
 import type { LightWorkspaceType } from "@app/types";
+import { getFileFormat } from "@app/types";
 import { isSupportedImageContentType } from "@app/types";
 
 interface AttachmentCitationProps {
@@ -59,6 +60,7 @@ export function AttachmentCitation({
 
   const canOpenInDialog =
     attachmentCitation.type === "file" &&
+    getFileFormat(attachmentCitation.contentType)?.isSafeToDisplay &&
     (isTextualContentType(attachmentCitation) ||
       isAudioContentType(attachmentCitation));
 
@@ -114,7 +116,7 @@ export function AttachmentCitation({
         }
         label={tooltipContent}
       />
-      {attachmentCitation.type === "file" && (
+      {canOpenInDialog && (
         <AttachmentViewer
           setViewerOpen={setViewerOpen}
           viewerOpen={viewerOpen}

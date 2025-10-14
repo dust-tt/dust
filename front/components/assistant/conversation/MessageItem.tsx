@@ -98,14 +98,14 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     const citations =
       isUserMessage(data) && data.contentFragments.length > 0
-        ? data.contentFragments.map((contentFragment) => {
+        ? data.contentFragments.map((contentFragment, index) => {
             const attachmentCitation =
               contentFragmentToAttachmentCitation(contentFragment);
 
             return (
               <AttachmentCitation
                 owner={context.owner}
-                key={attachmentCitation.id}
+                key={index}
                 attachmentCitation={attachmentCitation}
                 conversationId={context.conversationId}
               />
