@@ -94,15 +94,15 @@ export function withToolLogging<T>(
           "error_type:run_error",
           ...tags,
         ]);
-
-        logger.error(
-          {
-            error: result.error,
-            ...loggerArgs,
-          },
-          "Tool execution error"
-        );
       }
+
+      logger.error(
+        {
+          error: result.error,
+          ...loggerArgs,
+        },
+        "Tool execution error"
+      );
 
       return {
         isError: true,
