@@ -38,7 +38,7 @@ async function acquireTenantSpecificToken(): Promise<string> {
     }
   );
 
-  logger.debug(
+  logger.info(
     {
       tokenType: tokenResponse.data.token_type,
       expiresIn: tokenResponse.data.expires_in,
