@@ -49,7 +49,6 @@ jobs:
         id: code-review
         uses: anthropics/claude-code-action@v1
         with:
-          track_progress: true
           # Define the review focus areas
           prompt: >-
             Code Review Agent
