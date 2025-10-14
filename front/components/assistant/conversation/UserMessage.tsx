@@ -79,7 +79,7 @@ export function UserMessage({
           timestamp={formatTimestring(message.created)}
           infoChip={
             message.context.origin === "triggered" && (
-              <span className="dark:text-muted-foreground-nigh translate-y-1 text-muted-foreground">
+              <span className="translate-y-1 text-muted-foreground dark:text-muted-foreground-night">
                 <TriggerChip message={message} />
               </span>
             )
