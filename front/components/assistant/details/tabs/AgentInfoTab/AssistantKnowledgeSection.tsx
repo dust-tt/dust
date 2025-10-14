@@ -114,6 +114,9 @@ export function AssistantKnowledgeSection({
                   existingFilter.not.concat(ds.filter.parents.not)
                 );
               }
+              // We need to remove duplicates
+              existingFilter.in = _.uniq(existingFilter.in);
+              existingFilter.not = _.uniq(existingFilter.not);
             }
           } else {
             // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
@@ -156,6 +159,9 @@ export function AssistantKnowledgeSection({
                   existingFilter.not.concat(ds.filter.parents.not)
                 );
               }
+              // We need to remove duplicates
+              existingFilter.in = _.uniq(existingFilter.in);
+              existingFilter.not = _.uniq(existingFilter.not);
             }
           } else {
             // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
