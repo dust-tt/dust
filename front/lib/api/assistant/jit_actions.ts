@@ -62,6 +62,12 @@ export async function getJITServers(
   const conversationMCPServerViews =
     await ConversationResource.fetchMCPServerViews(auth, conversation, true);
 
+  const commonUtilitiesView =
+    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+      auth,
+      "common_utilities"
+    );
+
   for (const conversationMCPServerView of conversationMCPServerViews) {
     const mcpServerViewResource = await MCPServerViewResource.fetchByModelPk(
       auth,
@@ -101,6 +107,42 @@ export async function getJITServers(
     };
 
     jitServers.push(conversationFilesServer);
+  }
+
+  assert(
+    commonUtilitiesView,
+    "MCP server view not found for common_utilities. Ensure auto tools are created."
+  );
+
+  const commonUtilitiesViewJSON = commonUtilitiesView.toJSON();
+
+  if (!agentMcpServerViewIds.includes(commonUtilitiesViewJSON.sId)) {
+    const commonUtilitiesServer: ServerSideMCPServerConfigurationType = {
+      id: -1,
+      sId: generateRandomModelSId(),
+      type: "mcp_server_configuration",
+      name:
+        commonUtilitiesViewJSON.name ??
+        commonUtilitiesViewJSON.server.name ??
+        "common_utilities",
+      description:
+        commonUtilitiesViewJSON.description ??
+        commonUtilitiesViewJSON.server.description ??
+        "Common utilities such as random numbers and timers.",
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      jsonSchema: null,
+      secretName: null,
+      additionalConfiguration: {},
+      mcpServerViewId: commonUtilitiesViewJSON.sId,
+      dustAppConfiguration: null,
+      internalMCPServerId: commonUtilitiesView.mcpServerId,
+    };
+
+    jitServers.push(commonUtilitiesServer);
   }
 
   if (attachments.length === 0) {
