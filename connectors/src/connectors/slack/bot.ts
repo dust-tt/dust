@@ -134,6 +134,19 @@ export async function botAnswerMessage(
 
     return new Ok(undefined);
   } catch (e) {
+    // This means that the message has been deleted, so we don't need to send an error message.
+    // So we don't log an error.
+    if (isSlackWebAPIPlatformError(e) && e.data.error === "message_not_found") {
+      logger.info(
+        {
+          connectorId: connector.id,
+          slackTeamId,
+        },
+        "Message not found when answering to Slack Chat Bot message"
+      );
+      return new Ok(undefined);
+    }
+
     logger.error(
       {
         error: e,
@@ -142,10 +155,7 @@ export async function botAnswerMessage(
       },
       "Unexpected exception answering to Slack Chat Bot message"
     );
-    if (isSlackWebAPIPlatformError(e) && e.data.error === "message_not_found") {
-      // This means that the message has been deleted, so we don't need to send an error message.
-      return new Ok(undefined);
-    }
+
     const slackClient = await getSlackClient(connector.id);
     try {
       reportSlackUsage({
