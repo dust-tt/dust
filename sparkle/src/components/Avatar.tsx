@@ -181,13 +181,15 @@ export function Avatar({
   icon,
   iconColor = "s-text-foreground",
 }: AvatarProps) {
+  const normalizedVisual = visual === "" ? null : visual;
   const emojiInfos =
-    typeof visual === "string" && getEmojiAndBackgroundFromUrl(visual);
+    typeof normalizedVisual === "string" &&
+    getEmojiAndBackgroundFromUrl(normalizedVisual);
   const backgroundColorToUse = emojiInfos
     ? emojiInfos.backgroundColor
     : backgroundColor;
   const emojiToUse = emojiInfos ? emojiInfos.skinEmoji : emoji;
-  const visualToUse = emojiInfos ? null : visual;
+  const visualToUse = emojiInfos ? null : normalizedVisual;
 
   const variant: AvatarVariantType = disabled
     ? "disabled"
