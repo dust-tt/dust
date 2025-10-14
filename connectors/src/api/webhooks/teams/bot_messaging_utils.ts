@@ -188,21 +188,3 @@ export async function sendTextMessage(
     text,
   });
 }
-
-/**
- * Helper function to send an adaptive card
- */
-export async function sendAdaptiveCard(
-  context: TurnContext,
-  card: any
-): Promise<{ id?: string } | undefined> {
-  return sendActivity(context, {
-    type: "message",
-    attachments: [
-      {
-        contentType: "application/vnd.microsoft.card.adaptive",
-        content: card,
-      },
-    ],
-  });
-}

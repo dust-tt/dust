@@ -10,6 +10,7 @@ import type { GongConfigurationModel } from "@connectors/lib/models/gong";
 import type { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
 import type { IntercomWorkspaceModel } from "@connectors/lib/models/intercom";
 import type { MicrosoftConfigurationModel } from "@connectors/lib/models/microsoft";
+import type { MicrosoftBotConfigurationModel } from "@connectors/lib/models/microsoft_bot";
 import type { NotionConnectorState } from "@connectors/lib/models/notion";
 import type { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
@@ -39,7 +40,6 @@ import type {
 import type { ModelId } from "@connectors/types";
 
 import type { BaseResource } from "../base_resource";
-import { MicrosoftBotConfigurationModel } from "@connectors/lib/models/microsoft_bot";
 
 export type WithCreationAttributes<T extends Model> = CreationAttributes<T>;
 
