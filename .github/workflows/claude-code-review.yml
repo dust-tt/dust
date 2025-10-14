@@ -49,7 +49,6 @@ jobs:
         id: code-review
         uses: anthropics/claude-code-action@v1
         with:
-          track_progress: true
           # Define the review focus areas
           prompt: >-
             Code Review Agent
@@ -118,5 +117,6 @@ jobs:
           claude_args: |
             --model claude-sonnet-4-5-20250929
             --allowed-tools "Bash(git diff --name-only HEAD~1),Bash(git diff HEAD~1),View,GlobTool,GrepTool"
+            --max-turns 36
 
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
