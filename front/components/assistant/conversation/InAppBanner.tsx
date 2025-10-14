@@ -5,19 +5,19 @@ import { useState } from "react";
 const localStorageKey = "frame-announcement-dismissed";
 const docLink = "https://docs.dust.tt/docs/frames";
 
-export const InAppBanner = () => {
+export function InAppBanner() {
   const [showInAppBanner, setShowInAppBanner] = useState(
     localStorage.getItem(localStorageKey) !== "true"
   );
 
-  function onDismiss() {
+  const onDismiss = () => {
     localStorage.setItem(localStorageKey, "true");
     setShowInAppBanner(false);
-  }
+  };
 
-  function onLearnMore() {
+  const onLearnMore = () => {
     window.open(docLink, "_blank", "noopener,noreferrer");
-  }
+  };
 
   if (!showInAppBanner) {
     return null;
@@ -33,12 +33,12 @@ export const InAppBanner = () => {
         "mx-2 mb-2"
       )}
     >
-      <div className="relative px-4 py-3">
-        <div className="mb-2 text-sm font-medium text-primary dark:text-primary-night">
-          What’s new
-        </div>
-        <h4 className="text-md mb-4 font-medium leading-tight text-foreground dark:text-foreground-night">
+      <div className="relative p-4">
+        <div className="text-md mb-2 font-medium text-foreground dark:text-foreground-night">
           Introducing Frames ✨
+        </div>
+        <h4 className="mb-4 text-sm font-medium leading-tight text-primary dark:text-primary-night">
+          Turn AI outputs into interactive content
         </h4>
         <Button
           variant="highlight"
@@ -55,4 +55,4 @@ export const InAppBanner = () => {
       </div>
     </div>
   );
-};
+}
