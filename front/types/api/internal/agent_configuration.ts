@@ -47,8 +47,8 @@ export const GetAgentConfigurationsHistoryQuerySchema = t.type({
 
 const DataSourceFilterParentsCodec = t.union([
   t.type({
-    in: t.array(t.string),
-    not: t.array(t.string),
+    in: t.union([t.array(t.string), t.null]),
+    not: t.union([t.array(t.string), t.null]),
   }),
   t.null,
 ]);

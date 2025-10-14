@@ -43,7 +43,14 @@ function processDataSourceConfigurations(
     workspaceId: owner.sId,
     filter: {
       parents: config.isSelectAll
-        ? null
+        ? config.excludedResources.length > 0
+          ? {
+              in: null,
+              not: config.excludedResources.map(
+                (resource) => resource.internalId
+              ),
+            }
+          : null
         : {
             in: config.selectedResources.map((resource) => resource.internalId),
             not: config.excludedResources.map(

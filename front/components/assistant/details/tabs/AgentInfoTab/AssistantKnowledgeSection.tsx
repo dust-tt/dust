@@ -100,16 +100,18 @@ export function AssistantKnowledgeSection({
               const existingFilter = acc[ds.dataSourceViewId].filter.parents;
               // Merge the filters if they are not null
               if (existingFilter) {
-                existingFilter.in = existingFilter.in.concat(
-                  ds.filter.parents.in
+                // Handle case where in or not could be null
+                if (existingFilter.in !== null && ds.filter.parents.in !== null) {
+                  existingFilter.in = _.uniq(
+                    existingFilter.in.concat(ds.filter.parents.in)
+                  );
+                } else if (ds.filter.parents.in === null) {
+                  // If the new filter has in: null, it means "all", so we keep null
+                  existingFilter.in = null;
+                }
+                existingFilter.not = _.uniq(
+                  existingFilter.not.concat(ds.filter.parents.not)
                 );
-                existingFilter.not = existingFilter.not.concat(
-                  ds.filter.parents.not
-                );
-
-                // We need to remove duplicates
-                existingFilter.in = _.uniq(existingFilter.in);
-                existingFilter.not = _.uniq(existingFilter.not);
               }
             } else {
               // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
@@ -139,16 +141,18 @@ export function AssistantKnowledgeSection({
               const existingFilter = acc[ds.dataSourceViewId].filter.parents;
               // Merge the filters if they are not null
               if (existingFilter) {
-                existingFilter.in = existingFilter.in.concat(
-                  ds.filter.parents.in
+                // Handle case where in or not could be null
+                if (existingFilter.in !== null && ds.filter.parents.in !== null) {
+                  existingFilter.in = _.uniq(
+                    existingFilter.in.concat(ds.filter.parents.in)
+                  );
+                } else if (ds.filter.parents.in === null) {
+                  // If the new filter has in: null, it means "all", so we keep null
+                  existingFilter.in = null;
+                }
+                existingFilter.not = _.uniq(
+                  existingFilter.not.concat(ds.filter.parents.not)
                 );
-                existingFilter.not = existingFilter.not.concat(
-                  ds.filter.parents.not
-                );
-
-                // We need to remove duplicates
-                existingFilter.in = _.uniq(existingFilter.in);
-                existingFilter.not = _.uniq(existingFilter.not);
               }
             } else {
               // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
@@ -246,9 +250,12 @@ function getDataSourceConfigurationsForTableAction(
         }
 
         if (dataSourceView) {
-          dsConfigs[table.dataSourceViewId].filter.parents?.in.push(
-            getContentNodeInternalIdFromTableId(dataSourceView, table.tableId)
-          );
+          const parents = dsConfigs[table.dataSourceViewId].filter.parents;
+          if (parents && parents.in) {
+            parents.in.push(
+              getContentNodeInternalIdFromTableId(dataSourceView, table.tableId)
+            );
+          }
         }
 
         return dsConfigs;
