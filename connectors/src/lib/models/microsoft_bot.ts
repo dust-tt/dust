@@ -1,0 +1,131 @@
+import { sequelizeConnection } from "@connectors/resources/storage";
+import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
+import { CreationOptional, DataTypes } from "sequelize";
+
+export class MicrosoftBotConfigurationModel extends ConnectorBaseModel<MicrosoftBotConfigurationModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare botEnabled: boolean;
+  declare tenantId: string;
+}
+MicrosoftBotConfigurationModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    botEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    tenantId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    modelName: "microsoft_bot_configurations",
+    indexes: [
+      { fields: ["connectorId"], unique: true },
+      { fields: ["tenantId"], unique: true },
+    ],
+    relationship: "hasOne",
+  }
+);
+
+export class TeamsMessage extends ConnectorBaseModel<TeamsMessage> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare message: string;
+  declare userId: string;
+  declare userAadObjectId?: string;
+  declare email: string;
+  declare userName: string;
+  declare conversationId: string;
+  declare activityId: string;
+  declare channelId: string;
+  declare replyToId?: string;
+  declare dustConversationId?: string;
+}
+
+TeamsMessage.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    message: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    userId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    userAadObjectId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    userName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    conversationId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    activityId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    channelId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    replyToId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    dustConversationId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+  },
+  {
+    modelName: "teams_messages",
+    sequelize: sequelizeConnection,
+    indexes: [
+      {
+        fields: ["connectorId"],
+      },
+      {
+        fields: ["connectorId", "conversationId"],
+      },
+      {
+        fields: ["connectorId", "userId"],
+      },
+      {
+        fields: ["connectorId", "dustConversationId"],
+      },
+    ],
+  }
+);
