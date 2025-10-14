@@ -1,6 +1,8 @@
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
+
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
-import { CreationOptional, DataTypes } from "sequelize";
 
 export class MicrosoftBotConfigurationModel extends ConnectorBaseModel<MicrosoftBotConfigurationModel> {
   declare createdAt: CreationOptional<Date>;

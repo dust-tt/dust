@@ -29,16 +29,12 @@ export function createResponseAdaptiveCard({
   assistantName,
   conversationUrl,
   workspaceId,
-  agentConfigurations,
-  originalMessage,
   isError = false,
 }: {
   response: string;
   assistantName: string;
   conversationUrl: string | null;
   workspaceId: string;
-  agentConfigurations: LightAgentConfigurationType[];
-  originalMessage?: string;
   isError?: boolean;
 }): Partial<Activity> {
   const card: AdaptiveCard = {
@@ -46,7 +42,6 @@ export function createResponseAdaptiveCard({
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
     version: "1.4",
     body: [
-      // Main response content
       {
         type: "TextBlock",
         text: response,
@@ -64,7 +59,6 @@ export function createResponseAdaptiveCard({
     spacing: "Medium",
     separator: true,
     items: [
-      // Agent attribution and links
       {
         type: "TextBlock",
         text: createFooterText({
@@ -79,30 +73,6 @@ export function createResponseAdaptiveCard({
       },
     ],
   });
-
-  // Add agent selector if we have multiple agents
-  if (agentConfigurations.length > 1) {
-    // Add top 5 most popular agents as quick action buttons
-    const topAgents = agentConfigurations
-      .sort(
-        (a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
-      )
-      .slice(0, 5);
-
-    topAgents.forEach((agent) => {
-      card.actions.push({
-        type: "Action.Submit",
-        title: `Ask ${agent.name}`,
-        data: {
-          verb: "ask_agent",
-          action: "ask_agent",
-          agentId: agent.sId,
-          agentName: agent.name,
-          originalMessage: originalMessage || "",
-        },
-      });
-    });
-  }
 
   return {
     type: "message",
@@ -143,27 +113,7 @@ export function createStreamingAdaptiveCard({
               wrap: true,
               spacing: "Medium",
             },
-            // Footer with assistant name and link (no buttons)
-            // {
-            //   type: "Container",
-            //   spacing: "Medium",
-            //   separator: true,
-            //   items: [
-            //     {
-            //       type: "TextBlock",
-            //       text: createFooterText({
-            //         assistantName,
-            //         conversationUrl,
-            //         workspaceId,
-            //       }),
-            //       wrap: true,
-            //       size: "Small",
-            //       color: "Good",
-            //     },
-            //   ],
-            // },
           ],
-          // No actions for streaming
         },
       },
     ],

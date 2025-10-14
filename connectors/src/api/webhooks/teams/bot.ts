@@ -11,6 +11,12 @@ import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import { getClient } from "@connectors/connectors/microsoft/index";
+import { apiConfig } from "@connectors/lib/api/config";
+import { TeamsMessage } from "@connectors/lib/models/microsoft_bot";
+import logger from "@connectors/logger/logger";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { getHeaderFromUserEmail } from "@connectors/types";
+
 import {
   createErrorAdaptiveCard,
   createResponseAdaptiveCard,
@@ -18,11 +24,6 @@ import {
   makeConversationUrl,
 } from "./adaptive_cards";
 import { sendActivity, updateActivity } from "./bot_messaging_utils";
-import { apiConfig } from "@connectors/lib/api/config";
-import { TeamsMessage } from "@connectors/lib/models/microsoft_bot";
-import logger from "@connectors/logger/logger";
-import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import { getHeaderFromUserEmail } from "@connectors/types";
 
 export async function botAnswerTeamsMessage(
   context: TurnContext,
@@ -260,13 +261,6 @@ async function answerTeamsMessage(
     };
   }
 
-  const mostPopularAgentConfigurations = [...activeAgentConfigurations]
-    .sort((a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0))
-    .splice(0, 100)
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  // Skip Graph API messaging - Teams app handles "thinking" message via Bot Framework
-
   if (!message.includes(":mention")) {
     // if the message does not contain the mention, we add it as a prefix.
     message = `:mention[${mention.assistantName}]{sId=${mention.assistantId}} ${message}`;
@@ -476,8 +470,6 @@ async function answerTeamsMessage(
             conversation.sId
           ),
           workspaceId: connector.workspaceId,
-          agentConfigurations: mostPopularAgentConfigurations,
-          originalMessage: message,
         });
 
         await sendTeamsResponse(context, false, streamingMessages, finalCard);
