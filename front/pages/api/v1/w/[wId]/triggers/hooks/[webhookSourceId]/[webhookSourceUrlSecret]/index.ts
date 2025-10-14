@@ -3,6 +3,7 @@ import type { NextApiResponse } from "next";
 
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { Authenticator } from "@app/lib/auth";
+import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -21,7 +22,6 @@ import type {
 } from "@app/types";
 import { Err, normalizeError } from "@app/types";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
-import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
 
 /**
  * @swagger
