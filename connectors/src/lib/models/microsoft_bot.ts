@@ -113,7 +113,7 @@ MicrosoftBotMessage.init(
     },
   },
   {
-    modelName: "teams_messages",
+    modelName: "microsoft_bot_messages",
     sequelize: sequelizeConnection,
     indexes: [
       {
