@@ -28,7 +28,10 @@ const createServer = (auth: Authenticator): McpServer => {
     {},
     withToolLogging(
       auth,
-      { toolNameForMonitoring: CONFLUENCE_TOOL_NAME },
+      {
+        toolNameForMonitoring: CONFLUENCE_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (_, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -71,7 +74,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: CONFLUENCE_TOOL_NAME },
+      {
+        toolNameForMonitoring: CONFLUENCE_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (params, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -128,7 +134,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: CONFLUENCE_TOOL_NAME },
+      {
+        toolNameForMonitoring: CONFLUENCE_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (params, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -196,7 +205,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: CONFLUENCE_TOOL_NAME },
+      {
+        toolNameForMonitoring: CONFLUENCE_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (params, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {

@@ -104,7 +104,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ search, top = 10, skip = 0, select }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -181,7 +184,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ search, top = 10, skip = 0 }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -267,7 +273,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (
         { to, cc, bcc, subject, contentType, body, importance = "normal" },
         { authInfo }
@@ -342,7 +351,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ messageId, subject, to }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -410,7 +422,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (
         {
           messageId,
@@ -529,7 +544,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ search, top = 20, skip = 0, select }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -614,7 +632,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (
         {
           displayName,
@@ -733,7 +754,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      {
+        toolNameForMonitoring: OUTLOOK_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (
         {
           contactId,

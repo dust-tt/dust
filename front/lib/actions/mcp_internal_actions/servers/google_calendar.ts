@@ -124,7 +124,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ pageToken, maxResults }, { authInfo }) => {
         const calendar = await getCalendarClient(authInfo);
         assert(
@@ -182,7 +186,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async (
         { calendarId = "primary", q, timeMin, timeMax, maxResults, pageToken },
         { authInfo }
@@ -262,7 +270,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ calendarId = "primary", eventId }, { authInfo }) => {
         const calendar = await getCalendarClient(authInfo);
         assert(
@@ -321,7 +333,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async (
         {
           calendarId = "primary",
@@ -420,7 +436,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async (
         {
           calendarId = "primary",
@@ -512,7 +532,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ calendarId = "primary", eventId }, { authInfo }) => {
         const calendar = await getCalendarClient(authInfo);
         assert(
@@ -564,7 +588,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ email, startTime, endTime, timeZone }, { authInfo }) => {
         const calendar = await getCalendarClient(authInfo);
         assert(

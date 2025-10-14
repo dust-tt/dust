@@ -55,7 +55,10 @@ const createServer = (auth: Authenticator): McpServer => {
     {},
     withToolLogging(
       auth,
-      { toolNameForMonitoring: MONDAY_TOOL_NAME },
+      {
+        toolNameForMonitoring: MONDAY_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (_params, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -82,7 +85,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: MONDAY_TOOL_NAME },
+      {
+        toolNameForMonitoring: MONDAY_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ boardId }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -109,7 +115,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: MONDAY_TOOL_NAME },
+      {
+        toolNameForMonitoring: MONDAY_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ itemId }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -165,7 +174,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: MONDAY_TOOL_NAME },
+      {
+        toolNameForMonitoring: MONDAY_TOOL_NAME,
+        skipAlerting: true,
+      },
       async (
         {
           query,
@@ -234,7 +246,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: MONDAY_TOOL_NAME },
+      {
+        toolNameForMonitoring: MONDAY_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ boardId, itemName, groupId, columnValues }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -272,7 +287,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: MONDAY_TOOL_NAME },
+      {
+        toolNameForMonitoring: MONDAY_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ itemId, columnValues }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -305,7 +323,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: MONDAY_TOOL_NAME },
+      {
+        toolNameForMonitoring: MONDAY_TOOL_NAME,
+        skipAlerting: true,
+      },
       async ({ itemId, body }, { authInfo }) => {
         const accessToken = authInfo?.token;
 

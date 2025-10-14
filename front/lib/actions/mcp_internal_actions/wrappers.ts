@@ -25,9 +25,11 @@ export function withToolLogging<T>(
   {
     toolNameForMonitoring,
     agentLoopContext,
+    skipAlerting = false,
   }: {
     toolNameForMonitoring: string;
     agentLoopContext?: AgentLoopContextType;
+    skipAlerting?: boolean;
   },
   toolCallback: (
     params: T,
@@ -49,8 +51,7 @@ export function withToolLogging<T>(
     > = {
       workspace: {
         sId: owner.sId,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        plan_code: auth.plan()?.code || null,
+        plan_code: auth.plan()?.code ?? null,
       },
       toolName: toolNameForMonitoring,
     };
@@ -78,31 +79,32 @@ export function withToolLogging<T>(
     const tags = [
       `tool:${toolNameForMonitoring}`,
       `workspace:${owner.sId}`,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      `workspace_plan_code:${auth.plan()?.code || null}`,
+      `workspace_plan_code:${auth.plan()?.code ?? null}`,
     ];
 
-    statsDClient.increment("use_tools.count", 1, tags);
+    if (!skipAlerting) {
+      statsDClient.increment("use_tools.count", 1, tags);
+    }
     const startTime = performance.now();
 
     const result = await toolCallback(params, extra);
 
     // When we get an Err, we monitor it if tracked and return it as a text content.
     if (result.isErr()) {
-      if (result.error.tracked) {
+      if (result.error.tracked && !skipAlerting) {
         statsDClient.increment("use_tools_error.count", 1, [
           "error_type:run_error",
           ...tags,
         ]);
-
-        logger.error(
-          {
-            error: result.error,
-            ...loggerArgs,
-          },
-          "Tool execution error"
-        );
       }
+
+      logger.error(
+        {
+          error: result.error,
+          ...loggerArgs,
+        },
+        "Tool execution error"
+      );
 
       return {
         isError: true,
@@ -116,7 +118,21 @@ export function withToolLogging<T>(
     }
 
     const elapsed = performance.now() - startTime;
-    statsDClient.distribution("run_tool.duration.distribution", elapsed, tags);
+    if (!skipAlerting) {
+      statsDClient.distribution(
+        "run_tool.duration.distribution",
+        elapsed,
+        tags
+      );
+    }
+
+    logger.info(
+      {
+        ...loggerArgs,
+        duration: elapsed,
+      },
+      "Tool execution success"
+    );
 
     return { isError: false, content: result.value };
   };

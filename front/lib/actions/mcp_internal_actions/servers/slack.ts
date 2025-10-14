@@ -317,7 +317,11 @@ const createServer = async (
       },
       withToolLogging(
         auth,
-        { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+        {
+          toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+          agentLoopContext,
+          skipAlerting: true,
+        },
         async (
           {
             keywords,
@@ -618,7 +622,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ channel, relativeTimeFrame }, { authInfo }) => {
         if (!agentLoopContext?.runContext) {
           return new Err(
@@ -759,7 +767,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ to, message, threadTs, fileId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -801,7 +813,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -830,7 +846,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ userId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -860,7 +880,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {

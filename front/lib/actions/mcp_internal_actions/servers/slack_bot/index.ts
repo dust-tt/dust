@@ -57,7 +57,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ to, message, threadTs, fileId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -96,7 +100,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -124,7 +132,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ userId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -153,7 +165,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -201,7 +217,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ channel, limit = 20, cursor, oldest, latest }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -275,7 +295,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async (
         { channel, threadTs, limit = 20, cursor, oldest, latest },
         { authInfo }
@@ -349,7 +373,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ channel, timestamp, name }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -402,7 +430,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ channel, timestamp, name }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {

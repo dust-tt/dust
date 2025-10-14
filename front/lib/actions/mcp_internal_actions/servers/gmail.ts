@@ -78,7 +78,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "gmail" },
+      {
+        toolNameForMonitoring: "gmail",
+        skipAlerting: true,
+      },
       async ({ q, pageToken }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -157,7 +160,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "gmail" },
+      {
+        toolNameForMonitoring: "gmail",
+        skipAlerting: true,
+      },
       async ({ to, cc, bcc, subject, contentType, body }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -235,7 +241,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "gmail" },
+      {
+        toolNameForMonitoring: "gmail",
+        skipAlerting: true,
+      },
       async ({ draftId, subject, to }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -291,7 +300,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "gmail" },
+      {
+        toolNameForMonitoring: "gmail",
+        skipAlerting: true,
+      },
       async ({ q, maxResults = 10, pageToken }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -422,7 +434,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "gmail" },
+      {
+        toolNameForMonitoring: "gmail",
+        skipAlerting: true,
+      },
       async (
         { messageId, body, contentType = "text/plain" as const, to, cc, bcc },
         { authInfo }
