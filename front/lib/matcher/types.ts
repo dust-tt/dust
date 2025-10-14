@@ -17,6 +17,22 @@ export type Operation = (typeof Operations)[number];
 export const LogicalOps = ["and", "or", "not"] as const;
 export type LogicalOp = (typeof LogicalOps)[number];
 
+export const OperationDisplayNames: Record<Operation | LogicalOp, string> = {
+  "starts-with": "starts with",
+  has: "has",
+  "has-all": "has all",
+  "has-any": "has any",
+  eq: "=",
+  gt: ">",
+  gte: "≥",
+  lt: "<",
+  lte: "≤",
+  exists: "exists",
+  and: "and",
+  or: "or",
+  not: "not",
+};
+
 export type OperationExpression = {
   op: Operation;
   field: string;
