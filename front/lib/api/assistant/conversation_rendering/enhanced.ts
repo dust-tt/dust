@@ -1,7 +1,4 @@
-import {
-  getTextContentFromMessage,
-  getTextRepresentationFromMessages,
-} from "@app/lib/api/assistant/utils";
+import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
@@ -12,7 +9,14 @@ import type {
   ModelMessageTypeMultiActions,
   Result,
 } from "@app/types";
-import { Err, isContentFragmentMessageTypeModel, Ok } from "@app/types";
+import {
+  assertNever,
+  Err,
+  isContentFragmentMessageTypeModel,
+  isImageContent,
+  isTextContent,
+  Ok,
+} from "@app/types";
 
 import type { InteractionWithTokens, MessageWithTokens } from "./pruning";
 import {
@@ -24,6 +28,9 @@ import { renderAllMessages } from "./shared/message_rendering";
 
 // When previous iteractions pruning is enabled, we'll attempt to fully preserve this number of interactions.
 const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;
+
+// Fixed number of tokens assumed for image contents
+const IMAGE_CONTENT_TOKEN_COUNT = 3100;
 
 export async function renderConversationEnhanced(
   auth: Authenticator,
@@ -67,33 +74,18 @@ export async function renderConversationEnhanced(
     onMissingAction,
   });
 
-  const res = await tokenCountForTexts(
-    [prompt, tools, ...getTextRepresentationFromMessages(messages)],
-    model
-  );
+  const messagesWithTokensRes = await countTokensForMessages(messages, model);
+  if (messagesWithTokensRes.isErr()) {
+    return messagesWithTokensRes;
+  }
+
+  const messagesWithTokens = messagesWithTokensRes.value;
+
+  const res = await tokenCountForTexts([prompt, tools], model);
   if (res.isErr()) {
     return new Err(res.error);
   }
-
-  const [promptCount, toolDefinitionsCount, ...messagesCount] = res.value;
-
-  // Add reasoning content token count.
-  for (const [i, message] of messages.entries()) {
-    if (message.role === "assistant") {
-      for (const content of message.contents ?? []) {
-        if (content.type === "reasoning") {
-          messagesCount[i] += content.value.tokens ?? 0;
-        }
-      }
-    }
-  }
-
-  const messagesWithTokens: MessageWithTokens[] = messages.map((msg, i) => ({
-    ...msg,
-    tokenCount: messagesCount[i],
-  }));
-
-  const interactions = groupMessagesIntoInteractions(messagesWithTokens);
+  const [promptCount, toolDefinitionsCount] = res.value;
 
   // Calculate base token usage.
   const toolDefinitionsCountAdjustmentFactor = 0.7;
@@ -103,6 +95,7 @@ export async function renderConversationEnhanced(
     Math.floor(toolDefinitionsCount * toolDefinitionsCountAdjustmentFactor) +
     tokensMargin;
 
+  const interactions = groupMessagesIntoInteractions(messagesWithTokens);
   let currentInteraction = interactions[interactions.length - 1];
   let currentInteractionTokens = getInteractionTokenCount(currentInteraction);
 
@@ -283,4 +276,83 @@ function groupMessagesIntoInteractions(
   }
 
   return interactions;
+}
+
+async function countTokensForMessages(
+  messages: ModelMessageTypeMultiActions[],
+  model: ModelConfigurationType
+): Promise<Result<MessageWithTokens[], Error>> {
+  const textRepresentations: string[] = [];
+  const additionalTokens: number[] = [];
+
+  for (const [i, m] of messages.entries()) {
+    additionalTokens[i] = 0;
+
+    let text = `${m.role} ${"name" in m ? m.name : ""} `;
+
+    if (m.role === "user" || m.role === "content_fragment") {
+      const textContents: string[] = [];
+      for (const c of m.content) {
+        if (isTextContent(c)) {
+          textContents.push(c.text);
+        } else if (isImageContent(c)) {
+          additionalTokens[i] += IMAGE_CONTENT_TOKEN_COUNT;
+        } else {
+          assertNever(c);
+        }
+      }
+      text += textContents.join("\n");
+    } else if (m.role === "assistant") {
+      //  Use the `contents` if available.
+      if (m.contents?.length) {
+        for (const c of m.contents) {
+          if (c.type === "reasoning") {
+            additionalTokens[i] += c.value.tokens;
+          } else if (c.type === "text_content") {
+            text += c.value;
+          } else if (c.type === "function_call") {
+            text += `${c.value.name} ${c.value.arguments}`;
+          } else {
+            assertNever(c);
+          }
+        }
+      } else if (m.content) {
+        // Fallback to legacy `content` field if `contents` is not available.
+        text += m.content;
+      }
+    } else if (m.role === "function") {
+      const content = Array.isArray(m.content)
+        ? m.content
+        : [{ type: "text" as const, text: m.content }];
+      const textContents: string[] = [];
+      for (const c of content) {
+        if (isTextContent(c)) {
+          textContents.push(c.text);
+        } else if (isImageContent(c)) {
+          additionalTokens[i] += IMAGE_CONTENT_TOKEN_COUNT;
+        } else {
+          assertNever(c);
+        }
+      }
+      text += textContents.join("\n");
+    } else {
+      assertNever(m);
+    }
+
+    textRepresentations.push(text);
+  }
+
+  const res = await tokenCountForTexts(textRepresentations, model);
+  if (res.isErr()) {
+    return res;
+  }
+
+  const textCounts = res.value;
+
+  return new Ok(
+    textCounts.map((count, i) => ({
+      ...messages[i],
+      tokenCount: count + additionalTokens[i],
+    }))
+  );
 }
