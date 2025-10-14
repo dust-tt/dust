@@ -8,17 +8,52 @@ import type {
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
+import { getClient } from "@connectors/connectors/microsoft";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ContentNode } from "@connectors/types";
+import { MicrosoftBotConfigurationResource } from "@connectors/resources/microsoft_resource";
+import type { ContentNode, DataSourceConfig } from "@connectors/types";
 
 export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "microsoft_bot";
 
-  static async create(): Promise<
-    Result<string, ConnectorManagerError<CreateConnectorErrorCode>>
-  > {
-    throw new Error("Method not implemented.");
+  static async create({
+    dataSourceConfig,
+    connectionId,
+  }: {
+    dataSourceConfig: DataSourceConfig;
+    connectionId: string;
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
+    const client = await getClient(connectionId);
+
+    let tenantId: string;
+    try {
+      // Get organization info to get tenant ID
+      const org = await client.api("/organization").get();
+      if (!org.value || !org.value[0] || !org.value[0].id) {
+        throw new Error("Could not retrieve Microsoft organization ID");
+      }
+
+      tenantId = org.value[0].id;
+    } catch (err) {
+      throw new Error("Error creating Microsoft Bot connector");
+    }
+
+    const connector = await ConnectorResource.makeNew(
+      "microsoft_bot",
+      {
+        connectionId,
+        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+      },
+      {
+        botEnabled: true,
+        tenantId,
+      }
+    );
+
+    return new Ok(connector.id.toString());
   }
 
   async update({
@@ -48,7 +83,39 @@ export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    throw new Error("Method not implemented.");
+    try {
+      // Clean up bot configuration
+      const botConfig =
+        await MicrosoftBotConfigurationResource.fetchByConnectorId(
+          connector.id
+        );
+      if (botConfig) {
+        await botConfig.delete();
+      }
+
+      // Delete the connector itself
+      const res = await connector.delete();
+      if (res.isErr()) {
+        logger.error(
+          { connectorId: this.connectorId, error: res.error },
+          "Error cleaning up Microsoft Bot connector."
+        );
+        return res;
+      }
+
+      logger.info(
+        { connectorId: this.connectorId },
+        "Successfully cleaned up Microsoft Bot connector."
+      );
+
+      return new Ok(undefined);
+    } catch (error) {
+      logger.error(
+        { connectorId: this.connectorId, error },
+        "Error cleaning up Microsoft Bot connector."
+      );
+      return new Err(error as Error);
+    }
   }
 
   async sync(): Promise<Result<string, Error>> {
@@ -73,12 +140,59 @@ export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
-  async setConfigurationKey(): Promise<Result<void, Error>> {
+  async setConfigurationKey({
+    configKey,
+    configValue,
+  }: {
+    configKey: string;
+    configValue: string;
+  }): Promise<Result<void, Error>> {
+    const botConfig =
+      await MicrosoftBotConfigurationResource.fetchByConnectorId(
+        this.connectorId
+      );
+
+    if (!botConfig) {
+      throw new Error(
+        `Bot configuration not found for connector ${this.connectorId}`
+      );
+    }
+
+    switch (configKey) {
+      case "botEnabled":
+        await botConfig.update({ botEnabled: configValue === "true" });
+        break;
+      default:
+        throw new Error(`Configuration key ${configKey} is not modifiable`);
+    }
+
     return new Ok(undefined);
   }
 
-  async getConfigurationKey(): Promise<Result<string | null, Error>> {
-    throw new Error("Method not implemented.");
+  async getConfigurationKey({
+    configKey,
+  }: {
+    configKey: string;
+  }): Promise<Result<string | null, Error>> {
+    const botConfig =
+      await MicrosoftBotConfigurationResource.fetchByConnectorId(
+        this.connectorId
+      );
+
+    if (!botConfig) {
+      throw new Error(
+        `Bot configuration not found for connector ${this.connectorId}`
+      );
+    }
+
+    switch (configKey) {
+      case "botEnabled":
+        return new Ok(botConfig.botEnabled.toString());
+      case "tenantId":
+        return new Ok(botConfig.tenantId);
+      default:
+        return new Ok(null);
+    }
   }
 
   async stop(): Promise<Result<undefined, Error>> {
