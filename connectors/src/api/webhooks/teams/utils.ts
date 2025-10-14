@@ -1,6 +1,6 @@
 import type { TurnContext } from "botbuilder";
 
-import { sendActivity } from "@connectors/connectors/teams/bot_messaging_utils";
+import { sendActivity } from "@connectors/connectors/microsoft_bot/bot_messaging_utils";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftBotConfigurationResource } from "@connectors/resources/microsoft_resource";
@@ -22,7 +22,7 @@ export async function getConnector(context: TurnContext) {
     logger.error("No tenant ID found in Teams context");
     await sendActivity(context, {
       type: "message",
-      text: "Unable to identify tenant for this Teams message",
+      text: "❌ Unable to identify tenant for this Teams message",
     });
     return;
   }
@@ -40,7 +40,7 @@ export async function getConnector(context: TurnContext) {
     );
     await sendActivity(context, {
       type: "message",
-      text: "Microsoft Teams Integration is not enabled for your Organization.",
+      text: "❌ Microsoft Teams Integration is not enabled for your Organization.",
     });
     return;
   }
@@ -58,7 +58,7 @@ export async function getConnector(context: TurnContext) {
     );
     await sendActivity(context, {
       type: "message",
-      text: "Microsoft Teams Integration is not enabled for your Organization.",
+      text: "❌ Microsoft Teams Integration is not enabled for your Organization.",
     });
     return;
   }
