@@ -8,7 +8,7 @@ import {
   McpError,
   ProgressNotificationSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { Context } from "@temporalio/activity";
+import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 import EventEmitter from "events";
 import type { JSONSchema7 } from "json-schema";
@@ -46,7 +46,10 @@ import {
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeMCPToolTextError,
+  makePersonalAuthenticationError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import type {
   MCPConnectionParams,
   ServerSideMCPConnectionParams,
@@ -88,12 +91,14 @@ import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok, slugify } from "@app/types";
+import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT } from "@app/temporal/agent_loop/workflows";
 
 const MAX_OUTPUT_ITEMS = 128;
 
 const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
 const MCP_TOOL_ERROR_EVENT_NAME = "TOOL_ERROR" as const;
+const MCP_TOOL_HEARTBEAT_EVENT_NAME = "TOOL_HEARTBEAT" as const;
 
 const EMPTY_INPUT_SCHEMA: JSONSchema7 = {
   properties: {},
@@ -385,12 +390,24 @@ export async function* tryCallMCPTool(
 
     // Read from notificationStream and yield events until the tool is done.
     let toolDone = false;
+    let notificationPromise = notificationStream.next();
+
+    // Frequently heartbeat to get notified of cancellation.
+    const getHeartbeatPromise = (): Promise<void> =>
+      new Promise((resolve) => {
+        setInterval(() => {
+          heartbeat();
+          resolve();
+        }, TOOL_ACTIVITY_HEARTBEAT_TIMEOUT / 2);
+      });
+
     while (!toolDone) {
       const notificationOrDone = await Promise.race([
-        notificationStream.next(), // Next notification.
+        notificationPromise,
         toolPromise
           .then(() => MCP_TOOL_DONE_EVENT_NAME)
           .catch(() => MCP_TOOL_ERROR_EVENT_NAME), // Or tool rejects (abort or error).
+        getHeartbeatPromise().then(() => MCP_TOOL_HEARTBEAT_EVENT_NAME),
       ]);
 
       // If the tool completed or errored, break from the loop and stop reading notifications.
@@ -399,13 +416,15 @@ export async function* tryCallMCPTool(
         notificationOrDone === MCP_TOOL_ERROR_EVENT_NAME
       ) {
         toolDone = true;
+      } else if (notificationOrDone === MCP_TOOL_HEARTBEAT_EVENT_NAME) {
+        // Do nothing.
       } else {
         const iteratorResult = notificationOrDone;
         if (iteratorResult.done) {
           // The notifications ended prematurely.
           break;
         }
-
+        notificationPromise = notificationStream.next();
         yield makeToolNotificationEvent(iteratorResult.value);
       }
     }
@@ -415,23 +434,10 @@ export async function* tryCallMCPTool(
       toolCallResult = await toolPromise;
     } catch (toolError) {
       if (abortSignal?.aborted) {
-        throw new MCPError("Tool execution cancelled", {
-          tracked: false,
-          cause: normalizeError(toolError),
-        });
+        return makeMCPToolTextError("The tool execution was cancelled.");
       }
 
       throw toolError;
-    }
-
-    // Before returning the content to the caller, we make sure the notifications are fully flushed.
-    // Once the tool completes, the notifications should already be flushed, so this is a no-op in
-    // practice. However, it's safer to drain the queue to avoid any potential race condition.
-    let notificationResult = await notificationStream.next();
-    while (!notificationResult.done) {
-      const notification = notificationResult.value;
-      yield makeToolNotificationEvent(notification);
-      notificationResult = await notificationStream.next();
     }
 
     // Type inference is not working here because of them using passthrough in the zod schema.

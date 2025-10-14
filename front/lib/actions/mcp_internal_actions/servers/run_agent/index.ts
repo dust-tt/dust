@@ -417,14 +417,27 @@ export default async function createServer(
         const { conversation, isNewConversation, userMessageId } =
           convRes.value;
 
+        // Early finish: if the child conversation already succeeded, return its stored result.
+        const agentMessage = getLatestVersionByParentMessageId(
+          conversation,
+          userMessageId
+        );
+
         const requestChildCancellation = () => {
-          if (!userMessageId) {
+          if (!agentMessage) {
+            logger.warn(
+              {
+                childConversationId: conversation.sId,
+                conversationId: mainConversation.sId,
+              },
+              "run_agent cancellation error: No agent message found."
+            );
             return;
           }
 
           if (!childCancellationPromise) {
             childCancellationPromise = cancelMessageGenerationEvent(auth, {
-              messageIds: [userMessageId],
+              messageIds: [agentMessage.sId],
               conversationId: conversation.sId,
             }).catch((cancelError) => {
               logger.warn(
@@ -579,11 +592,6 @@ export default async function createServer(
             ),
           };
         };
-        // Early finish: if the child conversation already succeeded, return its stored result.
-        const agentMessage = getLatestVersionByParentMessageId(
-          conversation,
-          userMessageId
-        );
 
         if (agentMessage && agentMessage.status === "succeeded") {
           const { finalText, cot, refsFromAgent, files } =
