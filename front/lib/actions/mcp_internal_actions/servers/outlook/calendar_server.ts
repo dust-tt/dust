@@ -471,7 +471,6 @@ const createServer = (auth: Authenticator): McpServer => {
 
         return new Ok([
           { type: "text" as const, text: "Event deleted successfully" },
-          { type: "text" as const, text: JSON.stringify("", null, 2) },
         ]);
       }
     )
