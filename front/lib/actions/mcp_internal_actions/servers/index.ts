@@ -22,7 +22,7 @@ import { default as calendarServer } from "@app/lib/actions/mcp_internal_actions
 import { default as driveServer } from "@app/lib/actions/mcp_internal_actions/servers/google_drive";
 import { default as sheetsServer } from "@app/lib/actions/mcp_internal_actions/servers/google_sheets";
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot";
-import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
+import { default as imageGenerationServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
@@ -94,7 +94,7 @@ export async function getInternalMCPServer(
     case "hubspot":
       return hubspotServer();
     case "image_generation":
-      return imageGenerationDallEServer(auth);
+      return imageGenerationServer(auth);
     case "elevenlabs":
       return elevenlabsServer(auth, agentLoopContext);
     case "file_generation":
