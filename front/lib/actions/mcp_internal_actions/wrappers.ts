@@ -128,6 +128,14 @@ export function withToolLogging<T>(
       );
     }
 
+    logger.info(
+      {
+        ...loggerArgs,
+        duration: elapsed,
+      },
+      "Tool execution success"
+    );
+
     return { isError: false, content: result.value };
   };
 }
