@@ -9,7 +9,10 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { checkWebhookRequestForRateLimit } from "@app/lib/triggers/webhook";
+import {
+  checkWebhookRequestForRateLimit,
+  processWebhookRequest,
+} from "@app/lib/triggers/webhook";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
@@ -75,7 +78,7 @@ async function handler(
   req: NextApiRequestWithContext,
   res: NextApiResponse<WithAPIErrorResponse<PostWebhookTriggerResponseType>>
 ): Promise<void> {
-  const { method, body } = req;
+  const { method, body, headers, query } = req;
 
   if (method !== "POST") {
     return apiError(req, res, {
@@ -87,7 +90,7 @@ async function handler(
     });
   }
 
-  const contentType = req.headers["content-type"];
+  const contentType = headers["content-type"];
   if (!contentType || !contentType.includes("application/json")) {
     return apiError(req, res, {
       status_code: 400,
@@ -98,7 +101,7 @@ async function handler(
     });
   }
 
-  const { wId, webhookSourceId, webhookSourceUrlSecret } = req.query;
+  const { wId, webhookSourceId, webhookSourceUrlSecret } = query;
 
   if (
     typeof wId !== "string" ||
@@ -168,7 +171,7 @@ async function handler(
         },
       });
     }
-    const signature = req.headers[signatureHeader.toLowerCase()] as string;
+    const signature = headers[signatureHeader.toLowerCase()] as string;
 
     if (!signature) {
       return apiError(req, res, {
@@ -206,6 +209,12 @@ async function handler(
       });
     }
   }
+
+  await processWebhookRequest(auth, {
+    webhookSource: webhookSource.toJSON(),
+    headers,
+    body,
+  });
 
   const rateLimiterRes = await checkWebhookRequestForRateLimit(auth);
   if (rateLimiterRes.isErr()) {
@@ -328,7 +337,7 @@ async function handler(
     const contentFragmentRes = await toFileContentFragment(auth, {
       contentFragment: {
         contentType: "application/json",
-        content: JSON.stringify(req.body),
+        content: JSON.stringify(body),
         title: `Webhook body (source id: ${webhookSource.id}, date: ${new Date().toISOString()})`,
       },
       fileName: `webhook_body_${webhookSource.id}_${Date.now()}.json`,

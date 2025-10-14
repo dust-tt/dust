@@ -10,8 +10,8 @@ import type { GetWebhookSourceViewsResponseBody as GetSpecificWebhookSourceViews
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import type {
   PostWebhookSourcesBody,
-  WebhookSource,
-  WebhookSourceView,
+  WebhookSourceType,
+  WebhookSourceViewType,
 } from "@app/types/triggers/webhooks";
 
 export function useWebhookSourceViews({
@@ -86,7 +86,7 @@ export function useCreateWebhookSource({
   const sendNotification = useSendNotification();
   const createWebhookSource = async (
     input: PostWebhookSourcesBody
-  ): Promise<WebhookSource | null> => {
+  ): Promise<WebhookSourceType | null> => {
     try {
       const response = await fetch(`/api/w/${owner.sId}/webhook_sources`, {
         method: "POST",
@@ -279,7 +279,7 @@ export function useAddWebhookSourceViewToSpace({
       webhookSource,
     }: {
       space: SpaceType;
-      webhookSource: WebhookSource;
+      webhookSource: WebhookSourceType;
     }): Promise<void> => {
       try {
         const response = await fetch(
@@ -334,7 +334,7 @@ export function useRemoveWebhookSourceViewFromSpace({
       webhookSourceView,
       space,
     }: {
-      webhookSourceView: WebhookSourceView;
+      webhookSourceView: WebhookSourceViewType;
       space: SpaceType;
     }): Promise<void> => {
       try {

@@ -16,6 +16,9 @@ const config = {
   getDustDataSourcesBucket: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_DATA_SOURCES_BUCKET");
   },
+  getWebhookRequestsBucket: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_WEBHOOK_REQUESTS_BUCKET");
+  },
 };
 
 export default config;

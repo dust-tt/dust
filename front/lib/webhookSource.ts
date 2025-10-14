@@ -10,7 +10,7 @@ import {
 } from "@app/components/resources/resources_icons";
 import type {
   WebhookSourceSignatureAlgorithm,
-  WebhookSourceWithViews,
+  WebhookSourceWithViewsType,
 } from "@app/types/triggers/webhooks";
 
 export const DEFAULT_WEBHOOK_ICON: InternalAllowedIconType =
@@ -31,7 +31,7 @@ export const normalizeWebhookIcon = (
 };
 
 export const filterWebhookSource = (
-  webhookSource: WebhookSourceWithViews,
+  webhookSource: WebhookSourceWithViewsType,
   filterValue: string
 ) => {
   {

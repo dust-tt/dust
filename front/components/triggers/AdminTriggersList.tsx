@@ -25,14 +25,14 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { filterWebhookSource } from "@app/lib/webhookSource";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
-import type { WebhookSourceWithSystemViewAndUsage } from "@app/types/triggers/webhooks";
+import type { WebhookSourceWithSystemViewAndUsageType } from "@app/types/triggers/webhooks";
 import {
   WEBHOOK_SOURCE_KIND,
   WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
 } from "@app/types/triggers/webhooks";
 
 type RowData = {
-  webhookSource: WebhookSourceWithSystemViewAndUsage;
+  webhookSource: WebhookSourceWithSystemViewAndUsageType;
   spaces: SpaceType[];
   onClick?: () => void;
 };
@@ -67,7 +67,7 @@ const NameCell = ({ row }: { row: RowData }) => {
 interface AdminTriggersListProps {
   owner: LightWorkspaceType;
   isWebhookSourcesWithViewsLoading: boolean;
-  webhookSourcesWithSystemView: WebhookSourceWithSystemViewAndUsage[];
+  webhookSourcesWithSystemView: WebhookSourceWithSystemViewAndUsageType[];
   filter: string;
   setAgentSId: (a: string | null) => void;
 }
