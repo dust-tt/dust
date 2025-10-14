@@ -95,28 +95,29 @@ export function AssistantKnowledgeSection({
           if (!acc[ds.dataSourceViewId]) {
             // First one sets the filter
             acc[ds.dataSourceViewId] = ds;
-          } else {
-            if (ds.filter.parents) {
-              const existingFilter = acc[ds.dataSourceViewId].filter.parents;
-              // Merge the filters if they are not null
-              if (existingFilter) {
-                // Handle case where in or not could be null
-                if (existingFilter.in !== null && ds.filter.parents.in !== null) {
-                  existingFilter.in = _.uniq(
-                    existingFilter.in.concat(ds.filter.parents.in)
-                  );
-                } else if (ds.filter.parents.in === null) {
-                  // If the new filter has in: null, it means "all", so we keep null
-                  existingFilter.in = null;
-                }
+          } else if (ds.filter.parents) {
+            const existingFilter = acc[ds.dataSourceViewId].filter.parents;
+            // Merge the filters if they are not null
+            if (existingFilter) {
+              if (ds.filter.parents.in === null) {
+                // If the new filter has in: null, it means "all", so we keep null.
+                existingFilter.in = null;
+              } else if (existingFilter.in !== null) {
+                existingFilter.in = _.uniq(
+                  existingFilter.in.concat(ds.filter.parents.in)
+                );
+              }
+              if (ds.filter.parents.not === null) {
+                existingFilter.not = null;
+              } else if (existingFilter.not !== null) {
                 existingFilter.not = _.uniq(
                   existingFilter.not.concat(ds.filter.parents.not)
                 );
               }
-            } else {
-              // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
-              acc[ds.dataSourceViewId].filter.parents = null;
             }
+          } else {
+            // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
+            acc[ds.dataSourceViewId].filter.parents = null;
           }
         });
       }
@@ -136,28 +137,29 @@ export function AssistantKnowledgeSection({
           if (!acc[ds.dataSourceViewId]) {
             // First one sets the filter
             acc[ds.dataSourceViewId] = ds;
-          } else {
-            if (ds.filter.parents) {
-              const existingFilter = acc[ds.dataSourceViewId].filter.parents;
-              // Merge the filters if they are not null
-              if (existingFilter) {
-                // Handle case where in or not could be null
-                if (existingFilter.in !== null && ds.filter.parents.in !== null) {
-                  existingFilter.in = _.uniq(
-                    existingFilter.in.concat(ds.filter.parents.in)
-                  );
-                } else if (ds.filter.parents.in === null) {
-                  // If the new filter has in: null, it means "all", so we keep null
-                  existingFilter.in = null;
-                }
+          } else if (ds.filter.parents) {
+            const existingFilter = acc[ds.dataSourceViewId].filter.parents;
+            // Merge the filters if they are not null
+            if (existingFilter) {
+              if (ds.filter.parents.in === null) {
+                // If the new filter has in: null, it means "all", so we keep null.
+                existingFilter.in = null;
+              } else if (existingFilter.in !== null) {
+                existingFilter.in = _.uniq(
+                  existingFilter.in.concat(ds.filter.parents.in)
+                );
+              }
+              if (ds.filter.parents.not === null) {
+                existingFilter.not = null;
+              } else if (existingFilter.not !== null) {
                 existingFilter.not = _.uniq(
                   existingFilter.not.concat(ds.filter.parents.not)
                 );
               }
-            } else {
-              // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
-              acc[ds.dataSourceViewId].filter.parents = null;
             }
+          } else {
+            // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
+            acc[ds.dataSourceViewId].filter.parents = null;
           }
         });
       }
