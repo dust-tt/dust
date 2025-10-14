@@ -52,7 +52,15 @@ type HttpMethod = "GET" | "POST";
 export default function NotionRequestsPage({
   owner,
   dataSource,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+interface NotionRequestsPageProps {
+  owner: WorkspaceType;
+  dataSource: DataSourceType;
+}
+
+export default function NotionRequestsPage({
+  owner,
+  dataSource,
+}: NotionRequestsPageProps) {
   const { isDark } = useTheme();
   const [url, setUrl] = useState("");
   const [method, setMethod] = useState<HttpMethod>("GET");
