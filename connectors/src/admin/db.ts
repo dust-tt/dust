@@ -37,7 +37,6 @@ import {
   IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import {
-  MicrosoftBotConfigurationModel,
   MicrosoftConfigurationModel,
   MicrosoftNodeModel,
   MicrosoftRootModel,
@@ -85,6 +84,7 @@ import logger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import { sendInitDbMessage } from "@connectors/types";
+import { MicrosoftBotConfigurationModel } from "@connectors/lib/models/microsoft_bot";
 
 async function main(): Promise<void> {
   await sendInitDbMessage({

@@ -12,8 +12,8 @@ import { getClient } from "@connectors/connectors/microsoft";
 import { getOrganization } from "@connectors/connectors/microsoft/lib/graph_api";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { MicrosoftBotConfigurationResource } from "@connectors/resources/microsoft_resource";
 import type { ContentNode, DataSourceConfig } from "@connectors/types";
+import { MicrosoftBotConfigurationResource } from "@connectors/resources/microsoft_bot_resources";
 
 export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "microsoft_bot";
