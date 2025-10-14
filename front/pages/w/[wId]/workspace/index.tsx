@@ -37,6 +37,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
@@ -114,6 +115,9 @@ export default function WorkspaceAdmin({
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const isMicrosoftTeamsBotEnabled = featureFlags.includes("microsoft_teams_bot");
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -261,16 +265,18 @@ export default function WorkspaceAdmin({
                 description="Use Dust Agents in Slack with the Dust Slack app"
                 visual={<SlackLogo className="h-6 w-6" />}
               />
-              <BotToggle
-                owner={owner}
-                botDataSource={microsoftBotDataSource}
-                systemSpace={systemSpace}
-                oauthProvider="microsoft"
-                connectorProvider="microsoft_bot"
-                name="Microsoft Teams Bot"
-                description="Use Dust Agents in Teams with the Dust Microsoft Teams Bot"
-                visual={<MicrosoftLogo className="h-6 w-6" />}
-              />
+              {isMicrosoftTeamsBotEnabled && (
+                <BotToggle
+                  owner={owner}
+                  botDataSource={microsoftBotDataSource}
+                  systemSpace={systemSpace}
+                  oauthProvider="microsoft"
+                  connectorProvider="microsoft_bot"
+                  name="Microsoft Teams Bot"
+                  description="Use Dust Agents in Teams with the Dust Microsoft Teams Bot"
+                  visual={<MicrosoftLogo className="h-6 w-6" />}
+                />
+              )}
             </ContextItem.List>
           </Page.Vertical>
         )}
