@@ -1,3 +1,4 @@
+import type { estypes } from "@elastic/elasticsearch";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -5,27 +6,30 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import {
+  bucketsToArray,
+  formatUTCDateFromMillis,
+  getAnalyticsIndex,
+  safeEsSearch,
+} from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { formatUTCDateFromMillis, safeEsSearch } from "@app/lib/api/elasticsearch";
 
 const QuerySchema = t.type({
   days: t.union([t.string, t.undefined]),
   interval: t.union([t.literal("day"), t.literal("week"), t.undefined]),
 });
 
-type ESBucket = {
-  key: number; // millis since epoch
-  doc_count: number; // messages count
-  unique_conversations?: { value: number };
-  active_users?: { value: number };
+type ByIntervalBucket = {
+  key: number;
+  doc_count: number;
+  unique_conversations?: estypes.AggregationsCardinalityAggregate;
+  active_users?: estypes.AggregationsCardinalityAggregate;
 };
 
-type ESResponse = {
-  aggregations?: {
-    by_interval?: { buckets: ESBucket[] };
-  };
+type UsageAggs = {
+  by_interval?: estypes.AggregationsMultiBucketAggregateBase<ByIntervalBucket>;
 };
 
 export type UsageMetricsPoint = {
@@ -90,7 +94,7 @@ async function handler(
 
       const owner = auth.getNonNullableWorkspace();
 
-      const body = {
+      const body: Omit<estypes.SearchRequest, "index"> = {
         size: 0,
         query: {
           bool: {
@@ -115,11 +119,21 @@ async function handler(
             },
           },
         },
-      } as const;
+      };
 
-      const json = await safeEsSearch<ESResponse>(req, res, body);
-      if (!json) return;
-      const buckets = json.aggregations?.by_interval?.buckets || [];
+      const analyticsIndex = getAnalyticsIndex();
+      const json = await safeEsSearch<unknown, UsageAggs>(
+        req,
+        res,
+        body,
+        analyticsIndex
+      );
+      if (!json) {
+        return;
+      }
+      const buckets = bucketsToArray<ByIntervalBucket>(
+        json.aggregations?.by_interval?.buckets
+      );
 
       const points: UsageMetricsPoint[] = buckets.map((b) => {
         const date = formatUTCDateFromMillis(b.key);

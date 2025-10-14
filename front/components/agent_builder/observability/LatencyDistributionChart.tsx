@@ -8,14 +8,11 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  type TooltipProps,
 } from "recharts";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
-import type {
-  ObservabilityTimeRangeType} from "@app/components/agent_builder/observability/constants";
-import {
-  OBSERVABILITY_PALETTE
-} from "@app/components/agent_builder/observability/constants";
+import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import { OBSERVABILITY_PALETTE } from "@app/components/agent_builder/observability/constants";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
 import {
   useAgentLatencyAvgByVersion,
@@ -146,14 +143,22 @@ export function LatencyDistributionChart({
             />
             <Tooltip
               cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
-              content={({ active, payload, label }: TooltipProps<number, string>) => {
+              content={(props: TooltipContentProps<number, string>) => {
+                const { active, payload, label } = props;
                 if (!active || !payload || payload.length === 0) return null;
-                const entries = payload.map((p, i) => ({
+                type Item = NonNullable<typeof payload>[number];
+                const entries = payload.map((p: Item, i: number) => ({
                   label: String(p.name ?? p.dataKey),
                   value: (p.value as number) ?? 0,
-                  colorClass: OBSERVABILITY_PALETTE[i % OBSERVABILITY_PALETTE.length],
+                  colorClass:
+                    OBSERVABILITY_PALETTE[i % OBSERVABILITY_PALETTE.length],
                 }));
-                return <ChartTooltipCard title={label as string} rows={entries} />;
+                return (
+                  <ChartTooltipCard
+                    title={String(label ?? "")}
+                    rows={entries}
+                  />
+                );
               }}
             />
             {versionKeys.map((v, i) => (

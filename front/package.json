@@ -26,6 +26,7 @@
     "analyze": "NODE_OPTIONS=--max-old-space-size=8192 ANALYZE=true npm run build"
   },
   "dependencies": {
+    "@elastic/elasticsearch": "^8.15.0",
     "@datadog/browser-logs": "^6.13.0",
     "@dust-tt/client": "file:../sdks/js",
     "@dust-tt/sparkle": "^0.3.3",

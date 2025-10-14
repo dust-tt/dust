@@ -1,3 +1,4 @@
+import type { estypes } from "@elastic/elasticsearch";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -5,26 +6,31 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import {
+  bucketsToArray,
+  getAnalyticsIndex,
+  safeEsSearch,
+} from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { safeEsSearch } from "@app/lib/api/elasticsearch";
 
 const QuerySchema = t.type({
   days: t.union([t.string, t.undefined]),
   size: t.union([t.string, t.undefined]),
 });
 
-type ESTermsBucket = { key: string; doc_count: number };
-type ESResponse = {
-  aggregations?: {
-    tools?: {
-      tool_names?: {
-        buckets: (ESTermsBucket & {
-          statuses?: { buckets: ESTermsBucket[] };
-        })[];
-      };
-    };
+type TermBucket = {
+  key: string;
+  doc_count: number;
+};
+
+type ToolBucket = TermBucket & {
+  statuses?: estypes.AggregationsMultiBucketAggregateBase<TermBucket>;
+};
+type ToolAggs = {
+  tools?: {
+    tool_names?: estypes.AggregationsMultiBucketAggregateBase<ToolBucket>;
   };
 };
 
@@ -88,7 +94,7 @@ async function handler(
 
       const owner = auth.getNonNullableWorkspace();
 
-      const body = {
+      const body: Omit<estypes.SearchRequest, "index"> = {
         size: 0,
         query: {
           bool: {
@@ -116,15 +122,25 @@ async function handler(
             },
           },
         },
-      } as const;
+      };
 
-      const json = await safeEsSearch<ESResponse>(req, res, body);
-      if (!json) return;
-      const buckets = json.aggregations?.tools?.tool_names?.buckets || [];
+      const analyticsIndex = getAnalyticsIndex();
+      const json = await safeEsSearch<unknown, ToolAggs>(
+        req,
+        res,
+        body,
+        analyticsIndex
+      );
+      if (!json) {
+        return;
+      }
+      const buckets = bucketsToArray<ToolBucket>(
+        json.aggregations?.tools?.tool_names?.buckets
+      );
 
       const rows = buckets.map((b) => {
         const total = b.doc_count || 0;
-        const statuses = b.statuses?.buckets || [];
+        const statuses = bucketsToArray<TermBucket>(b.statuses?.buckets);
         const succeeded =
           statuses.find((s) => s.key === "succeeded")?.doc_count || 0;
         const failure = Math.max(0, total - succeeded); // everything not succeeded is considered failure

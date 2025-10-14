@@ -9,8 +9,8 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  type TooltipProps,
 } from "recharts";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { useAgentToolExecution } from "@app/lib/swr/assistants";
@@ -42,10 +42,17 @@ export function ToolExecutionChart({
     return [...rows].sort((a, b) => b.total - a.total).slice(0, 10);
   }, [toolExecution]);
 
-  function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
+  function CustomTooltip(props: TooltipContentProps<number, string>) {
+    const { active, payload } = props;
     if (!active || !payload || payload.length === 0) return null;
 
-    const row = payload[0].payload as { tool: string; success: number; failure: number };
+    type Item = NonNullable<typeof payload>[number];
+    const first = payload[0] as Item;
+    const row = first.payload as {
+      tool: string;
+      success: number;
+      failure: number;
+    };
     const total = (row.success ?? 0) + (row.failure ?? 0);
     const successPct = total ? Math.round((row.success / total) * 100) : 0;
     const failurePct = total ? Math.round((row.failure / total) * 100) : 0;
@@ -54,8 +61,18 @@ export function ToolExecutionChart({
       <ChartTooltipCard
         title={row.tool}
         rows={[
-          { label: "Success", value: row.success, percent: successPct, colorClass: "text-emerald-500" },
-          { label: "Failure", value: row.failure, percent: failurePct, colorClass: "text-rose-500" },
+          {
+            label: "Success",
+            value: row.success,
+            percent: successPct,
+            colorClass: "text-emerald-500",
+          },
+          {
+            label: "Failure",
+            value: row.failure,
+            percent: failurePct,
+            colorClass: "text-rose-500",
+          },
         ]}
         footer={`Total: ${total}`}
       />
@@ -108,10 +125,12 @@ export function ToolExecutionChart({
               width={180}
               className="text-xs text-muted-foreground"
             />
-          <Tooltip
-            cursor={{ fill: "rgba(0,0,0,0.04)" }}
-            content={<CustomTooltip />}
-          />
+            <Tooltip
+              cursor={{ fill: "rgba(0,0,0,0.04)" }}
+              content={(props: TooltipContentProps<number, string>) => (
+                <CustomTooltip {...props} />
+              )}
+            />
             <Bar
               dataKey="success"
               stackId="a"

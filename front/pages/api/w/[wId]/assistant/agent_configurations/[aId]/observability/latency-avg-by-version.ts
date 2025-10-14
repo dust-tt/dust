@@ -1,3 +1,4 @@
+import type { estypes } from "@elastic/elasticsearch";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -5,7 +6,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { formatUTCDateFromMillis, safeEsSearch } from "@app/lib/api/elasticsearch";
+import {
+  bucketsToArray,
+  formatUTCDateFromMillis,
+  getAnalyticsIndex,
+  safeEsSearch,
+} from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -15,17 +21,21 @@ const QuerySchema = t.type({
   tool: t.string,
 });
 
-type ESBucket = {
-  key: number;
-  versions?: {
-    buckets: { key: string; avg_latency?: { value: number | null } }[];
-  };
+type VersionBucket = {
+  key: string;
+  doc_count: number;
+  // Single metric aggregate is stable across versions, exposes optional value
+  avg_latency?: estypes.AggregationsSingleMetricAggregateBase;
 };
 
-type ESResponse = {
-  aggregations?: {
-    by_day?: { buckets: ESBucket[] };
-  };
+type DayBucket = {
+  key: number;
+  doc_count: number;
+  versions?: estypes.AggregationsMultiBucketAggregateBase<VersionBucket>;
+};
+
+type LatencyAggs = {
+  by_day?: estypes.AggregationsMultiBucketAggregateBase<DayBucket>;
 };
 
 export type LatencyAvgPoint = {
@@ -39,9 +49,7 @@ export type GetLatencyAvgByVersionResponse = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetLatencyAvgByVersionResponse>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<GetLatencyAvgByVersionResponse>>,
   auth: Authenticator
 ) {
   const assistant = await getAgentConfiguration(auth, {
@@ -89,7 +97,7 @@ async function handler(
       const owner = auth.getNonNullableWorkspace();
       const assistantSId = assistant.sId;
 
-      const body = {
+      const body: Omit<estypes.SearchRequest, "index"> = {
         size: 0,
         query: {
           bool: {
@@ -126,15 +134,25 @@ async function handler(
             },
           },
         },
-      } as const;
+      };
 
-      const json = await safeEsSearch<ESResponse>(req, res, body);
-      if (!json) {return;}
-      const buckets = json.aggregations?.by_day?.buckets ?? [];
+      const analyticsIndex = getAnalyticsIndex();
+      const json = await safeEsSearch<unknown, LatencyAggs>(
+        req,
+        res,
+        body,
+        analyticsIndex
+      );
+      if (!json) {
+        return;
+      }
+      const buckets = bucketsToArray<DayBucket>(
+        json.aggregations?.by_day?.buckets
+      );
 
       const points: LatencyAvgPoint[] = buckets.map((b) => {
         const date = formatUTCDateFromMillis(b.key);
-        const vBuckets = b.versions?.buckets ?? [];
+        const vBuckets = bucketsToArray<VersionBucket>(b.versions?.buckets);
         const versions: Record<string, number | null> = {};
         for (const vb of vBuckets) {
           versions[vb.key] = vb.avg_latency?.value ?? null;

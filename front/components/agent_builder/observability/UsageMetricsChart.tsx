@@ -8,8 +8,8 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  type TooltipProps,
 } from "recharts";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 import type {
   ObservabilityIntervalType,
@@ -109,20 +109,35 @@ export function UsageMetricsChart({
             <YAxis className="text-xs text-muted-foreground" />
             <Tooltip
               cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
-              content={({ active, payload, label }: TooltipProps<number, string>) => {
+              content={(props: TooltipContentProps<number, string>) => {
+                const { active, payload, label } = props;
                 if (!active || !payload || payload.length === 0) return null;
-                const row = payload[0].payload as {
+                type Item = NonNullable<typeof payload>[number];
+                const first = payload[0] as Item;
+                const row = first.payload as {
                   messages: number;
                   conversations: number;
                   activeUsers: number;
                 };
                 return (
                   <ChartTooltipCard
-                    title={label as string}
+                    title={String(label ?? "")}
                     rows={[
-                      { label: "Messages", value: row.messages, colorClass: palette.messages },
-                      { label: "Conversations", value: row.conversations, colorClass: palette.conversations },
-                      { label: "Active users", value: row.activeUsers, colorClass: palette.activeUsers },
+                      {
+                        label: "Messages",
+                        value: row.messages,
+                        colorClass: palette.messages,
+                      },
+                      {
+                        label: "Conversations",
+                        value: row.conversations,
+                        colorClass: palette.conversations,
+                      },
+                      {
+                        label: "Active users",
+                        value: row.activeUsers,
+                        colorClass: palette.activeUsers,
+                      },
                     ]}
                   />
                 );
