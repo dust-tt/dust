@@ -1,5 +1,5 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, normalizeError, Ok } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import type {
   ConnectorManagerError,
@@ -77,39 +77,22 @@ export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    try {
-      // Clean up bot configuration
-      const botConfig =
-        await MicrosoftBotConfigurationResource.fetchByConnectorId(
-          connector.id
-        );
-      if (botConfig) {
-        await botConfig.delete();
-      }
-
-      // Delete the connector itself
-      const res = await connector.delete();
-      if (res.isErr()) {
-        logger.error(
-          { connectorId: this.connectorId, error: res.error },
-          "Error cleaning up Microsoft Bot connector."
-        );
-        return res;
-      }
-
-      logger.info(
-        { connectorId: this.connectorId },
-        "Successfully cleaned up Microsoft Bot connector."
-      );
-
-      return new Ok(undefined);
-    } catch (error) {
+    // Delete the connector - the strategy will handle cleaning up the bot configuration
+    const res = await connector.delete();
+    if (res.isErr()) {
       logger.error(
-        { connectorId: this.connectorId, error },
+        { connectorId: this.connectorId, error: res.error },
         "Error cleaning up Microsoft Bot connector."
       );
-      return new Err(normalizeError(error));
+      return res;
     }
+
+    logger.info(
+      { connectorId: this.connectorId },
+      "Successfully cleaned up Microsoft Bot connector."
+    );
+
+    return new Ok(undefined);
   }
 
   async sync(): Promise<Result<string, Error>> {
