@@ -486,63 +486,57 @@ function DataSourceViewSelectedNodes({
     viewType,
   });
 
-  return (
-    <>
-      {nodes.map((node) => (
-        <Tree.Item
-          key={node.internalId}
-          label={node.title}
-          type={node.expandable && viewType !== "table" ? "node" : "leaf"}
-          visual={getVisualForDataSourceViewContentNode(node)}
-          className="whitespace-nowrap"
-          actions={
-            <div className="mr-8 flex flex-row gap-2">
-              <IconButton
-                size="xs"
-                icon={ExternalLinkIcon}
-                onClick={() => {
-                  if (node.sourceUrl) {
-                    window.open(node.sourceUrl, "_blank");
-                  }
-                }}
-                className={classNames(
-                  node.sourceUrl ? "" : "pointer-events-none opacity-0"
-                )}
-                disabled={!node.sourceUrl}
-                variant="ghost"
-              />
-              <IconButton
-                size="xs"
-                icon={BracesIcon}
-                onClick={() => {
-                  if (node.type === "document") {
-                    setDataSourceViewToDisplay(dataSourceView);
-                    setDocumentToDisplay(node.internalId);
-                  }
-                }}
-                className={classNames(
-                  node.type === "document"
-                    ? ""
-                    : "pointer-events-none opacity-0"
-                )}
-                disabled={node.type !== "document"}
-                variant="outline"
-              />
-            </div>
-          }
-        >
-          <DataSourceViewPermissionTree
-            owner={owner}
-            dataSourceView={dataSourceView}
-            parentId={node.internalId}
-            onDocumentViewClick={(documentId: string) => {
-              setDataSourceViewToDisplay(dataSourceView);
-              setDocumentToDisplay(documentId);
+  return nodes.map((node) => (
+    <Tree.Item
+      key={node.internalId}
+      label={node.title}
+      type={node.expandable && viewType !== "table" ? "node" : "leaf"}
+      visual={getVisualForDataSourceViewContentNode(node)}
+      className="whitespace-nowrap"
+      actions={
+        <div className="mr-8 flex flex-row gap-2">
+          <IconButton
+            size="xs"
+            icon={ExternalLinkIcon}
+            onClick={() => {
+              if (node.sourceUrl) {
+                window.open(node.sourceUrl, "_blank");
+              }
             }}
-            viewType="all"
+            className={classNames(
+              node.sourceUrl ? "" : "pointer-events-none opacity-0"
+            )}
+            disabled={!node.sourceUrl}
+            variant="ghost"
           />
-        </Tree.Item>
-      ))}
-    </>
-  );
+          <IconButton
+            size="xs"
+            icon={BracesIcon}
+            onClick={() => {
+              if (node.type === "document") {
+                setDataSourceViewToDisplay(dataSourceView);
+                setDocumentToDisplay(node.internalId);
+              }
+            }}
+            className={classNames(
+              node.type === "document" ? "" : "pointer-events-none opacity-0"
+            )}
+            disabled={node.type !== "document"}
+            variant="outline"
+          />
+        </div>
+      }
+    >
+      <DataSourceViewPermissionTree
+        owner={owner}
+        dataSourceView={dataSourceView}
+        parentId={node.internalId}
+        onDocumentViewClick={(documentId: string) => {
+          setDataSourceViewToDisplay(dataSourceView);
+          setDocumentToDisplay(documentId);
+        }}
+        viewType="all"
+      />
+    </Tree.Item>
+  ));
 }
