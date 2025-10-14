@@ -7,11 +7,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { SearchParams } from "@app/lib/api/elasticsearch";
-import {
-  bucketsToArray,
-  getAnalyticsIndex,
-  safeEsSearch,
-} from "@app/lib/api/elasticsearch";
+import { bucketsToArray, safeEsSearch } from "@app/lib/api/elasticsearch";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -96,7 +93,7 @@ async function handler(
       const owner = auth.getNonNullableWorkspace();
 
       const body: SearchParams = {
-        index: getAnalyticsIndex(),
+        index: config.getElasticsearchConfig().analyticsIndex,
         size: 0,
         query: {
           bool: {

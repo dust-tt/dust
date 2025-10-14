@@ -10,9 +10,9 @@ import type { SearchParams } from "@app/lib/api/elasticsearch";
 import {
   bucketsToArray,
   formatUTCDateFromMillis,
-  getAnalyticsIndex,
   safeEsSearch,
 } from "@app/lib/api/elasticsearch";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -99,7 +99,7 @@ async function handler(
       const assistantSId = assistant.sId;
 
       const body: SearchParams = {
-        index: getAnalyticsIndex(),
+        index: config.getElasticsearchConfig().analyticsIndex,
         size: 0,
         query: {
           bool: {

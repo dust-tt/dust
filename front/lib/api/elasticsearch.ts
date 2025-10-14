@@ -3,8 +3,11 @@ import { Client, errors as esErrors } from "@elastic/elasticsearch";
 
 import config from "@app/lib/api/config";
 import { normalizeError } from "@app/types";
+import type { NextApiRequest, NextApiResponse } from "next";
+import type { WithAPIErrorResponse } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { apiError } from "@app/logger/withlogging";
 
 let esClient: Client | null = null;
 
@@ -14,7 +17,11 @@ export type ElasticsearchError = {
   statusCode?: number;
 };
 
-type SearchParams = estypes.SearchRequest;
+export type SearchParams = estypes.SearchRequest;
+
+export function getAnalyticsIndex(): string {
+  return config.getElasticsearchConfig().analyticsIndex;
+}
 
 function hasProp<K extends string>(
   obj: unknown,
@@ -78,6 +85,28 @@ async function esSearch<TDocument = unknown, TAggregations = unknown>(
       message: normalizeError(err).message,
     });
   }
+}
+
+export async function safeEsSearch<
+  TDocument = unknown,
+  TAggregations = unknown,
+>(
+  req: NextApiRequest,
+  res: NextApiResponse<WithAPIErrorResponse<any>>,
+  params: SearchParams
+): Promise<estypes.SearchResponse<TDocument, TAggregations> | null> {
+  const r = await esSearch<TDocument, TAggregations>(params);
+  if (r.isOk()) {
+    return r.value;
+  }
+  apiError(req, res, {
+    status_code: r.value.statusCode ?? 502,
+    api_error: {
+      type: "elasticsearch_error",
+      message: r.value.message,
+    },
+  });
+  return null;
 }
 
 export function bucketsToArray<TBucket>(
