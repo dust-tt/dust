@@ -1,4 +1,3 @@
-import { DustAPI } from "@dust-tt/client";
 import type { TurnContext } from "botbuilder";
 import {
   CloudAdapter,
@@ -21,7 +20,6 @@ import {
   validateBotFrameworkToken,
 } from "@connectors/api/webhooks/teams/jwt_validation";
 import { getConnector } from "@connectors/api/webhooks/teams/utils";
-import { apiConfig } from "@connectors/lib/api/config";
 import logger from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -35,8 +33,6 @@ const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication({
 });
 
 const adapter = new CloudAdapter(botFrameworkAuthentication);
-
-const streamingMessages = new Map<string, string>();
 
 // Error handler for the adapter
 adapter.onTurnError = async (context, error) => {
@@ -203,47 +199,10 @@ async function handleMessage(
   context: TurnContext,
   connector: ConnectorResource
 ) {
-  // Check if it's an adaptive card submit
-  if (context.activity.value?.action === "ask_agent") {
-    await handleAgentSelection(context, connector);
-    return;
-  }
-
   // Handle regular text messages
   if (context.activity.text?.trim()) {
     await handleTextMessage(context, connector);
   }
-}
-
-async function handleAgentSelection(
-  context: TurnContext,
-  connector: ConnectorResource
-) {
-  const { agentId, agentName, originalMessage } = context.activity.value;
-
-  logger.info(
-    { agentId, agentName, originalMessage },
-    "Handling agent selection from adaptive card"
-  );
-
-  // Send thinking message
-  const thinkingCard = createThinkingAdaptiveCard();
-  const thinkingActivity = await sendActivity(context, thinkingCard);
-
-  if (thinkingActivity?.id) {
-    streamingMessages.set(
-      context.activity.conversation.id,
-      thinkingActivity.id
-    );
-  }
-
-  // Clean the message and add agent mention
-  const cleanMessage = originalMessage
-    .replace(/^[@+~][a-zA-Z0-9_-]+\s*/, "")
-    .trim();
-  const agentMessage = `@${agentName} ${cleanMessage}`;
-
-  await processMicrosoftBotMessage(context, agentMessage, connector);
 }
 
 async function handleTextMessage(
@@ -285,120 +244,12 @@ async function handleTextMessage(
     );
   }
 
-  if (thinkingActivity?.id) {
-    streamingMessages.set(
-      context.activity.conversation.id,
-      thinkingActivity.id
-    );
-  }
-
-  await processMicrosoftBotMessage(context, context.activity.text, connector);
-}
-
-async function handleMessageExtension(
-  context: TurnContext,
-  connector: ConnectorResource
-) {
-  try {
-    const query = context.activity.value;
-    logger.info({ query }, "Handling message extension query");
-
-    const dustAPI = new DustAPI(
-      { url: apiConfig.getDustFrontAPIUrl() },
-      {
-        workspaceId: connector.workspaceId,
-        apiKey: connector.workspaceAPIKey,
-      },
-      logger
-    );
-
-    const agentConfigurationsRes = await dustAPI.getAgentConfigurations({});
-
-    if (agentConfigurationsRes.isErr()) {
-      logger.error(
-        { error: agentConfigurationsRes.error },
-        "Failed to get agent configurations"
-      );
-      return;
-    }
-
-    const agents = agentConfigurationsRes.value
-      .filter((ac) => ac.status === "active")
-      .map((ac) => ({
-        sId: ac.sId,
-        name: ac.name,
-        description: ac.description,
-        usage: ac.usage,
-      }))
-      // Sort by usage (most popular first)
-      .sort(
-        (a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
-      );
-
-    // Filter agents based on search query
-    const searchTerm = query.parameters?.searchQuery?.toLowerCase() || "";
-    const filteredAgents = agents.filter(
-      (agent) =>
-        agent.name.toLowerCase().includes(searchTerm) ||
-        agent.description?.toLowerCase().includes(searchTerm)
-    );
-
-    // Return agent results
-    const results = filteredAgents.slice(0, 10).map((agent) => ({
-      contentType: "application/vnd.microsoft.card.hero",
-      content: {
-        title: agent.name,
-        subtitle: agent.description || `Ask ${agent.name} a question`,
-        tap: {
-          type: "imBack",
-          value: `@${agent.name} `,
-        },
-      },
-    }));
-
-    const composeResponse = {
-      composeExtension: {
-        type: "result",
-        attachmentLayout: "list",
-        attachments:
-          results.length > 0
-            ? results
-            : [
-                {
-                  contentType: "application/vnd.microsoft.card.hero",
-                  content: {
-                    title: "No agents found",
-                    subtitle: `No agents match "${searchTerm}"`,
-                    tap: {
-                      type: "imBack",
-                      value: "@dust ",
-                    },
-                  },
-                },
-              ],
-      },
-    };
-
-    await sendActivity(context, { value: composeResponse });
-  } catch (error) {
-    logger.error({ error }, "Error handling message extension");
-    await sendActivity(context, {
-      value: { composeExtension: { type: "result", attachments: [] } },
-    });
-  }
-}
-
-async function processMicrosoftBotMessage(
-  context: TurnContext,
-  message: string,
-  connector: ConnectorResource
-) {
   try {
     const result = await botAnswerMessage(
       context,
-      message,
+      context.activity.text,
       connector,
-      streamingMessages
+      thinkingActivity?.id
     );
 
     if (result.isErr()) {

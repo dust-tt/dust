@@ -29,21 +29,20 @@ export async function botAnswerMessage(
   context: TurnContext,
   message: string,
   connector: ConnectorResource,
-  streamingMessages: Map<string, string>
+  currentActivityId: string | undefined
 ): Promise<Result<undefined, Error>> {
   try {
     const res = await answerBotMessage(
       context,
       message,
       connector,
-      streamingMessages
+      currentActivityId
     );
 
     if (res.isErr()) {
       await sendTeamsResponse(
         context,
-        false,
-        streamingMessages,
+        currentActivityId,
         createErrorAdaptiveCard({
           error: res.error.message,
           workspaceId: connector.workspaceId,
@@ -63,8 +62,7 @@ export async function botAnswerMessage(
 
     await sendTeamsResponse(
       context,
-      false,
-      streamingMessages,
+      currentActivityId,
       createErrorAdaptiveCard({
         error: "An unexpected error occurred. Our team has been notified",
         workspaceId: connector.workspaceId,
@@ -78,7 +76,7 @@ async function answerBotMessage(
   context: TurnContext,
   message: string,
   connector: ConnectorResource,
-  streamingMessages: Map<string, string>
+  currentActivityId: string | undefined
 ): Promise<Result<undefined, Error>> {
   const {
     conversation: { id: conversationId },
@@ -424,12 +422,7 @@ async function answerBotMessage(
             });
 
             // Send streaming update to Teams app webhook endpoint
-            await sendTeamsResponse(
-              context,
-              true,
-              streamingMessages,
-              streamingCard
-            );
+            await sendTeamsResponse(context, currentActivityId, streamingCard);
           }
         }
         break;
@@ -443,12 +436,7 @@ async function answerBotMessage(
           workspaceId: connector.workspaceId,
         });
         agentState = "acting";
-        await sendTeamsResponse(
-          context,
-          true,
-          streamingMessages,
-          streamingCard
-        );
+        await sendTeamsResponse(context, currentActivityId, streamingCard);
 
         break;
       }
@@ -472,7 +460,7 @@ async function answerBotMessage(
           workspaceId: connector.workspaceId,
         });
 
-        await sendTeamsResponse(context, false, streamingMessages, finalCard);
+        await sendTeamsResponse(context, currentActivityId, finalCard);
       } catch (finalError) {
         logger.warn(
           { error: finalError },
@@ -490,43 +478,29 @@ async function answerBotMessage(
 
 const sendTeamsResponse = async (
   context: TurnContext,
-  isStreaming: boolean,
-  streamingMessages: Map<string, string>,
+  currentActivityId: string | undefined,
   adaptiveCard: Partial<Activity>
 ) => {
   try {
-    // If we have direct Bot Framework context, use it directly
-    const conversationId = context.activity.conversation?.id;
-
-    if (isStreaming && conversationId) {
-      // Update existing message for streaming
-      const existingActivityId = streamingMessages.get(conversationId);
-      if (existingActivityId) {
-        try {
-          await updateActivity(context, {
-            ...adaptiveCard,
-            id: existingActivityId,
-          });
-          return;
-        } catch (updateError) {
-          logger.warn(
-            { error: updateError },
-            "Failed to update streaming message, sending new one"
-          );
-        }
+    // Update existing message for streaming
+    if (currentActivityId) {
+      try {
+        await updateActivity(context, {
+          ...adaptiveCard,
+          id: currentActivityId,
+        });
+        return currentActivityId;
+      } catch (updateError) {
+        logger.warn(
+          { error: updateError },
+          "Failed to update streaming message, sending new one"
+        );
       }
-
-      // Send new streaming message
-      const sentActivity = await sendActivity(context, adaptiveCard);
-      if (sentActivity?.id) {
-        streamingMessages.set(conversationId, sentActivity.id);
-      }
-    } else {
-      // Final message - send and clean up
-      await sendActivity(context, adaptiveCard);
-      streamingMessages.delete(conversationId);
     }
-    return;
+
+    // Send new streaming message
+    const sentActivity = await sendActivity(context, adaptiveCard);
+    return sentActivity?.id;
   } catch (updateError) {
     logger.warn(
       { error: updateError },
