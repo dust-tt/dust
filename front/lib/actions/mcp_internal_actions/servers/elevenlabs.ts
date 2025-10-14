@@ -9,7 +9,6 @@ import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers"
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 import { dustManagedCredentials, Err, normalizeError, Ok } from "@app/types";
 
 function getElevenLabsClient() {
@@ -100,10 +99,6 @@ function createServer(
             },
           ]);
         } catch (e) {
-          logger.error(
-            { err: normalizeError(e) },
-            "Error generating text-to-speech with ElevenLabs."
-          );
           const cause = normalizeError(e);
           return new Err(
             new MCPError(
@@ -176,10 +171,6 @@ function createServer(
             },
           ]);
         } catch (e) {
-          logger.error(
-            { err: normalizeError(e) },
-            "Error generating music with ElevenLabs."
-          );
           const cause = normalizeError(e);
           return new Err(
             new MCPError(
