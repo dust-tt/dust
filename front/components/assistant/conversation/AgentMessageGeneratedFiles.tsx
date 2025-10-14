@@ -3,15 +3,12 @@ import {
   CitationDescription,
   CitationGrid,
   CitationTitle,
-  Icon,
-  SparklesIcon,
 } from "@dust-tt/sparkle";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { formatCalendarDate } from "@app/lib/utils/timestamps";
 import type { LightAgentMessageType } from "@app/types";
-import { frameContentType } from "@app/types";
-
-// Interactive content files.
+import { frameContentType, getTime } from "@app/types";
 
 function getDescriptionForContentType(
   file: LightAgentMessageType["generatedFiles"][number]
@@ -71,8 +68,13 @@ export function AgentMessageInteractiveContentGeneratedFiles({
             </div>
             <CitationDescription>
               <div className="flow-row flex items-center gap-2">
-                <Icon visual={SparklesIcon} size="xs" />
-                Frame
+                {file.createdAt && (
+                  <div>
+                    <span>{formatCalendarDate(file.createdAt)}</span>
+                    <span className="mx-1">{"\u00B7"}</span>
+                    <time>{getTime(file.createdAt)}</time>
+                  </div>
+                )}
               </div>
             </CitationDescription>
           </Citation>
