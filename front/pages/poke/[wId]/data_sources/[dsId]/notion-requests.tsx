@@ -1,6 +1,5 @@
 import { Button, Input, Spinner, TextArea } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
-import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 import { useState } from "react";
 
