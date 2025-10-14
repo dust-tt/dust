@@ -29,6 +29,7 @@ import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type {
   AdminSuccessResponseType,
+  NotionApiRequestResponseType,
   NotionCheckUrlResponseType,
   NotionCommandType,
   NotionDeleteUrlResponseType,
@@ -274,6 +275,7 @@ export const notion = async ({
   args,
 }: NotionCommandType): Promise<
   | AdminSuccessResponseType
+  | NotionApiRequestResponseType
   | NotionUpsertResponseType
   | NotionSearchPagesResponseType
   | NotionCheckUrlResponseType
@@ -665,6 +667,50 @@ export const notion = async ({
         await stopNotionGarbageCollectorWorkflow(connector.id);
       }
       return { success: true };
+    }
+
+    case "api-request": {
+      const connector = await getConnector(args);
+      const { url, method, body } = args;
+
+      if (!url) {
+        throw new Error("Missing --url argument");
+      }
+      if (!method || !["GET", "POST"].includes(method)) {
+        throw new Error("Invalid --method argument (must be GET or POST)");
+      }
+
+      logger.info(
+        { url, method, connectorId: connector.id },
+        "[Admin] Making Notion API request"
+      );
+
+      const notionAccessToken = await getNotionAccessToken(connector.id);
+      const fullUrl = `https://api.notion.com/v1/${url}`;
+
+      const response = await fetch(fullUrl, {
+        method,
+        headers: {
+          Authorization: `Bearer ${notionAccessToken}`,
+          "Notion-Version": "2022-06-28",
+          "Content-Type": "application/json",
+        },
+        ...(method === "POST" && body ? { body } : {}),
+      });
+
+      const data = await response.json();
+
+      logger.info(
+        {
+          url,
+          method,
+          status: response.status,
+          connectorId: connector.id,
+        },
+        "[Admin] Notion API request completed"
+      );
+
+      return { status: response.status, data };
     }
 
     default:
