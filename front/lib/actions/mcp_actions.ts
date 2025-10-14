@@ -36,7 +36,6 @@ import type {
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
-import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   getAvailabilityOfInternalMCPServerById,
@@ -89,9 +88,9 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
+import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT } from "@app/temporal/agent_loop/workflows";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok, slugify } from "@app/types";
-import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT } from "@app/temporal/agent_loop/workflows";
 
 const MAX_OUTPUT_ITEMS = 128;
 
