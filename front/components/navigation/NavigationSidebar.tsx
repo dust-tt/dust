@@ -25,6 +25,7 @@ import { UserMenu } from "@app/components/UserMenu";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { GetAppStatusResponseBody } from "@app/pages/api/app-status";
 import type {
   SubscriptionType,
   UserTypeWithWorkspaces,
@@ -89,15 +90,17 @@ export const NavigationSidebar = React.forwardRef<
 
   const { setSidebarOpen } = useContext(SidebarContext);
 
-  // We display the banner if the end date is in 30 days or less.
+  const { appStatus } = useAppStatus();
+
+  // We display the banner if the end date is in 30 days or less and there is no app status.
   const endDate = subscription.endDate;
   const shouldDisplaySubscriptionEndBanner =
-    endDate && endDate < Date.now() + 30 * 24 * 60 * 60 * 1000;
+    !appStatus && endDate && endDate < Date.now() + 30 * 24 * 60 * 60 * 1000;
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
       <div className="flex flex-col gap-2 pt-3">
-        <AppStatusBanner />
+        {appStatus && <AppStatusBanner appStatus={appStatus} />}
         {shouldDisplaySubscriptionEndBanner && endDate && (
           <SubscriptionEndBanner
             endDate={endDate}
@@ -260,13 +263,11 @@ function StatusBanner({
   );
 }
 
-function AppStatusBanner() {
-  const { appStatus } = useAppStatus();
-
-  if (!appStatus) {
-    return null;
-  }
-
+function AppStatusBanner({
+  appStatus,
+}: {
+  appStatus: GetAppStatusResponseBody;
+}) {
   const { providersStatus, dustStatus } = appStatus;
 
   if (dustStatus) {
