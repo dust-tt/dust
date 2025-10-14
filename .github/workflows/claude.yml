@@ -72,7 +72,6 @@ jobs:
             - Add comments **only** for complex, non-obvious logic; wrap at ~100 characters.
             - Write code that fails fast and explicitly; assume valid inputs.
             - Write high quality, general purpose solutions. Implement solutions that works correctly for all valid inputs, not just the test cases.
-            - Provide principled implementations that follows best practices and software design principles.
             - After receiving tool results, carefully reflect on their quality and determine optimal next steps before proceeding. Use your thinking to plan and iterate based on this new information, and then take the best next action.
             - Follow the codebase's best practices and aim for consistency.
             - In TypeScript, never use `any`. Properly type your code.
