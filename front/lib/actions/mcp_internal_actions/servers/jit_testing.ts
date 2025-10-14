@@ -72,7 +72,10 @@ function createServer(
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jit_all_optionals_and_defaults", agentLoopContext },
+      {
+        toolNameForMonitoring: "jit_all_optionals_and_defaults",
+        agentLoopContext,
+      },
       async (params) => {
         return new Ok([
           {
