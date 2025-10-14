@@ -5,9 +5,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  makeInternalMCPServer,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -70,7 +68,10 @@ const createServer = (auth: any): McpServer => {
             .version("beta")
             .post(requestBody);
           return new Ok([
-            {type: "text" as const, text: JSON.stringify(response.retrievalHits, null, 2)}
+            {
+              type: "text" as const,
+              text: JSON.stringify(response.retrievalHits, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
