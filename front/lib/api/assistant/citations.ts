@@ -157,6 +157,7 @@ export function getLightAgentMessageFromAgentMessage(
         fileId: f.fileId,
         title: f.title,
         contentType: f.contentType,
+        createdAt: f.createdAt,
         ...(f.hidden ? { hidden: true } : {}),
       })),
   };
