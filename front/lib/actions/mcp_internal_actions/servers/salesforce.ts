@@ -227,7 +227,14 @@ const createServer = (auth: Authenticator): McpServer => {
         .string()
         .describe("The name of the Salesforce object (e.g., Account, Contact)"),
       records: z
-        .array(z.object({}).passthrough())
+        .array(
+          z
+            .object({
+              Id: z.string().min(1).describe("The Salesforce record ID"),
+            })
+            .passthrough()
+        )
+        .min(1)
         .describe(
           "Record(s) to update. Must include Id field and any fields to update"
         ),
