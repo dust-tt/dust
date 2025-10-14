@@ -53,6 +53,7 @@ import {
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
+import { InAppBanner } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -71,8 +72,6 @@ import {
 } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
-
-import { InAppBanner } from "./InAppBanner";
 
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;
