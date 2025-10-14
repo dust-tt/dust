@@ -5,10 +5,6 @@ import {
   isAgentPauseOutputResourceType,
 } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type {
-  CallToolResult,
-  TextContent,
-} from "@modelcontextprotocol/sdk/types.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
@@ -45,7 +41,6 @@ export function makeInternalMCPServer(
     instructions,
   });
 }
-
 
 export function makePersonalAuthenticationError(
   provider: OAuthProvider,
@@ -90,8 +85,6 @@ export function makeMCPToolExit({
     ],
   };
 }
-
-
 
 export async function getExitOrPauseEvents({
   outputItems,
