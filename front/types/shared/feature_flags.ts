@@ -12,11 +12,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
   },
-  advanced_search: {
-    description:
-      "Activates the advanced search option: browse selected data like a file system",
-    stage: "on_demand",
-  },
   agent_to_yaml: {
     description: "Export and Import agents to/from YAML format",
     stage: "dust_only",
