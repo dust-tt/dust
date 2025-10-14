@@ -1,11 +1,10 @@
 import {
-  Avatar,
-  ClockIcon,
+  BoltIcon,
   ConversationMessage,
+  Icon,
   Markdown,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { BellIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -80,7 +79,9 @@ export function UserMessage({
           timestamp={formatTimestring(message.created)}
           infoChip={
             message.context.origin === "triggered" && (
-              <TriggerChip message={message} />
+              <span className="dark:text-muted-foreground-nigh translate-y-1 text-muted-foreground">
+                <TriggerChip message={message} />
+              </span>
             )
           }
           type="user"
@@ -142,16 +143,10 @@ function Label({ message }: { message?: UserMessageType }) {
 }
 
 function TriggerChip({ message }: { message?: UserMessageType }) {
-  const icon = message?.context.lastTriggerRunAt ? (
-    <ClockIcon className="h-4 w-4" />
-  ) : (
-    <BellIcon className="h-4 w-4" />
-  );
-
   return (
     <Tooltip
       label={<Label message={message} />}
-      trigger={<Avatar size="xs" visual={icon} />}
+      trigger={<Icon size="xs" visual={BoltIcon} />}
     />
   );
 }
