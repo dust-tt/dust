@@ -34,7 +34,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME },
+      {
+        toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
+        skipAlerting: true,
+      },
       async ({ query }, { authInfo }) => {
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
@@ -70,7 +73,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME },
+      {
+        toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
+        skipAlerting: true,
+      },
       async ({ filter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
@@ -112,7 +118,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME },
+      {
+        toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
+        skipAlerting: true,
+      },
       async ({ objectName }, { authInfo }) => {
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
@@ -220,7 +229,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME },
+      {
+        toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
+        skipAlerting: true,
+      },
       async ({ recordId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
@@ -274,7 +286,10 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME },
+      {
+        toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
+        skipAlerting: true,
+      },
       async ({ recordId, attachmentId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
