@@ -12,12 +12,22 @@ export function getAnalyticsIndex(): string {
 
 let esClient: Client | null = null;
 
-// Narrowing helpers for safe error reason extraction without casts.
 function hasProp<K extends string>(
   obj: unknown,
   key: K
 ): obj is Record<K, unknown> {
   return typeof obj === "object" && obj !== null && key in obj;
+}
+
+function extractErrorReason(err: esErrors.ResponseError): string {
+  const body = err.meta?.body;
+  if (hasProp(body, "error") && typeof body.error === "object" && body.error) {
+    const e = body.error as unknown;
+    if (hasProp(e, "reason") && typeof e.reason !== "undefined") {
+      return String(e.reason);
+    }
+  }
+  return err.message;
 }
 
 function getClient(): Client {
@@ -32,34 +42,20 @@ function getClient(): Client {
   return esClient;
 }
 
-export type SearchParams = Omit<estypes.SearchRequest, "index">;
+export type SearchParams = estypes.SearchRequest;
 
 export async function esSearch<TDocument = unknown, TAggregations = unknown>(
-  params: SearchParams,
-  index: string
+  params: SearchParams
 ): Promise<estypes.SearchResponse<TDocument, TAggregations>> {
   const client = getClient();
   try {
     return await client.search<TDocument, TAggregations>({
-      index,
       ...params,
     });
-  } catch (err: any) {
-    // Normalize elastic client errors to a readable message.
+  } catch (err) {
     if (err instanceof esErrors.ResponseError) {
       const status = err.statusCode ?? "unknown";
-      const body = err.meta?.body;
-      let reason = err.message;
-      if (
-        hasProp(body, "error") &&
-        typeof body.error === "object" &&
-        body.error
-      ) {
-        const e = body.error as unknown;
-        if (hasProp(e, "reason") && typeof e.reason !== "undefined") {
-          reason = String(e.reason);
-        }
-      }
+      const reason = extractErrorReason(err);
       throw new Error(`Elasticsearch query failed (${status}): ${reason}`);
     }
     throw err;
@@ -72,11 +68,10 @@ export async function safeEsSearch<
 >(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<any>>,
-  params: SearchParams,
-  index: string
+  params: SearchParams
 ): Promise<estypes.SearchResponse<TDocument, TAggregations> | null> {
   try {
-    return await esSearch<TDocument, TAggregations>(params, index);
+    return await esSearch<TDocument, TAggregations>(params);
   } catch (err) {
     apiError(req, res, {
       status_code: 502,
@@ -90,9 +85,7 @@ export async function safeEsSearch<
 }
 
 export function bucketsToArray<TBucket>(
-  buckets:
-    | estypes.AggregationsMultiBucketAggregateBase<TBucket>["buckets"]
-    | undefined
+  buckets?: estypes.AggregationsMultiBucketAggregateBase<TBucket>["buckets"]
 ): TBucket[] {
   if (!buckets) {
     return [];

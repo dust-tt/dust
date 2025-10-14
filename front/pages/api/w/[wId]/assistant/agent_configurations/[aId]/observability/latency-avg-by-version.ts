@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { SearchParams } from "@app/lib/api/elasticsearch";
 import {
   bucketsToArray,
   formatUTCDateFromMillis,
@@ -91,13 +92,14 @@ async function handler(
         });
       }
 
-      const days = q.right.days ? parseInt(q.right.days as string, 10) : 30;
-      const tool = q.right.tool as string;
+      const days = q.right.days ? parseInt(q.right.days, 10) : 30;
+      const tool = q.right.tool;
 
       const owner = auth.getNonNullableWorkspace();
       const assistantSId = assistant.sId;
 
-      const body: Omit<estypes.SearchRequest, "index"> = {
+      const body: SearchParams = {
+        index: getAnalyticsIndex(),
         size: 0,
         query: {
           bool: {
@@ -136,13 +138,7 @@ async function handler(
         },
       };
 
-      const analyticsIndex = getAnalyticsIndex();
-      const json = await safeEsSearch<unknown, LatencyAggs>(
-        req,
-        res,
-        body,
-        analyticsIndex
-      );
+      const json = await safeEsSearch<unknown, LatencyAggs>(req, res, body);
       if (!json) {
         return;
       }

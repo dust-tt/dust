@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { SearchParams } from "@app/lib/api/elasticsearch";
 import {
   bucketsToArray,
   getAnalyticsIndex,
@@ -94,7 +95,8 @@ async function handler(
 
       const owner = auth.getNonNullableWorkspace();
 
-      const body: Omit<estypes.SearchRequest, "index"> = {
+      const body: SearchParams = {
+        index: getAnalyticsIndex(),
         size: 0,
         query: {
           bool: {
@@ -124,13 +126,7 @@ async function handler(
         },
       };
 
-      const analyticsIndex = getAnalyticsIndex();
-      const json = await safeEsSearch<unknown, ToolAggs>(
-        req,
-        res,
-        body,
-        analyticsIndex
-      );
+      const json = await safeEsSearch<unknown, ToolAggs>(req, res, body);
       if (!json) {
         return;
       }
