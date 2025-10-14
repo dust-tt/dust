@@ -34,6 +34,7 @@ import { default as openaiUsageServer } from "@app/lib/actions/mcp_internal_acti
 import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
+import { default as randomNumbersServer } from "@app/lib/actions/mcp_internal_actions/servers/random_numbers";
 import { default as extractDataServer } from "@app/lib/actions/mcp_internal_actions/servers/process";
 import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
@@ -107,6 +108,8 @@ export async function getInternalMCPServer(
       return primitiveTypesDebuggerServer(auth);
     case "jit_testing":
       return jitTestingServer(auth);
+    case "random_numbers":
+      return randomNumbersServer(auth, agentLoopContext);
     case "web_search_&_browse":
       return webtoolsServer(auth, agentLoopContext);
     case "search":
