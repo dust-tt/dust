@@ -17,11 +17,11 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   createOrUpdateAgentScheduleWorkflow,
   deleteAgentScheduleWorkflow,
-} from "@app/temporal/agent_schedule/client";
+} from "@app/lib/triggers/temporal/schedule/client";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ModelId, Result } from "@app/types";
 import {
   assertNever,

@@ -14,7 +14,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import { makeScheduleId } from "@app/temporal/agent_schedule/client";
 import type {
   AgentConfigurationType,
   APIErrorWithStatusCode,
@@ -24,6 +23,8 @@ import type {
 } from "@app/types";
 import { assertNever, Ok } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
+
+import { makeScheduleId } from "../schedule/client";
 
 /**
  * We want to create individual conversations if the agent outcome will vary from user to user.
