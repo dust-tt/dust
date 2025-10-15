@@ -204,6 +204,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Microsoft Drive MCP server",
     stage: "dust_only",
   },
+  agent_builder_observability: {
+    description:
+      "Observability tab in the Agent Builder (charts powered by Elasticsearch)",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
