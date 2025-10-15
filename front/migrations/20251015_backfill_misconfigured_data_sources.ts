@@ -16,7 +16,9 @@ makeScript({}, async ({ execute }, logger) => {
   const dataSourceConfigurations = await AgentDataSourceConfiguration.findAll({
     where: {
       parentsIn: [],
-      parentsNotIn: { [Op.not]: null },
+      parentsNotIn: {
+        [Op.and]: [{ [Op.not]: null }, { [Op.ne]: [] }],
+      },
     },
   });
 
