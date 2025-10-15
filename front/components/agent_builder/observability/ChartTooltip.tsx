@@ -1,11 +1,10 @@
 import { cn } from "@dust-tt/sparkle";
-import React from "react";
 
-interface LegendItemProps {
+interface LegendDotProps {
   className: string;
 }
 
-export function LegendDot({ className }: LegendItemProps) {
+export function LegendDot({ className }: LegendDotProps) {
   return (
     <span
       className={cn(
@@ -45,7 +44,7 @@ export function ChartTooltipCard({ title, rows, footer }: ChartTooltipProps) {
           {r.colorClass && <LegendDot className={r.colorClass} />}
           <span className="text-muted-foreground">{r.label}</span>
           <span className="ml-auto font-medium">{r.value}</span>
-          {r.percent && (
+          {r.percent !== null && r.percent !== undefined && (
             <span className="text-muted-foreground">({r.percent}%)</span>
           )}
         </div>

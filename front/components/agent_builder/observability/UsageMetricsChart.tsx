@@ -17,11 +17,65 @@ import type {
   ObservabilityTimeRangeType,
 } from "@app/components/agent_builder/observability/constants";
 import {
+  CHART_HEIGHT,
   OBSERVABILITY_INTERVALS,
   OBSERVABILITY_TIME_RANGE,
+  USAGE_METRICS_LEGEND,
   USAGE_METRICS_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
 import { useAgentUsageMetrics } from "@app/lib/swr/assistants";
+
+interface UsageMetricsData {
+  messages: number;
+  conversations: number;
+  activeUsers: number;
+}
+
+function isUsageMetricsData(data: unknown): data is UsageMetricsData {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "messages" in data &&
+    "conversations" in data &&
+    "activeUsers" in data
+  );
+}
+
+function UsageMetricsTooltip(
+  props: TooltipContentProps<number, string>
+): JSX.Element | null {
+  const { active, payload, label } = props;
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+  const first = payload[0];
+  if (!first?.payload || !isUsageMetricsData(first.payload)) {
+    return null;
+  }
+  const row = first.payload;
+  return (
+    <ChartTooltipCard
+      title={String(label ?? "")}
+      rows={[
+        {
+          label: "Messages",
+          value: row.messages,
+          colorClass: USAGE_METRICS_PALETTE.messages,
+        },
+        {
+          label: "Conversations",
+          value: row.conversations,
+          colorClass: USAGE_METRICS_PALETTE.conversations,
+        },
+        {
+          label: "Active users",
+          value: row.activeUsers,
+          colorClass: USAGE_METRICS_PALETTE.activeUsers,
+        },
+      ]}
+    />
+  );
+}
 
 export function UsageMetricsChart({
   workspaceId,
@@ -87,17 +141,23 @@ export function UsageMetricsChart({
         </div>
       </div>
       {isUsageMetricsLoading ? (
-        <div className="flex h-[260px] items-center justify-center">
+        <div
+          className="flex items-center justify-center"
+          style={{ height: CHART_HEIGHT }}
+        >
           <Spinner size="lg" />
         </div>
       ) : isUsageMetricsError ? (
-        <div className="flex h-[260px] items-center justify-center">
+        <div
+          className="flex items-center justify-center"
+          style={{ height: CHART_HEIGHT }}
+        >
           <p className="text-sm text-muted-foreground">
             Failed to load usage metrics.
           </p>
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={260}>
+        <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
           <LineChart
             data={data}
             margin={{ top: 10, right: 30, left: 10, bottom: 0 }}
@@ -107,88 +167,29 @@ export function UsageMetricsChart({
             <YAxis className="text-xs text-muted-foreground" />
             <Tooltip
               cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
-              content={(props: TooltipContentProps<number, string>) => {
-                const { active, payload, label } = props;
-                if (!active || !payload || payload.length === 0) {
-                  return null;
-                }
-                const first = payload[0];
-                if (!first?.payload) {
-                  return null;
-                }
-                const row = first.payload;
-                if (
-                  typeof row !== "object" ||
-                  !("messages" in row) ||
-                  !("conversations" in row) ||
-                  !("activeUsers" in row)
-                ) {
-                  return null;
-                }
-                return (
-                  <ChartTooltipCard
-                    title={String(label ?? "")}
-                    rows={[
-                      {
-                        label: "Messages",
-                        value: row.messages,
-                        colorClass: USAGE_METRICS_PALETTE.messages,
-                      },
-                      {
-                        label: "Conversations",
-                        value: row.conversations,
-                        colorClass: USAGE_METRICS_PALETTE.conversations,
-                      },
-                      {
-                        label: "Active users",
-                        value: row.activeUsers,
-                        colorClass: USAGE_METRICS_PALETTE.activeUsers,
-                      },
-                    ]}
-                  />
-                );
-              }}
+              content={UsageMetricsTooltip}
             />
-            <Line
-              dataKey="messages"
-              name="Messages"
-              stroke="currentColor"
-              className={USAGE_METRICS_PALETTE.messages}
-              strokeWidth={2}
-              dot={false}
-            />
-            <Line
-              dataKey="conversations"
-              name="Conversations"
-              stroke="currentColor"
-              className={USAGE_METRICS_PALETTE.conversations}
-              strokeWidth={2}
-              dot={false}
-            />
-            <Line
-              dataKey="activeUsers"
-              name="Active users"
-              stroke="currentColor"
-              className={USAGE_METRICS_PALETTE.activeUsers}
-              strokeWidth={2}
-              dot={false}
-            />
+            {USAGE_METRICS_LEGEND.map(({ key, label }) => (
+              <Line
+                key={key}
+                dataKey={key}
+                name={label}
+                stroke="currentColor"
+                className={USAGE_METRICS_PALETTE[key]}
+                strokeWidth={2}
+                dot={false}
+              />
+            ))}
           </LineChart>
         </ResponsiveContainer>
       )}
       <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
-        {(
-          [
-            { k: "messages", label: "Messages" },
-            { k: "conversations", label: "Conversations" },
-            { k: "activeUsers", label: "Active users" },
-          ] as const
-        ).map(({ k, label }) => (
-          <div key={k} className="flex items-center gap-2">
+        {USAGE_METRICS_LEGEND.map(({ key, label }) => (
+          <div key={key} className="flex items-center gap-2">
             <span
               className={cn(
                 "inline-block h-3 w-3 rounded-sm bg-current",
-                USAGE_METRICS_PALETTE[k]
+                USAGE_METRICS_PALETTE[key]
               )}
             />
             <span className="text-sm text-muted-foreground">{label}</span>

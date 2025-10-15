@@ -11,3 +11,11 @@ export const USAGE_METRICS_PALETTE = {
   conversations: "text-amber-500",
   activeUsers: "text-emerald-500",
 } as const;
+
+export const USAGE_METRICS_LEGEND = [
+  { key: "messages", label: "Messages" },
+  { key: "conversations", label: "Conversations" },
+  { key: "activeUsers", label: "Active users" },
+] as const;
+
+export const CHART_HEIGHT = 260;
