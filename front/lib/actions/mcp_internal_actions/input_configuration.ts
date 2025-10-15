@@ -814,11 +814,11 @@ export function getMCPServerRequirements(
       !requiresReasoningConfiguration &&
       !mayRequireTimeFrameConfiguration &&
       !mayRequireJsonSchemaConfiguration &&
-      !requiredStrings.some((c) => c.default === undefined) &&
-      !requiredNumbers.some((c) => c.default === undefined) &&
-      !requiredBooleans.some((c) => c.default === undefined) &&
-      !Object.values(requiredEnums).some((c) => c.default === undefined) &&
-      !Object.values(requiredLists).some((c) => c.default === undefined) &&
+      !requiredStrings.some((c) => c.default === null) &&
+      !requiredNumbers.some((c) => c.default === null) &&
+      !requiredBooleans.some((c) => c.default === null) &&
+      !Object.values(requiredEnums).some((c) => c.default === null) &&
+      !Object.values(requiredLists).some((c) => c.default === null) &&
       !requiresDustAppConfiguration &&
       !requiresSecretConfiguration,
   };
