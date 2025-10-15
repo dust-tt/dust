@@ -128,6 +128,7 @@ export function UsageMetricsChart({
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
+                type="button"
                 className={cn(
                   "rounded px-2 py-1 text-xs",
                   period === p
@@ -144,6 +145,7 @@ export function UsageMetricsChart({
               <button
                 key={i}
                 onClick={() => setInterval(i)}
+                type="button"
                 className={cn(
                   "rounded px-2 py-1 text-xs",
                   interval === i
