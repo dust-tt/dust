@@ -130,7 +130,7 @@ async function handler(
     file: file.toJSON(),
     // Only return the conversation URL if the user is a participant of the conversation.
     conversationUrl: isParticipant
-      ? `${config.getClientFacingUrl()}/w/${workspace.sId}/agent/${conversationId}`
+      ? `${config.getClientFacingUrl()}/w/${workspace.sId}/conversation/${conversationId}`
       : null,
   });
 }
