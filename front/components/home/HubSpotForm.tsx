@@ -34,128 +34,172 @@ export default function HubSpotForm() {
   const formId = "95a83867-b22c-440a-8ba0-2733d35e4a7b";
 
   useEffect(() => {
-    const scriptSrc = `https://js-${region}.hsforms.net/forms/embed/developer/${portalId}.js`;
+    // Use only the v2 script for simplicity and reliability
+    const scriptSrc = `https://js.hsforms.net/forms/v2.js`;
 
-    if (document.querySelector(`script[src="${scriptSrc}"]`)) {
-      return;
-    }
+    let formCreated = false;
 
-    const script = document.createElement("script");
-    script.src = scriptSrc;
-    script.defer = true;
+    // Simple tracking setup function
+    const setupTracking = () => {
+      const container = document.getElementById("hubspotForm");
+      if (!container) return;
 
-    script.onload = () => {
+      // Track form ready
+      trackEvent({
+        area: TRACKING_AREAS.CONTACT,
+        object: "hubspot_form",
+        action: "ready",
+      });
+
+      // Add submit tracking via multiple methods
+
+      // Method 1: Direct form submit listener
+      const form = container.querySelector("form");
+      if (form) {
+        form.addEventListener("submit", () => {
+          trackEvent({
+            area: TRACKING_AREAS.CONTACT,
+            object: "hubspot_form",
+            action: "submitted",
+          });
+        }, true);
+      }
+
+      // Method 2: Watch for success message
+      const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          const addedNodes = Array.from(mutation.addedNodes);
+          const hasSuccessIndicator = addedNodes.some(node => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node as HTMLElement;
+              const text = element.textContent?.toLowerCase() || "";
+              return text.includes("thank") || text.includes("success") || text.includes("submitted");
+            }
+            return false;
+          });
+
+          if (hasSuccessIndicator) {
+            trackEvent({
+              area: TRACKING_AREAS.CONTACT,
+              object: "hubspot_form",
+              action: "submitted",
+            });
+            observer.disconnect();
+            break;
+          }
+        }
+      });
+
+      observer.observe(container, { childList: true, subtree: true });
+      setTimeout(() => observer.disconnect(), 30000); // Cleanup after 30s
+    };
+
+    const createForm = () => {
+      if (formCreated) {
+        return;
+      }
+
       const formContainer = document.getElementById("hubspotForm");
       if (!formContainer) {
         return;
       }
 
-      // Detect when HubSpot renders the form
-      const observer = new MutationObserver((mutations, obs) => {
-        const form = formContainer.querySelector("form");
-        if (form) {
-          obs.disconnect();
+      // Check if form already exists
+      const existingForm = formContainer.querySelector("form");
+      const existingIframe = formContainer.querySelector("iframe");
+      if (existingForm || existingIframe) {
+        formCreated = true;
+        setupTracking(); // Set up tracking for existing form
+        return;
+      }
 
-          trackEvent({
-            area: TRACKING_AREAS.CONTACT,
-            object: "hubspot_form",
-            action: "ready",
-          });
+      if (window.hbspt?.forms?.create) {
+        formCreated = true;
 
-          formContainer.addEventListener(
-            "click",
-            (e) => {
-              const target = e.target as HTMLElement;
+        window.hbspt.forms.create({
+          region,
+          portalId,
+          formId,
+          target: "#hubspotForm",
+          onFormReady: () => {
+            setupTracking();
+          },
+          onFormSubmitted: () => {
+            trackEvent({
+              area: TRACKING_AREAS.CONTACT,
+              object: "hubspot_form",
+              action: "submitted",
+            });
+          },
+        });
 
-              const isButtonTag =
-                target.tagName === "BUTTON" || target.tagName === "INPUT";
-              const buttonElement = isButtonTag
-                ? target
-                : target.closest("button") ??
-                  target.closest("input[type='submit']") ??
-                  target.closest("input[type='button']");
+        // Use MutationObserver as fallback if onFormReady doesn't fire
+        const observer = new MutationObserver((mutations, obs) => {
+          const container = document.getElementById("hubspotForm");
+          if (!container) return;
 
-              if (buttonElement) {
-                const text = buttonElement.textContent?.toLowerCase() ?? "";
-                const value =
-                  (buttonElement as HTMLInputElement).value?.toLowerCase() ??
-                  "";
-                const className = buttonElement.className?.toLowerCase() ?? "";
-                const buttonType = (
-                  buttonElement as HTMLInputElement | HTMLButtonElement
-                ).type;
+          const form = container.querySelector("form");
+          const iframe = container.querySelector("iframe");
 
-                const contains = (keyword: string) =>
-                  text.includes(keyword) ||
-                  value.includes(keyword) ||
-                  className.includes(keyword);
+          if (form || iframe) {
+            obs.disconnect();
+            setupTracking();
+          }
+        });
 
-                if (contains("next")) {
-                  trackEvent({
-                    area: TRACKING_AREAS.CONTACT,
-                    object: "hubspot_form",
-                    action: "next_step",
-                  });
-                } else if (contains("previous") || contains("back")) {
-                  trackEvent({
-                    area: TRACKING_AREAS.CONTACT,
-                    object: "hubspot_form",
-                    action: "previous_step",
-                  });
-                } else if (buttonType === "submit" || contains("submit")) {
-                  trackEvent({
-                    area: TRACKING_AREAS.CONTACT,
-                    object: "hubspot_form",
-                    action: TRACKING_ACTIONS.SUBMIT,
-                  });
-                }
-              }
-            },
-            true
-          );
+        const container = document.getElementById("hubspotForm");
+        if (container) {
+          observer.observe(container, { childList: true, subtree: true });
+          setTimeout(() => observer.disconnect(), 5000);
         }
-      });
-
-      observer.observe(formContainer, {
-        childList: true,
-        subtree: true,
-      });
+      } else {
+        // Retry if HubSpot library not ready
+        setTimeout(createForm, 500);
+      }
     };
 
-    script.onerror = () => {
-      trackEvent({
-        area: TRACKING_AREAS.CONTACT,
-        object: "hubspot_form",
-        action: "script_load_error",
-      });
+    // Load HubSpot script
+    const loadScript = () => {
+      const existingScript = document.querySelector(`script[src="${scriptSrc}"]`);
+
+      if (!existingScript) {
+        const script = document.createElement("script");
+        script.src = scriptSrc;
+        script.charset = "utf-8";
+        script.type = "text/javascript";
+
+        script.onload = () => {
+          // Try to create form after script loads
+          setTimeout(createForm, 100);
+        };
+
+        script.onerror = () => {
+          console.error("[HubSpotForm] Failed to load HubSpot script");
+        };
+
+        document.body.appendChild(script);
+      } else {
+        // Script exists, create form directly
+        setTimeout(createForm, 100);
+      }
     };
 
-    document.body.appendChild(script);
+    loadScript();
 
-    // Load Default.com script
+    // Load Default.com script for enrichment
     window.__default__ = window.__default__ ?? {};
     window.__default__.form_id = 503792;
     window.__default__.team_id = 579;
 
-    const loadDefaultScript = (attempt = 0) => {
-      const defaultScript = document.createElement("script");
-      defaultScript.async = true;
-      defaultScript.src = "https://import-cdn.default.com";
-      defaultScript.onload = () => {
-        console.info("[Default.com] Powered by Default.com");
-      };
-      defaultScript.onerror = () => {
-        if (attempt < 3) {
-          setTimeout(
-            () => loadDefaultScript(attempt + 1),
-            1000 * (attempt + 1)
-          );
-        }
-      };
-      document.head.appendChild(defaultScript);
-    };
+    const defaultScript = document.createElement("script");
+    defaultScript.async = true;
+    defaultScript.src = "https://import-cdn.default.com";
+    document.head.appendChild(defaultScript);
 
-    loadDefaultScript();
+    // Cleanup function to handle component unmounting
+    return () => {
+      // Don't clear the form container on unmount - let React handle it
+    };
   }, []);
 
   return (
