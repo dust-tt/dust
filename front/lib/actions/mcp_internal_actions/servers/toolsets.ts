@@ -17,10 +17,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { getHeaderFromGroupIds, Ok } from "@app/types";
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("toolsets");
 
   server.tool(
@@ -90,6 +90,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

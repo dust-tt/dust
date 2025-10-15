@@ -68,10 +68,10 @@ function buildInteractiveContentFileNotification(
  * Files are rendered in a viewer where users can execute and interact with them.
  * We return the file resource only on file creation, as edit updates the existing file.
  */
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("interactive_content");
 
   server.tool(
@@ -473,6 +473,6 @@ const createServer = (
   // });
 
   return server;
-};
+}
 
 export default createServer;

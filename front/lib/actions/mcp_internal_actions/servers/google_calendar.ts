@@ -89,10 +89,10 @@ interface EnrichedGoogleCalendarEvent
   end?: EnrichedGoogleCalendarEventDateTime;
 }
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("google_calendar");
 
   async function getCalendarClient(authInfo?: AuthInfo) {
@@ -685,7 +685,7 @@ const createServer = (
   }
 
   return server;
-};
+}
 
 // Type guard to safely convert googleapis event to our interface
 function isGoogleCalendarEvent(event: any): event is GoogleCalendarEvent {

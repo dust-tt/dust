@@ -1,17 +1,16 @@
 import {
+  ActionFrameIcon,
   Citation,
   CitationDescription,
   CitationGrid,
   CitationTitle,
   Icon,
-  SparklesIcon,
 } from "@dust-tt/sparkle";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { formatCalendarDate } from "@app/lib/utils/timestamps";
 import type { LightAgentMessageType } from "@app/types";
-import { frameContentType } from "@app/types";
-
-// Interactive content files.
+import { frameContentType, getTime } from "@app/types";
 
 function getDescriptionForContentType(
   file: LightAgentMessageType["generatedFiles"][number]
@@ -61,18 +60,24 @@ export function AgentMessageInteractiveContentGeneratedFiles({
             onClick={handleClick}
             className="bg-gray-50 dark:bg-gray-800"
           >
-            <div className="flex flex-row items-center gap-2">
+            <div className="flex flex-row items-center">
               <CitationTitle>{file.title}</CitationTitle>
-              {description && variant === "list" && (
-                <CitationTitle className="text-muted-foreground dark:text-muted-foreground-night">
-                  {description}
-                </CitationTitle>
-              )}
             </div>
             <CitationDescription>
               <div className="flow-row flex items-center gap-2">
-                <Icon visual={SparklesIcon} size="xs" />
-                Frame
+                {variant === "grid" && file.createdAt && (
+                  <div>
+                    <span>{formatCalendarDate(file.createdAt)}</span>
+                    <span className="mx-1">{"\u00B7"}</span>
+                    <time>{getTime(file.createdAt)}</time>
+                  </div>
+                )}
+                {variant === "list" && description && (
+                  <p className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    <Icon visual={ActionFrameIcon} size="xs" />
+                    {description}
+                  </p>
+                )}
               </div>
             </CitationDescription>
           </Citation>

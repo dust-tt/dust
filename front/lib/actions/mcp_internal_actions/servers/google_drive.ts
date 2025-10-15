@@ -6,6 +6,8 @@ import { z } from "zod";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -20,7 +22,10 @@ const SUPPORTED_MIMETYPES = [
 const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
 const MAX_FILE_SIZE = 64 * 1024 * 1024; // 10 MB max original file size
 
-const createServer = (auth: any): McpServer => {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("google_drive");
 
   async function getDriveClient(authInfo?: AuthInfo) {
@@ -48,6 +53,7 @@ const createServer = (auth: any): McpServer => {
       {
         toolNameForMonitoring: "google_drive",
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ pageToken }, { authInfo }) => {
         const drive = await getDriveClient(authInfo);
@@ -142,6 +148,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       {
         toolNameForMonitoring: "google_drive",
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         { q, pageToken, pageSize, driveId, includeSharedDrives, orderBy },
@@ -231,6 +238,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       {
         toolNameForMonitoring: "google_drive",
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ fileId, offset, limit }, { authInfo }) => {
         const drive = await getDriveClient(authInfo);
@@ -354,6 +362,6 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
   );
 
   return server;
-};
+}
 
 export default createServer;

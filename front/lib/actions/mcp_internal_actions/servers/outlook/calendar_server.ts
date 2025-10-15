@@ -5,12 +5,16 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import * as OutlookApi from "@app/lib/actions/mcp_internal_actions/servers/outlook/outlook_api_helper";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 
 const OUTLOOK_CALENDAR_TOOL_NAME = "outlook_calendar";
 
-const createServer = (auth: Authenticator): McpServer => {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("outlook_calendar");
 
   server.tool(
@@ -22,6 +26,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (_, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -81,6 +86,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ top = 250, skip = 0, userTimezone }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -150,6 +156,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         {
@@ -213,6 +220,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ calendarId, eventId, userTimezone }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -295,6 +303,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         {
@@ -396,6 +405,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         {
@@ -473,6 +483,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ calendarId, eventId, userTimezone }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -530,6 +541,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         { emails, startTime, endTime, intervalInMinutes = 60, userTimezone },
@@ -561,6 +573,6 @@ const createServer = (auth: Authenticator): McpServer => {
   );
 
   return server;
-};
+}
 
 export default createServer;

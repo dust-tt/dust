@@ -10,10 +10,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { decrypt, Err, Ok } from "@app/types";
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("openai_usage");
 
   const makeOpenAIRequest = async (
@@ -393,6 +393,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

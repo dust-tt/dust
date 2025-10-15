@@ -1,4 +1,4 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -25,7 +25,7 @@ export class WebhookRequestModel extends WorkspaceAwareModel<WebhookRequestModel
 
   declare status: WebhookRequestStatus;
   declare webhookSourceId: ForeignKey<WebhookSourceModel["id"]>;
-  declare webhookSource: WebhookSourceModel;
+  declare webhookSource: NonAttribute<WebhookSourceModel>;
 
   // Processing data
   declare processedAt: Date | null;

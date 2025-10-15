@@ -703,6 +703,7 @@ function reconstructConversationUrl(
   return getConversationRoute(
     workspace.sId,
     conversationId,
+    undefined,
     config.getClientFacingUrl()
   );
 }

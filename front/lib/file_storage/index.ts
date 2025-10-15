@@ -192,3 +192,6 @@ export const getUpsertQueueBucket = (options?: FileStorageOptions) =>
 
 export const getDustDataSourcesBucket = (options?: FileStorageOptions) =>
   getBucketInstance(config.getDustDataSourcesBucket(), options);
+
+export const getWebhookRequestsBucket = (options?: FileStorageOptions) =>
+  getBucketInstance(config.getWebhookRequestsBucket(), options);

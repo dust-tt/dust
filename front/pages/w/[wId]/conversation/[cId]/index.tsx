@@ -10,6 +10,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   ConversationLayoutProps & {
@@ -21,6 +22,28 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const user = auth.user()?.toJSON();
   const subscription = auth.subscription();
   const isAdmin = auth.isAdmin();
+
+  // Redirect old ?assistant= query param to ?agent=
+  const { assistant, agent, wId, ...restQuery } = context.query;
+  if (isString(assistant) && !isString(agent)) {
+    const params = new URLSearchParams();
+    Object.entries(restQuery).forEach(([key, value]) => {
+      if (isString(value)) {
+        params.set(key, value);
+      }
+    });
+    params.set("agent", assistant);
+
+    const conversationId =
+      typeof context.params?.cId === "string" ? context.params.cId : "new";
+
+    return {
+      redirect: {
+        destination: `/w/${wId}/conversation/${conversationId}?${params.toString()}`,
+        permanent: true,
+      },
+    };
+  }
 
   if (!owner || !user || !auth.isUser() || !subscription) {
     const { cId } = context.query;

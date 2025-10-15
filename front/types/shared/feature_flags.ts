@@ -200,6 +200,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Microsoft Teams bot connector for workspace integration",
     stage: "dust_only",
   },
+  microsoft_drive_mcp_server: {
+    description: "Microsoft Drive MCP server",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

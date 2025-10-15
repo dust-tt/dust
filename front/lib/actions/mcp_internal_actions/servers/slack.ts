@@ -279,11 +279,11 @@ const getCachedSlackAIEnablementStatus = cacheWithRedis(
   }
 );
 
-const createServer = async (
+async function createServer(
   auth: Authenticator,
   mcpServerId: string,
   agentLoopContext?: AgentLoopContextType
-): Promise<McpServer> => {
+): Promise<McpServer> {
   const server = makeInternalMCPServer("slack");
 
   const c = await getConnectionForMCPServer(auth, {
@@ -908,6 +908,6 @@ const createServer = async (
   );
 
   return server;
-};
+}
 
 export default createServer;

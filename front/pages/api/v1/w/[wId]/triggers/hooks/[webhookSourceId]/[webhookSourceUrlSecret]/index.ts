@@ -3,12 +3,16 @@ import type { NextApiResponse } from "next";
 
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { Authenticator } from "@app/lib/auth";
+import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { checkWebhookRequestForRateLimit } from "@app/lib/triggers/webhook";
+import {
+  checkWebhookRequestForRateLimit,
+  processWebhookRequest,
+} from "@app/lib/triggers/webhook";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
@@ -19,7 +23,7 @@ import type {
   ContentFragmentInputWithFileIdType,
   WithAPIErrorResponse,
 } from "@app/types";
-import { Err } from "@app/types";
+import { Err, normalizeError } from "@app/types";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
 /**
@@ -74,7 +78,7 @@ async function handler(
   req: NextApiRequestWithContext,
   res: NextApiResponse<WithAPIErrorResponse<PostWebhookTriggerResponseType>>
 ): Promise<void> {
-  const { method, body } = req;
+  const { method, body, headers, query } = req;
 
   if (method !== "POST") {
     return apiError(req, res, {
@@ -86,7 +90,7 @@ async function handler(
     });
   }
 
-  const contentType = req.headers["content-type"];
+  const contentType = headers["content-type"];
   if (!contentType || !contentType.includes("application/json")) {
     return apiError(req, res, {
       status_code: 400,
@@ -97,7 +101,7 @@ async function handler(
     });
   }
 
-  const { wId, webhookSourceId, webhookSourceUrlSecret } = req.query;
+  const { wId, webhookSourceId, webhookSourceUrlSecret } = query;
 
   if (
     typeof wId !== "string" ||
@@ -167,7 +171,7 @@ async function handler(
         },
       });
     }
-    const signature = req.headers[signatureHeader.toLowerCase()] as string;
+    const signature = headers[signatureHeader.toLowerCase()] as string;
 
     if (!signature) {
       return apiError(req, res, {
@@ -205,6 +209,12 @@ async function handler(
       });
     }
   }
+
+  await processWebhookRequest(auth, {
+    webhookSource: webhookSource.toJSON(),
+    headers,
+    body,
+  });
 
   const rateLimiterRes = await checkWebhookRequestForRateLimit(auth);
   if (rateLimiterRes.isErr()) {
@@ -260,8 +270,57 @@ async function handler(
     )
   ).flat();
 
+  // Filter triggers by payload matching (non-custom webhooks only). Custom webhooks don't have known
+  // schemas, so we can't validate filters against them.
+  const filteredTriggers = triggers.filter((trigger) => {
+    const t = trigger.toJSON();
+
+    // Only filter non-custom webhooks.
+    if (webhookSource.kind === "custom") {
+      return true;
+    }
+
+    // If no filter configured, include trigger.
+    if (t.kind !== "webhook" || !t.configuration.filter) {
+      return true;
+    }
+
+    try {
+      const parsedFilter = parseMatcherExpression(t.configuration.filter);
+      const r = matchPayload(req.body, parsedFilter);
+      if (!r) {
+        logger.info(
+          {
+            triggerId: t.id,
+            triggerName: t.name,
+            filter: t.configuration.filter,
+          },
+          "Webhook trigger filter did not match payload"
+        );
+      }
+      return r;
+    } catch (err) {
+      // FAIL CLOSED: Invalid filters block the trigger from executing.
+      logger.error(
+        {
+          triggerId: t.id,
+          triggerName: t.name,
+          filter: t.configuration.filter,
+          err: normalizeError(err),
+        },
+        "Invalid filter expression in webhook trigger"
+      );
+      return false;
+    }
+  });
+
+  // If no triggers match after filtering, return success without launching workflows.
+  if (filteredTriggers.length === 0) {
+    return res.status(200).json({ success: true });
+  }
+
   // Check if any of the triggers requires the payload.
-  const triggersWithMetadata = triggers.map((t) => {
+  const triggersWithMetadata = filteredTriggers.map((t) => {
     const trigger = t.toJSON();
     const includePayload =
       trigger.kind === "webhook" && trigger.configuration.includePayload;
@@ -278,7 +337,7 @@ async function handler(
     const contentFragmentRes = await toFileContentFragment(auth, {
       contentFragment: {
         contentType: "application/json",
-        content: JSON.stringify(req.body),
+        content: JSON.stringify(body),
         title: `Webhook body (source id: ${webhookSource.id}, date: ${new Date().toISOString()})`,
       },
       fileName: `webhook_body_${webhookSource.id}_${Date.now()}.json`,

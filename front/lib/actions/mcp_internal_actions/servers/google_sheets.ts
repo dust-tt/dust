@@ -6,6 +6,7 @@ import { z } from "zod";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -13,7 +14,10 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const GOOGLE_SHEET_TOOL_NAME = "google_sheets";
 
-const createServer = (auth: Authenticator): McpServer => {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("google_sheets");
 
   async function getSheetsClient(authInfo?: AuthInfo) {
@@ -65,6 +69,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ nameFilter, pageToken, pageSize }, { authInfo }) => {
         const drive = await getDriveClient(authInfo);
@@ -121,6 +126,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ spreadsheetId, includeGridData }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
@@ -174,6 +180,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         { spreadsheetId, range, majorDimension, valueRenderOption },
@@ -235,6 +242,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         { spreadsheetId, range, values, majorDimension, valueInputOption },
@@ -303,6 +311,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         {
@@ -362,6 +371,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ spreadsheetId, range }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
@@ -406,6 +416,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ title, sheetTitles }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
@@ -462,6 +473,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ spreadsheetId, title, rowCount, columnCount }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
@@ -517,6 +529,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ spreadsheetId, sheetId }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
@@ -596,6 +609,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         {
@@ -677,6 +691,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         { sourceSpreadsheetId, sheetId, destinationSpreadsheetId },
@@ -723,6 +738,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ spreadsheetId, sheetId, newTitle }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
@@ -782,6 +798,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ spreadsheetId, sheetId, newIndex }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
@@ -824,6 +841,6 @@ const createServer = (auth: Authenticator): McpServer => {
   );
 
   return server;
-};
+}
 
 export default createServer;

@@ -66,11 +66,25 @@ const _webhookSlackBotAPIHandler = async (
     const slackConfigurations =
       await SlackConfigurationResource.listForTeamId(teamId);
     if (slackConfigurations.length === 0) {
+      const error: {
+        type: "connector_configuration_not_found";
+        message: string;
+      } = {
+        type: "connector_configuration_not_found",
+        message: `Slack configuration not found for teamId ${teamId}`,
+      };
+
+      const requestFromRouter =
+        req.headers["x-dust-clientid"] == "slack-webhook-router";
+
+      if (requestFromRouter) {
+        // If the request is coming from the router, we don't want to log the error as it's expected, and it floods Datadog with non-actionable errors
+        // Nonetheless, we return the 421 as the router will handle it
+        return res.status(421).json({ error });
+      }
+
       return apiError(req, res, {
-        api_error: {
-          type: "connector_configuration_not_found",
-          message: `Slack configuration not found for teamId ${teamId}`,
-        },
+        api_error: error,
         status_code: 421,
       });
     }
