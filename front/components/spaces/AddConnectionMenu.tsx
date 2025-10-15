@@ -36,7 +36,6 @@ import type {
   ConnectorType,
   DataSourceType,
   LightWorkspaceType,
-  OAuthProvider,
   OAuthUseCase,
   PlanType,
   Result,
