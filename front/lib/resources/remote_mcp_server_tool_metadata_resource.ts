@@ -166,14 +166,14 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
   }
 
   // Deletes tool metadata for tools that are not in the list
-  static async onlyKeepTools(
+  static async deleteStaleTools(
     auth: Authenticator,
     {
       serverId,
-      tools,
+      toolsToKeep: tools,
     }: {
       serverId: number;
-      tools: string[];
+      toolsToKeep: string[];
     }
   ) {
     const canAdministrate =
