@@ -1,9 +1,11 @@
 import { cn, Spinner } from "@dust-tt/sparkle";
 import { useState } from "react";
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
-  Line,
-  LineChart,
+  Label,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -98,6 +100,7 @@ export function UsageMetricsChart({
     });
 
   const data = usageMetrics?.points ?? [];
+  const versionMarkers = usageMetrics?.versionMarkers ?? [];
 
   return (
     <div className="bg-card rounded-lg border border-border p-4">
@@ -158,7 +161,7 @@ export function UsageMetricsChart({
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-          <LineChart
+          <BarChart
             data={data}
             margin={{ top: 10, right: 30, left: 10, bottom: 0 }}
           >
@@ -166,21 +169,35 @@ export function UsageMetricsChart({
             <XAxis dataKey="date" className="text-xs text-muted-foreground" />
             <YAxis className="text-xs text-muted-foreground" />
             <Tooltip
-              cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
+              cursor={{ fill: "hsl(var(--border) / 0.1)" }}
               content={UsageMetricsTooltip}
             />
             {USAGE_METRICS_LEGEND.map(({ key, label }) => (
-              <Line
+              <Bar
                 key={key}
                 dataKey={key}
                 name={label}
-                stroke="currentColor"
+                fill="currentColor"
                 className={USAGE_METRICS_PALETTE[key]}
-                strokeWidth={2}
-                dot={false}
               />
             ))}
-          </LineChart>
+            {versionMarkers.map((marker) => (
+              <ReferenceLine
+                key={marker.version}
+                x={marker.timestamp}
+                stroke="hsl(var(--warning))"
+                strokeWidth={2}
+                strokeDasharray="3 3"
+              >
+                <Label
+                  value={`v${marker.version}`}
+                  position="top"
+                  className="fill-warning text-xs"
+                  offset={10}
+                />
+              </ReferenceLine>
+            ))}
+          </BarChart>
         </ResponsiveContainer>
       )}
       <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">

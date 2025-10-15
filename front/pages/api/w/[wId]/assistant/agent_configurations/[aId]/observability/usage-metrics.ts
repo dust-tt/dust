@@ -27,8 +27,15 @@ type ByIntervalBucket = {
   active_users?: estypes.AggregationsCardinalityAggregate;
 };
 
+type VersionBucket = {
+  key: string;
+  doc_count: number;
+  first_seen?: estypes.AggregationsMinAggregate;
+};
+
 type UsageAggs = {
   by_interval?: estypes.AggregationsMultiBucketAggregateBase<ByIntervalBucket>;
+  by_version?: estypes.AggregationsMultiBucketAggregateBase<VersionBucket>;
 };
 
 export type UsageMetricsPoint = {
@@ -38,9 +45,15 @@ export type UsageMetricsPoint = {
   activeUsers: number;
 };
 
+export type AgentVersionMarker = {
+  version: string;
+  timestamp: string;
+};
+
 export type GetUsageMetricsResponse = {
   interval: "day" | "week";
   points: UsageMetricsPoint[];
+  versionMarkers: AgentVersionMarker[];
 };
 
 async function handler(
@@ -116,6 +129,17 @@ async function handler(
             active_users: { cardinality: { field: "user_id" } },
           },
         },
+        by_version: {
+          terms: {
+            field: "agent_version",
+            size: 100,
+          },
+          aggs: {
+            first_seen: {
+              min: { field: "timestamp" },
+            },
+          },
+        },
       };
 
       const result = await searchAnalytics<unknown, UsageAggs>(qdsl, {
@@ -147,7 +171,23 @@ async function handler(
         };
       });
 
-      return res.status(200).json({ interval, points });
+      const versionBuckets = bucketsToArray<VersionBucket>(
+        json.aggregations?.by_version?.buckets
+      );
+
+      const versionMarkers: AgentVersionMarker[] = versionBuckets
+        .map((b) => ({
+          version: b.key,
+          timestamp: formatUTCDateFromMillis(
+            b.first_seen?.value ?? b.first_seen?.value_as_string ?? 0
+          ),
+        }))
+        .sort(
+          (a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+
+      return res.status(200).json({ interval, points, versionMarkers });
     }
     default:
       return apiError(req, res, {
