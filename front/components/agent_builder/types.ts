@@ -193,8 +193,7 @@ export function getDefaultMCPAction(
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    // TODO(2025-10-10 aubin): rename back to noConfigurationRequired.
-    configurable: !noRequirement,
+    configurationRequired: !noRequirement,
   };
 }
 

@@ -31,7 +31,7 @@ declare global {
 export default function HubSpotForm() {
   const region = "eu1";
   const portalId = "144442587";
-  const formId = "31e790e5-f4d5-4c79-acc5-acd770fe8f84";
+  const formId = "95a83867-b22c-440a-8ba0-2733d35e4a7b";
 
   useEffect(() => {
     const scriptSrc = `https://js-${region}.hsforms.net/forms/embed/developer/${portalId}.js`;

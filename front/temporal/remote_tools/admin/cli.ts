@@ -1,6 +1,6 @@
 import parseArgs from "minimist";
 
-import { launchRemoteMCPServersSyncWorkflow } from "@app/temporal/remote_tools/client";
+import { createRemoteMCPServersSyncSchedule } from "@app/temporal/remote_tools/client";
 
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
@@ -11,7 +11,7 @@ const main = async () => {
 
   switch (command) {
     case "start":
-      await launchRemoteMCPServersSyncWorkflow();
+      await createRemoteMCPServersSyncSchedule();
       return;
     default:
       console.log("Unknown command, possible values: `start`");

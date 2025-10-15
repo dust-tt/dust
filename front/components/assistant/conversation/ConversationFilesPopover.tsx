@@ -32,7 +32,7 @@ interface FileGroup {
 
 // Configuration for content types that get their own groups.
 const GROUPED_CONTENT_TYPES = {
-  [frameContentType]: "Frame",
+  [frameContentType]: "Frames",
   "application/json": "JSON",
   "text/csv": "Tables",
   "text/plain": "Text",
@@ -163,11 +163,8 @@ const FileGroupSection = ({
 
 function EmptyFilesState() {
   return (
-    <div className="flex flex-col gap-2 py-4 text-center">
-      <div className="text-md font-semibold text-primary dark:text-primary-night">
-        Nothing generated yet
-      </div>
-      <div className="text-sm text-muted-foreground">
+    <div className="flex flex-col gap-1">
+      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         Files generated in this conversation will appear here.
       </div>
     </div>
@@ -238,7 +235,7 @@ export const ConversationFilesPopover = ({
         }}
       >
         <ScrollArea className="flex flex-col gap-3">
-          <div className="heading-lg text-primary dark:text-primary-night">
+          <div className="heading-base mb-2 text-primary dark:text-primary-night">
             Generated Content
           </div>
 

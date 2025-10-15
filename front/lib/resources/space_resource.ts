@@ -12,6 +12,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
@@ -501,7 +502,22 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           await this.removeGroup(globalGroup);
         }
 
+        const previousManagementMode = this.managementMode;
         await this.update({ managementMode }, t);
+
+        // Handle member status updates based on management mode changes
+        if (previousManagementMode !== managementMode) {
+          if (managementMode === "group") {
+            // When switching to group mode, suspend all active members of the default group
+            await this.suspendDefaultGroupMembers(auth, t);
+          } else if (
+            managementMode === "manual" &&
+            previousManagementMode === "group"
+          ) {
+            // When switching from group to manual mode, restore suspended members
+            await this.restoreDefaultGroupMembers(auth, t);
+          }
+        }
 
         if (managementMode === "manual") {
           const memberIds = params.memberIds;
@@ -898,6 +914,54 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   // Serialization.
+
+  /**
+   * Suspends all active members of the default group when switching to group management mode
+   */
+  private async suspendDefaultGroupMembers(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<void> {
+    const defaultSpaceGroup = this.getDefaultSpaceGroup();
+
+    await GroupMembershipModel.update(
+      { status: "suspended" },
+      {
+        where: {
+          groupId: defaultSpaceGroup.id,
+          workspaceId: this.workspaceId,
+          status: "active",
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+        transaction,
+      }
+    );
+  }
+
+  /**
+   * Restores all suspended members of the default group when switching to manual management mode
+   */
+  private async restoreDefaultGroupMembers(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<void> {
+    const defaultSpaceGroup = this.getDefaultSpaceGroup();
+
+    await GroupMembershipModel.update(
+      { status: "active" },
+      {
+        where: {
+          groupId: defaultSpaceGroup.id,
+          workspaceId: this.workspaceId,
+          status: "suspended",
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+        transaction,
+      }
+    );
+  }
 
   toJSON(): SpaceType {
     return {

@@ -9,13 +9,17 @@ interface RouteMapping {
 }
 
 const ROUTE_MAPPINGS: RouteMapping[] = [
-  // Conversations (both old /assistant/ and new /agent/ URLs)
+  // Conversations (old /assistant/, /agent/, and new /conversation/ URLs)
   {
     pattern: /^\/w\/([^/]+)\/assistant\/([^/]+)$/,
     pokePath: "/poke/$1/conversations/$2",
   },
   {
     pattern: /^\/w\/([^/]+)\/agent\/([^/]+)$/,
+    pokePath: "/poke/$1/conversations/$2",
+  },
+  {
+    pattern: /^\/w\/([^/]+)\/conversation\/([^/]+)$/,
     pokePath: "/poke/$1/conversations/$2",
   },
 
@@ -197,7 +201,7 @@ export function convertPokeToUrl(pokeUrl: string): string | null {
 
     // Define reverse mappings
     const reverseMappings: Array<[RegExp, string]> = [
-      [/^([^/]+)\/conversations\/([^/]+)$/, "/w/$1/agent/$2"],
+      [/^([^/]+)\/conversations\/([^/]+)$/, "/w/$1/conversation/$2"],
       [/^([^/]+)\/agents\/([^/]+)$/, "/w/$1/builder/agents/$2"],
       [/^([^/]+)\/spaces\/([^/]+)\/apps\/([^/]+)$/, "/w/$1/spaces/$2/apps/$3"],
       [

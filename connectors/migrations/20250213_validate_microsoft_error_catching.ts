@@ -1,6 +1,6 @@
 import { makeScript } from "scripts/helpers";
 
-import { getClient } from "@connectors/connectors/microsoft";
+import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import { isMicrosoftSignInError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -16,7 +16,7 @@ makeScript(
 
     if (execute) {
       try {
-        await getClient(connector.connectionId);
+        await getMicrosoftClient(connector.connectionId);
       } catch (error) {
         logger.info({
           error,

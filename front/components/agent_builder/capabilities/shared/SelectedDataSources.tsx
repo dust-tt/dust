@@ -198,7 +198,6 @@ export function SelectedDataSources() {
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
   });
-
   const { mcpServerViewsWithKnowledge } = useMCPServerViewsContext();
 
   const internalMcpServerView = mcpServerViewsWithKnowledge.find(
@@ -206,8 +205,7 @@ export function SelectedDataSources() {
   );
 
   const isTableOrWarehouseServer = tablesServer.includes(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    internalMcpServerView?.server.name || ""
+    internalMcpServerView?.server.name ?? ""
   );
 
   const dataSourceViews = useMemo(() => {

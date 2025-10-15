@@ -17,7 +17,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok, redactString } from "@app/types";
-import type { WebhookSource } from "@app/types/triggers/webhooks";
+import type { WebhookSourceType } from "@app/types/triggers/webhooks";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
@@ -202,7 +202,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     });
   }
 
-  toJSON(): WebhookSource {
+  toJSON(): WebhookSourceType {
     // Redact secret when outside of the 10-minute window after creation.
     const currentTime = new Date();
     const createdAt = new Date(this.createdAt);

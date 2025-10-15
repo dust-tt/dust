@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import { Readable } from "node:stream";
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -93,10 +94,10 @@ function getContentTypeFromOutputFormat(
   }
 }
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("file_generation");
   server.tool(
     "get_supported_source_formats_for_output_format",
@@ -188,7 +189,11 @@ const createServer = (
               resourceModelId
             );
             if (!file) {
-              return new Err(new MCPError(`File not found: ${file_id_or_url}`));
+              return new Err(
+                new MCPError(`File not found: ${file_id_or_url}`, {
+                  tracked: false,
+                })
+              );
             }
 
             url = await convertapi.upload(
@@ -223,10 +228,14 @@ const createServer = (
 
           return new Ok(content);
         } catch (e) {
+          const error = normalizeError(e);
           return new Err(
             new MCPError(
-              `There was an error generating your file: ${normalizeError(e)}. ` +
-                "You may be able to get the desired result by chaining multiple conversions, look closely to the source format you use."
+              `There was an error generating your file: ${error}. ` +
+                "You may be able to get the desired result by chaining multiple conversions, look closely to the source format you use.",
+              {
+                tracked: !error.message.includes("Unsupported conversion"),
+              }
             )
           );
         }
@@ -265,6 +274,7 @@ const createServer = (
           return new Err(new MCPError("Missing environment variable."));
         }
 
+        const fileNameWithoutExtension = basename(file_name);
         // Remove the leading dot from the extension.
         const extension = extname(file_name).replace(/^\./, "");
         if (!isValidOutputType(extension)) {
@@ -368,10 +378,9 @@ ${file_content
               }
             }
 
-            const tempFileName = file_name.replace(`.${extension}`, "");
             const uploadResult = await convertapi.upload(
               Readable.from(htmlContent),
-              `${tempFileName}.html`
+              `${fileNameWithoutExtension}.html`
             );
 
             const result = await convertapi.convert(
@@ -396,7 +405,7 @@ ${file_content
                     blob: base64,
                     text: "Your file was generated successfully.",
                     mimeType: getContentTypeFromOutputFormat(extension),
-                    uri: "",
+                    uri: fileNameWithoutExtension,
                   },
                 },
               ]);
@@ -423,7 +432,7 @@ ${file_content
               blob: Buffer.from(file_content).toString("base64"),
               text: "Your file was generated successfully.",
               mimeType: getContentTypeFromOutputFormat(extension),
-              uri: "",
+              uri: fileNameWithoutExtension,
             },
           },
         ]);
@@ -432,6 +441,6 @@ ${file_content
   );
 
   return server;
-};
+}
 
 export default createServer;

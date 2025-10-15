@@ -73,6 +73,7 @@ export type UserMessageOrigin =
   | "n8n"
   | "raycast"
   | "slack"
+  | "teams"
   | "triggered"
   | "web"
   | "zapier"

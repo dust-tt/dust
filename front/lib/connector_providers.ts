@@ -320,6 +320,29 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     isDeletable: false,
   },
+  microsoft_bot: {
+    name: "Microsoft Teams (Bot)",
+    connectorProvider: "microsoft_bot",
+    status: "built",
+    rollingOutFlag: "microsoft_teams_bot",
+    hide: true,
+    description:
+      "Enable your Microsoft Teams bot integration to interact with Dust directly from Teams.",
+    limitations: "Bot must be enabled in organization settings.",
+    mismatchError: `You cannot select another Microsoft tenant.\nPlease contact us at support@dust.tt if you initially selected a wrong tenant.`,
+    guideLink: "https://docs.dust.tt/docs/microsoft-teams-bot",
+    selectLabel: "Bot configuration",
+    getLogoComponent: () => {
+      return MicrosoftLogo;
+    },
+    isNested: false,
+    oauthExtraConfigComponent: MicrosoftOAuthExtraConfig,
+    permissions: {
+      selected: "read_write",
+      unselected: "write",
+    },
+    isDeletable: false,
+  },
   webcrawler: {
     name: "Web Crawler",
     connectorProvider: "webcrawler",
@@ -508,6 +531,8 @@ export const isConnectorProviderAllowedForPlan = (
     case "bigquery":
     case "gong":
       return true;
+    case "microsoft_bot":
+      return !!featureFlags?.includes("microsoft_teams_bot");
     default:
       assertNever(provider);
   }
@@ -523,6 +548,7 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "google_drive":
     case "intercom":
     case "microsoft":
+    case "microsoft_bot":
     case "notion":
     case "slack":
     case "zendesk":
@@ -574,6 +600,7 @@ export function isConnectorTypeTrackable(
     case "github":
     case "notion":
     case "microsoft":
+    case "microsoft_bot":
     case "confluence":
     case "intercom":
     case "webcrawler":

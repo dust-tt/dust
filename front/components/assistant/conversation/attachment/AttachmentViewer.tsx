@@ -13,7 +13,7 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import type {
   FileAttachmentCitation,
-  MarkdownAttachmentCitation,
+  MCPAttachmentCitation,
 } from "@app/components/assistant/conversation/attachment/types";
 import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -34,7 +34,7 @@ export const AttachmentViewer = ({
 }: {
   viewerOpen: boolean;
   setViewerOpen: (open: boolean) => void;
-  attachmentCitation: FileAttachmentCitation | MarkdownAttachmentCitation;
+  attachmentCitation: FileAttachmentCitation | MCPAttachmentCitation;
   conversationId: string | null;
   owner: LightWorkspaceType;
 }) => {
@@ -104,7 +104,10 @@ export const AttachmentViewer = ({
         return;
       }
 
-      if (attachmentCitation.attachmentCitationType === "fragment") {
+      if (
+        attachmentCitation.attachmentCitationType === "fragment" ||
+        attachmentCitation.attachmentCitationType === "mcp"
+      ) {
         if (isFileContentLoading) {
           return;
         }
@@ -142,9 +145,11 @@ export const AttachmentViewer = ({
     </>
   );
 
+  const canDownload = !!fileId;
   const onClickDownload = () => {
-    const downloadUrl =
-      isAudio && fileId ? getFileDownloadUrl(owner, fileId) : undefined;
+    const downloadUrl = canDownload
+      ? getFileDownloadUrl(owner, fileId)
+      : undefined;
 
     if (downloadUrl) {
       window.open(downloadUrl, "_blank");
@@ -156,7 +161,7 @@ export const AttachmentViewer = ({
       <DialogContent size="xl" height="lg">
         <DialogHeader>
           <DialogTitle>
-            {isAudio && (
+            {canDownload && (
               <Button
                 onClick={onClickDownload}
                 icon={ArrowDownOnSquareIcon}

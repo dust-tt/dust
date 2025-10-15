@@ -90,6 +90,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "interactive_content",
   "slideshow",
   "jira",
+  "microsoft_drive",
   "missing_action_catcher",
   "monday",
   "notion",
@@ -1056,6 +1057,34 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       icon: "ActionMegaphoneIcon",
       documentationUrl: null,
+      instructions: null,
+    },
+  },
+  microsoft_drive: {
+    id: 35,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("microsoft_drive_mcp_server");
+    },
+    isPreview: false,
+    tools_stakes: {
+      search_files: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "microsoft_drive",
+      version: "1.0.0",
+      description: "Tools for managing Microsoft files.",
+      authorization: {
+        provider: "microsoft_tools" as const,
+        supported_use_cases: ["personal_actions"] as const,
+        scope:
+          "User.Read Files.Read.All Sites.Read.All ExternalItem.Read.All" as const,
+      },
+      icon: "MicrosoftLogo",
+      documentationUrl: "https://docs.dust.tt/docs/microsoft-tool-setup",
       instructions: null,
     },
   },

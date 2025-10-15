@@ -1,3 +1,4 @@
+import { Context } from "@temporalio/activity";
 import assert from "assert";
 
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
@@ -62,12 +63,20 @@ export async function runToolActivity(
   );
   assert(action, "Action not found");
 
-  const eventStream = runToolWithStreaming(auth, {
-    action,
-    agentConfiguration,
-    agentMessage,
-    conversation,
-  });
+  const abortSignal = Context.current().cancellationSignal;
+
+  const eventStream = runToolWithStreaming(
+    auth,
+    {
+      action,
+      agentConfiguration,
+      agentMessage,
+      conversation,
+    },
+    {
+      signal: abortSignal,
+    }
+  );
 
   for await (const event of eventStream) {
     switch (event.type) {
@@ -134,7 +143,7 @@ export async function runToolActivity(
                 messageId: agentMessage.sId,
                 message: {
                   ...agentMessage,
-                  content: agentMessage.content ?? event.text,
+                  content: agentMessage.content,
                   completedTs: event.created,
                 },
                 runIds: runIds ?? [],

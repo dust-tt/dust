@@ -4,11 +4,9 @@ import { google } from "googleapis";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -16,7 +14,10 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const GOOGLE_SHEET_TOOL_NAME = "google_sheets";
 
-const createServer = (auth: Authenticator): McpServer => {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("google_sheets");
 
   async function getSheetsClient(authInfo?: AuthInfo) {
@@ -65,7 +66,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      {
+        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async ({ nameFilter, pageToken, pageSize }, { authInfo }) => {
         const drive = await getDriveClient(authInfo);
         if (!drive) {
@@ -90,11 +95,9 @@ const createServer = (auth: Authenticator): McpServer => {
             corpora: "allDrives",
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -120,7 +123,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      {
+        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async ({ spreadsheetId, includeGridData }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -135,11 +142,9 @@ const createServer = (auth: Authenticator): McpServer => {
             includeGridData,
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -172,7 +177,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      {
+        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async (
         { spreadsheetId, range, majorDimension, valueRenderOption },
         { authInfo }
@@ -192,11 +201,9 @@ const createServer = (auth: Authenticator): McpServer => {
             valueRenderOption,
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -232,7 +239,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      {
+        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async (
         { spreadsheetId, range, values, majorDimension, valueInputOption },
         { authInfo }
@@ -255,11 +266,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -299,7 +308,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      {
+        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async (
         {
           spreadsheetId,
@@ -330,11 +343,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(normalizeError(err).message || "Failed to append data")
@@ -357,7 +368,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      {
+        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async ({ spreadsheetId, range }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -372,11 +387,9 @@ const createServer = (auth: Authenticator): McpServer => {
             range,
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(normalizeError(err).message || "Failed to clear range")
@@ -400,7 +413,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      {
+        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async ({ title, sheetTitles }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -422,11 +439,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -455,7 +470,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      {
+        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async ({ spreadsheetId, title, rowCount, columnCount }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -484,11 +503,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -509,7 +526,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      {
+        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async ({ spreadsheetId, sheetId }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -532,11 +553,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -587,7 +606,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      {
+        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async (
         {
           spreadsheetId,
@@ -631,11 +654,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -667,7 +688,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      {
+        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async (
         { sourceSpreadsheetId, sheetId, destinationSpreadsheetId },
         { authInfo }
@@ -688,11 +713,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(normalizeError(err).message || "Failed to copy sheet")
@@ -712,7 +735,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      {
+        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async ({ spreadsheetId, sheetId, newTitle }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -739,11 +766,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -770,7 +795,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME },
+      {
+        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async ({ spreadsheetId, sheetId, newIndex }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -797,11 +826,9 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(
-            makeMCPToolJSONSuccess({
-              result: res.data,
-            }).content
-          );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -814,6 +841,6 @@ const createServer = (auth: Authenticator): McpServer => {
   );
 
   return server;
-};
+}
 
 export default createServer;

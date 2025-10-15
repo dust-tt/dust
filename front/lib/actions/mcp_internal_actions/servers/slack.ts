@@ -16,7 +16,7 @@ import {
   executeListUsers,
   executePostMessage,
   getSlackClient,
-} from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_api_helper";
+} from "@app/lib/actions/mcp_internal_actions/servers/slack_bot/slack_api_helper";
 import {
   makeInternalMCPServer,
   makePersonalAuthenticationError,
@@ -279,11 +279,11 @@ const getCachedSlackAIEnablementStatus = cacheWithRedis(
   }
 );
 
-const createServer = async (
+async function createServer(
   auth: Authenticator,
   mcpServerId: string,
   agentLoopContext?: AgentLoopContextType
-): Promise<McpServer> => {
+): Promise<McpServer> {
   const server = makeInternalMCPServer("slack");
 
   const c = await getConnectionForMCPServer(auth, {
@@ -317,7 +317,11 @@ const createServer = async (
       },
       withToolLogging(
         auth,
-        { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+        {
+          toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+          agentLoopContext,
+          skipAlerting: true,
+        },
         async (
           {
             keywords,
@@ -618,7 +622,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ channel, relativeTimeFrame }, { authInfo }) => {
         if (!agentLoopContext?.runContext) {
           return new Err(
@@ -759,7 +767,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ to, message, threadTs, fileId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -773,15 +785,13 @@ const createServer = async (
         }
 
         try {
-          return await executePostMessage(
+          return await executePostMessage(auth, agentLoopContext, {
             to,
             message,
             threadTs,
             fileId,
             accessToken,
-            agentLoopContext,
-            auth
-          );
+          });
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
             return new Ok(makePersonalAuthenticationError("slack").content);
@@ -803,7 +813,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -832,7 +846,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ userId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -862,7 +880,11 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -886,6 +908,6 @@ const createServer = async (
   );
 
   return server;
-};
+}
 
 export default createServer;

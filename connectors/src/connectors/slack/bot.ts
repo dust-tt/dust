@@ -79,6 +79,8 @@ const SLACK_ERROR_TEXT =
 
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
+const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
+
 type BotAnswerParams = {
   responseUrl?: string;
   slackTeamId: string;
@@ -134,6 +136,19 @@ export async function botAnswerMessage(
 
     return new Ok(undefined);
   } catch (e) {
+    // This means that the message has been deleted, so we don't need to send an error message.
+    // So we don't log an error.
+    if (isSlackWebAPIPlatformError(e) && e.data.error === "message_not_found") {
+      logger.info(
+        {
+          connectorId: connector.id,
+          slackTeamId,
+        },
+        "Message not found when answering to Slack Chat Bot message"
+      );
+      return new Ok(undefined);
+    }
+
     logger.error(
       {
         error: e,
@@ -142,10 +157,7 @@ export async function botAnswerMessage(
       },
       "Unexpected exception answering to Slack Chat Bot message"
     );
-    if (isSlackWebAPIPlatformError(e) && e.data.error === "message_not_found") {
-      // This means that the message has been deleted, so we don't need to send an error message.
-      return new Ok(undefined);
-    }
+
     const slackClient = await getSlackClient(connector.id);
     try {
       reportSlackUsage({
@@ -831,12 +843,14 @@ async function answerMessage(
       };
     } else {
       // If no mention is found and no channel-based routing rule is found, we use the default agent.
-      let defaultAssistant: LightAgentConfigurationType | null = null;
-      defaultAssistant =
-        activeAgentConfigurations.find((ac) => ac.sId === "dust") || null;
-      if (!defaultAssistant || defaultAssistant.status !== "active") {
-        defaultAssistant =
-          activeAgentConfigurations.find((ac) => ac.sId === "gpt-4") || null;
+      let defaultAssistant: LightAgentConfigurationType | undefined = undefined;
+      for (const agent of DEFAULT_AGENTS) {
+        defaultAssistant = activeAgentConfigurations.find(
+          (ac) => ac.sId === agent && ac.status === "active"
+        );
+        if (defaultAssistant) {
+          break;
+        }
       }
       if (!defaultAssistant) {
         return new Err(

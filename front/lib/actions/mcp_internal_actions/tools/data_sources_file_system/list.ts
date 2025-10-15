@@ -148,7 +148,11 @@ export function registerListTool(
           // If it's a data source node ID, extract the data source ID and list its root contents.
           const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
           if (!dataSourceId) {
-            return new Err(new MCPError("Invalid data source node ID format"));
+            return new Err(
+              new MCPError("Invalid data source node ID format", {
+                tracked: false,
+              })
+            );
           }
 
           const dataSourceConfig = agentDataSourceConfigurations.find(

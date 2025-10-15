@@ -20,10 +20,10 @@ const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 w
 const DEFAULT_IMAGE_OUTPUT_FORMAT = "png";
 const DEFAULT_IMAGE_MIME_TYPE = "image/png";
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("image_generation");
 
   server.tool(
@@ -110,7 +110,10 @@ const createServer = (
           return new Err(
             new MCPError(
               `Rate limit of ${maxImagesPerWeek} requests per week exceeded. Contact your ` +
-                "administrator to increase the limit."
+                "administrator to increase the limit.",
+              {
+                tracked: false,
+              }
             )
           );
         }
@@ -166,7 +169,10 @@ const createServer = (
             return new Err(
               new MCPError(
                 `Error generating image. Image generation service error: Status: ` +
-                  `${error.status}, Code: ${error.code}, Message: ${error.message}`
+                  `${error.status}, Code: ${error.code}, Message: ${error.message}`,
+                {
+                  tracked: error.code !== "moderation_blocked",
+                }
               )
             );
           }
@@ -178,6 +184,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

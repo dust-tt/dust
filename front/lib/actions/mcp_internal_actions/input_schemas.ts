@@ -202,16 +202,10 @@ export type TablesConfigurationToolType = z.infer<
  * and the JSON schema resulting from the Zod schema defined above.
  */
 export const ConfigurableToolInputJSONSchemas = Object.fromEntries(
-  Object.entries(ConfigurableToolInputSchemas).map(([key, schema]) => {
-    const jsonSchema = zodToJsonSchema(schema, {
-      // Use 'none' to inline all references instead of creating $ref pointers
-      $refStrategy: "none",
-    });
-    // Remove $schema property since these are property definitions, not standalone schemas
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { $schema, ...schemaWithoutDollarSchema } = jsonSchema;
-    return [key, schemaWithoutDollarSchema];
-  })
+  Object.entries(ConfigurableToolInputSchemas).map(([key, schema]) => [
+    key,
+    zodToJsonSchema(schema),
+  ])
 ) as Omit<
   Record<InternalToolInputMimeType, JSONSchema>,
   typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM

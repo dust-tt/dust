@@ -9,12 +9,12 @@ import {
 
 import { useDeleteWebhookSource } from "@app/lib/swr/webhook_source";
 import type { LightWorkspaceType } from "@app/types";
-import type { WebhookSource } from "@app/types/triggers/webhooks";
+import type { WebhookSourceType } from "@app/types/triggers/webhooks";
 
 type DeleteWebhookSourceDialogProps = {
   owner: LightWorkspaceType;
   onClose: () => void;
-  webhookSource: WebhookSource;
+  webhookSource: WebhookSourceType;
   isOpen: boolean;
 };
 

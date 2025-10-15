@@ -34,6 +34,7 @@ import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import { webhookSlackBotAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot";
 import { webhookSlackBotInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import { webhookSlackInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_interaction";
+import { webhookTeamsAPIHandler } from "@connectors/api/webhooks/webhook_teams";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 import { rateLimiter, setupGlobalErrorHandler } from "@connectors/types";
@@ -174,6 +175,8 @@ export function startServer(port: number) {
     bodyParser.raw({ type: "application/json" }),
     webhookDiscordAppHandler
   );
+
+  app.post("/webhooks/:webhook_secret/teams_messages", webhookTeamsAPIHandler);
 
   // /configuration/ is the new configration method, replacing the old /config/ method
   app.patch(

@@ -17,7 +17,6 @@ import {
   useWatch,
 } from "react-hook-form";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import {
@@ -63,7 +62,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { TemplateActionPreset } from "@app/types";
 
 import { KnowledgeFooter } from "./KnowledgeFooter";
@@ -255,12 +253,10 @@ function KnowledgeConfigurationSheetContent({
   getAgentInstructions,
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
-  const { owner } = useAgentBuilderContext();
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
   const { setValue, getValues, setFocus } =
     useFormContext<CapabilityFormData>();
   const [isAdvancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -411,8 +407,7 @@ function KnowledgeConfigurationSheetContent({
 
           {/* Advanced Settings collapsible section */}
           {mcpServerView?.serverType === "internal" &&
-            mcpServerView.server.name === SEARCH_SERVER_NAME &&
-            hasFeature("advanced_search") && (
+            mcpServerView.server.name === SEARCH_SERVER_NAME && (
               <Collapsible
                 open={isAdvancedSettingsOpen}
                 onOpenChange={setAdvancedSettingsOpen}
@@ -424,8 +419,8 @@ function KnowledgeConfigurationSheetContent({
                 </CollapsibleTrigger>
                 <CollapsibleContent className="m-1">
                   <CustomCheckboxSection
-                    title="Advanced Search Mode"
-                    description="Enable advanced search capabilities with enhanced discovery and filtering options for more precise results."
+                    title="Enable exploratory search mode"
+                    description="Allow the agent to navigate the selected Data Sources like a filesystem (list folders, browse files, explore hierarchies). Best for complex tasks with large datasets where thoroughness matters more than speed."
                     targetMCPServerName={SEARCH_SERVER_NAME}
                     selectedMCPServerView={mcpServerView ?? undefined}
                     configurationKey={ADVANCED_SEARCH_SWITCH}

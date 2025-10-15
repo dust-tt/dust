@@ -3,11 +3,9 @@ import assert from "assert";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types";
@@ -58,7 +56,10 @@ interface MessageDetail {
   error?: string;
 }
 
-const createServer = (auth: Authenticator): McpServer => {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("gmail");
 
   server.tool(
@@ -78,7 +79,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "gmail" },
+      {
+        toolNameForMonitoring: "gmail",
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async ({ q, pageToken }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -123,15 +128,20 @@ const createServer = (auth: Authenticator): McpServer => {
           { concurrency: 10 }
         );
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Drafts fetched successfully",
-            result: {
-              drafts,
-              nextPageToken: result.nextPageToken,
-            },
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Drafts fetched successfully" },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                drafts,
+                nextPageToken: result.nextPageToken,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
       }
     )
   );
@@ -157,7 +167,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "gmail" },
+      {
+        toolNameForMonitoring: "gmail",
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async ({ to, cc, bcc, subject, contentType, body }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -212,15 +226,20 @@ const createServer = (auth: Authenticator): McpServer => {
 
         const result = await response.json();
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Draft created successfully",
-            result: {
-              draftId: result.id,
-              messageId: result.message.id,
-            },
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Draft created successfully" },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                draftId: result.id,
+                messageId: result.message.id,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
       }
     )
   );
@@ -235,7 +254,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "gmail" },
+      {
+        toolNameForMonitoring: "gmail",
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async ({ draftId, subject, to }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -258,12 +281,9 @@ const createServer = (auth: Authenticator): McpServer => {
           return new Err(new MCPError("Failed to delete draft"));
         }
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Draft deleted successfully",
-            result: "",
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Draft deleted successfully" },
+        ]);
       }
     )
   );
@@ -291,7 +311,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "gmail" },
+      {
+        toolNameForMonitoring: "gmail",
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async ({ q, maxResults = 10, pageToken }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -373,21 +397,26 @@ const createServer = (auth: Authenticator): McpServer => {
           message = `Messages fetched with ${totalFailed} failures out of ${totalRequested} total messages`;
         }
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message,
-            result: {
-              messages: successfulMessages,
-              failedMessages,
-              summary: {
-                totalRequested,
-                totalSuccessful,
-                totalFailed,
+        return new Ok([
+          { type: "text" as const, text: message },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                messages: successfulMessages,
+                failedMessages,
+                summary: {
+                  totalRequested,
+                  totalSuccessful,
+                  totalFailed,
+                },
+                nextPageToken: result.nextPageToken,
               },
-              nextPageToken: result.nextPageToken,
-            },
-          }).content
-        );
+              null,
+              2
+            ),
+          },
+        ]);
       }
     )
   );
@@ -422,7 +451,11 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "gmail" },
+      {
+        toolNameForMonitoring: "gmail",
+        skipAlerting: true,
+        agentLoopContext,
+      },
       async (
         { messageId, body, contentType = "text/plain" as const, to, cc, bcc },
         { authInfo }
@@ -442,7 +475,11 @@ const createServer = (auth: Authenticator): McpServer => {
         if (!messageResponse.ok) {
           const errorText = await getErrorText(messageResponse);
           if (messageResponse.status === 404) {
-            return new Err(new MCPError(`Message not found: ${messageId}`));
+            return new Err(
+              new MCPError(`Message not found: ${messageId}`, {
+                tracked: false,
+              })
+            );
           }
           return new Err(
             new MCPError(
@@ -550,24 +587,29 @@ const createServer = (auth: Authenticator): McpServer => {
 
         const result = await response.json();
 
-        return new Ok(
-          makeMCPToolJSONSuccess({
-            message: "Reply draft created successfully",
-            result: {
-              draftId: result.id,
-              messageId: result.message.id,
-              originalMessageId: messageId,
-              replyTo,
-              subject: replySubject,
-            },
-          }).content
-        );
+        return new Ok([
+          { type: "text" as const, text: "Reply draft created successfully" },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                draftId: result.id,
+                messageId: result.message.id,
+                originalMessageId: messageId,
+                replyTo,
+                subject: replySubject,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
       }
     )
   );
 
   return server;
-};
+}
 
 const decodeMessageBody = (
   payload: GmailMessagePayload | undefined

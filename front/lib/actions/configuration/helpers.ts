@@ -43,7 +43,8 @@ export function renderDataSourceConfiguration(
     }),
     filter: {
       parents:
-        dataSourceConfig.parentsIn && dataSourceConfig.parentsNotIn
+        dataSourceConfig.parentsIn !== null ||
+        dataSourceConfig.parentsNotIn !== null
           ? {
               in: dataSourceConfig.parentsIn,
               not: dataSourceConfig.parentsNotIn,

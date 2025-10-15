@@ -53,7 +53,8 @@ export function transformTreeToSelectionConfigurations(
     // Check if this is a full data source selection or specific nodes
     const isFullDataSource =
       item.type === "data_source" &&
-      isNodeSelected(tree, item.path.split("/")) === true;
+      (isNodeSelected(tree, item.path.split("/")) === true ||
+        isNodeSelected(tree, item.path.split("/")) === "partial");
 
     // Initialize configuration if not exists
     if (!configurations[dataSourceView.sId]) {
@@ -132,7 +133,9 @@ export function transformSelectionConfigurationsToTree(
     const { dataSourceView } = config;
     const baseParts = buildDataSourcePath(dataSourceView);
 
-    // If all nodes are selected, just add the data source path
+    // If all nodes are selected, add the data source path.
+    // Do NOT early return: we still need to append exclusions below so
+    // the UI can render a partial state on parents.
     if (config.isSelectAll) {
       inPaths.push({
         path: baseParts,
@@ -141,7 +144,6 @@ export function transformSelectionConfigurationsToTree(
         dataSourceView,
         tagsFilter: config.tagsFilter,
       });
-      continue;
     }
 
     // UI reconstruction guard:
