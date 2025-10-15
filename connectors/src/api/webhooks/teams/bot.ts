@@ -1,22 +1,31 @@
 import type {
   ConversationPublicType,
   LightAgentConfigurationType,
+  PublicPostContentFragmentRequestBody,
+  PublicPostMessagesRequestBody,
   Result,
+  SupportedFileContentType,
   UserMessageType,
 } from "@dust-tt/client";
-import { DustAPI, Err, Ok } from "@dust-tt/client";
+import { DustAPI, Err, isSupportedFileContentType, Ok } from "@dust-tt/client";
 import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
+import {
+  clientApiGet,
+  wrapMicrosoftGraphAPIWithResult,
+} from "@connectors/connectors/microsoft/lib/graph_api";
 import { apiConfig } from "@connectors/lib/api/config";
 import { MicrosoftBotMessage } from "@connectors/lib/models/microsoft_bot";
+import { createProxyAwareFetch } from "@connectors/lib/proxy";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { getHeaderFromUserEmail } from "@connectors/types";
 
 const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
+const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
 import { getActionName } from "@connectors/lib/tools_utils";
 
@@ -177,7 +186,26 @@ export async function botAnswerMessage(
     message = `:mention[${mention.assistantName}]{sId=${mention.assistantId}} ${message}`;
   }
 
-  const messageReqBody = {
+  const buildContentFragmentRes = await makeContentFragments(
+    context,
+    dustAPI,
+    connector,
+    lastMicrosoftBotMessage
+  );
+
+  if (buildContentFragmentRes.isErr()) {
+    logger.error(
+      {
+        error: buildContentFragmentRes.error,
+        connectorId: connector.id,
+        teamsConversationId: conversationId,
+      },
+      "Failed to build content fragments"
+    );
+    // Continue without content fragments rather than failing completely
+  }
+
+  const messageReqBody: PublicPostMessagesRequestBody = {
     content: message,
     mentions: [{ configurationId: mention.assistantId }],
     context: {
@@ -210,6 +238,27 @@ export async function botAnswerMessage(
 
     // If it doesn't exist, we will create a new one later.
     if (conversationRes.isOk()) {
+      // Add content fragments if available
+      if (buildContentFragmentRes.isOk() && buildContentFragmentRes.value) {
+        for (const cf of buildContentFragmentRes.value) {
+          const contentFragmentRes = await dustAPI.postContentFragment({
+            conversationId: lastMicrosoftBotMessage.dustConversationId,
+            contentFragment: cf,
+          });
+          if (contentFragmentRes.isErr()) {
+            logger.error(
+              {
+                error: contentFragmentRes.error,
+                connectorId: connector.id,
+                teamsConversationId: conversationId,
+              },
+              "Failed to post content fragment"
+            );
+            // Continue without this content fragment
+          }
+        }
+      }
+
       const messageRes = await dustAPI.postUserMessage({
         conversationId: lastMicrosoftBotMessage.dustConversationId,
         message: messageReqBody,
@@ -239,6 +288,7 @@ export async function botAnswerMessage(
     }
   }
 
+  // If the conversation does not exist, we create a new one.
   if (!conversation || !userMessage) {
     logger.info(
       {
@@ -252,6 +302,9 @@ export async function botAnswerMessage(
       title: null,
       visibility: "unlisted",
       message: messageReqBody,
+      contentFragments: buildContentFragmentRes.isOk()
+        ? buildContentFragmentRes.value
+        : undefined,
     });
     if (newConversationRes.isErr()) {
       return new Err(new Error(newConversationRes.error.message));
@@ -446,3 +499,317 @@ const sendTeamsResponse = async (
   // Send new streaming message
   return sendActivity(context, adaptiveCard);
 };
+
+async function makeContentFragments(
+  context: TurnContext,
+  dustAPI: DustAPI,
+  connector: ConnectorResource,
+  lastMicrosoftBotMessage: MicrosoftBotMessage | null
+): Promise<Result<PublicPostContentFragmentRequestBody[] | undefined, Error>> {
+  const teamsConversationId = context.activity.conversation.id;
+
+  // Detect conversation type based on ID pattern
+  // Channel conversations typically contain thread patterns like @thread.tacv2
+  // Chat conversations (1:1 or group) have different formats
+  const isChannelConversation =
+    teamsConversationId.includes("@thread.") ||
+    teamsConversationId.includes("@teams.") ||
+    context.activity.channelData?.teamsChannelId;
+
+  // For regular chats (non-channel), we don't need message history
+  // but we still want to process file attachments from the current message
+  if (!isChannelConversation) {
+    logger.info(
+      {
+        connectorId: connector.id,
+        teamsConversationId,
+      },
+      "Processing current message attachments for Teams chat"
+    );
+
+    // Get current message attachments from the Bot Framework context
+    const currentMessageAttachments = context.activity.attachments || [];
+
+    if (currentMessageAttachments.length === 0) {
+      return new Ok(undefined);
+    }
+
+    // Process file attachments from current message only
+    const allContentFragments: PublicPostContentFragmentRequestBody[] = [];
+
+    const supportedFiles = currentMessageAttachments.filter((att: unknown) => {
+      const attachment = att as { contentType?: string; contentUrl?: string };
+      return (
+        attachment.contentType &&
+        isSupportedFileContentType(attachment.contentType) &&
+        attachment.contentUrl
+      );
+    });
+
+    // Upload file attachments
+    for (const attachment of supportedFiles) {
+      const att = attachment as {
+        contentType: string;
+        contentUrl: string;
+        name?: string;
+      };
+      try {
+        const response = await createProxyAwareFetch()(att.contentUrl);
+        if (!response.ok) {
+          continue;
+        }
+
+        const fileContent = Buffer.from(await response.arrayBuffer());
+        if (fileContent.length > MAX_FILE_SIZE_TO_UPLOAD) {
+          continue;
+        }
+
+        const fileName = att.name || "teams_file";
+        const fileRes = await dustAPI.uploadFile({
+          contentType: att.contentType as SupportedFileContentType,
+          fileName,
+          fileSize: fileContent.length,
+          useCase: "conversation",
+          useCaseMetadata: lastMicrosoftBotMessage
+            ? { conversationId: lastMicrosoftBotMessage.conversationId }
+            : undefined,
+          fileObject: new File([new Uint8Array(fileContent)], fileName, {
+            type: att.contentType,
+          }),
+        });
+
+        if (fileRes.isOk()) {
+          allContentFragments.push({
+            title: fileName,
+            url: fileRes.value.publicUrl,
+            fileId: fileRes.value.sId,
+            context: null,
+          });
+        }
+      } catch (error) {
+        logger.warn(
+          { error, fileName: att.name },
+          "Failed to process chat file attachment"
+        );
+      }
+    }
+
+    logger.info(
+      {
+        connectorId: connector.id,
+        attachments: allContentFragments.length,
+      },
+      `Processed ${allContentFragments.length} file attachments from Teams chat message`
+    );
+
+    return new Ok(
+      allContentFragments.length > 0 ? allContentFragments : undefined
+    );
+  }
+
+  const client = await getMicrosoftClient(connector.connectionId);
+
+  // Get conversation history using the most reliable API approach
+  const conversationHistoryRes = await wrapMicrosoftGraphAPIWithResult(() => {
+    return clientApiGet(
+      logger,
+      client,
+      `/chats/${teamsConversationId}/messages?$top=50`
+    );
+  });
+
+  if (conversationHistoryRes.isErr()) {
+    logger.warn(
+      {
+        error: conversationHistoryRes.error,
+        connectorId: connector.id,
+        teamsConversationId,
+      },
+      "Failed to get Teams conversation history"
+    );
+    return new Ok(undefined);
+  }
+
+  const messages = conversationHistoryRes.value?.value || [];
+  if (messages.length === 0) {
+    return new Ok(undefined);
+  }
+
+  // Filter for new user messages since last bot interaction
+  // Find the cutoff point using the last bot message ID
+  const lastBotMessageId = lastMicrosoftBotMessage?.agentActivityId;
+
+  // Find the index of the last bot message to determine cutoff point
+  let cutoffIndex = -1;
+  if (lastBotMessageId) {
+    cutoffIndex = messages.findIndex((msg: unknown) => {
+      const message = msg as { id?: string };
+      return message.id === lastBotMessageId;
+    });
+  }
+
+  // Get only messages that come after the last bot message (or all if no previous bot message)
+  const messagesToConsider =
+    cutoffIndex >= 0
+      ? messages.slice(0, cutoffIndex) // Messages before the last bot message in the array
+      : messages;
+
+  const newMessages = messagesToConsider
+    .filter((msg: unknown) => {
+      const message = msg as {
+        from?: { user?: { userIdentityType?: string } };
+        id?: string;
+      };
+
+      return (
+        message.from?.user?.userIdentityType === "aadUser" &&
+        message.id !== context.activity.id
+      );
+    })
+    .sort((a: unknown, b: unknown) => {
+      const msgA = a as { createdDateTime?: string };
+      const msgB = b as { createdDateTime?: string };
+      if (!msgA.createdDateTime || !msgB.createdDateTime) {
+        return 0;
+      }
+      return (
+        new Date(msgB.createdDateTime).getTime() -
+        new Date(msgA.createdDateTime).getTime()
+      );
+    });
+
+  if (newMessages.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const allContentFragments: PublicPostContentFragmentRequestBody[] = [];
+
+  // Process file attachments from both new messages AND the current message
+  const allMessagesToCheckForFiles = [
+    ...newMessages,
+    // Add current message to check for attachments
+    ...messages.filter((msg: unknown) => {
+      const message = msg as { id?: string };
+      return message.id === context.activity.id;
+    }),
+  ];
+
+  const supportedFiles = allMessagesToCheckForFiles
+    .flatMap(
+      (m: unknown) => (m as { attachments?: unknown[] }).attachments || []
+    )
+    .filter((att: unknown) => {
+      const attachment = att as { contentType?: string; contentUrl?: string };
+      console.log("attachment", attachment);
+      console.log(
+        "isSupportedFileContentType(attachment.contentType)",
+        attachment.contentType &&
+          isSupportedFileContentType(attachment.contentType)
+      );
+      return (
+        attachment.contentType &&
+        isSupportedFileContentType(attachment.contentType) &&
+        attachment.contentUrl
+      );
+    });
+
+  // Upload file attachments
+  for (const attachment of supportedFiles) {
+    const att = attachment as {
+      contentType: string;
+      contentUrl: string;
+      name?: string;
+    };
+    try {
+      const response = await createProxyAwareFetch()(att.contentUrl);
+      if (!response.ok) {
+        continue;
+      }
+
+      const fileContent = Buffer.from(await response.arrayBuffer());
+      if (fileContent.length > MAX_FILE_SIZE_TO_UPLOAD) {
+        continue;
+      }
+
+      const fileName = att.name || "teams_file";
+      const fileRes = await dustAPI.uploadFile({
+        contentType: att.contentType as SupportedFileContentType,
+        fileName,
+        fileSize: fileContent.length,
+        useCase: "conversation",
+        useCaseMetadata: lastMicrosoftBotMessage
+          ? { conversationId: lastMicrosoftBotMessage.conversationId }
+          : undefined,
+        fileObject: new File([new Uint8Array(fileContent)], fileName, {
+          type: att.contentType,
+        }),
+      });
+
+      if (fileRes.isOk()) {
+        allContentFragments.push({
+          title: fileName,
+          url: fileRes.value.publicUrl,
+          fileId: fileRes.value.sId,
+          context: null,
+        });
+      }
+    } catch (error) {
+      logger.warn(
+        { error, fileName: att.name },
+        "Failed to process file attachment"
+      );
+    }
+  }
+
+  // Create conversation history fragment
+  const conversationText = newMessages
+    .slice()
+    .reverse()
+    .map((msg: unknown) => {
+      const message = msg as {
+        from?: { user?: { displayName?: string } };
+        createdDateTime?: string;
+        body?: { content?: string };
+      };
+      const sender = message.from?.user?.displayName || "Unknown User";
+      const timestamp = message.createdDateTime
+        ? new Date(message.createdDateTime).toISOString()
+        : "Unknown time";
+      const content = (message.body?.content || "")
+        .replace(/<[^>]*>/g, "")
+        .trim();
+      return `[${timestamp}] ${sender}: ${content}`;
+    })
+    .join("\n\n");
+
+  const title = lastMicrosoftBotMessage
+    ? "Teams - new messages"
+    : "Teams conversation history";
+  const fileName = `teams_conversation-${teamsConversationId}.txt`;
+
+  const fileRes = await dustAPI.uploadFile({
+    contentType: "text/plain" as SupportedFileContentType,
+    fileName,
+    fileSize: conversationText.length,
+    useCase: "conversation",
+    useCaseMetadata: lastMicrosoftBotMessage
+      ? { conversationId: lastMicrosoftBotMessage.conversationId }
+      : undefined,
+    fileObject: new File([conversationText], fileName, {
+      type: "text/plain",
+    }),
+  });
+
+  if (fileRes.isOk()) {
+    allContentFragments.push({
+      title,
+      url: null,
+      fileId: fileRes.value.sId,
+      context: null,
+    });
+  }
+
+  return new Ok(
+    allContentFragments.length > 0 ? allContentFragments : undefined
+  );
+}
