@@ -102,7 +102,9 @@ export async function syncChannel(
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    rejectOnRateLimit: false,
+  });
 
   const remoteChannel = await withSlackErrorHandling(() =>
     getChannelById(slackClient, connectorId, channelId)
@@ -301,7 +303,9 @@ export async function getMessagesForChannel(
   limit = 100,
   nextCursor?: string
 ): Promise<ConversationsHistoryResponse> {
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    rejectOnRateLimit: false,
+  });
 
   reportSlackUsage({
     connectorId,
@@ -772,7 +776,9 @@ export async function syncThread(
     throw new Error(`Connector ${connectorId} not found`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    rejectOnRateLimit: false,
+  });
 
   let allMessages: MessageElement[] = [];
 
