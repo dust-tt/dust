@@ -659,6 +659,7 @@ const createServer = (
     {
       emails: z
         .array(z.string())
+        .max(50, "Maximum 50 email addresses allowed")
         .describe("Array of email addresses to get timezone information for"),
     },
     withToolLogging(
@@ -683,13 +684,13 @@ const createServer = (
             results.push({
               email,
               timeZone: res.data.timeZone,
+              calendarAccessible: true,
             });
           } catch (err) {
             results.push({
               email,
               timeZone: null,
-              summary: null,
-              accessible: false,
+              calendarAccessible: false,
               error: normalizeError(err).message,
             });
           }
@@ -705,7 +706,8 @@ const createServer = (
             text: JSON.stringify(
               {
                 attendees: results,
-                accessibleCount: results.filter((r) => r.accessible).length,
+                accessibleCount: results.filter((r) => r.calendarAccessible)
+                  .length,
                 totalCount: results.length,
               },
               null,
