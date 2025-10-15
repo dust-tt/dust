@@ -147,7 +147,7 @@ parking_lot = "0.12"
 pest = "2.7"
 pest_derive = "2.7"
 pkcs8 = { version = "0.10", features = ["pem", "pkcs5", "encryption"] }
-qdrant-client = "1.11"
+qdrant-client = "1.15"
 rand = "0.8"
 rayon = "1.10"
 redis = { version = "0.24.0", features = ["tokio-comp"] }
