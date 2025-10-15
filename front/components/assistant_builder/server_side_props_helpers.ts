@@ -207,70 +207,37 @@ async function renderDataSourcesConfigurations(
 
       const serializedDataSourceView = dataSourceView.toJSON();
 
-      if (!sr.resources) {
-        // No explicit included resources means either true select-all or
-        // select-all-with-exclusions. In both cases, preserve and materialize
-        // excluded resources if provided so the UI can reconstruct the tree.
-        let excludedResources: DataSourceViewContentNode[] = [];
-        if (sr.excludedResources && sr.excludedResources.length > 0) {
-          const excludedContentNodes = await getContentNodesForDataSourceView(
-            dataSourceView,
-            { internalIds: sr.excludedResources, viewType: "all" }
-          );
-          if (excludedContentNodes.isErr()) {
-            localLogger.error(
-              {
-                dataSourceView: dataSourceView.toTraceJSON(),
-                error: excludedContentNodes.error,
-                internalIds: sr.excludedResources,
-                workspace: {
-                  id: dataSourceView.workspaceId,
-                },
-              },
-              "Agent Builder: Error fetching excluded content nodes for documents."
-            );
-          } else {
-            excludedResources = excludedContentNodes.value.nodes;
-          }
-        }
-
-        return {
-          dataSourceView: serializedDataSourceView,
-          selectedResources: [],
-          excludedResources,
-          isSelectAll: sr.isSelectAll,
-          tagsFilter: sr.tagsFilter,
-        };
-      }
-
-      const contentNodesRes = await getContentNodesForDataSourceView(
-        dataSourceView,
-        {
-          internalIds: sr.resources,
-          viewType: "document",
-        }
-      );
-
-      if (contentNodesRes.isErr()) {
-        localLogger.error(
+      let selectedResources: DataSourceViewContentNode[] = [];
+      if (sr.resources && sr.resources.length > 0) {
+        const contentNodesRes = await getContentNodesForDataSourceView(
+          dataSourceView,
           {
-            dataSourceView: dataSourceView.toTraceJSON(),
-            error: contentNodesRes.error,
             internalIds: sr.resources,
-            workspace: {
-              id: dataSourceView.workspaceId,
-            },
-          },
-          "Agent Builder: Error fetching content nodes for documents."
+            viewType: "document",
+          }
         );
 
-        return {
-          dataSourceView: serializedDataSourceView,
-          selectedResources: [],
-          excludedResources: [],
-          isSelectAll: sr.isSelectAll,
-          tagsFilter: sr.tagsFilter,
-        };
+        if (contentNodesRes.isErr()) {
+          localLogger.error(
+            {
+              dataSourceView: dataSourceView.toTraceJSON(),
+              error: contentNodesRes.error,
+              internalIds: sr.resources,
+              workspace: {
+                id: dataSourceView.workspaceId,
+              },
+            },
+            "Agent Builder: Error fetching content nodes for documents."
+          );
+          return {
+            dataSourceView: serializedDataSourceView,
+            selectedResources: [],
+            excludedResources: [],
+            isSelectAll: sr.isSelectAll,
+            tagsFilter: sr.tagsFilter,
+          };
+        }
+        selectedResources = contentNodesRes.value.nodes;
       }
 
       let excludedResources: DataSourceViewContentNode[] = [];
@@ -298,7 +265,7 @@ async function renderDataSourcesConfigurations(
 
       return {
         dataSourceView: serializedDataSourceView,
-        selectedResources: contentNodesRes.value.nodes,
+        selectedResources,
         excludedResources,
         isSelectAll: sr.isSelectAll,
         tagsFilter: sr.tagsFilter,
