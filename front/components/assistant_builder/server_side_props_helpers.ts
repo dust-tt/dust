@@ -179,14 +179,20 @@ async function renderDataSourcesConfigurations(
     },
   });
 
-  const selectedResources = action.dataSources.map((ds) => ({
-    dataSourceViewId: ds.dataSourceViewId,
-    resources: ds.filter.parents?.in ?? null,
-    excludedResources: ds.filter.parents?.not ?? null,
-    isSelectAll: !ds.filter.parents,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    tagsFilter: ds.filter.tags || null, // todo(TAF) Remove this when we don't need to support optional tags from builder.
-  }));
+  const selectedResources = action.dataSources.map((ds) => {
+    const parents = ds.filter.parents;
+    // Select-all when no parents filter, or when parents.in is null
+    // (possibly with exclusions via parents.not).
+    const isSelectAll = !parents || parents.in == null;
+
+    return {
+      dataSourceViewId: ds.dataSourceViewId,
+      resources: parents?.in ?? null,
+      excludedResources: parents?.not ?? null,
+      isSelectAll,
+      tagsFilter: ds.filter.tags ?? null,
+    };
+  });
 
   const dataSourceConfigurationsArray = await Promise.all(
     selectedResources.map(async (sr) => {
@@ -201,44 +207,37 @@ async function renderDataSourcesConfigurations(
 
       const serializedDataSourceView = dataSourceView.toJSON();
 
-      if (!sr.resources) {
-        return {
-          dataSourceView: serializedDataSourceView,
-          selectedResources: [],
-          excludedResources: [],
-          isSelectAll: sr.isSelectAll,
-          tagsFilter: sr.tagsFilter,
-        };
-      }
-
-      const contentNodesRes = await getContentNodesForDataSourceView(
-        dataSourceView,
-        {
-          internalIds: sr.resources,
-          viewType: "document",
-        }
-      );
-
-      if (contentNodesRes.isErr()) {
-        localLogger.error(
+      let selectedResources: DataSourceViewContentNode[] = [];
+      if (sr.resources && sr.resources.length > 0) {
+        const contentNodesRes = await getContentNodesForDataSourceView(
+          dataSourceView,
           {
-            dataSourceView: dataSourceView.toTraceJSON(),
-            error: contentNodesRes.error,
             internalIds: sr.resources,
-            workspace: {
-              id: dataSourceView.workspaceId,
-            },
-          },
-          "Agent Builder: Error fetching content nodes for documents."
+            viewType: "document",
+          }
         );
 
-        return {
-          dataSourceView: serializedDataSourceView,
-          selectedResources: [],
-          excludedResources: [],
-          isSelectAll: sr.isSelectAll,
-          tagsFilter: sr.tagsFilter,
-        };
+        if (contentNodesRes.isErr()) {
+          localLogger.error(
+            {
+              dataSourceView: dataSourceView.toTraceJSON(),
+              error: contentNodesRes.error,
+              internalIds: sr.resources,
+              workspace: {
+                id: dataSourceView.workspaceId,
+              },
+            },
+            "Agent Builder: Error fetching content nodes for documents."
+          );
+          return {
+            dataSourceView: serializedDataSourceView,
+            selectedResources: [],
+            excludedResources: [],
+            isSelectAll: sr.isSelectAll,
+            tagsFilter: sr.tagsFilter,
+          };
+        }
+        selectedResources = contentNodesRes.value.nodes;
       }
 
       let excludedResources: DataSourceViewContentNode[] = [];
@@ -266,7 +265,7 @@ async function renderDataSourcesConfigurations(
 
       return {
         dataSourceView: serializedDataSourceView,
-        selectedResources: contentNodesRes.value.nodes,
+        selectedResources,
         excludedResources,
         isSelectAll: sr.isSelectAll,
         tagsFilter: sr.tagsFilter,

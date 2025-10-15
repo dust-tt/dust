@@ -95,26 +95,30 @@ export function AssistantKnowledgeSection({
           if (!acc[ds.dataSourceViewId]) {
             // First one sets the filter
             acc[ds.dataSourceViewId] = ds;
-          } else {
-            if (ds.filter.parents) {
-              const existingFilter = acc[ds.dataSourceViewId].filter.parents;
-              // Merge the filters if they are not null
-              if (existingFilter) {
-                existingFilter.in = existingFilter.in.concat(
-                  ds.filter.parents.in
+          } else if (ds.filter.parents) {
+            const existingFilter = acc[ds.dataSourceViewId].filter.parents;
+            // Merge the filters if they are not null
+            if (existingFilter) {
+              if (existingFilter.in !== null || ds.filter.parents.in !== null) {
+                existingFilter.in = (existingFilter.in ?? []).concat(
+                  ds.filter.parents.in ?? []
                 );
-                existingFilter.not = existingFilter.not.concat(
-                  ds.filter.parents.not
-                );
-
-                // We need to remove duplicates
-                existingFilter.in = _.uniq(existingFilter.in);
-                existingFilter.not = _.uniq(existingFilter.not);
               }
-            } else {
-              // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
-              acc[ds.dataSourceViewId].filter.parents = null;
+              if (
+                existingFilter.not !== null ||
+                ds.filter.parents.not !== null
+              ) {
+                existingFilter.not = (existingFilter.not ?? []).concat(
+                  ds.filter.parents.not ?? []
+                );
+              }
+              // We need to remove duplicates
+              existingFilter.in = _.uniq(existingFilter.in);
+              existingFilter.not = _.uniq(existingFilter.not);
             }
+          } else {
+            // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
+            acc[ds.dataSourceViewId].filter.parents = null;
           }
         });
       }
@@ -134,26 +138,30 @@ export function AssistantKnowledgeSection({
           if (!acc[ds.dataSourceViewId]) {
             // First one sets the filter
             acc[ds.dataSourceViewId] = ds;
-          } else {
-            if (ds.filter.parents) {
-              const existingFilter = acc[ds.dataSourceViewId].filter.parents;
-              // Merge the filters if they are not null
-              if (existingFilter) {
-                existingFilter.in = existingFilter.in.concat(
-                  ds.filter.parents.in
+          } else if (ds.filter.parents) {
+            const existingFilter = acc[ds.dataSourceViewId].filter.parents;
+            // Merge the filters if they are not null
+            if (existingFilter) {
+              if (existingFilter.in !== null || ds.filter.parents.in !== null) {
+                existingFilter.in = (existingFilter.in ?? []).concat(
+                  ds.filter.parents.in ?? []
                 );
-                existingFilter.not = existingFilter.not.concat(
-                  ds.filter.parents.not
-                );
-
-                // We need to remove duplicates
-                existingFilter.in = _.uniq(existingFilter.in);
-                existingFilter.not = _.uniq(existingFilter.not);
               }
-            } else {
-              // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
-              acc[ds.dataSourceViewId].filter.parents = null;
+              if (
+                existingFilter.not !== null ||
+                ds.filter.parents.not !== null
+              ) {
+                existingFilter.not = (existingFilter.not ?? []).concat(
+                  ds.filter.parents.not ?? []
+                );
+              }
+              // We need to remove duplicates
+              existingFilter.in = _.uniq(existingFilter.in);
+              existingFilter.not = _.uniq(existingFilter.not);
             }
+          } else {
+            // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
+            acc[ds.dataSourceViewId].filter.parents = null;
           }
         });
       }
@@ -246,7 +254,7 @@ function getDataSourceConfigurationsForTableAction(
         }
 
         if (dataSourceView) {
-          dsConfigs[table.dataSourceViewId].filter.parents?.in.push(
+          dsConfigs[table.dataSourceViewId].filter.parents?.in?.push(
             getContentNodeInternalIdFromTableId(dataSourceView, table.tableId)
           );
         }
@@ -477,63 +485,57 @@ function DataSourceViewSelectedNodes({
     viewType,
   });
 
-  return (
-    <>
-      {nodes.map((node) => (
-        <Tree.Item
-          key={node.internalId}
-          label={node.title}
-          type={node.expandable && viewType !== "table" ? "node" : "leaf"}
-          visual={getVisualForDataSourceViewContentNode(node)}
-          className="whitespace-nowrap"
-          actions={
-            <div className="mr-8 flex flex-row gap-2">
-              <IconButton
-                size="xs"
-                icon={ExternalLinkIcon}
-                onClick={() => {
-                  if (node.sourceUrl) {
-                    window.open(node.sourceUrl, "_blank");
-                  }
-                }}
-                className={classNames(
-                  node.sourceUrl ? "" : "pointer-events-none opacity-0"
-                )}
-                disabled={!node.sourceUrl}
-                variant="ghost"
-              />
-              <IconButton
-                size="xs"
-                icon={BracesIcon}
-                onClick={() => {
-                  if (node.type === "document") {
-                    setDataSourceViewToDisplay(dataSourceView);
-                    setDocumentToDisplay(node.internalId);
-                  }
-                }}
-                className={classNames(
-                  node.type === "document"
-                    ? ""
-                    : "pointer-events-none opacity-0"
-                )}
-                disabled={node.type !== "document"}
-                variant="outline"
-              />
-            </div>
-          }
-        >
-          <DataSourceViewPermissionTree
-            owner={owner}
-            dataSourceView={dataSourceView}
-            parentId={node.internalId}
-            onDocumentViewClick={(documentId: string) => {
-              setDataSourceViewToDisplay(dataSourceView);
-              setDocumentToDisplay(documentId);
+  return nodes.map((node) => (
+    <Tree.Item
+      key={node.internalId}
+      label={node.title}
+      type={node.expandable && viewType !== "table" ? "node" : "leaf"}
+      visual={getVisualForDataSourceViewContentNode(node)}
+      className="whitespace-nowrap"
+      actions={
+        <div className="mr-8 flex flex-row gap-2">
+          <IconButton
+            size="xs"
+            icon={ExternalLinkIcon}
+            onClick={() => {
+              if (node.sourceUrl) {
+                window.open(node.sourceUrl, "_blank");
+              }
             }}
-            viewType="all"
+            className={classNames(
+              node.sourceUrl ? "" : "pointer-events-none opacity-0"
+            )}
+            disabled={!node.sourceUrl}
+            variant="ghost"
           />
-        </Tree.Item>
-      ))}
-    </>
-  );
+          <IconButton
+            size="xs"
+            icon={BracesIcon}
+            onClick={() => {
+              if (node.type === "document") {
+                setDataSourceViewToDisplay(dataSourceView);
+                setDocumentToDisplay(node.internalId);
+              }
+            }}
+            className={classNames(
+              node.type === "document" ? "" : "pointer-events-none opacity-0"
+            )}
+            disabled={node.type !== "document"}
+            variant="outline"
+          />
+        </div>
+      }
+    >
+      <DataSourceViewPermissionTree
+        owner={owner}
+        dataSourceView={dataSourceView}
+        parentId={node.internalId}
+        onDocumentViewClick={(documentId: string) => {
+          setDataSourceViewToDisplay(dataSourceView);
+          setDocumentToDisplay(documentId);
+        }}
+        viewType="all"
+      />
+    </Tree.Item>
+  ));
 }
