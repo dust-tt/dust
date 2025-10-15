@@ -285,6 +285,56 @@ export async function botAnswerMessage(
     replyToId: replyToId,
   });
 
+  // Stream agent response and send updates to Teams
+  const streamAgentResponseRes = await streamAgentResponse({
+    context,
+    dustAPI,
+    conversation,
+    userMessage,
+    mention,
+    connector,
+    agentActivityId,
+  });
+
+  if (streamAgentResponseRes.isErr()) {
+    return streamAgentResponseRes;
+  }
+
+  const finalResponse = streamAgentResponseRes.value;
+
+  const finalCard = createResponseAdaptiveCard({
+    response: finalResponse,
+    assistantName: mention.assistantName,
+    conversationUrl: makeConversationUrl(
+      connector.workspaceId,
+      conversation.sId
+    ),
+    workspaceId: connector.workspaceId,
+  });
+
+  await sendTeamsResponse(context, agentActivityId, finalCard);
+
+  // Return the result with streaming info
+  return new Ok(undefined);
+}
+
+async function streamAgentResponse({
+  context,
+  dustAPI,
+  conversation,
+  userMessage,
+  mention,
+  connector,
+  agentActivityId,
+}: {
+  context: TurnContext;
+  dustAPI: DustAPI;
+  conversation: ConversationPublicType;
+  userMessage: UserMessageType;
+  mention: { assistantName: string; assistantId: string };
+  connector: ConnectorResource;
+  agentActivityId: string;
+}): Promise<Result<string, Error>> {
   // For Bot Framework approach with streaming updates
   const streamRes = await dustAPI.streamAgentAnswerEvents({
     conversation,
@@ -301,13 +351,11 @@ export async function botAnswerMessage(
   let lastUpdateTime = Date.now();
   let chainOfThought = "";
   let agentState = "thinking";
-  const UPDATE_INTERVAL_MS = 100; // Update every second
+  const UPDATE_INTERVAL_MS = 100; // Update every 100 millisecond
 
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
-      case "agent_error":
-      case "user_message_error":
-      case "tool_error": {
+      case "agent_error": {
         return new Err(new Error(event.error.message));
       }
       case "agent_message_success": {
@@ -368,20 +416,7 @@ export async function botAnswerMessage(
   }
 
   if (agentMessageSuccess) {
-    const finalCard = createResponseAdaptiveCard({
-      response: finalResponse,
-      assistantName: mention.assistantName,
-      conversationUrl: makeConversationUrl(
-        connector.workspaceId,
-        conversation.sId
-      ),
-      workspaceId: connector.workspaceId,
-    });
-
-    await sendTeamsResponse(context, agentActivityId, finalCard);
-
-    // Return the result with streaming info
-    return new Ok(undefined);
+    return new Ok(finalResponse);
   } else {
     return new Err(new Error("No response generated"));
   }
