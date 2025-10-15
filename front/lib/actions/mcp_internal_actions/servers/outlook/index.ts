@@ -72,10 +72,10 @@ const OutlookContactSchema = z.object({
 type OutlookMessage = z.infer<typeof OutlookMessageSchema>;
 type OutlookContact = z.infer<typeof OutlookContactSchema>;
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("outlook");
 
   server.tool(
@@ -890,7 +890,7 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 const fetchFromOutlook = async (
   endpoint: string,

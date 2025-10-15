@@ -49,10 +49,10 @@ import { Err, normalizeError, Ok } from "@app/types";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const JIRA_TOOL_NAME = "jira";
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("jira");
 
   server.tool(
@@ -1367,6 +1367,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

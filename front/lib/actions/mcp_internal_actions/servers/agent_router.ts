@@ -20,10 +20,10 @@ const MAX_INSTRUCTIONS_LENGTH = 1000;
 const LIST_ALL_AGENTS_TOOL_NAME = "list_all_published_agents";
 export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content";
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer(DEFAULT_AGENT_ROUTER_ACTION_NAME);
 
   server.tool(
@@ -168,6 +168,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

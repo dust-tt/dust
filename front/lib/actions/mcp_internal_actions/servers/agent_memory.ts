@@ -13,10 +13,10 @@ import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { Result } from "@app/types";
 import { Ok } from "@app/types";
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer(AGENT_MEMORY_SERVER_NAME);
 
   const isUserScopedMemory = true;
@@ -227,6 +227,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

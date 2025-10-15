@@ -94,10 +94,10 @@ function getContentTypeFromOutputFormat(
   }
 }
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("file_generation");
   server.tool(
     "get_supported_source_formats_for_output_format",
@@ -441,6 +441,6 @@ ${file_content
   );
 
   return server;
-};
+}
 
 export default createServer;

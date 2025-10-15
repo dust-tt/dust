@@ -16,10 +16,10 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { Err, getHeaderFromUserEmail, GLOBAL_AGENTS_SID, Ok } from "@app/types";
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("deep_dive");
 
   const owner = auth.getNonNullableWorkspace();
@@ -88,6 +88,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;
