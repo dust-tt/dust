@@ -264,24 +264,60 @@ export const ConversationViewer = ({
               const predicate = (m: VirtuosoMessage) =>
                 isUserMessage(m) && areSameRank(m, userMessage);
 
-            void mutateConversationParticipants(async (participants) => {
-              return getUpdatedParticipantsFromEvent(participants, event);
-            });
+              const exists = ref.current.data.find(predicate);
 
-            // Clear hasError when a new message is posted (user or agent retry).
-            void mutateConversations(
-              (currentData) => {
-                if (!currentData?.conversations) {
-                  return currentData;
-                }
-                return {
-                  conversations: currentData.conversations.map((c) =>
-                    c.sId === conversationId ? { ...c, hasError: false } : c
-                  ),
-                };
-              },
-              { revalidate: false }
-            );
+              if (!exists) {
+                ref.current.data.append([
+                  { ...event.message, contentFragments: [] },
+                ]);
+              } else {
+                // We don't update if it already exists as if it already exists, it means we have received the message from the backend.
+              }
+
+              void mutateConversationParticipants(
+                async (participants) =>
+                  getUpdatedParticipantsFromEvent(participants, event),
+                { revalidate: false }
+              );
+
+              void mutateConversations(
+                (currentData) => {
+                  if (!currentData?.conversations) {
+                    return currentData;
+                  }
+                  return {
+                    conversations: currentData.conversations.map((c) =>
+                      c.sId === conversationId ? { ...c, hasError: false } : c
+                    ),
+                  };
+                },
+                { revalidate: false }
+              );
+            }
+            break;
+          case "agent_message_new":
+            if (ref.current) {
+              const messageStreamState = makeInitialMessageStreamState(
+                getLightAgentMessageFromAgentMessage(event.message)
+              );
+
+              // Replace the message in the exist list data, or append.
+              const predicate = (m: VirtuosoMessage) =>
+                isMessageTemporayState(m) && areSameRank(m, messageStreamState);
+              const exists = ref.current.data.find(predicate);
+
+              if (exists) {
+                ref.current.data.map((m) =>
+                  predicate(m) ? messageStreamState : m
+                );
+              } else {
+                ref.current.data.append([messageStreamState]);
+              }
+
+              void mutateConversationParticipants(async (participants) =>
+                getUpdatedParticipantsFromEvent(participants, event)
+              );
+            }
             break;
 
           case "agent_generation_cancelled":
@@ -340,7 +376,7 @@ export const ConversationViewer = ({
                 return {
                   conversations: currentData.conversations.map((c) =>
                     c.sId === event.conversationId
-                      ? { ...c, hasError: event.hasError }
+                      ? { ...c, hasError: event.status === "error" }
                       : c
                   ),
                 };
@@ -362,9 +398,6 @@ export const ConversationViewer = ({
       mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
-      mutateConversationParticipants,
-      conversationId,
-      debouncedMarkAsRead,
     ]
   );
 
