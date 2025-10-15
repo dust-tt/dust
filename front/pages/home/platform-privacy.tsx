@@ -62,9 +62,9 @@ export default function PlatformPrivacy() {
             <P size="md">
               This Privacy Policy explains who we are and spells out how we
               collect, use, and disclose information that relates to you, as
-              defined under applicable data protection laws ("Personal Data") and
-              how to exercise your privacy rights. If you have any questions or
-              concerns about our use of your Personal Data, please contact us
+              defined under applicable data protection laws ("Personal Data")
+              and how to exercise your privacy rights. If you have any questions
+              or concerns about our use of your Personal Data, please contact us
               using the details provided in Section 13 below.
             </P>
           </div>
@@ -102,8 +102,8 @@ export default function PlatformPrivacy() {
               This Privacy Policy applies to you when you access or use the Dust
               platform, that is to say, our online software-as-service platform,
               including any related APIs provided by Dust, together with all
-              related applications ("Platform"), participate in our user research
-              activities or otherwise interact or communicate with us.
+              related applications ("Platform"), participate in our user
+              research activities or otherwise interact or communicate with us.
             </P>
           </div>
         </Grid>
@@ -165,8 +165,8 @@ export default function PlatformPrivacy() {
                 </P>
                 <P size="sm" className="text-muted-foreground">
                   <Strong>Source:</Strong> When you order and use our Platform,
-                  or contact us or otherwise interact with us; From third parties
-                  and publicly available sources
+                  or contact us or otherwise interact with us; From third
+                  parties and publicly available sources
                 </P>
                 <P size="sm" className="text-muted-foreground">
                   <Strong>Purpose:</Strong> Delivering the Platform; Marketing
@@ -176,7 +176,9 @@ export default function PlatformPrivacy() {
               </div>
 
               <div className="rounded-lg bg-muted/50 p-6">
-                <H3 className="mb-3">Professional or Employment-Related Data</H3>
+                <H3 className="mb-3">
+                  Professional or Employment-Related Data
+                </H3>
                 <P size="sm" className="mb-2">
                   Job position, job title, workplace, and industry
                 </P>
@@ -187,8 +189,8 @@ export default function PlatformPrivacy() {
                 </P>
                 <P size="sm" className="text-muted-foreground">
                   <Strong>Purpose:</Strong> Marketing Communications; Leads
-                  qualification; Organizing, managing, and facilitating access to
-                  our events
+                  qualification; Organizing, managing, and facilitating access
+                  to our events
                 </P>
               </div>
 
@@ -204,9 +206,9 @@ export default function PlatformPrivacy() {
                   contact us or otherwise interact with us
                 </P>
                 <P size="sm" className="text-muted-foreground">
-                  <Strong>Purpose:</Strong> Fulfilling your request related to the
-                  Platform and communicating with you in contract-related matters;
-                  Marketing Communications
+                  <Strong>Purpose:</Strong> Fulfilling your request related to
+                  the Platform and communicating with you in contract-related
+                  matters; Marketing Communications
                 </P>
               </div>
 
@@ -217,10 +219,12 @@ export default function PlatformPrivacy() {
                   Notice
                 </P>
                 <P size="sm" className="text-muted-foreground">
-                  <Strong>Source:</Strong> When you use our Platform (via Cookies)
+                  <Strong>Source:</Strong> When you use our Platform (via
+                  Cookies)
                 </P>
                 <P size="sm" className="text-muted-foreground">
-                  <Strong>Purpose:</Strong> Internal Development (as defined below)
+                  <Strong>Purpose:</Strong> Internal Development (as defined
+                  below)
                 </P>
               </div>
 
@@ -229,11 +233,12 @@ export default function PlatformPrivacy() {
                 <P size="sm" className="mb-2">
                   Domain server, type of device/operating system/browser used to
                   access the Platform, local and language settings; session
-                  logging, heatmaps and scrolls; screen resolution, ISP, referring
-                  or exit pages; and date and time of your visit
+                  logging, heatmaps and scrolls; screen resolution, ISP,
+                  referring or exit pages; and date and time of your visit
                 </P>
                 <P size="sm" className="text-muted-foreground">
-                  <Strong>Source:</Strong> When you use our Platform (via Cookies)
+                  <Strong>Source:</Strong> When you use our Platform (via
+                  Cookies)
                 </P>
                 <P size="sm" className="text-muted-foreground">
                   <Strong>Purpose:</Strong> Internal Development
@@ -249,7 +254,8 @@ export default function PlatformPrivacy() {
                   interaction between device or browser and the Sites
                 </P>
                 <P size="sm" className="text-muted-foreground">
-                  <Strong>Source:</Strong> When you use our Platform (via Cookies)
+                  <Strong>Source:</Strong> When you use our Platform (via
+                  Cookies)
                 </P>
                 <P size="sm" className="text-muted-foreground">
                   <Strong>Purpose:</Strong> Internal Development
@@ -259,16 +265,18 @@ export default function PlatformPrivacy() {
               <div className="rounded-lg bg-muted/50 p-6">
                 <H3 className="mb-3">Agreement and Transaction Data</H3>
                 <P size="sm" className="mb-2">
-                  Agreements, orders, purchases, payment status, and invoices; and
-                  your other interactions with us related to transactions, such as
-                  service requests and messaging with our customer service
+                  Agreements, orders, purchases, payment status, and invoices;
+                  and your other interactions with us related to transactions,
+                  such as service requests and messaging with our customer
+                  service
                 </P>
                 <P size="sm" className="text-muted-foreground">
                   <Strong>Source:</Strong> When you order and use our Platform
                 </P>
                 <P size="sm" className="text-muted-foreground">
                   <Strong>Purpose:</Strong> Managing payments, contracts,
-                  transactions, and otherwise meeting our contractual requirements
+                  transactions, and otherwise meeting our contractual
+                  requirements
                 </P>
               </div>
 
@@ -282,15 +290,16 @@ export default function PlatformPrivacy() {
                 </P>
                 <P size="sm" className="text-muted-foreground">
                   <Strong>Purpose:</Strong> Managing payments, contracts,
-                  transactions, and otherwise meeting our contractual requirements
+                  transactions, and otherwise meeting our contractual
+                  requirements
                 </P>
               </div>
             </div>
 
             <div className="mt-4 space-y-3">
               <P size="md">
-                <Strong>"Marketing Communications"</Strong> means when we contact
-                you about Dust's Platform, events, or business.
+                <Strong>"Marketing Communications"</Strong> means when we
+                contact you about Dust's Platform, events, or business.
               </P>
               <P size="md">
                 <Strong>"Internal Development"</Strong> means when Dust improves
@@ -328,8 +337,8 @@ export default function PlatformPrivacy() {
                 agreement with them
               </li>
               <li className="copy-md">
-                To manage our relationship with our Customers, including managing
-                payments, contracts, and transactions
+                To manage our relationship with our Customers, including
+                managing payments, contracts, and transactions
               </li>
               <li className="copy-md">
                 Contacting our Customers about events, demos, webinars, and new
@@ -387,8 +396,8 @@ export default function PlatformPrivacy() {
                   </Strong>
                 </P>
                 <P size="sm" className="text-muted-foreground">
-                  For the agreement duration with Customers and then archived for
-                  5 years
+                  For the agreement duration with Customers and then archived
+                  for 5 years
                 </P>
               </div>
 
@@ -400,8 +409,8 @@ export default function PlatformPrivacy() {
                   </Strong>
                 </P>
                 <P size="sm" className="text-muted-foreground">
-                  For the agreement duration with Customers and then archived for
-                  5 years
+                  For the agreement duration with Customers and then archived
+                  for 5 years
                 </P>
               </div>
 
@@ -421,8 +430,8 @@ export default function PlatformPrivacy() {
                   </Strong>
                 </P>
                 <P size="sm" className="text-muted-foreground">
-                  For the duration of the event and 5 years in archives after the
-                  end of the event
+                  For the duration of the event and 5 years in archives after
+                  the end of the event
                 </P>
               </div>
             </div>
@@ -438,8 +447,8 @@ export default function PlatformPrivacy() {
           >
             <H2>6. When and with whom do we share your Personal Data?</H2>
             <P size="md">
-              Within Dust, only authorized personnel have access to your Personal
-              Data.
+              Within Dust, only authorized personnel have access to your
+              Personal Data.
             </P>
             <P size="md">
               We may also disclose your Personal Data to third parties to carry
@@ -458,16 +467,16 @@ export default function PlatformPrivacy() {
             <P size="md">
               Dust seeks to conclude data processing agreements with its service
               providers to ensure that your personal data is used, stored and
-              transferred securely and in accordance with the applicable laws and
-              Dust's instructions.
+              transferred securely and in accordance with the applicable laws
+              and Dust's instructions.
             </P>
             <P size="md">
               Foundational Model Providers (OpenAI, Anthropic, Mistral, Google,
-              Fireworks) are prohibited from using any customer and personal data
-              for model training. They apply a "Zero Data Retention" policy,
-              meaning that Customer Content will not be logged for human review
-              and will not be saved to disk or retained by those providers.
-              Certificates can be found in the{" "}
+              Fireworks) are prohibited from using any customer and personal
+              data for model training. They apply a "Zero Data Retention"
+              policy, meaning that Customer Content will not be logged for human
+              review and will not be saved to disk or retained by those
+              providers. Certificates can be found in the{" "}
               <A
                 variant="primary"
                 href="https://dust-tt.notion.site/Sub-Processors-cb656ff3093c4aee9e080e3021e71f9c"
@@ -499,15 +508,15 @@ export default function PlatformPrivacy() {
             <P size="md">
               <Strong>Google:</Strong> We access your Google User Data only to
               facilitate and enhance the functions of our application.
-              Specifically, we synchronize your Google Docs, Google Slides, pdfs,
-              and plain text files that are within the folders you select when
-              connecting your Google Drive account to Dust. You can change this
-              selection at any time or request us to delete all your data.
+              Specifically, we synchronize your Google Docs, Google Slides,
+              pdfs, and plain text files that are within the folders you select
+              when connecting your Google Drive account to Dust. You can change
+              this selection at any time or request us to delete all your data.
             </P>
             <P size="md">
               The sole purpose of this data is to allow you to use your Google
-              User Data on the Dust Platform. Dust will not use this data for any
-              other purpose like advertising or marketing.
+              User Data on the Dust Platform. Dust will not use this data for
+              any other purpose like advertising or marketing.
             </P>
             <P size="md">
               Dust use and transfer of information received from Google API's to
@@ -537,13 +546,13 @@ export default function PlatformPrivacy() {
             <H2>7. How do we transfer your Personal Data globally?</H2>
             <P size="md">
               Your Personal Data may be accessed, transferred, stored and/or
-              processed outside the European Economic Area (EEA), specifically in
-              the United States. If your Personal Data is transferred outside the
-              European Union (EU), we make sure that (i) the transfer is
+              processed outside the European Economic Area (EEA), specifically
+              in the United States. If your Personal Data is transferred outside
+              the European Union (EU), we make sure that (i) the transfer is
               performed to a country recognized by an adequacy decision from the
-              European commission; or (ii) the transfer is covered by appropriate
-              safeguards, such as the Standard Contractual Clauses published by
-              the EU commission.
+              European commission; or (ii) the transfer is covered by
+              appropriate safeguards, such as the Standard Contractual Clauses
+              published by the EU commission.
             </P>
           </div>
         </Grid>
@@ -559,8 +568,8 @@ export default function PlatformPrivacy() {
             <P size="md">
               We use industry-standard physical, procedural, and electronic
               security measures to protect your Personal Data held with our
-              service providers and us, and keep them updated taking into account
-              the state of the art-
+              service providers and us, and keep them updated taking into
+              account the state of the art-
             </P>
             <P size="md">
               More precisely, we store the usage data inside of an encrypted
@@ -590,8 +599,8 @@ export default function PlatformPrivacy() {
               9. What are your privacy rights, and how can you exercise them?
             </H2>
             <P size="md">
-              Subject to applicable data protection laws, you have privacy rights
-              in respect of the Personal Data we process about you:
+              Subject to applicable data protection laws, you have privacy
+              rights in respect of the Personal Data we process about you:
             </P>
             <ul className="ml-6 list-disc space-y-2">
               <li className="copy-md">
@@ -641,10 +650,11 @@ export default function PlatformPrivacy() {
             <H2>10. Your California Privacy Rights</H2>
             <P size="md">
               If you are a California resident, California Civil Code Section
-              1798.83 permits you to request information regarding the disclosure
-              of personal information to third parties for their direct marketing
-              purposes during the immediately preceding calendar year. You may
-              make one request each year by emailing us at{" "}
+              1798.83 permits you to request information regarding the
+              disclosure of personal information to third parties for their
+              direct marketing purposes during the immediately preceding
+              calendar year. You may make one request each year by emailing us
+              at{" "}
               <A variant="primary" href="mailto:privacy@dust.tt">
                 privacy@dust.tt
               </A>
@@ -664,12 +674,12 @@ export default function PlatformPrivacy() {
             <P size="md">
               Our Platform is not designed to attract children under the age of
               16. We do not knowingly collect Personal Data from children and do
-              not wish to do so. If we learn that a person under the age of 16 is
-              using our Platform, we will prohibit and attempt to block such use
-              and will make reasonable efforts to promptly delete any Personal
-              Data stored with us with regard to such person. If you believe that
-              we might have any such data, please contact us as outlined in
-              Section 13 below.
+              not wish to do so. If we learn that a person under the age of 16
+              is using our Platform, we will prohibit and attempt to block such
+              use and will make reasonable efforts to promptly delete any
+              Personal Data stored with us with regard to such person. If you
+              believe that we might have any such data, please contact us as
+              outlined in Section 13 below.
             </P>
           </div>
         </Grid>
@@ -690,8 +700,8 @@ export default function PlatformPrivacy() {
               endorse it or the quality or accuracy of information presented on
               it. If you decide to visit a third-party website or service, you
               are subject to its privacy practices and policies, not ours. This
-              Privacy Policy does not apply to any Personal Data that you provide
-              to these other websites and services.
+              Privacy Policy does not apply to any Personal Data that you
+              provide to these other websites and services.
             </P>
           </div>
         </Grid>
@@ -744,8 +754,8 @@ export default function PlatformPrivacy() {
             </P>
             <P size="md">
               Your use of our Platform is subject to the terms in the version of
-              this Platform Privacy Policy that is posted at the time of your use
-              of the Platform and we encourage you to review this Platform
+              this Platform Privacy Policy that is posted at the time of your
+              use of the Platform and we encourage you to review this Platform
               Privacy Policy any time you use our Platform.
             </P>
           </div>
@@ -753,9 +763,7 @@ export default function PlatformPrivacy() {
 
         <Grid>
           <div
-            className={classNames(
-              "col-span-12 md:col-span-10 md:col-start-2"
-            )}
+            className={classNames("col-span-12 md:col-span-10 md:col-start-2")}
           >
             <div className="rounded-2xl border-2 border-highlight/20 bg-highlight/5 p-8">
               <P size="md">
