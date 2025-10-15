@@ -20,10 +20,10 @@ const SF_API_VERSION = "57.0";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const SALESFORCE_TOOL_LOG_NAME = "salesforce";
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("salesforce");
 
   server.tool(
@@ -354,6 +354,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;
