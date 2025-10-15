@@ -202,7 +202,7 @@ export function UsageMetricsChart({
       errorMessage={isError ? "Failed to load observability data." : undefined}
       additionalControls={intervalControls}
     >
-      <>
+      <div>
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
           <BarChart
             data={data}
@@ -248,7 +248,7 @@ export function UsageMetricsChart({
           </BarChart>
         </ResponsiveContainer>
         <ChartLegend items={legendItems} />
-      </>
+      </div>
     </ChartContainer>
   );
 }

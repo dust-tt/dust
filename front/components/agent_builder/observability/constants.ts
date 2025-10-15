@@ -4,6 +4,7 @@ export type ObservabilityTimeRangeType =
 
 export const DEFAULT_PERIOD_DAYS = 14;
 
+
 export const OBSERVABILITY_INTERVALS = ["day", "week"] as const;
 export type ObservabilityIntervalType =
   (typeof OBSERVABILITY_INTERVALS)[number];
