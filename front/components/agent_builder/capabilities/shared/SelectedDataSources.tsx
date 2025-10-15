@@ -235,8 +235,6 @@ export function SelectedDataSources() {
     return inclusionViews;
   }, [sources.in, sources.notIn]);
 
-  console.log(">>>>> dataSourceViews", dataSourceViews);
-
   const hasDataSources = Object.values(dataSourceViews).length > 0;
 
   if (!hasDataSources) {
