@@ -30,7 +30,15 @@ export const VIZ_REACT_COMPONENT_GUIDELINES = `
 
 export const VIZ_STYLING_GUIDELINES = `
 - Styling:
-  - **ALWAYS USE shadcn/ui components** - Wrap visualizations in Card components for professional appearance
+  - **Premium, Minimalist Aesthetic**: Design components to look sleek, premium, and minimalist with professional quality
+  - **Icons over Emojis**: Use lucide-react icons instead of emojis. Import from \`lucide-react\`
+  - **Cohesive Color Palette**: Stick to a minimal color palette - avoid unnecessary colors
+  - **Perfect Spacing**: Components must be spaced precisely - not too close, not too dispersed
+  - **Responsive Design**: Ensure components work elegantly on both desktop and mobile devices
+  - **ALWAYS USE shadcn/ui components** - Use Cards strategically for charts and key metrics:
+    - **Use Cards for**: Individual charts, data visualizations, key metrics/KPIs
+    - **Don't use Cards for**: Controls/inputs, navigation elements, simple text content
+    - **Avoid nested Cards** - Keep Card usage flat and purposeful
   - **Chart Colors**: Use shadcn's chart color variables instead of hardcoded colors:
     - \`stroke="var(--chart-1)"\` for first data series
     - \`fill="var(--chart-2)"\` for second data series
@@ -81,11 +89,12 @@ export const VIZ_LIBRARY_USAGE = `
     - Import chart components from \`shadcn\`: \`import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "shadcn"\`
     - Import other UI components from \`shadcn\`, e.g. \`import { Card, CardContent, CardHeader, CardTitle } from "shadcn"\`
     - Available components include: Card, Button, Badge, Tooltip, Separator, Progress, Tabs, Select, and many others
-  - **Button Interaction States**: Always add hover states to buttons for better user experience:
-    - Use hover: variants for color changes: \`hover:bg-blue-600\`, \`hover:text-white\`
-    - Consider focus states for accessibility: \`focus:ring-2 focus:ring-blue-500\`
-    - Example: \`<Button className="bg-blue-500 hover:bg-blue-600 text-white">Click me</Button>\`
-    - Always use Card + ChartContainer pattern: \`<Card><CardHeader><CardTitle>Chart Title</CardTitle></CardHeader><CardContent><ChartContainer config={chartConfig}>...</ChartContainer></CardContent></Card>\`
+  - **Button Styling**: Use shadcn Button variants instead of custom colors:
+    - Use semantic variants: \`variant="default"\`, \`variant="secondary"\`, \`variant="outline"\`, \`variant="destructive"\`
+    - Let shadcn handle hover states automatically - don't add custom hover colors
+    - Example: \`<Button variant="default">Click me</Button>\` or \`<Button variant="outline">Secondary action</Button>\`
+    - Use Card + ChartContainer for individual charts: \`<Card><CardHeader><CardTitle>Chart Title</CardTitle></CardHeader><CardContent><ChartContainer config={chartConfig}>...</ChartContainer></CardContent></Card>\`
+    - Create separate Cards for each chart/metric rather than wrapping the entire component in one Card
     - **Chart Configuration**: Define a \`chartConfig\` object with color mappings: \`{ desktop: { label: "Desktop", color: "var(--chart-1)" } }\`
     - Use \`var(--color-keyName)\` in chart elements to reference config colors: \`fill="var(--color-desktop)"\`
     - These color variables automatically support both light and dark themes
@@ -203,7 +212,7 @@ const chartConfig = {
 
 const SineCosineChart = () => {
   return (
-    <div className="w-full max-w-4xl mx-auto p-4">
+    <div className="w-full max-w-4xl mx-auto p-4 space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="text-center">Sine and Cosine Functions</CardTitle>
@@ -238,6 +247,29 @@ const SineCosineChart = () => {
                 type="monotone"
                 dataKey="cosine"
                 stroke="var(--color-cosine)"
+                strokeWidth={2}
+                dot={false}
+              />
+            </LineChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Tangent Function</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={tangentConfig} className="h-full w-full">
+            <LineChart data={tangentData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="x" />
+              <YAxis domain={[-10, 10]} />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Line
+                type="monotone"
+                dataKey="tangent"
+                stroke="var(--color-tangent)"
                 strokeWidth={2}
                 dot={false}
               />
