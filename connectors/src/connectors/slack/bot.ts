@@ -81,6 +81,26 @@ const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
 const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
 
+async function getRequestedGroupsForSlackUser(
+  connector: ConnectorResource,
+  slackClient: WebClient,
+  slackUserInfo: SlackUserInfo,
+  context: { slackChannelId: string; slackTeamId: string; slackMessageTs: string },
+  whitelistedDomains: string[] | null | undefined
+): Promise<string[] | null> {
+  const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
+    connector,
+    slackClient,
+    slackUserInfo,
+    context,
+    whitelistedDomains
+  );
+  if (!hasChatbotAccess.authorized) {
+    return null;
+  }
+  return hasChatbotAccess.groupIds;
+}
+
 type BotAnswerParams = {
   responseUrl?: string;
   slackTeamId: string;
@@ -344,7 +364,7 @@ export async function botValidateToolExecution(
       throw new Error("Unreachable: bot cannot validate tool execution.");
     }
 
-    const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
+    const groups = await getRequestedGroupsForSlackUser(
       connector,
       slackClient,
       slackUserInfo,
@@ -355,19 +375,18 @@ export async function botValidateToolExecution(
       },
       slackConfig.whitelistedDomains
     );
-    if (!hasChatbotAccess.authorized) {
+    if (groups === null) {
       return new Ok(undefined);
     }
 
     // If the user is allowed, we retrieve the groups he has access to.
-    requestedGroups = hasChatbotAccess.groupIds;
+    requestedGroups = groups;
 
     const dustAPI = new DustAPI(
       { url: apiConfig.getDustFrontAPIUrl() },
       {
         apiKey: connector.workspaceAPIKey,
-        // We neither need group ids nor user email headers here because validate tool endpoint is not
-        // gated by group ids or user email headers.
+        // Validation must include user's groups and email for personal tools and group-gated actions.
         extraHeaders: {
           ...getHeaderFromGroupIds(requestedGroups),
           ...getHeaderFromUserEmail(userEmailHeader),
@@ -681,7 +700,7 @@ async function answerMessage(
     // permissions.
     skipToolsValidation = true;
   } else {
-    const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
+    const groups = await getRequestedGroupsForSlackUser(
       connector,
       slackClient,
       slackUserInfo,
@@ -692,12 +711,12 @@ async function answerMessage(
       },
       slackConfig.whitelistedDomains
     );
-    if (!hasChatbotAccess.authorized) {
+    if (groups === null) {
       return new Ok(undefined);
     }
 
     // If the user is allowed, we retrieve the groups he has access to.
-    requestedGroups = hasChatbotAccess.groupIds;
+    requestedGroups = groups;
   }
 
   const displayName = slackUserInfo.display_name ?? "";
