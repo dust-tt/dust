@@ -22,6 +22,7 @@ import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
+import type { AppStatus } from "@app/lib/api/status";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -89,16 +90,18 @@ export const NavigationSidebar = React.forwardRef<
 
   const { setSidebarOpen } = useContext(SidebarContext);
 
-  // We display the banner if the end date is in 30 days or less.
+  const { appStatus } = useAppStatus();
+
+  const hasIncidentBanner =
+    appStatus?.dustStatus !== null || appStatus?.providersStatus !== null;
   const endDate = subscription.endDate;
-  const shouldDisplaySubscriptionEndBanner =
-    endDate && endDate < Date.now() + 30 * 24 * 60 * 60 * 1000;
+  const in30Days = Date.now() + 30 * 24 * 60 * 60 * 1000;
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
       <div className="flex flex-col gap-2 pt-3">
-        <AppStatusBanner />
-        {shouldDisplaySubscriptionEndBanner && endDate && (
+        {appStatus && <AppStatusBanner appStatus={appStatus} />}
+        {!hasIncidentBanner && endDate && endDate < in30Days && (
           <SubscriptionEndBanner
             endDate={endDate}
             isFreePlan={isFreePlan(subscription.plan.code)}
@@ -260,13 +263,10 @@ function StatusBanner({
   );
 }
 
-function AppStatusBanner() {
-  const { appStatus } = useAppStatus();
-
-  if (!appStatus) {
-    return null;
-  }
-
+interface AppStatusBannerProps {
+  appStatus: AppStatus;
+}
+function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   const { providersStatus, dustStatus } = appStatus;
 
   if (dustStatus) {
