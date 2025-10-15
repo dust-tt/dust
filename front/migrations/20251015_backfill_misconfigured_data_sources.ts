@@ -12,36 +12,32 @@ makeScript({}, async ({ execute }, logger) => {
 
   logger.info("Starting migration of AgentDataSourceConfiguration parentsIn");
 
-  const configurations = await AgentDataSourceConfiguration.findAll({
+  const dataSourceConfigurations = await AgentDataSourceConfiguration.findAll({
     where: {
       parentsIn: [],
       parentsNotIn: { [Op.not]: null },
     },
   });
 
-  logger.info(`Found ${configurations.length} configurations to process`);
+  logger.info(
+    `Found ${dataSourceConfigurations.length} configurations to process`
+  );
 
   await concurrentExecutor(
-    configurations,
-    async (config) => {
-      const configLogger = logger.child({ configId: config.id });
-
-      // Generate revert SQL for this configuration
-      revertSql += `UPDATE "agent_data_source_configurations" SET "parentsIn" = '{}' WHERE "id" = ${config.id};\n`;
+    dataSourceConfigurations,
+    async (configuration) => {
+      revertSql += `UPDATE "agent_data_source_configurations" SET "parentsIn" = '{}' WHERE "id" = ${configuration.id};\n`;
 
       if (execute) {
-        await config.update({
+        await configuration.update({
           parentsIn: null,
         });
-        configLogger.info("Updated parentsIn to null", {
-          oldParentsIn: config.parentsIn,
-          parentsNotIn: config.parentsNotIn,
-        });
+        logger.info({ rowId: configuration.id }, "Updated parentsIn to null");
       } else {
-        configLogger.info("Would update parentsIn to null (dry run)", {
-          oldParentsIn: config.parentsIn,
-          parentsNotIn: config.parentsNotIn,
-        });
+        logger.info(
+          { rowId: configuration.id },
+          "Would update parentsIn to null (dry run)"
+        );
       }
     },
     { concurrency: UPDATE_CONCURRENCY }
@@ -55,6 +51,6 @@ makeScript({}, async ({ execute }, logger) => {
   }
 
   logger.info(
-    `Migration completed. Processed ${configurations.length} configurations`
+    `Migration completed. Processed ${dataSourceConfigurations.length} configurations`
   );
 });
