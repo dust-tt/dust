@@ -142,7 +142,7 @@ export function transformSelectionConfigurationsToTree(
         dataSourceView,
         tagsFilter: config.tagsFilter,
       });
-      continue;
+      // No early return: we still need to append exclusions below.
     }
 
     // UI reconstruction guard:
