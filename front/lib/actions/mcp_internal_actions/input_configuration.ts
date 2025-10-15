@@ -153,7 +153,7 @@ function generateConfiguredInput({
         actionConfiguration.additionalConfiguration[keyPath];
 
       if (value === undefined) {
-        value = getDefaultValue(actionConfiguration, keyPath);
+        value = getDefaultValueAtPath(actionConfiguration.inputSchema, keyPath);
       }
 
       assert(
@@ -168,7 +168,7 @@ function generateConfiguredInput({
         actionConfiguration.additionalConfiguration[keyPath];
 
       if (value === undefined) {
-        value = getDefaultValue(actionConfiguration, keyPath);
+        value = getDefaultValueAtPath(actionConfiguration.inputSchema, keyPath);
       }
 
       assert(
@@ -183,7 +183,7 @@ function generateConfiguredInput({
         actionConfiguration.additionalConfiguration[keyPath];
 
       if (value === undefined) {
-        value = getDefaultValue(actionConfiguration, keyPath);
+        value = getDefaultValueAtPath(actionConfiguration.inputSchema, keyPath);
       }
 
       assert(
@@ -198,7 +198,7 @@ function generateConfiguredInput({
         actionConfiguration.additionalConfiguration[keyPath];
 
       if (value === undefined) {
-        value = getDefaultValue(actionConfiguration, keyPath);
+        value = getDefaultValueAtPath(actionConfiguration.inputSchema, keyPath);
       }
 
       assert(
@@ -313,14 +313,8 @@ export function findPathsToConfiguration({
   return matches;
 }
 
-function getDefaultValue(
-  actionConfiguration: MCPToolConfigurationType,
-  keyPath: string
-) {
-  const property = findSchemaAtPath(
-    actionConfiguration.inputSchema,
-    keyPath.split(".")
-  );
+function getDefaultValueAtPath(inputSchema: JSONSchema, keyPath: string) {
+  const property = findSchemaAtPath(inputSchema, keyPath.split("."));
 
   if (
     property?.default &&
