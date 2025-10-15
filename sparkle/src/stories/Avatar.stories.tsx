@@ -187,6 +187,10 @@ export const AvatarExample: Story = {
           visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
         />
       </div>
+      <div>Visual as empty string should be treated as null</div>
+      <div className="s-flex s-gap-4">
+        <Avatar size="xs" name="Soupinou Meow" visual={""} />
+      </div>
       <div>With icon</div>
       <div className="s-flex s-gap-4">
         <Avatar size="xs" icon={SvgHome} />

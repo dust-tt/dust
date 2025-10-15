@@ -55,7 +55,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 
-const createServer = (): McpServer => {
+function createServer(): McpServer {
   const server = makeInternalMCPServer("hubspot");
 
   server.tool(
@@ -1495,6 +1495,6 @@ const createServer = (): McpServer => {
   );
 
   return server;
-};
+}
 
 export default createServer;

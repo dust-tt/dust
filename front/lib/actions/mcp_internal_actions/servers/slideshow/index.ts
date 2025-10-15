@@ -34,10 +34,10 @@ const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
  * Files are rendered in a interactive content viewer where users can interact with them.
  * We return the file resource only on file creation, as edit updates the existing file.
  */
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("slideshow");
 
   server.tool(
@@ -313,6 +313,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

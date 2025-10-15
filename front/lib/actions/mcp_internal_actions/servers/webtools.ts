@@ -36,10 +36,10 @@ import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
 
 const BROWSE_MAX_TOKENS_LIMIT = 32_000;
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer(DEFAULT_WEBSEARCH_ACTION_NAME);
 
   server.tool(
@@ -450,6 +450,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types";
@@ -71,7 +72,10 @@ const OutlookContactSchema = z.object({
 type OutlookMessage = z.infer<typeof OutlookMessageSchema>;
 type OutlookContact = z.infer<typeof OutlookContactSchema>;
 
-const createServer = (auth: Authenticator): McpServer => {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("outlook");
 
   server.tool(
@@ -104,6 +108,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ search, top = 10, skip = 0, select }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -189,6 +194,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ search, top = 10, skip = 0 }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -283,6 +289,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         { to, cc, bcc, subject, contentType, body, importance = "normal" },
@@ -366,6 +373,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ messageId, subject, to }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -434,6 +442,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         {
@@ -561,6 +570,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ search, top = 20, skip = 0, select }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -654,6 +664,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         {
@@ -777,6 +788,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         {
@@ -878,7 +890,7 @@ const createServer = (auth: Authenticator): McpServer => {
   );
 
   return server;
-};
+}
 
 const fetchFromOutlook = async (
   endpoint: string,
