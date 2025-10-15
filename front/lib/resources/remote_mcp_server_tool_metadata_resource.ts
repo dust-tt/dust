@@ -4,6 +4,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
@@ -162,6 +163,37 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     });
 
     return new this(this.model, toolMetadata.get());
+  }
+
+  // Deletes tool metadata for tools that are not in the list
+  static async onlyKeepTools(
+    auth: Authenticator,
+    {
+      serverId,
+      tools,
+    }: {
+      serverId: number;
+      tools: string[];
+    }
+  ) {
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
+
+    if (!canAdministrate) {
+      throw new DustError(
+        "unauthorized",
+        "The user is not authorized to delete a tool metadata"
+      );
+    }
+    await RemoteMCPServerToolMetadataModel.destroy({
+      where: {
+        remoteMCPServerId: serverId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        toolName: {
+          [Op.notIn]: tools,
+        },
+      },
+    });
   }
 
   // Delete

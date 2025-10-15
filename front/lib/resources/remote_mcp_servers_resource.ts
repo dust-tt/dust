@@ -22,6 +22,7 @@ import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/acti
 import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -300,15 +301,9 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     if (cachedTools) {
       const newToolNames = new Set(cachedTools.map((tool) => tool.name));
 
-      // Delete tool metadata for tools that are no longer in the server's tool list
-      await RemoteMCPServerToolMetadataModel.destroy({
-        where: {
-          remoteMCPServerId: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          toolName: {
-            [Op.notIn]: Array.from(newToolNames),
-          },
-        },
+      await RemoteMCPServerToolMetadataResource.onlyKeepTools(auth, {
+        serverId: this.id,
+        tools: Array.from(newToolNames),
       });
     }
 

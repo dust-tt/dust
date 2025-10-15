@@ -81,12 +81,13 @@ describe("RemoteMCPServerResource.updateMetadata", () => {
     expect(remainingNames).toEqual(["tool_a", "tool_c"]);
 
     // Also ensure the server actually updated its cachedTools.
-    const refreshed = (await RemoteMCPServerResource.findByPk(auth, server.id))!;
+    const refreshed = (await RemoteMCPServerResource.findByPk(
+      auth,
+      server.id
+    ))!;
     expect(refreshed.cachedTools?.map((t) => t.name).sort()).toEqual([
       "tool_a",
       "tool_c",
     ]);
   });
 });
-
-
