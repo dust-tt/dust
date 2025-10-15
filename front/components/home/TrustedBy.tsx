@@ -42,7 +42,7 @@ const LOGO_SETS = {
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
       { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
-      { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
+      { name: "laurel", src: "/static/landing/logos/gray/laurel.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
       { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
