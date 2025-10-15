@@ -47,14 +47,11 @@ export class MicrosoftBotMessage extends ConnectorBaseModel<MicrosoftBotMessage>
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare message: string;
-  declare userId: string;
   declare userAadObjectId?: string;
-  declare email: string;
-  declare userName: string;
+  declare email?: string;
   declare conversationId: string;
-  declare activityId: string;
-  declare channelId: string;
+  declare userActivityId: string;
+  declare agentActivityId: string;
   declare replyToId?: string;
   declare dustConversationId?: string;
 }
@@ -71,35 +68,23 @@ MicrosoftBotMessage.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    message: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    userId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     userAadObjectId: {
       type: DataTypes.STRING,
       allowNull: true,
     },
     email: {
       type: DataTypes.STRING,
-      allowNull: false,
-    },
-    userName: {
-      type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     conversationId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    activityId: {
+    userActivityId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    channelId: {
+    agentActivityId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -121,9 +106,6 @@ MicrosoftBotMessage.init(
       },
       {
         fields: ["connectorId", "conversationId"],
-      },
-      {
-        fields: ["connectorId", "userId"],
       },
       {
         fields: ["connectorId", "dustConversationId"],

@@ -1,3 +1,5 @@
+import type { Result } from "@dust-tt/client";
+import { Err, normalizeError, Ok } from "@dust-tt/client";
 import axios from "axios";
 import type { Activity, TurnContext } from "botbuilder";
 
@@ -81,11 +83,10 @@ async function getTenantSpecificToken(): Promise<string | null> {
 export async function sendActivity(
   context: TurnContext,
   activity: Partial<Activity>
-): Promise<{ id?: string } | undefined> {
+): Promise<Result<string, Error>> {
   const token = await getTenantSpecificToken();
   if (!token) {
-    logger.error("Cannot send activity - no valid token");
-    return undefined;
+    return new Err(new Error("Cannot send activity - no valid token"));
   }
 
   try {
@@ -109,7 +110,11 @@ export async function sendActivity(
       "Activity sent successfully"
     );
 
-    return { id: response.data?.id };
+    if (response.data?.id) {
+      return new Ok(response.data.id);
+    }
+
+    return new Err(new Error("Cannot send activity - no activity ID"));
   } catch (error) {
     logger.error(
       {
@@ -119,7 +124,8 @@ export async function sendActivity(
       },
       "Failed to send activity"
     );
-    throw error;
+
+    return new Err(normalizeError(error));
   }
 }
 
@@ -130,16 +136,16 @@ export async function sendActivity(
 export async function updateActivity(
   context: TurnContext,
   activity: Partial<Activity>
-): Promise<void> {
+): Promise<Result<void, Error>> {
   const token = await getTenantSpecificToken();
   if (!token) {
-    logger.error("Cannot update activity - no valid token");
-    return;
+    return new Err(new Error("Cannot send activity - no valid token"));
   }
 
   if (!activity.id) {
-    logger.error("Cannot update activity - no activity ID provided");
-    return;
+    return new Err(
+      new Error("Cannot update activity - no activity ID provided")
+    );
   }
 
   try {
@@ -162,6 +168,8 @@ export async function updateActivity(
       },
       "Activity updated successfully"
     );
+
+    return new Ok(undefined);
   } catch (error) {
     logger.error(
       {
@@ -172,7 +180,7 @@ export async function updateActivity(
       },
       "Failed to update activity"
     );
-    throw error;
+    return new Err(normalizeError(error));
   }
 }
 
@@ -182,7 +190,7 @@ export async function updateActivity(
 export async function sendTextMessage(
   context: TurnContext,
   text: string
-): Promise<{ id?: string } | undefined> {
+): Promise<Result<string, Error>> {
   return sendActivity(context, {
     type: "message",
     text,

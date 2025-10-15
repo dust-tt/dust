@@ -199,75 +199,63 @@ async function handleMessage(
   context: TurnContext,
   connector: ConnectorResource
 ) {
-  // Handle regular text messages
-  if (context.activity.text?.trim()) {
-    await handleTextMessage(context, connector);
+  if (!context.activity.text?.trim()) {
+    return;
   }
-}
 
-async function handleTextMessage(
-  context: TurnContext,
-  connector: ConnectorResource
-) {
   logger.info({ text: context.activity.text }, "Handling regular text message");
 
   // Send thinking message
-  let thinkingActivity;
-  try {
-    const thinkingCard = createThinkingAdaptiveCard();
+  const thinkingCard = createThinkingAdaptiveCard();
 
-    logger.info(
-      {
-        serviceUrl: context.activity.serviceUrl,
-        conversationId: context.activity.conversation?.id,
-        cardType: "ThinkingCard",
-        credentials: {
-          hasAppId: !!process.env.MICROSOFT_BOT_ID,
-          hasAppPassword: !!process.env.MICROSOFT_BOT_PASSWORD,
-        },
+  logger.info(
+    {
+      serviceUrl: context.activity.serviceUrl,
+      conversationId: context.activity.conversation?.id,
+      cardType: "ThinkingCard",
+      credentials: {
+        hasAppId: !!process.env.MICROSOFT_BOT_ID,
+        hasAppPassword: !!process.env.MICROSOFT_BOT_PASSWORD,
       },
-      "About to send thinking card to Bot Framework"
-    );
+    },
+    "About to send thinking card to Bot Framework"
+  );
 
-    // Use utility function for reliable messaging
-    thinkingActivity = await sendActivity(context, thinkingCard);
-    logger.info(
-      { activityId: thinkingActivity?.id },
-      "Successfully sent thinking card"
-    );
-  } catch (error) {
+  // Use utility function for reliable messaging
+  const thinkingActivity = await sendActivity(context, thinkingCard);
+  if (thinkingActivity.isErr()) {
     logger.error(
-      {
-        error,
-      },
-      "Failed to send thinking card - detailed error"
+      { error: thinkingActivity.error },
+      "Error processing Teams message"
     );
-  }
-
-  try {
-    const result = await botAnswerMessage(
-      context,
-      context.activity.text,
-      connector,
-      thinkingActivity?.id
-    );
-
-    if (result.isErr()) {
-      logger.error({ error: result.error }, "Error processing Teams message");
-      await sendActivity(
-        context,
-        createErrorAdaptiveCard({
-          error: result.error.message,
-          workspaceId: connector!.workspaceId,
-        })
-      );
-    }
-  } catch (error) {
-    logger.error({ error }, "Error processing Teams message");
     await sendActivity(
       context,
       createErrorAdaptiveCard({
-        error: "An unexpected error occurred",
+        error: thinkingActivity.error.message,
+        workspaceId: connector!.workspaceId,
+      })
+    );
+    return;
+  }
+
+  logger.info(
+    { activityId: thinkingActivity.value },
+    "Successfully sent thinking card"
+  );
+
+  const result = await botAnswerMessage(
+    context,
+    context.activity.text,
+    connector,
+    thinkingActivity.value
+  );
+
+  if (result.isErr()) {
+    logger.error({ error: result.error }, "Error processing Teams message");
+    await sendActivity(
+      context,
+      createErrorAdaptiveCard({
+        error: result.error.message,
         workspaceId: connector!.workspaceId,
       })
     );

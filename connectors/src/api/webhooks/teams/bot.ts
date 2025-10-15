@@ -18,7 +18,6 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import { getHeaderFromUserEmail } from "@connectors/types";
 
 import {
-  createErrorAdaptiveCard,
   createResponseAdaptiveCard,
   createStreamingAdaptiveCard,
   makeConversationUrl,
@@ -29,67 +28,22 @@ export async function botAnswerMessage(
   context: TurnContext,
   message: string,
   connector: ConnectorResource,
-  currentActivityId: string | undefined
-): Promise<Result<undefined, Error>> {
-  try {
-    const res = await answerBotMessage(
-      context,
-      message,
-      connector,
-      currentActivityId
-    );
-
-    if (res.isErr()) {
-      await sendTeamsResponse(
-        context,
-        currentActivityId,
-        createErrorAdaptiveCard({
-          error: res.error.message,
-          workspaceId: connector.workspaceId,
-        })
-      );
-    }
-
-    return res;
-  } catch (e) {
-    logger.error(
-      {
-        error: e,
-        connectorId: connector.id,
-      },
-      "Unexpected exception answering to Teams message"
-    );
-
-    await sendTeamsResponse(
-      context,
-      currentActivityId,
-      createErrorAdaptiveCard({
-        error: "An unexpected error occurred. Our team has been notified",
-        workspaceId: connector.workspaceId,
-      })
-    );
-    return new Err(new Error("An unexpected error occurred"));
-  }
-}
-
-async function answerBotMessage(
-  context: TurnContext,
-  message: string,
-  connector: ConnectorResource,
-  currentActivityId: string | undefined
+  agentActivityId: string
 ): Promise<Result<undefined, Error>> {
   const {
     conversation: { id: conversationId },
-    from: { id: userId, aadObjectId: userAadObjectId },
-    id: activityId,
-    channelId,
+    from: { aadObjectId: userAadObjectId },
+    id: userActivityId,
     replyToId,
   } = context.activity;
-  // Check for existing Dust conversation for this Teams conversation
-  let lastMicrosoftBotMessage: MicrosoftBotMessage | null = null;
 
-  // Always look for previous messages in the same Teams conversation
-  // to maintain conversation continuity - first try to find one with dustConversationId
+  if (!userActivityId || !userAadObjectId) {
+    return new Err(
+      new Error("No user activity ID or user AAD object ID found")
+    );
+  }
+
+  // Check for existing Dust conversation for this Teams conversation
   const allMicrosoftBotMessages = await MicrosoftBotMessage.findAll({
     where: {
       connectorId: connector.id,
@@ -99,61 +53,17 @@ async function answerBotMessage(
   });
 
   // Find the most recent message that has a Dust conversation ID
-  lastMicrosoftBotMessage =
+  const lastMicrosoftBotMessage =
     allMicrosoftBotMessages.find((msg) => msg.dustConversationId) || null;
 
   // Get Microsoft Graph client
   const client = await getClient(connector.connectionId);
 
   // Get user info from Microsoft Graph
-  let userInfo: {
-    id: string;
-    displayName?: string;
-    mail?: string;
-    userPrincipalName?: string;
-  } | null = null;
-  try {
-    if (userAadObjectId) {
-      userInfo = await client.api(`/users/${userAadObjectId}`).get();
-    } else {
-      // Fallback: try to get user info by userId (though this might not work for all scenarios)
-      userInfo = await client.api(`/users/${userId}`).get();
-    }
-  } catch (e) {
-    logger.warn(
-      {
-        error: e,
-        userId,
-        userAadObjectId,
-        connectorId: connector.id,
-      },
-      "Failed to get user info from Microsoft Graph"
-    );
-    // Create minimal user info
-    userInfo = {
-      id: userId,
-      displayName: "Unknown User",
-      mail: "unknown@example.com",
-    };
-  }
+  const userInfo = await client.api(`/users/${userAadObjectId}`).get();
 
   const displayName = userInfo?.displayName || "Unknown User";
-  const email =
-    userInfo?.mail || userInfo?.userPrincipalName || "unknown@example.com";
-
-  const teamsMessage = await MicrosoftBotMessage.create({
-    connectorId: connector.id,
-    message: message,
-    userId: userId,
-    userAadObjectId: userAadObjectId,
-    email: email,
-    userName: displayName,
-    conversationId: conversationId,
-    activityId: activityId || "",
-    channelId: channelId,
-    replyToId: replyToId,
-    dustConversationId: lastMicrosoftBotMessage?.dustConversationId,
-  });
+  const email = userInfo?.mail;
 
   const dustAPI = new DustAPI(
     { url: apiConfig.getDustFrontAPIUrl() },
@@ -161,9 +71,7 @@ async function answerBotMessage(
       workspaceId: connector.workspaceId,
       apiKey: connector.workspaceAPIKey,
       extraHeaders: {
-        ...getHeaderFromUserEmail(
-          email !== "unknown@example.com" ? email : undefined
-        ),
+        ...getHeaderFromUserEmail(email),
       },
     },
     logger
@@ -291,12 +199,12 @@ async function answerBotMessage(
     );
 
     // Check conversation existence (it might have been deleted between two messages).
-    const existsRes = await dustAPI.getConversation({
+    const conversationRes = await dustAPI.getConversation({
       conversationId: lastMicrosoftBotMessage.dustConversationId,
     });
 
     // If it doesn't exist, we will create a new one later.
-    if (existsRes.isOk()) {
+    if (conversationRes.isOk()) {
       const messageRes = await dustAPI.postUserMessage({
         conversationId: lastMicrosoftBotMessage.dustConversationId,
         message: messageReqBody,
@@ -306,13 +214,14 @@ async function answerBotMessage(
       }
       userMessage = messageRes.value;
 
-      const conversationRes = await dustAPI.getConversation({
+      // Reload conversation to get the latest state
+      const newConversationRes = await dustAPI.getConversation({
         conversationId: lastMicrosoftBotMessage.dustConversationId,
       });
-      if (conversationRes.isErr()) {
-        return new Err(new Error(conversationRes.error.message));
+      if (newConversationRes.isErr()) {
+        return new Err(new Error(newConversationRes.error.message));
       }
-      conversation = conversationRes.value;
+      conversation = newConversationRes.value;
     } else {
       logger.warn(
         {
@@ -334,17 +243,17 @@ async function answerBotMessage(
       "Creating new Dust conversation for Teams conversation"
     );
 
-    const convRes = await dustAPI.createConversation({
+    const newConversationRes = await dustAPI.createConversation({
       title: null,
       visibility: "unlisted",
       message: messageReqBody,
     });
-    if (convRes.isErr()) {
-      return new Err(new Error(convRes.error.message));
+    if (newConversationRes.isErr()) {
+      return new Err(new Error(newConversationRes.error.message));
     }
 
-    conversation = convRes.value.conversation;
-    userMessage = convRes.value.message;
+    conversation = newConversationRes.value.conversation;
+    userMessage = newConversationRes.value.message;
 
     if (!userMessage) {
       return new Err(new Error("Failed to retrieve the created message."));
@@ -358,9 +267,18 @@ async function answerBotMessage(
       },
       "Created new Dust conversation and linked to Teams conversation"
     );
-
-    await teamsMessage.update({ dustConversationId: conversation.sId });
   }
+
+  await MicrosoftBotMessage.create({
+    connectorId: connector.id,
+    userAadObjectId: userAadObjectId,
+    email: email,
+    conversationId: conversationId,
+    userActivityId: userActivityId,
+    agentActivityId: agentActivityId,
+    dustConversationId: conversation.sId,
+    replyToId: replyToId,
+  });
 
   // For Bot Framework approach with streaming updates
   const streamRes = await dustAPI.streamAgentAnswerEvents({
@@ -376,7 +294,6 @@ async function answerBotMessage(
   let finalResponse = "";
   let agentMessageSuccess = undefined;
   let lastUpdateTime = Date.now();
-  let streamingUsed = false;
   let chainOfThought = "";
   let agentState = "thinking";
   const UPDATE_INTERVAL_MS = 100; // Update every second
@@ -410,7 +327,6 @@ async function answerBotMessage(
         const now = Date.now();
         if (now - lastUpdateTime > UPDATE_INTERVAL_MS) {
           lastUpdateTime = now;
-          streamingUsed = true;
           const text =
             agentState === "thinking" ? chainOfThought : finalResponse;
           if (text.trim()) {
@@ -422,7 +338,7 @@ async function answerBotMessage(
             });
 
             // Send streaming update to Teams app webhook endpoint
-            await sendTeamsResponse(context, currentActivityId, streamingCard);
+            await sendTeamsResponse(context, agentActivityId, streamingCard);
           }
         }
         break;
@@ -436,7 +352,7 @@ async function answerBotMessage(
           workspaceId: connector.workspaceId,
         });
         agentState = "acting";
-        await sendTeamsResponse(context, currentActivityId, streamingCard);
+        await sendTeamsResponse(context, agentActivityId, streamingCard);
 
         break;
       }
@@ -447,27 +363,17 @@ async function answerBotMessage(
   }
 
   if (agentMessageSuccess) {
-    // Send final clean message if streaming was used
-    if (streamingUsed) {
-      try {
-        const finalCard = createResponseAdaptiveCard({
-          response: finalResponse,
-          assistantName: mention.assistantName,
-          conversationUrl: makeConversationUrl(
-            connector.workspaceId,
-            conversation.sId
-          ),
-          workspaceId: connector.workspaceId,
-        });
+    const finalCard = createResponseAdaptiveCard({
+      response: finalResponse,
+      assistantName: mention.assistantName,
+      conversationUrl: makeConversationUrl(
+        connector.workspaceId,
+        conversation.sId
+      ),
+      workspaceId: connector.workspaceId,
+    });
 
-        await sendTeamsResponse(context, currentActivityId, finalCard);
-      } catch (finalError) {
-        logger.warn(
-          { error: finalError },
-          "Failed to send final message to Teams"
-        );
-      }
-    }
+    await sendTeamsResponse(context, agentActivityId, finalCard);
 
     // Return the result with streaming info
     return new Ok(undefined);
@@ -478,35 +384,27 @@ async function answerBotMessage(
 
 const sendTeamsResponse = async (
   context: TurnContext,
-  currentActivityId: string | undefined,
+  agentActivityId: string | undefined,
   adaptiveCard: Partial<Activity>
-) => {
-  try {
-    // Update existing message for streaming
-    if (currentActivityId) {
-      try {
-        await updateActivity(context, {
-          ...adaptiveCard,
-          id: currentActivityId,
-        });
-        return currentActivityId;
-      } catch (updateError) {
-        logger.warn(
-          { error: updateError },
-          "Failed to update streaming message, sending new one"
-        );
-      }
+): Promise<Result<string, Error>> => {
+  // Update existing message for streaming
+  if (agentActivityId) {
+    try {
+      await updateActivity(context, {
+        ...adaptiveCard,
+        id: agentActivityId,
+      });
+      return new Ok(agentActivityId);
+    } catch (updateError) {
+      logger.warn(
+        { error: updateError },
+        "Failed to update streaming message, sending new one"
+      );
     }
-
-    // Send new streaming message
-    const sentActivity = await sendActivity(context, adaptiveCard);
-    return sentActivity?.id;
-  } catch (updateError) {
-    logger.warn(
-      { error: updateError },
-      "Failed to send streaming update to Teams"
-    );
   }
+
+  // Send new streaming message
+  return sendActivity(context, adaptiveCard);
 };
 
 export const SEARCH_TOOL_NAME = "semantic_search";
