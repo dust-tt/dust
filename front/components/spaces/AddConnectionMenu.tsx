@@ -71,7 +71,7 @@ export async function setupConnection({
   extraConfig,
 }: {
   owner: LightWorkspaceType;
-  provider: ConnectorProvider | OAuthProvider;
+  provider: ConnectorProvider;
   useCase?: OAuthUseCase;
   extraConfig: Record<string, string>;
 }): Promise<Result<string, Error>> {

@@ -2,6 +2,7 @@ import {
   ArrowPathIcon,
   Button,
   ContextItem,
+  DiscordLogo,
   DocumentTextIcon,
   GlobeAltIcon,
   Input,
@@ -25,10 +26,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { DiscordBotToggle } from "@app/components/workspace/DiscordBotToggle";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -45,12 +44,13 @@ import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[s
 import type {
   ConnectorProvider,
   DataSourceType,
+  OAuthProvider,
   OAuthUseCase,
   SpaceType,
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
-import { ConnectorsAPI } from "@app/types";
+import { ConnectorsAPI, setupOAuthConnection } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -70,14 +70,17 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const [[slackDataSource], [slackBotDataSource], [microsoftBotDataSource], [discordBotDataSource]] =
-   
-    await Promise.all([
-        DataSourceResource.listByConnectorProvider(auth, "slack"),
-        DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
-        DataSourceResource.listByConnectorProvider(auth, "microsoft_bot"),
-        DataSourceResource.listByConnectorProvider(auth, "discord_bot"),
-    ]);
+  const [
+    [slackDataSource],
+    [slackBotDataSource],
+    [microsoftBotDataSource],
+    [discordBotDataSource],
+  ] = await Promise.all([
+    DataSourceResource.listByConnectorProvider(auth, "slack"),
+    DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
+    DataSourceResource.listByConnectorProvider(auth, "microsoft_bot"),
+    DataSourceResource.listByConnectorProvider(auth, "discord_bot"),
+  ]);
 
   let isSlackDataSourceBotEnabled = false;
   if (slackDataSource && slackDataSource.connectorId) {
@@ -270,43 +273,51 @@ export default function WorkspaceAdmin({
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Integrations</Page.H>
             {!isSlackDataSourceBotEnabled && (
-  
-            <ContextItem.List>
-              <div className="h-full border-b border-border dark:border-border-night" />
-              <BotToggle
-                owner={owner}
-                botDataSource={slackBotDataSource}
-                systemSpace={systemSpace}
-                oauth={{ provider: "slack", useCase: "bot", extraConfig: {} }}
-                connectorProvider="slack_bot"
-                name="Slack Bot"
-                description="Use Dust Agents in Slack with the Dust Slack app"
-                visual={<SlackLogo className="h-6 w-6" />}
-              />
-              {isMicrosoftTeamsBotEnabled && (
+              <ContextItem.List>
+                <div className="h-full border-b border-border dark:border-border-night" />
                 <BotToggle
+                  owner={owner}
+                  botDataSource={slackBotDataSource}
+                  systemSpace={systemSpace}
+                  oauth={{ provider: "slack", useCase: "bot", extraConfig: {} }}
+                  connectorProvider="slack_bot"
+                  name="Slack Bot"
+                  description="Use Dust Agents in Slack with the Dust Slack app"
+                  visual={<SlackLogo className="h-6 w-6" />}
+                />
+                {isMicrosoftTeamsBotEnabled && (
+                  <BotToggle
                     owner={owner}
                     botDataSource={microsoftBotDataSource}
                     systemSpace={systemSpace}
                     oauth={{
-                    provider: "microsoft",
-                    useCase: "bot",
-                    extraConfig: {},
-                  }}
-                  connectorProvider="microsoft_bot"
-                  name="Microsoft Teams Bot"
-                  description="Use Dust Agents in Teams with the Dust Microsoft Teams Bot"
-                  visual={<MicrosoftLogo className="h-6 w-6" />}
-                />
-              )}
-            </ContextItem.List>
-            )}
-            {isDiscordBotEnabled && (
-              <DiscordBotToggle
-                owner={owner}
-                discordBotDataSource={discordBotDataSource}
-                systemSpace={systemSpace}
-              />
+                      provider: "microsoft",
+                      useCase: "bot",
+                      extraConfig: {},
+                    }}
+                    connectorProvider="microsoft_bot"
+                    name="Microsoft Teams Bot"
+                    description="Use Dust Agents in Teams with the Dust Microsoft Teams Bot"
+                    visual={<MicrosoftLogo className="h-6 w-6" />}
+                  />
+                )}
+                {isDiscordBotEnabled && (
+                  <BotToggle
+                    owner={owner}
+                    botDataSource={discordBotDataSource}
+                    systemSpace={systemSpace}
+                    oauth={{
+                      provider: "discord",
+                      useCase: "bot",
+                      extraConfig: {},
+                    }}
+                    connectorProvider="discord_bot"
+                    name="Discord Bot"
+                    description="Use Dust Agents in Discord with the Dust Discord app"
+                    visual={<DiscordLogo className="h-6 w-6" />}
+                  />
+                )}
+              </ContextItem.List>
             )}
           </Page.Vertical>
         )}
@@ -329,7 +340,7 @@ function BotToggle({
   botDataSource: DataSourceType | null;
   systemSpace: SpaceType;
   oauth: {
-    provider: ConnectorProvider;
+    provider: OAuthProvider;
     useCase?: OAuthUseCase;
     extraConfig: Record<string, string>;
   };
@@ -348,6 +359,7 @@ function BotToggle({
   const toggleBotOnExistingDataSource = useToggleChatBot({
     dataSource: botDataSource ?? null,
     owner,
+    botName: name,
   });
 
   const [isChangingBot, setIsChangingBot] = useState(false);
@@ -356,13 +368,18 @@ function BotToggle({
   const createBotConnectionAndDataSource = async () => {
     try {
       // OAuth flow
-      const cRes = await setupConnection({
+      const cRes = await setupOAuthConnection({
+        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
         owner,
-        ...oauth,
+        provider: oauth.provider,
+        useCase: oauth.useCase ?? "connection",
+        extraConfig: oauth.extraConfig,
       });
       if (!cRes.isOk()) {
         throw cRes.error;
       }
+
+      const connectionId = cRes.value.connection_id;
 
       const res = await fetch(
         `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources`,
@@ -373,7 +390,7 @@ function BotToggle({
           },
           body: JSON.stringify({
             provider: connectorProvider,
-            connectionId: cRes.value,
+            connectionId,
             name: undefined,
             configuration: null,
           } satisfies PostDataSourceRequestBody),
@@ -425,9 +442,12 @@ function BotToggle({
               size="xs"
               icon={ArrowPathIcon}
               onClick={async () => {
-                const cRes = await setupConnection({
+                const cRes = await setupOAuthConnection({
+                  dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
                   owner,
-                  ...oauth,
+                  provider: oauth.provider,
+                  useCase: oauth.useCase ?? "connection",
+                  extraConfig: oauth.extraConfig,
                 });
                 if (!cRes.isOk()) {
                   sendNotification({
@@ -437,7 +457,7 @@ function BotToggle({
                   });
                 } else {
                   const updateRes = await updateConnectorConnectionId(
-                    cRes.value,
+                    cRes.value.connection_id,
                     connectorProvider,
                     botDataSource,
                     owner

@@ -370,7 +370,8 @@ export const SpaceResourcesList = ({
             ]
           : null;
 
-        // Filter out data sources that are hidden as data sources
+        // Some connectors, such as Slack/Discord bots, are not meant to be displayed in the list.
+        // These are managed separately in the Admin workspace settings page.
         return !connectorConfig?.isHiddenAsDataSource;
       })
       .map((dataSourceView) => {

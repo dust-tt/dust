@@ -161,9 +161,11 @@ export function useConnector({
 export function useToggleChatBot({
   dataSource,
   owner,
+  botName,
 }: {
   dataSource: DataSourceType | null;
   owner: LightWorkspaceType;
+  botName: string;
 }) {
   const sendNotification = useSendNotification();
 
@@ -178,8 +180,8 @@ export function useToggleChatBot({
     return () => {
       sendNotification({
         type: "error",
-        title: "Failed to Enable Slack Bot",
-        description: "Tried to enable Slack Bot, but no data source was found.",
+        title: `Failed to Enable ${botName}`,
+        description: `Tried to enable ${botName}, but no data source was found.`,
       });
     };
   }
@@ -207,11 +209,11 @@ export function useToggleChatBot({
       sendNotification({
         type: "success",
         title: botEnabled
-          ? "Slack Bot Enabled Successfully"
-          : "Slack Bot Disabled Successfully",
+          ? `${botName} Enabled Successfully`
+          : `${botName} Disabled Successfully`,
         description: botEnabled
-          ? "The Slack bot is now active and ready to use."
-          : "The Slack bot has been disabled.",
+          ? `The ${botName} is now active and ready to use.`
+          : `The ${botName} has been disabled.`,
       });
       return configValue;
     } else {
@@ -219,7 +221,7 @@ export function useToggleChatBot({
 
       sendNotification({
         type: "error",
-        title: "Failed to Enable Slack Bot",
+        title: `Failed to Enable ${botName}`,
         description: errorData.message,
       });
       return null;
