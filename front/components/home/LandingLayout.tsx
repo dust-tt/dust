@@ -234,10 +234,20 @@ const CookieBanner = ({
         <div className="text-base font-medium text-white md:text-lg">
           We use cookies
         </div>
-        <div className="text-slate-300 text-sm font-normal md:text-base">
-          By clicking "Accept All", you agree to the storing of cookies on your
-          device to enhance site navigation, analyze site usage, and assist in
-          our marketing efforts. View our{" "}
+        <div className="text-sm font-normal text-slate-300 md:text-base">
+          By clicking "Accept All Cookies", you agree to the storing of cookies
+          on your device to enhance site navigation, analyze site usage, and
+          assist in our marketing efforts. You can also{" "}
+          <button
+            className="text-slate-400 underline transition-colors hover:text-slate-200"
+            onClick={() => {
+              setIsVisible(false);
+              onClickRefuse();
+            }}
+          >
+            reject non-essential cookies
+          </button>
+          . View our{" "}
           <A variant="primary">
             <Link href="https://dust.tt/platform-privacy" target="_blank">
               Privacy Policy
@@ -248,18 +258,9 @@ const CookieBanner = ({
       </div>
       <div className="flex shrink-0 gap-3">
         <Button
-          variant="outline"
-          size="md"
-          label="Reject All"
-          onClick={() => {
-            setIsVisible(false);
-            onClickRefuse();
-          }}
-        />
-        <Button
           variant="highlight"
           size="md"
-          label="Accept All"
+          label="Accept All Cookies"
           onClick={() => {
             setIsVisible(false);
             onClickAccept();
