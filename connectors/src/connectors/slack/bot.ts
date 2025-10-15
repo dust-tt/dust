@@ -66,7 +66,6 @@ import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { ModelId } from "@connectors/types";
 import {
   getHeaderFromGroupIds,
   getHeaderFromUserEmail,
