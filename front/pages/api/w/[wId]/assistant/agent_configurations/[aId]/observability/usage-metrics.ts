@@ -3,7 +3,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { UsageMetricsPoint } from "@app/lib/api/assistant/observability/usage_metrics";
+import type {
+  UsageMetricsInterval,
+  UsageMetricsPoint,
+} from "@app/lib/api/assistant/observability/usage_metrics";
 import { fetchUsageMetrics } from "@app/lib/api/assistant/observability/usage_metrics";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -18,7 +21,7 @@ const QuerySchema = z.object({
 });
 
 export type GetUsageMetricsResponse = {
-  interval: "day" | "week";
+  interval: UsageMetricsInterval;
   points: UsageMetricsPoint[];
 };
 
