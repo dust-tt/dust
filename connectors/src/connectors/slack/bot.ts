@@ -330,8 +330,6 @@ export async function botValidateToolExecution(
     let slackUserInfo: SlackUserInfo | null = null;
     let requestedGroups: string[] | undefined = undefined;
 
-    // The order is important here because we want to prioritize the user id over the bot id.
-    // When a bot sends a message "as a user", we want to honor the user and not the bot.
     if (slackUserId) {
       try {
         slackUserInfo = await getSlackUserInfoMemoized(
