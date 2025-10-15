@@ -1,5 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import type { ContentFragmentInputWithFileIdType, Result } from "@app/types";
 import { Ok } from "@app/types";
@@ -14,7 +13,7 @@ export async function launchAgentTriggerWorkflow({
   contentFragment,
 }: {
   auth: Authenticator;
-  trigger: TriggerResource;
+  trigger: TriggerType;
   contentFragment?: ContentFragmentInputWithFileIdType;
 }): Promise<Result<undefined, Error>> {
   const client = await getTemporalClientForAgentNamespace();
@@ -22,14 +21,14 @@ export async function launchAgentTriggerWorkflow({
   const workflowId = makeAgentTriggerWorkflowId(
     auth.getNonNullableUser().sId,
     auth.getNonNullableWorkspace().sId,
-    trigger.toJSON()
+    trigger
   );
 
   await client.workflow.start(agentTriggerWorkflow, {
     args: [
       auth.getNonNullableUser().sId,
       auth.getNonNullableWorkspace().sId,
-      trigger.toJSON(),
+      trigger,
       contentFragment,
     ],
     taskQueue: QUEUE_NAME,

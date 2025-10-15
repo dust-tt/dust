@@ -1,4 +1,4 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -9,7 +9,8 @@ import { WebhookRequestModel } from "./webhook_request";
 
 // Single source of truth for webhook request trigger statuses
 export const WEBHOOK_REQUEST_TRIGGER_STATUSES = [
-  "executed",
+  "workflow_start_succeeded",
+  "workflow_start_failed",
   "not_matched",
   "rate_limited",
 ] as const;
@@ -30,8 +31,8 @@ export class WebhookRequestTriggerModel extends WorkspaceAwareModel<WebhookReque
   declare triggerId: ForeignKey<TriggerModel["id"]>;
 
   // Relationships
-  declare webhookRequest: WebhookRequestModel;
-  declare trigger: TriggerModel;
+  declare webhookRequest: NonAttribute<WebhookRequestModel>;
+  declare trigger: NonAttribute<TriggerModel>;
 }
 
 WebhookRequestTriggerModel.init(
