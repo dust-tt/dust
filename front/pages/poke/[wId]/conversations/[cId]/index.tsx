@@ -40,12 +40,15 @@ import type {
 } from "@app/types";
 import { assertNever, isFileContentFragment } from "@app/types";
 
+const { TEMPORAL_AGENT_NAMESPACE = "" } = process.env;
+
 export const getServerSideProps = withSuperUserAuthRequirements<{
   workspace: WorkspaceType;
   workspaceId: string;
   conversationId: string;
   conversationDataSourceId: string | null;
   multiActionsApp: Action;
+  temporalWorkspace: string;
 }>(async (context, auth) => {
   const cId = context.params?.cId;
   if (!cId || typeof cId !== "string") {
@@ -85,6 +88,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       conversationDataSourceId: conversationDataSource?.sId ?? null,
       multiActionsApp,
       workspace: auth.getNonNullableWorkspace(),
+      temporalWorkspace: TEMPORAL_AGENT_NAMESPACE,
     },
   };
 });
@@ -309,6 +313,7 @@ const ConversationPage = ({
   conversationId,
   conversationDataSourceId,
   multiActionsApp,
+  temporalWorkspace,
 }: ConversationPageProps) => {
   const { conversation } = usePokeConversation({ workspaceId, conversationId });
   const [useMarkdown, setUseMarkdown] = useState(false);
@@ -405,6 +410,13 @@ const ConversationPage = ({
               <Button
                 href={`http://go/trace-conversation/${conversation.sId}`}
                 label="Trace Conversation"
+                variant="primary"
+                size="xs"
+                target="_blank"
+              />
+              <Button
+                href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=%60conversationId%60%3D"${conversationId}"`}
+                label="Temporal Workflows"
                 variant="primary"
                 size="xs"
                 target="_blank"
