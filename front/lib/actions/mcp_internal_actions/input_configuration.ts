@@ -683,10 +683,9 @@ export function getMCPServerRequirements(
                 return {
                   value: v.properties.value.const,
                   label: v.properties.label.const,
-                  description:
-                    typeof v.description === "string"
-                      ? v.description
-                      : undefined,
+                  description: isString(v.description)
+                    ? v.description
+                    : undefined,
                 };
               }
               return null;
@@ -747,8 +746,9 @@ export function getMCPServerRequirements(
               return {
                 value: v.properties.value.const,
                 label: v.properties.label.const,
-                description:
-                  typeof v.description === "string" ? v.description : undefined,
+                description: isString(v.description)
+                  ? v.description
+                  : undefined,
               };
             }
             return null;
