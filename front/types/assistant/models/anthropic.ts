@@ -17,6 +17,8 @@ export const CLAUDE_3_HAIKU_20240307_MODEL_ID =
   "claude-3-haiku-20240307" as const;
 export const CLAUDE_3_5_HAIKU_20241022_MODEL_ID =
   "claude-3-5-haiku-20241022" as const;
+export const CLAUDE_4_5_HAIKU_20251001_MODEL_ID =
+  "claude-haiku-4-5-20251001" as const;
 export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
 export const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
 export const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
@@ -224,6 +226,27 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
+export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
+  displayName: "Claude 4.5 Haiku",
+  contextSize: 180_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64, // 32_768
+  largeModel: false,
+  description:
+    "Anthropic's Claude 4.5 Haiku model, cost effective and high throughput (200k context).",
+  shortDescription: "Anthropic's cost-effective model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 2048,
+  supportsVision: true,
+  minimumReasoningEffort: "light",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+};
+
 // Deprecated
 export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
