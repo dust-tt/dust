@@ -290,26 +290,22 @@ export function findPathsToConfiguration({
   mcpServerView: MCPServerViewType;
   mimeType: InternalToolInputMimeType;
 }): Record<string, JSONSchema> {
-  const disabledTools =
-    mcpServerView.toolsMetadata
-      ?.filter((tool) => !tool.enabled)
-      .map((tool) => tool.toolName) ?? [];
-  const mcpServer = mcpServerView.server;
-  let matches: Record<string, JSONSchema> = {};
-  for (const tool of mcpServer.tools) {
-    // Skip disabled tools
-    if (disabledTools.includes(tool.name)) {
-      continue;
-    }
+  const { toolsMetadata, server: mcpServer } = mcpServerView;
 
-    if (tool.inputSchema) {
-      matches = {
-        ...matches,
-        ...findMatchingSubSchemas(tool.inputSchema, mimeType),
-      };
+  const disabledToolNames =
+    toolsMetadata
+      ?.filter(({ enabled }) => !enabled)
+      .map(({ toolName }) => toolName) ?? [];
+
+  return mcpServer.tools.reduce((acc: Record<string, JSONSchema>, tool) => {
+    if (disabledToolNames.includes(tool.name) || !tool.inputSchema) {
+      return acc;
     }
-  }
-  return matches;
+    return {
+      ...acc,
+      ...findMatchingSubSchemas(tool.inputSchema, mimeType),
+    };
+  }, {});
 }
 
 function getDefaultValueAtPath(inputSchema: JSONSchema, keyPath: string) {
