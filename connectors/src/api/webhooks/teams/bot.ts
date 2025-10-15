@@ -1,5 +1,4 @@
 import type {
-  AgentActionPublicType,
   ConversationPublicType,
   LightAgentConfigurationType,
   Result,
