@@ -40,12 +40,15 @@ import type {
 } from "@app/types";
 import { assertNever, isFileContentFragment } from "@app/types";
 
+const { TEMPORAL_AGENT_NAMESPACE = "" } = process.env;
+
 export const getServerSideProps = withSuperUserAuthRequirements<{
   workspace: WorkspaceType;
   workspaceId: string;
   conversationId: string;
   conversationDataSourceId: string | null;
   multiActionsApp: Action;
+  temporalWorkspace: string;
 }>(async (context, auth) => {
   const cId = context.params?.cId;
   if (!cId || typeof cId !== "string") {
@@ -85,6 +88,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       conversationDataSourceId: conversationDataSource?.sId ?? null,
       multiActionsApp,
       workspace: auth.getNonNullableWorkspace(),
+      temporalWorkspace: TEMPORAL_AGENT_NAMESPACE,
     },
   };
 });
@@ -309,6 +313,7 @@ const ConversationPage = ({
   conversationId,
   conversationDataSourceId,
   multiActionsApp,
+  temporalWorkspace,
 }: ConversationPageProps) => {
   const { conversation } = usePokeConversation({ workspaceId, conversationId });
   const [useMarkdown, setUseMarkdown] = useState(false);
@@ -391,199 +396,202 @@ const ConversationPage = ({
   }
 
   return (
-    <>
-      {conversation && (
-        <div className="max-w-4xl">
-          <h3 className="text-xl font-bold">
-            Conversation in workspace{" "}
-            <a href={`/poke/${workspaceId}`} className="text-highlight-500">
-              {workspace.name}
-            </a>
-          </h3>
-          <Page.Vertical align="stretch">
-            <div className="flex space-x-2">
-              <Button
-                href={`http://go/trace-conversation/${conversation.sId}`}
-                label="Trace Conversation"
-                variant="primary"
-                size="xs"
-                target="_blank"
-              />
-              <Button
-                href={`/poke/${workspaceId}/data_sources/${conversationDataSourceId}`}
-                label="Conversation DS"
-                variant="primary"
-                size="xs"
-                target="_blank"
-                enabled={!!conversationDataSourceId}
-              />
-              <Button
-                label={useMarkdown ? "Plain Text" : "Preview Markdown"}
-                variant="secondary"
-                size="xs"
-                icon={useMarkdown ? DocumentTextIcon : CodeBracketIcon}
-                onClick={() => setUseMarkdown(!useMarkdown)}
-              />
-              <Button
-                label="Render Conversation"
-                variant="primary"
-                size="xs"
-                onClick={() => {
-                  if (!showRenderControls) {
-                    setShowRenderControls(true);
-                    return;
+    conversation && (
+      <div className="max-w-4xl">
+        <h3 className="text-xl font-bold">
+          Conversation in workspace{" "}
+          <a href={`/poke/${workspaceId}`} className="text-highlight-500">
+            {workspace.name}
+          </a>
+        </h3>
+        <Page.Vertical align="stretch">
+          <div className="flex space-x-2">
+            <Button
+              href={`http://go/trace-conversation/${conversation.sId}`}
+              label="Trace Conversation"
+              variant="primary"
+              size="xs"
+              target="_blank"
+            />
+            <Button
+              href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=%60conversationId%60%3D"${conversationId}"`}
+              label="Temporal Workflows"
+              variant="primary"
+              size="xs"
+              target="_blank"
+            />
+            <Button
+              href={`/poke/${workspaceId}/data_sources/${conversationDataSourceId}`}
+              label="Conversation DS"
+              variant="primary"
+              size="xs"
+              target="_blank"
+              enabled={!!conversationDataSourceId}
+            />
+            <Button
+              label={useMarkdown ? "Plain Text" : "Preview Markdown"}
+              variant="secondary"
+              size="xs"
+              icon={useMarkdown ? DocumentTextIcon : CodeBracketIcon}
+              onClick={() => setUseMarkdown(!useMarkdown)}
+            />
+            <Button
+              label="Render Conversation"
+              variant="primary"
+              size="xs"
+              onClick={() => {
+                if (!showRenderControls) {
+                  setShowRenderControls(true);
+                  return;
+                }
+                void handleRenderConversation();
+              }}
+              enabled={!isRendering}
+            />
+            {isRendering && <Spinner size="xs" />}
+            {showRenderControls && (
+              <div className="ml-2 flex items-center space-x-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      label={
+                        selectedAgentId
+                          ? `Agent: ${
+                              agents.find((a) => a.sId === selectedAgentId)
+                                ?.name ?? selectedAgentId
+                            }`
+                          : "Select Agent"
+                      }
+                      variant="secondary"
+                      size="xs"
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {agents.map((a) => (
+                      <DropdownMenuItem
+                        key={a.sId}
+                        onClick={() => setSelectedAgentId(a.sId)}
+                      >
+                        {a.name} ({a.sId})
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Input
+                  placeholder="Context size override"
+                  value={contextSizeOverride}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setContextSizeOverride(e.target.value)
                   }
-                  void handleRenderConversation();
-                }}
-                enabled={!isRendering}
-              />
-              {isRendering && <Spinner size="xs" />}
-              {showRenderControls && (
-                <div className="ml-2 flex items-center space-x-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        label={
-                          selectedAgentId
-                            ? `Agent: ${
-                                agents.find((a) => a.sId === selectedAgentId)
-                                  ?.name ?? selectedAgentId
-                              }`
-                            : "Select Agent"
-                        }
-                        variant="secondary"
-                        size="xs"
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {agents.map((a) => (
-                        <DropdownMenuItem
-                          key={a.sId}
-                          onClick={() => setSelectedAgentId(a.sId)}
-                        >
-                          {a.name} ({a.sId})
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <Input
-                    placeholder="Context size override"
-                    value={contextSizeOverride}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setContextSizeOverride(e.target.value)
-                    }
-                    className="h-7 w-44"
-                  />
+                  className="h-7 w-44"
+                />
+              </div>
+            )}
+          </div>
+          {(renderError !== null || renderResult !== null) && (
+            <div className="mt-2 rounded-md border p-2">
+              {renderError && <div className="text-warning">{renderError}</div>}
+              {renderResult && (
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Chip
+                      color="blue"
+                      label={`Tokens used: ${renderResult.tokensUsed}`}
+                      size="xs"
+                    />
+                    <Chip
+                      color="info"
+                      label={`Context size: ${renderResult.modelContextSizeUsed}`}
+                      size="xs"
+                    />
+                    <Chip
+                      color="highlight"
+                      label={`Prompt tokens: ${renderResult.promptTokenCountApprox}`}
+                      size="xs"
+                    />
+                    <Chip
+                      color="green"
+                      label={`Tools tokens: ${renderResult.toolsTokenCountApprox}`}
+                      size="xs"
+                    />
+                    <Button
+                      label={isCopiedJSON ? "Copied" : "Copy JSON"}
+                      variant="secondary"
+                      size="xs"
+                      icon={isCopiedJSON ? ClipboardCheckIcon : ClipboardIcon}
+                      onClick={() =>
+                        copyJSON(
+                          JSON.stringify(
+                            renderResult.modelConversation,
+                            null,
+                            2
+                          )
+                        )
+                      }
+                    />
+                    <Button
+                      label="Close"
+                      variant="secondary"
+                      size="xs"
+                      icon={XMarkIcon}
+                      onClick={() => {
+                        setRenderError(null);
+                        setRenderResult(null);
+                      }}
+                    />
+                  </div>
+                  <CodeBlock wrapLongLines className="language-json">
+                    {JSON.stringify(renderResult.modelConversation, null, 2)}
+                  </CodeBlock>
                 </div>
               )}
             </div>
-            {(renderError !== null || renderResult !== null) && (
-              <div className="mt-2 rounded-md border p-2">
-                {renderError && (
-                  <div className="text-warning">{renderError}</div>
-                )}
-                {renderResult && (
-                  <div className="flex flex-col space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Chip
-                        color="blue"
-                        label={`Tokens used: ${renderResult.tokensUsed}`}
-                        size="xs"
-                      />
-                      <Chip
-                        color="info"
-                        label={`Context size: ${renderResult.modelContextSizeUsed}`}
-                        size="xs"
-                      />
-                      <Chip
-                        color="highlight"
-                        label={`Prompt tokens: ${renderResult.promptTokenCountApprox}`}
-                        size="xs"
-                      />
-                      <Chip
-                        color="green"
-                        label={`Tools tokens: ${renderResult.toolsTokenCountApprox}`}
-                        size="xs"
-                      />
-                      <Button
-                        label={isCopiedJSON ? "Copied" : "Copy JSON"}
-                        variant="secondary"
-                        size="xs"
-                        icon={isCopiedJSON ? ClipboardCheckIcon : ClipboardIcon}
-                        onClick={() =>
-                          copyJSON(
-                            JSON.stringify(
-                              renderResult.modelConversation,
-                              null,
-                              2
-                            )
-                          )
-                        }
-                      />
-                      <Button
-                        label="Close"
-                        variant="secondary"
-                        size="xs"
-                        icon={XMarkIcon}
-                        onClick={() => {
-                          setRenderError(null);
-                          setRenderResult(null);
-                        }}
-                      />
-                    </div>
-                    <CodeBlock wrapLongLines className="language-json">
-                      {JSON.stringify(renderResult.modelConversation, null, 2)}
-                    </CodeBlock>
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="flex w-full flex-1 flex-col justify-start gap-8 py-4">
-              {conversation.content.map((messages, i) => {
-                return (
-                  <div key={`messages-${i}`} className="flex flex-col gap-4">
-                    {messages.map((m, j) => {
-                      switch (m.type) {
-                        case "agent_message": {
-                          return (
-                            <AgentMessageView
-                              key={`message-${i}-${j}`}
-                              multiActionsApp={multiActionsApp}
-                              message={m}
-                              useMarkdown={useMarkdown}
-                              workspaceId={workspaceId}
-                            />
-                          );
-                        }
-                        case "user_message": {
-                          return (
-                            <UserMessageView
-                              message={m}
-                              key={`message-${i}-${j}`}
-                              useMarkdown={useMarkdown}
-                            />
-                          );
-                        }
-                        case "content_fragment": {
-                          return (
-                            <ContentFragmentView
-                              message={m}
-                              key={`message-${i}-${j}`}
-                            />
-                          );
-                        }
-                        default:
-                          assertNever(m);
+          )}
+          <div className="flex w-full flex-1 flex-col justify-start gap-8 py-4">
+            {conversation.content.map((messages, i) => {
+              return (
+                <div key={`messages-${i}`} className="flex flex-col gap-4">
+                  {messages.map((m, j) => {
+                    switch (m.type) {
+                      case "agent_message": {
+                        return (
+                          <AgentMessageView
+                            key={`message-${i}-${j}`}
+                            multiActionsApp={multiActionsApp}
+                            message={m}
+                            useMarkdown={useMarkdown}
+                            workspaceId={workspaceId}
+                          />
+                        );
                       }
-                    })}
-                  </div>
-                );
-              })}
-            </div>
-          </Page.Vertical>
-        </div>
-      )}
-    </>
+                      case "user_message": {
+                        return (
+                          <UserMessageView
+                            message={m}
+                            key={`message-${i}-${j}`}
+                            useMarkdown={useMarkdown}
+                          />
+                        );
+                      }
+                      case "content_fragment": {
+                        return (
+                          <ContentFragmentView
+                            message={m}
+                            key={`message-${i}-${j}`}
+                          />
+                        );
+                      }
+                      default:
+                        assertNever(m);
+                    }
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </Page.Vertical>
+      </div>
+    )
   );
 };
 
