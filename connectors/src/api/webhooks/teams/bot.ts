@@ -155,30 +155,19 @@ async function processFileAttachments(
         "Downloading file content via Graph API"
       );
 
-      const fileContentStream = await microsoftGraphClient
+      // Get file content and handle Blob response
+      const fileContentResponse = await microsoftGraphClient
         .api(downloadApi)
-        .getStream();
+        .get();
 
-      // Convert stream to buffer
-      const chunks: Buffer[] = [];
-      for await (const chunk of fileContentStream) {
-        // Handle different chunk types that might come from the stream
-        let buffer: Buffer;
-        if (Buffer.isBuffer(chunk)) {
-          buffer = chunk;
-        } else if (chunk instanceof Uint8Array) {
-          buffer = Buffer.from(chunk);
-        } else if (chunk instanceof ArrayBuffer) {
-          buffer = Buffer.from(chunk);
-        } else if (typeof chunk === 'string') {
-          buffer = Buffer.from(chunk, 'binary');
-        } else {
-          // Fallback: try to convert whatever we got
-          buffer = Buffer.from(chunk as any);
-        }
-        chunks.push(buffer);
+      // Convert Blob to Buffer
+      if (fileContentResponse instanceof Blob) {
+        const arrayBuffer = await fileContentResponse.arrayBuffer();
+        fileContent = Buffer.from(arrayBuffer);
+      } else {
+        // Fallback for other response types
+        fileContent = Buffer.from(fileContentResponse);
       }
-      fileContent = Buffer.concat(chunks);
       
       actualContentType =
         fileItemResponse.file.mimeType || "application/octet-stream";
