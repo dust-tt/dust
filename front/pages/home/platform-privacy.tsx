@@ -1,13 +1,13 @@
 import type { ReactElement } from "react";
 
 import {
+  A,
   Grid,
   H1,
   H2,
   H3,
   P,
   Strong,
-  A,
 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
