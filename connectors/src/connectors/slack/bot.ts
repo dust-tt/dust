@@ -79,6 +79,8 @@ const SLACK_ERROR_TEXT =
 
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
+const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
+
 type BotAnswerParams = {
   responseUrl?: string;
   slackTeamId: string;
@@ -841,12 +843,14 @@ async function answerMessage(
       };
     } else {
       // If no mention is found and no channel-based routing rule is found, we use the default agent.
-      let defaultAssistant: LightAgentConfigurationType | null = null;
-      defaultAssistant =
-        activeAgentConfigurations.find((ac) => ac.sId === "dust") || null;
-      if (!defaultAssistant || defaultAssistant.status !== "active") {
-        defaultAssistant =
-          activeAgentConfigurations.find((ac) => ac.sId === "gpt-4") || null;
+      let defaultAssistant: LightAgentConfigurationType | undefined = undefined;
+      for (const agent of DEFAULT_AGENTS) {
+        defaultAssistant = activeAgentConfigurations.find(
+          (ac) => ac.sId === agent && ac.status === "active"
+        );
+        if (defaultAssistant) {
+          break;
+        }
       }
       if (!defaultAssistant) {
         return new Err(

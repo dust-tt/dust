@@ -5,7 +5,7 @@ import { GraphError } from "@microsoft/microsoft-graph-client";
 import type { WorkbookWorksheet } from "@microsoft/microsoft-graph-types";
 import { stringify } from "csv-stringify/sync";
 
-import { getClient } from "@connectors/connectors/microsoft";
+import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   getAllPaginatedEntities,
   getDriveItemInternalId,
@@ -231,7 +231,7 @@ async function processSheet({
     const tags = await getColumnsFromListItem(
       spreadsheet,
       spreadsheet.listItem?.fields,
-      await getClient(connector.connectionId),
+      await getMicrosoftClient(connector.connectionId),
       localLogger
     );
 
@@ -308,7 +308,7 @@ export async function handleSpreadSheet({
     throw new Error(`Connector with id ${connectorId} not found`);
   }
 
-  const client = await getClient(connector.connectionId);
+  const client = await getMicrosoftClient(connector.connectionId);
 
   if (!file.file) {
     return new Err(new Error(`Spreadsheet is not a file: ${file.name}`));

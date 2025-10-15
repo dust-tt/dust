@@ -10,12 +10,14 @@ import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
-import { getClient } from "@connectors/connectors/microsoft/index";
+import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
 import { apiConfig } from "@connectors/lib/api/config";
 import { MicrosoftBotMessage } from "@connectors/lib/models/microsoft_bot";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { getHeaderFromUserEmail } from "@connectors/types";
+
+const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
 
 import {
   createResponseAdaptiveCard,
@@ -57,7 +59,7 @@ export async function botAnswerMessage(
     allMicrosoftBotMessages.find((msg) => msg.dustConversationId) || null;
 
   // Get Microsoft Graph client
-  const client = await getClient(connector.connectionId);
+  const client = await getMicrosoftClient(connector.connectionId);
 
   // Get user info from Microsoft Graph
   const userInfo = await client.api(`/users/${userAadObjectId}`).get();
@@ -149,12 +151,14 @@ export async function botAnswerMessage(
 
   if (!mention) {
     // Use default agent if no mention found
-    let defaultAssistant: LightAgentConfigurationType | null = null;
-    defaultAssistant =
-      activeAgentConfigurations.find((ac) => ac.sId === "dust") || null;
-    if (!defaultAssistant || defaultAssistant.status !== "active") {
-      defaultAssistant =
-        activeAgentConfigurations.find((ac) => ac.sId === "gpt-4") || null;
+    let defaultAssistant: LightAgentConfigurationType | undefined = undefined;
+    for (const agent of DEFAULT_AGENTS) {
+      defaultAssistant = activeAgentConfigurations.find(
+        (ac) => ac.sId === agent && ac.status === "active"
+      );
+      if (defaultAssistant) {
+        break;
+      }
     }
     if (!defaultAssistant) {
       return new Err(
@@ -181,7 +185,7 @@ export async function botAnswerMessage(
       fullName: displayName,
       email: email,
       profilePictureUrl: null,
-      origin: "slack" as const,
+      origin: "teams" as const,
     },
   };
 
