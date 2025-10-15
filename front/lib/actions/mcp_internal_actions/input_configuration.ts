@@ -450,21 +450,16 @@ export function augmentInputsWithConfiguration({
   return inputs;
 }
 
-function extractSchemaDefault<T>(
-  schema: JSONSchema,
-  typeGuard: (value: unknown) => value is T
-): T | undefined {
-  // Try object-level default first: { value: T, mimeType: "..." }
+function extractSchemaDefault(schema: JSONSchema) {
   if (
     schema.default &&
     typeof schema.default === "object" &&
-    "value" in schema.default &&
-    typeGuard(schema.default.value)
+    "value" in schema.default
   ) {
     return schema.default.value;
   }
 
-  return undefined;
+  return null;
 }
 
 export interface MCPServerRequirements {
@@ -479,24 +474,24 @@ export interface MCPServerRequirements {
   requiredStrings: {
     key: string;
     description?: string;
-    default?: string;
+    default: string | null;
   }[];
   requiredNumbers: {
     key: string;
     description?: string;
-    default?: number;
+    default: number | null;
   }[];
   requiredBooleans: {
     key: string;
     description?: string;
-    default?: boolean;
+    default: boolean | null;
   }[];
   requiredEnums: Record<
     string,
     {
       options: { value: string; label: string; description?: string }[];
       description?: string;
-      default?: string;
+      default: string | null;
     }
   >;
   requiredLists: Record<
@@ -505,7 +500,7 @@ export interface MCPServerRequirements {
       options: { value: string; label: string; description?: string }[];
       description?: string;
       values?: string[];
-      default?: string;
+      default: string | null;
     }
   >;
   requiresDustAppConfiguration: boolean;
@@ -602,25 +597,36 @@ export function getMCPServerRequirements(
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
     })
-  ).map(([key, schema]) => ({
-    key,
-    description: schema.description,
-    default: extractSchemaDefault(schema, isString),
-  }));
+  ).map(([key, schema]) => {
+    const defaultValue = extractSchemaDefault(schema);
+    assert(
+      defaultValue === null || isString(defaultValue),
+      `Value stored does not have the correct type, expected string, got ${typeof defaultValue}.`
+    );
+    return {
+      key,
+      description: schema.description,
+      default: defaultValue,
+    };
+  });
 
   const requiredNumbers = Object.entries(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
     })
-  ).map(([key, schema]) => ({
-    key,
-    description: schema.description,
-    default: extractSchemaDefault(
-      schema,
-      (v: unknown): v is number => typeof v === "number"
-    ),
-  }));
+  ).map(([key, schema]) => {
+    const defaultValue = extractSchemaDefault(schema);
+    assert(
+      defaultValue === null || typeof defaultValue === "number",
+      `Value stored does not have the correct type, expected number, got ${typeof defaultValue}.`
+    );
+    return {
+      key,
+      description: schema.description,
+      default: defaultValue,
+    };
+  });
 
   const requiredBooleans = Object.entries(
     findPathsToConfiguration({
@@ -628,14 +634,18 @@ export function getMCPServerRequirements(
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
     })
   )
-    .map(([key, schema]) => ({
-      key,
-      description: schema.description,
-      default: extractSchemaDefault(
-        schema,
-        (v: unknown): v is boolean => typeof v === "boolean"
-      ),
-    }))
+    .map(([key, schema]) => {
+      const defaultValue = extractSchemaDefault(schema);
+      assert(
+        defaultValue === null || typeof defaultValue === "boolean",
+        `Value stored does not have the correct type, expected boolean, got ${typeof defaultValue}.`
+      );
+      return {
+        key,
+        description: schema.description,
+        default: defaultValue,
+      };
+    })
     // Exclude useSummary if the user doesn't have the web_summarization feature flag.
     .filter(
       ({ key }) =>
@@ -647,7 +657,7 @@ export function getMCPServerRequirements(
     {
       options: { value: string; label: string; description?: string }[];
       description?: string;
-      default?: string;
+      default: string | null;
     }
   > = Object.fromEntries(
     Object.entries(
@@ -661,7 +671,11 @@ export function getMCPServerRequirements(
         return [key, { options: [], description: schema.description }];
       }
 
-      const defaultValue = extractSchemaDefault(schema, isString);
+      const defaultValue = extractSchemaDefault(schema);
+      assert(
+        defaultValue === null || isString(defaultValue),
+        `Value stored does not have the correct type, expected string, got ${typeof defaultValue}.`
+      );
 
       const options = Array.isArray(optionsProperty.anyOf)
         ? (optionsProperty.anyOf
@@ -712,7 +726,7 @@ export function getMCPServerRequirements(
       options: { value: string; label: string; description?: string }[];
       description?: string;
       values?: string[];
-      default?: string;
+      default: string | null;
     }
   > = Object.fromEntries(
     Object.entries(
@@ -756,7 +770,11 @@ export function getMCPServerRequirements(
         throw new Error(`No valid list options found for key ${key}`);
       }
 
-      const defaultValue = extractSchemaDefault(schema, isString);
+      const defaultValue = extractSchemaDefault(schema);
+      assert(
+        defaultValue === null || isString(defaultValue),
+        `Value stored does not have the correct type, expected string, got ${typeof defaultValue}.`
+      );
 
       return [
         key,
