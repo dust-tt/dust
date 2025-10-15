@@ -313,6 +313,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
     ),
     isNested: true,
+    isTitleFilterEnabled: true,
     oauthExtraConfigComponent: MicrosoftOAuthExtraConfig,
     permissions: {
       selected: "read",
