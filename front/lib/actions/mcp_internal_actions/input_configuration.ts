@@ -312,17 +312,22 @@ export function findPathsToConfiguration({
   return matches;
 }
 
+function extractSchemaDefault(schema: JSONSchema | null) {
+  if (
+    schema?.default &&
+    typeof schema.default === "object" &&
+    "value" in schema.default
+  ) {
+    return schema.default.value;
+  }
+
+  return null;
+}
+
 function getDefaultValueAtPath(inputSchema: JSONSchema, keyPath: string) {
   const property = findSchemaAtPath(inputSchema, keyPath.split("."));
 
-  if (
-    property?.default &&
-    typeof property.default === "object" &&
-    "value" in property.default
-  ) {
-    return property.default.value;
-  }
-  return null;
+  return extractSchemaDefault(property);
 }
 
 /**
@@ -448,18 +453,6 @@ export function augmentInputsWithConfiguration({
   });
 
   return inputs;
-}
-
-function extractSchemaDefault(schema: JSONSchema) {
-  if (
-    schema.default &&
-    typeof schema.default === "object" &&
-    "value" in schema.default
-  ) {
-    return schema.default.value;
-  }
-
-  return null;
 }
 
 export interface MCPServerRequirements {
