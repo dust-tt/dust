@@ -14,7 +14,13 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { Err, getHeaderFromUserEmail, GLOBAL_AGENTS_SID, Ok } from "@app/types";
+import {
+  Err,
+  getHeaderFromUserEmail,
+  GLOBAL_AGENTS_SID,
+  isGlobalAgentId,
+  Ok,
+} from "@app/types";
 
 function createServer(
   auth: Authenticator,
@@ -25,7 +31,7 @@ function createServer(
   const owner = auth.getNonNullableWorkspace();
 
   server.tool(
-    "handoff",
+    "handoff_deep_dive",
     `Launch a handoff to the :mention[${DEEP_DIVE_NAME}]{sId=${GLOBAL_AGENTS_SID.DEEP_DIVE}} agent`,
     {},
     withToolLogging(
@@ -56,7 +62,16 @@ function createServer(
         const runContext = agentLoopContext.runContext;
         const { agentConfiguration, conversation, agentMessage } = runContext;
         const instructions = agentConfiguration.instructions;
-        const query = `The user's query is being handed off to you from @${agentConfiguration.name} within the same conversation. The calling agent's instructions are: <caller_agent_instructions>${instructions ?? ""}</caller_agent_instructions>`;
+        let query = `The user's query is being handed off to you from @${agentConfiguration.name} within the same conversation.`;
+
+        const shouldIncludeAgentInstructions =
+          agentConfiguration.instructions &&
+          agentConfiguration.instructions.length > 0 &&
+          !isGlobalAgentId(agentConfiguration.sId);
+
+        if (shouldIncludeAgentInstructions) {
+          query += ` The calling agent's instructions are: <caller_agent_instructions>${instructions ?? ""}</caller_agent_instructions>`;
+        }
 
         const convRes = await getOrCreateConversation(api, runContext, {
           childAgentBlob: {
