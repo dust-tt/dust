@@ -230,6 +230,7 @@ export type ConversationWithoutContentType = {
   updated?: number;
   unread: boolean;
   actionRequired: boolean;
+  hasError: boolean;
   owner: WorkspaceType;
   sId: string;
   title: string | null;

@@ -279,6 +279,20 @@ export const ConversationViewer = ({
                   getUpdatedParticipantsFromEvent(participants, event),
                 { revalidate: false }
               );
+
+              void mutateConversations(
+                (currentData) => {
+                  if (!currentData?.conversations) {
+                    return currentData;
+                  }
+                  return {
+                    conversations: currentData.conversations.map((c) =>
+                      c.sId === conversationId ? { ...c, hasError: false } : c
+                    ),
+                  };
+                },
+                { revalidate: false }
+              );
             }
             break;
           case "agent_message_new":
@@ -352,6 +366,23 @@ export const ConversationViewer = ({
             // Mutate the messages to be sure that the swr cache is updated.
             // Fixes an issue where the last message of a conversation is "thinking" and not "done" the first time you switch back and forth to a conversation.
             void mutateMessages();
+
+            // Update the conversation hasError state in the local cache without making a network request.
+            void mutateConversations(
+              (currentData) => {
+                if (!currentData?.conversations) {
+                  return currentData;
+                }
+                return {
+                  conversations: currentData.conversations.map((c) =>
+                    c.sId === event.conversationId
+                      ? { ...c, hasError: event.status === "error" }
+                      : c
+                  ),
+                };
+              },
+              { revalidate: false }
+            );
             break;
           default:
             ((t: never) => {
