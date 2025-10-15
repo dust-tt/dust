@@ -692,6 +692,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "noop_model_feature"
   | "discord_bot"
   | "elevenlabs_tool"
+  | "agent_builder_observability"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
