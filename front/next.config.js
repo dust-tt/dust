@@ -55,8 +55,7 @@ const config = {
       },
       {
         source: "/platform-privacy",
-        destination:
-          "https://dust-tt.notion.site/Platform-Privacy-Policy-c75f1cd20df04c58872f6aa43f768d41?pvs=74",
+        destination: "/home/platform-privacy",
         permanent: true,
       },
       {
