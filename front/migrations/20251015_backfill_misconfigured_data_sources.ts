@@ -1,3 +1,4 @@
+import assert from "assert";
 import * as fs from "fs";
 import { Op } from "sequelize";
 
@@ -26,6 +27,16 @@ makeScript({}, async ({ execute }, logger) => {
   await concurrentExecutor(
     dataSourceConfigurations,
     async (configuration) => {
+      assert(
+        configuration.parentsNotIn !== null,
+        "parentsNotIn should be not null"
+      );
+      assert(
+        Array.isArray(configuration.parentsIn) &&
+          configuration.parentsIn.length === 0,
+        "parentsIn should be an empty array"
+      );
+
       revertSql += `UPDATE "agent_data_source_configurations" SET "parentsIn" = '{}' WHERE "id" = ${configuration.id};\n`;
 
       if (execute) {
