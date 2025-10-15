@@ -6,6 +6,7 @@ import config from "@app/lib/api/config";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { frameContentType } from "@app/types";
@@ -130,7 +131,12 @@ async function handler(
     file: file.toJSON(),
     // Only return the conversation URL if the user is a participant of the conversation.
     conversationUrl: isParticipant
-      ? `${config.getClientFacingUrl()}/w/${workspace.sId}/agent/${conversationId}`
+      ? getConversationRoute(
+          workspace.sId,
+          conversationId,
+          undefined,
+          config.getClientFacingUrl()
+        )
       : null,
   });
 }
