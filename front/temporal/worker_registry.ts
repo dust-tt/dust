@@ -1,6 +1,6 @@
+import { runAgentTriggerWorker } from "@app/lib/triggers/temporal/common/worker";
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runAgentLoopWorker } from "@app/temporal/agent_loop/worker";
-import { runAgentScheduleWorker } from "@app/temporal/agent_schedule/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker";
@@ -41,7 +41,7 @@ export type WorkerName =
 
 export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   agent_loop: runAgentLoopWorker,
-  agent_schedule: runAgentScheduleWorker,
+  agent_schedule: runAgentTriggerWorker,
   data_retention: runDataRetentionWorker,
   document_tracker: runTrackerWorker,
   hard_delete: runHardDeleteWorker,

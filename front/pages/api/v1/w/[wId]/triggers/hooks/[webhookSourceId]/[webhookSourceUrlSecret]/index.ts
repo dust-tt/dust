@@ -9,6 +9,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { launchAgentTriggerWorkflow } from "@app/lib/triggers/temporal/common/client";
 import {
   checkWebhookRequestForRateLimit,
   processWebhookRequest,
@@ -18,7 +19,6 @@ import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { launchAgentTriggerWorkflow } from "@app/temporal/agent_schedule/client";
 import type {
   ContentFragmentInputWithFileIdType,
   WithAPIErrorResponse,
