@@ -37,6 +37,7 @@ fn get_max_tokens(model_id: &str) -> u64 {
     if model_id.starts_with("claude-3-7-sonnet")
         || model_id.starts_with("claude-4-sonnet")
         || model_id.starts_with("claude-sonnet-4-")
+        || model_id.starts_with("claude-haiku-4-5-")
     {
         64000
     } else if model_id.starts_with("claude-4-opus") {
@@ -86,7 +87,8 @@ impl AnthropicLLM {
         beta_flags: &Vec<&str>,
         prompt_caching: bool,
     ) -> Value {
-        let is_claude_4_5 = self.id.starts_with("claude-sonnet-4-5");
+        let is_claude_4_5 =
+            self.id.starts_with("claude-sonnet-4-5") || self.id.starts_with("claude-haiku-4-5");
 
         let mut body = json!({
             "messages": messages,

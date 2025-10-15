@@ -108,6 +108,10 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     input: 1.0,
     output: 5.0,
   },
+  "claude-haiku-4-5-20251001": {
+    input: 1.0,
+    output: 5.0,
+  },
   "claude-2.1": {
     input: 8.0,
     output: 24.0,
