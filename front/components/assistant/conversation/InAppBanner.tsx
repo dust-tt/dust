@@ -2,6 +2,8 @@ import { Button, XMarkIcon } from "@dust-tt/sparkle";
 import { cn } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+
 const localStorageKey = "frame-announcement-dismissed";
 const docLink = "https://docs.dust.tt/docs/frames";
 
@@ -16,6 +18,7 @@ export function InAppBanner() {
   };
 
   const onLearnMore = () => {
+    withTracking(TRACKING_AREAS.FRAME, "cta_frame_banner");
     window.open(docLink, "_blank", "noopener,noreferrer");
   };
 
@@ -38,7 +41,7 @@ export function InAppBanner() {
           Introducing Frames ✨
         </div>
         <h4 className="mb-4 text-sm font-medium leading-tight text-primary dark:text-primary-night">
-          Turn agent outputs into interactive content
+          Turn conversations into interactive visuals
         </h4>
         <Button
           variant="highlight"
