@@ -126,6 +126,19 @@ function createServer(
         const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
           ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
         ]);
+
+        // Security check: Verify user has canRead access to all data source views
+        const unreadableViews = dataSourceViews.filter(
+          (dsv) => !dsv.canRead(auth)
+        );
+        if (unreadableViews.length > 0) {
+          return new Err(
+            new MCPError(
+              `Access denied: You do not have read permission for ${unreadableViews.length} data source view(s).`
+            )
+          );
+        }
+
         const dataSourceViewsMap = new Map(
           dataSourceViews.map((dsv) => [dsv.sId, dsv])
         );
@@ -229,6 +242,19 @@ function createServer(
         const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
           ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
         ]);
+
+        // Security check: Verify user has canRead access to all data source views
+        const unreadableViews = dataSourceViews.filter(
+          (dsv) => !dsv.canRead(auth)
+        );
+        if (unreadableViews.length > 0) {
+          return new Err(
+            new MCPError(
+              `Access denied: You do not have read permission for ${unreadableViews.length} data source view(s).`
+            )
+          );
+        }
+
         const dataSourceViewsMap = new Map(
           dataSourceViews.map((dsv) => [dsv.sId, dsv])
         );
