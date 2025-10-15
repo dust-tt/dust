@@ -3,19 +3,26 @@ import {
   Checkbox,
   ChevronDownIcon,
   CollapsibleComponent,
+  ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  GithubLogo,
   Input,
   Label,
   SliderToggle,
+  Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
 import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
+import { useState } from "react";
 import { z } from "zod";
 
+import { useSendNotification } from "@app/hooks/useNotification";
+import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
+import { setupOAuthConnection } from "@app/types";
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 import {
   basePostWebhookSourcesSchema,
@@ -62,16 +69,93 @@ export type CreateWebhookSourceFormData = z.infer<
 type CreateWebhookSourceFormContentProps = {
   form: ReturnType<typeof useForm<CreateWebhookSourceFormData>>;
   kind: WebhookSourceKind;
+  owner?: LightWorkspaceType;
 };
 
 export function CreateWebhookSourceFormContent({
   form,
   kind,
+  owner,
 }: CreateWebhookSourceFormContentProps) {
+  const sendNotification = useSendNotification();
+  const [githubConnection, setGithubConnection] =
+    useState<OAuthConnectionType | null>(null);
+  const [isConnectingGithub, setIsConnectingGithub] = useState(false);
+  const [githubRepositories, setGithubRepositories] = useState<
+    Array<{ name: string; full_name: string; id: number }>
+  >([]);
+  const [isFetchingRepos, setIsFetchingRepos] = useState(false);
+
   const selectedEvents = useWatch({
     control: form.control,
     name: "subscribedEvents",
   });
+
+  const handleConnectGithub = async () => {
+    if (!owner) return;
+
+    setIsConnectingGithub(true);
+    try {
+      const connectionRes = await setupOAuthConnection({
+        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+        owner,
+        provider: "github",
+        useCase: "platform_actions",
+        extraConfig: {},
+      });
+
+      if (connectionRes.isErr()) {
+        sendNotification({
+          type: "error",
+          title: "Failed to connect to GitHub",
+          description: connectionRes.error.message,
+        });
+      } else {
+        setGithubConnection(connectionRes.value);
+        sendNotification({
+          type: "success",
+          title: "Connected to GitHub",
+          description: "Fetching your repositories...",
+        });
+        // Fetch repositories after successful connection
+        await fetchGithubRepositories(connectionRes.value.connection_id);
+      }
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to connect to GitHub",
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    } finally {
+      setIsConnectingGithub(false);
+    }
+  };
+
+  const fetchGithubRepositories = async (connectionId: string) => {
+    if (!owner) return;
+
+    setIsFetchingRepos(true);
+    try {
+      const response = await fetch(
+        `/api/w/${owner.sId}/oauth/github/repos?connectionId=${connectionId}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch repositories");
+      }
+
+      const data = await response.json();
+      setGithubRepositories(data.repositories || []);
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to fetch repositories",
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    } finally {
+      setIsFetchingRepos(false);
+    }
+  };
 
   return (
     <>
@@ -151,6 +235,62 @@ export function CreateWebhookSourceFormContent({
             )}
           />
         )}
+
+      {/* GitHub Connection Button */}
+      {kind === "github" && owner && (
+        <div className="flex flex-col space-y-2">
+          <Label>GitHub Connection</Label>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Connect your GitHub account to access your repositories.
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={githubConnection ? "outline" : "primary"}
+              label={
+                githubConnection ? "Connected to GitHub" : "Connect to GitHub"
+              }
+              icon={GithubLogo}
+              onClick={handleConnectGithub}
+              disabled={isConnectingGithub || !!githubConnection}
+            />
+            {isConnectingGithub && <Spinner size="sm" />}
+          </div>
+          {githubConnection && (
+            <ContentMessage variant="success">
+              Successfully connected to GitHub. You can now use this connection
+              to access your repositories.
+            </ContentMessage>
+          )}
+          {githubConnection && (
+            <div className="mt-3">
+              <Label>Your Repositories</Label>
+              {isFetchingRepos ? (
+                <div className="flex items-center gap-2 py-2">
+                  <Spinner size="sm" />
+                  <span className="text-sm text-muted-foreground">
+                    Loading repositories...
+                  </span>
+                </div>
+              ) : githubRepositories.length > 0 ? (
+                <div className="mt-2 max-h-48 overflow-y-auto rounded border border-structure-200 dark:border-structure-200-dark">
+                  {githubRepositories.map((repo) => (
+                    <div
+                      key={repo.id}
+                      className="border-b border-structure-100 px-3 py-2 text-sm last:border-b-0 dark:border-structure-100-dark"
+                    >
+                      {repo.full_name}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  No repositories found
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div>
         <CollapsibleComponent

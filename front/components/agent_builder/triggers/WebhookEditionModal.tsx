@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  GithubLogo,
   Input,
   Label,
   Sheet,
@@ -21,7 +22,7 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -31,9 +32,11 @@ import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/Tr
 import { useWebhookFilterGeneration } from "@app/components/agent_builder/triggers/useWebhookFilterGeneration";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useUser } from "@app/lib/swr/user";
 import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
+import { setupOAuthConnection } from "@app/types";
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
@@ -72,6 +75,14 @@ export function WebhookEditionModal({
   onSave,
 }: WebhookEditionModalProps) {
   const { user } = useUser();
+  const sendNotification = useSendNotification();
+  const [githubConnection, setGithubConnection] =
+    useState<OAuthConnectionType | null>(null);
+  const [isConnectingGithub, setIsConnectingGithub] = useState(false);
+  const [githubRepositories, setGithubRepositories] = useState<
+    Array<{ name: string; full_name: string; id: number }>
+  >([]);
+  const [isFetchingRepos, setIsFetchingRepos] = useState(false);
 
   const defaultValues = useMemo(
     (): WebhookFormData => ({
@@ -208,8 +219,72 @@ export function WebhookEditionModal({
     });
   }, [defaultValues, form, isOpen, trigger]);
 
+  const fetchGithubRepositories = async (connectionId: string) => {
+    setIsFetchingRepos(true);
+    try {
+      const response = await fetch(
+        `/api/w/${owner.sId}/oauth/github/repos?connectionId=${connectionId}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch repositories");
+      }
+
+      const data = await response.json();
+      setGithubRepositories(data.repositories || []);
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to fetch repositories",
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    } finally {
+      setIsFetchingRepos(false);
+    }
+  };
+
+  const handleConnectGithub = async () => {
+    setIsConnectingGithub(true);
+    try {
+      const connectionRes = await setupOAuthConnection({
+        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+        owner,
+        provider: "github",
+        useCase: "platform_actions",
+        extraConfig: {},
+      });
+
+      if (connectionRes.isErr()) {
+        sendNotification({
+          type: "error",
+          title: "Failed to connect to GitHub",
+          description: connectionRes.error.message,
+        });
+      } else {
+        setGithubConnection(connectionRes.value);
+        sendNotification({
+          type: "success",
+          title: "Connected to GitHub",
+          description: "Fetching your repositories...",
+        });
+        // Fetch repositories after successful connection
+        await fetchGithubRepositories(connectionRes.value.connection_id);
+      }
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to connect to GitHub",
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    } finally {
+      setIsConnectingGithub(false);
+    }
+  };
+
   const handleClose = () => {
     form.reset(defaultValues);
+    setGithubConnection(null);
+    setGithubRepositories([]);
     onClose();
   };
 
@@ -381,6 +456,64 @@ export function WebhookEditionModal({
                   </DropdownMenu>
                 )}
               </div>
+
+              {/* GitHub Connection Button */}
+              {selectedWebhookSource?.kind === "github" && isEditor && (
+                <div className="flex flex-col space-y-2">
+                  <Label>GitHub Connection</Label>
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    Connect your GitHub account to access your repositories.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={githubConnection ? "outline" : "primary"}
+                      label={
+                        githubConnection
+                          ? "Connected to GitHub"
+                          : "Connect to GitHub"
+                      }
+                      icon={GithubLogo}
+                      onClick={handleConnectGithub}
+                      disabled={isConnectingGithub || !!githubConnection}
+                    />
+                    {isConnectingGithub && <Spinner size="sm" />}
+                  </div>
+                  {githubConnection && (
+                    <ContentMessage variant="success">
+                      Successfully connected to GitHub. You can now use this
+                      connection to access your repositories.
+                    </ContentMessage>
+                  )}
+                  {githubConnection && (
+                    <div className="mt-3">
+                      <Label>Your Repositories</Label>
+                      {isFetchingRepos ? (
+                        <div className="flex items-center gap-2 py-2">
+                          <Spinner size="sm" />
+                          <span className="text-sm text-muted-foreground">
+                            Loading repositories...
+                          </span>
+                        </div>
+                      ) : githubRepositories.length > 0 ? (
+                        <div className="mt-2 max-h-48 overflow-y-auto rounded border border-structure-200 dark:border-structure-200-dark">
+                          {githubRepositories.map((repo) => (
+                            <div
+                              key={repo.id}
+                              className="border-b border-structure-100 px-3 py-2 text-sm last:border-b-0 dark:border-structure-100-dark"
+                            >
+                              {repo.full_name}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          No repositories found
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Event selector for non-custom webhooks */}
               {selectedPreset && availableEvents.length > 0 && (
