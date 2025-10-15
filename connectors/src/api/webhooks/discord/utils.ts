@@ -3,10 +3,12 @@ import { DustAPI, Err, Ok } from "@dust-tt/client";
 
 import { apiConfig } from "@connectors/lib/api/config";
 import type { Logger } from "@connectors/logger/logger";
-import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import { ConnectorResource as ConnectorResourceClass } from "@connectors/resources/connector_resource";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { DiscordConfigurationResource } from "@connectors/resources/discord_configuration_resource";
+import { normalizeError } from "@connectors/types";
 import { getHeaderFromUserEmail } from "@connectors/types/shared/headers";
+
+export const DISCORD_API_BASE_URL = "https://discord.com/api/v10";
 
 /**
  * Get available agents for a Discord user.
@@ -33,6 +35,8 @@ export async function getAvailableAgents(
       logger
     );
 
+    // Note: We cannot identify which Discord user triggered this call through the API,
+    // so we cannot filter agents based on user-specific permissions.
     const agentConfigurationsRes = await dustAPI.getAgentConfigurations({});
     if (agentConfigurationsRes.isErr()) {
       logger.error(
@@ -62,7 +66,7 @@ export async function getAvailableAgents(
       { error, workspaceId: connector.workspaceId },
       "Error getting available agents for Discord user"
     );
-    return new Err(new Error(`Failed to get agents: ${error}`));
+    return new Err(normalizeError(error));
   }
 }
 
@@ -97,39 +101,34 @@ export async function getConnectorFromGuildId(
   guildId: string,
   logger: Logger
 ): Promise<Result<ConnectorResource, Error>> {
-  try {
-    const discordConfigs =
-      await DiscordConfigurationResource.listForGuildId(guildId);
+  const discordConfigs =
+    await DiscordConfigurationResource.listForGuildId(guildId);
 
-    if (discordConfigs.length === 0) {
-      return new Err(
-        new Error("No Dust workspace is connected to this Discord server.")
-      );
-    }
-
-    const enabledConfig = discordConfigs.find((config) => config.botEnabled);
-
-    if (!enabledConfig) {
-      return new Err(
-        new Error("The Dust bot is not enabled for this Discord server.")
-      );
-    }
-
-    const connector = await ConnectorResourceClass.fetchById(
-      enabledConfig.connectorId
+  if (discordConfigs.length === 0) {
+    return new Err(
+      new Error("No Dust workspace is connected to this Discord server.")
     );
-
-    if (!connector) {
-      logger.error(
-        { connectorId: enabledConfig.connectorId, guildId },
-        "Connector not found for Discord configuration"
-      );
-      return new Err(new Error("Connector not found."));
-    }
-
-    return new Ok(connector);
-  } catch (error) {
-    logger.error({ error, guildId }, "Error getting connector from guild ID");
-    return new Err(new Error(`Failed to get connector: ${error}`));
   }
+
+  const enabledConfig = discordConfigs.find((config) => config.botEnabled);
+
+  if (!enabledConfig) {
+    return new Err(
+      new Error("The Dust bot is not enabled for this Discord server.")
+    );
+  }
+
+  const connector = await ConnectorResource.fetchById(
+    enabledConfig.connectorId
+  );
+
+  if (!connector) {
+    logger.error(
+      { connectorId: enabledConfig.connectorId, guildId },
+      "Connector not found for Discord configuration"
+    );
+    return new Err(new Error("Connector not found."));
+  }
+
+  return new Ok(connector);
 }

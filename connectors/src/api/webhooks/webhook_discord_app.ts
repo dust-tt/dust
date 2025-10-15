@@ -1,7 +1,9 @@
 import type { Request, Response } from "express";
 import nacl from "tweetnacl";
+import z from "zod";
 
 import {
+  DISCORD_API_BASE_URL,
   formatAgentsList,
   getAvailableAgents,
   getConnectorFromGuildId,
@@ -22,9 +24,6 @@ const DiscordInteraction = {
   APPLICATION_COMMAND_AUTOCOMPLETE: 4,
   MODAL_SUBMIT: 5,
 } as const;
-
-type DiscordInteractionType =
-  (typeof DiscordInteraction)[keyof typeof DiscordInteraction];
 
 /**
  * Discord Interaction Response Types (outgoing responses)
@@ -54,36 +53,56 @@ const logger = mainLogger.child(
   }
 );
 
-type DiscordWebhookReqBody = {
-  type: DiscordInteractionType;
-  token: string;
-  data?: {
-    name?: string;
-    options?: Array<{
-      name: string;
-      type: number;
-      value?: string | number | boolean;
-      options?: Array<{
-        name: string;
-        type: number;
-        value?: string | number | boolean;
-      }>;
-    }>;
-    custom_id?: string;
-  };
-  guild_id?: string;
-  channel_id?: string;
-  member?: {
-    user?: {
-      id: string;
-      username?: string;
-    };
-  };
-  user?: {
-    id: string;
-    username?: string;
-  };
-};
+const DiscordWebhookReqBodySchema = z.object({
+  type: z.number(),
+  token: z.string(),
+  data: z
+    .object({
+      name: z.string().optional(),
+      options: z
+        .array(
+          z.object({
+            name: z.string(),
+            type: z.number(),
+            value: z.union([z.string(), z.number(), z.boolean()]).optional(),
+            options: z
+              .array(
+                z.object({
+                  name: z.string(),
+                  type: z.number(),
+                  value: z
+                    .union([z.string(), z.number(), z.boolean()])
+                    .optional(),
+                })
+              )
+              .optional(),
+          })
+        )
+        .optional(),
+      custom_id: z.string().optional(),
+    })
+    .optional(),
+  guild_id: z.string().optional(),
+  channel_id: z.string().optional(),
+  member: z
+    .object({
+      user: z
+        .object({
+          id: z.string(),
+          username: z.string().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+  user: z
+    .object({
+      id: z.string(),
+      username: z.string().optional(),
+    })
+    .optional(),
+});
+
+type DiscordWebhookReqBody = z.infer<typeof DiscordWebhookReqBodySchema>;
 
 type DiscordWebhookResBody =
   | WithConnectorsAPIErrorReponse<null>
@@ -207,7 +226,24 @@ const _webhookDiscordAppHandler = async (
 
   let interactionBody: DiscordWebhookReqBody;
   try {
-    interactionBody = JSON.parse(bodyString);
+    const parsedBody = JSON.parse(bodyString);
+    const validationResult = DiscordWebhookReqBodySchema.safeParse(parsedBody);
+
+    if (!validationResult.success) {
+      logger.error(
+        { error: validationResult.error, bodyString },
+        "Invalid Discord webhook body schema"
+      );
+      return apiError(req, res, {
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid request body schema",
+        },
+        status_code: 400,
+      });
+    }
+
+    interactionBody = validationResult.data;
   } catch (error) {
     logger.error({ error, bodyString }, "Failed to parse Discord webhook body");
     return apiError(req, res, {
@@ -297,9 +333,9 @@ async function sendDiscordFollowUp(
     return;
   }
 
-  try {
-    const url = `https://discord.com/api/v10/webhooks/${applicationId}/${interactionBody.token}`;
+  const url = `${DISCORD_API_BASE_URL}/webhooks/${applicationId}/${interactionBody.token}`;
 
+  try {
     const response = await fetch(url, {
       method: "POST",
       headers: {

@@ -1,8 +1,10 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
+import { DISCORD_API_BASE_URL } from "@connectors/api/webhooks/discord/utils";
 import { apiConfig } from "@connectors/lib/api/config";
 import mainLogger from "@connectors/logger/logger";
+import { normalizeError } from "@connectors/types";
 
 const logger = mainLogger.child(
   {
@@ -26,19 +28,14 @@ async function registerSlashCommand(
   const applicationId = apiConfig.getDiscordApplicationId();
 
   if (!botToken || !applicationId) {
-    const error = new Error(
+    throw new Error(
       "Discord API credentials not configured. Set DISCORD_BOT_TOKEN and DISCORD_APPLICATION_ID environment variables."
     );
-    logger.warn(
-      { command: command.name },
-      "Discord API credentials not configured, skipping command registration"
-    );
-    return new Err(error);
   }
 
-  try {
-    const url = `https://discord.com/api/v10/applications/${applicationId}/commands`;
+  const url = `${DISCORD_API_BASE_URL}/applications/${applicationId}/commands`;
 
+  try {
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -81,11 +78,7 @@ async function registerSlashCommand(
       { error, command: command.name },
       "Error registering Discord slash command"
     );
-    return new Err(
-      error instanceof Error
-        ? error
-        : new Error(`Failed to register command: ${error}`)
-    );
+    return new Err(normalizeError(error));
   }
 }
 
@@ -108,18 +101,14 @@ async function registerAgentsCommand(): Promise<Result<void, Error>> {
 export async function initializeDiscordCommands(): Promise<void> {
   logger.info("Registering agents command with Discord");
 
-  try {
-    const result = await registerAgentsCommand();
+  const result = await registerAgentsCommand();
 
-    if (result.isOk()) {
-      logger.info("Discord agents command successfully registered");
-    } else {
-      logger.error(
-        { error: result.error },
-        "Failed to register Discord agents command"
-      );
-    }
-  } catch (error) {
-    logger.error({ error }, "Error during Discord command initialization");
+  if (result.isOk()) {
+    logger.info("Discord agents command successfully registered");
+  } else {
+    logger.error(
+      { error: result.error },
+      "Failed to register Discord agents command"
+    );
   }
 }
