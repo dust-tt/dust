@@ -12,7 +12,7 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
-import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
+import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getRedisClient } from "@app/lib/api/redis";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";

@@ -27,7 +27,7 @@ import {
   isMCPConfigurationForDustAppRun,
   isMCPInternalDustAppRun,
 } from "@app/lib/actions/types/guards";
-import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
+import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import config from "@app/lib/api/config";
 import { getDatasetSchema } from "@app/lib/api/datasets";
 import type { Authenticator } from "@app/lib/auth";

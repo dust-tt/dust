@@ -32,10 +32,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Confluence MCP tool",
     stage: "on_demand",
   },
-  conversation_rendering_v2: {
-    description: "Enhanced conversation rendering with pruning capabilities",
-    stage: "dust_only",
-  },
   deepseek_feature: {
     description:
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
@@ -102,11 +98,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   openai_usage_mcp: {
     description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
-  },
-  prune_previous_interactions: {
-    description:
-      "Enable pruning of tool results from previous interactions in conversations",
-    stage: "dust_only",
   },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
