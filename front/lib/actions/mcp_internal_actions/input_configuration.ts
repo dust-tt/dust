@@ -153,11 +153,10 @@ function generateConfiguredInput({
         value = getDefaultValue(actionConfiguration, keyPath);
       }
 
-      if (typeof value !== "string") {
-        throw new Error(
-          `Expected string value for key ${keyPath}, got ${typeof value}`
-        );
-      }
+      assert(
+        isString(value),
+        `Expected string value for key ${keyPath}, got ${typeof value}`
+      );
       return { value, mimeType };
     }
 
@@ -169,11 +168,10 @@ function generateConfiguredInput({
         value = getDefaultValue(actionConfiguration, keyPath);
       }
 
-      if (typeof value !== "number") {
-        throw new Error(
-          `Expected number value for key ${keyPath}, got ${typeof value}`
-        );
-      }
+      assert(
+        typeof value === "number",
+        `Expected number value for key ${keyPath}, got ${typeof value}`
+      );
       return { value, mimeType };
     }
 
@@ -185,11 +183,10 @@ function generateConfiguredInput({
         value = getDefaultValue(actionConfiguration, keyPath);
       }
 
-      if (typeof value !== "boolean") {
-        throw new Error(
-          `Expected boolean value for key ${keyPath}, got ${typeof value}`
-        );
-      }
+      assert(
+        typeof value === "boolean",
+        `Expected boolean value for key ${keyPath}, got ${typeof value}`
+      );
       return { value, mimeType };
     }
 
@@ -201,11 +198,10 @@ function generateConfiguredInput({
         value = getDefaultValue(actionConfiguration, keyPath);
       }
 
-      if (typeof value !== "string") {
-        throw new Error(
-          `Expected string value for key ${keyPath}, got ${typeof value}`
-        );
-      }
+      assert(
+        isString(value),
+        `Expected string value for key ${keyPath}, got ${typeof value}`
+      );
       return { value, mimeType };
     }
 
