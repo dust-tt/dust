@@ -294,8 +294,8 @@ export function findPathsToConfiguration({
 
   const disabledToolNames =
     toolsMetadata
-      ?.filter(({ enabled }) => !enabled)
-      .map(({ toolName }) => toolName) ?? [];
+      ?.filter((tool) => !tool.enabled)
+      .map((tool) => tool.toolName) ?? [];
 
   return mcpServer.tools.reduce((acc: Record<string, JSONSchema>, tool) => {
     if (disabledToolNames.includes(tool.name) || !tool.inputSchema) {
