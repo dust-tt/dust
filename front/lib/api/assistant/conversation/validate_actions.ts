@@ -73,6 +73,7 @@ export async function validateAction(
     messageId: string;
   }
 ): Promise<Result<void, DustError>> {
+  const owner = auth.getNonNullableWorkspace();
   const { sId: conversationId, title: conversationTitle } = conversation;
 
   logger.info(
@@ -81,6 +82,8 @@ export async function validateAction(
       messageId,
       approvalState,
       conversationId,
+      workspaceId: owner.sId,
+      userId: auth.user()?.sId,
     },
     "Tool validation request"
   );
@@ -143,6 +146,8 @@ export async function validateAction(
         actionId,
         messageId,
         approvalState,
+        workspaceId: owner.sId,
+        userId: auth.user()?.sId,
       },
       "Action already approved or rejected"
     );
