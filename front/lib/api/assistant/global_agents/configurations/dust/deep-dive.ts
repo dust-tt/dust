@@ -427,7 +427,13 @@ function getCompanyDataAction(
     dataSources: dataSourceViews.map((dsView) => ({
       dataSourceViewId: dsView.sId,
       workspaceId: preFetchedDataSources.workspaceId,
-      filter: { parents: null, tags: null },
+      filter: {
+        parents: {
+          in: dsView.parentsIn ?? [],
+          not: [],
+        },
+        tags: null,
+      },
     })),
     tables: null,
     childAgentId: null,
@@ -467,7 +473,10 @@ function getCompanyDataWarehousesAction(
     dataSources: globalWarehouses.map((dsView) => ({
       dataSourceViewId: dsView.sId,
       workspaceId: preFetchedDataSources.workspaceId,
-      filter: { parents: null, tags: null },
+      filter: {
+        parents: { in: dsView.parentsIn ?? [], not: [] },
+        tags: null,
+      },
     })),
     tables: null,
     childAgentId: null,
