@@ -181,12 +181,9 @@ async function renderDataSourcesConfigurations(
 
   const selectedResources = action.dataSources.map((ds) => {
     const parents = ds.filter.parents;
-    // Treat the case where parents.in is null and parents.not has values as
-    // "select all with exclusions". Historically this was serialized with
-    // parents present, which made `!parents` false and incorrectly flipped
-    // `isSelectAll` to false in the builder reconstruction.
-    const isSelectAll =
-      !parents || (parents?.in == null && (parents?.not?.length ?? 0) > 0);
+    // Select-all when no parents filter, or when parents.in is null
+    // (possibly with exclusions via parents.not).
+    const isSelectAll = !parents || parents.in == null;
 
     return {
       dataSourceViewId: ds.dataSourceViewId,
