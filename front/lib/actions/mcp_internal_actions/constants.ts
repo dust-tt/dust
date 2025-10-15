@@ -489,6 +489,7 @@ The directive should be used to display a clickable version of the agent name in
       update_event: "low",
       delete_event: "low",
       check_availability: "never_ask",
+      get_user_timezones: "never_ask",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -505,7 +506,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "GcalLogo",
       documentationUrl: "https://docs.dust.tt/docs/google-calendar",
       instructions:
-        "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool.",
+        "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool (3) use get_user_timezones to check attendee timezones for better scheduling.",
     },
   },
   conversation_files: {

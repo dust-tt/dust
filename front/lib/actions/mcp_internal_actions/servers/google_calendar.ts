@@ -653,6 +653,72 @@ function createServer(
     )
   );
 
+  server.tool(
+    "get_user_timezones",
+    "Get timezone information for multiple users by attempting to access their calendars. Only works for calendars shared with you.",
+    {
+      emails: z
+        .array(z.string())
+        .max(50, "Maximum 50 email addresses allowed")
+        .describe("Array of email addresses to get timezone information for"),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+        skipAlerting: true,
+      },
+      async ({ emails }, { authInfo }) => {
+        const calendar = await getCalendarClient(authInfo);
+        assert(
+          calendar,
+          "Calendar client could not be created - it should never happen"
+        );
+
+        const results = [];
+
+        for (const email of emails) {
+          try {
+            const res = await calendar.calendars.get({ calendarId: email });
+            results.push({
+              email,
+              timeZone: res.data.timeZone,
+              calendarAccessible: true,
+            });
+          } catch (err) {
+            results.push({
+              email,
+              timeZone: null,
+              calendarAccessible: false,
+              error: normalizeError(err).message,
+            });
+          }
+        }
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: "User timezone information retrieved",
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                attendees: results,
+                accessibleCount: results.filter((r) => r.calendarAccessible)
+                  .length,
+                totalCount: results.length,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
+      }
+    )
+  );
+
   function getUserTimezone(): string | null {
     const content = agentLoopContext?.runContext?.conversation?.content;
     if (!content) {
