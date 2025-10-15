@@ -1,7 +1,10 @@
 import type { InternalToolInputMimeType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  JSONSchema7 as JSONSchema,
+  JSONSchema7Type as JSONSchemaType,
+} from "json-schema";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -15,6 +18,7 @@ import type {
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { AdditionalConfigurationValueType } from "@app/lib/models/assistant/actions/mcp";
 import {
   areSchemasEqual,
   ensurePathExists,
@@ -64,53 +68,6 @@ function generateConfiguredInput({
     isServerSideMCPToolConfiguration(actionConfiguration),
     "Action configuration must be a server-side MCP tool configuration"
   );
-
-  type PrimitiveType = string | number | boolean | string[];
-
-  /*
-   * Get a validated value from the action configuration.
-   * If the value is not provided, we look for a default value in the input schema.
-   * If the value is provided, we validate it against the expected type.
-   * If the value is not provided and there is no default value, we throw an error.
-   */
-  // TODO(2025-10-10 aubin): remove this function.
-  const getValidatedValue = <U extends PrimitiveType>(
-    actionConfiguration: MCPToolConfigurationType,
-    keyPath: string,
-    value: PrimitiveType | undefined,
-    expectedType: string,
-    typeGuard: (val: unknown) => val is U
-  ): U => {
-    if (value === undefined) {
-      const propSchema = findSchemaAtPath(
-        actionConfiguration.inputSchema,
-        keyPath.split(".")
-      );
-      if (propSchema) {
-        // Handle both object-level default {value, mimeType}
-        if (
-          propSchema.default &&
-          typeof propSchema.default === "object" &&
-          "value" in propSchema.default
-        ) {
-          if (typeGuard(propSchema.default.value)) {
-            value = propSchema.default.value;
-          } else {
-            // Invalid object-level default type - throw specific error
-            throw new Error(
-              `Expected ${expectedType} value for key ${keyPath}, got ${typeof propSchema.default.value}`
-            );
-          }
-        }
-      }
-    }
-    if (!typeGuard(value)) {
-      throw new Error(
-        `Expected ${expectedType} value for key ${keyPath}, got ${typeof value}`
-      );
-    }
-    return value;
-  };
 
   switch (mimeType) {
     case INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE: {
@@ -192,48 +149,61 @@ function generateConfiguredInput({
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
       // For primitive types, we have rendered the key from the path and use it to look up the value.
-      const value = getValidatedValue<string>(
-        actionConfiguration,
-        keyPath,
-        actionConfiguration.additionalConfiguration[keyPath],
-        "string",
-        (val): val is string => typeof val === "string"
-      );
+      let value: JSONSchemaType | AdditionalConfigurationValueType | null =
+        actionConfiguration.additionalConfiguration[keyPath];
 
+      if (value === undefined) {
+        value = getDefaultValueAtPath(actionConfiguration.inputSchema, keyPath);
+      }
+
+      assert(
+        isString(value),
+        `Expected string value for key ${keyPath}, got ${typeof value}`
+      );
       return { value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER: {
-      const value = getValidatedValue<number>(
-        actionConfiguration,
-        keyPath,
-        actionConfiguration.additionalConfiguration[keyPath],
-        "number",
-        (val): val is number => typeof val === "number"
-      );
+      let value: JSONSchemaType | AdditionalConfigurationValueType | null =
+        actionConfiguration.additionalConfiguration[keyPath];
 
+      if (value === undefined) {
+        value = getDefaultValueAtPath(actionConfiguration.inputSchema, keyPath);
+      }
+
+      assert(
+        typeof value === "number",
+        `Expected number value for key ${keyPath}, got ${typeof value}`
+      );
       return { value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN: {
-      const value = getValidatedValue<boolean>(
-        actionConfiguration,
-        keyPath,
-        actionConfiguration.additionalConfiguration[keyPath],
-        "boolean",
-        (val): val is boolean => typeof val === "boolean"
-      );
+      let value: JSONSchemaType | AdditionalConfigurationValueType | null =
+        actionConfiguration.additionalConfiguration[keyPath];
 
+      if (value === undefined) {
+        value = getDefaultValueAtPath(actionConfiguration.inputSchema, keyPath);
+      }
+
+      assert(
+        typeof value === "boolean",
+        `Expected boolean value for key ${keyPath}, got ${typeof value}`
+      );
       return { value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM: {
-      const value = getValidatedValue<string>(
-        actionConfiguration,
-        keyPath,
-        actionConfiguration.additionalConfiguration[keyPath],
-        "string",
-        (val): val is string => typeof val === "string"
+      let value: JSONSchemaType | AdditionalConfigurationValueType | null =
+        actionConfiguration.additionalConfiguration[keyPath];
+
+      if (value === undefined) {
+        value = getDefaultValueAtPath(actionConfiguration.inputSchema, keyPath);
+      }
+
+      assert(
+        isString(value),
+        `Expected string value for key ${keyPath}, got ${typeof value}`
       );
       return { value, mimeType };
     }
@@ -339,8 +309,20 @@ export function findPathsToConfiguration({
       };
     }
   }
-
   return matches;
+}
+
+function getDefaultValueAtPath(inputSchema: JSONSchema, keyPath: string) {
+  const property = findSchemaAtPath(inputSchema, keyPath.split("."));
+
+  if (
+    property?.default &&
+    typeof property.default === "object" &&
+    "value" in property.default
+  ) {
+    return property.default.value;
+  }
+  return null;
 }
 
 /**
