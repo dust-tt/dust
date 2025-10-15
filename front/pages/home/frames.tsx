@@ -13,6 +13,7 @@ import { Grid, H1, H2, H3, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import TrustedBy from "@app/components/home/TrustedBy";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 
 const SECTION_CLASSES = "py-12 md:py-16";
@@ -65,6 +66,7 @@ function HeroSection() {
               label="Get started"
               href="/signup"
               className="w-full sm:w-auto"
+              onClick={withTracking(TRACKING_AREAS.FRAMES, "hero_get_started")}
             />
             <Button
               variant="outline"
@@ -72,6 +74,7 @@ function HeroSection() {
               label="Get a demo"
               href="/home/contact"
               className="w-full sm:w-auto"
+              onClick={withTracking(TRACKING_AREAS.FRAMES, "hero_get_demo")}
             />
           </div>
         </div>
@@ -410,6 +413,10 @@ function JustUseDustSection() {
               label="Start free trial"
               href="/pricing"
               className="w-full sm:w-auto"
+              onClick={withTracking(
+                TRACKING_AREAS.FRAMES,
+                "cta_start_free_trial"
+              )}
             />
             <Button
               variant="outline"
@@ -417,6 +424,7 @@ function JustUseDustSection() {
               label="Contact sales"
               href="/home/contact"
               className="w-full sm:w-auto"
+              onClick={withTracking(TRACKING_AREAS.FRAMES, "cta_contact_sales")}
             />
           </div>
         </div>

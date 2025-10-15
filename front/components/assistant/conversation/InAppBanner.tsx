@@ -46,7 +46,7 @@ export function InAppBanner() {
           variant="highlight"
           size="xs"
           onClick={withTracking(
-            TRACKING_AREAS.FRAME,
+            TRACKING_AREAS.FRAMES,
             "cta_frame_banner",
             onLearnMore
           )}
