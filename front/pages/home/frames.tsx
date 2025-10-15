@@ -50,14 +50,14 @@ function HeroSection() {
             mono
             className="mb-4 text-4xl font-medium leading-tight md:text-5xl lg:text-6xl xl:text-7xl"
           >
-            Create interactive content with <span>Frames</span>
+            Create and share living documents
           </H1>
           <P
             size="lg"
             className="pb-6 text-muted-foreground md:max-w-lg md:pb-8"
           >
-            Turn static outputs from your Dust AI agents into collaborative,
-            editable visuals, tailored to whoever you're sharing them with.
+            Frames transforms agent outputs into interactive dashboards,
+            reports, and memos your team can explore and collaborate on.
           </P>
           <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
             <Button
@@ -80,16 +80,18 @@ function HeroSection() {
         </div>
 
         <div className="relative col-span-12 mt-8 py-2 lg:col-span-6 lg:col-start-7 lg:mt-0">
-          <div className="flex h-full w-full items-center justify-center">
-            <div className="relative w-full max-w-xl xl:max-w-2xl">
-              <div className="relative z-10 mx-auto flex w-full items-center justify-center">
-                <img
-                  src="/static/landing/frames/Ext_Hero.svg"
-                  alt="Content builder interface showing drag-and-drop elements and real-time preview"
-                  className="h-auto w-full max-w-lg rounded-2xl object-contain lg:max-w-xl xl:max-w-2xl"
-                />
-              </div>
-            </div>
+          <div className="relative aspect-video w-full overflow-hidden rounded-2xl">
+            <iframe
+              src="https://fast.wistia.net/embed/iframe/dye6ti8zv7?autoplay=true&muted=true"
+              title="Frames Release"
+              allow="autoplay; fullscreen"
+              allowFullScreen
+              className="absolute inset-0 -top-[10%] h-[120%] w-full rounded-2xl"
+              style={{
+                border: "none",
+                outline: "none",
+              }}
+            />
           </div>
         </div>
       </Grid>
@@ -130,8 +132,8 @@ function ContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-red-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Pull in a CSV and watch it turn into a chart your customer
-                      can click through during sales calls
+                      Create deeply personal, shareable content as superior
+                      outbound pitches.
                     </P>
                   </div>
                 </div>
@@ -140,7 +142,8 @@ function ContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-bl-full bg-yellow-400"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Performance dashboards from uploaded CSV/data files
+                      Personalize by prospect, adapt tone/language and context
+                      from previous interactions.
                     </P>
                   </div>
                 </div>
@@ -149,8 +152,18 @@ function ContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-green-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Make quarterly business reviews with charts that feel like
-                      a conversation
+                      Transform conversation transcripts into enriched,
+                      shareable follow-up content.
+                    </P>
+                  </div>
+                </div>
+                <hr className="border-gray-200" />
+                <div className="flex items-center gap-3">
+                  <div className="h-6 w-6 flex-shrink-0 bg-blue-500"></div>
+                  <div>
+                    <P size="sm" className="font-medium">
+                      Visualize qualitative and quantitative Sales insights in a
+                      smooth digestible format.
                     </P>
                   </div>
                 </div>
@@ -166,8 +179,8 @@ function ContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 bg-pink-400"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Drop in campaign exports and generate a dashboard you can
-                      slice by channel and cohort
+                      Generate personalized marketing materials and template
+                      that can be automatically tailored to different audiences.
                     </P>
                   </div>
                 </div>
@@ -176,8 +189,8 @@ function ContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-red-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Upload A/B results and get a readout with lift and
-                      significance you can explore
+                      Build scalable templates that personalize at scale while
+                      maintaining brand guidelines.
                     </P>
                   </div>
                 </div>
@@ -186,8 +199,18 @@ function ContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-tl-full bg-blue-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Turn results into an editable infographic you can tailor
-                      for exec reviews and posts
+                      Create new shareable formats, optimized for different
+                      marketing channels.
+                    </P>
+                  </div>
+                </div>
+                <hr className="border-gray-200" />
+                <div className="flex items-center gap-3">
+                  <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-green-500"></div>
+                  <div>
+                    <P size="sm" className="font-medium">
+                      Turn campaign results into an editable infographic you can
+                      tailor for exec reviews and posts.
                     </P>
                   </div>
                 </div>
@@ -225,8 +248,8 @@ function ContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-pink-400"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Import usage exports and get a health dashboard your
-                      customer can filter in QBRs
+                      Aggregate analytics and support data in engaging formats
+                      with "talk to your data".
                     </P>
                   </div>
                 </div>
@@ -235,8 +258,8 @@ function ContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 bg-red-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Spin up an onboarding tracker both teams update so dates
-                      and owners stay clear
+                      Create modular onboarding sessions based on previous
+                      discussions.
                     </P>
                   </div>
                 </div>
@@ -246,7 +269,7 @@ function ContentInAction() {
                   <div>
                     <P size="sm" className="font-medium">
                       Create a renewal summary that pulls wins and gaps into one
-                      live page
+                      live page.
                     </P>
                   </div>
                 </div>
@@ -262,7 +285,8 @@ function ContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 bg-purple-400"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Upload analytics and explore feature adoption
+                      Build simple proofs of concept without Figma or complex
+                      tools.
                     </P>
                   </div>
                 </div>
@@ -271,8 +295,8 @@ function ContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-orange-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Combine NPS, tickets, and notes into a trends view with
-                      example quotes you can drill into
+                      Convert raw notes, roadmap ideas, receipts into polished
+                      visual decks.
                     </P>
                   </div>
                 </div>
@@ -281,8 +305,17 @@ function ContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-tl-full bg-teal-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Build a retention dashboard with cohort curves you can
-                      compare side by side
+                      Create shareable content for all-hands and team meetings.
+                    </P>
+                  </div>
+                </div>
+                <hr className="border-gray-200" />
+                <div className="flex items-center gap-3">
+                  <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-blue-500"></div>
+                  <div>
+                    <P size="sm" className="font-medium">
+                      See data exactly how you want, merging tools into your
+                      ideal interface.
                     </P>
                   </div>
                 </div>
@@ -386,7 +419,7 @@ function SharingAndAccessSection() {
           <div className="order-2 flex flex-col justify-center lg:order-2">
             <H3 className="mb-6">Secure and collaborative</H3>
             <P size="lg" className="text-muted-foreground">
-              Share content with workspace members, or anyone via public links
+              Share content with workspace members, or anyone via public links.
             </P>
           </div>
         </div>
