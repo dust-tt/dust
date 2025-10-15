@@ -209,6 +209,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Observability tab in the Agent Builder (charts powered by Elasticsearch)",
     stage: "dust_only",
   },
+  legacy_dust_apps: {
+    description: "Access to legacy Dust Apps (editor and associated tools)",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
