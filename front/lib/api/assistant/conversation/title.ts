@@ -1,5 +1,5 @@
 import { runActionStreamed } from "@app/lib/actions/server";
-import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
+import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";

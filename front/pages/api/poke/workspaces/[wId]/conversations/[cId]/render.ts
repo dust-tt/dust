@@ -6,10 +6,10 @@ import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mc
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
-import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";

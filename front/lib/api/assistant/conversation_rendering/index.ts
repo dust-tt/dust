@@ -32,7 +32,7 @@ const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;
 // Fixed number of tokens assumed for image contents
 const IMAGE_CONTENT_TOKEN_COUNT = 3100;
 
-export async function renderConversationEnhanced(
+export async function renderConversationForModel(
   auth: Authenticator,
   {
     conversation,
@@ -43,7 +43,6 @@ export async function renderConversationEnhanced(
     excludeActions,
     excludeImages,
     onMissingAction = "inject-placeholder",
-    enablePreviousInteractionsPruning = false,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -126,14 +125,12 @@ export async function renderConversationEnhanced(
 
   let previousInteractions = interactions.slice(0, -1);
 
-  // If previous interactions pruning is enabled, apply it.
-  if (enablePreviousInteractionsPruning) {
-    previousInteractions = prunePreviousInteractions(
-      previousInteractions,
-      availableTokens,
-      PREVIOUS_INTERACTIONS_TO_PRESERVE
-    );
-  }
+  // prune previous interactions.
+  previousInteractions = prunePreviousInteractions(
+    previousInteractions,
+    availableTokens,
+    PREVIOUS_INTERACTIONS_TO_PRESERVE
+  );
 
   const prunedInteractions = [...previousInteractions, currentInteraction];
 
@@ -209,7 +206,6 @@ export async function renderConversationEnhanced(
       tokensUsed,
       messageSelected: finalMessages.length,
       elapsed: Date.now() - now,
-      pruningEnabled: enablePreviousInteractionsPruning,
     },
     "[ASSISTANT_TRACE] renderConversationForModelEnhanced"
   );
