@@ -71,6 +71,4 @@ runGongWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running gong worker")
 );
 
-initializeDiscordCommands().catch((err) =>
-  logger.error(errorFromAny(err), "Error initializing Discord commands")
-);
+initializeDiscordCommands();
