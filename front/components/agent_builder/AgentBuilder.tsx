@@ -169,9 +169,12 @@ export default function AgentBuilder({
     } else if (agentConfiguration) {
       baseValues = transformAgentConfigurationToFormData(agentConfiguration);
     } else if (assistantTemplate) {
-      baseValues = transformTemplateToFormData(assistantTemplate, user);
+      baseValues = transformTemplateToFormData(assistantTemplate, user, owner);
     } else {
-      baseValues = getDefaultAgentFormData(user);
+      baseValues = getDefaultAgentFormData({
+        owner,
+        user,
+      });
     }
 
     return {
@@ -201,6 +204,7 @@ export default function AgentBuilder({
       },
     };
   }, [
+    owner,
     agentConfiguration,
     assistantTemplate,
     user,
