@@ -1,7 +1,10 @@
 import type { InternalToolInputMimeType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
-import type { JSONSchema7 as JSONSchema, JSONSchema7Type } from "json-schema";
+import type {
+  JSONSchema7 as JSONSchema,
+  JSONSchema7Type as JSONSchemaType,
+} from "json-schema";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -146,7 +149,7 @@ function generateConfiguredInput({
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
       // For primitive types, we have rendered the key from the path and use it to look up the value.
-      let value: JSONSchema7Type | AdditionalConfigurationValueType | null =
+      let value: JSONSchemaType | AdditionalConfigurationValueType | null =
         actionConfiguration.additionalConfiguration[keyPath];
 
       if (value === undefined) {
@@ -161,7 +164,7 @@ function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER: {
-      let value: JSONSchema7Type | AdditionalConfigurationValueType | null =
+      let value: JSONSchemaType | AdditionalConfigurationValueType | null =
         actionConfiguration.additionalConfiguration[keyPath];
 
       if (value === undefined) {
@@ -176,7 +179,7 @@ function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN: {
-      let value: JSONSchema7Type | AdditionalConfigurationValueType | null =
+      let value: JSONSchemaType | AdditionalConfigurationValueType | null =
         actionConfiguration.additionalConfiguration[keyPath];
 
       if (value === undefined) {
@@ -191,7 +194,7 @@ function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM: {
-      let value: JSONSchema7Type | AdditionalConfigurationValueType | null =
+      let value: JSONSchemaType | AdditionalConfigurationValueType | null =
         actionConfiguration.additionalConfiguration[keyPath];
 
       if (value === undefined) {
