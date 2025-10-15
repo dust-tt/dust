@@ -1,5 +1,6 @@
 import type { InternalToolInputMimeType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { Ajv } from "ajv";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -17,12 +18,9 @@ import type {
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   areSchemasEqual,
-  ensurePathExists,
   findSchemaAtPath,
   followInternalRef,
-  getValueAtPath,
   isJSONSchemaObject,
-  iterateOverSchemaPropertiesRecursive,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
 import type { WhitelistableFeature, WorkspaceType } from "@app/types";
@@ -235,6 +233,7 @@ function generateConfiguredInput({
         "string",
         (val): val is string => typeof val === "string"
       );
+
       return { value, mimeType };
     }
 
@@ -333,10 +332,9 @@ export function findPathsToConfiguration({
     }
 
     if (tool.inputSchema) {
-      const inlinedSchema = inlineAllRefs(tool.inputSchema);
       matches = {
         ...matches,
-        ...findMatchingSubSchemas(inlinedSchema, mimeType),
+        ...findMatchingSubSchemas(tool.inputSchema, mimeType),
       };
     }
   }
@@ -441,30 +439,53 @@ export function augmentInputsWithConfiguration({
   }
 
   const inputs = { ...rawInputs };
-  iterateOverSchemaPropertiesRecursive(inputSchema, (fullPath, propSchema) => {
-    for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
-      if (isSchemaConfigurable(propSchema, mimeType)) {
-        const valueAtPath = getValueAtPath(inputs, fullPath);
-        if (valueAtPath) {
-          return false;
+
+  const ajv = new Ajv({ allErrors: true, strict: false });
+
+  // Note: When using AJV validation, string patterns must use regex syntax (e.g. /^fil_/) instead
+  // of startsWith() to avoid "Invalid escape" errors. This is important because our Zod schemas are
+  // converted to JSON Schema for AJV validation, and AJV requires regex patterns for string
+  // validation.
+
+  const validate = ajv.compile(inputSchema);
+  const isValid = validate(inputs);
+
+  if (!isValid && validate.errors) {
+    for (const error of validate.errors) {
+      if (error.keyword !== "required" || !error.params.missingProperty) {
+        continue;
+      }
+      const missingProp = error.params.missingProperty;
+
+      const parentPath = error.instancePath
+        ? error.instancePath.split("/").filter(Boolean)
+        : [];
+
+      const fullPath = [...parentPath, missingProp];
+      let propSchema = findSchemaAtPath(inputSchema, fullPath);
+      // If the schema we found is a reference, follow it.
+      if (propSchema?.$ref) {
+        propSchema = followInternalRef(inputSchema, propSchema.$ref);
+      }
+
+      // If we found a schema and it has a matching MIME type, inject the value
+      if (propSchema) {
+        for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
+          if (isSchemaConfigurable(propSchema, mimeType)) {
+            const value = generateConfiguredInput({
+              owner,
+              actionConfiguration,
+              mimeType,
+              keyPath: fullPath.join("."),
+            });
+
+            // We found a matching mimeType, augment the inputs
+            setValueAtPath(inputs, fullPath, value);
+          }
         }
-
-        const value = generateConfiguredInput({
-          owner,
-          actionConfiguration,
-          mimeType,
-          keyPath: fullPath.join("."),
-        });
-
-        // Ensure intermediate path exists
-        ensurePathExists(inputs, fullPath);
-        // We found a matching mimeType, augment the inputs
-        setValueAtPath(inputs, fullPath, value);
-        return false;
       }
     }
-    return true;
-  });
+  }
 
   return inputs;
 }
@@ -980,76 +1001,4 @@ export function findMatchingSubSchemas(
   // since we entirely hide the configuration from the agent.
 
   return matches;
-}
-
-function recursiveInlineAllRefs(
-  schema: JSONSchema,
-  rootSchema: JSONSchema
-): JSONSchema {
-  let outputSchema: JSONSchema = { ...schema };
-
-  // If this schema is a direct reference, resolve it fully and continue inlining recursively
-  if (schema.$ref) {
-    const refSchema = followInternalRef(rootSchema, schema.$ref);
-    if (refSchema && isJSONSchemaObject(refSchema)) {
-      return recursiveInlineAllRefs(refSchema, rootSchema);
-    }
-    return schema;
-  }
-
-  if (schema.properties) {
-    outputSchema.properties = {};
-    for (const [key, propSchema] of Object.entries(schema.properties)) {
-      if (isJSONSchemaObject(propSchema)) {
-        outputSchema.properties[key] = recursiveInlineAllRefs(
-          propSchema,
-          rootSchema
-        );
-      } else {
-        outputSchema.properties[key] = propSchema;
-      }
-    }
-  }
-
-  if (schema.type == "array" && schema.items) {
-    if (isJSONSchemaObject(schema.items)) {
-      outputSchema.items = recursiveInlineAllRefs(schema.items, rootSchema);
-    } else if (Array.isArray(schema.items)) {
-      outputSchema.items = schema.items.map((item) =>
-        isJSONSchemaObject(item)
-          ? recursiveInlineAllRefs(item, rootSchema)
-          : item
-      );
-    }
-  }
-
-  // Handle all other keys
-  for (const [key, value] of Object.entries(schema)) {
-    // Skip properties and items as they are handled separately above
-    if (
-      key === "properties" ||
-      key === "required" ||
-      key === "anyOf" ||
-      key === "enum" ||
-      key === "type" ||
-      (key === "items" && outputSchema.type === "array")
-    ) {
-      continue;
-    }
-    if (isJSONSchemaObject(value)) {
-      outputSchema = {
-        ...outputSchema,
-        [key]: recursiveInlineAllRefs(value, rootSchema),
-      };
-    } else {
-      outputSchema = { ...outputSchema, [key]: value };
-    }
-  }
-
-  return outputSchema;
-}
-
-// TODO(2025-10-10 aubin): remove this.
-function inlineAllRefs(schema: JSONSchema): JSONSchema {
-  return recursiveInlineAllRefs(schema, schema);
 }
