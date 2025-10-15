@@ -39,6 +39,53 @@ export default function HubSpotForm() {
 
     let formCreated = false;
 
+    // Set up global console.log interceptor immediately
+    // This will catch Default.com logs even from eval'd contexts
+    let submissionTracked = false;
+
+    // Store original console methods
+    const originalConsoleLog = console.log;
+    const originalConsoleInfo = console.info;
+
+    // Override console.log
+    console.log = function(...args) {
+      // Check for Default.com submission
+      if (!submissionTracked && args.length > 0) {
+        const message = args[0]?.toString() || "";
+        if (message.includes('[Default.com]') && message.includes('Submitted Form')) {
+          submissionTracked = true;
+          // Use original console to avoid recursion
+          originalConsoleInfo.call(console, "[HubSpotForm] Default.com submission detected!");
+          trackEvent({
+            area: TRACKING_AREAS.CONTACT,
+            object: "hubspot_form",
+            action: "submitted",
+          });
+        }
+      }
+
+      return originalConsoleLog.apply(console, args);
+    };
+
+    // Also override console.info in case Default.com uses it
+    console.info = function(...args) {
+      // Check for Default.com submission
+      if (!submissionTracked && args.length > 0) {
+        const message = args[0]?.toString() || "";
+        if (message.includes('[Default.com]') && message.includes('Submitted Form')) {
+          submissionTracked = true;
+          originalConsoleInfo.call(console, "[HubSpotForm] Default.com submission detected!");
+          trackEvent({
+            area: TRACKING_AREAS.CONTACT,
+            object: "hubspot_form",
+            action: "submitted",
+          });
+        }
+      }
+
+      return originalConsoleInfo.apply(console, args);
+    };
+
     // Simple tracking setup function
     const setupTracking = () => {
       const container = document.getElementById("hubspotForm");
@@ -50,48 +97,6 @@ export default function HubSpotForm() {
         object: "hubspot_form",
         action: "ready",
       });
-
-      // Add submit tracking via multiple methods
-
-      // Method 1: Direct form submit listener
-      const form = container.querySelector("form");
-      if (form) {
-        form.addEventListener("submit", () => {
-          trackEvent({
-            area: TRACKING_AREAS.CONTACT,
-            object: "hubspot_form",
-            action: "submitted",
-          });
-        }, true);
-      }
-
-      // Method 2: Watch for success message
-      const observer = new MutationObserver((mutations) => {
-        for (const mutation of mutations) {
-          const addedNodes = Array.from(mutation.addedNodes);
-          const hasSuccessIndicator = addedNodes.some(node => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-              const element = node as HTMLElement;
-              const text = element.textContent?.toLowerCase() || "";
-              return text.includes("thank") || text.includes("success") || text.includes("submitted");
-            }
-            return false;
-          });
-
-          if (hasSuccessIndicator) {
-            trackEvent({
-              area: TRACKING_AREAS.CONTACT,
-              object: "hubspot_form",
-              action: "submitted",
-            });
-            observer.disconnect();
-            break;
-          }
-        }
-      });
-
-      observer.observe(container, { childList: true, subtree: true });
-      setTimeout(() => observer.disconnect(), 30000); // Cleanup after 30s
     };
 
     const createForm = () => {
@@ -125,11 +130,8 @@ export default function HubSpotForm() {
             setupTracking();
           },
           onFormSubmitted: () => {
-            trackEvent({
-              area: TRACKING_AREAS.CONTACT,
-              object: "hubspot_form",
-              action: "submitted",
-            });
+            // Don't track here since Default.com intercepts the submission
+            // The console interceptor will catch it
           },
         });
 
@@ -198,7 +200,11 @@ export default function HubSpotForm() {
 
     // Cleanup function to handle component unmounting
     return () => {
-      // Don't clear the form container on unmount - let React handle it
+      // Restore original console methods
+      console.log = originalConsoleLog;
+      console.info = originalConsoleInfo;
+      // Reset submission flag for next mount
+      submissionTracked = false;
     };
   }, []);
 
