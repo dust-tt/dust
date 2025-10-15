@@ -154,6 +154,7 @@ export async function getContentNodesForDataSourceView(
 
   // There's an early return possible on !dataSourceView.dataSource.connectorId && internalIds?.length === 0,
   // won't include it for now as we are shadow-reading.
+  // TODO(2025-10-15 aubin): implement this early return.
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   // We use searchNodes to fetch the content nodes from core:
