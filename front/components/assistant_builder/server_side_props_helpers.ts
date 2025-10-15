@@ -179,14 +179,24 @@ async function renderDataSourcesConfigurations(
     },
   });
 
-  const selectedResources = action.dataSources.map((ds) => ({
-    dataSourceViewId: ds.dataSourceViewId,
-    resources: ds.filter.parents?.in ?? null,
-    excludedResources: ds.filter.parents?.not ?? null,
-    isSelectAll: !ds.filter.parents,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    tagsFilter: ds.filter.tags || null, // todo(TAF) Remove this when we don't need to support optional tags from builder.
-  }));
+  const selectedResources = action.dataSources.map((ds) => {
+    const parents = ds.filter.parents;
+    // Treat the case where parents.in is null and parents.not has values as
+    // "select all with exclusions". Historically this was serialized with
+    // parents present, which made `!parents` false and incorrectly flipped
+    // `isSelectAll` to false in the builder reconstruction.
+    const isSelectAll =
+      !parents || (parents?.in == null && (parents?.not?.length ?? 0) > 0);
+
+    return {
+      dataSourceViewId: ds.dataSourceViewId,
+      resources: parents?.in ?? null,
+      excludedResources: parents?.not ?? null,
+      isSelectAll,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      tagsFilter: ds.filter.tags || null, // todo(TAF) Remove this when we don't need to support optional tags from builder.
+    };
+  });
 
   const dataSourceConfigurationsArray = await Promise.all(
     selectedResources.map(async (sr) => {
@@ -202,10 +212,36 @@ async function renderDataSourcesConfigurations(
       const serializedDataSourceView = dataSourceView.toJSON();
 
       if (!sr.resources) {
+        // No explicit included resources means either true select-all or
+        // select-all-with-exclusions. In both cases, preserve and materialize
+        // excluded resources if provided so the UI can reconstruct the tree.
+        let excludedResources: DataSourceViewContentNode[] = [];
+        if (sr.excludedResources && sr.excludedResources.length > 0) {
+          const excludedContentNodes = await getContentNodesForDataSourceView(
+            dataSourceView,
+            { internalIds: sr.excludedResources, viewType: "all" }
+          );
+          if (excludedContentNodes.isErr()) {
+            localLogger.error(
+              {
+                dataSourceView: dataSourceView.toTraceJSON(),
+                error: excludedContentNodes.error,
+                internalIds: sr.excludedResources,
+                workspace: {
+                  id: dataSourceView.workspaceId,
+                },
+              },
+              "Agent Builder: Error fetching excluded content nodes for documents."
+            );
+          } else {
+            excludedResources = excludedContentNodes.value.nodes;
+          }
+        }
+
         return {
           dataSourceView: serializedDataSourceView,
           selectedResources: [],
-          excludedResources: [],
+          excludedResources,
           isSelectAll: sr.isSelectAll,
           tagsFilter: sr.tagsFilter,
         };
@@ -264,23 +300,27 @@ async function renderDataSourcesConfigurations(
         }
       }
 
-      return {
+      const withResourcesResult = {
         dataSourceView: serializedDataSourceView,
         selectedResources: contentNodesRes.value.nodes,
         excludedResources,
         isSelectAll: sr.isSelectAll,
         tagsFilter: sr.tagsFilter,
       };
+
+      return withResourcesResult;
     })
   );
 
-  return dataSourceConfigurationsArray.reduce(
+  const reduced = dataSourceConfigurationsArray.reduce(
     (acc, curr) => ({
       ...acc,
       [curr.dataSourceView.sId]: curr,
     }),
     {} as DataSourceViewSelectionConfigurations
   );
+
+  return reduced;
 }
 
 async function renderTableDataSourcesConfigurations(

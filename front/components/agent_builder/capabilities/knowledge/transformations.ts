@@ -133,7 +133,9 @@ export function transformSelectionConfigurationsToTree(
     const { dataSourceView } = config;
     const baseParts = buildDataSourcePath(dataSourceView);
 
-    // If all nodes are selected, just add the data source path
+    // If all nodes are selected, add the data source path.
+    // Do NOT early return: we still need to append exclusions below so
+    // the UI can render a partial state on parents.
     if (config.isSelectAll) {
       inPaths.push({
         path: baseParts,
@@ -142,7 +144,6 @@ export function transformSelectionConfigurationsToTree(
         dataSourceView,
         tagsFilter: config.tagsFilter,
       });
-      continue;
     }
 
     // UI reconstruction guard:
