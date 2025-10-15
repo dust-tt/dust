@@ -1,8 +1,0 @@
-{
-  "singleQuote": false,
-  "trailingComma": "es5",
-  "requirePragma": false,
-  "arrowParens": "always",
-  "semi": true,
-  "plugins": ["prettier-plugin-tailwindcss"]
-}
