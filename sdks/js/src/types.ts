@@ -694,6 +694,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "discord_bot"
   | "elevenlabs_tool"
   | "agent_builder_observability"
+  | "legacy_dust_apps"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

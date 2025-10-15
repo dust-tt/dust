@@ -317,10 +317,10 @@ The directive should be used to display a clickable version of the agent name in
     id: 10,
     availability: "auto",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return false;
-      // return !featureFlags.includes("legacy_dust_apps");
-    },
+    isRestricted: undefined,
+    // isRestricted: ({ featureFlags }) => {
+    //   return !featureFlags.includes("legacy_dust_apps");
+    // },
     isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
