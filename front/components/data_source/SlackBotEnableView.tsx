@@ -43,6 +43,7 @@ export function SlackBotEnableView({
   const doToggle = useToggleChatBot({
     dataSource,
     owner,
+    botName: "Slack Bot",
   });
 
   const handleSetBotEnabled = async (botEnabled: boolean) => {

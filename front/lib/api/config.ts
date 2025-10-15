@@ -206,6 +206,9 @@ const config = {
   getOAuthMondayClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_MONDAY_CLIENT_ID");
   },
+  getOAuthDiscordClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_DISCORD_CLIENT_ID");
+  },
 
   // Text extraction.
   getTextExtractionUrl: (): string => {
