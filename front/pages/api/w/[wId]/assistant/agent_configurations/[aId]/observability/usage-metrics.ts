@@ -176,12 +176,21 @@ async function handler(
       );
 
       const versionMarkers: AgentVersionMarker[] = versionBuckets
-        .map((b) => ({
-          version: b.key,
-          timestamp: formatUTCDateFromMillis(
-            b.first_seen?.value ?? b.first_seen?.value_as_string ?? 0
-          ),
-        }))
+        .map((b) => {
+          const firstSeenValue = b.first_seen?.value;
+          const firstSeenString = b.first_seen?.value_as_string;
+          const timestampMs =
+            typeof firstSeenValue === "number"
+              ? firstSeenValue
+              : typeof firstSeenString === "string"
+                ? parseInt(firstSeenString, 10)
+                : 0;
+
+          return {
+            version: b.key,
+            timestamp: formatUTCDateFromMillis(timestampMs),
+          };
+        })
         .sort(
           (a, b) =>
             new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
