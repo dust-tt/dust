@@ -18,7 +18,6 @@ export function InAppBanner() {
   };
 
   const onLearnMore = () => {
-    withTracking(TRACKING_AREAS.FRAME, "cta_frame_banner");
     window.open(docLink, "_blank", "noopener,noreferrer");
   };
 
@@ -46,7 +45,11 @@ export function InAppBanner() {
         <Button
           variant="highlight"
           size="xs"
-          onClick={onLearnMore}
+          onClick={withTracking(
+            TRACKING_AREAS.FRAME,
+            "cta_frame_banner",
+            onLearnMore
+          )}
           label="Learn more"
         />
         <Button
