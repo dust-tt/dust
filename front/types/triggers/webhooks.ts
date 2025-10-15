@@ -52,6 +52,9 @@ export type WebhookSourceType = {
   signatureHeader: string | null;
   signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
   customHeaders: Record<string, string> | null;
+  remoteWebhookId: string | null;
+  remoteWebhookData: Record<string, string> | null;
+  remoteConnectionId: string | null;
   createdAt: number;
   updatedAt: number;
   subscribedEvents: string[];

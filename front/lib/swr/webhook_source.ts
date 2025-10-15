@@ -107,7 +107,8 @@ export function useCreateWebhookSource({
 
       void mutateWebhookSourcesWithViews();
 
-      return await response.json();
+      const result = await response.json();
+      return result.webhookSource;
     } catch (error) {
       sendNotification({
         type: "error",

@@ -9,6 +9,8 @@ export const OAUTH_USE_CASES = [
   "platform_actions",
   "personal_actions",
   "bot",
+  // Get a token to manage webhooks in the provider.
+  "webhooks",
 ] as const;
 
 export type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];
