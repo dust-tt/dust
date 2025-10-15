@@ -37,11 +37,14 @@ import {
   IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import {
-  MicrosoftBotConfigurationModel,
   MicrosoftConfigurationModel,
   MicrosoftNodeModel,
   MicrosoftRootModel,
 } from "@connectors/lib/models/microsoft";
+import {
+  MicrosoftBotConfigurationModel,
+  MicrosoftBotMessage,
+} from "@connectors/lib/models/microsoft_bot";
 import {
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
@@ -119,6 +122,7 @@ async function main(): Promise<void> {
   await MicrosoftRootModel.sync({ alter: true });
   await MicrosoftNodeModel.sync({ alter: true });
   await MicrosoftBotConfigurationModel.sync({ alter: true });
+  await MicrosoftBotMessage.sync({ alter: true });
   await NotionConnectorBlockCacheEntry.sync({ alter: true });
   await NotionConnectorPageCacheEntry.sync({ alter: true });
   await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });

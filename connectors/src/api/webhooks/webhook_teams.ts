@@ -1,10 +1,19 @@
+import type { TurnContext } from "botbuilder";
 import {
   CloudAdapter,
   ConfigurationBotFrameworkAuthentication,
 } from "botbuilder";
 import type { Request, Response } from "express";
 
-import { sendActivity } from "@connectors/api/webhooks/teams/bot_messaging_utils";
+import {
+  createErrorAdaptiveCard,
+  createThinkingAdaptiveCard,
+} from "@connectors/api/webhooks/teams/adaptive_cards";
+import { botAnswerMessage } from "@connectors/api/webhooks/teams/bot";
+import {
+  sendActivity,
+  sendTextMessage,
+} from "@connectors/api/webhooks/teams/bot_messaging_utils";
 import {
   extractBearerToken,
   generateTeamsRateLimitKey,
@@ -13,6 +22,7 @@ import {
 import { getConnector } from "@connectors/api/webhooks/teams/utils";
 import logger from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 // CloudAdapter configuration - simplified for incoming message validation only
 const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication({
@@ -38,10 +48,10 @@ adapter.onTurnError = async (context, error) => {
 
   // Try to send error message if context allows
   try {
-    await sendActivity(context, {
-      type: "message",
-      text: "❌ An error occurred processing your request.",
-    });
+    await sendTextMessage(
+      context,
+      "❌ An error occurred processing your request."
+    );
   } catch (e) {
     logger.error("Failed to send error activity", e);
   }
@@ -168,11 +178,7 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
       // Handle different activity types
       switch (context.activity.type) {
         case "message":
-          // TODO: Handle message
-          logger.info(
-            { activityType: context.activity.type },
-            "Handling message"
-          );
+          await handleMessage(context, connector);
           break;
 
         default:
@@ -186,5 +192,72 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
   } catch (error) {
     logger.error({ error }, "Error in Teams messages webhook");
     res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+async function handleMessage(
+  context: TurnContext,
+  connector: ConnectorResource
+) {
+  if (!context.activity.text?.trim()) {
+    return;
+  }
+
+  logger.info({ text: context.activity.text }, "Handling regular text message");
+
+  // Send thinking message
+  const thinkingCard = createThinkingAdaptiveCard();
+
+  logger.info(
+    {
+      serviceUrl: context.activity.serviceUrl,
+      conversationId: context.activity.conversation?.id,
+      cardType: "ThinkingCard",
+      credentials: {
+        hasAppId: !!process.env.MICROSOFT_BOT_ID,
+        hasAppPassword: !!process.env.MICROSOFT_BOT_PASSWORD,
+      },
+    },
+    "About to send thinking card to Bot Framework"
+  );
+
+  // Use utility function for reliable messaging
+  const thinkingActivity = await sendActivity(context, thinkingCard);
+  if (thinkingActivity.isErr()) {
+    logger.error(
+      { error: thinkingActivity.error },
+      "Error processing Teams message"
+    );
+    await sendActivity(
+      context,
+      createErrorAdaptiveCard({
+        error: thinkingActivity.error.message,
+        workspaceId: connector!.workspaceId,
+      })
+    );
+    return;
+  }
+
+  logger.info(
+    { activityId: thinkingActivity.value },
+    "Successfully sent thinking card"
+  );
+
+  const result = await botAnswerMessage(
+    context,
+    context.activity.text,
+    connector,
+    thinkingActivity.value
+  );
+
+  if (result.isErr()) {
+    logger.error({ error: result.error }, "Error processing Teams message");
+    await sendActivity(
+      context,
+      createErrorAdaptiveCard({
+        error: result.error.message,
+        workspaceId: connector!.workspaceId,
+      })
+    );
   }
 }

@@ -318,6 +318,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "n8n"
   | "raycast"
   | "slack"
+  | "teams"
   | "triggered"
   | "web"
   | "zapier"
