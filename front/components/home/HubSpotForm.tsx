@@ -1,10 +1,6 @@
 import React, { useEffect } from "react";
 
-import {
-  trackEvent,
-  TRACKING_ACTIONS,
-  TRACKING_AREAS,
-} from "@app/lib/tracking";
+import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 
 declare global {
   interface Window {
@@ -48,14 +44,20 @@ export default function HubSpotForm() {
     const originalConsoleInfo = console.info;
 
     // Override console.log
-    console.log = function(...args) {
+    console.log = function (...args) {
       // Check for Default.com submission
       if (!submissionTracked && args.length > 0) {
         const message = args[0]?.toString() || "";
-        if (message.includes('[Default.com]') && message.includes('Submitted Form')) {
+        if (
+          message.includes("[Default.com]") &&
+          message.includes("Submitted Form")
+        ) {
           submissionTracked = true;
           // Use original console to avoid recursion
-          originalConsoleInfo.call(console, "[HubSpotForm] Default.com submission detected!");
+          originalConsoleInfo.call(
+            console,
+            "[HubSpotForm] Default.com submission detected!"
+          );
           trackEvent({
             area: TRACKING_AREAS.CONTACT,
             object: "hubspot_form",
@@ -68,13 +70,19 @@ export default function HubSpotForm() {
     };
 
     // Also override console.info in case Default.com uses it
-    console.info = function(...args) {
+    console.info = function (...args) {
       // Check for Default.com submission
       if (!submissionTracked && args.length > 0) {
         const message = args[0]?.toString() || "";
-        if (message.includes('[Default.com]') && message.includes('Submitted Form')) {
+        if (
+          message.includes("[Default.com]") &&
+          message.includes("Submitted Form")
+        ) {
           submissionTracked = true;
-          originalConsoleInfo.call(console, "[HubSpotForm] Default.com submission detected!");
+          originalConsoleInfo.call(
+            console,
+            "[HubSpotForm] Default.com submission detected!"
+          );
           trackEvent({
             area: TRACKING_AREAS.CONTACT,
             object: "hubspot_form",
@@ -89,7 +97,9 @@ export default function HubSpotForm() {
     // Simple tracking setup function
     const setupTracking = () => {
       const container = document.getElementById("hubspotForm");
-      if (!container) return;
+      if (!container) {
+        return;
+      }
 
       // Track form ready
       trackEvent({
@@ -112,7 +122,7 @@ export default function HubSpotForm() {
       // Check if form already exists
       const existingForm = formContainer.querySelector("form");
       const existingIframe = formContainer.querySelector("iframe");
-      if (existingForm || existingIframe) {
+      if (existingForm ?? existingIframe) {
         formCreated = true;
         setupTracking(); // Set up tracking for existing form
         return;
@@ -138,12 +148,14 @@ export default function HubSpotForm() {
         // Use MutationObserver as fallback if onFormReady doesn't fire
         const observer = new MutationObserver((mutations, obs) => {
           const container = document.getElementById("hubspotForm");
-          if (!container) return;
+          if (!container) {
+            return;
+          }
 
           const form = container.querySelector("form");
           const iframe = container.querySelector("iframe");
 
-          if (form || iframe) {
+          if (form ?? iframe) {
             obs.disconnect();
             setupTracking();
           }
@@ -162,7 +174,9 @@ export default function HubSpotForm() {
 
     // Load HubSpot script
     const loadScript = () => {
-      const existingScript = document.querySelector(`script[src="${scriptSrc}"]`);
+      const existingScript = document.querySelector(
+        `script[src="${scriptSrc}"]`
+      );
 
       if (!existingScript) {
         const script = document.createElement("script");
