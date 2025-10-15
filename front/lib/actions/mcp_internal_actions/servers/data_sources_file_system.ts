@@ -333,10 +333,10 @@ async function searchCallback(
   ]);
 }
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("data_sources_file_system");
 
   registerCatTool(auth, server, agentLoopContext, {
@@ -729,6 +729,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

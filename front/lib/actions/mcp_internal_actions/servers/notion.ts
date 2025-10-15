@@ -302,10 +302,10 @@ async function withNotionClient<T>(
   }
 }
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("notion");
 
   server.tool(
@@ -970,6 +970,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

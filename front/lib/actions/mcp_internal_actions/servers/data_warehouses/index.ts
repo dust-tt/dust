@@ -37,10 +37,10 @@ const TABLES_FILESYSTEM_TOOL_NAME = "tables_filesystem_navigation";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("data_warehouses");
 
   server.tool(
@@ -419,6 +419,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

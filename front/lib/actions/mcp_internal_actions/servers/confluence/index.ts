@@ -11,12 +11,16 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/confluence_api_helper";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 
 const CONFLUENCE_TOOL_NAME = "confluence";
 
-const createServer = (auth: Authenticator): McpServer => {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("confluence");
 
   server.tool(
@@ -28,6 +32,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: CONFLUENCE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (_, { authInfo }) => {
         return withAuth({
@@ -78,6 +83,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: CONFLUENCE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (params, { authInfo }) => {
         return withAuth({
@@ -142,6 +148,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: CONFLUENCE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (params, { authInfo }) => {
         return withAuth({
@@ -214,6 +221,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: CONFLUENCE_TOOL_NAME,
         skipAlerting: true,
+        agentLoopContext,
       },
       async (params, { authInfo }) => {
         return withAuth({
@@ -239,6 +247,6 @@ const createServer = (auth: Authenticator): McpServer => {
   );
 
   return server;
-};
+}
 
 export default createServer;

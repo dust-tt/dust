@@ -13,10 +13,10 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   void agentLoopContext;
 
   const server = makeInternalMCPServer("agent_management");
@@ -186,6 +186,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

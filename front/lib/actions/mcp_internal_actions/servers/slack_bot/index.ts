@@ -18,11 +18,11 @@ import { Err, normalizeError, Ok } from "@app/types";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const SLACK_TOOL_LOG_NAME = "slack_bot";
 
-const createServer = async (
+async function createServer(
   auth: Authenticator,
   mcpServerId: string,
   agentLoopContext?: AgentLoopContextType
-): Promise<McpServer> => {
+): Promise<McpServer> {
   const server = makeInternalMCPServer("slack_bot");
 
   server.tool(
@@ -484,6 +484,6 @@ const createServer = async (
   );
 
   return server;
-};
+}
 
 export default createServer;

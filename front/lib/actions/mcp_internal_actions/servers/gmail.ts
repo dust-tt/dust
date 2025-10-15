@@ -5,6 +5,7 @@ import { z } from "zod";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types";
@@ -55,7 +56,10 @@ interface MessageDetail {
   error?: string;
 }
 
-const createServer = (auth: Authenticator): McpServer => {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("gmail");
 
   server.tool(
@@ -78,6 +82,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: "gmail",
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ q, pageToken }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -165,6 +170,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: "gmail",
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ to, cc, bcc, subject, contentType, body }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -251,6 +257,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: "gmail",
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ draftId, subject, to }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -307,6 +314,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: "gmail",
         skipAlerting: true,
+        agentLoopContext,
       },
       async ({ q, maxResults = 10, pageToken }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -446,6 +454,7 @@ const createServer = (auth: Authenticator): McpServer => {
       {
         toolNameForMonitoring: "gmail",
         skipAlerting: true,
+        agentLoopContext,
       },
       async (
         { messageId, body, contentType = "text/plain" as const, to, cc, bcc },
@@ -600,7 +609,7 @@ const createServer = (auth: Authenticator): McpServer => {
   );
 
   return server;
-};
+}
 
 const decodeMessageBody = (
   payload: GmailMessagePayload | undefined
