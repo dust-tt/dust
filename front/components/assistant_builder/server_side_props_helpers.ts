@@ -296,27 +296,23 @@ async function renderDataSourcesConfigurations(
         }
       }
 
-      const withResourcesResult = {
+      return {
         dataSourceView: serializedDataSourceView,
         selectedResources: contentNodesRes.value.nodes,
         excludedResources,
         isSelectAll: sr.isSelectAll,
         tagsFilter: sr.tagsFilter,
       };
-
-      return withResourcesResult;
     })
   );
 
-  const reduced = dataSourceConfigurationsArray.reduce(
+  return dataSourceConfigurationsArray.reduce(
     (acc, curr) => ({
       ...acc,
       [curr.dataSourceView.sId]: curr,
     }),
     {} as DataSourceViewSelectionConfigurations
   );
-
-  return reduced;
 }
 
 async function renderTableDataSourcesConfigurations(
