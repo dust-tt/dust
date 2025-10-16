@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import nacl from "tweetnacl";
 import z from "zod";
 
+import { sendMessageToAgent } from "@connectors/api/webhooks/discord/bot";
 import {
   DISCORD_API_BASE_URL,
   formatAgentsList,
@@ -9,6 +10,10 @@ import {
   getConnectorFromGuildId,
 } from "@connectors/api/webhooks/discord/utils";
 import { apiConfig } from "@connectors/lib/api/config";
+import {
+  findBestAgentMatch,
+  processMessageForMention,
+} from "@connectors/lib/bot/mentions";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
@@ -184,6 +189,96 @@ async function handleListAgentsCommand(
   await sendDiscordFollowUp(interactionBody, responseContent);
 }
 
+async function handleAskAgentCommand(
+  interactionBody: DiscordWebhookReqBody,
+  guildId: string,
+  channelId: string
+): Promise<void> {
+  const options = interactionBody.data?.options;
+  const agentName = options?.find((opt) => opt.name === "agent_name")?.value;
+  const message = options?.find((opt) => opt.name === "message")?.value;
+  if (
+    !agentName ||
+    typeof agentName !== "string" ||
+    !message ||
+    typeof message !== "string"
+  ) {
+    await sendDiscordFollowUp(
+      interactionBody,
+      "Missing required parameters: agent_name and message."
+    );
+    return;
+  }
+
+  const connectorResult = await getConnectorFromGuildId(guildId, logger);
+  if (connectorResult.isErr()) {
+    await sendDiscordFollowUp(interactionBody, connectorResult.error.message);
+    return;
+  }
+
+  const connector = connectorResult.value;
+
+  const agentsResult = await getAvailableAgents(connector, logger);
+  if (agentsResult.isErr()) {
+    logger.error(
+      { error: agentsResult.error, guildId, connectorId: connector.id },
+      "Failed to get available agents"
+    );
+    await sendDiscordFollowUp(
+      interactionBody,
+      "Error retrieving agents. Please try again later."
+    );
+    return;
+  }
+
+  const activeAgentConfigurations = agentsResult.value.filter(
+    (ac) => ac.status === "active"
+  );
+
+  const agent = findBestAgentMatch(agentName, activeAgentConfigurations);
+
+  if (!agent) {
+    await sendDiscordFollowUp(
+      interactionBody,
+      `Agent "${agentName}" not found. Use /list-dust-agents to see available agents.`
+    );
+    return;
+  }
+
+  const mentionResult = processMessageForMention({
+    message,
+    activeAgentConfigurations,
+  });
+
+  if (mentionResult.isErr()) {
+    await sendDiscordFollowUp(interactionBody, mentionResult.error.message);
+    return;
+  }
+
+  const username =
+    interactionBody.member?.user?.username || interactionBody.user?.username;
+  const result = await sendMessageToAgent({
+    agentConfiguration: agent,
+    connector,
+    channelId,
+    discordUsername: username || "Unknown User",
+    message: mentionResult.value.processedMessage,
+    interactionToken: interactionBody.token,
+    logger,
+  });
+
+  if (result.isErr()) {
+    logger.error(
+      { error: result.error, agentId: agent.sId, connectorId: connector.id },
+      "Failed to send message to agent"
+    );
+    await sendDiscordFollowUp(
+      interactionBody,
+      "An error occurred while processing your message. Please try again later."
+    );
+  }
+}
+
 const _webhookDiscordAppHandler = async (
   req: Request<
     Record<string, string>,
@@ -287,6 +382,27 @@ const _webhookDiscordAppHandler = async (
       // Process the command asynchronously.
       setImmediate(async () => {
         await handleListAgentsCommand(interactionBody, guildId, userId);
+      });
+
+      return deferredResponse;
+    }
+
+    if (commandName === "ask-dust-agent") {
+      const channelId = interactionBody.channel_id;
+      if (!channelId) {
+        return res.status(200).json({
+          type: DiscordInteractionResponse.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: "Channel ID is required.",
+          },
+        });
+      }
+      const deferredResponse = res.status(200).json({
+        type: DiscordInteractionResponse.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+      });
+
+      setImmediate(async () => {
+        await handleAskAgentCommand(interactionBody, guildId, channelId);
       });
 
       return deferredResponse;

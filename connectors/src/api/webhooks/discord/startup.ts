@@ -12,10 +12,18 @@ const logger = mainLogger.child(
   }
 );
 
+interface DiscordSlashCommandOption {
+  name: string;
+  description: string;
+  type: number;
+  required?: boolean;
+}
+
 interface DiscordSlashCommand {
   name: string;
   description: string;
   type?: number;
+  options?: DiscordSlashCommandOption[];
 }
 
 interface DiscordCommand {
@@ -60,6 +68,24 @@ function getDesiredCommands(): DiscordSlashCommand[] {
       name: "list-dust-agents",
       description: "List available agents for this workspace",
       type: 1,
+    },
+    {
+      name: "ask-dust-agent",
+      description: "Ask a question to a Dust agent",
+      options: [
+        {
+          name: "agent_name",
+          description: "The name of the agent to ask",
+          type: 3, // STRING type in Discord API
+          required: true,
+        },
+        {
+          name: "message",
+          description: "Your question or message",
+          type: 3,
+          required: true,
+        },
+      ],
     },
   ];
 }
@@ -124,6 +150,7 @@ async function bulkOverwriteCommands(
         name: cmd.name,
         description: cmd.description,
         type: cmd.type || 1, // 1 is default type for slash commands
+        options: cmd.options,
       }))
     ),
   });

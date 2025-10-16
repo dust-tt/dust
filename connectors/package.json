@@ -15,7 +15,8 @@
     "cli": "npx tsx src/admin/cli.ts",
     "initdb": "./admin/init_db.sh",
     "create-db-migration": "./create_db_migration_file.sh",
-    "teams:create-app": "tsx ./scripts/create-teams-app.ts"
+    "teams:create-app": "tsx ./scripts/create-teams-app.ts",
+    "discord:register-commands": "tsx ./scripts/register-discord-commands.ts"
   },
   "dependencies": {
     "@dust-tt/client": "file:../sdks/js",
