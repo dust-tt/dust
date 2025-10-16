@@ -41,7 +41,7 @@ const {
 });
 
 const { drainDocumentUpsertQueue } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "20 seconds",
+  startToCloseTimeout: "1 minute",
 });
 
 const {
