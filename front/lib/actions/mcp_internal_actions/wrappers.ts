@@ -98,15 +98,13 @@ export function withToolLogging<T>(
         ]);
       }
 
-      // If the error is tracked, then we want to surface it with `logger.error`, otherwise just a warning, so we don't loose them if needed
-      const logFunction = result.error.tracked ? logger.error : logger.warn;
-      logFunction(
-        {
-          error: result.error,
-          ...loggerArgs,
-        },
-        "Tool execution error"
-      );
+      // If the error is tracked, then we want to surface it with `logger.error`, otherwise just a warning, so we don't lose them if needed
+      const logContext = { error: result.error, ...loggerArgs };
+      if (result.error.tracked && !skipAlerting) {
+        logger.error(logContext, "Tool execution error");
+      } else {
+        logger.warn(logContext, "Tool execution warning");
+      }
 
       return {
         isError: true,

@@ -1073,7 +1073,9 @@ The directive should be used to display a clickable version of the agent name in
     },
     isPreview: false,
     tools_stakes: {
-      search_files: "never_ask",
+      search_in_files: "never_ask",
+      search_drive_items: "never_ask",
+      get_file_content: "never_ask",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,

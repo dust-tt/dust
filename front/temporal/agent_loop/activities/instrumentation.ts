@@ -61,12 +61,6 @@ interface CompletionEventData extends BaseEventData {
   syncStartTime: number;
 }
 
-interface TimeoutEventData extends BaseEventData {
-  currentStep: number;
-  phaseDurationMs: number;
-  stepsCompleted: number;
-}
-
 interface StepStartEventData extends BaseEventData {
   step: number;
 }
@@ -144,36 +138,6 @@ export async function logAgentLoopPhaseCompletionActivity({
 
   statsDClient.increment(METRICS.LOOP_COMPLETIONS, 1);
   statsDClient.distribution(METRICS.LOOP_DURATION, totalDurationMs);
-}
-
-// Logs phase timeout when sync execution switches to async due to timeout.
-export function logAgentLoopPhaseTimeout({
-  authType,
-  eventData,
-}: {
-  authType: AuthenticatorType;
-  eventData: TimeoutEventData;
-}): void {
-  const baseLogData = createBaseLogData(authType, eventData);
-
-  logger.info(
-    {
-      ...baseLogData,
-      currentStep: eventData.currentStep,
-      phaseDurationMs: eventData.phaseDurationMs,
-      stepsCompleted: eventData.stepsCompleted,
-    },
-    "Agent loop sync timeout - switching to async"
-  );
-
-  logAgentLoopPhaseCompletion(eventData);
-
-  statsDClient.increment(METRICS.PHASE_SYNC_TIMEOUTS);
-  statsDClient.distribution(
-    METRICS.PHASE_TIMEOUT_DURATION,
-    eventData.phaseDurationMs
-  );
-  statsDClient.histogram(METRICS.PHASE_TIMEOUT_STEPS, eventData.currentStep);
 }
 
 /**

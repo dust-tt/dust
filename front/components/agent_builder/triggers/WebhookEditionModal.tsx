@@ -80,7 +80,7 @@ export function WebhookEditionModal({
       webhookSourceViewSId: "",
       event: undefined,
       filter: "",
-      includePayload: false,
+      includePayload: true,
     }),
     []
   );
@@ -209,6 +209,8 @@ export function WebhookEditionModal({
   }, [defaultValues, form, isOpen, trigger]);
 
   const handleClose = () => {
+    // Reset natural description to clear the filter generation status
+    setNaturalDescription("");
     form.reset(defaultValues);
     onClose();
   };
@@ -255,17 +257,19 @@ export function WebhookEditionModal({
     handleClose();
   };
 
+  const formFilter = form.getValues("filter");
+
   const filterGenerationResult = useMemo(() => {
     switch (filterGenerationStatus) {
       case "idle":
-        if (generatedFilter) {
+        if (formFilter) {
           return (
             <CollapsibleComponent
               rootProps={{ defaultOpen: true }}
               triggerChildren={
-                <Label className="cursor-pointer">Generated filter</Label>
+                <Label className="cursor-pointer">Current filter</Label>
               }
-              contentChildren={<TriggerFilterRenderer data={generatedFilter} />}
+              contentChildren={<TriggerFilterRenderer data={formFilter} />}
             />
           );
         }
@@ -289,7 +293,7 @@ export function WebhookEditionModal({
       default:
         return null;
     }
-  }, [filterGenerationStatus, filterErrorMessage, generatedFilter]);
+  }, [filterGenerationStatus, filterErrorMessage, formFilter]);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -434,11 +438,11 @@ export function WebhookEditionModal({
               {selectedPreset && availableEvents.length > 0 && (
                 <div className="space-y-1">
                   <Label htmlFor="trigger-filter-description">
-                    Filter Description
+                    Filter Description (optional)
                   </Label>
                   <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     Describe in natural language the conditions under which the
-                    agent should trigger.
+                    agent should trigger. Will always trigger if left empty.
                   </p>
                   <TextArea
                     id="trigger-filter-description"
