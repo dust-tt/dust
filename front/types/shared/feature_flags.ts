@@ -195,6 +195,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Microsoft Drive MCP server",
     stage: "dust_only",
   },
+  microsoft_teams_mcp_server: {
+    description: "Microsoft Teams MCP server",
+    stage: "dust_only",
+  },
   agent_builder_observability: {
     description:
       "Observability tab in the Agent Builder (charts powered by Elasticsearch)",
@@ -208,6 +212,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
+  },
+  dust_default_haiku_feature: {
+    description:
+      "Use Claude 4.5 Haiku as the default model for the @dust global agent",
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

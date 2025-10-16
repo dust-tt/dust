@@ -32,13 +32,14 @@ function getKeyPrefix(key: string): string {
   return segments.length > 1 ? segments[0] : "";
 }
 
-function groupKeysByPrefix(
-  items:
-    | MCPServerRequirements["requiredNumbers"]
+function groupKeysByPrefix<
+  T extends (
     | MCPServerRequirements["requiredStrings"]
+    | MCPServerRequirements["requiredNumbers"]
     | MCPServerRequirements["requiredBooleans"]
-): Record<string, { key: string; description?: string }[]> {
-  const groups: Record<string, { key: string; description?: string }[]> = {};
+  )[number],
+>(items: T[]): Record<string, T[]> {
+  const groups: Record<string, T[]> = {};
 
   items.forEach((item) => {
     const prefix = getKeyPrefix(item.key);
@@ -559,20 +560,8 @@ export function AdditionalConfigurationSection({
     [filteredBooleanConfigurations]
   );
   const groupedEnums = useMemo(() => {
-    const groups: Record<
-      string,
-      Record<
-        string,
-        {
-          options: {
-            value: string;
-            label: string;
-            description?: string;
-          }[];
-          description?: string;
-        }
-      >
-    > = {};
+    const groups: Record<string, MCPServerRequirements["requiredEnums"]> = {};
+
     Object.entries(requiredEnums).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {
@@ -580,24 +569,13 @@ export function AdditionalConfigurationSection({
       }
       groups[prefix][key] = values;
     });
+
     return groups;
   }, [requiredEnums]);
 
   const groupedLists = useMemo(() => {
-    const groups: Record<
-      string,
-      Record<
-        string,
-        {
-          options: {
-            value: string;
-            label: string;
-            description?: string;
-          }[];
-          description?: string;
-        }
-      >
-    > = {};
+    const groups: Record<string, MCPServerRequirements["requiredLists"]> = {};
+
     Object.entries(requiredLists).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {
@@ -605,6 +583,7 @@ export function AdditionalConfigurationSection({
       }
       groups[prefix][key] = values;
     });
+
     return groups;
   }, [requiredLists]);
 

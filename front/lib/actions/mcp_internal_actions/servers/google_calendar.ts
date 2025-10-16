@@ -124,7 +124,6 @@ function createServer(
       {
         toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ pageToken, maxResults }, { authInfo }) => {
         const calendar = await getCalendarClient(authInfo);
@@ -184,7 +183,6 @@ function createServer(
       {
         toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async (
         { calendarId = "primary", q, timeMin, timeMax, maxResults, pageToken },
@@ -269,7 +267,6 @@ function createServer(
       {
         toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ calendarId = "primary", eventId }, { authInfo }) => {
         const calendar = await getCalendarClient(authInfo);
@@ -333,7 +330,6 @@ function createServer(
       {
         toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async (
         {
@@ -437,7 +433,6 @@ function createServer(
       {
         toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async (
         {
@@ -534,7 +529,6 @@ function createServer(
       {
         toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ calendarId = "primary", eventId }, { authInfo }) => {
         const calendar = await getCalendarClient(authInfo);
@@ -587,7 +581,6 @@ function createServer(
       {
         toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ email, startTime, endTime, timeZone }, { authInfo }) => {
         const calendar = await getCalendarClient(authInfo);
@@ -667,7 +660,6 @@ function createServer(
       {
         toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ emails }, { authInfo }) => {
         const calendar = await getCalendarClient(authInfo);

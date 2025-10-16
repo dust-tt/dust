@@ -85,6 +85,11 @@ const config = {
         permanent: true,
       },
       {
+        source: "/poke/:wId/conversations/:cId",
+        destination: "/poke/:wId/conversation/:cId",
+        permanent: true,
+      },
+      {
         source: "/contact",
         destination: "/home/contact",
         permanent: true,

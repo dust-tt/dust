@@ -181,7 +181,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
     default:
       console.log(`Unknown workspace command: ${command}`);
       console.log(
-        "Possible values: `find`, `create`, `set-limits`, `upgrade`, `downgrade`"
+        "Possible values: `create`, `upgrade`, `downgrade`, `pause-connectors`, `unpause-connectors`"
       );
   }
 };

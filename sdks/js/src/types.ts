@@ -670,6 +670,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_transcripts"
   | "microsoft_teams_bot"
   | "microsoft_drive_mcp_server"
+  | "microsoft_teams_mcp_server"
   | "monday_tool"
   | "notion_private_integration"
   | "openai_o1_custom_assistants_feature"
@@ -694,6 +695,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "elevenlabs_tool"
   | "agent_builder_observability"
   | "legacy_dust_apps"
+  | "dust_default_haiku_feature"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1259,7 +1261,7 @@ export function isMCPServerPersonalAuthRequiredError(
   return (
     error.code === "mcp_server_personal_authentication_required" &&
     error.metadata &&
-    "mcpServerId" in error.metadata
+    "mcp_server_id" in error.metadata
   );
 }
 

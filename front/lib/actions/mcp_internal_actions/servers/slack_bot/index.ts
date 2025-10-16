@@ -57,7 +57,6 @@ async function createServer(
       {
         toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ to, message, threadTs, fileId }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -100,7 +99,6 @@ async function createServer(
       {
         toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -132,7 +130,6 @@ async function createServer(
       {
         toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ userId }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -165,7 +162,6 @@ async function createServer(
       {
         toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -217,7 +213,6 @@ async function createServer(
       {
         toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ channel, limit = 20, cursor, oldest, latest }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -300,7 +295,6 @@ async function createServer(
       {
         toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async (
         { channel, threadTs, limit = 20, cursor, oldest, latest },
@@ -386,7 +380,6 @@ async function createServer(
       {
         toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ channel, timestamp, name }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -444,7 +437,6 @@ async function createServer(
       {
         toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ channel, timestamp, name }, { authInfo }) => {
         const accessToken = authInfo?.token;

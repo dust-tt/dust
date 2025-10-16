@@ -2,24 +2,10 @@ import type { LightAgentConfigurationType } from "@dust-tt/client";
 import type { AdaptiveCard } from "@microsoft/teams-ai";
 import type { Activity } from "botbuilder";
 
-import { apiConfig } from "@connectors/lib/api/config";
+import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 
 const DUST_URL = "https://dust.tt/home";
 const TEAMS_HELP_URL = "https://docs.dust.tt/docs/teams";
-
-export function makeDustAppUrl(path: string) {
-  return `${apiConfig.getDustFrontAPIUrl()}${path}`;
-}
-
-export function makeConversationUrl(
-  workspaceId?: string,
-  conversationId?: string | null
-) {
-  if (workspaceId && conversationId) {
-    return makeDustAppUrl(`/w/${workspaceId}/assistant/${conversationId}`);
-  }
-  return null;
-}
 
 /**
  * Creates an Adaptive Card for Teams with the AI response, conversation link, and agent selector

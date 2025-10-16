@@ -25,11 +25,11 @@ export function withToolLogging<T>(
   {
     toolNameForMonitoring,
     agentLoopContext,
-    skipAlerting = false,
+    enableAlerting = false,
   }: {
     toolNameForMonitoring: string;
-    agentLoopContext?: AgentLoopContextType;
-    skipAlerting?: boolean;
+    agentLoopContext: AgentLoopContextType | undefined;
+    enableAlerting?: boolean;
   },
   toolCallback: (
     params: T,
@@ -82,7 +82,7 @@ export function withToolLogging<T>(
       `workspace_plan_code:${auth.plan()?.code ?? null}`,
     ];
 
-    if (!skipAlerting) {
+    if (enableAlerting) {
       statsDClient.increment("use_tools.count", 1, tags);
     }
     const startTime = performance.now();
@@ -91,22 +91,19 @@ export function withToolLogging<T>(
 
     // When we get an Err, we monitor it if tracked and return it as a text content.
     if (result.isErr()) {
-      if (result.error.tracked && !skipAlerting) {
+      if (enableAlerting && result.error.tracked) {
         statsDClient.increment("use_tools_error.count", 1, [
           "error_type:run_error",
           ...tags,
         ]);
       }
 
-      // If the error is tracked, then we want to surface it with `logger.error`, otherwise just a warning, so we don't loose them if needed
-      const logFunction = result.error.tracked ? logger.error : logger.warn;
-      logFunction(
-        {
-          error: result.error,
-          ...loggerArgs,
-        },
-        "Tool execution error"
-      );
+      const logContext = { ...loggerArgs, error: result.error };
+      if (result.error.tracked) {
+        logger.error(logContext, "Tool execution error");
+      } else {
+        logger.warn(logContext, "Tool execution error");
+      }
 
       return {
         isError: true,
@@ -120,7 +117,7 @@ export function withToolLogging<T>(
     }
 
     const elapsed = performance.now() - startTime;
-    if (!skipAlerting) {
+    if (enableAlerting) {
       statsDClient.distribution(
         "run_tool.duration.distribution",
         elapsed,

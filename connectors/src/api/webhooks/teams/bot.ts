@@ -1,31 +1,27 @@
 import type {
   ConversationPublicType,
-  LightAgentConfigurationType,
   Result,
   UserMessageType,
 } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
 import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
-import jaroWinkler from "talisman/metrics/jaro-winkler";
 
-import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
 import { apiConfig } from "@connectors/lib/api/config";
+import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
+import { processMessageForMention } from "@connectors/lib/bot/mentions";
 import { MicrosoftBotMessage } from "@connectors/lib/models/microsoft_bot";
+import { getActionName } from "@connectors/lib/tools_utils";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { getHeaderFromUserEmail } from "@connectors/types";
 
-const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
-
-import { getActionName } from "@connectors/lib/tools_utils";
-
 import {
   createResponseAdaptiveCard,
   createStreamingAdaptiveCard,
-  makeConversationUrl,
 } from "./adaptive_cards";
 import { sendActivity, updateActivity } from "./bot_messaging_utils";
+import { validateTeamsUser } from "./user_validation";
 
 export async function botAnswerMessage(
   context: TurnContext,
@@ -35,16 +31,22 @@ export async function botAnswerMessage(
 ): Promise<Result<undefined, Error>> {
   const {
     conversation: { id: conversationId },
-    from: { aadObjectId: userAadObjectId },
     id: userActivityId,
     replyToId,
   } = context.activity;
 
-  if (!userActivityId || !userAadObjectId) {
-    return new Err(
-      new Error("No user activity ID or user AAD object ID found")
-    );
+  if (!userActivityId) {
+    return new Err(new Error("No user activity ID found"));
   }
+
+  // Validate user first - this will handle all user validation and error messaging
+  const validatedUser = await validateTeamsUser(context, connector);
+  if (!validatedUser) {
+    // Error message already sent by validateTeamsUser
+    return new Ok(undefined);
+  }
+
+  const { email, displayName, userAadObjectId } = validatedUser;
 
   // Check for existing Dust conversation for this Teams conversation
   const allMicrosoftBotMessages = await MicrosoftBotMessage.findAll({
@@ -58,15 +60,6 @@ export async function botAnswerMessage(
   // Find the most recent message that has a Dust conversation ID
   const lastMicrosoftBotMessage =
     allMicrosoftBotMessages.find((msg) => msg.dustConversationId) || null;
-
-  // Get Microsoft Graph client
-  const client = await getMicrosoftClient(connector.connectionId);
-
-  // Get user info from Microsoft Graph
-  const userInfo = await client.api(`/users/${userAadObjectId}`).get();
-
-  const displayName = userInfo?.displayName || "Unknown User";
-  const email = userInfo?.mail;
 
   const dustAPI = new DustAPI(
     { url: apiConfig.getDustFrontAPIUrl() },
@@ -93,89 +86,18 @@ export async function botAnswerMessage(
   // Teams mentions come in a different format than Slack
   const messageWithoutMarkdown = removeMarkdown(message);
 
-  let mention: { assistantName: string; assistantId: string } | undefined;
-
   // Extract all @mentions, ~mentions and +mentions (Teams typically uses @)
-  const mentionCandidates =
-    messageWithoutMarkdown.match(
-      /(?<!\S)[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/g
-    ) || [];
+  const mentionResult = processMessageForMention({
+    message: messageWithoutMarkdown,
+    activeAgentConfigurations,
+  });
 
-  if (mentionCandidates.length > 1) {
-    return new Err(
-      new Error("Only one agent at a time can be called through Teams.")
-    );
+  if (mentionResult.isErr()) {
+    return new Err(mentionResult.error);
   }
 
-  const [mentionCandidate] = mentionCandidates;
-  if (mentionCandidate) {
-    let bestCandidate:
-      | {
-          assistantId: string;
-          assistantName: string;
-          distance: number;
-        }
-      | undefined = undefined;
-
-    for (const agentConfiguration of activeAgentConfigurations) {
-      const distance =
-        1 -
-        jaroWinkler(
-          mentionCandidate.slice(1).toLowerCase(),
-          agentConfiguration.name.toLowerCase()
-        );
-
-      if (bestCandidate === undefined || bestCandidate.distance > distance) {
-        bestCandidate = {
-          assistantId: agentConfiguration.sId,
-          assistantName: agentConfiguration.name,
-          distance: distance,
-        };
-      }
-    }
-
-    if (bestCandidate) {
-      mention = {
-        assistantId: bestCandidate.assistantId,
-        assistantName: bestCandidate.assistantName,
-      };
-      message = message.replace(
-        mentionCandidate,
-        `:mention[${bestCandidate.assistantName}]{sId=${bestCandidate.assistantId}}`
-      );
-    } else {
-      return new Err(
-        new Error(`Assistant ${mentionCandidate} has not been found.`)
-      );
-    }
-  }
-
-  if (!mention) {
-    // Use default agent if no mention found
-    let defaultAssistant: LightAgentConfigurationType | undefined = undefined;
-    for (const agent of DEFAULT_AGENTS) {
-      defaultAssistant = activeAgentConfigurations.find(
-        (ac) => ac.sId === agent && ac.status === "active"
-      );
-      if (defaultAssistant) {
-        break;
-      }
-    }
-    if (!defaultAssistant) {
-      return new Err(
-        new Error("No agent has been configured to reply on Teams.")
-      );
-    }
-    mention = {
-      assistantId: defaultAssistant.sId,
-      assistantName: defaultAssistant.name,
-    };
-  }
-
-  if (!message.includes(":mention")) {
-    // if the message does not contain the mention, we add it as a prefix.
-    message = `:mention[${mention.assistantName}]{sId=${mention.assistantId}} ${message}`;
-  }
+  const mention = mentionResult.value.mention;
+  message = mentionResult.value.processedMessage;
 
   const messageReqBody = {
     content: message,
