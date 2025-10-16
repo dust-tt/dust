@@ -24,6 +24,7 @@ import {
   OBSERVABILITY_TIME_RANGE,
   USAGE_METRICS_LEGEND,
   USAGE_METRICS_PALETTE,
+  VERSION_MARKER_STYLE,
 } from "@app/components/agent_builder/observability/constants";
 import { useAgentUsageMetrics } from "@app/lib/swr/assistants";
 
@@ -181,19 +182,24 @@ export function UsageMetricsChart({
                 className={USAGE_METRICS_PALETTE[key]}
               />
             ))}
-            {versionMarkers.map((marker) => (
+            {versionMarkers.map((marker, index) => (
               <ReferenceLine
-                key={marker.version}
+                key={`${marker.version}-${marker.timestamp}`}
                 x={marker.timestamp}
-                stroke="hsl(var(--warning))"
-                strokeWidth={2}
-                strokeDasharray="3 3"
+                stroke={VERSION_MARKER_STYLE.stroke}
+                strokeWidth={VERSION_MARKER_STYLE.strokeWidth}
+                strokeDasharray={VERSION_MARKER_STYLE.strokeDasharray}
+                ifOverflow="extendDomain"
               >
                 <Label
                   value={`v${marker.version}`}
                   position="top"
-                  className="fill-warning text-xs"
-                  offset={10}
+                  fill={VERSION_MARKER_STYLE.stroke}
+                  fontSize={VERSION_MARKER_STYLE.labelFontSize}
+                  offset={
+                    VERSION_MARKER_STYLE.labelOffsetBase +
+                    index * VERSION_MARKER_STYLE.labelOffsetIncrement
+                  }
                 />
               </ReferenceLine>
             ))}

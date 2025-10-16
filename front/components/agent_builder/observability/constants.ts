@@ -19,3 +19,12 @@ export const USAGE_METRICS_LEGEND = [
 ] as const;
 
 export const CHART_HEIGHT = 260;
+
+export const VERSION_MARKER_STYLE = {
+  stroke: "#f59e0b",
+  strokeWidth: 2,
+  strokeDasharray: "5 5",
+  labelFontSize: 12,
+  labelOffsetBase: 10,
+  labelOffsetIncrement: 15,
+} as const;
