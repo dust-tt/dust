@@ -10,7 +10,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isArrayEqual2DUnordered, normalizeArrays } from "@app/lib/utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { ModelId } from "@app/types";
+import type { LightAgentConfigurationType, ModelId } from "@app/types";
 
 async function updateConversationRequestedGroupIds(
   workspaceId: string,
@@ -106,11 +106,59 @@ async function updateConversationRequestedGroupIds(
         variant: "light",
       });
 
+      logger.debug(
+        {
+          conversationId: conversation.sId,
+          requestedAgents: Array.from(agentConfigurationIds),
+          foundAgents: agents.map((a: LightAgentConfigurationType) => a.sId),
+          foundCount: agents.length,
+          requestedCount: agentConfigurationIds.size,
+        },
+        "Fetched agents for conversation"
+      );
+
+      if (agents.length === 0) {
+        logger.warn(
+          {
+            conversationId: conversation.sId,
+            conversationTitle: conversation.title,
+            agentConfigurationIds: Array.from(agentConfigurationIds),
+          },
+          "No agents returned (permission filtered?), skipping"
+        );
+        errorCount++;
+        continue;
+      }
+
+      if (agents.length < agentConfigurationIds.size) {
+        logger.warn(
+          {
+            conversationId: conversation.sId,
+            requestedAgents: Array.from(agentConfigurationIds),
+            foundAgents: agents.map((a: LightAgentConfigurationType) => a.sId),
+            missing: agentConfigurationIds.size - agents.length,
+          },
+          "Some agents were filtered out (permission issue?), continuing with available agents"
+        );
+      }
+
       // Calculate new requestedGroupIds from agents
       // Note: This follows the same logic as updateConversationRequestedGroupIds
       // but recalculates from scratch instead of being additive
       const agentRequirements: string[][] = agents.flatMap(
-        (agent) => agent.requestedGroupIds
+        (agent: LightAgentConfigurationType) => agent.requestedGroupIds
+      );
+
+      logger.debug(
+        {
+          conversationId: conversation.sId,
+          agentRequirements,
+          agentsWithGroupIds: agents.map((a: LightAgentConfigurationType) => ({
+            sId: a.sId,
+            requestedGroupIds: a.requestedGroupIds,
+          })),
+        },
+        "Agent requirements extracted"
       );
 
       // Remove duplicates and sort each requirement
