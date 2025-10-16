@@ -31,7 +31,7 @@ function createServer(
   const owner = auth.getNonNullableWorkspace();
 
   server.tool(
-    "handoff_deep_dive",
+    "handoff",
     `Launch a handoff to the :mention[${DEEP_DIVE_NAME}]{sId=${GLOBAL_AGENTS_SID.DEEP_DIVE}} agent`,
     {},
     withToolLogging(
