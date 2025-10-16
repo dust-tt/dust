@@ -16,7 +16,7 @@ const specifications = [
         suggestion: {
           type: "string",
           description:
-            "A description of the assistant using 1 short sentence. Be factual, clear and concise. " +
+            "A description of the agent using 1 short sentence. Be factual, clear and concise. " +
             "Do not use more than 15 words.",
         },
       },
