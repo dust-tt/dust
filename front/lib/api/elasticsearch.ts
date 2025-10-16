@@ -42,6 +42,7 @@ function getClient(): Client {
   esClient = new Client({
     node: url,
     auth: { username, password },
+    tls: { rejectUnauthorized: false },
   });
   return esClient;
 }
