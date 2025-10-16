@@ -47,9 +47,11 @@ export async function runAgentLoopWorker() {
     // See https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling
     maxHeartbeatThrottleInterval: "20 seconds",
     interceptors: {
-      activityInbound: [
+      activity: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return {
+            inbound: new ActivityInboundLogInterceptor(ctx, logger),
+          };
         },
       ],
     },
