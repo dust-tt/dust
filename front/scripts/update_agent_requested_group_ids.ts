@@ -2,6 +2,7 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isArrayEqual2DUnordered, normalizeArrays } from "@app/lib/utils";
 import type { Logger } from "@app/logger/logger";
@@ -85,10 +86,24 @@ async function updateAgentRequestedGroupIds(
           actions: agentConfiguration.actions,
         });
 
+      // Convert current requestedGroupIds from string[][] (sIds) to number[][] (modelIds)
+      const currentRequestedGroupIds = agentConfiguration.requestedGroupIds.map(
+        (groupArray) =>
+          groupArray.map((groupSId) => {
+            const modelId = getResourceIdFromSId(groupSId);
+            if (modelId === null) {
+              throw new Error(
+                `Invalid group sId: ${groupSId} for agent ${agent.sId}`
+              );
+            }
+            return modelId;
+          })
+      );
+
       // Normalize the arrays for comparison
       const normalizedNewGroupIds = normalizeArrays(newRequestedGroupIds);
       const normalizedCurrentGroupIds = normalizeArrays(
-        agentConfiguration.requestedGroupIds
+        currentRequestedGroupIds
       );
 
       // Check if the group IDs have changed
