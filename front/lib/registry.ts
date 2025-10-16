@@ -30,20 +30,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "assistant-v2-title-generator": {
-    app: {
-      appId: "84dfc1d4f7",
-      appHash:
-        "6ea231add2ae690ee959c5d8d5d06420ea2feae7dd32ac13a4e655910087e313",
-    },
-    config: {
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "update_title",
-        use_cache: false,
-      },
-    },
-  },
   "assistant-v2-retrieval": {
     app: {
       appId: "471b6aa923",
