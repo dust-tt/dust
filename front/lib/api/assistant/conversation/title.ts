@@ -1,16 +1,23 @@
-import { runActionStreamed } from "@app/lib/actions/server";
+import { z } from "zod";
+
+import { callLLM } from "@app/lib/api/assistant/call_llm";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import type { ConversationType, Result } from "@app/types";
+import type {
+  ConversationType,
+  ModelIdType,
+  ModelProviderIdType,
+  Result,
+} from "@app/types";
 import {
   ConversationError,
   Err,
   getLargeNonAnthropicWhitelistedModel,
+  GPT_4O_MINI_MODEL_ID,
   Ok,
 } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -42,7 +49,6 @@ export async function ensureConversationTitle(
   }
   const auth = await Authenticator.fromJSON(authType);
 
-  // TODO(DURABLE-AGENTS 2025-07-15): Add back the agent message before generating the title.
   const titleRes = await generateConversationTitle(auth, {
     ...conversation,
     content: [...conversation.content, [userMessage]],
@@ -76,6 +82,28 @@ export async function ensureConversationTitle(
 
   return title;
 }
+
+const PROVIDER_ID: ModelProviderIdType = "openai";
+const MODEL_ID: ModelIdType = GPT_4O_MINI_MODEL_ID;
+
+const FUNCTION_NAME = "update_title";
+
+const specifications = [
+  {
+    name: FUNCTION_NAME,
+    description: "Update the title of the conversation",
+    inputSchema: {
+      type: "object",
+      properties: {
+        conversation_title: {
+          type: "string",
+          description: "A short title that summarizes the conversation.",
+        },
+      },
+      required: ["conversation_title"],
+    },
+  },
+];
 
 async function generateConversationTitle(
   auth: Authenticator,
@@ -117,71 +145,32 @@ async function generateConversationTitle(
     );
   }
 
-  // Note: the last message is generally not a user message (though it can happen if no agent were
-  // mentioned) which, without stitching, will cause the title generation to fail since models
-  // expect a user message to be the last message. The stitching is done in the
-  // `assistant-v2-title-generator` app.
-  const config = cloneBaseConfig(
-    getDustProdAction("assistant-v2-title-generator").config
-  );
-  config.MODEL.provider_id = model.providerId;
-  config.MODEL.model_id = model.modelId;
-
-  const res = await runActionStreamed(
+  const res = await callLLM(
     auth,
-    "assistant-v2-title-generator",
-    config,
-    [
-      {
-        conversation: conv,
-      },
-    ],
     {
-      conversationId: conversation.sId,
-      workspaceId: conversation.owner.sId,
+      providerId: PROVIDER_ID,
+      modelId: MODEL_ID,
+      functionCall: FUNCTION_NAME,
+      useCache: false,
+    },
+    {
+      conversation: conv,
+      prompt:
+        "Generate a concise conversation title (3-8 words) based on the user's message and context. " +
+        "The title should capture the main topic or request without being too generic.",
+      specifications,
     }
   );
 
   if (res.isErr()) {
-    return new Err(
-      new Error(`Error generating conversation title: ${res.error}`)
-    );
+    return new Err(res.error);
   }
 
-  const { eventStream } = res.value;
-  let title: string | null = null;
-
-  for await (const event of eventStream) {
-    if (event.type === "error") {
-      return new Err(
-        new Error(
-          `Error generating conversation title: ${event.content.message}`
-        )
-      );
-    }
-
-    if (event.type === "block_execution") {
-      const e = event.content.execution[0][0];
-      if (e.error) {
-        return new Err(
-          new Error(`Error generating conversation title: ${e.error}`)
-        );
-      }
-
-      if (event.content.block_name === "OUTPUT" && e.value) {
-        const v = e.value as any;
-        if (v.conversation_title) {
-          title = v.conversation_title;
-        }
-      }
-    }
+  // Extract title from function call result.
+  if (res.value.actions?.[0]?.arguments?.conversation_title) {
+    const title = res.value.actions[0].arguments.conversation_title;
+    return new Ok(title);
   }
 
-  if (title === null) {
-    return new Err(
-      new Error("Error generating conversation title: malformed output")
-    );
-  }
-
-  return new Ok(title);
+  return new Err(new Error("No title found in LLM response"));
 }
