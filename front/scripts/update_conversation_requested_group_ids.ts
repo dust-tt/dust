@@ -1,16 +1,17 @@
 import isEqual from "lodash/isEqual";
 import sortBy from "lodash/sortBy";
+import { Op } from "sequelize";
 
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { Authenticator } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { ConversationModel } from "@app/lib/models/assistant/conversation";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isArrayEqual2DUnordered, normalizeArrays } from "@app/lib/utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { LightAgentConfigurationType, ModelId } from "@app/types";
+import type { ModelId } from "@app/types";
 
 async function updateConversationRequestedGroupIds(
   workspaceId: string,
@@ -25,8 +26,6 @@ async function updateConversationRequestedGroupIds(
   if (!workspace) {
     throw new Error(`Workspace not found: ${workspaceId}`);
   }
-
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   logger.info(
     {
@@ -63,7 +62,7 @@ async function updateConversationRequestedGroupIds(
 
   for (const conversation of conversations) {
     try {
-      // Get all agent messages in this conversation
+      // Get all agent messages in this conversation with their versions
       const messages = await Message.findAll({
         where: {
           conversationId: conversation.id,
@@ -75,20 +74,27 @@ async function updateConversationRequestedGroupIds(
             model: AgentMessage,
             as: "agentMessage",
             required: true,
-            attributes: ["agentConfigurationId"],
+            attributes: ["agentConfigurationId", "agentConfigurationVersion"],
           },
         ],
       });
 
-      // Extract unique agent IDs
-      const agentConfigurationIds = new Set<string>();
+      // Extract unique (agentConfigurationId, version) pairs
+      const agentVersionPairs = new Map<
+        string,
+        { sId: string; version: number }
+      >();
       for (const message of messages) {
         if (message.agentMessage) {
-          agentConfigurationIds.add(message.agentMessage.agentConfigurationId);
+          const key = `${message.agentMessage.agentConfigurationId}-${message.agentMessage.agentConfigurationVersion}`;
+          agentVersionPairs.set(key, {
+            sId: message.agentMessage.agentConfigurationId,
+            version: message.agentMessage.agentConfigurationVersion,
+          });
         }
       }
 
-      if (agentConfigurationIds.size === 0) {
+      if (agentVersionPairs.size === 0) {
         logger.debug(
           {
             conversationId: conversation.sId,
@@ -100,19 +106,25 @@ async function updateConversationRequestedGroupIds(
         continue;
       }
 
-      // Get all mentioned agents with their requestedGroupIds
-      const agents = await getAgentConfigurations(auth, {
-        agentIds: Array.from(agentConfigurationIds),
-        variant: "light",
+      // Get the exact agent versions that were used in the conversation
+      // We fetch directly from the database to bypass permission filtering
+      const agents = await AgentConfiguration.findAll({
+        where: {
+          workspaceId: workspace.id,
+          [Op.or]: Array.from(agentVersionPairs.values()).map((v) => ({
+            sId: v.sId,
+            version: v.version,
+          })),
+        },
       });
 
       logger.debug(
         {
           conversationId: conversation.sId,
-          requestedAgents: Array.from(agentConfigurationIds),
-          foundAgents: agents.map((a: LightAgentConfigurationType) => a.sId),
+          requestedAgentVersions: Array.from(agentVersionPairs.values()),
+          foundAgents: agents.map((a) => ({ sId: a.sId, version: a.version })),
           foundCount: agents.length,
-          requestedCount: agentConfigurationIds.size,
+          requestedCount: agentVersionPairs.size,
         },
         "Fetched agents for conversation"
       );
@@ -122,38 +134,48 @@ async function updateConversationRequestedGroupIds(
           {
             conversationId: conversation.sId,
             conversationTitle: conversation.title,
-            agentConfigurationIds: Array.from(agentConfigurationIds),
+            requestedAgentVersions: Array.from(agentVersionPairs.values()),
           },
-          "No agents returned (permission filtered?), skipping"
+          "No agents found in database, skipping"
         );
         errorCount++;
         continue;
       }
 
-      if (agents.length < agentConfigurationIds.size) {
+      if (agents.length < agentVersionPairs.size) {
         logger.warn(
           {
             conversationId: conversation.sId,
-            requestedAgents: Array.from(agentConfigurationIds),
-            foundAgents: agents.map((a: LightAgentConfigurationType) => a.sId),
-            missing: agentConfigurationIds.size - agents.length,
+            requestedAgentVersions: Array.from(agentVersionPairs.values()),
+            foundAgents: agents.map((a) => ({
+              sId: a.sId,
+              version: a.version,
+            })),
+            missing: agentVersionPairs.size - agents.length,
           },
-          "Some agents were filtered out (permission issue?), continuing with available agents"
+          "Some agent versions not found in database"
         );
       }
 
       // Calculate new requestedGroupIds from agents
-      // Note: This follows the same logic as updateConversationRequestedGroupIds
-      // but recalculates from scratch instead of being additive
-      const agentRequirements: string[][] = agents.flatMap(
-        (agent: LightAgentConfigurationType) => agent.requestedGroupIds
+      // Note: Agent.requestedGroupIds in the DB is number[][] (modelIds)
+      // We need to convert to string[][] (sIds) for deduplication, then back to number[][]
+      const agentRequirements: string[][] = agents.flatMap((agent) =>
+        agent.requestedGroupIds.map((groupIds) =>
+          groupIds.map((gId) =>
+            GroupResource.modelIdToSId({
+              id: gId,
+              workspaceId: workspace.id,
+            })
+          )
+        )
       );
 
       logger.debug(
         {
           conversationId: conversation.sId,
           agentRequirements,
-          agentsWithGroupIds: agents.map((a: LightAgentConfigurationType) => ({
+          agentsWithGroupIds: agents.map((a) => ({
             sId: a.sId,
             requestedGroupIds: a.requestedGroupIds,
           })),
