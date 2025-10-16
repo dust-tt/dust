@@ -37,7 +37,6 @@ export default function PlatformPrivacy() {
               "col-span-12 md:col-span-10 md:col-start-2"
             )}
           >
-            <H3 className="text-muted-foreground">Privacy & Compliance</H3>
             <H1
               mono
               className="text-5xl font-medium leading-tight md:text-6xl lg:text-7xl"
@@ -215,8 +214,14 @@ export default function PlatformPrivacy() {
               <div className="rounded-lg bg-muted/50 p-6">
                 <H3 className="mb-3">Unique identifiers</H3>
                 <P size="sm" className="mb-2">
-                  IP address, Cookie IDs, device IDs, as described by our Cookie
-                  Notice
+                  IP address, Cookie IDs, device IDs, as described by our{" "}
+                  <A
+                    variant="primary"
+                    href="https://dust-tt.notion.site/Cookie-Notice-ec63a7fb72104a7babff1bf413e2c1ec?pvs=74"
+                    target="_blank"
+                  >
+                    Cookie Notice
+                  </A>
                 </P>
                 <P size="sm" className="text-muted-foreground">
                   <Strong>Source:</Strong> When you use our Platform (via
