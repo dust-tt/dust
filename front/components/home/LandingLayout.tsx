@@ -248,10 +248,8 @@ const CookieBanner = ({
             reject non-essential cookies
           </button>
           . View our{" "}
-          <A variant="primary">
-            <Link href="https://dust.tt/platform-privacy" target="_blank">
-              Privacy Policy
-            </Link>
+          <A variant="primary" href="/home/platform-privacy">
+            Privacy Policy
           </A>{" "}
           for more information.
         </div>

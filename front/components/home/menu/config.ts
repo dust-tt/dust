@@ -81,8 +81,8 @@ const LegalMenuConfig: MenuConfig = {
     },
     {
       title: "Privacy Policy",
-      href: "/platform-privacy",
-      isExternal: true,
+      href: "/home/platform-privacy",
+      isExternal: false,
     },
     {
       title: "Website Privacy Policy",
@@ -511,8 +511,8 @@ export const menuConfig: DocsConfig = {
         },
         {
           title: "Privacy Policy",
-          href: "/platform-privacy",
-          isExternal: true,
+          href: "/home/platform-privacy",
+          isExternal: false,
         },
         {
           title: "Trust Center",
