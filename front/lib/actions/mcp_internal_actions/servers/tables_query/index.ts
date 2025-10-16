@@ -93,7 +93,7 @@ function verifyDataSourceViewReadAccess(
   const unreadableViews = dataSourceViews.filter((dsv) => !dsv.canRead(auth));
   if (unreadableViews.length > 0) {
     return new MCPError(
-      `Access denied: You do not have read permission for ${unreadableViews.length} data source view(s).`
+      `Access denied: You do not have read permission to all the required documents.`
     );
   }
   return null;
