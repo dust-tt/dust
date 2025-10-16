@@ -207,21 +207,12 @@ export async function searchFunction({
     }
   );
 
-  return new Ok([
-    ...results.map((result) => ({
+  return new Ok(
+    results.map((result) => ({
       type: "resource" as const,
       resource: result,
-    })),
-    {
-      type: "resource" as const,
-      resource: makeQueryResource({
-        query,
-        timeFrame,
-        tagsIn,
-        tagsNot,
-      }),
-    },
-  ]);
+    }))
+  );
 }
 
 function createServer(
