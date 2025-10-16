@@ -134,6 +134,7 @@ function renderSearchNodeIds(nodeIds?: string[]): string {
     : "";
 }
 
+// TODO: should become a pure frontend concern and return a string instead of an MCP resource.
 export function makeQueryResource({
   query,
   timeFrame,

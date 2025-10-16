@@ -55,6 +55,10 @@ import {
   isTextContent,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
+import {
+  isSearchInputType,
+  SearchInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
@@ -124,28 +128,25 @@ export function MCPActionDetails({
     isInternalMCPServerOfName(mcpServerId, "search") ||
     isInternalMCPServerOfName(mcpServerId, "data_sources_file_system")
   ) {
-    if (toolName === SEARCH_TOOL_NAME && isString(params.relativeTimeFrame)) {
-      const timeFrame = parseTimeFrame(params.relativeTimeFrame);
-      // TODO: remove these typecasts
-      const queryResource = makeQueryResource({
-        query: params.query as string,
-        timeFrame: timeFrame,
-        tagsIn: params.tagsIn as string[],
-        tagsNot: params.tagsNot as string[],
-        nodeIds: params.nodeIds as string[],
-      });
-
-      return (
-        <SearchResultDetails
-          viewType={viewType}
-          defaultQuery={queryResource.text}
-          actionName={
-            viewType === "conversation" ? "Searching data" : "Search data"
-          }
-          actionOutput={output}
-          visual={MagnifyingGlassIcon}
-        />
-      );
+    if (toolName === SEARCH_TOOL_NAME) {
+      if (isSearchInputType(params)) {
+        return (
+          <SearchResultDetails
+            viewType={viewType}
+            defaultQuery={
+              makeQueryResource({
+                ...params,
+                timeFrame: parseTimeFrame(params.relativeTimeFrame),
+              }).text
+            }
+            actionName={
+              viewType === "conversation" ? "Searching data" : "Search data"
+            }
+            actionOutput={output}
+            visual={MagnifyingGlassIcon}
+          />
+        );
+      }
     }
 
     if (
