@@ -29,6 +29,11 @@ export interface ProcessMessageForMentionResult {
   processedMessage: string;
 }
 
+// Default mention pattern supports @, ~, and + prefixes (covers all platforms).
+// Only matches at the beginning of the message.
+export const SLACK_BOT_MENTION_PATTERN =
+  /^[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/;
+
 export function processMentions(
   params: ProcessMentionsParams
 ): Result<ProcessMentionsResult, Error> {
@@ -128,8 +133,6 @@ export function processMessageForMention(
 ): Result<ProcessMessageForMentionResult, Error> {
   const { message, activeAgentConfigurations } = params;
 
-  // Default mention pattern supports @, ~, and + prefixes (covers all platforms)
-  const mentionPattern = /(?<!\S)[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/g;
   const defaultAgentIds = ["dust", "claude-4-sonnet", "gpt-5"];
 
   let processedMessage = message;
@@ -139,7 +142,7 @@ export function processMessageForMention(
   const mentionResult = processMentions({
     message,
     activeAgentConfigurations,
-    mentionPattern,
+    mentionPattern: SLACK_BOT_MENTION_PATTERN,
   });
 
   if (mentionResult.isErr()) {

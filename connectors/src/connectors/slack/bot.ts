@@ -54,6 +54,7 @@ import {
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { SLACK_BOT_MENTION_PATTERN } from "@connectors/lib/bot/mentions";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { sectionFullText } from "@connectors/lib/data_sources";
 import { ProviderRateLimitError } from "@connectors/lib/error";
@@ -802,16 +803,11 @@ async function answerMessage(
     }
   }
 
-  // Remove markdown to extract mentions.
-  const messageWithoutMarkdown = removeMarkdown(message);
-
   let mention: { assistantName: string; assistantId: string } | undefined;
 
-  // Extract all ~mentions and +mentions
-  const mentionCandidates =
-    messageWithoutMarkdown.match(
-      /(?<!\S)[+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$)/g
-    ) || [];
+  // Extract all ~mentions and +mentions (only at the beginning of the message).
+  const rawMessage = removeMarkdown(message);
+  const mentionCandidates = rawMessage.match(SLACK_BOT_MENTION_PATTERN) || [];
 
   // First we look at mention override
   // (eg: a mention coming from the Slack agent picker from slack).
