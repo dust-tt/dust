@@ -1,4 +1,5 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
 import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -7,6 +8,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isArrayEqual2DUnordered, normalizeArrays } from "@app/lib/utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import type { AgentConfigurationType } from "@app/types";
 
 async function updateAgentRequestedGroupIds(
   workspaceId: string,
@@ -68,20 +70,58 @@ async function updateAgentRequestedGroupIds(
   for (const agent of agentConfigurations) {
     try {
       // Get the full agent configuration with actions
+      // We bypass getAgentConfigurations to avoid permission filtering
+      // since we're running as an internal admin
       const agentConfigurationList = await getAgentConfigurations(auth, {
         agentIds: [agent.sId],
         variant: "full",
       });
 
-      const agentConfiguration = agentConfigurationList[0];
+      let agentConfiguration: AgentConfigurationType;
 
-      if (!agentConfiguration) {
-        logger.warn(
-          { agentId: agent.sId },
-          "Agent configuration not found, skipping"
+      if (agentConfigurationList.length === 0) {
+        // If not found through API (due to permission filtering), fetch directly from DB
+        logger.info(
+          { agentId: agent.sId, agentName: agent.name },
+          "Agent not returned by API (likely permission filtered), fetching actions directly"
         );
-        errorCount++;
-        continue;
+
+        const agentWithActions = await AgentConfiguration.findOne({
+          where: {
+            workspaceId: workspace.id,
+            sId: agent.sId,
+            version: agent.version,
+          },
+        });
+
+        if (!agentWithActions) {
+          logger.warn(
+            { agentId: agent.sId },
+            "Agent configuration not found in database, skipping"
+          );
+          errorCount++;
+          continue;
+        }
+
+        // For agents fetched directly, we get actions using enrichAgentConfigurations
+        const enriched = await enrichAgentConfigurations(
+          auth,
+          [agentWithActions],
+          { variant: "full" }
+        );
+
+        if (enriched.length === 0 || !enriched[0]) {
+          logger.warn(
+            { agentId: agent.sId },
+            "Failed to enrich agent configuration, skipping"
+          );
+          errorCount++;
+          continue;
+        }
+
+        agentConfiguration = enriched[0] as AgentConfigurationType;
+      } else {
+        agentConfiguration = agentConfigurationList[0];
       }
 
       // Calculate the correct group IDs from actions
