@@ -694,6 +694,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "elevenlabs_tool"
   | "agent_builder_observability"
   | "legacy_dust_apps"
+  | "dust_default_haiku_feature"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

@@ -209,6 +209,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
   },
+  dust_default_haiku_feature: {
+    description:
+      "Use Claude 4.5 Haiku as the default model for the @dust global agent",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

@@ -57,6 +57,7 @@ import type {
   AgentConfigurationType,
   AgentFetchVariant,
   GlobalAgentStatus,
+  WhitelistableFeature,
 } from "@app/types";
 import { isDevelopment } from "@app/types";
 import {
@@ -81,6 +82,7 @@ function getGlobalAgent({
   dataWarehousesMCPServerView,
   slideshowMCPServerView,
   deepDiveMCPServerView,
+  featureFlags,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -97,6 +99,7 @@ function getGlobalAgent({
   dataWarehousesMCPServerView: MCPServerViewResource | null;
   slideshowMCPServerView: MCPServerViewResource | null;
   deepDiveMCPServerView: MCPServerViewResource | null;
+  featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -337,6 +340,7 @@ function getGlobalAgent({
         searchMCPServerView,
         deepDiveMCPServerView,
         interactiveContentMCPServerView,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DEEP_DIVE:
@@ -568,6 +572,7 @@ export async function getGlobalAgents(
       dataWarehousesMCPServerView,
       slideshowMCPServerView,
       deepDiveMCPServerView,
+      featureFlags: flags,
     })
   );
 
