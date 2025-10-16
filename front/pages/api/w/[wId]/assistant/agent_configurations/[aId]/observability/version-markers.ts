@@ -3,8 +3,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { UsageMetricsPoint } from "@app/lib/api/assistant/observability/usage_metrics";
-import { fetchUsageMetrics } from "@app/lib/api/assistant/observability/usage_metrics";
+import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
+import { fetchVersionMarkers } from "@app/lib/api/assistant/observability/version_markers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -14,12 +14,10 @@ const DEFAULT_PERIOD = 30;
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional(),
-  interval: z.enum(["day", "week"]).optional(),
 });
 
-export type GetUsageMetricsResponse = {
-  interval: "day" | "week";
-  points: UsageMetricsPoint[];
+export type GetVersionMarkersResponse = {
+  versionMarkers: AgentVersionMarker[];
 };
 
 function buildAgentAnalyticsBaseQuery(
@@ -40,7 +38,7 @@ function buildAgentAnalyticsBaseQuery(
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetUsageMetricsResponse>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetVersionMarkersResponse>>,
   auth: Authenticator
 ) {
   if (typeof req.query.aId !== "string") {
@@ -92,7 +90,6 @@ async function handler(
       }
 
       const days = q.data.days ?? DEFAULT_PERIOD;
-      const interval = q.data.interval ?? "day";
 
       const owner = auth.getNonNullableWorkspace();
 
@@ -102,22 +99,21 @@ async function handler(
         days
       );
 
-      const usageMetricsResult = await fetchUsageMetrics(baseQuery, interval);
+      const versionMarkersResult = await fetchVersionMarkers(baseQuery);
 
-      if (usageMetricsResult.isErr()) {
-        const e = usageMetricsResult.error;
+      if (versionMarkersResult.isErr()) {
+        const e = versionMarkersResult.error;
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Failed to retrieve usage metrics: ${e.message}`,
+            message: `Failed to retrieve version markers: ${e.message}`,
           },
         });
       }
 
       return res.status(200).json({
-        interval,
-        points: usageMetricsResult.value,
+        versionMarkers: versionMarkersResult.value,
       });
     }
     default:
