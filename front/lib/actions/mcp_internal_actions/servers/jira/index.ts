@@ -567,8 +567,6 @@ function createServer(
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
         agentLoopContext,
-        agentLoopContext,
-        skipAlerting: true,
       },
       async ({ projectKey, issueTypeId }, { authInfo }) => {
         return withAuth({
