@@ -1586,3 +1586,88 @@ export async function deleteDataSourceFolder({
     throw r.error;
   }
 }
+
+/**
+ * Drains the upsert queue for a data source by polling until all pending document upsert
+ * workflows complete.
+ */
+export async function drainDataSourceUpsertQueue({
+  dataSourceConfig,
+  loggerArgs = {},
+  timeoutMs = 600000, // 10 minutes default
+}: {
+  dataSourceConfig: DataSourceConfig;
+  loggerArgs?: Record<string, string | number>;
+  timeoutMs?: number;
+}) {
+  const localLogger = logger.child({
+    ...loggerArgs,
+    dataSourceId: dataSourceConfig.dataSourceId,
+    workspaceId: dataSourceConfig.workspaceId,
+  });
+
+  localLogger.info("Starting to drain upsert queue for data source.");
+
+  const endpoint =
+    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/check_upsert_queue`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+    timeout: 10000, // 10 seconds per request
+  };
+
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeoutMs) {
+    try {
+      const dustRequestResult = await axiosWithTimeout.get(
+        endpoint,
+        dustRequestConfig
+      );
+
+      if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
+        const runningCount = dustRequestResult.data.running_count as number;
+
+        if (runningCount === 0) {
+          const elapsed = Date.now() - startTime;
+          localLogger.info(
+            { elapsed },
+            "Successfully drained upsert queue for data source."
+          );
+          return;
+        }
+
+        localLogger.info(
+          { runningCount },
+          "Waiting for upsert workflows to complete..."
+        );
+
+        // Wait before checking again
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      } else {
+        localLogger.error(
+          {
+            status: dustRequestResult.status,
+          },
+          "Error checking upsert queue for data source."
+        );
+        throw new Error(
+          `Error checking upsert queue: ${dustRequestResult.status}`
+        );
+      }
+    } catch (e) {
+      localLogger.error(
+        { error: e },
+        "Error checking upsert queue for data source."
+      );
+      throw e;
+    }
+  }
+
+  // Timeout reached
+  throw new Error(
+    `Timeout waiting for upsert queue to drain for datasource ${dataSourceConfig.dataSourceId}`
+  );
+}

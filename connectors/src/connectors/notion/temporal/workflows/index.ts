@@ -36,6 +36,7 @@ const {
   getPagesAndDatabasesToSync,
   clearWorkflowCache,
   getDiscoveredResourcesFromCache,
+  drainDocumentUpsertQueue,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
@@ -201,6 +202,11 @@ export async function notionSyncWorkflow({
       }
     } while (discoveredResources && PROCESS_ALL_DISCOVERED_RESOURCES);
   }
+
+  // Drain the upsert queue before updating parents to ensure all document upserts are complete
+  // The sleep is to ensure that any activities that were just scheduled have time to start
+  await sleep(1000);
+  await drainDocumentUpsertQueue({ connectorId });
 
   // Compute parents after all documents are added/updated
   await executeChild(notionUpdateAllParentsFieldsWorkflow, {

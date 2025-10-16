@@ -54,6 +54,7 @@ import {
   deleteDataSourceDocument,
   deleteDataSourceTable,
   deleteDataSourceTableRow,
+  drainDataSourceUpsertQueue,
   ignoreTablesError,
   MAX_DOCUMENT_TXT_LEN,
   MAX_PREFIX_CHARS,
@@ -1302,6 +1303,25 @@ export async function updateParentsFields({
 
   localLogger.info({ nbUpdated, nextCursors }, "Updated parents fields.");
   return nextCursors;
+}
+
+export async function drainDocumentUpsertQueue({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  await drainDataSourceUpsertQueue({
+    dataSourceConfig,
+    loggerArgs: {
+      connectorId,
+    },
+  });
 }
 
 export async function markParentsAsUpdated({
