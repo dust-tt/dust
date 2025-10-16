@@ -144,12 +144,9 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     });
   }
 
-  async updateRemoteWebhookMetadata(
+  async updateRemoteMetadata(
     updates: Partial<
-      Pick<
-        WebhookSourceModel,
-        "remoteWebhookId" | "remoteWebhookData" | "remoteConnectionId"
-      >
+      Pick<WebhookSourceModel, "remoteMetadata" | "oauthConnectionId">
     >,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
@@ -247,9 +244,8 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
       signatureHeader: this.signatureHeader,
       signatureAlgorithm: this.signatureAlgorithm,
       customHeaders: this.customHeaders,
-      remoteWebhookId: this.remoteWebhookId,
-      remoteWebhookData: this.remoteWebhookData,
-      remoteConnectionId: this.remoteConnectionId,
+      remoteMetadata: this.remoteMetadata,
+      oauthConnectionId: this.oauthConnectionId,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
     };

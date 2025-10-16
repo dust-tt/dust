@@ -134,7 +134,7 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
 });
 
 describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
-  it("should successfully update remoteWebhookId", async () => {
+  it("should successfully update remoteMetadata", async () => {
     const { req, res, workspace, authenticator } = await setupTest(
       "admin",
       "PATCH"
@@ -146,7 +146,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     );
     req.query.webhookSourceId = webhookSource.sId();
     req.body = {
-      remoteWebhookId: "remote-webhook-123",
+      remoteMetadata: { id: "remote-webhook-123", repo: "owner/repo" },
     };
 
     await handler(req, res);
@@ -163,45 +163,13 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       authenticator,
       webhookSource.sId()
     );
-    expect(updatedWebhookSource?.remoteWebhookId).toBe("remote-webhook-123");
-  });
-
-  it("should successfully update remoteWebhookData", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
-      "admin",
-      "PATCH"
-    );
-
-    const webhookSource = await createWebhookSource(
-      workspace,
-      "Test Webhook Source"
-    );
-    req.query.webhookSourceId = webhookSource.sId();
-    req.body = {
-      remoteWebhookData: { repo: "owner/repo", hookId: "123" },
-    };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-
-    const responseData = res._getJSONData();
-    expect(responseData).toEqual({
-      success: true,
-    });
-
-    // Verify the webhook source was actually updated
-    const updatedWebhookSource = await WebhookSourceResource.fetchById(
-      authenticator,
-      webhookSource.sId()
-    );
-    expect(updatedWebhookSource?.remoteWebhookData).toEqual({
+    expect(updatedWebhookSource?.remoteMetadata).toEqual({
+      id: "remote-webhook-123",
       repo: "owner/repo",
-      hookId: "123",
     });
   });
 
-  it("should successfully update remoteConnectionId", async () => {
+  it("should successfully update oauthConnectionId", async () => {
     const { req, res, workspace, authenticator } = await setupTest(
       "admin",
       "PATCH"
@@ -213,7 +181,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     );
     req.query.webhookSourceId = webhookSource.sId();
     req.body = {
-      remoteConnectionId: "connection-456",
+      oauthConnectionId: "connection-456",
     };
 
     await handler(req, res);
@@ -230,7 +198,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       authenticator,
       webhookSource.sId()
     );
-    expect(updatedWebhookSource?.remoteConnectionId).toBe("connection-456");
+    expect(updatedWebhookSource?.oauthConnectionId).toBe("connection-456");
   });
 
   it("should successfully update multiple fields at once", async () => {
@@ -245,9 +213,8 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     );
     req.query.webhookSourceId = webhookSource.sId();
     req.body = {
-      remoteWebhookId: "remote-webhook-789",
-      remoteWebhookData: { repo: "org/project", hookId: "789" },
-      remoteConnectionId: "connection-789",
+      remoteMetadata: { id: "remote-webhook-789", repo: "org/project" },
+      oauthConnectionId: "connection-789",
     };
 
     await handler(req, res);
@@ -264,12 +231,11 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       authenticator,
       webhookSource.sId()
     );
-    expect(updatedWebhookSource?.remoteWebhookId).toBe("remote-webhook-789");
-    expect(updatedWebhookSource?.remoteWebhookData).toEqual({
+    expect(updatedWebhookSource?.remoteMetadata).toEqual({
+      id: "remote-webhook-789",
       repo: "org/project",
-      hookId: "789",
     });
-    expect(updatedWebhookSource?.remoteConnectionId).toBe("connection-789");
+    expect(updatedWebhookSource?.oauthConnectionId).toBe("connection-789");
   });
 
   it("should ignore invalid field types and only update valid fields", async () => {
@@ -284,9 +250,8 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     );
     req.query.webhookSourceId = webhookSource.sId();
     req.body = {
-      remoteWebhookId: 12345, // Invalid: should be string
-      remoteWebhookData: "invalid", // Invalid: should be object
-      remoteConnectionId: "valid-connection",
+      remoteMetadata: "invalid", // Invalid: should be object
+      oauthConnectionId: "valid-connection",
     };
 
     await handler(req, res);
@@ -303,9 +268,8 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       authenticator,
       webhookSource.sId()
     );
-    expect(updatedWebhookSource?.remoteWebhookId).toBeNull();
-    expect(updatedWebhookSource?.remoteWebhookData).toBeNull();
-    expect(updatedWebhookSource?.remoteConnectionId).toBe("valid-connection");
+    expect(updatedWebhookSource?.remoteMetadata).toBeNull();
+    expect(updatedWebhookSource?.oauthConnectionId).toBe("valid-connection");
   });
 
   it("should return 200 with empty body (no updates)", async () => {
@@ -335,7 +299,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       workspaceId: workspace.id,
     });
     req.body = {
-      remoteWebhookId: "remote-webhook-123",
+      remoteMetadata: { id: "remote-webhook-123" },
     };
 
     await handler(req, res);
@@ -353,7 +317,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     const { req, res } = await setupTest("admin", "PATCH");
     req.query.webhookSourceId = ["invalid", "array"];
     req.body = {
-      remoteWebhookId: "remote-webhook-123",
+      remoteMetadata: { id: "remote-webhook-123" },
     };
 
     await handler(req, res);

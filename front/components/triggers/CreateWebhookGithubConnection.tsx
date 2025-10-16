@@ -11,8 +11,9 @@ import {
   Label,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
+import { useGithubRepositories } from "@app/hooks/useGithubRepositories";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
@@ -35,10 +36,8 @@ export function CreateWebhookGithubConnection({
   const [githubConnection, setGithubConnection] =
     useState<OAuthConnectionType | null>(null);
   const [isConnectingGithub, setIsConnectingGithub] = useState(false);
-  const [githubRepositories, setGithubRepositories] = useState<
-    Array<{ name: string; full_name: string; id: number }>
-  >([]);
-  const [isFetchingRepos, setIsFetchingRepos] = useState(false);
+  const { githubRepositories, isFetchingRepos, fetchGithubRepositories } =
+    useGithubRepositories(owner);
   const [selectedRepository, setSelectedRepository] = useState<string | null>(
     null
   );
@@ -46,37 +45,6 @@ export function CreateWebhookGithubConnection({
 
   const filteredRepositories = githubRepositories.filter((repo) =>
     repo.full_name.toLowerCase().includes(repoSearchQuery.toLowerCase())
-  );
-
-  const fetchGithubRepositories = useCallback(
-    async (connectionId: string) => {
-      if (!owner) {
-        return;
-      }
-
-      setIsFetchingRepos(true);
-      try {
-        const response = await fetch(
-          `/api/w/${owner.sId}/oauth/github/repos?connectionId=${connectionId}`
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch repositories");
-        }
-
-        const data = await response.json();
-        setGithubRepositories(data.repositories || []);
-      } catch (error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to fetch repositories",
-          description: error instanceof Error ? error.message : "Unknown error",
-        });
-      } finally {
-        setIsFetchingRepos(false);
-      }
-    },
-    [owner, sendNotification]
   );
 
   // Notify parent component when GitHub data changes

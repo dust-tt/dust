@@ -101,7 +101,7 @@ async function createActualWebhook({
         },
         body: JSON.stringify({
           connectionId,
-          remoteWebhookData,
+          remoteMetadata: remoteWebhookData,
           webhookUrl: webhookUrl,
           events: subscribedEvents,
           secret: webhookSource.secret,
@@ -127,9 +127,11 @@ async function createActualWebhook({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          remoteWebhookId: String(webhookResponse.webhook.id),
-          remoteWebhookData,
-          remoteConnectionId: connectionId,
+          remoteMetadata: {
+            ...remoteWebhookData,
+            id: String(webhookResponse.webhook.id),
+          },
+          oauthConnectionId: connectionId,
         }),
       });
     }

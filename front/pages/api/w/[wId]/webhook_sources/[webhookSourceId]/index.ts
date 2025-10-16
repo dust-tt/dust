@@ -39,8 +39,7 @@ async function handler(
 
   switch (method) {
     case "PATCH": {
-      const { remoteWebhookId, remoteWebhookData, remoteConnectionId } =
-        req.body;
+      const { remoteMetadata, oauthConnectionId } = req.body;
 
       try {
         const webhookSourceResource = await WebhookSourceResource.fetchById(
@@ -61,23 +60,19 @@ async function handler(
 
         // Build updates object with only provided fields
         const updates: {
-          remoteWebhookId?: string;
-          remoteWebhookData?: Record<string, string>;
-          remoteConnectionId?: string;
+          remoteMetadata?: Record<string, any>;
+          oauthConnectionId?: string;
         } = {};
 
-        if (remoteWebhookId && typeof remoteWebhookId === "string") {
-          updates.remoteWebhookId = remoteWebhookId;
+        if (remoteMetadata && typeof remoteMetadata === "object") {
+          updates.remoteMetadata = remoteMetadata;
         }
-        if (remoteWebhookData && typeof remoteWebhookData === "object") {
-          updates.remoteWebhookData = remoteWebhookData;
-        }
-        if (remoteConnectionId && typeof remoteConnectionId === "string") {
-          updates.remoteConnectionId = remoteConnectionId;
+        if (oauthConnectionId && typeof oauthConnectionId === "string") {
+          updates.oauthConnectionId = oauthConnectionId;
         }
 
         // Update the webhook source with the provided fields
-        await webhookSourceResource.updateRemoteWebhookMetadata(updates);
+        await webhookSourceResource.updateRemoteMetadata(updates);
 
         return res.status(200).json({
           success: true,
@@ -115,9 +110,8 @@ async function handler(
         const supportedKinds = ["github"];
         if (
           supportedKinds.includes(webhookSourceResource.kind) &&
-          webhookSourceResource.remoteWebhookId &&
-          webhookSourceResource.remoteWebhookData &&
-          webhookSourceResource.remoteConnectionId
+          webhookSourceResource.remoteMetadata &&
+          webhookSourceResource.oauthConnectionId
         ) {
           try {
             await fetch(
@@ -129,9 +123,8 @@ async function handler(
                   Cookie: req.headers.cookie ?? "",
                 },
                 body: JSON.stringify({
-                  connectionId: webhookSourceResource.remoteConnectionId,
-                  remoteWebhookData: webhookSourceResource.remoteWebhookData,
-                  webhookId: webhookSourceResource.remoteWebhookId,
+                  connectionId: webhookSourceResource.oauthConnectionId,
+                  remoteMetadata: webhookSourceResource.remoteMetadata,
                 }),
               }
             );

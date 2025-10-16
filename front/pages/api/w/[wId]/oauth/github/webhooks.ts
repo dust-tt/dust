@@ -41,7 +41,7 @@ async function handler(
         });
       }
 
-      const { connectionId, remoteWebhookData, webhookUrl, events, secret } =
+      const { connectionId, remoteMetadata, webhookUrl, events, secret } =
         req.body;
 
       if (!connectionId || typeof connectionId !== "string") {
@@ -54,12 +54,12 @@ async function handler(
         });
       }
 
-      if (!remoteWebhookData || typeof remoteWebhookData !== "object") {
+      if (!remoteMetadata || typeof remoteMetadata !== "object") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "remoteWebhookData is required",
+            message: "remoteMetadata is required",
           },
         });
       }
@@ -87,6 +87,44 @@ async function handler(
       try {
         // Get access token from OAuth API
         const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), console);
+
+        // First, verify the connection belongs to this workspace
+        const metadataRes = await oauthAPI.getConnectionMetadata({
+          connectionId,
+        });
+
+        if (metadataRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "invalid_request_error",
+              message: "GitHub connection not found",
+            },
+          });
+        }
+
+        const workspace = auth.workspace();
+        if (!workspace) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "workspace_not_found",
+              message: "Workspace not found",
+            },
+          });
+        }
+
+        const workspaceId = metadataRes.value.connection.metadata.workspace_id;
+        if (!workspaceId || workspaceId !== workspace.sId) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: "Connection does not belong to this workspace",
+            },
+          });
+        }
+
         const tokenRes = await oauthAPI.getAccessToken({ connectionId });
 
         if (tokenRes.isErr()) {
@@ -102,14 +140,14 @@ async function handler(
         const accessToken = tokenRes.value.access_token;
         const octokit = new Octokit({ auth: accessToken });
 
-        // Extract repository from remoteWebhookData
-        const repositoryFullName = remoteWebhookData.repository;
+        // Extract repository from remoteMetadata
+        const repositoryFullName = remoteMetadata.repository;
         if (!repositoryFullName || typeof repositoryFullName !== "string") {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: "remoteWebhookData.repository is required",
+              message: "remoteMetadata.repository is required",
             },
           });
         }
@@ -207,8 +245,7 @@ async function handler(
 
       const {
         connectionId: deleteConnectionId,
-        remoteWebhookData: deleteRemoteWebhookData,
-        webhookId,
+        remoteMetadata: deleteRemoteMetadata,
       } = req.body;
 
       if (!deleteConnectionId || typeof deleteConnectionId !== "string") {
@@ -221,31 +258,69 @@ async function handler(
         });
       }
 
+      if (!deleteRemoteMetadata || typeof deleteRemoteMetadata !== "object") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "remoteMetadata is required",
+          },
+        });
+      }
+
       if (
-        !deleteRemoteWebhookData ||
-        typeof deleteRemoteWebhookData !== "object"
+        !deleteRemoteMetadata.id ||
+        typeof deleteRemoteMetadata.id !== "string"
       ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "remoteWebhookData is required",
-          },
-        });
-      }
-
-      if (!webhookId || typeof webhookId !== "string") {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "webhookId is required",
+            message: "remoteMetadata.id is required",
           },
         });
       }
 
       try {
         const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), console);
+
+        // First, verify the connection belongs to this workspace
+        const metadataRes = await oauthAPI.getConnectionMetadata({
+          connectionId: deleteConnectionId,
+        });
+
+        if (metadataRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "invalid_request_error",
+              message: "GitHub connection not found",
+            },
+          });
+        }
+
+        const workspace = auth.workspace();
+        if (!workspace) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "workspace_not_found",
+              message: "Workspace not found",
+            },
+          });
+        }
+
+        const workspaceId = metadataRes.value.connection.metadata.workspace_id;
+        if (!workspaceId || workspaceId !== workspace.sId) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: "Connection does not belong to this workspace",
+            },
+          });
+        }
+
         const tokenRes = await oauthAPI.getAccessToken({
           connectionId: deleteConnectionId,
         });
@@ -263,8 +338,8 @@ async function handler(
         const accessToken = tokenRes.value.access_token;
         const octokit = new Octokit({ auth: accessToken });
 
-        // Extract repository from remoteWebhookData
-        const deleteRepositoryFullName = deleteRemoteWebhookData.repository;
+        // Extract repository from remoteMetadata
+        const deleteRepositoryFullName = deleteRemoteMetadata.repository;
         if (
           !deleteRepositoryFullName ||
           typeof deleteRepositoryFullName !== "string"
@@ -273,7 +348,7 @@ async function handler(
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: "remoteWebhookData.repository is required",
+              message: "remoteMetadata.repository is required",
             },
           });
         }
@@ -292,7 +367,7 @@ async function handler(
         await octokit.request("DELETE /repos/{owner}/{repo}/hooks/{hook_id}", {
           owner,
           repo,
-          hook_id: parseInt(webhookId, 10),
+          hook_id: parseInt(deleteRemoteMetadata.id, 10),
         });
 
         return res.status(200).json({

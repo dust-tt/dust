@@ -54,6 +54,44 @@ async function handler(
       try {
         // Get access token from OAuth API
         const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), console);
+
+        // First, verify the connection belongs to this workspace
+        const metadataRes = await oauthAPI.getConnectionMetadata({
+          connectionId,
+        });
+
+        if (metadataRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "invalid_request_error",
+              message: "GitHub connection not found",
+            },
+          });
+        }
+
+        const workspace = auth.workspace();
+        if (!workspace) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "workspace_not_found",
+              message: "Workspace not found",
+            },
+          });
+        }
+
+        const workspaceId = metadataRes.value.connection.metadata.workspace_id;
+        if (!workspaceId || workspaceId !== workspace.sId) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: "Connection does not belong to this workspace",
+            },
+          });
+        }
+
         const tokenRes = await oauthAPI.getAccessToken({ connectionId });
 
         if (tokenRes.isErr()) {

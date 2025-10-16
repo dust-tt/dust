@@ -90,7 +90,7 @@ export function CreateWebhookSourceFormContent({
   });
 
   const isGithub = kind === "github";
-  const isCustom = !isGithub;
+  const isCustom = kind === "custom" || kind === "test"; // This are not OAuth-based kinds
 
   return (
     <>

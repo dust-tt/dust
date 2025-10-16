@@ -11,12 +11,12 @@ export function WebhookSourceGithubDetails({
 }: WebhookSourceGithubDetailsProps) {
   if (
     webhookSource.kind !== "github" ||
-    !webhookSource.remoteWebhookData?.repository
+    !webhookSource.remoteMetadata?.repository
   ) {
     return null;
   }
 
-  const repository = webhookSource.remoteWebhookData.repository;
+  const repository = webhookSource.remoteMetadata.repository;
 
   return (
     <div>
