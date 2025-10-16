@@ -88,9 +88,13 @@ export async function runModelAndCreateActionsActivity({
 
   // 1. Run model activity.
 
-  let modelResult: Awaited<ReturnType<typeof runModelActivityWithRouter>> | Awaited<ReturnType<typeof runModelActivityWithoutRouter>> | null = null;
+  let modelResult:
+    | Awaited<ReturnType<typeof runModelActivityWithRouter>>
+    | Awaited<ReturnType<typeof runModelActivityWithoutRouter>>
+    | null = null;
 
   if (featureFlags.includes("llm_router_direct_requests")) {
+    console.log("running model activity with router");
     modelResult = await runModelActivityWithRouter(auth, {
       runAgentData,
       runIds,
@@ -107,8 +111,6 @@ export async function runModelAndCreateActionsActivity({
       autoRetryCount,
     });
   }
-
-
 
   if (!modelResult) {
     return null;

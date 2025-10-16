@@ -28,6 +28,7 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getLLM } from "@app/lib/llm";
@@ -409,11 +410,15 @@ export async function runModelActivity(
     return null;
   }
 
-
-  const llmResult = getLLM({ modelId: model.modelId, temperature: agentConfiguration.model.temperature });
+  const llmResult = getLLM({
+    modelId: model.modelId,
+    temperature: agentConfiguration.model.temperature,
+  });
 
   if (llmResult.isErr()) {
-    return handlePossiblyRetryableError(`Failed to get LLM: ${llmResult.error.message}`);
+    return handlePossiblyRetryableError(
+      `Failed to get LLM: ${llmResult.error.message}`
+    );
   }
 
   const llm = llmResult.value;
@@ -449,6 +454,7 @@ export async function runModelActivity(
   const updatedFunctionCallStepContentIds = { ...functionCallStepContentIds };
 
   for await (const event of eventStream) {
+    console.log("event", event);
     if (event.type === "tool_call") {
       isGeneration = false;
     }
@@ -475,20 +481,14 @@ export async function runModelActivity(
     }
 
     if (event.type === "text_delta" && isGeneration) {
-      
-    await updateResourceAndPublishEvent(auth, {
-        event: {
-          type: "generation_tokens",
-          classification: "tokens",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          text: event.delta,
-        },
-        agentMessageRow,
-        conversation,
-        step,
-    });
+      for await (const tokenEvent of contentParser.emitTokens(event.delta)) {
+        await updateResourceAndPublishEvent(auth, {
+          event: tokenEvent,
+          agentMessageRow,
+          conversation,
+          step,
+        });
+      }
     }
 
     if (event.type === "reasoning_delta") {
@@ -522,6 +522,41 @@ export async function runModelActivity(
         name: event.toolCall.name,
         arguments: JSON.parse(event.toolCall.arguments),
       });
+    }
+
+    if (event.type === "success") {
+      if (!output) {
+        output = {
+          actions: [],
+          generation: null,
+          contents: [],
+        };
+      }
+      for (const item of event.items) {
+        if (item.type === "text_generated") {
+          output.contents.push({
+            type: "text_content",
+            value: item.text,
+          });
+        } else if (item.type === "reasoning_generated") {
+          output.contents.push({
+            type: "reasoning",
+            value: {
+              reasoning: item.reasoning,
+              metadata: JSON.stringify(item.metadata),
+              tokens: event.tokenUsage?.reasoningTokens ?? 0,
+              provider: model.providerId,
+              region: regionsConfig.getCurrentRegion(),
+            },
+          });
+        } else if (item.type === "tool_call") {
+          output.actions.push({
+            functionCallId: item.toolCall.id,
+            name: item.toolCall.name,
+            arguments: JSON.parse(item.toolCall.arguments),
+          });
+        }
+      }
     }
   }
 

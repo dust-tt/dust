@@ -1,5 +1,8 @@
 import type { ModelConfigurationType, Result } from "@app/types";
-import type { ModelIdType, ModelProviderIdType } from "@app/types/assistant/models/types";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
 import { Err, Ok } from "@app/types/shared/result";
 import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
 
@@ -268,8 +271,12 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
 ];
 export default SUPPORTED_MODEL_CONFIGS;
 
-export function getProviderFromModelId(modelId: string): Result<ModelProviderIdType, Error> {
-  const modelConfig = SUPPORTED_MODEL_CONFIGS.find((config) => config.modelId === modelId);
+export function getProviderFromModelId(
+  modelId: string
+): Result<ModelProviderIdType, Error> {
+  const modelConfig = SUPPORTED_MODEL_CONFIGS.find(
+    (config) => config.modelId === modelId
+  );
   if (!modelConfig) {
     return new Err(new Error(`Model ${modelId} not found`));
   }
