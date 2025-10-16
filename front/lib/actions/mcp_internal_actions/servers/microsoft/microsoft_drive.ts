@@ -1,6 +1,3 @@
-import type { Client } from "@microsoft/microsoft-graph-client";
-import { Client as GraphClient } from "@microsoft/microsoft-graph-client";
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Readable } from "stream";
 import { z } from "zod";
@@ -18,19 +15,10 @@ import {
 } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
+import { getGraphClient } from "./utils";
+
 const createServer = (auth: any): McpServer => {
   const server = makeInternalMCPServer("microsoft_drive");
-
-  async function getGraphClient(authInfo?: AuthInfo): Promise<Client | null> {
-    const accessToken = authInfo?.token;
-    if (!accessToken) {
-      return null;
-    }
-
-    return GraphClient.init({
-      authProvider: (done) => done(null, accessToken),
-    });
-  }
 
   server.tool(
     "search_in_files",
