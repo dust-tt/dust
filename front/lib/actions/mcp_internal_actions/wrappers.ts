@@ -98,7 +98,9 @@ export function withToolLogging<T>(
         ]);
       }
 
-      logger.error(
+      // If the error is tracked, then we want to surface it with `logger.error`, otherwise just a warning, so we don't loose them if needed
+      const logFunction = result.error.tracked ? logger.error : logger.warn;
+      logFunction(
         {
           error: result.error,
           ...loggerArgs,
