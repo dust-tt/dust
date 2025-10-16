@@ -279,13 +279,20 @@ export async function botValidateToolExecution(
   }: ToolValidationParams,
   params: BotAnswerParams
 ) {
-  const { slackChannel, slackMessageTs, slackTeamId, responseUrl } = params;
+  const {
+    slackChannel,
+    slackMessageTs,
+    slackTeamId,
+    responseUrl,
+    slackUserId,
+    slackBotId,
+  } = params;
 
   const connectorRes = await getSlackConnector(params);
   if (connectorRes.isErr()) {
     return connectorRes;
   }
-  const { connector } = connectorRes.value;
+  const { connector, slackConfig } = connectorRes.value;
 
   try {
     const slackChatBotMessage = await SlackChatBotMessage.findOne({
@@ -294,14 +301,74 @@ export async function botValidateToolExecution(
     if (!slackChatBotMessage) {
       throw new Error("Missing Slack message");
     }
+    const slackClient = await getSlackClient(connector.id);
+
+    const userEmailHeader =
+      slackChatBotMessage.slackEmail !== "unknown"
+        ? slackChatBotMessage.slackEmail
+        : undefined;
+    let slackUserInfo: SlackUserInfo | null = null;
+    let requestedGroups: string[] | undefined = undefined;
+
+    if (slackUserId) {
+      try {
+        slackUserInfo = await getSlackUserInfoMemoized(
+          connector.id,
+          slackClient,
+          slackUserId
+        );
+      } catch (e) {
+        if (isSlackWebAPIPlatformError(e)) {
+          logger.error(
+            {
+              error: e,
+              connectorId: connector.id,
+              slackUserId,
+            },
+            "Failed to get slack user info"
+          );
+        }
+        throw e;
+      }
+    } else if (slackBotId) {
+      throw new Error("Unreachable: bot cannot validate tool execution.");
+    }
+
+    if (!slackUserInfo) {
+      throw new Error("Failed to get slack user info");
+    }
+
+    if (slackUserInfo.is_bot) {
+      throw new Error("Unreachable: bot cannot validate tool execution.");
+    }
+
+    const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
+      connector,
+      slackClient,
+      slackUserInfo,
+      {
+        slackChannelId: slackChannel,
+        slackTeamId,
+        slackMessageTs,
+      },
+      slackConfig.whitelistedDomains
+    );
+    if (!hasChatbotAccess.authorized) {
+      return new Ok(undefined);
+    }
+
+    // If the user is allowed, we retrieve the groups he has access to.
+    requestedGroups = hasChatbotAccess.groupIds;
 
     const dustAPI = new DustAPI(
       { url: apiConfig.getDustFrontAPIUrl() },
       {
         apiKey: connector.workspaceAPIKey,
-        // We neither need group ids nor user email headers here because validate tool endpoint is not
-        // gated by group ids or user email headers.
-        extraHeaders: {},
+        // Validation must include user's groups and email for personal tools and group-gated actions.
+        extraHeaders: {
+          ...getHeaderFromGroupIds(requestedGroups),
+          ...getHeaderFromUserEmail(userEmailHeader),
+        },
         workspaceId: connector.workspaceId,
       },
       logger
@@ -371,7 +438,6 @@ export async function botValidateToolExecution(
         );
       }
     }
-    const slackClient = await getSlackClient(connector.id);
 
     reportSlackUsage({
       connectorId: connector.id,
