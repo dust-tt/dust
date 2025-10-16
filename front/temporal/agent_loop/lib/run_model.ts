@@ -35,6 +35,7 @@ import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { getModel } from "@app/lib/llm/utils/getModel";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -365,23 +366,11 @@ export async function runModelActivity(
     runConfig.MODEL.prompt_caching = agentConfiguration.model.promptCaching;
   }
 
-  const res = await runActionStreamed(
-    auth,
-    "assistant-v2-multi-actions-agent",
-    runConfig,
-    [
-      {
-        conversation: modelConversationRes.value.modelConversation,
-        specifications,
-        prompt,
-      },
-    ],
-    {
-      conversationId: conversation.sId,
-      workspaceId: conversation.owner.sId,
-      userMessageId: userMessage.sId,
-    }
-  );
+  const _runModelInputs = {
+    conversation: modelConversationRes.value.modelConversation,
+    specifications,
+    prompt,
+  };
 
   // Errors occurring during the multi-actions-agent dust app may be retryable.
   // Their implicit code should be "multi_actions_error".
@@ -431,11 +420,6 @@ export async function runModelActivity(
     return null;
   }
 
-  if (res.isErr()) {
-    return handlePossiblyRetryableError(res.error.message);
-  }
-
-  const { eventStream, dustRunId } = res.value;
   let output: {
     actions: Array<{
       functionCallId: string;
@@ -461,7 +445,59 @@ export async function runModelActivity(
   // Create a new object to avoid mutation
   const updatedFunctionCallStepContentIds = { ...functionCallStepContentIds };
 
+  const actionStreamEvents: any[] = [];
+
+  let dustRunId: Promise<string> = Promise.resolve("");
+
+  const largeLanguageModel = await getModel({
+    temperature: runConfig.MODEL.temperature,
+    modelId: model.modelId,
+    providerId: model.providerId,
+    owner: conversation.owner,
+  });
+
+  if (largeLanguageModel) {
+    const llmresp = await largeLanguageModel.streamResponse({
+      conversation: modelConversationRes.value.modelConversation,
+      prompt,
+      step,
+      specifications,
+    });
+
+    const streamChunks: any[] = [];
+    for await (const _event of llmresp) {
+      streamChunks.push(_event);
+    }
+  }
+
+  const res = await runActionStreamed(
+    auth,
+    "assistant-v2-multi-actions-agent",
+    runConfig,
+    [
+      {
+        conversation: modelConversationRes.value.modelConversation,
+        specifications,
+        prompt,
+      },
+    ],
+    {
+      conversationId: conversation.sId,
+      workspaceId: conversation.owner.sId,
+      userMessageId: userMessage.sId,
+    }
+  );
+
+  if (res.isErr()) {
+    return handlePossiblyRetryableError(res.error.message);
+  }
+
+  const { eventStream, dustRunId: resDustRunId } = res.value;
+
+  dustRunId = resDustRunId;
+
   for await (const event of eventStream) {
+    actionStreamEvents.push(event);
     if (event.type === "function_call") {
       isGeneration = false;
     }
