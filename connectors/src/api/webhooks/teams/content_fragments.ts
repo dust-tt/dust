@@ -123,7 +123,8 @@ export async function processFileAttachments(
       const downloadResult = await downloadSharepointFile(
         itemId,
         siteId,
-        microsoftGraphClient
+        microsoftGraphClient,
+        logger
       );
 
       if (downloadResult.isErr()) {

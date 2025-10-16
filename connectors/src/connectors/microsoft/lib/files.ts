@@ -2,6 +2,8 @@ import type { LoggerInterface, Result } from "@dust-tt/client";
 import { Err, normalizeError, Ok } from "@dust-tt/client";
 import type { Client } from "@microsoft/microsoft-graph-client";
 
+import { clientApiGet } from "@connectors/connectors/microsoft/lib/graph_api";
+
 export async function getSharepointFileInfo(
   contentUrl: string,
   microsoftGraphClient: Client,
@@ -30,9 +32,11 @@ export async function getSharepointFileInfo(
   }
 
   // Get the site ID from SharePoint
-  const siteResponse = await microsoftGraphClient
-    .api(`/sites/${tenant}.sharepoint.com:/sites/${siteName}`)
-    .get();
+  const siteResponse = await clientApiGet(
+    logger,
+    microsoftGraphClient,
+    `/sites/${tenant}.sharepoint.com:/sites/${siteName}`
+  );
 
   const siteId = siteResponse.id;
   if (!siteId) {
@@ -58,17 +62,19 @@ export async function getSharepointFileInfo(
   );
 
   // Get file metadata using the file path
-  const fileItemResponse = await microsoftGraphClient
-    .api(`/sites/${siteId}/drive/root:/${filePath}`)
-    .get();
+  const fileItemResponse = await clientApiGet(
+    logger,
+    microsoftGraphClient,
+    `/sites/${siteId}/drive/root:/${filePath}`
+  );
   const itemId = fileItemResponse?.id;
-
-  const mimeType =
-    fileItemResponse.file?.mimeType || "application/octet-stream";
 
   if (!itemId) {
     return new Err(new Error("Could not get file item ID from Graph API"));
   }
+
+  const mimeType =
+    fileItemResponse.file?.mimeType || "application/octet-stream";
 
   return new Ok({ itemId, mimeType, siteId });
 }
@@ -77,16 +83,17 @@ export async function getSharepointFileInfo(
 export async function downloadSharepointFile(
   itemId: string,
   siteId: string,
-  microsoftGraphClient: Client
+  microsoftGraphClient: Client,
+  logger: LoggerInterface
 ): Promise<Result<Buffer, Error>> {
   // Download the file content using the item ID
-  const downloadApi = `/sites/${siteId}/drive/items/${itemId}/content`;
-
   try {
     // Get file content and handle Blob response
-    const fileContentResponse = await microsoftGraphClient
-      .api(downloadApi)
-      .get();
+    const fileContentResponse = await clientApiGet(
+      logger,
+      microsoftGraphClient,
+      `/sites/${siteId}/drive/items/${itemId}/content`
+    );
     // Convert Blob to Buffer
     let fileContent: Buffer;
     if (fileContentResponse instanceof Blob) {
