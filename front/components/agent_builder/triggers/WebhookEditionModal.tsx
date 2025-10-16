@@ -438,37 +438,62 @@ export function WebhookEditionModal({
               )}
 
               {/* Filters input */}
-              {selectedPreset && availableEvents.length > 0 && (
-                <div className="space-y-1">
-                  <Label htmlFor="trigger-filter-description">
-                    Filter Description (optional)
-                  </Label>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Describe in natural language the conditions under which the
-                    agent should trigger. Will always trigger if left empty.
-                  </p>
-                  <TextArea
-                    id="trigger-filter-description"
-                    placeholder='e.g. "New pull requests that changes more than 500 lines of code, or have the `auto-review` label."'
-                    rows={3}
-                    value={naturalDescription}
-                    disabled={!isEditor}
-                    onChange={(e) => {
-                      if (!selectedEvent || !selectedPreset) {
-                        form.setError("event", {
-                          type: "manual",
-                          message: "Please select an event first",
-                        });
-                        return;
+              <div className="space-y-1">
+                {selectedPreset && availableEvents.length > 0 && (
+                  <>
+                    <Label htmlFor="trigger-filter-description">
+                      Filter Description (optional)
+                    </Label>
+                    <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      Describe in natural language the conditions under which
+                      the agent should trigger. Will always trigger if left
+                      empty.
+                    </p>
+                    <TextArea
+                      id="trigger-filter-description"
+                      placeholder='e.g. "New pull requests that changes more than 500 lines of code, or have the `auto-review` label."'
+                      rows={3}
+                      value={naturalDescription}
+                      disabled={!isEditor}
+                      onChange={(e) => {
+                        if (!selectedEvent || !selectedPreset) {
+                          form.setError("event", {
+                            type: "manual",
+                            message: "Please select an event first",
+                          });
+                          return;
+                        }
+
+                        setNaturalDescription(e.target.value);
+                      }}
+                    />
+                  </>
+                )}
+
+                {selectedWebhookSource?.kind === "custom" && (
+                  <>
+                    <Label htmlFor="trigger-filter-description">
+                      Filter Expression (optional)
+                    </Label>
+                    <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      Enter a filter that will be used to filter the webhook
+                      payload JSON. Will always trigger if left empty.
+                    </p>
+                    <TextArea
+                      id="trigger-filter-description"
+                      placeholder={
+                        'example:\n\n(and\n  (eq "action" "opened")\n  (exists "pull_request")\n)'
                       }
+                      rows={6}
+                      {...form.register("filter")}
+                      disabled={!isEditor}
+                      error={form.formState.errors.filter?.message}
+                    />
+                  </>
+                )}
 
-                      setNaturalDescription(e.target.value);
-                    }}
-                  />
-
-                  <div className="pt-2">{filterGenerationResult}</div>
-                </div>
-              )}
+                <div className="pt-2">{filterGenerationResult}</div>
+              </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex flex-col space-y-1">
