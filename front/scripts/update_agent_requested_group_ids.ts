@@ -50,7 +50,7 @@ async function updateAgentRequestedGroupIds(
   const agentConfigurations = await AgentConfiguration.findAll({
     where: {
       ...whereClause,
-      scope: ["workspace", "published"],
+      scope: ["workspace", "published", "hidden", "visible"],
     },
     order: [["createdAt", "DESC"]],
   });
