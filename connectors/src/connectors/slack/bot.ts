@@ -80,22 +80,7 @@ const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
 const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
 
-async function getRequestedGroupsForSlackUser(
-  connector: ConnectorResource,
-  slackClient: WebClient,
-  slackUserInfo: SlackUserInfo,
-  context: { slackChannelId: string; slackTeamId: string; slackMessageTs: string },
-  whitelistedDomains: string[] | null | undefined
-): Promise<{ authorized: boolean; groupIds: string[] }> {
-  const { authorized, groupIds } = await notifyIfSlackUserIsNotAllowed(
-    connector,
-    slackClient,
-    slackUserInfo,
-    context,
-    whitelistedDomains
-  );
-  return { authorized, groupIds };
-}
+
 
 type BotAnswerParams = {
   responseUrl?: string;
@@ -358,7 +343,7 @@ export async function botValidateToolExecution(
       throw new Error("Unreachable: bot cannot validate tool execution.");
     }
 
-    const access = await getRequestedGroupsForSlackUser(
+    const { authorized, groupIds } = await notifyIfSlackUserIsNotAllowed(
       connector,
       slackClient,
       slackUserInfo,
@@ -369,12 +354,12 @@ export async function botValidateToolExecution(
       },
       slackConfig.whitelistedDomains
     );
-    if (!access.authorized) {
+    if (!authorized) {
       return new Ok(undefined);
     }
 
     // If the user is allowed, we retrieve the groups he has access to.
-    requestedGroups = access.groupIds;
+    requestedGroups = groupIds;
 
     const dustAPI = new DustAPI(
       { url: apiConfig.getDustFrontAPIUrl() },
@@ -694,7 +679,7 @@ async function answerMessage(
     // permissions.
     skipToolsValidation = true;
   } else {
-    const access = await getRequestedGroupsForSlackUser(
+    const { authorized, groupIds } = await notifyIfSlackUserIsNotAllowed(
       connector,
       slackClient,
       slackUserInfo,
@@ -705,12 +690,12 @@ async function answerMessage(
       },
       slackConfig.whitelistedDomains
     );
-    if (!access.authorized) {
+    if (!authorized) {
       return new Ok(undefined);
     }
 
     // If the user is allowed, we retrieve the groups he has access to.
-    requestedGroups = access.groupIds;
+    requestedGroups = groupIds;
   }
 
   const displayName = slackUserInfo.display_name ?? "";
