@@ -133,17 +133,12 @@ export function MCPActionDetails({
         return (
           <SearchResultDetails
             viewType={viewType}
-            defaultQuery={
-              makeQueryResource({
-                ...params,
-                timeFrame: parseTimeFrame(params.relativeTimeFrame),
-              }).text
-            }
             actionName={
               viewType === "conversation" ? "Searching data" : "Search data"
             }
             actionOutput={output}
             visual={MagnifyingGlassIcon}
+            params={params}
           />
         );
       }
