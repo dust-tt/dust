@@ -184,7 +184,7 @@ export function UserMenu({
                         const match = window.location.href.match(regexp);
                         if (match) {
                           window.open(
-                            `/poke/${match[1]}/conversations/${match[2]}`,
+                            `/poke/${match[1]}/conversation/${match[2]}`,
                             "_blank"
                           );
                         }
