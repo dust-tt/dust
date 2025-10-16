@@ -19,6 +19,10 @@ import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
 import {
+  downloadSharepointFile,
+  getSharepointFileInfo,
+} from "@connectors/connectors/microsoft/lib/files";
+import {
   clientApiGet,
   wrapMicrosoftGraphAPIWithResult,
 } from "@connectors/connectors/microsoft/lib/graph_api";
@@ -39,114 +43,6 @@ import { sendActivity, updateActivity } from "./bot_messaging_utils";
 
 const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
-
-// Helper function to download a file from SharePoint/Teams URL using Microsoft Graph API
-async function downloadSharePointFile(
-  contentUrl: string,
-  microsoftGraphClient: Client
-): Promise<Result<{ content: Buffer; mimeType: string }, Error>> {
-  try {
-    // Parse the SharePoint URL to extract the file path
-    // Expected format: https://tenant.sharepoint.com/sites/site/library/path/to/file
-    const sharepointMatch = contentUrl.match(
-      /https:\/\/([^.]+)\.sharepoint\.com\/sites\/([^/]+)\/(.+)/
-    );
-
-    if (!sharepointMatch) {
-      return new Err(
-        new Error("Could not parse SharePoint URL for Graph API access")
-      );
-    }
-
-    const [, tenant, siteName, remainingPath] = sharepointMatch;
-
-    if (!remainingPath) {
-      return new Err(
-        new Error("Could not extract file path from SharePoint URL")
-      );
-    }
-
-    // Get the site ID from SharePoint
-    const siteResponse = await microsoftGraphClient
-      .api(`/sites/${tenant}.sharepoint.com:/sites/${siteName}`)
-      .get();
-
-    const siteId = siteResponse.id;
-    if (!siteId) {
-      return new Err(new Error("Could not get site ID from SharePoint URL"));
-    }
-
-    // Handle "Shared Documents" which is the default library name for Teams
-    let filePath: string;
-    if (remainingPath.startsWith("Shared Documents/")) {
-      // Remove "Shared Documents/" prefix for default drive
-      filePath = remainingPath.replace("Shared Documents/", "");
-    } else {
-      // For other document libraries, keep the full path
-      filePath = remainingPath;
-    }
-
-    // URL decode the file path to handle spaces and special characters
-    filePath = decodeURIComponent(filePath);
-
-    logger.info(
-      { siteId, filePath, siteName },
-      "Attempting Graph API download with parsed SharePoint path"
-    );
-
-    // Get file metadata using the file path
-    const fileItemResponse = await microsoftGraphClient
-      .api(`/sites/${siteId}/drive/root:/${filePath}`)
-      .get();
-    const itemId = fileItemResponse?.id;
-
-    if (!itemId) {
-      return new Err(new Error("Could not get file item ID from Graph API"));
-    }
-
-    logger.info({ fileItemId: itemId }, "Got file item ID from Graph API");
-
-    // Download the file content using the item ID
-    const downloadApi = `/sites/${siteId}/drive/items/${itemId}/content`;
-
-    logger.info({ downloadApi }, "Downloading file content via Graph API");
-
-    // Get file content and handle Blob response
-    const fileContentResponse = await microsoftGraphClient
-      .api(downloadApi)
-      .get();
-
-    // Convert Blob to Buffer
-    let fileContent: Buffer;
-    if (fileContentResponse instanceof Blob) {
-      const arrayBuffer = await fileContentResponse.arrayBuffer();
-      fileContent = Buffer.from(arrayBuffer);
-    } else {
-      // Fallback for other response types
-      fileContent = Buffer.from(fileContentResponse);
-    }
-
-    const mimeType =
-      fileItemResponse.file?.mimeType || "application/octet-stream";
-
-    logger.info(
-      { fileSize: fileContent.length, mimeType },
-      "Successfully downloaded SharePoint file via Graph API"
-    );
-
-    return new Ok({ content: fileContent, mimeType });
-  } catch (error) {
-    logger.error(
-      { error, contentUrl },
-      "Error downloading SharePoint file via Graph API"
-    );
-    return new Err(
-      new Error(
-        `Failed to download SharePoint file: ${error instanceof Error ? error.message : String(error)}`
-      )
-    );
-  }
-}
 
 // Helper function to process and upload file attachments
 async function processFileAttachments(
@@ -187,8 +83,29 @@ async function processFileAttachments(
         "Downloading Teams reference file using Microsoft Graph API"
       );
 
-      const downloadResult = await downloadSharePointFile(
+      const sharepointFileInfoRes = await getSharepointFileInfo(
         attachment.contentUrl,
+        microsoftGraphClient,
+        logger
+      );
+
+      if (sharepointFileInfoRes.isErr()) {
+        logger.warn(
+          {
+            fileName,
+            error: sharepointFileInfoRes.error,
+            contentUrl: attachment.contentUrl,
+          },
+          "Failed to get Sharepoint file info"
+        );
+        continue;
+      }
+
+      const { itemId, mimeType, siteId } = sharepointFileInfoRes.value;
+
+      const downloadResult = await downloadSharepointFile(
+        itemId,
+        siteId,
         microsoftGraphClient
       );
 
@@ -204,8 +121,8 @@ async function processFileAttachments(
         continue;
       }
 
-      fileContent = downloadResult.value.content;
-      actualContentType = downloadResult.value.mimeType;
+      fileContent = downloadResult.value;
+      actualContentType = mimeType;
     } else if (attachment.contentUrl) {
       // For direct file attachments, use regular fetch
       try {
