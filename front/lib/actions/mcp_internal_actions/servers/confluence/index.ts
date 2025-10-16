@@ -31,7 +31,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: CONFLUENCE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (_, { authInfo }) => {
@@ -82,7 +81,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: CONFLUENCE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (params, { authInfo }) => {
@@ -147,7 +145,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: CONFLUENCE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (params, { authInfo }) => {
@@ -220,7 +217,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: CONFLUENCE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (params, { authInfo }) => {

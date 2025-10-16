@@ -52,7 +52,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: "google_drive",
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ pageToken }, { authInfo }) => {
@@ -147,7 +146,6 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       auth,
       {
         toolNameForMonitoring: "google_drive",
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -237,7 +235,6 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       auth,
       {
         toolNameForMonitoring: "google_drive",
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ fileId, offset, limit }, { authInfo }) => {

@@ -57,7 +57,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: MONDAY_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (_params, { authInfo }) => {
@@ -86,7 +85,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: MONDAY_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ boardId }, { authInfo }) => {
@@ -115,7 +113,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: MONDAY_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ itemId }, { authInfo }) => {
@@ -176,7 +173,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: MONDAY_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -250,7 +246,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: MONDAY_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ boardId, itemName, groupId, columnValues }, { authInfo }) => {
@@ -290,7 +285,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: MONDAY_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ itemId, columnValues }, { authInfo }) => {
@@ -325,7 +319,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: MONDAY_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ itemId, body }, { authInfo }) => {

@@ -32,7 +32,11 @@ function createServer(
     {},
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "agent_router", agentLoopContext },
+      {
+        toolNameForMonitoring: "agent_router",
+        agentLoopContext,
+        enableAlerting: true,
+      },
       async () => {
         const owner = auth.getNonNullableWorkspace();
         const requestedGroupIds = auth.groups().map((g) => g.sId);
@@ -94,7 +98,11 @@ function createServer(
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "agent_router", agentLoopContext },
+      {
+        toolNameForMonitoring: "agent_router",
+        agentLoopContext,
+        enableAlerting: true,
+      },
       async ({ userMessage }) => {
         const owner = auth.getNonNullableWorkspace();
         const requestedGroupIds = auth.groups().map((g) => g.sId);

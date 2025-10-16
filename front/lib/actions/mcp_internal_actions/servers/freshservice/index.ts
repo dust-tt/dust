@@ -206,7 +206,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ filter, fields, page, per_page }, { authInfo }) => {
@@ -286,7 +285,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ ticket_id, fields, include }, { authInfo }) => {
@@ -347,7 +345,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (_, { authInfo }) => {
@@ -402,7 +399,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -521,7 +517,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -599,7 +594,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ ticket_id, body, private: isPrivate }, { authInfo }) => {
@@ -643,7 +637,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ ticket_id, body }, { authInfo }) => {
@@ -685,7 +678,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ ticket_id }, { authInfo }) => {
@@ -725,7 +717,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ ticket_id, task_id }, { authInfo }) => {
@@ -780,7 +771,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -878,7 +868,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -958,7 +947,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ ticket_id, task_id }, { authInfo }) => {
@@ -999,7 +987,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ page, per_page }, { authInfo }) => {
@@ -1045,7 +1032,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ page, per_page }, { authInfo }) => {
@@ -1091,7 +1077,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ page, per_page }, { authInfo }) => {
@@ -1137,7 +1122,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ page, per_page }, { authInfo }) => {
@@ -1188,7 +1172,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ category_id, page, per_page }, { authInfo }) => {
@@ -1255,7 +1238,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -1312,7 +1294,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ display_id }, { authInfo }) => {
@@ -1353,7 +1334,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ display_id }, { authInfo }) => {
@@ -1422,7 +1402,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -1527,7 +1506,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ page, per_page }, { authInfo }) => {
@@ -1573,7 +1551,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ category_id, page, per_page }, { authInfo }) => {
@@ -1631,7 +1608,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ folder_id, category_id, page, per_page }, { authInfo }) => {
@@ -1694,7 +1670,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ article_id }, { authInfo }) => {
@@ -1744,7 +1719,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ title, description, folder_id, status, tags }, { authInfo }) => {
@@ -1805,7 +1779,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ email, mobile, phone, page, per_page }, { authInfo }) => {
@@ -1859,7 +1832,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ requester_id }, { authInfo }) => {
@@ -1900,7 +1872,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ page, per_page }, { authInfo }) => {
@@ -1943,7 +1914,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (_, { authInfo }) => {
@@ -1985,7 +1955,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ search }, { authInfo }) => {
@@ -2055,7 +2024,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -2115,7 +2083,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ response_id }, { authInfo }) => {
@@ -2155,7 +2122,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ ticket_id, approval_id }, { authInfo }) => {
@@ -2194,7 +2160,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ ticket_id }, { authInfo }) => {
@@ -2254,7 +2219,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: FRESHSERVICE_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
