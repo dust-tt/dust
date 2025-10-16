@@ -5,8 +5,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { PokeConversationsFetchProps } from "@app/poke/swr/conversations";
-import { usePokeConversations } from "@app/poke/swr/conversations";
+import type { PokeConversationsFetchProps } from "@app/poke/swr/conversation";
+import { usePokeConversations } from "@app/poke/swr/conversation";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
@@ -41,7 +41,7 @@ const makeColumnsForConversations = (
         const conversation = row.original;
         return (
           <LinkWrapper
-            href={`/poke/${owner.sId}/conversations/${conversation.sId}`}
+            href={`/poke/${owner.sId}/conversation/${conversation.sId}`}
           >
             {conversation.sId}
           </LinkWrapper>

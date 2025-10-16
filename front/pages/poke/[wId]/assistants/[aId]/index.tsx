@@ -14,7 +14,7 @@ import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import { AgentOverviewTable } from "@app/components/poke/assistants/AgentOverviewTable";
-import { ConversationAgentDataTable } from "@app/components/poke/conversations/agent_table";
+import { ConversationAgentDataTable } from "@app/components/poke/conversation/agent_table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
