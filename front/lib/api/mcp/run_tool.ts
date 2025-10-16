@@ -50,7 +50,7 @@ export async function* runToolWithStreaming(
     agentMessage: AgentMessageType;
     conversation: ConversationType;
   },
-  options?: { signal?: AbortSignal }
+  _options?: { signal?: AbortSignal }
 ): AsyncGenerator<
   | MCPApproveExecutionEvent
   | MCPErrorEvent
