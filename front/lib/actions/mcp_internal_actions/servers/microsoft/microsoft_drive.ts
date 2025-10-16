@@ -10,7 +10,12 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
-import { Err, Ok, TextExtraction } from "@app/types";
+import {
+  Err,
+  isTextExtractionSupportedContentType,
+  Ok,
+  TextExtraction,
+} from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const createServer = (auth: any): McpServer => {
@@ -122,10 +127,7 @@ const createServer = (auth: any): McpServer => {
             ],
           };
 
-          const response = await client
-            .api(endpoint)
-            .version("beta")
-            .post(requestBody);
+          const response = await client.api(endpoint).post(requestBody);
 
           return new Ok([
             {
@@ -203,51 +205,38 @@ const createServer = (auth: any): McpServer => {
 
           if (mimeType.startsWith("text/")) {
             content = buffer.toString("utf-8");
-          } else {
-            switch (mimeType) {
-              case "application/openxmlformats-officedocument.wordprocessingml.document": // Word document
-              case "application/vnd.openxmlformats-officedocument.presentationml.presentation": // PowerPoint document
-              case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": // Excel document
-              case "application/pdf": // PDF document
-                try {
-                  const textExtraction = new TextExtraction(
-                    config.getTextExtractionUrl(),
-                    {
-                      enableOcr: true,
-                      logger,
-                    }
-                  );
-
-                  const bufferStream = Readable.from(buffer);
-                  const textStream = await textExtraction.fromStream(
-                    bufferStream,
-                    mimeType as Parameters<typeof textExtraction.fromStream>[1]
-                  );
-
-                  const chunks: string[] = [];
-                  for await (const chunk of textStream) {
-                    chunks.push(chunk.toString());
-                  }
-
-                  content = chunks.join("");
-                } catch (error) {
-                  return new Err(
-                    new MCPError(
-                      `Failed to extract text: ${normalizeError(error).message}`
-                    )
-                  );
+          } else if (isTextExtractionSupportedContentType(mimeType)) {
+            try {
+              const textExtraction = new TextExtraction(
+                config.getTextExtractionUrl(),
+                {
+                  enableOcr: true,
+                  logger,
                 }
-                break;
-              case "application/vnd.ms-excel": // csv document
-                content = buffer.toString("utf-8");
-                break;
-              default:
-                return new Err(
-                  new MCPError(`Unsupported mime type: ${mimeType}`)
-                );
-            }
-          }
+              );
 
+              const bufferStream = Readable.from(buffer);
+              const textStream = await textExtraction.fromStream(
+                bufferStream,
+                mimeType as Parameters<typeof textExtraction.fromStream>[1]
+              );
+
+              const chunks: string[] = [];
+              for await (const chunk of textStream) {
+                chunks.push(chunk.toString());
+              }
+
+              content = chunks.join("");
+            } catch (error) {
+              return new Err(
+                new MCPError(
+                  `Failed to extract text: ${normalizeError(error).message}`
+                )
+              );
+            }
+          } else {
+            return new Err(new MCPError(`Unsupported mime type: ${mimeType}`));
+          }
           return new Ok([
             {
               type: "text" as const,
