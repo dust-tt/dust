@@ -15,12 +15,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
+const DEFAULT_PERIOD = 30;
+
 const QuerySchema = t.type({
   days: t.union([t.string, t.undefined]),
   interval: t.union([t.literal("day"), t.literal("week"), t.undefined]),
 });
-
-const DEFAULT_PERIOD = 30;
 
 type ByIntervalBucket = {
   key: number;
@@ -57,6 +57,22 @@ export type GetUsageMetricsResponse = {
   points: UsageMetricsPoint[];
   versionMarkers: AgentVersionMarker[];
 };
+
+function buildAgentAnalyticsBaseQuery(
+  workspaceId: string,
+  agentId: string,
+  days: number
+): estypes.QueryDslQueryContainer {
+  return {
+    bool: {
+      filter: [
+        { term: { workspace_id: workspaceId } },
+        { term: { agent_id: agentId } },
+        { range: { timestamp: { gte: `now-${days}d/d` } } },
+      ],
+    },
+  };
+}
 
 async function handler(
   req: NextApiRequest,
@@ -102,21 +118,25 @@ async function handler(
         });
       }
 
-      const days = q.right.days ? parseInt(q.right.days, 10) : DEFAULT_PERIOD;
-      const interval =
-        (q.right.interval as "day" | "week" | undefined) ?? "day";
+      let days = DEFAULT_PERIOD;
+      if (q.right.days) {
+        const parsedDays = parseInt(q.right.days, 10);
+        if (isNaN(parsedDays) || parsedDays <= 0) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Parameter 'days' must be a positive number",
+            },
+          });
+        }
+        days = parsedDays;
+      }
+      const interval = q.right.interval ?? "day";
 
       const owner = auth.getNonNullableWorkspace();
 
-      const qdsl: estypes.QueryDslQueryContainer = {
-        bool: {
-          filter: [
-            { term: { workspace_id: owner.sId } },
-            { term: { agent_id: assistant.sId } },
-            { range: { timestamp: { gte: `now-${days}d/d` } } },
-          ],
-        },
-      };
+      const qdsl = buildAgentAnalyticsBaseQuery(owner.sId, assistant.sId, days);
 
       const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
         by_interval: {
@@ -150,11 +170,13 @@ async function handler(
       });
       if (result.isErr()) {
         const e = result.error;
+        const statusCode =
+          e.type === "connection_error" ? 503 : e.statusCode ?? 500;
         return apiError(req, res, {
-          status_code: e.statusCode ?? 502,
+          status_code: statusCode,
           api_error: {
-            type: "elasticsearch_error",
-            message: e.message,
+            type: "internal_server_error",
+            message: `Failed to retrieve usage metrics: ${e.message}`,
           },
         });
       }
