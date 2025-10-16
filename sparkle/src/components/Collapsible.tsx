@@ -173,7 +173,10 @@ const CollapsibleComponent = React.forwardRef<
         ref={ref}
         {...rootProps}
         open={open}
-        onOpenChange={(open) => setOpen(open)}
+        onOpenChange={(open) => {
+          setOpen(open);
+          rootProps?.onOpenChange?.(open);
+        }}
       >
         <CollapsibleTrigger {...triggerProps} isOpen={open}>
           {triggerChildren}
