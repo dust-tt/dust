@@ -91,7 +91,7 @@ export async function getBuilderNameSuggestions(
       prompt:
         "The user is currently creating an assistant based on a large language model." +
         "The assistant has instructions and a description. You are provided with a single " +
-        "message, consisting of those informations if they are available. Your role is to " +
+        "message, consisting of this information if it is available. Your role is to " +
         "suggest good names for the assistant.",
       specifications,
     }
