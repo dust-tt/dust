@@ -4,15 +4,16 @@ import { fromError } from "zod-validation-error";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type { ModelIdType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export interface LLMConfig {
   functionCall?: string | null;
-  modelId: string;
+  modelId: ModelIdType;
   promptCaching?: boolean;
-  providerId: string;
+  providerId: ModelProviderIdType;
   reasoningEffort?: string;
   responseFormat?: string;
   temperature?: number;

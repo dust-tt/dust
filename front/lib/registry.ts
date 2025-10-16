@@ -163,20 +163,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "assistant-builder-name-suggestions": {
-    app: {
-      appId: "34a8c4a2aa",
-      appHash:
-        "65020161030b555f4d2efc9d1ce3a6d0020dcf76e663f746bd98213c90a0675f",
-    },
-    config: {
-      CREATE_SUGGESTIONS: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "send_suggestions",
-        use_cache: false,
-      },
-    },
-  },
   "assistant-builder-emoji-suggestions": {
     app: {
       appId: "b69YdlJ3PJ",
