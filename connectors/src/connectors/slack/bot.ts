@@ -341,7 +341,7 @@ export async function botValidateToolExecution(
       throw new Error("Unreachable: bot cannot validate tool execution.");
     }
 
-    const { authorized, groupIds } = await notifyIfSlackUserIsNotAllowed(
+    const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
       connector,
       slackClient,
       slackUserInfo,
@@ -352,12 +352,12 @@ export async function botValidateToolExecution(
       },
       slackConfig.whitelistedDomains
     );
-    if (!authorized) {
+    if (!hasChatbotAccess.authorized) {
       return new Ok(undefined);
     }
 
     // If the user is allowed, we retrieve the groups he has access to.
-    requestedGroups = groupIds;
+    requestedGroups = hasChatbotAccess.groupIds;
 
     const dustAPI = new DustAPI(
       { url: apiConfig.getDustFrontAPIUrl() },
@@ -677,7 +677,7 @@ async function answerMessage(
     // permissions.
     skipToolsValidation = true;
   } else {
-    const { authorized, groupIds } = await notifyIfSlackUserIsNotAllowed(
+    const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
       connector,
       slackClient,
       slackUserInfo,
@@ -688,12 +688,12 @@ async function answerMessage(
       },
       slackConfig.whitelistedDomains
     );
-    if (!authorized) {
+    if (!hasChatbotAccess.authorized) {
       return new Ok(undefined);
     }
 
     // If the user is allowed, we retrieve the groups he has access to.
-    requestedGroups = groupIds;
+    requestedGroups = hasChatbotAccess.groupIds;
   }
 
   const displayName = slackUserInfo.display_name ?? "";
