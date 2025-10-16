@@ -3,7 +3,6 @@ import type {
   PublicPostContentFragmentRequestBody,
   PublicPostMessagesRequestBody,
   Result,
-  SupportedFileContentType,
   UserMessageType,
 } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
@@ -426,6 +425,8 @@ async function makeContentFragments(
   connector: ConnectorResource,
   lastMicrosoftBotMessage: MicrosoftBotMessage | null
 ): Promise<Result<PublicPostContentFragmentRequestBody[] | undefined, Error>> {
+  // Get Microsoft Graph client for authenticated file downloads
+  const client = await getMicrosoftClient(connector.connectionId);
   const teamsConversationId = context.activity.conversation.id;
 
   // Detect conversation type based on ID pattern
@@ -454,9 +455,6 @@ async function makeContentFragments(
       return new Ok(undefined);
     }
 
-    // Get Microsoft Graph client for authenticated file downloads
-    const client = await getMicrosoftClient(connector.connectionId);
-
     const allContentFragments = await processFileAttachments(
       currentMessageAttachments,
       dustAPI,
@@ -476,8 +474,6 @@ async function makeContentFragments(
     );
   }
 
-  const client = await getMicrosoftClient(connector.connectionId);
-
   // Get conversation history using the most reliable API approach
   const conversationHistory = await getMessagesFromConversation(
     logger,
@@ -487,54 +483,34 @@ async function makeContentFragments(
 
   const messages: ChatMessage[] = conversationHistory.results || [];
 
-  // Filter for new user messages since last bot interaction
-  // Find the cutoff point using the last bot message ID
+  const startIndex =
+    messages.findIndex((msg) => msg.id === context.activity.id) + 1;
+  // Filter for new user messages since last bot interaction (excluded) or root message (included)
   const lastBotMessageId = lastMicrosoftBotMessage?.agentActivityId;
+  const rootMessageId =
+    teamsConversationId.match(/;messageid=([^;]+)/i)?.[1] || undefined;
 
-  // Find the index of the last bot message to determine cutoff point
-  let cutoffIndex = -1;
-  if (lastBotMessageId) {
-    cutoffIndex = messages.findIndex((msg) => msg.id === lastBotMessageId);
-  }
+  const endIndex = lastMicrosoftBotMessage
+    ? messages.findIndex((msg) => msg.id === lastBotMessageId)
+    : messages.findIndex((msg) => msg.id === rootMessageId) + 1;
 
   // Get only messages that come after the last bot message (or all if no previous bot message)
   const messagesToConsider =
-    cutoffIndex >= 0
-      ? messages.slice(0, cutoffIndex) // Messages before the last bot message in the array
-      : messages;
+    endIndex >= 0
+      ? messages.slice(startIndex, endIndex)
+      : messages.slice(startIndex);
 
-  const newMessages = messagesToConsider
-    .filter((msg: unknown) => {
-      const message = msg as {
-        from?: { user?: { userIdentityType?: string } };
-        id?: string;
-      };
-
-      return (
-        message.from?.user?.userIdentityType === "aadUser" &&
-        message.id !== context.activity.id
-      );
-    })
-    .sort((a: unknown, b: unknown) => {
-      const msgA = a as { createdDateTime?: string };
-      const msgB = b as { createdDateTime?: string };
-      if (!msgA.createdDateTime || !msgB.createdDateTime) {
-        return 0;
-      }
-      return (
-        new Date(msgB.createdDateTime).getTime() -
-        new Date(msgA.createdDateTime).getTime()
-      );
-    });
+  const newMessages = messagesToConsider.filter(
+    (message) => message.from?.user
+  );
 
   const allContentFragments: PublicPostContentFragmentRequestBody[] = [];
-  console.log("newMessages", allContentFragments);
+
   // Process file attachments from both new messages AND the current message
   const allMessagesToCheckForFiles = [
     ...newMessages,
     // Add current message to check for attachments
-    ...messages.filter((msg: unknown) => {
-      const message = msg as { id?: string };
+    ...messages.filter((message) => {
       return message.id === context.activity.id;
     }),
   ];
@@ -579,7 +555,7 @@ async function makeContentFragments(
   const fileName = `teams_conversation-${teamsConversationId}.txt`;
 
   const fileRes = await dustAPI.uploadFile({
-    contentType: "text/plain" as SupportedFileContentType,
+    contentType: "text/plain",
     fileName,
     fileSize: conversationText.length,
     useCase: "conversation",

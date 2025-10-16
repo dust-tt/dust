@@ -187,7 +187,8 @@ export async function processFileAttachments(
 
       fileContent = downloadResult.value;
 
-      // Add proper file extension based on detected file type
+      // file-type is now pure ESM and does not properly support our mixed cjs packaging,
+      // so can only be used with dynamic import.
       const { fileTypeFromBuffer } = await import("file-type");
       const fileType = await fileTypeFromBuffer(new Uint8Array(fileContent));
       actualContentType = fileType?.mime || "application/octet-stream";

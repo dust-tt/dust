@@ -422,7 +422,7 @@ export async function getMessagesFromConversation(
   const res = await clientApiGet(
     logger,
     client,
-    `/chats/${conversationId}/messages?$top=50`
+    `/chats/${conversationId}/messages?$top=50&$orderBy=createdDateTime desc`
   );
 
   if ("@odata.nextLink" in res) {
