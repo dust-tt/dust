@@ -65,7 +65,7 @@ export async function* runToolWithStreaming(
 
   const { toolConfiguration, status, augmentedInputs: inputs } = action;
 
-  const signal = options?.signal;
+  // const signal = options?.signal;
 
   const localLogger = logger.child({
     actionConfigurationId: toolConfiguration.sId,
@@ -102,7 +102,6 @@ export async function* runToolWithStreaming(
           conversation,
           agentMessage,
         }),
-      signal,
     }
   );
 
