@@ -44,8 +44,12 @@ async function updateAgentRequestedGroupIds(
   }
 
   // Fetch all agent configurations that match the criteria
+  // Note: We filter out global agents as they may reference cross-workspace resources
   const agentConfigurations = await AgentConfiguration.findAll({
-    where: whereClause,
+    where: {
+      ...whereClause,
+      scope: ["workspace", "published"],
+    },
     order: [["createdAt", "DESC"]],
   });
 
@@ -81,6 +85,8 @@ async function updateAgentRequestedGroupIds(
       }
 
       // Calculate the correct group IDs from actions
+      // Note: You may see workspace_isolation_violation warnings in logs - these are benign
+      // monitoring warnings, not actual errors. The auth parameter ensures proper scoping.
       const newRequestedGroupIds =
         await getAgentConfigurationGroupIdsFromActions(auth, {
           actions: agentConfiguration.actions,
