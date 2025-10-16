@@ -80,8 +80,6 @@ const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
 const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
 
-
-
 type BotAnswerParams = {
   responseUrl?: string;
   slackTeamId: string;
