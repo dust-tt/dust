@@ -132,12 +132,15 @@ export function convertUrlToPoke(url: string): string | null {
   try {
     const urlObj = new URL(url);
 
-    // Check if it's a Dust domain (dust.tt or any subdomain like eu.dust.tt)
+    // Check if it's a Dust domain (dust.tt or any subdomain like eu.dust.tt) or localhost
     // Must be exactly dust.tt or *.dust.tt (not *dust.tt which would match notdust.tt)
-    if (
-      urlObj.hostname !== "dust.tt" &&
-      !urlObj.hostname.endsWith(".dust.tt")
-    ) {
+    const isValidHostname =
+      urlObj.hostname === "dust.tt" ||
+      urlObj.hostname.endsWith(".dust.tt") ||
+      urlObj.hostname === "localhost" ||
+      urlObj.hostname === "127.0.0.1";
+
+    if (!isValidHostname) {
       return null;
     }
 
@@ -180,12 +183,15 @@ export function convertPokeToUrl(pokeUrl: string): string | null {
   try {
     const urlObj = new URL(pokeUrl);
 
-    // Check if it's a Dust domain (dust.tt or any subdomain like eu.dust.tt)
+    // Check if it's a Dust domain (dust.tt or any subdomain like eu.dust.tt) or localhost
     // Must be exactly dust.tt or *.dust.tt (not *dust.tt which would match notdust.tt)
-    if (
-      urlObj.hostname !== "dust.tt" &&
-      !urlObj.hostname.endsWith(".dust.tt")
-    ) {
+    const isValidHostname =
+      urlObj.hostname === "dust.tt" ||
+      urlObj.hostname.endsWith(".dust.tt") ||
+      urlObj.hostname === "localhost" ||
+      urlObj.hostname === "127.0.0.1";
+
+    if (!isValidHostname) {
       return null;
     }
 

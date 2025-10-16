@@ -670,6 +670,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_transcripts"
   | "microsoft_teams_bot"
   | "microsoft_drive_mcp_server"
+  | "microsoft_teams_mcp_server"
   | "monday_tool"
   | "notion_private_integration"
   | "openai_o1_custom_assistants_feature"
