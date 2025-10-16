@@ -439,6 +439,108 @@ function AllTheBellsAndWhistlesSection() {
   );
 }
 
+function GallerySection() {
+  return (
+    <div className={SECTION_CLASSES}>
+      <div className={CONTAINER_CLASSES}>
+        <div className="mb-12">
+          <H2>See Frames in action</H2>
+          <P size="lg" className="mt-4 text-muted-foreground">
+            Explore interactive examples across different use cases and see how
+            Frames transforms your data into engaging, shareable content.
+          </P>
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-2">
+          {/* Sales Frame */}
+          <div className="space-y-4">
+            <div>
+              <H3 className="mb-2">Sales</H3>
+              <P size="sm" className="text-muted-foreground">
+                Personalized outbound pitches and conversation follow-ups
+              </P>
+            </div>
+            <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-white shadow-lg">
+              <iframe
+                src="https://dust.tt/share/frame/4ce02864-6181-451b-812d-b862f0370736"
+                title="Sales Frame Example"
+                className="absolute inset-0 h-full w-full"
+                style={{
+                  border: "none",
+                  outline: "none",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Marketing Frame */}
+          <div className="space-y-4">
+            <div>
+              <H3 className="mb-2">Marketing</H3>
+              <P size="sm" className="text-muted-foreground">
+                Personalized marketing materials and campaign analytics
+              </P>
+            </div>
+            <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-white shadow-lg">
+              <iframe
+                src="https://dust.tt/share/frame/1d641570-96d0-4491-a0ec-9c9426ab1009"
+                title="Marketing Frame Example"
+                className="absolute inset-0 h-full w-full"
+                style={{
+                  border: "none",
+                  outline: "none",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Customer Success Frame */}
+          <div className="space-y-4">
+            <div>
+              <H3 className="mb-2">Customer Success</H3>
+              <P size="sm" className="text-muted-foreground">
+                Analytics aggregation and onboarding sessions
+              </P>
+            </div>
+            <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-white shadow-lg">
+              <iframe
+                src="https://dust.tt/share/frame/a8ac6c1e-93e9-473b-92af-dd1e55216ec6"
+                title="Customer Success Frame Example"
+                className="absolute inset-0 h-full w-full"
+                style={{
+                  border: "none",
+                  outline: "none",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Product & Data Frame */}
+          <div className="space-y-4">
+            <div>
+              <H3 className="mb-2">Product & Data</H3>
+              <P size="sm" className="text-muted-foreground">
+                Proof of concepts and visual data exploration
+              </P>
+            </div>
+            <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-white shadow-lg">
+              <iframe
+                src="https://dust.tt/share/frame/a3819cae-2716-472d-b71d-aa6f960a7079"
+                title="Product & Data Frame Example"
+                className="absolute inset-0 h-full w-full"
+                style={{
+                  border: "none",
+                  outline: "none",
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SharingAndAccessSection() {
   return (
     <div className="py-16 md:py-20">
@@ -536,6 +638,7 @@ export default function Frames() {
         <HeroSection />
         <ContentInAction />
         <AllTheBellsAndWhistlesSection />
+        <GallerySection />
         <SharingAndAccessSection />
         <VideoSection />
         <TrustedBy logoSet="landing" />
