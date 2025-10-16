@@ -3,6 +3,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { runAction } from "@app/lib/actions/server";
+import { getBuilderDescriptionSuggestions } from "@app/lib/api/assistant/suggestions/description";
 import { getBuilderNameSuggestions } from "@app/lib/api/assistant/suggestions/name";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -73,6 +74,8 @@ export async function getBuilderSuggestions(
       return getBuilderNameSuggestions(auth, inputs);
 
     case "description":
+      return getBuilderDescriptionSuggestions(auth, inputs);
+
     case "emoji":
     case "tags":
     case "instructions":
