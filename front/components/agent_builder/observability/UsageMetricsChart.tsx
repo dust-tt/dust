@@ -20,6 +20,7 @@ import type {
 } from "@app/components/agent_builder/observability/constants";
 import {
   CHART_HEIGHT,
+  DEFAULT_PERIOD_DAYS,
   OBSERVABILITY_INTERVALS,
   OBSERVABILITY_TIME_RANGE,
   USAGE_METRICS_LEGEND,
@@ -56,9 +57,10 @@ function UsageMetricsTooltip(
     return null;
   }
   const row = first.payload;
+  const title = typeof label === "string" ? label : String(label ?? "");
   return (
     <ChartTooltipCard
-      title={String(label ?? "")}
+      title={title}
       rows={[
         {
           label: "Messages",
@@ -90,7 +92,8 @@ export function UsageMetricsChart({
   const [period, setPeriod] = useState<ObservabilityTimeRangeType>("14d");
   const [interval, setInterval] = useState<ObservabilityIntervalType>("day");
 
-  const days = period === "7d" ? 7 : period === "14d" ? 14 : 30;
+  const days =
+    period === "7d" ? 7 : period === "14d" ? 14 : DEFAULT_PERIOD_DAYS;
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useAgentUsageMetrics({
       workspaceId,

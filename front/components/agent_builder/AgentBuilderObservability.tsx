@@ -1,5 +1,3 @@
-import { Page } from "@dust-tt/sparkle";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { UsageMetricsChart } from "@app/components/agent_builder/observability/UsageMetricsChart";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
@@ -41,10 +39,10 @@ export function AgentBuilderObservability({
   return (
     <div className="flex h-full flex-col space-y-6 overflow-y-auto">
       <div>
-        <Page.H variant="h5">Observability</Page.H>
-        <Page.P>
+        <h2 className="text-lg font-semibold text-foreground">Observability</h2>
+        <p className="text-sm text-muted-foreground">
           Monitor key metrics and performance indicators for your agent.
-        </Page.P>
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-6">

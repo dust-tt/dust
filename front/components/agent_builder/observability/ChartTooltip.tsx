@@ -44,7 +44,7 @@ export function ChartTooltipCard({ title, rows, footer }: ChartTooltipProps) {
           {r.colorClassName && <LegendDot className={r.colorClassName} />}
           <span className="text-muted-foreground">{r.label}</span>
           <span className="ml-auto font-medium">{r.value}</span>
-          {r.percent !== null && r.percent !== undefined && (
+          {typeof r.percent === "number" && (
             <span className="text-muted-foreground">({r.percent}%)</span>
           )}
         </div>
