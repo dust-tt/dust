@@ -27,7 +27,10 @@ import {
   USAGE_METRICS_PALETTE,
   VERSION_MARKER_STYLE,
 } from "@app/components/agent_builder/observability/constants";
-import { useAgentUsageMetrics } from "@app/lib/swr/assistants";
+import {
+  useAgentUsageMetrics,
+  useAgentVersionMarkers,
+} from "@app/lib/swr/assistants";
 
 interface UsageMetricsData {
   messages: number;
@@ -102,8 +105,18 @@ export function UsageMetricsChart({
       disabled: !workspaceId || !agentConfigurationId,
     });
 
+  const { versionMarkers, isVersionMarkersLoading, isVersionMarkersError } =
+    useAgentVersionMarkers({
+      workspaceId,
+      agentConfigurationId,
+      days: period,
+      disabled: !workspaceId || !agentConfigurationId,
+    });
+
   const data = usageMetrics?.points ?? [];
-  const versionMarkers = usageMetrics?.versionMarkers ?? [];
+  const markers = versionMarkers ?? [];
+  const isLoading = isUsageMetricsLoading || isVersionMarkersLoading;
+  const isError = isUsageMetricsError || isVersionMarkersError;
 
   return (
     <div className="bg-card rounded-lg border border-border p-4">
@@ -144,20 +157,20 @@ export function UsageMetricsChart({
           </div>
         </div>
       </div>
-      {isUsageMetricsLoading ? (
+      {isLoading ? (
         <div
           className="flex items-center justify-center"
           style={{ height: CHART_HEIGHT }}
         >
           <Spinner size="lg" />
         </div>
-      ) : isUsageMetricsError ? (
+      ) : isError ? (
         <div
           className="flex items-center justify-center"
           style={{ height: CHART_HEIGHT }}
         >
           <p className="text-sm text-muted-foreground">
-            Failed to load usage metrics.
+            Failed to load observability data.
           </p>
         </div>
       ) : (
@@ -182,7 +195,7 @@ export function UsageMetricsChart({
                 className={USAGE_METRICS_PALETTE[key]}
               />
             ))}
-            {versionMarkers.map((marker, index) => (
+            {markers.map((marker, index) => (
               <ReferenceLine
                 key={`${marker.version}-${marker.timestamp}`}
                 x={marker.timestamp}
