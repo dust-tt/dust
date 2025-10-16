@@ -89,16 +89,15 @@ export function UsageMetricsChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const [period, setPeriod] = useState<ObservabilityTimeRangeType>("14d");
+  const [period, setPeriod] =
+    useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
   const [interval, setInterval] = useState<ObservabilityIntervalType>("day");
 
-  const days =
-    period === "7d" ? 7 : period === "14d" ? 14 : DEFAULT_PERIOD_DAYS;
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useAgentUsageMetrics({
       workspaceId,
       agentConfigurationId,
-      days,
+      days: period,
       interval,
       disabled: !workspaceId || !agentConfigurationId,
     });
@@ -123,7 +122,7 @@ export function UsageMetricsChart({
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {p}
+                {p}d
               </button>
             ))}
           </div>
