@@ -29,7 +29,8 @@ function PokefyPage() {
       if (fullUrl.startsWith("dust.tt/") || fullUrl.startsWith("eu.dust.tt/")) {
         fullUrl = "https://" + fullUrl;
       } else if (fullUrl.startsWith("w/")) {
-        fullUrl = `https://${window.location.hostname}/${fullUrl}`;
+        // Use current protocol and host (includes port for localhost:3000)
+        fullUrl = `${window.location.protocol}//${window.location.host}/${fullUrl}`;
       } else {
         fullUrl = "https://" + fullUrl;
       }
