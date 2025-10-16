@@ -8,27 +8,19 @@ import type {
   UserMessageType,
 } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
-import type { Client } from "@microsoft/microsoft-graph-client";
-import type {
-  ChatMessage,
-  ChatMessageAttachment,
-} from "@microsoft/microsoft-graph-types";
+import type { ChatMessage } from "@microsoft/microsoft-graph-types";
 import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
+import { processFileAttachments } from "@connectors/api/webhooks/teams/content_fragments";
 import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
-import {
-  downloadSharepointFile,
-  getSharepointFileInfo,
-} from "@connectors/connectors/microsoft/lib/files";
 import {
   clientApiGet,
   wrapMicrosoftGraphAPIWithResult,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { apiConfig } from "@connectors/lib/api/config";
 import { MicrosoftBotMessage } from "@connectors/lib/models/microsoft_bot";
-import { createProxyAwareFetch } from "@connectors/lib/proxy";
 import { getActionName } from "@connectors/lib/tools_utils";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -42,224 +34,6 @@ import {
 import { sendActivity, updateActivity } from "./bot_messaging_utils";
 
 const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
-const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
-
-// Helper function to process and upload file attachments
-async function processFileAttachments(
-  attachments: ChatMessageAttachment[],
-  dustAPI: DustAPI,
-  microsoftGraphClient: Client
-): Promise<PublicPostContentFragmentRequestBody[]> {
-  const contentFragments: PublicPostContentFragmentRequestBody[] = [];
-
-  for (const attachment of attachments) {
-    const fileName = attachment.name || "teams_file";
-
-    // Determine the actual content type for the file
-    let actualContentType: string = "application/octet-stream";
-    if (attachment.contentType === "reference") {
-      // For Teams reference attachments, get MIME type from file extension
-      const fileExtension = fileName.split(".").pop()?.toLowerCase();
-      // actualContentType =
-      //   getFileTypeFromExtension(fileExtension) || "application/octet-stream";
-      logger.info(
-        {
-          fileName,
-          fileExtension,
-          contentUrl: attachment.contentUrl,
-        },
-        `Processing Teams reference attachment`
-      );
-    } else {
-      actualContentType = attachment.contentType || "application/octet-stream";
-    }
-
-    let fileContent: Buffer | null = null;
-
-    if (attachment.contentType === "reference" && attachment.contentUrl) {
-      // For SharePoint/OneDrive files, use Microsoft Graph API approach
-      logger.info(
-        { fileName, contentUrl: attachment.contentUrl },
-        "Downloading Teams reference file using Microsoft Graph API"
-      );
-
-      const sharepointFileInfoRes = await getSharepointFileInfo(
-        attachment.contentUrl,
-        microsoftGraphClient,
-        logger
-      );
-
-      if (sharepointFileInfoRes.isErr()) {
-        logger.warn(
-          {
-            fileName,
-            error: sharepointFileInfoRes.error,
-            contentUrl: attachment.contentUrl,
-          },
-          "Failed to get Sharepoint file info"
-        );
-        continue;
-      }
-
-      const { itemId, mimeType, siteId } = sharepointFileInfoRes.value;
-
-      const downloadResult = await downloadSharepointFile(
-        itemId,
-        siteId,
-        microsoftGraphClient
-      );
-
-      if (downloadResult.isErr()) {
-        logger.warn(
-          {
-            fileName,
-            error: downloadResult.error,
-            contentUrl: attachment.contentUrl,
-          },
-          "Failed to download SharePoint file"
-        );
-        continue;
-      }
-
-      fileContent = downloadResult.value;
-      actualContentType = mimeType;
-    } else if (attachment.contentUrl) {
-      // For direct file attachments, use regular fetch
-      try {
-        logger.info(
-          { fileName, contentUrl: attachment.contentUrl },
-          "Downloading direct Teams file attachment"
-        );
-
-        const response = await createProxyAwareFetch()(attachment.contentUrl);
-        if (!response.ok) {
-          logger.warn(
-            {
-              fileName,
-              status: response.status,
-              statusText: response.statusText,
-            },
-            "Failed to download Teams file attachment"
-          );
-          continue;
-        }
-
-        fileContent = Buffer.from(await response.arrayBuffer());
-
-        logger.info(
-          { fileName, fileSize: fileContent.length },
-          "Successfully downloaded direct Teams file attachment"
-        );
-      } catch (error) {
-        logger.error(
-          { fileName, error, contentUrl: attachment.contentUrl },
-          "Error downloading direct Teams file attachment"
-        );
-        continue;
-      }
-    } else {
-      logger.warn(
-        { fileName, attachment },
-        "Teams attachment has no contentUrl, skipping"
-      );
-      continue;
-    }
-
-    // Check if fileContent was successfully downloaded
-    if (!fileContent || fileContent.length === 0) {
-      logger.warn(
-        {
-          fileName,
-          fileContentExists: !!fileContent,
-          fileSize: fileContent?.length || 0,
-        },
-        "File content is null or empty, skipping Teams file attachment"
-      );
-      continue;
-    }
-
-    if (fileContent.length > MAX_FILE_SIZE_TO_UPLOAD) {
-      logger.warn(
-        {
-          fileName,
-          fileSize: fileContent.length,
-          maxSize: MAX_FILE_SIZE_TO_UPLOAD,
-        },
-        "Teams file attachment too large"
-      );
-      continue;
-    }
-
-    // Log the content type for debugging but proceed with upload
-    logger.info(
-      { fileName, actualContentType, fileSize: fileContent.length },
-      "Preparing Teams file attachment for Dust upload"
-    );
-
-    // Create file object with proper buffer handling
-    let fileObject: File;
-    try {
-      // Ensure we have a proper Uint8Array for the File constructor
-      const uint8Array = new Uint8Array(fileContent);
-      fileObject = new File([uint8Array], fileName, {
-        type: actualContentType,
-      });
-    } catch (fileCreationError) {
-      logger.error(
-        {
-          fileName,
-          error: fileCreationError,
-          fileContentLength: fileContent.length,
-        },
-        "Failed to create File object"
-      );
-      continue;
-    }
-
-    // Prepare upload parameters
-    // Note: useCaseMetadata with conversationId was causing "File not found" errors
-    // so we omit it for now to ensure successful uploads
-    const uploadParams = {
-      contentType: actualContentType as SupportedFileContentType,
-      fileName,
-      fileSize: fileContent.length,
-      useCase: "conversation" as const,
-      fileObject,
-    };
-
-    logger.info(
-      {
-        fileName,
-        contentType: uploadParams.contentType,
-        fileSize: uploadParams.fileSize,
-        useCase: uploadParams.useCase,
-      },
-      "Uploading Teams file attachment to Dust"
-    );
-
-    const fileRes = await dustAPI.uploadFile(uploadParams);
-
-    if (fileRes.isOk()) {
-      contentFragments.push({
-        title: fileName,
-        url: fileRes.value.publicUrl,
-        fileId: fileRes.value.sId,
-        context: null,
-      });
-      logger.info(
-        { fileName, actualContentType, fileId: fileRes.value.sId },
-        "Successfully uploaded Teams file attachment"
-      );
-    } else {
-      logger.error(
-        { fileName, error: fileRes.error },
-        "Failed to upload Teams file attachment to Dust"
-      );
-    }
-  }
-
-  return contentFragments;
-}
 
 export async function botAnswerMessage(
   context: TurnContext,
