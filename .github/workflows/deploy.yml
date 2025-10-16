@@ -43,7 +43,7 @@ permissions:
 
 concurrency:
   group: "deploy_${{ inputs.component }}"
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: false
 
 jobs:
   check-branch:
