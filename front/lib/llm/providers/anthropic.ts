@@ -32,8 +32,7 @@ export class AnthropicLLM extends LLM {
   }) {
     super({ temperature, modelId, providerId: "anthropic" });
     this.client = new Anthropic({
-      apiKey:
-        process.env.ANTHROPIC_API_KEY,
+      apiKey: process.env.ANTHROPIC_API_KEY,
     });
   }
 

@@ -1,6 +1,7 @@
 import type { LLM } from "@app/lib/llm/llm";
 import { AnthropicLLM } from "@app/lib/llm/providers/anthropic";
 import { MistralLLM } from "@app/lib/llm/providers/mistral";
+import { OpenAILLM } from "@app/lib/llm/providers/openai";
 import { getProviderFromModelId } from "@app/types/assistant/models/models";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -34,6 +35,13 @@ export function getLLM({
         model = new AnthropicLLM({ modelId, temperature: 1 });
       } catch (error) {
         return new Err(new Error(`Failed to create AnthropicLLM: ${error}`));
+      }
+      break;
+    case "openai":
+      try {
+        model = new OpenAILLM({ modelId, temperature });
+      } catch (error) {
+        return new Err(new Error(`Failed to create OpenAILLM: ${error}`));
       }
       break;
     default:
