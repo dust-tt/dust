@@ -1201,6 +1201,14 @@ export async function attemptChannelJoinActivity(
   connectorId: ModelId,
   channelId: string
 ) {
+  logger.info(
+    {
+      connectorId,
+      channelId,
+    },
+    "Attempting to join channel"
+  );
+
   const res = await joinChannel(connectorId, channelId);
 
   if (res.isErr()) {
@@ -1319,6 +1327,15 @@ export async function autoReadChannelActivity(
   );
 
   if (matchingPatterns.length === 0) {
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        channelName,
+        autoReadChannelPatterns,
+      },
+      "Channel does not match any auto-read patterns, skipping."
+    );
     return false;
   }
 
