@@ -127,7 +127,8 @@ export async function makeDiscordContentFragments({
       hasMoreMessages = false;
     } else {
       allMessages.push(...messages);
-      oldestMessageId = messages[messages.length - 1]?.id;
+      const lastMessage = messages[messages.length - 1];
+      oldestMessageId = lastMessage?.id;
 
       // If we got fewer than 100 messages, we've reached the end.
       if (messages.length < 100) {

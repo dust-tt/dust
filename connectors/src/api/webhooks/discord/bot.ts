@@ -43,104 +43,97 @@ export async function sendMessageToAgent(
     logger,
   } = params;
 
-  try {
-    const dustAPI = new DustAPI(
-      { url: apiConfig.getDustFrontAPIUrl() },
-      {
-        workspaceId: connector.workspaceId,
-        apiKey: connector.workspaceAPIKey,
-      },
-      logger
-    );
+  const dustAPI = new DustAPI(
+    { url: apiConfig.getDustFrontAPIUrl() },
+    {
+      workspaceId: connector.workspaceId,
+      apiKey: connector.workspaceAPIKey,
+    },
+    logger
+  );
 
-    const messageWithMention = `:mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}} ${message}`;
+  const messageWithMention = `:mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}} ${message}`;
 
-    const messageReqBody = {
-      content: messageWithMention,
-      mentions: [{ configurationId: agentConfiguration.sId }],
-      context: {
-        timezone: "UTC",
-        username: discordUsername,
-        fullName: discordUsername,
-        email: null, // This is always null since we do not yet have a way to get the user's email.
-        profilePictureUrl: null,
-      },
-    };
+  const messageReqBody = {
+    content: messageWithMention,
+    mentions: [{ configurationId: agentConfiguration.sId }],
+    context: {
+      timezone: "UTC",
+      username: discordUsername,
+      fullName: discordUsername,
+      email: null, // This is always null since we do not yet have a way to get the user's email.
+      profilePictureUrl: null,
+    },
+  };
 
-    const contentFragmentsRes = await makeDiscordContentFragments({
-      channelId,
-      logger,
-    });
+  const contentFragmentsRes = await makeDiscordContentFragments({
+    channelId,
+    logger,
+  });
 
-    const contentFragments = contentFragmentsRes.isOk()
-      ? contentFragmentsRes.value
-      : null;
+  const contentFragments = contentFragmentsRes.isOk()
+    ? contentFragmentsRes.value
+    : null;
 
-    const convRes = await dustAPI.createConversation({
-      title: null,
-      visibility: "unlisted",
-      message: messageReqBody,
-      contentFragments: contentFragments || undefined,
-    });
+  const convRes = await dustAPI.createConversation({
+    title: null,
+    visibility: "unlisted",
+    message: messageReqBody,
+    contentFragments: contentFragments || undefined,
+  });
 
-    if (convRes.isErr()) {
-      logger.error(
-        { error: convRes.error, connectorId: connector.id },
-        "Failed to create conversation"
-      );
-      await updateDiscordMessage(
-        interactionToken,
-        `Error: ${convRes.error.message}`,
-        logger
-      );
-      return new Err(new Error("Failed to create conversation"));
-    }
-
-    const conversation = convRes.value.conversation;
-    const userMessageId = convRes.value.message?.sId;
-
-    if (!userMessageId) {
-      logger.error(
-        { conversationId: conversation.sId },
-        "Failed to retrieve user message ID"
-      );
-      await updateDiscordMessage(
-        interactionToken,
-        "Error: Failed to retrieve user message ID",
-        logger
-      );
-      return new Err(new Error("Failed to retrieve user message ID"));
-    }
-
-    const streamRes = await streamAgentResponseToDiscord(
-      dustAPI,
-      conversation,
-      userMessageId,
-      interactionToken,
-      logger,
-      connector
-    );
-
-    if (streamRes.isErr()) {
-      return streamRes;
-    }
-
-    await dustAPI.markAsRead({ conversationId: conversation.sId });
-
-    return streamRes;
-  } catch (error) {
-    const normalizedError = normalizeError(error);
+  if (convRes.isErr()) {
     logger.error(
-      { error: normalizedError, channelId },
-      "Error sending message to agent"
+      { error: convRes.error, connectorId: connector.id },
+      "Failed to create conversation"
     );
     await updateDiscordMessage(
       interactionToken,
-      `Error: ${normalizedError.message}`,
+      `Error: ${convRes.error.message}`,
       logger
     );
-    return new Err(normalizedError);
+    return new Err(new Error("Failed to create conversation"));
   }
+
+  const conversation = convRes.value.conversation;
+  const userMessageId = convRes.value.message?.sId;
+
+  if (!userMessageId) {
+    logger.error(
+      { conversationId: conversation.sId },
+      "Failed to retrieve user message ID"
+    );
+    await updateDiscordMessage(
+      interactionToken,
+      "Error: Failed to retrieve user message ID",
+      logger
+    );
+    return new Err(new Error("Failed to retrieve user message ID"));
+  }
+
+  const streamRes = await streamAgentResponseToDiscord(
+    dustAPI,
+    conversation,
+    userMessageId,
+    interactionToken,
+    logger,
+    connector
+  );
+
+  if (streamRes.isErr()) {
+    return streamRes;
+  }
+
+  try {
+    await dustAPI.markAsRead({ conversationId: conversation.sId });
+  } catch (error) {
+    logger.error(
+      { error: normalizeError(error), conversationId: conversation.sId },
+      "Failed to mark conversation as read"
+    );
+  }
+
+  return streamRes;
 }
 
 async function streamAgentResponseToDiscord(
@@ -347,29 +340,21 @@ async function sendDiscordMessages(
 ): Promise<void> {
   const chunks = splitContentForDiscord(content);
 
-  if (chunks.length === 0) {
-    return;
-  }
-
-  const firstChunk = chunks[0];
+  const [firstChunk, ...remainingChunks] = chunks;
   if (!firstChunk) {
-    logger.error("First chunk is undefined after splitting");
     return;
   }
 
   await updateDiscordMessage(interactionToken, firstChunk, logger);
 
-  if (chunks.length > 1) {
+  if (remainingChunks.length > 0) {
     logger.info(
       { totalChunks: chunks.length },
       "Message split into multiple Discord messages"
     );
 
-    for (let i = 1; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      if (chunk) {
-        await sendDiscordFollowUpMessage(interactionToken, chunk, logger);
-      }
+    for (const chunk of remainingChunks) {
+      await sendDiscordFollowUpMessage(interactionToken, chunk, logger);
     }
   }
 }
@@ -380,7 +365,6 @@ async function sendDiscordFollowUpMessage(
   logger: Logger
 ): Promise<void> {
   const applicationId = apiConfig.getDiscordApplicationId();
-
   const url = `${DISCORD_API_BASE_URL}/webhooks/${applicationId}/${interactionToken}`;
 
   const response = await fetch(url, {
