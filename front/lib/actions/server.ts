@@ -1,6 +1,19 @@
 // Okay to use public API types because it's internal MCP servers.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import type { DustAppConfigType, DustAppType } from "@dust-tt/client";
+import type {
+  DustAppConfigType,
+  DustAppRunBlockExecutionEvent,
+  DustAppRunBlockStatusEvent,
+  DustAppRunErroredEvent,
+  DustAppRunFinalEvent,
+  DustAppRunFunctionCallArgumentsTokensEvent,
+  DustAppRunFunctionCallEvent,
+  DustAppRunReasoningItemEvent,
+  DustAppRunReasoningTokensEvent,
+  DustAppRunRunStatusEvent,
+  DustAppRunTokensEvent,
+  DustAppType,
+} from "@dust-tt/client";
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { DustAPI } from "@dust-tt/client";
 import { z } from "zod";
@@ -12,6 +25,7 @@ import type { DustRegistryActionName } from "@app/lib/registry";
 import { getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
+import type { Result } from "@app/types";
 import { Err, getHeaderFromGroupIds, getHeaderFromRole, Ok } from "@app/types";
 
 // Record an event and a log for the action error.
@@ -77,6 +91,21 @@ const DustAppChatBlockSchema = z.object({
 
 export type DustAppChatBlockType = z.infer<typeof DustAppChatBlockSchema>;
 
+/**
+ * Union type representing all possible events that can be streamed from a Dust app run
+ */
+export type DustAppRunEvent =
+  | DustAppRunErroredEvent
+  | DustAppRunRunStatusEvent
+  | DustAppRunBlockStatusEvent
+  | DustAppRunBlockExecutionEvent
+  | DustAppRunTokensEvent
+  | DustAppRunReasoningTokensEvent
+  | DustAppRunReasoningItemEvent
+  | DustAppRunFunctionCallEvent
+  | DustAppRunFunctionCallArgumentsTokensEvent
+  | DustAppRunFinalEvent;
+
 export const isDustAppChatBlockType = (
   block: unknown
 ): block is DustAppChatBlockType => {
@@ -98,7 +127,15 @@ export async function runActionStreamed(
   config: DustAppConfigType,
   inputs: Array<unknown>,
   tracingRecords: Record<string, string>
-) {
+): Promise<
+  Result<
+    {
+      eventStream: AsyncGenerator<DustAppRunEvent, void, unknown>;
+      dustRunId: Promise<string>;
+    },
+    unknown
+  >
+> {
   const owner = auth.workspace();
   if (!owner) {
     return new Err({
