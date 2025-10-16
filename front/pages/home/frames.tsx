@@ -131,7 +131,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-red-500"></div>
                   <div>
-                    <P size="sm" className="font-medium">
+                    <P size="md" className="font-medium">
                       Create deeply personal, shareable content as superior
                       outbound pitches.
                     </P>
@@ -141,7 +141,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-bl-full bg-yellow-400"></div>
                   <div>
-                    <P size="sm" className="font-medium">
+                    <P size="md" className="font-medium">
                       Personalize by prospect, adapt tone/language and context
                       from previous interactions.
                     </P>
@@ -151,7 +151,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-green-500"></div>
                   <div>
-                    <P size="sm" className="font-medium">
+                    <P size="md" className="font-medium">
                       Transform conversation transcripts into enriched,
                       shareable follow-up content.
                     </P>
@@ -161,12 +161,23 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 bg-blue-500"></div>
                   <div>
-                    <P size="sm" className="font-medium">
+                    <P size="md" className="font-medium">
                       Visualize qualitative and quantitative Sales insights in a
                       smooth digestible format.
                     </P>
                   </div>
                 </div>
+              </div>
+              <div className="mt-6">
+                <Button
+                  variant="primary"
+                  size="md"
+                  label="See example"
+                  href="https://dust.tt/share/frame/4ce02864-6181-451b-812d-b862f0370736"
+                  className="w-full sm:w-auto"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
               </div>
             </div>
           </div>
@@ -178,7 +189,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 bg-pink-400"></div>
                   <div>
-                    <P size="sm" className="font-medium">
+                    <P size="md" className="font-medium">
                       Generate personalized marketing materials and template
                       that can be automatically tailored to different audiences.
                     </P>
@@ -188,7 +199,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-red-500"></div>
                   <div>
-                    <P size="sm" className="font-medium">
+                    <P size="md" className="font-medium">
                       Build scalable templates that personalize at scale while
                       maintaining brand guidelines.
                     </P>
@@ -198,7 +209,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-tl-full bg-blue-500"></div>
                   <div>
-                    <P size="sm" className="font-medium">
+                    <P size="md" className="font-medium">
                       Create new shareable formats, optimized for different
                       marketing channels.
                     </P>
@@ -208,12 +219,23 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-green-500"></div>
                   <div>
-                    <P size="sm" className="font-medium">
+                    <P size="md" className="font-medium">
                       Turn campaign results into an editable infographic you can
                       tailor for exec reviews and posts.
                     </P>
                   </div>
                 </div>
+              </div>
+              <div className="mt-6">
+                <Button
+                  variant="primary"
+                  size="md"
+                  label="See example"
+                  href="https://dust.tt/share/frame/1d641570-96d0-4491-a0ec-9c9426ab1009"
+                  className="w-full sm:w-auto"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
               </div>
             </div>
             <div className="order-1 flex items-center justify-center lg:order-2">
@@ -247,7 +269,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-pink-400"></div>
                   <div>
-                    <P size="sm" className="font-medium">
+                    <P size="md" className="font-medium">
                       Aggregate analytics and support data in engaging formats
                       with "talk to your data".
                     </P>
@@ -257,7 +279,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 bg-red-500"></div>
                   <div>
-                    <P size="sm" className="font-medium">
+                    <P size="md" className="font-medium">
                       Create modular onboarding sessions based on previous
                       discussions.
                     </P>
@@ -267,12 +289,23 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-yellow-500"></div>
                   <div>
-                    <P size="sm" className="font-medium">
+                    <P size="md" className="font-medium">
                       Create a renewal summary that pulls wins and gaps into one
                       live page.
                     </P>
                   </div>
                 </div>
+              </div>
+              <div className="mt-6">
+                <Button
+                  variant="primary"
+                  size="md"
+                  label="See example"
+                  href="https://dust.tt/share/frame/a8ac6c1e-93e9-473b-92af-dd1e55216ec6"
+                  className="w-full sm:w-auto"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
               </div>
             </div>
           </div>
@@ -284,7 +317,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 bg-purple-400"></div>
                   <div>
-                    <P size="sm" className="font-medium">
+                    <P size="md" className="font-medium">
                       Build simple proofs of concept without Figma or complex
                       tools.
                     </P>
@@ -294,7 +327,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-orange-500"></div>
                   <div>
-                    <P size="sm" className="font-medium">
+                    <P size="md" className="font-medium">
                       Convert raw notes, roadmap ideas, receipts into polished
                       visual decks.
                     </P>
@@ -304,7 +337,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-tl-full bg-teal-500"></div>
                   <div>
-                    <P size="sm" className="font-medium">
+                    <P size="md" className="font-medium">
                       Create shareable content for all-hands and team meetings.
                     </P>
                   </div>
@@ -313,12 +346,23 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-blue-500"></div>
                   <div>
-                    <P size="sm" className="font-medium">
+                    <P size="md" className="font-medium">
                       See data exactly how you want, merging tools into your
                       ideal interface.
                     </P>
                   </div>
                 </div>
+              </div>
+              <div className="mt-6">
+                <Button
+                  variant="primary"
+                  size="md"
+                  label="See example"
+                  href="https://dust.tt/share/frame/a3819cae-2716-472d-b71d-aa6f960a7079"
+                  className="w-full sm:w-auto"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
               </div>
             </div>
             <div className="order-1 flex items-center justify-center lg:order-2">
@@ -363,7 +407,7 @@ function AllTheBellsAndWhistlesSection() {
             <h4 className="text-lg font-semibold">
               Secure and collaborative by default
             </h4>
-            <P size="sm" className="mt-1 text-muted-foreground">
+            <P size="md" className="mt-1 text-muted-foreground">
               With share and control access, you can use Frames with your team,
               customers, or your boss and still sleep at night knowing you
               control who can touch what.
@@ -372,7 +416,7 @@ function AllTheBellsAndWhistlesSection() {
           <div className="flex flex-1 flex-col rounded-2xl bg-gray-50 p-6">
             <Icon visual={PlanetIcon} className="mb-4 h-8 w-8 text-gray-600" />
             <h4 className="text-lg font-semibold">Works anywhere</h4>
-            <P size="sm" className="mt-1 text-muted-foreground">
+            <P size="md" className="mt-1 text-muted-foreground">
               Works with whatever your AI agents produce: CSVs, JSON, plain
               text, or screenshots that need a glow-up.
             </P>
@@ -383,7 +427,7 @@ function AllTheBellsAndWhistlesSection() {
               className="mb-4 h-8 w-8 text-gray-600"
             />
             <h4 className="text-lg font-semibold">Wears your jersey</h4>
-            <P size="sm" className="mt-1 text-muted-foreground">
+            <P size="md" className="mt-1 text-muted-foreground">
               Your charts, dashboards, and pages don't look like they came from
               "some tool." They wear your logo, colors, and style, so every
               share feels like it's from you.
