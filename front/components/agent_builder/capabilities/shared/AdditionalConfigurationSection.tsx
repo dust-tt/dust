@@ -560,20 +560,8 @@ export function AdditionalConfigurationSection({
     [filteredBooleanConfigurations]
   );
   const groupedEnums = useMemo(() => {
-    const groups: Record<
-      string,
-      Record<
-        string,
-        {
-          options: {
-            value: string;
-            label: string;
-            description?: string;
-          }[];
-          description?: string;
-        }
-      >
-    > = {};
+    const groups: Record<string, MCPServerRequirements["requiredEnums"]> = {};
+
     Object.entries(requiredEnums).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {
@@ -581,24 +569,13 @@ export function AdditionalConfigurationSection({
       }
       groups[prefix][key] = values;
     });
+
     return groups;
   }, [requiredEnums]);
 
   const groupedLists = useMemo(() => {
-    const groups: Record<
-      string,
-      Record<
-        string,
-        {
-          options: {
-            value: string;
-            label: string;
-            description?: string;
-          }[];
-          description?: string;
-        }
-      >
-    > = {};
+    const groups: Record<string, MCPServerRequirements["requiredLists"]> = {};
+
     Object.entries(requiredLists).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {
@@ -606,6 +583,7 @@ export function AdditionalConfigurationSection({
       }
       groups[prefix][key] = values;
     });
+
     return groups;
   }, [requiredLists]);
 
