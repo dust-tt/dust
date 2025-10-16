@@ -1,4 +1,4 @@
-import { callLLM } from "@app/lib/api/assistant/call_llm";
+import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AuthenticatorType } from "@app/lib/auth";
@@ -143,7 +143,7 @@ async function generateConversationTitle(
     );
   }
 
-  const res = await callLLM(
+  const res = await runMultiActionsAgent(
     auth,
     {
       providerId: PROVIDER_ID,

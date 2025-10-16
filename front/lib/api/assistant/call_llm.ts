@@ -55,7 +55,7 @@ export type LLMOutput = z.infer<typeof LLMOutputSchema>;
  * This provides a unified interface for calling LLMs while we transition away from individual Dust
  * apps. Once we have the direct LLM router ready, this wrapper will be fully removed.
  */
-export async function callLLM(
+export async function runMultiActionsAgent(
   auth: Authenticator,
   config: LLMConfig,
   input: LLMInput,
