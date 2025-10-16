@@ -4,7 +4,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { checkRunningUpsertWorkflows } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
