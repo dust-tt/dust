@@ -407,7 +407,7 @@ function AllTheBellsAndWhistlesSection() {
             <h4 className="text-lg font-semibold">
               Secure and collaborative by default
             </h4>
-            <P size="md" className="mt-1 text-muted-foreground">
+            <P size="sm" className="mt-1 text-muted-foreground">
               With share and control access, you can use Frames with your team,
               customers, or your boss and still sleep at night knowing you
               control who can touch what.
@@ -416,7 +416,7 @@ function AllTheBellsAndWhistlesSection() {
           <div className="flex flex-1 flex-col rounded-2xl bg-gray-50 p-6">
             <Icon visual={PlanetIcon} className="mb-4 h-8 w-8 text-gray-600" />
             <h4 className="text-lg font-semibold">Works anywhere</h4>
-            <P size="md" className="mt-1 text-muted-foreground">
+            <P size="sm" className="mt-1 text-muted-foreground">
               Works with whatever your AI agents produce: CSVs, JSON, plain
               text, or screenshots that need a glow-up.
             </P>
@@ -427,7 +427,7 @@ function AllTheBellsAndWhistlesSection() {
               className="mb-4 h-8 w-8 text-gray-600"
             />
             <h4 className="text-lg font-semibold">Wears your jersey</h4>
-            <P size="md" className="mt-1 text-muted-foreground">
+            <P size="sm" className="mt-1 text-muted-foreground">
               Your charts, dashboards, and pages don't look like they came from
               "some tool." They wear your logo, colors, and style, so every
               share feels like it's from you.
