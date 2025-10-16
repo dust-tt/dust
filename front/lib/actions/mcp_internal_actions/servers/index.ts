@@ -154,9 +154,9 @@ export async function getInternalMCPServer(
     case "jira":
       return jiraServer(auth, agentLoopContext);
     case "microsoft_drive":
-      return microsoftDriveServer(auth);
+      return microsoftDriveServer(auth, agentLoopContext);
     case "microsoft_teams":
-      return microsoftTeamsServer(auth);
+      return microsoftTeamsServer(auth, agentLoopContext);
     case "monday":
       return mondayServer(auth, agentLoopContext);
     case "slack":

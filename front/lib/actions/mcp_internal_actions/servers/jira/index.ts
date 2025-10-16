@@ -63,6 +63,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async (_, { authInfo }) => {
@@ -104,6 +105,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ issueKey, fields }, { authInfo }) => {
@@ -154,6 +156,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async (_, { authInfo }) => {
@@ -189,6 +192,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ projectKey }, { authInfo }) => {
@@ -231,6 +235,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ projectKey }, { authInfo }) => {
@@ -275,6 +280,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ issueKey }, { authInfo }) => {
@@ -324,6 +330,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async (
@@ -406,6 +413,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ filters, sortBy, nextPageToken }, { authInfo }) => {
@@ -466,6 +474,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ jql, maxResults, fields, nextPageToken }, { authInfo }) => {
@@ -515,6 +524,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ projectKey }, { authInfo }) => {
@@ -566,6 +576,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ projectKey, issueTypeId }, { authInfo }) => {
@@ -613,6 +624,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async (_, { authInfo }) => {
@@ -656,6 +668,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ issueKey, transitionId }, { authInfo }) => {
@@ -729,6 +742,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ issueData }, { authInfo }) => {
@@ -773,6 +787,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ issueKey, updateData }, { authInfo }) => {
@@ -834,6 +849,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ linkData }, { authInfo }) => {
@@ -882,6 +898,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ linkId }, { authInfo }) => {
@@ -917,6 +934,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async (_, { authInfo }) => {
@@ -985,6 +1003,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async (
@@ -1104,6 +1123,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ issueKey, attachment }, { authInfo }) => {
@@ -1230,6 +1250,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ issueKey }, { authInfo }) => {
@@ -1297,6 +1318,7 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: JIRA_TOOL_NAME,
+        agentLoopContext,
         skipAlerting: true,
       },
       async ({ issueKey, attachmentId }, { authInfo }) => {
