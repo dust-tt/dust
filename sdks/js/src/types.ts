@@ -1259,7 +1259,7 @@ export function isMCPServerPersonalAuthRequiredError(
   return (
     error.code === "mcp_server_personal_authentication_required" &&
     error.metadata &&
-    "mcpServerId" in error.metadata
+    "mcp_server_id" in error.metadata
   );
 }
 
