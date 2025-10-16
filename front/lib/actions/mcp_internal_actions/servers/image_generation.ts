@@ -171,7 +171,9 @@ function createServer(
                 `Error generating image. Image generation service error: Status: ` +
                   `${error.status}, Code: ${error.code}, Message: ${error.message}`,
                 {
-                  tracked: error.code !== "moderation_blocked",
+                  // Don't track the error if we know it's not our fault: when openAI returns a 500, error.code is null.
+                  tracked:
+                    error.code !== null && error.code !== "moderation_blocked",
                 }
               )
             );

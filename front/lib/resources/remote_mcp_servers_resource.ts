@@ -22,6 +22,7 @@ import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/acti
 import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -294,6 +295,16 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
           "The user is not authorized to update the metadata of a remote MCP server"
         )
       );
+    }
+
+    // If cachedTools is being updated, clean up tool metadata for tools that no longer exist
+    if (cachedTools) {
+      const cachedToolNames = new Set(cachedTools.map((tool) => tool.name));
+
+      await RemoteMCPServerToolMetadataResource.deleteStaleTools(auth, {
+        serverId: this.id,
+        toolsToKeep: Array.from(cachedToolNames),
+      });
     }
 
     await this.update({

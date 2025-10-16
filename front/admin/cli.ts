@@ -3,7 +3,7 @@ import parseArgs from "minimist";
 import path from "path";
 
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
+import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
 import { default as config } from "@app/lib/api/config";
 import {
@@ -181,7 +181,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
     default:
       console.log(`Unknown workspace command: ${command}`);
       console.log(
-        "Possible values: `find`, `create`, `set-limits`, `upgrade`, `downgrade`"
+        "Possible values: `create`, `upgrade`, `downgrade`, `pause-connectors`, `unpause-connectors`"
       );
   }
 };

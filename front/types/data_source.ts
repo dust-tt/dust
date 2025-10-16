@@ -9,6 +9,7 @@ import type { EditedByUser } from "./user";
 export const CONNECTOR_PROVIDERS = [
   "bigquery",
   "confluence",
+  "discord_bot",
   "github",
   "gong",
   "google_drive",

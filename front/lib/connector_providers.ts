@@ -1,6 +1,7 @@
 import {
   BigQueryLogo,
   ConfluenceLogo,
+  DiscordLogo,
   DriveLogo,
   FolderIcon,
   GithubLogo,
@@ -91,6 +92,7 @@ export type ConnectorProviderConfiguration = {
     unselected: ConnectorPermission;
   };
   isDeletable: boolean;
+  isHiddenAsDataSource?: boolean;
 } & ConnectorPermissionsConfigurable;
 
 // TODO(slack 2025-06-19): Remove this function once the new app is published.
@@ -247,6 +249,31 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       unselected: "write",
     },
     isDeletable: false,
+    isHiddenAsDataSource: true,
+  },
+  discord_bot: {
+    name: "Discord (Bot)",
+    connectorProvider: "discord_bot",
+    status: "rolling_out",
+    hide: true,
+    isPermissionsConfigurableBlocked: true,
+    permissionsDisabledPlaceholder: "N/A",
+    description: "N/A",
+    limitations: "N/A",
+    mismatchError: "N/A",
+    guideLink: "https://docs.dust.tt/docs/discord-bot",
+    selectLabel: "N/A",
+    getLogoComponent: () => {
+      return DiscordLogo;
+    },
+    isNested: false,
+    isTitleFilterEnabled: true,
+    permissions: {
+      selected: "read_write",
+      unselected: "write",
+    },
+    isDeletable: false,
+    isHiddenAsDataSource: true,
   },
   github: {
     name: "GitHub",
@@ -313,6 +340,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
     ),
     isNested: true,
+    isTitleFilterEnabled: true,
     oauthExtraConfigComponent: MicrosoftOAuthExtraConfig,
     permissions: {
       selected: "read",
@@ -526,6 +554,7 @@ export const isConnectorProviderAllowedForPlan = (
       return !!featureFlags?.includes("salesforce_synced_queries");
     case "microsoft":
     case "slack_bot":
+    case "discord_bot":
     case "snowflake":
     case "zendesk":
     case "bigquery":
@@ -557,6 +586,7 @@ export const isConnectorProviderAssistantDefaultSelected = (
     // Remote database connectors are not available for semantic search so it makes no sense to select them by default
     case "bigquery":
     case "slack_bot":
+    case "discord_bot":
     case "salesforce":
     case "snowflake":
     case "webcrawler":
@@ -612,6 +642,7 @@ export function isConnectorTypeTrackable(
       return true;
     case "slack":
     case "slack_bot":
+    case "discord_bot":
       return false;
     default:
       assertNever(connectorType);

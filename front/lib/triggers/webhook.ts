@@ -5,10 +5,12 @@ import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
+import { launchAgentTriggerWebhookWorkflow } from "@app/lib/triggers/temporal/webhook/client";
 import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
+import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, errorToString, Ok } from "@app/types";
@@ -16,6 +18,52 @@ import type { WebhookSourceType } from "@app/types/triggers/webhooks";
 
 const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10% of workspace message limit
 const HEADERS_ALLOWED_LIST = ["x-github-event"]; // To avoid storing all headers in GCS, they might contain sensitive information
+
+export const checkSignature = ({
+  headerName,
+  algorithm,
+  secret,
+  headers,
+  body,
+}: {
+  headerName: string;
+  algorithm: "sha1" | "sha256" | "sha512";
+  secret: string;
+  headers: Record<string, string>;
+  body: any;
+}): Result<
+  void,
+  Omit<DustError, "code"> & { code: "invalid_signature_error" }
+> => {
+  const signature = headers[headerName.toLowerCase()] as string;
+
+  if (!signature) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_signature_error",
+      message: `Missing signature header: ${headerName}`,
+    });
+  }
+
+  const stringifiedBody = JSON.stringify(body);
+
+  const isValid = verifySignature({
+    signedContent: stringifiedBody,
+    secret: secret,
+    signature,
+    algorithm,
+  });
+
+  if (!isValid) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_signature_error",
+      message: "Invalid webhook signature.",
+    });
+  }
+
+  return new Ok(undefined);
+};
 
 export const checkWebhookRequestForRateLimit = async (
   auth: Authenticator
@@ -104,6 +152,11 @@ export const processWebhookRequest = async (
       content,
       contentType: "application/json",
       filePath: gcsPath,
+    });
+
+    await launchAgentTriggerWebhookWorkflow({
+      auth,
+      webhookRequest,
     });
   } catch (error) {
     await webhookRequest.markAsFailed(errorToString(error));

@@ -1,7 +1,7 @@
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
-import { ConversationDataTable } from "@app/components/poke/conversations/table";
+import { ConversationDataTable } from "@app/components/poke/conversation/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { ViewTriggerTable } from "@app/components/poke/triggers/view";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";

@@ -243,7 +243,11 @@ export default async function createServer(
       configurableProperties,
       withToolLogging(
         auth,
-        { toolNameForMonitoring: RUN_AGENT_TOOL_LOG_NAME, agentLoopContext },
+        {
+          toolNameForMonitoring: RUN_AGENT_TOOL_LOG_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
         async () => new Err(new MCPError("No child agent configured"))
       )
     );
@@ -289,7 +293,11 @@ export default async function createServer(
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: RUN_AGENT_TOOL_LOG_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: RUN_AGENT_TOOL_LOG_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
       async (
         {
           query,

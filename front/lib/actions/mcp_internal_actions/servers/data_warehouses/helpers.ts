@@ -90,6 +90,13 @@ export async function getWarehouseNodes(
   let configsToUse: ResolvedDataSourceConfiguration[] =
     dataSourceConfigurations;
   let parentIdToUse: string | null = nodeId;
+
+  // When listing a warehouse root, we may want to surface the view roots directly
+  // (tables/schemas explicitly included in the view) even if their parent folders
+  // aren’t part of the view. This mirrors the filesystem list tool “hack” that
+  // shows orphaned nodes by passing `node_ids` instead of only relying on
+  // `parent_id = root`.
+  let nodeIdsToUse: string[] | undefined = undefined;
   let dataSourceById: Record<string, DataSourceResource | null> | null = null;
 
   if (nodeId && nodeId.startsWith("warehouse-")) {
@@ -130,11 +137,25 @@ export async function getWarehouseNodes(
     );
   }
 
+  // If we're listing at the warehouse root (parentIdToUse === "root") and there is
+  // no free-text query (pure list), expand to the view roots by using node_ids when
+  // the configuration specifies explicit parents (parentsIn). This makes orphaned
+  // tables/schemas discoverable at the warehouse level.
+  if (!query && parentIdToUse === "root") {
+    const cfg = configsToUse[0];
+    const parentsIn = cfg?.filter.parents?.in ?? null;
+    if (parentsIn && parentsIn.length > 0) {
+      nodeIdsToUse = parentsIn;
+      parentIdToUse = null;
+    }
+  }
+
   const result = await coreAPI.searchNodes({
     query,
     filter: {
       data_source_views: makeDataSourceViewFilter(configsToUse),
       parent_id: parentIdToUse ?? undefined,
+      node_ids: nodeIdsToUse,
     },
     options: {
       cursor: nextPageCursor,

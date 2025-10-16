@@ -25,6 +25,7 @@ export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
 export const OAUTH_PROVIDERS = [
   "confluence",
   "confluence_tools",
+  "discord",
   "freshservice",
   "github",
   "google_drive",
@@ -47,6 +48,7 @@ export const OAUTH_PROVIDERS = [
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   confluence_tools: "Confluence Tools",
+  discord: "Discord",
   freshservice: "Freshservice",
   github: "GitHub",
   gmail: "Gmail",
@@ -192,6 +194,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "intercom":
     case "jira":
     case "mcp":
+    case "discord":
       return null;
     case "mcp_static":
       if (useCase === "personal_actions" || useCase === "platform_actions") {

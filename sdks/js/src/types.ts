@@ -49,15 +49,16 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "o3"
   | "o3-mini"
   | "o4-mini"
-  | "claude-4-opus-20250514"
-  | "claude-4-sonnet-20250514"
-  | "claude-sonnet-4-5-20250929"
-  | "claude-3-opus-20240229"
+  | "claude-3-5-haiku-20241022"
   | "claude-3-5-sonnet-20240620"
   | "claude-3-5-sonnet-20241022"
   | "claude-3-7-sonnet-20250219"
-  | "claude-3-5-haiku-20241022"
   | "claude-3-haiku-20240307"
+  | "claude-3-opus-20240229"
+  | "claude-4-opus-20250514"
+  | "claude-4-sonnet-20250514"
+  | "claude-haiku-4-5-20251001"
+  | "claude-sonnet-4-5-20250929"
   | "claude-2.1"
   | "claude-instant-1.2"
   | "mistral-large-latest"
@@ -651,7 +652,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_opus_feature"
   | "co_edition"
   | "confluence_tool"
-  | "conversation_rendering_v2"
   | "deep_research_as_a_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
@@ -670,6 +670,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_transcripts"
   | "microsoft_teams_bot"
   | "microsoft_drive_mcp_server"
+  | "microsoft_teams_mcp_server"
   | "monday_tool"
   | "notion_private_integration"
   | "openai_o1_custom_assistants_feature"
@@ -677,7 +678,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
-  | "prune_previous_interactions"
   | "research_agent"
   | "salesforce_synced_queries"
   | "salesforce_tool"
@@ -694,6 +694,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "discord_bot"
   | "elevenlabs_tool"
   | "agent_builder_observability"
+  | "legacy_dust_apps"
+  | "dust_default_haiku_feature"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1259,7 +1261,7 @@ export function isMCPServerPersonalAuthRequiredError(
   return (
     error.code === "mcp_server_personal_authentication_required" &&
     error.metadata &&
-    "mcpServerId" in error.metadata
+    "mcp_server_id" in error.metadata
   );
 }
 
@@ -2774,6 +2776,7 @@ const OAuthProviderSchema = FlexibleEnumSchema<
   | "hubspot"
   | "mcp"
   | "mcp_static"
+  | "discord"
 >();
 
 const InternalAllowedIconSchema = FlexibleEnumSchema<
