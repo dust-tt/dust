@@ -26,6 +26,28 @@ const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 export async function downloadTeamsAttachment(
   attachmentUrl: string
 ): Promise<Result<Buffer, Error>> {
+  // Validate URL to prevent SSRF attacks
+  const url = new URL(attachmentUrl);
+  const allowedHosts = [
+    "smba.trafficmanager.net",
+    "teams.microsoft.com",
+    "graph.microsoft.com",
+    "api.spaces.skype.com",
+  ];
+
+  if (!allowedHosts.some((host) => url.hostname.endsWith(host))) {
+    return new Err(
+      new Error(`Untrusted attachment URL hostname: ${url.hostname}`)
+    );
+  }
+
+  // Ensure HTTPS
+  if (url.protocol !== "https:") {
+    return new Err(
+      new Error(`Insecure attachment URL protocol: ${url.protocol}`)
+    );
+  }
+
   const token = await getTenantSpecificToken();
   if (!token) {
     return new Err(new Error("Cannot download attachment - no valid token"));
