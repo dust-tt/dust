@@ -93,7 +93,7 @@ async function createActualWebhook({
     const { connectionId, ...remoteWebhookData } = providerData;
 
     const response = await fetch(
-      `/api/w/${owner.sId}/oauth/${webhookSource.kind}/webhooks`,
+      `/api/w/${owner.sId}/${webhookSource.kind}/${connectionId}/webhooks`,
       {
         method: "POST",
         headers: {
@@ -235,6 +235,7 @@ function WebhookSourceSheetContent({
   const [isSaving, setIsSaving] = useState(false);
   const [remoteProviderData, setRemoteProviderData] =
     useState<RemoteProviderData | null>(null);
+  const [isPresetReadyToSubmit, setIsPresetReadyToSubmit] = useState(true);
 
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
@@ -557,9 +558,6 @@ function WebhookSourceSheetContent({
 
   const footerButtons = useMemo(() => {
     if (currentPageId === "create") {
-      // For GitHub webhooks, require repository selection
-      const isGithubWithoutRepo = mode.kind === "github" && !remoteProviderData;
-
       return {
         leftButton: {
           label: "Cancel",
@@ -569,7 +567,7 @@ function WebhookSourceSheetContent({
         rightButton: {
           label: createForm.formState.isSubmitting ? "Saving..." : "Save",
           variant: "primary",
-          disabled: createForm.formState.isSubmitting || isGithubWithoutRepo,
+          disabled: createForm.formState.isSubmitting || !isPresetReadyToSubmit,
           onClick: () => {
             void createForm.handleSubmit((data) =>
               onCreateSubmit(data, remoteProviderData ?? undefined)
@@ -609,7 +607,7 @@ function WebhookSourceSheetContent({
     onCancel,
     onCreateSubmit,
     onEditSave,
-    mode.kind,
+    isPresetReadyToSubmit,
     remoteProviderData,
   ]);
 
@@ -628,6 +626,7 @@ function WebhookSourceSheetContent({
                 kind={mode.kind}
                 owner={owner}
                 onRemoteProviderDataChange={setRemoteProviderData}
+                onPresetReadyToSubmitChange={setIsPresetReadyToSubmit}
               />
             </div>
           </FormProvider>

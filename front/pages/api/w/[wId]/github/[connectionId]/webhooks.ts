@@ -4,6 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { OAuthAPI } from "@app/types";
@@ -243,10 +244,7 @@ async function handler(
         });
       }
 
-      const {
-        connectionId: deleteConnectionId,
-        remoteMetadata: deleteRemoteMetadata,
-      } = req.body;
+      const deleteConnectionId = req.query.connectionId;
 
       if (!deleteConnectionId || typeof deleteConnectionId !== "string") {
         return apiError(req, res, {
@@ -258,30 +256,71 @@ async function handler(
         });
       }
 
-      if (!deleteRemoteMetadata || typeof deleteRemoteMetadata !== "object") {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "remoteMetadata is required",
-          },
-        });
-      }
+      const { webhookSourceId } = req.body;
 
-      if (
-        !deleteRemoteMetadata.id ||
-        typeof deleteRemoteMetadata.id !== "string"
-      ) {
+      if (!webhookSourceId || typeof webhookSourceId !== "string") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "remoteMetadata.id is required",
+            message: "webhookSourceId is required",
           },
         });
       }
 
       try {
+        // Fetch the webhook source to get remote metadata
+        const webhookSourceResource = await WebhookSourceResource.fetchById(
+          auth,
+          webhookSourceId
+        );
+
+        if (!webhookSourceResource) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "webhook_source_not_found",
+              message: "Webhook source not found",
+            },
+          });
+        }
+
+        // Verify the webhook source belongs to this connection
+        if (webhookSourceResource.oauthConnectionId !== deleteConnectionId) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Webhook source does not belong to this connection",
+            },
+          });
+        }
+
+        const deleteRemoteMetadata = webhookSourceResource.remoteMetadata;
+
+        if (!deleteRemoteMetadata || typeof deleteRemoteMetadata !== "object") {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Webhook source has no remote metadata",
+            },
+          });
+        }
+
+        if (
+          !deleteRemoteMetadata.id ||
+          typeof deleteRemoteMetadata.id !== "string"
+        ) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Remote metadata missing webhook id",
+            },
+          });
+        }
+
         const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), console);
 
         // First, verify the connection belongs to this workspace

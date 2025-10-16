@@ -115,7 +115,7 @@ async function handler(
         ) {
           try {
             await fetch(
-              `${req.headers.origin ?? ""}/api/w/${auth.workspace()?.sId}/oauth/${webhookSourceResource.kind}/webhooks`,
+              `${req.headers.origin ?? ""}/api/w/${auth.workspace()?.sId}/${webhookSourceResource.kind}/${webhookSourceResource.oauthConnectionId}/webhooks`,
               {
                 method: "DELETE",
                 headers: {
@@ -123,8 +123,7 @@ async function handler(
                   Cookie: req.headers.cookie ?? "",
                 },
                 body: JSON.stringify({
-                  connectionId: webhookSourceResource.oauthConnectionId,
-                  remoteMetadata: webhookSourceResource.remoteMetadata,
+                  webhookSourceId: webhookSourceResource.sId,
                 }),
               }
             );

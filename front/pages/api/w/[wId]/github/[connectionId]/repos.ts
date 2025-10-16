@@ -4,10 +4,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { OAuthAPI } from "@app/types";
-import logger from "@app/logger/logger";
 
 const MAX_PAGES = 5; // Limit to first 500 repos to avoid infinite loops
 const REPO_PER_PAGE = 100; // GitHub max is 100

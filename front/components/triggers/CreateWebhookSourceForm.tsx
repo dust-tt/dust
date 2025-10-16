@@ -18,6 +18,7 @@ import { z } from "zod";
 
 import { CreateWebhookGithubConnection } from "@app/components/triggers/CreateWebhookGithubConnection";
 import type { LightWorkspaceType } from "@app/types";
+import { assertNever } from "@app/types";
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 import {
   basePostWebhookSourcesSchema,
@@ -76,6 +77,7 @@ type CreateWebhookSourceFormContentProps = {
   kind: WebhookSourceKind;
   owner?: LightWorkspaceType;
   onRemoteProviderDataChange?: (data: RemoteProviderData | null) => void;
+  onPresetReadyToSubmitChange?: (isReady: boolean) => void;
 };
 
 export function CreateWebhookSourceFormContent({
@@ -83,6 +85,7 @@ export function CreateWebhookSourceFormContent({
   kind,
   owner,
   onRemoteProviderDataChange,
+  onPresetReadyToSubmitChange,
 }: CreateWebhookSourceFormContentProps) {
   const selectedEvents = useWatch({
     control: form.control,
@@ -90,7 +93,17 @@ export function CreateWebhookSourceFormContent({
   });
 
   const isGithub = kind === "github";
-  const isCustom = kind === "custom" || kind === "test"; // This are not OAuth-based kinds
+  const isCustom = (() => {
+    switch (kind) {
+      case "custom":
+      case "test":
+        return true; // These are not OAuth-based kinds
+      case "github":
+        return false;
+      default:
+        assertNever(kind);
+    }
+  })();
 
   return (
     <>
@@ -175,6 +188,7 @@ export function CreateWebhookSourceFormContent({
         <CreateWebhookGithubConnection
           owner={owner}
           onGithubDataChange={onRemoteProviderDataChange}
+          onReadyToSubmitChange={onPresetReadyToSubmitChange}
         />
       )}
 

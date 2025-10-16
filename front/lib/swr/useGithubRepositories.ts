@@ -25,7 +25,7 @@ export function useGithubRepositories(owner: LightWorkspaceType | null) {
       setIsFetchingRepos(true);
       try {
         const response = await fetch(
-          `/api/w/${owner.sId}/oauth/github/repos?connectionId=${connectionId}`
+          `/api/w/${owner.sId}/github/${connectionId}/repos`
         );
 
         if (!response.ok) {

@@ -13,8 +13,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
-import { useGithubRepositories } from "@app/hooks/useGithubRepositories";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useGithubRepositories } from "@app/lib/swr/useGithubRepositories";
 import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
 
@@ -26,11 +26,13 @@ type CreateWebhookGithubConnectionProps = {
       repository: string;
     } | null
   ) => void;
+  onReadyToSubmitChange?: (isReady: boolean) => void;
 };
 
 export function CreateWebhookGithubConnection({
   owner,
   onGithubDataChange,
+  onReadyToSubmitChange,
 }: CreateWebhookGithubConnectionProps) {
   const sendNotification = useSendNotification();
   const [githubConnection, setGithubConnection] =
@@ -49,7 +51,9 @@ export function CreateWebhookGithubConnection({
 
   // Notify parent component when GitHub data changes
   useEffect(() => {
-    if (githubConnection && selectedRepository && onGithubDataChange) {
+    const isReady = !!(githubConnection && selectedRepository);
+
+    if (isReady && onGithubDataChange) {
       onGithubDataChange({
         connectionId: githubConnection.connection_id,
         repository: selectedRepository,
@@ -57,7 +61,17 @@ export function CreateWebhookGithubConnection({
     } else if (onGithubDataChange) {
       onGithubDataChange(null);
     }
-  }, [githubConnection, selectedRepository, onGithubDataChange]);
+
+    // Notify parent about ready state
+    if (onReadyToSubmitChange) {
+      onReadyToSubmitChange(isReady);
+    }
+  }, [
+    githubConnection,
+    selectedRepository,
+    onGithubDataChange,
+    onReadyToSubmitChange,
+  ]);
 
   const handleConnectGithub = async () => {
     if (!owner) {
@@ -105,7 +119,7 @@ export function CreateWebhookGithubConnection({
     <div className="flex flex-col space-y-2">
       <Label>GitHub Connection</Label>
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Connect your GitHub account to access your repositories.
+        Connect your GitHub account to select repositories to follow.
       </p>
       <div className="flex items-center gap-2">
         <Button
