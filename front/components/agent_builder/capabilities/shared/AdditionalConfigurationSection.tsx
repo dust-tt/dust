@@ -32,13 +32,14 @@ function getKeyPrefix(key: string): string {
   return segments.length > 1 ? segments[0] : "";
 }
 
-function groupKeysByPrefix(
-  items:
-    | MCPServerRequirements["requiredNumbers"]
+function groupKeysByPrefix<
+  T extends (
     | MCPServerRequirements["requiredStrings"]
+    | MCPServerRequirements["requiredNumbers"]
     | MCPServerRequirements["requiredBooleans"]
-): Record<string, { key: string; description?: string }[]> {
-  const groups: Record<string, { key: string; description?: string }[]> = {};
+  )[number],
+>(items: T[]): Record<string, T[]> {
+  const groups: Record<string, T[]> = {};
 
   items.forEach((item) => {
     const prefix = getKeyPrefix(item.key);
