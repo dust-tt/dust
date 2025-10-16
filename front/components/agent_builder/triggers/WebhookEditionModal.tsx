@@ -27,6 +27,7 @@ import { z } from "zod";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
 import { useWebhookFilterGeneration } from "@app/components/agent_builder/triggers/useWebhookFilterGeneration";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
@@ -55,6 +56,7 @@ interface WebhookEditionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (trigger: AgentBuilderWebhookTriggerType) => void;
+  agentConfigurationId: string | null;
 }
 
 type WebhookOption = {
@@ -70,6 +72,7 @@ export function WebhookEditionModal({
   isOpen,
   onClose,
   onSave,
+  agentConfigurationId,
 }: WebhookEditionModalProps) {
   const { user } = useUser();
 
@@ -501,6 +504,17 @@ export function WebhookEditionModal({
                   {...form.register("customPrompt")}
                 />
               </div>
+
+              {/* Recent Webhook Requests */}
+              {trigger && (
+                <div className="space-y-1">
+                  <RecentWebhookRequests
+                    owner={owner}
+                    agentConfigurationId={agentConfigurationId}
+                    trigger={trigger}
+                  />
+                </div>
+              )}
             </div>
 
             <TextArea

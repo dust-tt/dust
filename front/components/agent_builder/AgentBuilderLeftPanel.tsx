@@ -60,6 +60,7 @@ export function AgentBuilderLeftPanel({
           <AgentBuilderTriggersBlock
             owner={owner}
             isTriggersLoading={isTriggersLoading}
+            agentConfigurationId={agentConfigurationId}
           />
           <AgentBuilderSettingsBlock
             agentConfigurationId={agentConfigurationId}
