@@ -7,7 +7,6 @@ import { DustAPI, Err, Ok } from "@dust-tt/client";
 import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
 
-import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
 import { apiConfig } from "@connectors/lib/api/config";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import { processMessageForMention } from "@connectors/lib/bot/mentions";
@@ -22,6 +21,7 @@ import {
   createStreamingAdaptiveCard,
 } from "./adaptive_cards";
 import { sendActivity, updateActivity } from "./bot_messaging_utils";
+import { validateTeamsUser } from "./user_validation";
 
 export async function botAnswerMessage(
   context: TurnContext,
@@ -31,16 +31,22 @@ export async function botAnswerMessage(
 ): Promise<Result<undefined, Error>> {
   const {
     conversation: { id: conversationId },
-    from: { aadObjectId: userAadObjectId },
     id: userActivityId,
     replyToId,
   } = context.activity;
 
-  if (!userActivityId || !userAadObjectId) {
-    return new Err(
-      new Error("No user activity ID or user AAD object ID found")
-    );
+  if (!userActivityId) {
+    return new Err(new Error("No user activity ID found"));
   }
+
+  // Validate user first - this will handle all user validation and error messaging
+  const validatedUser = await validateTeamsUser(context, connector);
+  if (!validatedUser) {
+    // Error message already sent by validateTeamsUser
+    return new Ok(undefined);
+  }
+
+  const { email, displayName, userAadObjectId } = validatedUser;
 
   // Check for existing Dust conversation for this Teams conversation
   const allMicrosoftBotMessages = await MicrosoftBotMessage.findAll({
@@ -54,15 +60,6 @@ export async function botAnswerMessage(
   // Find the most recent message that has a Dust conversation ID
   const lastMicrosoftBotMessage =
     allMicrosoftBotMessages.find((msg) => msg.dustConversationId) || null;
-
-  // Get Microsoft Graph client
-  const client = await getMicrosoftClient(connector.connectionId);
-
-  // Get user info from Microsoft Graph
-  const userInfo = await client.api(`/users/${userAadObjectId}`).get();
-
-  const displayName = userInfo?.displayName || "Unknown User";
-  const email = userInfo?.mail;
 
   const dustAPI = new DustAPI(
     { url: apiConfig.getDustFrontAPIUrl() },
