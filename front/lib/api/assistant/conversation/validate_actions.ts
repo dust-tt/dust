@@ -73,6 +73,8 @@ export async function validateAction(
     messageId: string;
   }
 ): Promise<Result<void, DustError>> {
+  const owner = auth.getNonNullableWorkspace();
+  const user = auth.user();
   const { sId: conversationId, title: conversationTitle } = conversation;
 
   logger.info(
@@ -81,6 +83,8 @@ export async function validateAction(
       messageId,
       approvalState,
       conversationId,
+      workspaceId: owner.sId,
+      userId: user?.sId,
     },
     "Tool validation request"
   );
@@ -126,15 +130,12 @@ export async function validateAction(
     getMCPApprovalStateFromUserApprovalState(approvalState)
   );
 
-  if (approvalState === "always_approved") {
-    const user = auth.user();
-    if (user) {
-      await setUserAlwaysApprovedTool({
-        user,
-        mcpServerId: action.toolConfiguration.toolServerId,
-        functionCallName: action.functionCallName,
-      });
-    }
+  if (approvalState === "always_approved" && user) {
+    await setUserAlwaysApprovedTool({
+      user,
+      mcpServerId: action.toolConfiguration.toolServerId,
+      functionCallName: action.functionCallName,
+    });
   }
 
   if (updatedCount === 0) {
@@ -143,6 +144,8 @@ export async function validateAction(
         actionId,
         messageId,
         approvalState,
+        workspaceId: owner.sId,
+        userId: user?.sId,
       },
       "Action already approved or rejected"
     );
