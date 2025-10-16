@@ -304,12 +304,14 @@ export async function botAnswerMessage(
 
   const finalCard = createResponseAdaptiveCard({
     response: finalResponse,
-    assistantName: mention.assistantName,
+    assistant: mention,
     conversationUrl: makeConversationUrl(
       connector.workspaceId,
       conversation.sId
     ),
     workspaceId: connector.workspaceId,
+    agentConfigurations: activeAgentConfigurations,
+    originalMessage: message,
   });
 
   await sendTeamsResponse(context, agentActivityId, finalCard);

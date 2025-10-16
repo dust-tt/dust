@@ -178,7 +178,11 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
       // Handle different activity types
       switch (context.activity.type) {
         case "message":
-          await handleMessage(context, connector);
+          if (context.activity.value?.verb) {
+            await handleInteraction(context, connector);
+          } else {
+            await handleMessage(context, connector);
+          }
           break;
 
         default:
@@ -260,4 +264,31 @@ async function handleMessage(
       })
     );
   }
+}
+
+async function handleInteraction(
+  context: TurnContext,
+  connector: ConnectorResource
+) {
+  const { verb } = context.activity.value;
+
+  logger.info({ verb }, "Handling interaction from adaptive card");
+
+  switch (verb) {
+    case "ask_agent":
+      await handleAgentSelection(context, connector);
+      break;
+    default:
+      logger.info({ verb }, "Unhandled interaction verb");
+      break;
+  }
+}
+
+async function handleAgentSelection(context: TurnContext) {
+  const { agentId, agentName, originalMessage } = context.activity.value;
+
+  logger.info(
+    { agentId, agentName, originalMessage },
+    "Handling agent selection from adaptive card"
+  );
 }

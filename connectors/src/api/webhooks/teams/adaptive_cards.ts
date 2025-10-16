@@ -26,16 +26,20 @@ export function makeConversationUrl(
  */
 export function createResponseAdaptiveCard({
   response,
-  assistantName,
+  assistant,
   conversationUrl,
   workspaceId,
   isError = false,
+  agentConfigurations,
+  originalMessage,
 }: {
   response: string;
-  assistantName: string;
+  assistant: { assistantName: string; assistantId: string };
   conversationUrl: string | null;
   workspaceId: string;
   isError?: boolean;
+  agentConfigurations: LightAgentConfigurationType[];
+  originalMessage: string;
 }): Partial<Activity> {
   const card: AdaptiveCard = {
     type: "AdaptiveCard",
@@ -49,30 +53,108 @@ export function createResponseAdaptiveCard({
         spacing: "Medium",
         color: isError ? "Attention" : "Default",
       },
+      {
+        type: "Container",
+        spacing: "Medium",
+        separator: true,
+        items: [
+          {
+            type: "TextBlock",
+            text: createFooterText({
+              assistantName: assistant.assistantName,
+              conversationUrl,
+              workspaceId,
+              isError,
+            }),
+            wrap: true,
+            size: "Small",
+            color: "Good",
+          },
+        ],
+      },
+      {
+        type: "ColumnSet",
+        spacing: "Medium",
+        separator: true,
+        id: "actions_set",
+        columns: [
+          {
+            type: "Column",
+            width: "stretch",
+            items: [
+              {
+                type: "Input.ChoiceSet",
+                id: "selectedAgent",
+                value: assistant.assistantId,
+                choices: agentConfigurations.map((agent) => ({
+                  title: agent.name,
+                  value: agent.sId,
+                })),
+                placeholder: "Select an agent",
+              },
+              {
+                type: "Input.Text",
+                id: "originalMessageInput",
+                value: originalMessage,
+                isVisible: false,
+              },
+            ],
+          },
+          {
+            type: "Column",
+            width: "auto",
+            items: [
+              {
+                type: "ActionSet",
+                actions: [
+                  {
+                    type: "Action.Submit",
+                    title: "Resend",
+                    iconUrl: "icon:Bot",
+                    data: {
+                      verb: "ask_agent",
+                    },
+                  },
+                ],
+                horizontalAlignment: "Right",
+              },
+            ],
+          },
+          {
+            type: "Column",
+            width: "auto",
+            items: [
+              {
+                type: "ActionSet",
+                actions: [
+                  {
+                    type: "Action.Submit",
+                    iconUrl: "icon:ThumbLike",
+                    data: {
+                      verb: "like",
+                    },
+                  },
+                  {
+                    type: "Action.Submit",
+                    iconUrl: "icon:ThumbDislike",
+                    data: {
+                      verb: "dislike",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
     ],
     actions: [],
   };
 
   // Add separator and footer section
-  card.body.push({
-    type: "Container",
-    spacing: "Medium",
-    separator: true,
-    items: [
-      {
-        type: "TextBlock",
-        text: createFooterText({
-          assistantName,
-          conversationUrl,
-          workspaceId,
-          isError,
-        }),
-        wrap: true,
-        size: "Small",
-        color: "Good",
-      },
-    ],
-  });
+  card.body.push();
+
+  card.body.push();
 
   return {
     type: "message",
@@ -214,35 +296,9 @@ export function createAgentSelectionCard(
         contentType: "application/vnd.microsoft.card.adaptive",
         content: {
           type: "AdaptiveCard",
-          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-          version: "1.4",
-          body: [
-            {
-              type: "TextBlock",
-              text: "**Choose an agent to answer your question:**",
-              wrap: true,
-              weight: "Bolder",
-              spacing: "Medium",
-            },
-            {
-              type: "TextBlock",
-              text: `_"${originalMessage.substring(0, 100)}${originalMessage.length > 100 ? "..." : ""}"_`,
-              wrap: true,
-              isSubtle: true,
-              spacing: "Small",
-            },
-          ],
-          actions: agentConfigurations.slice(0, 5).map((ac) => ({
-            type: "Action.Submit",
-            title: ac.name,
-            data: {
-              verb: "ask_agent",
-              action: "ask_agent",
-              agentId: ac.sId,
-              agentName: ac.name,
-              originalMessage: originalMessage,
-            },
-          })),
+          $schema: "https://adaptivecards.io/schemas/adaptive-card.json",
+          version: "1.5",
+          body: [],
         },
       },
     ],
