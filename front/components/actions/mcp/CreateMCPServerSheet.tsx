@@ -552,12 +552,14 @@ export function CreateMCPServerSheet({
               }
               variant="primary"
               disabled={
-                !isOAuthFormValid ??
-                (authorization && !useCase) ??
+                /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+                !isOAuthFormValid ||
+                (authorization && !useCase) ||
                 (defaultServerConfig?.authMethod === "bearer" &&
-                  !sharedSecret) ??
-                (!internalMCPServer && !validateUrl(remoteServerUrl).valid) ??
+                  !sharedSecret) ||
+                (!internalMCPServer && !validateUrl(remoteServerUrl).valid) ||
                 isLoading
+                /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
               }
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.preventDefault();
