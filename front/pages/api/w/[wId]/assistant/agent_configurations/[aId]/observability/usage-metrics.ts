@@ -1,8 +1,6 @@
 import type { estypes } from "@elastic/elasticsearch";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -17,9 +15,9 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 const DEFAULT_PERIOD = 30;
 
-const QuerySchema = t.type({
-  days: t.union([t.string, t.undefined]),
-  interval: t.union([t.literal("day"), t.literal("week"), t.undefined]),
+const QuerySchema = z.object({
+  days: z.coerce.number().positive().optional(),
+  interval: z.enum(["day", "week"]).optional(),
 });
 
 type ByIntervalBucket = {
@@ -106,33 +104,19 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const q = QuerySchema.decode(req.query);
-      if (isLeft(q)) {
-        const msg = reporter.formatValidationErrors(q.left);
+      const q = QuerySchema.safeParse(req.query);
+      if (!q.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid query parameters: ${msg}`,
+            message: `Invalid query parameters: ${q.error.message}`,
           },
         });
       }
 
-      let days = DEFAULT_PERIOD;
-      if (q.right.days) {
-        const parsedDays = parseInt(q.right.days, 10);
-        if (isNaN(parsedDays) || parsedDays <= 0) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Parameter 'days' must be a positive number",
-            },
-          });
-        }
-        days = parsedDays;
-      }
-      const interval = q.right.interval ?? "day";
+      const days = q.data.days ?? DEFAULT_PERIOD;
+      const interval = q.data.interval ?? "day";
 
       const owner = auth.getNonNullableWorkspace();
 
