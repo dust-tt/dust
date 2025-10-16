@@ -7,6 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { OAuthAPI } from "@app/types";
+import logger from "@app/logger/logger";
 
 const MAX_PAGES = 5; // Limit to first 500 repos to avoid infinite loops
 const REPO_PER_PAGE = 100; // GitHub max is 100
@@ -167,7 +168,7 @@ async function handler(
           }
         } catch (error) {
           // If fetching org repos fails, continue with what we have
-          console.error("Failed to fetch org repos:", error);
+          logger.error({ err: error }, "Failed to fetch org repos");
         }
 
         // Sort by full_name for easier browsing
