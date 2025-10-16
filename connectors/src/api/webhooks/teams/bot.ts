@@ -15,10 +15,7 @@ import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import { processFileAttachments } from "@connectors/api/webhooks/teams/content_fragments";
 import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
-import {
-  clientApiGet,
-  wrapMicrosoftGraphAPIWithResult,
-} from "@connectors/connectors/microsoft/lib/graph_api";
+import { getMessagesFromConversation } from "@connectors/connectors/microsoft/lib/graph_api";
 import { apiConfig } from "@connectors/lib/api/config";
 import { MicrosoftBotMessage } from "@connectors/lib/models/microsoft_bot";
 import { getActionName } from "@connectors/lib/tools_utils";
@@ -558,27 +555,13 @@ async function makeContentFragments(
   const client = await getMicrosoftClient(connector.connectionId);
 
   // Get conversation history using the most reliable API approach
-  const conversationHistoryRes = await wrapMicrosoftGraphAPIWithResult(() => {
-    return clientApiGet(
-      logger,
-      client,
-      `/chats/${teamsConversationId}/messages?$top=50`
-    );
-  });
+  const conversationHistory = await getMessagesFromConversation(
+    logger,
+    client,
+    teamsConversationId
+  );
 
-  if (conversationHistoryRes.isErr()) {
-    logger.warn(
-      {
-        error: conversationHistoryRes.error,
-        connectorId: connector.id,
-        teamsConversationId,
-      },
-      "Failed to get Teams conversation history"
-    );
-    return new Ok(undefined);
-  }
-
-  const messages: ChatMessage[] = conversationHistoryRes.value?.value || [];
+  const messages: ChatMessage[] = conversationHistory.results || [];
 
   // Filter for new user messages since last bot interaction
   // Find the cutoff point using the last bot message ID
