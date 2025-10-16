@@ -17,9 +17,9 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelConfigurationType,
-  ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
   Result,
+  UserMessageTypeModel,
 } from "@app/types";
 import {
   assertNever,
@@ -41,6 +41,17 @@ import type {
 /**
  * Model conversation rendering
  */
+
+// Content fragments are merged into user messages, so they don't appear in the final output
+export type FinalModelMessageType =
+  | UserMessageTypeModel
+  | AssistantContentMessageTypeModel
+  | AssistantFunctionCallMessageTypeModel
+  | FunctionMessageTypeModel;
+
+export type FinalModelConversationType = {
+  messages: FinalModelMessageType[];
+};
 
 export async function renderConversationForModel(
   auth: Authenticator,
@@ -66,7 +77,7 @@ export async function renderConversationForModel(
 ): Promise<
   Result<
     {
-      modelConversation: ModelConversationTypeMultiActions;
+      modelConversation: FinalModelConversationType;
       tokensUsed: number;
     },
     Error
@@ -378,9 +389,11 @@ export async function renderConversationForModel(
     "[ASSISTANT_TRACE] renderConversationForModelMultiActions"
   );
 
+  // After merging content fragments into user messages and filtering,
+  // only final message types remain (no ContentFragmentMessageTypeModel)
   return new Ok({
     modelConversation: {
-      messages: selected,
+      messages: selected as FinalModelMessageType[],
     },
     tokensUsed,
   });
