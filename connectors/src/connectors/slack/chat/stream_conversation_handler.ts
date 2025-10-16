@@ -214,7 +214,7 @@ async function streamAgentAnswerToSlack(
             connector.workspaceId,
             conversation.sId
           );
-          await postSlackMessageUpdate({
+          await debouncedPostSlackMessageUpdate({
             messageUpdate: {
               text:
                 "The agent took an action that requires personal authentication. " +
