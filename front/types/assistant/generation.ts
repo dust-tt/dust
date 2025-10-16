@@ -88,6 +88,12 @@ export type ModelMessageTypeMultiActions =
   | AssistantContentMessageTypeModel
   | FunctionMessageTypeModel;
 
+export type RenderedModelMessageTypeMultiActions = Exclude<ModelMessageTypeMultiActions, ContentFragmentMessageTypeModel>;
+
+export type RenderedModelConversationTypeMultiActions = {
+  messages: RenderedModelMessageTypeMultiActions[];
+};
+
 export function isContentFragmentMessageTypeModel(
   contentFragment: ModelMessageTypeMultiActions
 ): contentFragment is ContentFragmentMessageTypeModel {

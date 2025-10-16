@@ -3,13 +3,15 @@ import assert from "assert";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import logger from "@app/logger/logger";
 import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
-import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
+import { runModelActivity as runModelActivityWithoutRouter } from "@app/temporal/agent_loop/lib/run_model";
+import { runModelActivity as runModelActivityWithRouter } from "@app/temporal/agent_loop/lib/run_model_router";
 import type { ModelId } from "@app/types";
 import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
 import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
@@ -82,14 +84,31 @@ export async function runModelAndCreateActionsActivity({
   // Track step content IDs by function call ID for later use in actions.
   const functionCallStepContentIds: Record<string, ModelId> = {};
 
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+
   // 1. Run model activity.
-  const modelResult = await runModelActivity(auth, {
-    runAgentData,
-    runIds,
-    step,
-    functionCallStepContentIds,
-    autoRetryCount,
-  });
+
+  let modelResult: Awaited<ReturnType<typeof runModelActivityWithRouter>> | Awaited<ReturnType<typeof runModelActivityWithoutRouter>> | null = null;
+
+  if (featureFlags.includes("llm_router_direct_requests")) {
+    modelResult = await runModelActivityWithRouter(auth, {
+      runAgentData,
+      runIds,
+      step,
+      functionCallStepContentIds,
+      autoRetryCount,
+    });
+  } else {
+    modelResult = await runModelActivityWithoutRouter(auth, {
+      runAgentData,
+      runIds,
+      step,
+      functionCallStepContentIds,
+      autoRetryCount,
+    });
+  }
+
+
 
   if (!modelResult) {
     return null;

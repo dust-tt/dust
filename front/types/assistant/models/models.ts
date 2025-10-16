@@ -1,5 +1,6 @@
-import type { ModelConfigurationType } from "@app/types";
-import type { ModelIdType } from "@app/types/assistant/models/types";
+import type { ModelConfigurationType, Result } from "@app/types";
+import type { ModelIdType, ModelProviderIdType } from "@app/types/assistant/models/types";
+import { Err, Ok } from "@app/types/shared/result";
 import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
 
 import {
@@ -266,3 +267,11 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   NOOP_MODEL_CONFIG,
 ];
 export default SUPPORTED_MODEL_CONFIGS;
+
+export function getProviderFromModelId(modelId: string): Result<ModelProviderIdType, Error> {
+  const modelConfig = SUPPORTED_MODEL_CONFIGS.find((config) => config.modelId === modelId);
+  if (!modelConfig) {
+    return new Err(new Error(`Model ${modelId} not found`));
+  }
+  return new Ok(modelConfig.providerId);
+}

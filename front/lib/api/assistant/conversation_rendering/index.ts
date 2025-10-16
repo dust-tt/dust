@@ -5,8 +5,9 @@ import logger from "@app/logger/logger";
 import type {
   ConversationType,
   ModelConfigurationType,
-  ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
+  RenderedModelConversationTypeMultiActions,
+  RenderedModelMessageTypeMultiActions,
   Result,
 } from "@app/types";
 import {
@@ -57,7 +58,7 @@ export async function renderConversationForModel(
 ): Promise<
   Result<
     {
-      modelConversation: ModelConversationTypeMultiActions;
+      modelConversation: RenderedModelConversationTypeMultiActions;
       tokensUsed: number;
     },
     Error
@@ -212,7 +213,8 @@ export async function renderConversationForModel(
 
   return new Ok({
     modelConversation: {
-      messages: finalMessages,
+      // We've removed the content fragments from the messages, so we need to cast to the correct type.
+      messages: finalMessages as RenderedModelMessageTypeMultiActions[],
     },
     tokensUsed,
   });
