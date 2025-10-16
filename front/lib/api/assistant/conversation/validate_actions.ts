@@ -201,7 +201,6 @@ export async function validateAction(
     // validation. This avoids race conditions where validation re-triggers the
     // agent loop before it completes, and thus throws a workflow already
     // started error.
-    // CODEX TODO: add this option to the launchAgentLoopWorkflow function.
     waitForCompletion: true,
   });
 
