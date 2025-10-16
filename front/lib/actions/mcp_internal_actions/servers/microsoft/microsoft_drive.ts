@@ -3,9 +3,12 @@ import { Readable } from "stream";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { getGraphClient } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import {
   Err,
@@ -15,9 +18,10 @@ import {
 } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-import { getGraphClient } from "./utils";
-
-const createServer = (auth: any): McpServer => {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("microsoft_drive");
 
   server.tool(
@@ -40,7 +44,7 @@ const createServer = (auth: any): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "microsoft_drive" },
+      { toolNameForMonitoring: "microsoft_drive", agentLoopContext },
       async ({ query, dataSource, maximumResults }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
@@ -92,7 +96,7 @@ const createServer = (auth: any): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "microsoft_drive" },
+      { toolNameForMonitoring: "microsoft_drive", agentLoopContext },
       async ({ query }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
@@ -156,7 +160,7 @@ const createServer = (auth: any): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "microsoft_drive" },
+      { toolNameForMonitoring: "microsoft_drive", agentLoopContext },
       async ({ itemId, driveId, siteId }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
@@ -243,6 +247,6 @@ const createServer = (auth: any): McpServer => {
   );
 
   return server;
-};
+}
 
 export default createServer;

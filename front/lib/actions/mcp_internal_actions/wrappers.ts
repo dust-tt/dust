@@ -28,7 +28,7 @@ export function withToolLogging<T>(
     skipAlerting = false,
   }: {
     toolNameForMonitoring: string;
-    agentLoopContext?: AgentLoopContextType;
+    agentLoopContext: AgentLoopContextType | undefined;
     skipAlerting?: boolean;
   },
   toolCallback: (
