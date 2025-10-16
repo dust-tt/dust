@@ -2,24 +2,8 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { UsageMetricsChart } from "@app/components/agent_builder/observability/UsageMetricsChart";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 
-function NoAgentState() {
-  return (
-    <div className="flex h-full min-h-0 items-center justify-center">
-      <div className="px-4 text-center">
-        <div className="mb-2 text-lg font-medium text-foreground">
-          No Observability Data Available
-        </div>
-        <div className="max-w-sm text-muted-foreground">
-          Observability metrics will be available after your agent is created
-          and used in conversations.
-        </div>
-      </div>
-    </div>
-  );
-}
-
 interface AgentBuilderObservabilityProps {
-  agentConfigurationSId?: string;
+  agentConfigurationSId: string;
 }
 
 export function AgentBuilderObservability({
@@ -29,11 +13,11 @@ export function AgentBuilderObservability({
 
   const { agentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
-    agentConfigurationId: agentConfigurationSId ?? null,
+    agentConfigurationId: agentConfigurationSId,
   });
 
   if (!agentConfiguration) {
-    return <NoAgentState />;
+    return null;
   }
 
   return (

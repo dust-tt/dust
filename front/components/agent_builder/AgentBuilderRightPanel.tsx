@@ -185,7 +185,7 @@ function ExpandedContent({
           />
         </div>
       )}
-      {selectedTab === "observability" && (
+      {selectedTab === "observability" && agentConfigurationSId && (
         <div className="flex-1 overflow-y-auto p-4">
           <AgentBuilderObservability
             agentConfigurationSId={agentConfigurationSId}
@@ -207,7 +207,8 @@ export function AgentBuilderRightPanel({
     usePreviewPanelContext();
   const { assistantTemplate, owner } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const showObservability = hasFeature("agent_builder_observability");
+  const showObservability =
+    hasFeature("agent_builder_observability") && !!agentConfigurationSId;
 
   const hasTemplate = !!assistantTemplate;
 
