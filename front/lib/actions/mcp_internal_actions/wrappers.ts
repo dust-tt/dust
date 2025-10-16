@@ -25,11 +25,11 @@ export function withToolLogging<T>(
   {
     toolNameForMonitoring,
     agentLoopContext,
-    skipAlerting = false,
+    enableAlerting = false,
   }: {
     toolNameForMonitoring: string;
     agentLoopContext: AgentLoopContextType | undefined;
-    skipAlerting?: boolean;
+    enableAlerting?: boolean;
   },
   toolCallback: (
     params: T,
@@ -82,7 +82,7 @@ export function withToolLogging<T>(
       `workspace_plan_code:${auth.plan()?.code ?? null}`,
     ];
 
-    if (!skipAlerting) {
+    if (enableAlerting) {
       statsDClient.increment("use_tools.count", 1, tags);
     }
     const startTime = performance.now();
@@ -91,7 +91,7 @@ export function withToolLogging<T>(
 
     // When we get an Err, we monitor it if tracked and return it as a text content.
     if (result.isErr()) {
-      if (result.error.tracked && !skipAlerting) {
+      if (enableAlerting && result.error.tracked) {
         statsDClient.increment("use_tools_error.count", 1, [
           "error_type:run_error",
           ...tags,
@@ -118,7 +118,7 @@ export function withToolLogging<T>(
     }
 
     const elapsed = performance.now() - startTime;
-    if (!skipAlerting) {
+    if (enableAlerting) {
       statsDClient.distribution(
         "run_tool.duration.distribution",
         elapsed,

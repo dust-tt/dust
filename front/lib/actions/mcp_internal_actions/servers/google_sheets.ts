@@ -68,7 +68,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ nameFilter, pageToken, pageSize }, { authInfo }) => {
@@ -125,7 +124,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ spreadsheetId, includeGridData }, { authInfo }) => {
@@ -179,7 +177,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -241,7 +238,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -310,7 +306,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -370,7 +365,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ spreadsheetId, range }, { authInfo }) => {
@@ -415,7 +409,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ title, sheetTitles }, { authInfo }) => {
@@ -472,7 +465,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ spreadsheetId, title, rowCount, columnCount }, { authInfo }) => {
@@ -528,7 +520,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ spreadsheetId, sheetId }, { authInfo }) => {
@@ -608,7 +599,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -690,7 +680,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -737,7 +726,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ spreadsheetId, sheetId, newTitle }, { authInfo }) => {
@@ -797,7 +785,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ spreadsheetId, sheetId, newIndex }, { authInfo }) => {

@@ -331,7 +331,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ query, type, relativeTimeFrame }, { authInfo }) => {
         if (!agentLoopContext?.runContext) {
@@ -492,7 +491,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ pageId }, { authInfo }) => {
         return withNotionClient(
@@ -514,7 +512,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ databaseId }, { authInfo }) => {
         return withNotionClient(
@@ -543,7 +540,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async (
         { databaseId, filter, sorts, start_cursor, page_size },
@@ -582,7 +578,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async (
         { databaseId, filter, sorts, start_cursor, page_size },
@@ -619,7 +614,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ parent, properties, icon, cover }, { authInfo }) => {
         return withNotionClient(
@@ -644,7 +638,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ databaseId, properties, icon, cover }, { authInfo }) => {
         return withNotionClient(
@@ -682,7 +675,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ parent, title, properties, icon, cover }, { authInfo }) => {
         return withNotionClient(
@@ -706,7 +698,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ pageId, properties }, { authInfo }) => {
         return withNotionClient(
@@ -728,7 +719,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ blockId }, { authInfo }) => {
         return withNotionClient(
@@ -755,7 +745,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ blockId, start_cursor, page_size }, { authInfo }) => {
         return withNotionClient(
@@ -787,7 +776,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ blockId, children }, { authInfo }) => {
         return withNotionClient(
@@ -826,7 +814,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ parent_page_id, discussion_id, comment }, { authInfo }) => {
         return withNotionClient((notion) => {
@@ -866,7 +853,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ blockId }, { authInfo }) => {
         return withNotionClient(
@@ -891,7 +877,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ blockId }, { authInfo }) => {
         return withNotionClient(
@@ -914,7 +899,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ pageId, properties }, { authInfo }) => {
         return withNotionClient(
@@ -937,7 +921,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ databaseId, properties }, { authInfo }) => {
         return withNotionClient(
@@ -958,7 +941,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async (_, { authInfo }) => {
         return withNotionClient((notion) => notion.users.list({}), authInfo);
@@ -977,7 +959,6 @@ function createServer(
       {
         toolNameForMonitoring: NOTION_TOOL_NAME,
         agentLoopContext,
-        skipAlerting: true,
       },
       async ({ userId }, { authInfo }) => {
         return withNotionClient(
