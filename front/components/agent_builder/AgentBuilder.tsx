@@ -160,6 +160,9 @@ export default function AgentBuilder({
       }));
   }, [agentConfiguration, slackChannelsLinkedWithAgent]);
 
+  // This defaultValues should be computed only with data from backend.
+  // Any other values we are fetching on client side should be updated inside
+  // the useEffect below.
   const defaultValues = useMemo(() => {
     if (duplicateAgentId && agentConfiguration) {
       // Handle agent duplication case
