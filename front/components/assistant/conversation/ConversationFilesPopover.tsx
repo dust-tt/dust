@@ -1,7 +1,6 @@
 import {
   Button,
   CitationGrid,
-  DocumentIcon,
   FolderIcon,
   FolderOpenIcon,
   PopoverContent,
@@ -102,7 +101,6 @@ const FileRenderer = ({ files, owner, conversationId }: FileRendererProps) => (
     {files.map((file, index) => {
       const attachmentCitation = markdownCitationToAttachmentCitation({
         href: `/api/w/${owner.sId}/files/${file.fileId}`,
-        icon: <DocumentIcon />,
         title: file.title,
         contentType: file.contentType,
         fileId: file.fileId,

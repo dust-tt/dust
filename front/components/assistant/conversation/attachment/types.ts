@@ -1,7 +1,7 @@
 import type React from "react";
 
 import type {
-  AllSupportedFileContentType,
+  AllSupportedWithDustSpecificFileContentType,
   SupportedContentFragmentType,
   SupportedFileContentType,
 } from "@app/types";
@@ -64,10 +64,7 @@ export interface MCPAttachmentCitation extends BaseAttachmentCitation {
   isUploading: false;
   description?: string;
 
-  contentType:
-    | AllSupportedFileContentType
-    | "application/vnd.dust.tool-output.data-source-search-result"
-    | "application/vnd.dust.tool-output.websearch-result";
+  contentType: AllSupportedWithDustSpecificFileContentType;
 }
 
 export type AttachmentCitation =

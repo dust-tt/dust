@@ -95,7 +95,6 @@ export function MCPBrowseActionDetails({
               <ToolGeneratedFileDetails
                 key={file.fileId}
                 resource={file}
-                icon={GlobeAltIcon}
                 owner={owner}
               />
             ))}
