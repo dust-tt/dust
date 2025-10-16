@@ -111,9 +111,9 @@ function createServer(
     {
       include_formats: z
         .array(
-          z.enum(["iso", "utc", "timestamp", "locale"]).describe(
-            "Specify which formats to return. Defaults to all."
-          )
+          z
+            .enum(["iso", "utc", "timestamp", "locale"])
+            .describe("Specify which formats to return. Defaults to all.")
         )
         .max(4)
         .optional(),
