@@ -20,6 +20,12 @@ export const SearchInputSchema = z.object({
     ),
 });
 
+export type SearchInputType = z.infer<typeof SearchInputSchema>;
+
+export function isSearchInputType(input: unknown): input is SearchInputType {
+  return SearchInputSchema.safeParse(input).success;
+}
+
 export const TagsInputSchema = z.object({
   tagsIn: z
     .array(z.string())
