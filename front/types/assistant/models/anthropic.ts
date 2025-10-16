@@ -239,11 +239,12 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's cost-effective model.",
   isLegacy: false,
   isLatest: true,
-  generationTokensCount: 2048,
+  generationTokensCount: 64_000,
   supportsVision: true,
   minimumReasoningEffort: "light",
-  maximumReasoningEffort: "light",
+  maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
+  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 
