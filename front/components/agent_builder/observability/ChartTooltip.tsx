@@ -15,12 +15,12 @@ export function LegendDot({ className }: LegendDotProps) {
   );
 }
 
-export type TooltipRow = {
+interface TooltipRow {
   label: string;
   value: string | number;
-  colorClass?: string;
+  colorClassName?: string;
   percent?: number | null;
-};
+}
 
 interface ChartTooltipProps {
   title?: string;
@@ -41,7 +41,7 @@ export function ChartTooltipCard({ title, rows, footer }: ChartTooltipProps) {
           key={r.label}
           className="mt-1 flex items-center gap-2 text-xs first:mt-0"
         >
-          {r.colorClass && <LegendDot className={r.colorClass} />}
+          {r.colorClassName && <LegendDot className={r.colorClassName} />}
           <span className="text-muted-foreground">{r.label}</span>
           <span className="ml-auto font-medium">{r.value}</span>
           {r.percent !== null && r.percent !== undefined && (

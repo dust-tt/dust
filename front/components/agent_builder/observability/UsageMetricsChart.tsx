@@ -63,17 +63,17 @@ function UsageMetricsTooltip(
         {
           label: "Messages",
           value: row.messages,
-          colorClass: USAGE_METRICS_PALETTE.messages,
+          colorClassName: USAGE_METRICS_PALETTE.messages,
         },
         {
           label: "Conversations",
           value: row.conversations,
-          colorClass: USAGE_METRICS_PALETTE.conversations,
+          colorClassName: USAGE_METRICS_PALETTE.conversations,
         },
         {
           label: "Active users",
           value: row.activeUsers,
-          colorClass: USAGE_METRICS_PALETTE.activeUsers,
+          colorClassName: USAGE_METRICS_PALETTE.activeUsers,
         },
       ]}
     />
@@ -113,7 +113,6 @@ export function UsageMetricsChart({
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                type="button"
                 className={cn(
                   "rounded px-2 py-1 text-xs",
                   period === p
@@ -130,7 +129,6 @@ export function UsageMetricsChart({
               <button
                 key={i}
                 onClick={() => setInterval(i)}
-                type="button"
                 className={cn(
                   "rounded px-2 py-1 text-xs",
                   interval === i

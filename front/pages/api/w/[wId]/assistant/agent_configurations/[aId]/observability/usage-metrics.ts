@@ -20,6 +20,8 @@ const QuerySchema = t.type({
   interval: t.union([t.literal("day"), t.literal("week"), t.undefined]),
 });
 
+const DEFAULT_PERIOD = 30;
+
 type ByIntervalBucket = {
   key: number;
   doc_count: number;
@@ -100,7 +102,7 @@ async function handler(
         });
       }
 
-      const days = q.right.days ? parseInt(q.right.days, 10) : 30;
+      const days = q.right.days ? parseInt(q.right.days, 10) : DEFAULT_PERIOD;
       const interval =
         (q.right.interval as "day" | "week" | undefined) ?? "day";
 
