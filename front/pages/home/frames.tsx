@@ -131,7 +131,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-red-500"></div>
                   <div>
-                    <P size="md" className="font-medium">
+                    <P size="sm" className="font-medium">
                       Create deeply personal, shareable content as superior
                       outbound pitches.
                     </P>
@@ -141,7 +141,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-bl-full bg-yellow-400"></div>
                   <div>
-                    <P size="md" className="font-medium">
+                    <P size="sm" className="font-medium">
                       Personalize by prospect, adapt tone/language and context
                       from previous interactions.
                     </P>
@@ -151,7 +151,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-green-500"></div>
                   <div>
-                    <P size="md" className="font-medium">
+                    <P size="sm" className="font-medium">
                       Transform conversation transcripts into enriched,
                       shareable follow-up content.
                     </P>
@@ -161,7 +161,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 bg-blue-500"></div>
                   <div>
-                    <P size="md" className="font-medium">
+                    <P size="sm" className="font-medium">
                       Visualize qualitative and quantitative Sales insights in a
                       smooth digestible format.
                     </P>
@@ -189,7 +189,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 bg-pink-400"></div>
                   <div>
-                    <P size="md" className="font-medium">
+                    <P size="sm" className="font-medium">
                       Generate personalized marketing materials and template
                       that can be automatically tailored to different audiences.
                     </P>
@@ -199,7 +199,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-red-500"></div>
                   <div>
-                    <P size="md" className="font-medium">
+                    <P size="sm" className="font-medium">
                       Build scalable templates that personalize at scale while
                       maintaining brand guidelines.
                     </P>
@@ -209,7 +209,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-tl-full bg-blue-500"></div>
                   <div>
-                    <P size="md" className="font-medium">
+                    <P size="sm" className="font-medium">
                       Create new shareable formats, optimized for different
                       marketing channels.
                     </P>
@@ -219,7 +219,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-green-500"></div>
                   <div>
-                    <P size="md" className="font-medium">
+                    <P size="sm" className="font-medium">
                       Turn campaign results into an editable infographic you can
                       tailor for exec reviews and posts.
                     </P>
@@ -269,7 +269,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-pink-400"></div>
                   <div>
-                    <P size="md" className="font-medium">
+                    <P size="sm" className="font-medium">
                       Aggregate analytics and support data in engaging formats
                       with "talk to your data".
                     </P>
@@ -279,7 +279,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 bg-red-500"></div>
                   <div>
-                    <P size="md" className="font-medium">
+                    <P size="sm" className="font-medium">
                       Create modular onboarding sessions based on previous
                       discussions.
                     </P>
@@ -289,7 +289,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-yellow-500"></div>
                   <div>
-                    <P size="md" className="font-medium">
+                    <P size="sm" className="font-medium">
                       Create a renewal summary that pulls wins and gaps into one
                       live page.
                     </P>
@@ -317,7 +317,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 bg-purple-400"></div>
                   <div>
-                    <P size="md" className="font-medium">
+                    <P size="sm" className="font-medium">
                       Build simple proofs of concept without Figma or complex
                       tools.
                     </P>
@@ -327,7 +327,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-orange-500"></div>
                   <div>
-                    <P size="md" className="font-medium">
+                    <P size="sm" className="font-medium">
                       Convert raw notes, roadmap ideas, receipts into polished
                       visual decks.
                     </P>
@@ -337,7 +337,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-tl-full bg-teal-500"></div>
                   <div>
-                    <P size="md" className="font-medium">
+                    <P size="sm" className="font-medium">
                       Create shareable content for all-hands and team meetings.
                     </P>
                   </div>
@@ -346,7 +346,7 @@ function ContentInAction() {
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-blue-500"></div>
                   <div>
-                    <P size="md" className="font-medium">
+                    <P size="sm" className="font-medium">
                       See data exactly how you want, merging tools into your
                       ideal interface.
                     </P>
