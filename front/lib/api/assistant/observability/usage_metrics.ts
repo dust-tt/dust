@@ -5,8 +5,10 @@ import {
   formatUTCDateFromMillis,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
-import { Err, Ok } from "@app/types/shared/result";
 import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+
+const DEFAULT_METRIC_VALUE = 0;
 
 export type UsageMetricsPoint = {
   date: string;
@@ -64,9 +66,11 @@ export async function fetchUsageMetrics(
     const date = formatUTCDateFromMillis(b.key);
     return {
       date,
-      messages: b.doc_count ?? 0,
-      conversations: Math.round(b.unique_conversations?.value ?? 0),
-      activeUsers: Math.round(b.active_users?.value ?? 0),
+      messages: b.doc_count ?? DEFAULT_METRIC_VALUE,
+      conversations: Math.round(
+        b.unique_conversations?.value ?? DEFAULT_METRIC_VALUE
+      ),
+      activeUsers: Math.round(b.active_users?.value ?? DEFAULT_METRIC_VALUE),
     };
   });
 

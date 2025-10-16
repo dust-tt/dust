@@ -8,6 +8,9 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+const MAX_VERSIONS_TO_FETCH = 100;
+const DEFAULT_TIMESTAMP_MS = 0;
+
 export type AgentVersionMarker = {
   version: string;
   timestamp: string;
@@ -30,7 +33,7 @@ export async function fetchVersionMarkers(
     by_version: {
       terms: {
         field: "agent_version",
-        size: 100,
+        size: MAX_VERSIONS_TO_FETCH,
       },
       aggs: {
         first_seen: {
@@ -62,7 +65,7 @@ export async function fetchVersionMarkers(
           ? firstSeenValue
           : typeof firstSeenString === "string"
             ? parseInt(firstSeenString, 10)
-            : 0;
+            : DEFAULT_TIMESTAMP_MS;
 
       return {
         version: b.key,
