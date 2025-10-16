@@ -17,6 +17,7 @@ import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { ConversationType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
+import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 
 async function getUserMessageIdFromMessageId(
   auth: Authenticator,
@@ -161,6 +162,29 @@ export async function validateAction(
       : false;
   }, getMessageChannelId(messageId));
 
+  // We only launch the agent loop if there are no remaining blocked actions.
+  const blockedActions =
+    await AgentMCPActionResource.listBlockedActionsForConversation(
+      auth,
+      conversationId
+    );
+
+  if (blockedActions.length > 0) {
+    logger.info(
+      {
+        blockedActions,
+      },
+      "Skipping agent loop launch because there are remaining blocked actions"
+    );
+    return new Ok(undefined);
+  }
+
+  const workflowId = makeAgentLoopWorkflowId({
+    workspaceId: owner.sId,
+    conversationId,
+    agentMessageId,
+  });
+
   await launchAgentLoopWorkflow({
     auth,
     agentLoopArgs: {
@@ -173,6 +197,12 @@ export async function validateAction(
     },
     // Resume from the step where the action was created.
     startStep: agentStepContent.step,
+    // Wait for completion of the agent loop workflow that triggered the
+    // validation. This avoids race conditions where validation re-triggers the
+    // agent loop before it completes, and thus throws a workflow already
+    // started error.
+    // CODEX TODO: add this option to the launchAgentLoopWorkflow function.
+    waitForCompletion: true,
   });
 
   logger.info(
