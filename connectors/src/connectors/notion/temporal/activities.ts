@@ -51,10 +51,10 @@ import {
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
+  checkDataSourceUpsertQueueStatus,
   deleteDataSourceDocument,
   deleteDataSourceTable,
   deleteDataSourceTableRow,
-  drainDataSourceUpsertQueue,
   ignoreTablesError,
   MAX_DOCUMENT_TXT_LEN,
   MAX_PREFIX_CHARS,
@@ -1305,23 +1305,44 @@ export async function updateParentsFields({
   return nextCursors;
 }
 
+/**
+ * Checks the upsert queue status with a short polling period.
+ * Returns true if the queue is drained (no running workflows), false otherwise.
+ * This activity polls up to 5 times with 1 second intervals (max 5 seconds total).
+ */
 export async function drainDocumentUpsertQueue({
   connectorId,
 }: {
   connectorId: ModelId;
-}) {
+}): Promise<boolean> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("Could not find connector");
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  await drainDataSourceUpsertQueue({
-    dataSourceConfig,
-    loggerArgs: {
-      connectorId,
-    },
-  });
+  const maxAttempts = 5;
+  const pollIntervalMs = 1000;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const runningCount = await checkDataSourceUpsertQueueStatus({
+      dataSourceConfig,
+      loggerArgs: {
+        connectorId,
+      },
+    });
+
+    if (runningCount === 0) {
+      return true; // Queue is drained
+    }
+
+    // Wait before next check (but not after the last attempt)
+    if (attempt < maxAttempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+  }
+
+  return false; // Queue is not yet drained
 }
 
 export async function markParentsAsUpdated({
