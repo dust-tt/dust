@@ -3,11 +3,13 @@ import {
   DocumentIcon,
   DoubleIcon,
   DoubleQuotesIcon,
+  FaviconIcon,
   FolderIcon,
   Icon,
   ImageIcon,
   TableIcon,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 import React from "react";
 
 import type {
@@ -23,8 +25,16 @@ import {
   isPastedFile,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import type { ContentFragmentType } from "@app/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import {
+  CONNECTOR_CONFIGURATIONS,
+  getConnectorProviderLogoWithFallback,
+} from "@app/lib/connector_providers";
+import type {
+  ConnectorProvider,
+  ContentFragmentType,
+  ContentNodeType,
+} from "@app/types";
 import {
   assertNever,
   isContentNodeContentFragment,
@@ -53,25 +63,70 @@ export const isAudioContentType = (attachmentCitation: AttachmentCitation) => {
   return ct.startsWith("audio/");
 };
 
-function getContentTypeIcon(
-  contentType: string | undefined
-): React.ComponentType {
-  if (!contentType) {
-    return DocumentIcon;
+export const IconForAttachmentCitation = ({
+  provider,
+  nodeType,
+  contentType,
+  sourceUrl,
+  faviconUrl,
+}: {
+  provider?: string;
+  nodeType?: ContentNodeType;
+  contentType?: string;
+  sourceUrl?: string;
+  faviconUrl?: string;
+}): ReactNode => {
+  const { isDark } = useTheme();
+
+  if (provider === "webcrawler") {
+    return (
+      <FaviconIcon
+        className="h-3 w-3"
+        faviconUrl={faviconUrl}
+        websiteUrl={sourceUrl}
+      />
+    );
   }
-  const isImageType = contentType.startsWith("image/");
-  if (isImageType) {
-    return ImageIcon;
+
+  if (provider && provider in CONNECTOR_CONFIGURATIONS) {
+    const providerLogo = getConnectorProviderLogoWithFallback({
+      provider: provider as ConnectorProvider,
+      isDark,
+    });
+
+    if (nodeType) {
+      const mainIcon =
+        nodeType === "table"
+          ? TableIcon
+          : nodeType === "folder"
+            ? FolderIcon
+            : DocumentIcon;
+      return (
+        <DoubleIcon
+          mainIcon={mainIcon}
+          secondaryIcon={providerLogo}
+          size="md"
+        />
+      );
+    }
   }
-  const isAudioType = contentType.startsWith("audio/");
-  if (isAudioType) {
-    return ActionVolumeUpIcon;
+
+  if (contentType) {
+    const isImageType = contentType.startsWith("image/");
+    if (isImageType) {
+      return <Icon visual={ImageIcon} size="md" />;
+    }
+    const isAudioType = contentType.startsWith("audio/");
+    if (isAudioType) {
+      return <Icon visual={ActionVolumeUpIcon} size="md" />;
+    }
+    if (isPastedFile(contentType)) {
+      return <Icon visual={DoubleQuotesIcon} size="md" />;
+    }
   }
-  if (isPastedFile(contentType)) {
-    return DoubleQuotesIcon;
-  }
-  return DocumentIcon;
-}
+
+  return <Icon visual={DocumentIcon} size="md" />;
+};
 
 export function contentFragmentToAttachmentCitation(
   contentFragment: ContentFragmentType
@@ -82,7 +137,9 @@ export function contentFragmentToAttachmentCitation(
       type: "file",
       id: contentFragment.sId,
       title: `${contentFragment.title} (no longer available)`,
-      visual: <IconFromContentType contentType={contentFragment.contentType} />,
+      visual: (
+        <IconForAttachmentCitation contentType={contentFragment.contentType} />
+      ),
       fileId:
         contentFragment.contentFragmentType === "file"
           ? contentFragment.fileId
@@ -96,31 +153,20 @@ export function contentFragmentToAttachmentCitation(
 
   if (isContentNodeContentFragment(contentFragment)) {
     const { provider, nodeType } = contentFragment.contentNodeData;
-    const logo = getConnectorProviderLogoWithFallback({ provider });
-
-    const visual =
-      !provider || provider === "webcrawler" ? (
-        <Icon visual={logo} size="md" />
-      ) : (
-        <DoubleIcon
-          mainIcon={
-            nodeType === "table"
-              ? TableIcon
-              : nodeType === "folder"
-                ? FolderIcon
-                : DocumentIcon
-          }
-          secondaryIcon={logo}
-          size="md"
-        />
-      );
 
     return {
       type: "node",
       id: contentFragment.sId,
       title: contentFragment.title,
       sourceUrl: contentFragment.sourceUrl,
-      visual,
+      visual: (
+        <IconForAttachmentCitation
+          provider={provider ?? undefined}
+          nodeType={nodeType}
+          contentType={contentFragment.contentType}
+          sourceUrl={contentFragment.sourceUrl ?? undefined}
+        />
+      ),
       spaceName: contentFragment.contentNodeData.spaceName,
       attachmentCitationType: "fragment",
     };
@@ -140,7 +186,9 @@ export function contentFragmentToAttachmentCitation(
       id: contentFragment.sId,
       title,
       sourceUrl: contentFragment.sourceUrl,
-      visual: <IconFromContentType contentType={contentFragment.contentType} />,
+      visual: (
+        <IconForAttachmentCitation contentType={contentFragment.contentType} />
+      ),
       description: description ?? null,
       fileId: contentFragment.fileId,
       contentType: contentFragment.contentType,
@@ -161,7 +209,9 @@ export function attachmentToAttachmentCitation(
       title: attachment.title,
       sourceUrl: attachment.sourceUrl ?? null,
       isUploading: attachment.isUploading,
-      visual: <IconFromContentType contentType={attachment.contentType} />,
+      visual: (
+        <IconForAttachmentCitation contentType={attachment.contentType} />
+      ),
       description: attachment.description ?? null,
       fileId: attachment.id,
       contentType: attachment.contentType,
@@ -196,16 +246,14 @@ export function markdownCitationToAttachmentCitation(
     description: citation.description,
     title: citation.title,
     type: "file",
-    visual: <IconFromContentType contentType={citation.contentType} />,
+    visual: (
+      <IconForAttachmentCitation
+        provider={citation.provider}
+        contentType={citation.contentType}
+        sourceUrl={citation.href}
+        faviconUrl={citation.faviconUrl}
+      />
+    ),
     isUploading: false,
   };
 }
-
-export const IconFromContentType = ({
-  contentType,
-}: {
-  contentType: string | undefined;
-}) => {
-  const visual = getContentTypeIcon(contentType);
-  return <Icon visual={visual} size="md" />;
-};
