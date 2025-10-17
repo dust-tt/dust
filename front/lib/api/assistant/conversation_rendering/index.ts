@@ -135,7 +135,7 @@ export async function renderConversationForModel(
   const prunedInteractions = [...previousInteractions, currentInteraction];
 
   // Select interactions that fit within token budget.
-  const selected: MessageWithTokens[] = [];
+  const prunedMessagesWithTokens: MessageWithTokens[] = [];
   let tokensUsed = baseTokens;
 
   // Go backward through interactions.
@@ -145,23 +145,23 @@ export async function renderConversationForModel(
     const interactionTokens = getInteractionTokenCount(interaction);
     if (tokensUsed + interactionTokens <= allowedTokenCount) {
       tokensUsed += interactionTokens;
-      selected.unshift(...interaction.messages);
+      prunedMessagesWithTokens.unshift(...interaction.messages);
     } else {
       break;
     }
   }
 
   // Merge content fragments into user messages.
-  for (let i = selected.length - 1; i >= 0; i--) {
-    const cfMessage = selected[i];
+  for (let i = prunedMessagesWithTokens.length - 1; i >= 0; i--) {
+    const cfMessage = prunedMessagesWithTokens[i];
     if (isContentFragmentMessageTypeModel(cfMessage)) {
-      const userMessage = selected[i + 1];
+      const userMessage = prunedMessagesWithTokens[i + 1];
       if (!userMessage || userMessage.role !== "user") {
         logger.error(
           {
             workspaceId: conversation.owner.sId,
             conversationId: conversation.sId,
-            selected: selected.map((m) => ({
+            selected: prunedMessagesWithTokens.map((m) => ({
               ...m,
               content:
                 getTextContentFromMessage(m)?.slice(0, 100) + " (truncated...)",
@@ -175,11 +175,11 @@ export async function renderConversationForModel(
       }
 
       userMessage.content = [...cfMessage.content, ...userMessage.content];
-      selected.splice(i, 1);
+      prunedMessagesWithTokens.splice(i, 1);
     }
   }
 
-  if (selected.length === 0) {
+  if (prunedMessagesWithTokens.length === 0) {
     logger.error(
       {
         workspaceId: conversation.owner.sId,
@@ -193,7 +193,7 @@ export async function renderConversationForModel(
   }
 
   // Remove tokenCount from final messages
-  const finalMessages: MessageTypeMultiActions[] = selected.map(
+  const finalMessages: MessageTypeMultiActions[] = prunedMessagesWithTokens.map(
     ({ tokenCount: _tokenCount, ...msg }) => msg
   );
 
