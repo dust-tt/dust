@@ -23,7 +23,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
   CHANNEL_INTERNAL_MIME_TYPES,

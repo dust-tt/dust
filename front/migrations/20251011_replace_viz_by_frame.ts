@@ -3,7 +3,7 @@ import chunk from "lodash/chunk";
 import type { Logger } from "pino";
 
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";

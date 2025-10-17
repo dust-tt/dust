@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { getAvailabilityOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getAvailabilityOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
