@@ -101,6 +101,7 @@ export const FRESHSERVICE_SERVER_INSTRUCTIONS = `
 export const DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS =
   "The tools can be used to browse and search content with a filesystem-like navigation.\n" +
   "Content is structured in nodes. Nodes are identified by a unique ID called `nodeId`.\n" +
+  "Node IDs are exposed in the outputs of the tools described below.\n" +
   "The `list` tool can be used to list the direct content under a node, like 'ls' in Unix.\n" +
   "Can be used to explore the filesystem structure step by step " +
   "by being called repeatedly with the 'nodeId' output in a step passed to the next step's nodeId.\n" +
