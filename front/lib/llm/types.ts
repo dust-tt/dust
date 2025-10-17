@@ -26,6 +26,7 @@ export interface ReasoningDeltaEvent {
   metadata: ProviderMetadata;
 }
 
+// Output items
 export interface ToolCall {
   id: string;
   name: string;
@@ -37,8 +38,6 @@ export interface ToolCallEvent {
   content: ToolCall;
   metadata: ProviderMetadata;
 }
-
-// Output items
 
 export interface TextGeneratedEvent {
   type: "text_generated";
