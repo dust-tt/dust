@@ -1,31 +1,14 @@
-import type { LLMStreamEvent } from "@app/lib/llm/types";
+import type { LLMEvent } from "@app/lib/llm/types";
 import type {
-  AgentReasoningEffort,
+  ModelConfigurationType,
   ModelConversationTypeMultiActions,
-  ModelProviderIdType,
 } from "@app/types";
 
 export abstract class LLM {
-  protected temperature: number;
-  protected modelId: string;
-  protected providerId: ModelProviderIdType;
-  protected reasoningEffort: AgentReasoningEffort;
+  protected model: ModelConfigurationType;
 
-  constructor({
-    temperature,
-    modelId,
-    providerId,
-    reasoningEffort,
-  }: {
-    temperature: number;
-    modelId: string;
-    providerId: ModelProviderIdType;
-    reasoningEffort: AgentReasoningEffort;
-  }) {
-    this.temperature = temperature;
-    this.modelId = modelId;
-    this.providerId = providerId;
-    this.reasoningEffort = reasoningEffort;
+  constructor(model: ModelConfigurationType) {
+    this.model = model;
   }
 
   abstract stream({
@@ -34,5 +17,5 @@ export abstract class LLM {
   }: {
     conversation: ModelConversationTypeMultiActions;
     prompt: string;
-  }): AsyncGenerator<LLMStreamEvent>;
+  }): AsyncGenerator<LLMEvent>;
 }
