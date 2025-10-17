@@ -20,4 +20,11 @@ export default defineConfig({
   env: parsed,
   sourcemap: true,
   target: "node16",
+  esbuildOptions(options) {
+    // Alias @app paths to the front directory
+    options.alias = {
+      "@app/types/api/credentials": "./src/utils/credentials.ts",
+      "@app": "../front",
+    };
+  },
 });
