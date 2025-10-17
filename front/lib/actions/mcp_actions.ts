@@ -394,7 +394,7 @@ export async function* tryCallMCPTool(
     // Frequently heartbeat to get notified of cancellation.
     const getHeartbeatPromise = (): Promise<void> =>
       new Promise((resolve) => {
-        setInterval(() => {
+        setTimeout(() => {
           heartbeat();
           resolve();
         }, TOOL_ACTIVITY_HEARTBEAT_TIMEOUT / 2);
