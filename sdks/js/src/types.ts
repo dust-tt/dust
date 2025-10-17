@@ -694,6 +694,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "elevenlabs_tool"
   | "agent_builder_observability"
   | "legacy_dust_apps"
+  | "llm_router_direct_requests"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
