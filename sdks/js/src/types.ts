@@ -846,6 +846,7 @@ const LightAgentConfigurationSchema = z.object({
   templateId: z.string().nullable(),
   groupIds: z.array(z.string()).optional(),
   requestedGroupIds: z.array(z.array(z.string())),
+  requestedSpaceIds: z.array(z.string()),
 });
 
 export type LightAgentConfigurationType = z.infer<

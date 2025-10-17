@@ -28,6 +28,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare hasError: CreationOptional<boolean>;
 
   declare requestedGroupIds: number[][];
+  declare requestedSpaceIds: number[];
 }
 
 ConversationModel.init(
@@ -62,6 +63,11 @@ ConversationModel.init(
     },
     requestedGroupIds: {
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
+      allowNull: false,
+      defaultValue: [],
+    },
+    requestedSpaceIds: {
+      type: DataTypes.ARRAY(DataTypes.BIGINT),
       allowNull: false,
       defaultValue: [],
     },
