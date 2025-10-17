@@ -1,4 +1,4 @@
-import type { MessageTypeMultiActions } from "@app/types";
+import type { ModelMessageTypeMultiActions } from "@app/types";
 
 const CURRENT_INTERACTION_PRUNED_RESULT_PLACEHOLDER =
   "<dust_system>This function result is no longer available." +
@@ -9,7 +9,7 @@ const PREVIOUS_INTERACTIONS_PRUNED_RESULT_PLACEHOLDER =
   "<dust_system>This function result is no longer available.</dust_system>";
 const PREVIOUS_INTERACTIONS_PRUNED_TOOL_RESULT_TOKENS = 20;
 
-export type MessageWithTokens = MessageTypeMultiActions & {
+export type MessageWithTokens = ModelMessageTypeMultiActions & {
   tokenCount: number;
 };
 
