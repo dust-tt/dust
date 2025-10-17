@@ -211,7 +211,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   llm_router_direct_requests: {
     description: "Use direct LLM call over Dust app run in a conversation.",
-    stage: "dust_only",
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 
