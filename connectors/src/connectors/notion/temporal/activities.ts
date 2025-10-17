@@ -1315,34 +1315,8 @@ export async function drainDocumentUpsertQueue({
 }: {
   connectorId: ModelId;
 }): Promise<boolean> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("Could not find connector");
-  }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
-  const maxAttempts = 5;
-  const pollIntervalMs = 1000;
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const runningCount = await checkDataSourceUpsertQueueStatus({
-      dataSourceConfig,
-      loggerArgs: {
-        connectorId,
-      },
-    });
-
-    if (runningCount === 0) {
-      return true; // Queue is drained
-    }
-
-    // Wait before next check (but not after the last attempt)
-    if (attempt < maxAttempts - 1) {
-      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-    }
-  }
-
-  return false; // Queue is not yet drained
+  // Temporarily disable the queue draining until we can optimize it to make fewer front calls
+  return true;
 }
 
 export async function markParentsAsUpdated({
