@@ -8,7 +8,10 @@ import type { UserMessage } from "@mistralai/mistralai/models/components/usermes
 
 import { LLM } from "@app/lib/llm/llm";
 import type { LLMEvent, ProviderMetadata } from "@app/lib/llm/types";
-import type { ConversationTypeMultiActions,ModelConfigurationType } from "@app/types";
+import type {
+  ModelConfigurationType,
+  ModelConversationTypeMultiActions,
+} from "@app/types";
 import { dustManagedCredentials } from "@app/types/api/credentials";
 
 type MistralMessage =
@@ -49,10 +52,9 @@ export class MistralLLM extends LLM {
     conversation,
     prompt,
   }: {
-    conversation: ConversationTypeMultiActions;
+    conversation: ModelConversationTypeMultiActions;
     prompt: string;
   }): AsyncGenerator<LLMEvent> {
-
     this.resetAccumulators();
 
     const events = this.modelStream({
@@ -100,7 +102,9 @@ export class MistralLLM extends LLM {
   }
 
   // returns token usage and success/error completion events
-  private async *yieldFinalEvents(event: CompletionEvent): AsyncGenerator<LLMEvent> {
+  private async *yieldFinalEvents(
+    event: CompletionEvent
+  ): AsyncGenerator<LLMEvent> {
     const tokenUsage = event.data.usage;
     if (tokenUsage) {
       yield {
@@ -138,8 +142,8 @@ export class MistralLLM extends LLM {
         metadata: {
           ...this.metadata,
           id: event.data.id,
-          created: event.data.created
-        }
+          created: event.data.created,
+        },
       };
     }
   }
@@ -148,7 +152,7 @@ export class MistralLLM extends LLM {
     conversation,
     prompt,
   }: {
-    conversation: ConversationTypeMultiActions;
+    conversation: ModelConversationTypeMultiActions;
     prompt: string;
   }): AsyncGenerator<any> {
     const messages = this.getMessages({
@@ -193,30 +197,32 @@ export class MistralLLM extends LLM {
     conversation,
     prompt,
   }: {
-    conversation: ConversationTypeMultiActions;
+    conversation: ModelConversationTypeMultiActions;
     prompt: string;
   }): MistralMessage[] {
     const messages: MistralMessage[] = conversation.messages
-      .filter((message) => message.content)
+      .filter((message) => message.role !== "content_fragment") // content_fragments should have been removed by now
       .map((message) => {
         let content: string | ContentChunk[];
         if (typeof message.content === "string") {
           content = message.content;
         } else {
-          content = message.content ? message.content.map((content) => {
-            switch (content.type) {
-              case "text":
-                return {
-                  type: "text",
-                  text: content.text,
-                };
-              case "image_url":
-                return {
-                  type: "image_url",
-                  imageUrl: content.image_url.url,
-                };
-            }
-          }) : [];
+          content = message.content
+            ? message.content.map((content) => {
+                switch (content.type) {
+                  case "text":
+                    return {
+                      type: "text",
+                      text: content.text,
+                    };
+                  case "image_url":
+                    return {
+                      type: "image_url",
+                      imageUrl: content.image_url.url,
+                    };
+                }
+              })
+            : [];
         }
         return {
           role: message.role === "function" ? "tool" : message.role,
