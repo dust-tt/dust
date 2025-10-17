@@ -17,6 +17,7 @@ import type {
   ConversationType,
   ModelConfigurationType,
   ModelMessageTypeMultiActions,
+  WhitelistableFeature,
 } from "@app/types";
 import {
   assertNever,
@@ -135,12 +136,14 @@ export async function renderAllMessages(
     excludeActions,
     excludeImages,
     onMissingAction,
+    featureFlags,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
     excludeActions?: boolean;
     excludeImages?: boolean;
     onMissingAction: "inject-placeholder" | "skip";
+    featureFlags: WhitelistableFeature[];
   }
 ): Promise<ModelMessageTypeMultiActions[]> {
   const messages: ModelMessageTypeMultiActions[] = [];
@@ -156,6 +159,7 @@ export async function renderAllMessages(
         workspaceId: conversation.owner.sId,
         conversationId: conversation.sId,
         onMissingAction,
+        useResourceRendering: featureFlags.includes("use_resource_rendering"),
       });
 
       const agentMessages = renderAgentSteps(

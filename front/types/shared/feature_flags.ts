@@ -226,6 +226,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Use direct LLM call over Dust app run in a conversation.",
     stage: "on_demand",
   },
+  use_resource_rendering: {
+    description: "Use resource rendering for agent outputs (instead of JSON)",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
