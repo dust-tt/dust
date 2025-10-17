@@ -152,7 +152,7 @@ export async function renderConversationForModel(
     }
   }
 
-  const selected: (ModelMessageTypeMultiActions & {
+  const selectedWithoutContentFragments: (ModelMessageTypeMultiActions & {
     tokenCount: number;
   })[] = [];
 
@@ -161,7 +161,7 @@ export async function renderConversationForModel(
     const cfMessage = prunedMessagesWithTokens[i];
 
     if (!isContentFragmentMessageTypeModel(cfMessage)) {
-      selected.push(cfMessage);
+      selectedWithoutContentFragments.push(cfMessage);
 
       continue;
     }
@@ -186,10 +186,10 @@ export async function renderConversationForModel(
     }
 
     userMessage.content = [...cfMessage.content, ...userMessage.content];
-    selected.push(userMessage);
+    selectedWithoutContentFragments.push(userMessage);
   }
 
-  if (selected.length === 0) {
+  if (selectedWithoutContentFragments.length === 0) {
     logger.error(
       {
         workspaceId: conversation.owner.sId,
@@ -203,7 +203,7 @@ export async function renderConversationForModel(
   }
 
   // Remove tokenCount from final messages
-  const finalMessages: ModelMessageTypeMultiActions[] = selected.map(
+  const finalMessages: ModelMessageTypeMultiActions[] = selectedWithoutContentFragments.map(
     ({ tokenCount: _tokenCount, ...msg }) => msg
   );
 
