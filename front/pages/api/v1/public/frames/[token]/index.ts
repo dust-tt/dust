@@ -55,7 +55,6 @@ async function handler(
   const workspace = await WorkspaceResource.fetchByModelId(
     result.file.workspaceId
   );
-
   if (!workspace) {
     return apiError(req, res, {
       status_code: 404,
@@ -86,6 +85,20 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message: "File is not safe for public display.",
+      },
+    });
+  }
+
+  // If file is shared publicly, ensure workspace allows it.
+  if (
+    shareScope === "public" &&
+    !workspace.canShareInteractiveContentPublicly
+  ) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
       },
     });
   }
