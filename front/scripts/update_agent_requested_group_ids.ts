@@ -156,6 +156,8 @@ async function updateAgentRequestedGroupIds(
             sId: agent.sId,
             workspaceId: workspace.id,
           },
+          hooks: false,
+          silent: true,
         }
       );
       updatedCount++;

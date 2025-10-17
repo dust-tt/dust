@@ -130,6 +130,8 @@ async function updateConversationRequestedSpaceIds(
           workspaceId: workspace.id,
           id: conversation.id,
         },
+        hooks: false,
+        silent: true,
       }
     );
   }

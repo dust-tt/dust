@@ -298,6 +298,8 @@ async function updateConversationRequestedGroupIds(
               id: conversation.id,
               workspaceId: workspace.id,
             },
+            hooks: false,
+            silent: true,
           }
         );
         updatedCount++;
