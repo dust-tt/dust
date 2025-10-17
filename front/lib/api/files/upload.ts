@@ -10,9 +10,9 @@ import { fileSync } from "tmp";
 import config from "@app/lib/api/config";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { untrustedFetch } from "@app/lib/egress";
 import type { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { untrustedFetch } from "@app/lib/untrusted_egress";
 import { transcribeFile } from "@app/lib/utils/transcribe_service";
 import logger from "@app/logger/logger";
 import type {

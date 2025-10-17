@@ -35,9 +35,9 @@ import type {
   MCPToolType,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { getUntrustedEgressAgent } from "@app/lib/egress";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { getUntrustedEgressAgent } from "@app/lib/untrusted_egress";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase, OAuthProvider, Result } from "@app/types";

@@ -27,3 +27,12 @@ export function untrustedFetch(
     : init;
   return undiciFetch(input, finalInit);
 }
+
+// Fetch helper for trusted, first‑party egress or intra‑VPC calls.
+// This is just the regular fetch without any proxy injection.
+export function trustedFetch(
+  input: RequestInfo,
+  init?: RequestInit
+): Promise<Response> {
+  return undiciFetch(input, init);
+}
