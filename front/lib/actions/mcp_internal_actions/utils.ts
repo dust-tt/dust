@@ -34,7 +34,7 @@ export function makeInternalMCPServer<S extends InternalMCPServerNameType>(
     augmentedInstructions?: string;
   }
 ): McpServer & {
-  tool: <T extends keyof (typeof INTERNAL_MCP_TOOLS_RUNNING_LABELS)[S]>(
+  tool(): <T extends keyof (typeof INTERNAL_MCP_TOOLS_RUNNING_LABELS)[S]>(
     ...args: { name: T } & Parameters<McpServer["tool"]>
   ) => ReturnType<McpServer["tool"]>;
 } {
