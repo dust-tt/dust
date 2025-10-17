@@ -15,6 +15,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/instructions";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
+import type { INTERNAL_MCP_TOOLS_RUNNING_LABELS } from "@app/lib/actions/mcp_internal_actions/tool_constants";
 import {
   DEEP_DIVE_NAME,
   DEEP_DIVE_SERVER_INSTRUCTIONS,
@@ -1363,7 +1364,14 @@ The directive should be used to display a clickable version of the agent name in
         }) => boolean)
       | undefined;
     isPreview: boolean;
-    tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
+    tools_stakes:
+      | Partial<
+          Record<
+            keyof (typeof INTERNAL_MCP_TOOLS_RUNNING_LABELS)[K],
+            MCPToolStakeLevelType
+          >
+        >
+      | undefined;
     tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
     timeoutMs: number | undefined;
     serverInfo: InternalMCPServerDefinitionType & { name: K };
