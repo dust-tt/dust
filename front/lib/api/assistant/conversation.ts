@@ -36,7 +36,6 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
   generateRandomModelSId,
