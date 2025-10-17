@@ -17,6 +17,7 @@ import {
   INTERNAL_MCP_SERVERS,
   isInternalMCPServerOfName,
 } from "@app/lib/actions/mcp_internal_actions/server_constants";
+import type { INTERNAL_MCP_TOOLS_RUNNING_LABELS } from "@app/lib/actions/mcp_internal_actions/tool_constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -27,12 +28,16 @@ import type {
   OAuthProvider,
 } from "@app/types";
 
-export function makeInternalMCPServer(
-  serverName: InternalMCPServerNameType,
+export function makeInternalMCPServer<S extends InternalMCPServerNameType>(
+  serverName: S,
   options?: {
     augmentedInstructions?: string;
   }
-): McpServer {
+): McpServer & {
+  tool: <T extends keyof (typeof INTERNAL_MCP_TOOLS_RUNNING_LABELS)[S]>(
+    ...args: { name: T } & Parameters<McpServer["tool"]>
+  ) => ReturnType<McpServer["tool"]>;
+} {
   const { serverInfo } = INTERNAL_MCP_SERVERS[serverName];
   const instructions =
     options?.augmentedInstructions ?? serverInfo.instructions ?? undefined;
