@@ -110,6 +110,9 @@ export async function getJITServers(
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d58fcdfb0e (fixes)
   if (!commonUtilitiesView) {
     logger.warn(
       {
@@ -120,6 +123,7 @@ export async function getJITServers(
     );
   } else if (!agentMcpServerViewIds.includes(commonUtilitiesView.sId)) {
     const commonUtilitiesViewJSON = commonUtilitiesView.toJSON();
+<<<<<<< HEAD
 =======
   assert(
     commonUtilitiesView,
@@ -130,6 +134,8 @@ export async function getJITServers(
 
   if (!agentMcpServerViewIds.includes(commonUtilitiesViewJSON.sId)) {
 >>>>>>> 18c8701bcb (feat(front): add common utilities internal mcp server)
+=======
+>>>>>>> d58fcdfb0e (fixes)
     const commonUtilitiesServer: ServerSideMCPServerConfigurationType = {
       id: -1,
       sId: generateRandomModelSId(),
