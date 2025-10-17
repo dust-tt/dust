@@ -191,7 +191,7 @@ export async function runTriggeredAgentsActivity({
   });
 
   if (!agentConfiguration) {
-    throw new Error(
+    throw new TriggerNonRetryableError(
       `Agent configuration with ID ${trigger.agentConfigurationId} not found in workspace ${auth.getNonNullableWorkspace().id}.`
     );
   }
@@ -203,12 +203,14 @@ export async function runTriggeredAgentsActivity({
 
   const triggerResource = await TriggerResource.fetchById(auth, trigger.sId);
   if (!triggerResource) {
-    throw new Error(`Trigger with ID ${trigger.sId} not found.`);
+    throw new TriggerNonRetryableError(
+      `Trigger with ID ${trigger.sId} not found.`
+    );
   }
 
   const subscribers = await triggerResource.getSubscribers(auth);
   if (subscribers.isErr()) {
-    throw new Error("Error getting trigger subscribers.");
+    throw new TriggerNonRetryableError("Error getting trigger subscribers.");
   }
 
   let lastRunAt: Date | null = null;
