@@ -61,7 +61,7 @@ export default function HubSpotForm() {
           trackEvent({
             area: TRACKING_AREAS.CONTACT,
             object: "hubspot_form",
-            action: "submitted",
+            action: "submit",
           });
         }
       }
@@ -86,7 +86,7 @@ export default function HubSpotForm() {
           trackEvent({
             area: TRACKING_AREAS.CONTACT,
             object: "hubspot_form",
-            action: "submitted",
+            action: "submit",
           });
         }
       }

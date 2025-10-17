@@ -6,7 +6,6 @@ import {
   VirtuosoMessageList,
   VirtuosoMessageListLicense,
 } from "@virtuoso.dev/message-list";
-import _ from "lodash";
 import debounce from "lodash/debounce";
 import React, {
   useCallback,

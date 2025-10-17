@@ -2,6 +2,12 @@
  * Message rendering logic shared between legacy and enhanced implementations
  */
 
+import type { Step } from "@app/lib/api/assistant/conversation_rendering/helpers";
+import {
+  getSteps,
+  renderContentFragment,
+  renderUserMessage,
+} from "@app/lib/api/assistant/conversation_rendering/helpers";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type {
@@ -9,8 +15,8 @@ import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
   ConversationType,
+  MessageTypeMultiActions,
   ModelConfigurationType,
-  ModelMessageTypeMultiActions,
 } from "@app/types";
 import {
   assertNever,
@@ -20,9 +26,6 @@ import {
 } from "@app/types";
 import type { TextContentType } from "@app/types/assistant/agent_message_content";
 
-import type { Step } from "./common";
-import { getSteps, renderContentFragment, renderUserMessage } from "./common";
-
 /**
  * Renders agent message steps into model messages
  */
@@ -31,8 +34,8 @@ export function renderAgentSteps(
   message: AgentMessageType,
   conversation: ConversationType,
   excludeActions: boolean
-): ModelMessageTypeMultiActions[] {
-  const messages: ModelMessageTypeMultiActions[] = [];
+): MessageTypeMultiActions[] {
+  const messages: MessageTypeMultiActions[] = [];
 
   if (excludeActions) {
     // In Exclude Actions mode, we only render the last step that has text content.
@@ -139,8 +142,8 @@ export async function renderAllMessages(
     excludeImages?: boolean;
     onMissingAction: "inject-placeholder" | "skip";
   }
-): Promise<ModelMessageTypeMultiActions[]> {
-  const messages: ModelMessageTypeMultiActions[] = [];
+): Promise<MessageTypeMultiActions[]> {
+  const messages: MessageTypeMultiActions[] = [];
 
   // Render loop: render all messages and all actions.
   for (const versions of conversation.content) {

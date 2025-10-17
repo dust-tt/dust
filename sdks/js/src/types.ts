@@ -696,6 +696,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_observability"
   | "legacy_dust_apps"
   | "dust_default_haiku_feature"
+  | "llm_router_direct_requests"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2310,6 +2311,13 @@ const PostParentsResponseSchema = z.object({
   updated: z.boolean(),
 });
 export type PostParentsResponseType = z.infer<typeof PostParentsResponseSchema>;
+
+const CheckUpsertQueueResponseSchema = z.object({
+  running_count: z.number(),
+});
+export type CheckUpsertQueueResponseType = z.infer<
+  typeof CheckUpsertQueueResponseSchema
+>;
 
 const GetDocumentsResponseSchema = z.object({
   documents: z.array(CoreAPIDocumentSchema),

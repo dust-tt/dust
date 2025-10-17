@@ -1,4 +1,3 @@
-import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";
 import type { AgentConfigurationType } from "@app/types";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
 import { GLOBAL_AGENTS_SID, NOOP_MODEL_CONFIG } from "@app/types";
