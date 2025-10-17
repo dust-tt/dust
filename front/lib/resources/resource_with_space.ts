@@ -78,6 +78,7 @@ export abstract class ResourceWithSpace<
       order,
       includeDeleted,
       transaction,
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
     if (blobs.length === 0) {
@@ -95,6 +96,8 @@ export abstract class ResourceWithSpace<
           model: GroupResource.model,
         },
       ],
+      // WORKSPACE_ISOLATION_BYPASS: we may need to fetch data from public workspaces
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
       includeDeleted,
     });
 

@@ -304,6 +304,13 @@ export async function createOrUpgradeAgentConfiguration({
     await UserResource.fetchByIds(assistant.editors.map((e) => e.sId))
   ).map((e) => e.toJSON());
 
+  const requirements = await getAgentConfigurationRequirementsFromActions(
+    auth,
+    {
+      actions,
+    }
+  );
+
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name: assistant.name,
     description: assistant.description,
@@ -315,9 +322,8 @@ export async function createOrUpgradeAgentConfiguration({
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
-    ...(await getAgentConfigurationRequirementsFromActions(auth, {
-      actions,
-    })),
+    requestedGroupIds: requirements.requestedGroupIds,
+    requestedSpaceIds: requirements.requestedSpaceIds,
     tags: assistant.tags,
     editors,
   });

@@ -10,7 +10,8 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type {
   CombinedResourcePermissions,
@@ -182,7 +183,7 @@ export async function getAgentConfigurationRequirementsFromActions(
   // Convert Map to array of arrays, filtering out empty sets.
   return {
     requestedSpaceIds: removeNulls(
-      [...spacePermissions.keys()].map(getResourceIdFromSId)
+      Array.from(spacePermissions.keys()).map(getResourceIdFromSId)
     ),
     requestedGroupIds: removeNulls(
       Array.from(spacePermissions.values())
@@ -212,7 +213,7 @@ export async function getContentFragmentGroupIds(
 export async function getContentFragmentSpaceIds(
   auth: Authenticator,
   contentFragment: ContentFragmentInputWithContentNode
-): Promise<ModelId> {
+): Promise<string> {
   const dsView = await DataSourceViewResource.fetchById(
     auth,
     contentFragment.nodeDataSourceViewId
@@ -221,5 +222,8 @@ export async function getContentFragmentSpaceIds(
     throw new Error(`Unexpected dataSourceView not found`);
   }
 
-  return dsView.space.id;
+  return SpaceResource.modelIdToSId({
+    id: dsView.space.id,
+    workspaceId: auth.getNonNullableWorkspace().id,
+  });
 }

@@ -170,9 +170,10 @@ export class Authenticator {
     spaceIds: string[]
   ): ResourcePermission[] {
     // TODO(2025-10-17 thomas): Implement permissions based on spaces.
-    return spaceIds.flatMap(() => {
+    spaceIds.flatMap(() => {
       return [];
     });
+    throw new Error("Not implemented");
   }
 
   static async userFromSession(

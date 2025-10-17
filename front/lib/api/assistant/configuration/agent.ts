@@ -1166,6 +1166,7 @@ export async function updateAgentConfigurationScope(
   return new Ok(undefined);
 }
 
+// TODO(2025-10-17 thomas): Update name, remove requestedGroupIds.
 export async function updateAgentRequestedGroupIds(
   auth: Authenticator,
   params: { agentId: string; newGroupIds: number[][]; newSpaceIds: number[] },

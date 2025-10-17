@@ -133,10 +133,8 @@ export async function createConversation(
     unread: false,
     actionRequired: false,
     hasError: false,
-    requestedGroupIds:
-      conversation.getConversationRequestedGroupIdsFromModel(auth),
-    requestedSpaceIds:
-      conversation.getConversationRequestedSpaceIdsFromModel(auth),
+    requestedGroupIds: conversation.getRequestedGroupIdsFromModel(auth),
+    requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
   };
 }
 
@@ -1709,14 +1707,11 @@ export async function updateConversationRequestedGroupIds(
     );
     newGroupsRequirements.push(...requestedGroupIds);
 
-    const rawRequestedSpaceId = await getContentFragmentSpaceIds(
+    const requestedSpaceId = await getContentFragmentSpaceIds(
       auth,
       contentFragment
     );
-    const requestedSpaceId = SpaceResource.modelIdToSId({
-      id: rawRequestedSpaceId,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    });
+
     newSpaceRequirements.push(requestedSpaceId);
   }
 

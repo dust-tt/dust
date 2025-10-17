@@ -322,7 +322,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ): boolean {
     const requestedGroupIds =
       conversation instanceof ConversationResource
-        ? conversation.getConversationRequestedGroupIdsFromModel(auth)
+        ? conversation.getRequestedGroupIdsFromModel(auth)
         : conversation.requestedGroupIds;
 
     return auth.canRead(
@@ -332,7 +332,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // TODO(2025-10-17 thomas): Update permission to use space requirements.
     // const requestedSpaceIds =
     //   conversation instanceof ConversationResource
-    //     ? conversation.getConversationRequestedSpaceIdsFromModel(auth)
+    //     ? conversation.getRequestedSpaceIdsFromModel(auth)
     //     : conversation.requestedGroupIds;
   }
 
@@ -378,10 +378,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       actionRequired,
       unread,
       hasError: conversation.hasError,
-      requestedGroupIds:
-        conversation.getConversationRequestedGroupIdsFromModel(auth),
-      requestedSpaceIds:
-        conversation.getConversationRequestedSpaceIdsFromModel(auth),
+      requestedGroupIds: conversation.getRequestedGroupIdsFromModel(auth),
+      requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
     });
   }
 
@@ -460,10 +458,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           visibility: c.visibility,
           depth: c.depth,
           triggerId: ConversationResource.triggerIdToSId(c.triggerId, owner.id),
-          requestedGroupIds:
-            resource.getConversationRequestedGroupIdsFromModel(auth),
-          requestedSpaceIds:
-            resource.getConversationRequestedSpaceIdsFromModel(auth),
+          requestedGroupIds: resource.getRequestedGroupIdsFromModel(auth),
+          requestedSpaceIds: resource.getRequestedSpaceIdsFromModel(auth),
         });
       }
 
@@ -511,8 +507,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           actionRequired,
           unread,
           hasError: c.hasError,
-          requestedGroupIds: c.getConversationRequestedGroupIdsFromModel(auth),
-          requestedSpaceIds: c.getConversationRequestedSpaceIdsFromModel(auth),
+          requestedGroupIds: c.getRequestedGroupIdsFromModel(auth),
+          requestedSpaceIds: c.getRequestedSpaceIdsFromModel(auth),
         };
       })
     );
@@ -1000,7 +996,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
   }
 
-  getConversationRequestedGroupIdsFromModel(auth: Authenticator) {
+  getRequestedGroupIdsFromModel(auth: Authenticator) {
     const workspace = auth.getNonNullableWorkspace();
     return this.requestedGroupIds.map((groups) =>
       groups.map((g) =>
@@ -1012,7 +1008,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  getConversationRequestedSpaceIdsFromModel(auth: Authenticator) {
+  getRequestedSpaceIdsFromModel(auth: Authenticator) {
     const workspace = auth.getNonNullableWorkspace();
     return this.requestedSpaceIds.map((id) =>
       SpaceResource.modelIdToSId({
