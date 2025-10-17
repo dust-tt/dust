@@ -69,6 +69,7 @@ export function _getGeminiProGlobalAgent({
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,

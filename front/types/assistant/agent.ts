@@ -140,7 +140,8 @@ export type LightAgentConfigurationType = {
 
   templateId: string | null;
 
-  // Group restrictions for accessing the agent/conversation.
+  // TODO(2025-10-17 thomas): Remove this.
+  // Group restrictions for accessing the agent/conversation. Deprecated
   // The array of arrays represents permission requirements:
   // - If empty, no restrictions apply
   // - Each sub-array represents an OR condition (user must belong to AT LEAST ONE group)
@@ -148,6 +149,14 @@ export type LightAgentConfigurationType = {
   //
   // Example: [[1,2], [3,4]] means (1 OR 2) AND (3 OR 4)
   requestedGroupIds: string[][];
+
+  // Space restrictions for accessing the agent/conversation - replaces group restrictions.
+  // The array represents permission requirements:
+  // - If empty, no restrictions apply
+  // - Each element represents an AND condition (user must belong to ALL spaces)
+  //
+  // Example: [1,2] means (1 AND 2)
+  requestedSpaceIds: string[];
 
   canRead: boolean;
   canEdit: boolean;

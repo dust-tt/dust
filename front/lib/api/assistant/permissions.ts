@@ -11,6 +11,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type {
   CombinedResourcePermissions,
   ContentFragmentInputWithContentNode,
@@ -18,6 +19,7 @@ import type {
 } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
 
+// TODO(2025-10-17 thomas): Remove this - used only by workflow to update permission when space coonfiguration change.
 export async function listAgentConfigurationsForGroups(
   auth: Authenticator,
   groups: GroupResource[]
@@ -82,13 +84,14 @@ export function groupsFromRequestedPermissions(
   );
 }
 
-export async function getAgentConfigurationGroupIdsFromActions(
+// TODO(2025-10-17 thomas): Remove groupIds.
+export async function getAgentConfigurationRequirementsFromActions(
   auth: Authenticator,
   params: {
     actions: UnsavedMCPServerConfigurationType[];
     ignoreSpaces?: SpaceResource[];
   }
-): Promise<ModelId[][]> {
+): Promise<{ requestedGroupIds: ModelId[][]; requestedSpaceIds: ModelId[] }> {
   const { actions, ignoreSpaces } = params;
   const ignoreSpaceIds = new Set(ignoreSpaces?.map((space) => space.sId));
 
@@ -177,9 +180,16 @@ export async function getAgentConfigurationGroupIdsFromActions(
   }
 
   // Convert Map to array of arrays, filtering out empty sets.
-  return Array.from(spacePermissions.values())
-    .map((set) => Array.from(set))
-    .filter((arr) => arr.length > 0);
+  return {
+    requestedSpaceIds: removeNulls(
+      [...spacePermissions.keys()].map(getResourceIdFromSId)
+    ),
+    requestedGroupIds: removeNulls(
+      Array.from(spacePermissions.values())
+        .map((set) => Array.from(set))
+        .filter((arr) => arr.length > 0)
+    ),
+  };
 }
 
 export async function getContentFragmentGroupIds(
@@ -197,4 +207,19 @@ export async function getContentFragmentGroupIds(
   const groups = groupsFromRequestedPermissions(dsView.requestedPermissions());
 
   return [groups].filter((arr) => arr.length > 0);
+}
+
+export async function getContentFragmentSpaceIds(
+  auth: Authenticator,
+  contentFragment: ContentFragmentInputWithContentNode
+): Promise<ModelId> {
+  const dsView = await DataSourceViewResource.fetchById(
+    auth,
+    contentFragment.nodeDataSourceViewId
+  );
+  if (!dsView) {
+    throw new Error(`Unexpected dataSourceView not found`);
+  }
+
+  return dsView.space.id;
 }

@@ -54,6 +54,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
   const lastVersionEditors = await getEditors(auth, agentConfigurations[0]);
   const [latestAgentConfiguration] = agentConfigurations;
+
+  // TODO(2025-10-17 thomas): Use requestedSpaceIds instead of requestedGroupIds.
   const uniqueGroupIds = Array.from(
     new Set(latestAgentConfiguration.requestedGroupIds.flat())
   );

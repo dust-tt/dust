@@ -101,6 +101,10 @@ async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
   });
 
   const allowedAgents = agents.filter((a) =>
+    // TODO(2025-10-17 thomas): Update permission to use space requirements.
+    // auth.canRead(
+    //   Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
+    // )
     auth.canRead(
       Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
     )
@@ -149,6 +153,10 @@ export async function listsAgentConfigurationVersions<
 
   // Filter by permissions
   const allowedAgents = allAgents.filter((a) =>
+    // TODO(2025-10-17 thomas): Update permission to use space requirements.
+    // auth.canRead(
+    //   Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
+    // )
     auth.canRead(
       Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
     )
@@ -228,6 +236,10 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 
     // Filter by permissions
     const allowedAgents = allAgents.filter((a) =>
+      // TODO(2025-10-17 thomas): Update permission to use space requirements.
+      // auth.canRead(
+      //   Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
+      // )
       auth.canRead(
         Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
       )
@@ -314,6 +326,7 @@ export async function createAgentConfiguration(
     agentConfigurationId,
     templateId,
     requestedGroupIds,
+    requestedSpaceIds,
     tags,
     editors,
   }: {
@@ -328,6 +341,7 @@ export async function createAgentConfiguration(
     agentConfigurationId?: string;
     templateId: string | null;
     requestedGroupIds: number[][];
+    requestedSpaceIds: number[];
     tags: TagType[];
     editors: UserType[];
   },
@@ -427,7 +441,9 @@ export async function createAgentConfiguration(
           workspaceId: owner.id,
           authorId: user.id,
           templateId: template?.id,
+          // TODO(2025-10-17 thomas): Remove requestedGroupIds.
           requestedGroupIds: normalizeArrays(requestedGroupIds),
+          requestedSpaceIds: requestedSpaceIds,
           responseFormat: model.responseFormat,
         },
         {
@@ -555,10 +571,14 @@ export async function createAgentConfiguration(
       maxStepsPerRun: agent.maxStepsPerRun,
       visualizationEnabled: agent.visualizationEnabled ?? false,
       templateId: template?.sId ?? null,
+      // TODO(2025-10-17 thomas): Remove requestedGroupIds.
       requestedGroupIds: agent.requestedGroupIds.map((groups) =>
         groups.map((id) =>
           GroupResource.modelIdToSId({ id, workspaceId: owner.id })
         )
+      ),
+      requestedSpaceIds: agent.requestedSpaceIds.map((spaceId) =>
+        SpaceResource.modelIdToSId({ id: spaceId, workspaceId: owner.id })
       ),
       tags,
       canRead: true,
@@ -660,7 +680,9 @@ export async function createGenericAgentConfiguration(
     scope: "hidden", // Unpublished
     model,
     templateId: null,
+    // TODO(2025-10-17 thomas): Remove requestedGroupIds.
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     editors: [user.toJSON()], // Only the current user as editor
   });
@@ -1146,15 +1168,18 @@ export async function updateAgentConfigurationScope(
 
 export async function updateAgentRequestedGroupIds(
   auth: Authenticator,
-  params: { agentId: string; newGroupIds: number[][] },
+  params: { agentId: string; newGroupIds: number[][]; newSpaceIds: number[] },
   options?: { transaction?: Transaction }
 ): Promise<Result<boolean, Error>> {
-  const { agentId, newGroupIds } = params;
+  const { agentId, newGroupIds, newSpaceIds } = params;
 
   const owner = auth.getNonNullableWorkspace();
 
   const updated = await AgentConfiguration.update(
-    { requestedGroupIds: normalizeArrays(newGroupIds) },
+    {
+      requestedGroupIds: normalizeArrays(newGroupIds),
+      requestedSpaceIds: newSpaceIds,
+    },
     {
       where: {
         workspaceId: owner.id,

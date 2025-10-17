@@ -17,6 +17,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -327,6 +328,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return auth.canRead(
       Authenticator.createResourcePermissionsFromGroupIds(requestedGroupIds)
     );
+
+    // TODO(2025-10-17 thomas): Update permission to use space requirements.
+    // const requestedSpaceIds =
+    //   conversation instanceof ConversationResource
+    //     ? conversation.getConversationRequestedSpaceIdsFromModel(auth)
+    //     : conversation.requestedGroupIds;
   }
 
   static async fetchConversationWithoutContent(
@@ -373,6 +380,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       hasError: conversation.hasError,
       requestedGroupIds:
         conversation.getConversationRequestedGroupIdsFromModel(auth),
+      requestedSpaceIds:
+        conversation.getConversationRequestedSpaceIdsFromModel(auth),
     });
   }
 
@@ -437,6 +446,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       const c = p.conversation;
 
       if (c) {
+        const resource = new this(this.model, c.get());
         acc.push({
           id: c.id,
           created: c.createdAt.getTime(),
@@ -450,10 +460,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           visibility: c.visibility,
           depth: c.depth,
           triggerId: ConversationResource.triggerIdToSId(c.triggerId, owner.id),
-          requestedGroupIds: new this(
-            this.model,
-            c.get()
-          ).getConversationRequestedGroupIdsFromModel(auth),
+          requestedGroupIds:
+            resource.getConversationRequestedGroupIdsFromModel(auth),
+          requestedSpaceIds:
+            resource.getConversationRequestedSpaceIdsFromModel(auth),
         });
       }
 
@@ -501,10 +511,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           actionRequired,
           unread,
           hasError: c.hasError,
-          requestedGroupIds: new this(
-            this.model,
-            c
-          ).getConversationRequestedGroupIdsFromModel(auth),
+          requestedGroupIds: c.getConversationRequestedGroupIdsFromModel(auth),
+          requestedSpaceIds: c.getConversationRequestedSpaceIdsFromModel(auth),
         };
       })
     );
@@ -729,10 +737,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return results;
   }
 
+  // TODO(2025-10-17 thomas): Rename and remove requestedGroupIds
   static async updateRequestedGroupIds(
     auth: Authenticator,
     sId: string,
     requestedGroupIds: number[][],
+    requestedSpaceIds: number[],
     transaction?: Transaction
   ) {
     const conversation = await ConversationResource.fetchById(auth, sId);
@@ -740,7 +750,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new ConversationError("conversation_not_found"));
     }
 
-    await conversation.updateRequestedGroupIds(requestedGroupIds, transaction);
+    await conversation.updateRequestedGroupIds(
+      requestedGroupIds,
+      requestedSpaceIds,
+      transaction
+    );
     return new Ok(undefined);
   }
 
@@ -865,13 +879,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return this.update({ visibility: "unlisted" });
   }
 
+  // TODO(2025-10-17 thomas): Rename and remove requestedGroupIds
   async updateRequestedGroupIds(
     requestedGroupIds: number[][],
+    requestedSpaceIds: number[],
     transaction?: Transaction
   ) {
     return this.update(
       {
         requestedGroupIds,
+        requestedSpaceIds,
       },
       transaction
     );
@@ -992,6 +1009,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           workspaceId: workspace.id,
         })
       )
+    );
+  }
+
+  getConversationRequestedSpaceIdsFromModel(auth: Authenticator) {
+    const workspace = auth.getNonNullableWorkspace();
+    return this.requestedSpaceIds.map((id) =>
+      SpaceResource.modelIdToSId({
+        id,
+        workspaceId: workspace.id,
+      })
     );
   }
 }

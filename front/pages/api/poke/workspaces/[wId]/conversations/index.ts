@@ -64,6 +64,7 @@ async function handler(
           unread: false,
           hasError: c.hasError,
           requestedGroupIds: c.getConversationRequestedGroupIdsFromModel(auth),
+          requestedSpaceIds: c.getConversationRequestedSpaceIdsFromModel(auth),
         };
       });
 
