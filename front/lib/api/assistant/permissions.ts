@@ -11,7 +11,6 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type {
   CombinedResourcePermissions,
