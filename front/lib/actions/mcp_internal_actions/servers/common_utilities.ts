@@ -16,8 +16,8 @@ function createServer(
   const server = makeInternalMCPServer("common_utilities");
 
   server.tool(
-    "generate_random_integer",
-    "Generate a random positive integer between 1 and the provided maximum (inclusive).",
+    "generate_random_number",
+    "Generate a random positive number between 1 and the provided maximum (inclusive).",
     {
       max: z
         .number()
@@ -31,7 +31,7 @@ function createServer(
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "generate_random_integer",
+        toolNameForMonitoring: "generate_random_number",
         agentLoopContext,
       },
       async ({ max }) => {
@@ -41,7 +41,7 @@ function createServer(
         return new Ok([
           {
             type: "text",
-            text: `Random integer (1-${upperBound}): ${value}`,
+            text: `Random number (1-${upperBound}): ${value}`,
           },
         ]);
       }

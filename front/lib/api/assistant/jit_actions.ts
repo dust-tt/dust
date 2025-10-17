@@ -109,14 +109,16 @@ export async function getJITServers(
     jitServers.push(conversationFilesServer);
   }
 
-  assert(
-    commonUtilitiesView,
-    "MCP server view not found for common_utilities. Ensure auto tools are created."
-  );
-
-  const commonUtilitiesViewJSON = commonUtilitiesView.toJSON();
-
-  if (!agentMcpServerViewIds.includes(commonUtilitiesViewJSON.sId)) {
+  if (!commonUtilitiesView) {
+    logger.warn(
+      {
+        agentConfigurationId: agentConfiguration.sId,
+        conversationId: conversation.sId,
+      },
+      "MCP server view not found for common_utilities. Ensure auto tools are created."
+    );
+  } else if (!agentMcpServerViewIds.includes(commonUtilitiesView.sId)) {
+    const commonUtilitiesViewJSON = commonUtilitiesView.toJSON();
     const commonUtilitiesServer: ServerSideMCPServerConfigurationType = {
       id: -1,
       sId: generateRandomModelSId(),
