@@ -48,10 +48,6 @@ export type AssistantBuilderMCPConfigurationWithId =
     id: string;
   };
 
-// TODO: Clean up.
-export type AssistantBuilderMCPOrVizState =
-  AssistantBuilderMCPConfigurationWithId;
-
 export type AssistantBuilderState = {
   handle: string | null;
   description: string | null;
@@ -64,7 +60,7 @@ export type AssistantBuilderState = {
     reasoningEffort: AgentReasoningEffort;
     responseFormat?: string;
   };
-  actions: AssistantBuilderMCPOrVizState[];
+  actions: AssistantBuilderMCPConfigurationWithId[];
   triggers: AgentBuilderTriggerType[];
   templateId: string | null;
   tags: TagType[];

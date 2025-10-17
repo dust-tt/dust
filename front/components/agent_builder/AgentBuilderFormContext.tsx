@@ -136,13 +136,10 @@ export type MCPServerConfigurationType = z.infer<
   typeof mcpServerConfigurationSchema
 >;
 
-const mcpActionSchema = baseActionSchema.extend({
+const actionSchema = baseActionSchema.extend({
   type: z.literal("MCP"),
   configuration: mcpServerConfigurationSchema,
 });
-
-// TODO: Clean up.
-const actionSchema = z.discriminatedUnion("type", [mcpActionSchema]);
 
 const userSchema = z.object({
   sId: z.string(),
