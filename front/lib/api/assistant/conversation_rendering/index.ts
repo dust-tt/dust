@@ -4,6 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 import type {
+  ContentFragmentMessageTypeModel,
   ConversationType,
   MessageTypeMultiActions,
   ModelConfigurationType,
@@ -152,22 +153,52 @@ export async function renderConversationForModel(
     }
   }
 
+  // Selected messages should not end with a content fragment.
+  if (selected[selected.length - 1].role === "content_fragment") {
+    logger.error(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        selected: selected.map((m) => ({
+          ...m,
+          content:
+            getTextContentFromMessage(m)?.slice(0, 100) + " (truncated...)",
+        })),
+      },
+      "Unexpected state, conversation ends with a Content Fragment"
+    );
+    throw new Error(
+      "Unexpected state, conversation ends with a Content Fragment"
+    );
+  }
+
   const selectedWithoutContentFragments: (ModelMessageTypeMultiActions & {
     tokenCount: number;
   })[] = [];
 
-  // Merge content fragments into user messages.
-  for (let i = 0; i <= selected.length - 1; i++) {
-    const cfMessage = selected[i];
+  let fragmentContents: ContentFragmentMessageTypeModel["content"] | null =
+    null;
 
-    if (!isContentFragmentMessageTypeModel(cfMessage)) {
-      selectedWithoutContentFragments.push(cfMessage);
+  // Merge chained content fragments into user messages.
+  for (let i = 0; i <= selected.length - 1; i++) {
+    const message = selected[i];
+
+    // Accumulating content of chained fragments
+    if (isContentFragmentMessageTypeModel(message)) {
+      fragmentContents = [...(fragmentContents ?? []), ...message.content];
 
       continue;
     }
 
-    const userMessage = selected[i + 1];
-    if (!userMessage || userMessage.role !== "user") {
+    // 1st non fragment message or precedeed by another non fragment message
+    if (fragmentContents === null) {
+      selectedWithoutContentFragments.push(message);
+
+      continue;
+    }
+
+    // Last message was a fragment, the current message should be a user one
+    if (message.role !== "user") {
       logger.error(
         {
           workspaceId: conversation.owner.sId,
@@ -185,8 +216,12 @@ export async function renderConversationForModel(
       );
     }
 
-    userMessage.content = [...cfMessage.content, ...userMessage.content];
-    selectedWithoutContentFragments.push(userMessage);
+    // Current message is user, we merge fragment contents into it and re-initialize the accumulator
+    selectedWithoutContentFragments.push({
+      ...message,
+      content: [...fragmentContents, ...message.content],
+    });
+    fragmentContents = null;
   }
 
   if (selectedWithoutContentFragments.length === 0) {
