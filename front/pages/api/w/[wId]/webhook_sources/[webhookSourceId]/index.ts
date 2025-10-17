@@ -134,7 +134,7 @@ async function handler(
                 Cookie: req.headers.cookie ?? "",
               },
             });
-          } catch (error: any) {
+          } catch (error) {
             logger.error(
               `Failed to delete remote webhook on ${webhookSourceResource.kind}`,
               error instanceof Error ? error.message : error

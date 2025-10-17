@@ -7,7 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { OAuthAPI } from "@app/types";
+import { isString, OAuthAPI } from "@app/types";
 
 export type CreateGithubWebhookResponseType = {
   webhook: {
@@ -256,9 +256,9 @@ async function handler(
         });
       }
 
-      const deleteWebhookSourceId = req.query.webhookSourceId;
+      const { webhookSourceId } = req.query;
 
-      if (!deleteWebhookSourceId || typeof deleteWebhookSourceId !== "string") {
+      if (!isString(webhookSourceId)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -272,7 +272,7 @@ async function handler(
         // Fetch the webhook source to get remote metadata
         const webhookSourceResource = await WebhookSourceResource.fetchById(
           auth,
-          deleteWebhookSourceId
+          webhookSourceId
         );
 
         if (!webhookSourceResource) {
