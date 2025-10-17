@@ -3,9 +3,16 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import { GitHubWebhookService } from "@app/lib/triggers/services/github_webhook_service";
+import type { RemoteWebhookService } from "@app/lib/triggers/services/remote_webhook_service";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+
+// Service registry: map webhook source kind to its service implementation
+const WEBHOOK_SERVICES: Record<string, RemoteWebhookService> = {
+  github: new GitHubWebhookService(),
+};
 
 export type DeleteWebhookSourceResponseBody = {
   success: true;
@@ -106,34 +113,26 @@ async function handler(
           });
         }
 
-        // If this webhook has remote metadata and the kind supports remote deletion, try to delete it from the provider
-        const supportedKinds = ["github"];
+        // If this webhook has remote metadata and a service exists for this kind, try to delete it from the provider
+        const service = WEBHOOK_SERVICES[webhookSourceResource.kind];
         if (
-          supportedKinds.includes(webhookSourceResource.kind) &&
+          service &&
           webhookSourceResource.remoteMetadata &&
           webhookSourceResource.oauthConnectionId
         ) {
           try {
-            const workspace = auth.workspace();
-            if (!workspace) {
-              throw new Error("Workspace not found");
-            }
-
-            const deleteUrl = new URL(
-              `${req.headers.origin ?? ""}/api/w/${workspace.sId}/${webhookSourceResource.kind}/${webhookSourceResource.oauthConnectionId}/webhooks`
-            );
-            deleteUrl.searchParams.set(
-              "webhookSourceId",
-              webhookSourceResource.sId()
-            );
-
-            await fetch(deleteUrl.toString(), {
-              method: "DELETE",
-              headers: {
-                "Content-Type": "application/json",
-                Cookie: req.headers.cookie ?? "",
-              },
+            const result = await service.deleteWebhooks({
+              auth,
+              connectionId: webhookSourceResource.oauthConnectionId,
+              remoteMetadata: webhookSourceResource.remoteMetadata,
             });
+
+            if (result.isErr()) {
+              logger.error(
+                `Failed to delete remote webhook on ${webhookSourceResource.kind}`,
+                result.error.message
+              );
+            }
           } catch (error) {
             logger.error(
               `Failed to delete remote webhook on ${webhookSourceResource.kind}`,
