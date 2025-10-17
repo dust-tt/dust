@@ -2,6 +2,7 @@ import { Octokit } from "@octokit/core";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isString, OAuthAPI, Ok } from "@app/types";
 
@@ -57,65 +58,130 @@ export class GitHubWebhookService implements RemoteWebhookService {
       const accessToken = tokenRes.value.access_token;
       const octokit = new Octokit({ auth: accessToken });
 
-      // Extract repository from remoteMetadata
-      const repository = remoteMetadata.repository;
-      if (!isString(repository)) {
-        return new Err(new Error("remoteMetadata.repository is required"));
-      }
+      // Extract repositories and organizations from remoteMetadata
+      const repositories = Array.isArray(remoteMetadata.repositories)
+        ? remoteMetadata.repositories
+        : [];
+      const organizations = Array.isArray(remoteMetadata.organizations)
+        ? remoteMetadata.organizations
+        : [];
 
-      const [owner, repo] = repository.split("/");
-      if (!owner || !repo) {
+      if (repositories.length === 0 && organizations.length === 0) {
         return new Err(
-          new Error("Invalid repository format. Expected format: owner/repo")
+          new Error(
+            "At least one repository or organization must be specified in remoteMetadata"
+          )
         );
       }
 
-      // Check the OAuth token scopes and repository permissions
-      try {
-        const { headers: scopeHeaders } = await octokit.request("GET /user");
-        const scopes = scopeHeaders["x-oauth-scopes"] ?? "";
+      const webhookIds: Record<string, string> = {};
+      const errors: string[] = [];
 
-        const { data: repoData } = await octokit.request(
-          "GET /repos/{owner}/{repo}",
-          {
-            owner,
-            repo,
-          }
-        );
+      // Create webhooks for repositories
+      for (const repository of repositories) {
+        if (!isString(repository)) {
+          errors.push(`Invalid repository format: ${repository}`);
+          continue;
+        }
 
-        // Check if user has admin permissions
-        if (!repoData.permissions?.admin) {
-          return new Err(
-            new Error(
+        const [owner, repo] = repository.split("/");
+        if (!owner || !repo) {
+          errors.push(
+            `Invalid repository format: ${repository}. Expected format: owner/repo`
+          );
+          continue;
+        }
+
+        try {
+          // Check the OAuth token scopes and repository permissions
+          const { headers: scopeHeaders } = await octokit.request("GET /user");
+          const scopes = scopeHeaders["x-oauth-scopes"] ?? "";
+
+          const { data: repoData } = await octokit.request(
+            "GET /repos/{owner}/{repo}",
+            {
+              owner,
+              repo,
+            }
+          );
+
+          // Check if user has admin permissions
+          if (!repoData.permissions?.admin) {
+            errors.push(
               `You need admin permissions on ${repository} to create webhooks. Current permissions: ${JSON.stringify(repoData.permissions)}. Token scopes: ${scopes}`
-            )
+            );
+            continue;
+          }
+
+          const { data: webhook } = await octokit.request(
+            "POST /repos/{owner}/{repo}/hooks",
+            {
+              owner,
+              repo,
+              name: "web",
+              active: true,
+              events,
+              config: {
+                url: webhookUrl,
+                content_type: "json",
+                secret: secret ?? undefined,
+                insecure_ssl: "0",
+              },
+            }
+          );
+
+          webhookIds[repository] = String(webhook.id);
+        } catch (error: any) {
+          errors.push(
+            `Failed to create webhook for ${repository}: ${error.message}`
           );
         }
-      } catch (error: any) {
+      }
+
+      // Create webhooks for organizations
+      for (const organization of organizations) {
+        if (!isString(organization)) {
+          errors.push(`Invalid organization format: ${organization}`);
+          continue;
+        }
+
+        try {
+          const { data: webhook } = await octokit.request(
+            "POST /orgs/{org}/hooks",
+            {
+              org: organization,
+              name: "web",
+              active: true,
+              events,
+              config: {
+                url: webhookUrl,
+                content_type: "json",
+                secret: secret ?? undefined,
+                insecure_ssl: "0",
+              },
+            }
+          );
+
+          webhookIds[organization] = String(webhook.id);
+        } catch (error: any) {
+          errors.push(
+            `Failed to create webhook for organization ${organization}: ${error.message}`
+          );
+        }
+      }
+
+      // If no webhooks were created successfully, return an error
+      if (Object.keys(webhookIds).length === 0) {
         return new Err(
-          new Error(`Failed to check repository permissions: ${error.message}`)
+          new Error(
+            `Failed to create any webhooks. Errors: ${errors.join(", ")}`
+          )
         );
       }
 
-      const { data: webhook } = await octokit.request(
-        "POST /repos/{owner}/{repo}/hooks",
-        {
-          owner,
-          repo,
-          name: "web",
-          active: true,
-          events,
-          config: {
-            url: webhookUrl,
-            content_type: "json",
-            secret: secret ?? undefined,
-            insecure_ssl: "0",
-          },
-        }
-      );
-
       return new Ok({
-        webhookIds: { [repository]: String(webhook.id) },
+        webhookIds,
+        errors: errors.length > 0 ? errors : undefined,
       });
     } catch (error: any) {
       return new Err(
@@ -165,30 +231,74 @@ export class GitHubWebhookService implements RemoteWebhookService {
       const accessToken = tokenRes.value.access_token;
       const octokit = new Octokit({ auth: accessToken });
 
-      const webhookId = remoteMetadata.webhookId;
-      const repository = remoteMetadata.repository;
-      if (!isString(webhookId)) {
-        return new Err(new Error("Remote metadata missing webhook id"));
+      // Support both legacy format (single webhookId) and new format (webhookIds map)
+      const legacyWebhookId = remoteMetadata.webhookId;
+      const legacyRepository = remoteMetadata.repository;
+
+      // Build webhookIds object, including legacy format if present
+      let webhookIds = remoteMetadata.webhookIds || {};
+
+      if (isString(legacyWebhookId) && isString(legacyRepository)) {
+        webhookIds = {
+          ...webhookIds,
+          [legacyRepository]: legacyWebhookId,
+        };
       }
 
-      if (!isString(repository)) {
-        return new Err(new Error("Remote metadata missing repository"));
-      }
-
-      // Parse repository (format: owner/repo)
-      const [owner, repo] = repository.split("/");
-      if (!owner || !repo) {
+      if (!webhookIds || typeof webhookIds !== "object") {
         return new Err(
-          new Error("Invalid repository format. Expected format: owner/repo")
+          new Error("Remote metadata missing webhookIds or webhookId")
         );
       }
 
-      // Delete the webhook
-      await octokit.request("DELETE /repos/{owner}/{repo}/hooks/{hook_id}", {
-        owner,
-        repo,
-        hook_id: parseInt(webhookId, 10),
-      });
+      if (Object.keys(webhookIds).length === 0) {
+        return new Err(new Error("No webhooks to delete in remote metadata"));
+      }
+
+      const errors: string[] = [];
+
+      // Delete all webhooks
+      for (const [key, webhookId] of Object.entries(webhookIds)) {
+        if (!isString(webhookId)) {
+          errors.push(`Invalid webhook ID for ${key}`);
+          continue;
+        }
+
+        try {
+          if (key.includes("/")) {
+            // It's a repository webhook
+            const [owner, repo] = key.split("/");
+            if (!owner || !repo) {
+              errors.push(
+                `Invalid repository format for ${key}. Expected format: owner/repo`
+              );
+              continue;
+            }
+
+            await octokit.request(
+              "DELETE /repos/{owner}/{repo}/hooks/{hook_id}",
+              {
+                owner,
+                repo,
+                hook_id: parseInt(webhookId, 10),
+              }
+            );
+          } else {
+            // It's an organization webhook
+            await octokit.request("DELETE /orgs/{org}/hooks/{hook_id}", {
+              org: key,
+              hook_id: parseInt(webhookId, 10),
+            });
+          }
+        } catch (error: any) {
+          errors.push(`Failed to delete webhook for ${key}: ${error.message}`);
+        }
+      }
+
+      // If some webhooks failed to delete, log the errors but don't fail the entire operation
+      if (errors.length > 0) {
+        logger.warn(`Some webhooks failed to delete: ${errors.join(", ")}`);
+      }
 
       return new Ok(undefined);
     } catch (error: any) {

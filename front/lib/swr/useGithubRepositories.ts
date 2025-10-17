@@ -9,6 +9,13 @@ type GithubRepository = {
   id: number;
 };
 
+type GithubOrganization = {
+  id: number;
+  login: string;
+  avatar_url: string;
+  description: string | null;
+};
+
 export function useGithubRepositories(owner: LightWorkspaceType | null) {
   const sendNotification = useSendNotification();
   const [githubRepositories, setGithubRepositories] = useState<
@@ -51,5 +58,50 @@ export function useGithubRepositories(owner: LightWorkspaceType | null) {
     githubRepositories,
     isFetchingRepos,
     fetchGithubRepositories,
+  };
+}
+
+export function useGithubOrganizations(owner: LightWorkspaceType | null) {
+  const sendNotification = useSendNotification();
+  const [githubOrganizations, setGithubOrganizations] = useState<
+    GithubOrganization[]
+  >([]);
+  const [isFetchingOrgs, setIsFetchingOrgs] = useState(false);
+
+  const fetchGithubOrganizations = useCallback(
+    async (connectionId: string) => {
+      if (!owner) {
+        return;
+      }
+
+      setIsFetchingOrgs(true);
+      try {
+        const response = await fetch(
+          `/api/w/${owner.sId}/github/${connectionId}/orgs`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch organizations");
+        }
+
+        const data = await response.json();
+        setGithubOrganizations(data.organizations || []);
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to fetch organizations",
+          description: error instanceof Error ? error.message : "Unknown error",
+        });
+      } finally {
+        setIsFetchingOrgs(false);
+      }
+    },
+    [owner, sendNotification]
+  );
+
+  return {
+    githubOrganizations,
+    isFetchingOrgs,
+    fetchGithubOrganizations,
   };
 }
