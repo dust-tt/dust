@@ -3,6 +3,7 @@ import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetWebhookRequestsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers/[tId]/webhook_requests";
 import type { GetWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/webhook_source_views";
 import type { GetWebhookSourcesResponseBody } from "@app/pages/api/w/[wId]/webhook_sources";
 import type { DeleteWebhookSourceResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]";
@@ -32,7 +33,11 @@ export function useWebhookSourceViews({
     disabled,
   });
   const webhookSourceViews = useMemo(
-    () => data?.webhookSourceViews ?? [],
+    () =>
+      data?.webhookSourceViews ??
+      emptyArray<
+        GetWebhookSourceViewsResponseBody["webhookSourceViews"][number]
+      >(),
     [data]
   );
 
@@ -63,7 +68,11 @@ export function useWebhookSourcesWithViews({
     }
   );
 
-  const webhookSourcesWithViews = data?.webhookSourcesWithViews ?? emptyArray();
+  const webhookSourcesWithViews =
+    data?.webhookSourcesWithViews ??
+    emptyArray<
+      GetWebhookSourcesResponseBody["webhookSourcesWithViews"][number]
+    >();
 
   return {
     webhookSourcesWithViews,
@@ -254,7 +263,9 @@ export function useWebhookSourceViewsByWebhookSource({
   });
 
   return {
-    webhookSourceViews: data?.views ?? [],
+    webhookSourceViews:
+      data?.views ??
+      emptyArray<GetSpecificWebhookSourceViewsResponseBody["views"][number]>(),
     isWebhookSourceViewsLoading: !error && !data && !disabled,
     isWebhookSourceViewsError: error,
     mutateWebhookSourceViews: mutate,
@@ -392,4 +403,36 @@ export function useRemoveWebhookSourceViewFromSpace({
   );
 
   return { removeFromSpace: deleteView };
+}
+
+export function useWebhookRequestTriggersForTrigger({
+  owner,
+  agentConfigurationId,
+  triggerId,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  agentConfigurationId: string | null;
+  triggerId: string | null;
+  disabled?: boolean;
+}) {
+  const configFetcher: Fetcher<GetWebhookRequestsResponseBody> = fetcher;
+
+  const url =
+    agentConfigurationId && triggerId
+      ? `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/webhook_requests`
+      : null;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
+    disabled,
+  });
+
+  return {
+    webhookRequests:
+      data?.requests ??
+      emptyArray<GetWebhookRequestsResponseBody["requests"][number]>(),
+    isWebhookRequestsLoading: !error && !data && !disabled,
+    isWebhookRequestsError: error,
+    mutateWebhookRequests: mutate,
+  };
 }

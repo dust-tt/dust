@@ -74,7 +74,13 @@ export async function runTriggerWebhookActivity({
   let body: any;
   try {
     const bucket = getWebhookRequestsBucket();
-    const file = bucket.file(webhookRequest.getGcsPath(auth));
+    const file = bucket.file(
+      WebhookRequestResource.getGcsPath({
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        webhookSourceId: webhookSource.id,
+        webRequestId: webhookRequest.id,
+      })
+    );
     const [content] = await file.download();
     const { headers: h, body: b } = JSON.parse(content.toString());
     headers = h;
