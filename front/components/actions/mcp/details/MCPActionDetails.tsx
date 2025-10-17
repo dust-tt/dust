@@ -58,6 +58,7 @@ import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/renderi
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 import {
   asDisplayName,
   isSupportedImageContentType,
@@ -123,8 +124,9 @@ export function MCPActionDetails({
     isInternalMCPServerOfName(mcpServerId, "search") ||
     isInternalMCPServerOfName(mcpServerId, "data_sources_file_system")
   ) {
-    if (toolName === SEARCH_TOOL_NAME) {
-      const timeFrame = parseTimeFrame(params.relativeTimeFrame as string);
+    if (toolName === SEARCH_TOOL_NAME && isString(params.relativeTimeFrame)) {
+      const timeFrame = parseTimeFrame(params.relativeTimeFrame);
+      // TODO: remove these typecasts
       const queryResource = makeQueryResource({
         query: params.query as string,
         timeFrame: timeFrame,
