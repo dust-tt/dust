@@ -82,6 +82,14 @@ export default function LandingLayout({
     [setCookie]
   );
 
+  // If you come back to the public site (e.g. pricing page) with browser's back button from the app,
+  // you can have dark theme so we need to remove them manually
+  useEffect(() => {
+    document.documentElement.classList.remove("dark");
+    document.documentElement.classList.remove("s-dark");
+    document.body.classList.remove("bg-background-night");
+  }, []);
+
   useEffect(() => {
     if (cookieValue !== undefined) {
       setShowCookieBanner(false);
