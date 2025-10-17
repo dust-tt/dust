@@ -55,9 +55,6 @@ export const getSpaceIdToActionsMap = (
         }
         break;
 
-      case "DATA_VISUALIZATION": // Data visualization is not an action but we show it in the UI like an action.
-        break;
-
       default:
         assertNever(actionType);
     }

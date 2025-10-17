@@ -161,7 +161,6 @@ export function _getDustGlobalAgent(
     scope: "global" as const,
     userFavorite: false,
     model,
-    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],

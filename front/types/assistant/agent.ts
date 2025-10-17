@@ -135,7 +135,6 @@ export type LightAgentConfigurationType = {
   feedbacks?: { up: number; down: number };
 
   maxStepsPerRun: number;
-  visualizationEnabled: boolean;
   tags: TagType[];
 
   templateId: string | null;
@@ -169,7 +168,6 @@ export interface TemplateAgentConfigurationType {
   instructions: string | null;
   isTemplate: true;
   maxStepsPerRun?: number;
-  visualizationEnabled: boolean;
   tags: TagType[];
 }
 

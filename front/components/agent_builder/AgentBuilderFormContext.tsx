@@ -109,11 +109,6 @@ const tagSchema = z.object({
   kind: TAG_KINDS,
 });
 
-const dataVisualizationActionSchema = baseActionSchema.extend({
-  type: z.literal("DATA_VISUALIZATION"),
-  configuration: z.null(),
-});
-
 export const reasoningModelSchema = z
   .object({
     modelId: modelIdSchema,
@@ -146,10 +141,8 @@ const mcpActionSchema = baseActionSchema.extend({
   configuration: mcpServerConfigurationSchema,
 });
 
-const actionSchema = z.discriminatedUnion("type", [
-  dataVisualizationActionSchema,
-  mcpActionSchema,
-]);
+// TODO: Clean up.
+const actionSchema = z.discriminatedUnion("type", [mcpActionSchema]);
 
 const userSchema = z.object({
   sId: z.string(),
@@ -261,9 +254,6 @@ export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
 export type AgentBuilderTriggerType = z.infer<typeof triggerSchema>;
 export type AgentBuilderAction = z.infer<typeof actionSchema>;
-export type AgentBuilderDataVizAction = z.infer<
-  typeof dataVisualizationActionSchema
->;
 
 // TODO: create types from schema
 export interface MCPFormData {

@@ -176,7 +176,6 @@ export function _getHelperGlobalAgent({
     model: model,
     actions,
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
