@@ -372,6 +372,7 @@ const Header = () => {
 
 interface PublicWebsiteLogoProps {
   size?: "default" | "small";
+  utmParam?: string;
 }
 
 const logoVariants = cva("", {
@@ -388,11 +389,12 @@ const logoVariants = cva("", {
 
 export const PublicWebsiteLogo = ({
   size = "default",
+  utmParam,
 }: PublicWebsiteLogoProps) => {
   const className = logoVariants({ size });
 
   return (
-    <Link href="/">
+    <Link href={`/${utmParam ? `?${utmParam}` : ""}`}>
       <Hover3D className={`relative ${className}`}>
         <Div3D depth={0} className={className}>
           <DustLogoLayer1 className={className} />
