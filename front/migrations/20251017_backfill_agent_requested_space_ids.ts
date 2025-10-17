@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import { Op } from "sequelize";
 
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -34,11 +34,11 @@ async function updateAgentRequestedSpaceIds(
     }
 
     // Get the full agent configuration with actions
-    const agentConfigurationList = await getAgentConfigurations(auth, {
-      agentIds: [agent.sId],
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      agentVersion: agent.version,
       variant: "full",
     });
-    const agentConfiguration = agentConfigurationList[0];
 
     if (!agentConfiguration) {
       logger.info({ agentId: agent.sId }, "Agent configuration not found");
@@ -66,6 +66,7 @@ async function updateAgentRequestedSpaceIds(
     logger.info(
       {
         agentId: agent.sId,
+        agentVersion: agent.version,
         agentName: agent.name,
         newSpaceIds: requirements.requestedSpaceIds,
         execute,
@@ -78,7 +79,7 @@ async function updateAgentRequestedSpaceIds(
         {
           requestedSpaceIds: requirements.requestedSpaceIds,
         },
-        { where: { sId: agent.sId } }
+        { where: { sId: agent.sId, version: agent.version } }
       );
     }
 
@@ -125,7 +126,7 @@ async function updateAgentsForWorkspace(
       },
       requestedSpaceIds: [],
     },
-    attributes: ["id", "sId", "name", "requestedSpaceIds", "status"],
+    attributes: ["id", "sId", "version", "name", "requestedSpaceIds", "status"],
   });
 
   logger.info(
