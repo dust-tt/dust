@@ -1,5 +1,6 @@
 import { registerEmailDraftTool } from "@app/platforms/front/tools/emailDraftTool";
 import { registerGetCurrentConversationTool } from "@app/platforms/front/tools/getCurrentConversationTool";
+import { registerGetPastConversationsTool } from "@app/platforms/front/tools/getPastConversationsTool";
 import { registerNewConversationDraftTool } from "@app/platforms/front/tools/newConversationDraftTool";
 import { registerUpdateDraftTool } from "@app/platforms/front/tools/updateDraftTool";
 import type { WebViewContext } from "@frontapp/plugin-sdk/dist/webViewSdkTypes";
@@ -25,4 +26,7 @@ export function registerAllTools(
 
   // Register get current conversation id tool.
   registerGetCurrentConversationTool(server, frontContext);
+
+  // Register get past conversations tool.
+  registerGetPastConversationsTool(server, frontContext);
 }
