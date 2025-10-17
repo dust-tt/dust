@@ -152,7 +152,7 @@ export async function renderConversationForModel(
     }
   }
 
-  const selected: (MessageTypeMultiActions & {
+  const selected: (ModelMessageTypeMultiActions & {
     tokenCount: number;
   })[] = [];
 
@@ -203,7 +203,7 @@ export async function renderConversationForModel(
   }
 
   // Remove tokenCount from final messages
-  const finalMessages: MessageTypeMultiActions[] = selected.map(
+  const finalMessages: ModelMessageTypeMultiActions[] = selected.map(
     ({ tokenCount: _tokenCount, ...msg }) => msg
   );
 
