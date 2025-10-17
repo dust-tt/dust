@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
+import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   AgentMessageFeedbackType,
@@ -770,7 +771,7 @@ export function useBatchUpdateAgentScope({
 export function useAgentUsageMetrics({
   workspaceId,
   agentConfigurationId,
-  days = 30,
+  days = DEFAULT_PERIOD_DAYS,
   interval = "day",
   disabled,
 }: {
@@ -799,7 +800,7 @@ export function useAgentUsageMetrics({
 export function useAgentVersionMarkers({
   workspaceId,
   agentConfigurationId,
-  days = 30,
+  days = DEFAULT_PERIOD_DAYS,
   disabled,
 }: {
   workspaceId: string;

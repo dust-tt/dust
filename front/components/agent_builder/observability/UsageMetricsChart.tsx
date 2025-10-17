@@ -60,7 +60,7 @@ function UsageMetricsTooltip(
     return null;
   }
   const row = first.payload;
-  const title = typeof label === "string" ? label : String(label ?? "");
+  const title = typeof label === "string" ? label : String(label);
   return (
     <ChartTooltipCard
       title={title}
