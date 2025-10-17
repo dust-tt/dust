@@ -97,9 +97,7 @@ export default function AppRootLayout({
               content="width=device-width, initial-scale=1, maximum-scale=1"
             />
           </Head>
-          {children}
-          <QuickStartGuide />
-          <Script id="google-tag-manager" strategy="afterInteractive">
+          <Script id="google-tag-manager" strategy="beforeInteractive">
             {`
               (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
               new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -109,6 +107,8 @@ export default function AppRootLayout({
               (function(){var g=new URLSearchParams(window.location.search).get('gclid');g&&sessionStorage.setItem('gclid',g);})();
           `}
           </Script>
+          {children}
+          <QuickStartGuide />
         </DesktopNavigationProvider>
       </WelcomeTourGuideProvider>
     </ThemeProvider>
