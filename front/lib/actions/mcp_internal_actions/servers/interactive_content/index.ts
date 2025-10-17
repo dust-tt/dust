@@ -19,11 +19,12 @@ import {
   createClientExecutableFile,
   editClientExecutableFile,
   getClientExecutableFileContent,
+  getClientExecutableFileShareUrl,
   renameClientExecutableFile,
   revertClientExecutableFileChanges,
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
-import { FileResource } from "@app/lib/resources/file_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import type { InteractiveContentFileContentType } from "@app/types";
 import {
   Err,
@@ -477,33 +478,18 @@ function createServer(
         enableAlerting: false,
       },
       async ({ file_id }) => {
-        const fileResource = await FileResource.fetchById(auth, file_id);
-        if (!fileResource) {
-          return new Err(new MCPError(`File with ID '${file_id}' not found.`));
-        }
-
-        if (!fileResource.isInteractiveContent) {
-          return new Err(
-            new MCPError(
-              `File '${file_id}' is not an Interactive Content file and cannot be shared.`
-            )
-          );
-        }
-
-        const shareInfo = await fileResource.getShareInfo();
-        if (!shareInfo) {
-          return new Ok([
-            {
-              type: "text",
-              text: `File '${file_id}' (${fileResource.fileName}) is not currently shared.`,
-            },
-          ]);
+        const shareUrlRes = await getClientExecutableFileShareUrl(
+          auth,
+          file_id
+        );
+        if (shareUrlRes.isErr()) {
+          return new Err(new MCPError(shareUrlRes.error.message));
         }
 
         return new Ok([
           {
             type: "text",
-            text: ` URL: ${shareInfo.shareUrl}`,
+            text: `URL: ${shareUrlRes.value}`,
           },
         ]);
       }
