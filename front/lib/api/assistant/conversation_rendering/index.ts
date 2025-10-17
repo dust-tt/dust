@@ -157,7 +157,7 @@ export async function renderConversationForModel(
   })[] = [];
 
   // Merge content fragments into user messages.
-  for (let i = selected.length - 1; i >= 0; i--) {
+  for (let i = 0; i <= selected.length - 1; i++) {
     const cfMessage = selected[i];
 
     if (!isContentFragmentMessageTypeModel(cfMessage)) {
