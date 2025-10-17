@@ -30,7 +30,7 @@ import {
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
 import type { WhitelistableFeature, WorkspaceType } from "@app/types";
-import { assertNever, isString } from "@app/types";
+import { assertNever, isString, removeNulls } from "@app/types";
 
 function getDataSourceURI(config: DataSourceConfiguration): string {
   const { workspaceId, sId, dataSourceViewId, filter } = config;
@@ -661,30 +661,23 @@ export function getMCPServerRequirements(
         );
 
         const options = Array.isArray(optionsProperty.anyOf)
-          ? (optionsProperty.anyOf
-              .map((v) => {
-                if (
-                  isJSONSchemaObject(v) &&
-                  isJSONSchemaObject(v.properties?.value) &&
-                  isJSONSchemaObject(v.properties?.label) &&
-                  v.properties.value.const &&
-                  v.properties.label.const
-                ) {
-                  return {
-                    value: v.properties.value.const,
-                    label: v.properties.label.const,
-                    description: isString(v.description)
-                      ? v.description
-                      : undefined,
-                  };
-                }
-                return null;
-              })
-              .filter((v) => v !== null) as {
-              value: string;
-              label: string;
-              description?: string;
-            }[])
+          ? removeNulls(
+              optionsProperty.anyOf.map((v) =>
+                isJSONSchemaObject(v) &&
+                isJSONSchemaObject(v.properties?.value) &&
+                isJSONSchemaObject(v.properties?.label) &&
+                v.properties.value.const &&
+                v.properties.label.const
+                  ? {
+                      value: v.properties.value.const,
+                      label: v.properties.label.const,
+                      description: isString(v.description)
+                        ? v.description
+                        : undefined,
+                    }
+                  : null
+              )
+            )
           : [];
 
         if (options.length === 0) {
@@ -716,31 +709,25 @@ export function getMCPServerRequirements(
           return [key, { options: [], description: schema.description }];
         }
 
-        const options =
-          (optionsProperty.anyOf
-            ?.map((v) => {
-              if (
+        const options = optionsProperty.anyOf
+          ? removeNulls(
+              optionsProperty.anyOf.map((v) =>
                 isJSONSchemaObject(v) &&
                 isJSONSchemaObject(v.properties?.value) &&
                 isJSONSchemaObject(v.properties?.label) &&
                 v.properties.value.const &&
                 v.properties.label.const
-              ) {
-                return {
-                  value: v.properties.value.const,
-                  label: v.properties.label.const,
-                  description: isString(v.description)
-                    ? v.description
-                    : undefined,
-                };
-              }
-              return null;
-            })
-            .filter((v) => v !== null) as {
-            value: string;
-            label: string;
-            description?: string;
-          }[]) ?? [];
+                  ? {
+                      value: v.properties.value.const,
+                      label: v.properties.label.const,
+                      description: isString(v.description)
+                        ? v.description
+                        : undefined,
+                    }
+                  : null
+              )
+            )
+          : [];
 
         if (options.length === 0) {
           throw new Error(`No valid list options found for key ${key}`);
