@@ -10,6 +10,7 @@ export type LLMEventType =
   | "text_delta"
   | "reasoning_delta"
   | "tool_call"
+  | "token_usage"
   | "success"
   | "error"
   | "text_generated"
@@ -18,7 +19,7 @@ export type LLMEventType =
 // Stream events
 export interface LLMEvent {
   type: LLMEventType;
-  content: string | ToolCall | LLMOutputItem[] | CompletionError;
+  content: string | ToolCall | LLMOutputItem[] | CompletionError | TokenUsage;
   metadata: ProviderMetadata;
 }
 
@@ -72,12 +73,18 @@ export interface TokenUsage {
   reasoningTokens?: number;
   outputTokens: number;
   cachedTokens?: number;
+  totalTokens: number;
+}
+
+export interface TokenUsageEvent extends LLMEvent {
+  type: "token_usage";
+  content: TokenUsage;
+  metadata: ProviderMetadata;
 }
 
 export interface SuccessCompletionEvent extends LLMEvent {
   type: "success";
   content: LLMOutputItem[];
-  tokenUsage?: TokenUsage;
   metadata: ProviderMetadata;
 }
 
@@ -89,6 +96,5 @@ export interface CompletionError {
 export interface ErrorCompletionEvent extends LLMEvent {
   type: "error";
   content: CompletionError;
-  tokenUsage?: TokenUsage;
   metadata: ProviderMetadata;
 }
