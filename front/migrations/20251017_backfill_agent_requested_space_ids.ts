@@ -122,7 +122,15 @@ async function updateAgentsForWorkspace(
       },
       requestedSpaceIds: [],
     },
-    attributes: ["id", "sId", "version", "name", "requestedSpaceIds", "status"],
+    attributes: [
+      "id",
+      "sId",
+      "version",
+      "name",
+      "requestedSpaceIds",
+      "status",
+      "workspaceId",
+    ],
   });
 
   logger.info(
