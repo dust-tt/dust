@@ -14,7 +14,7 @@ const TEST_EVENT: WebhookEvent = {
   name: "Test event",
   value: "test_event",
   description: "A simple test event with two string fields.",
-  fields: [
+  schema: [
     {
       name: "A",
       description: "Field A - a string field.",
