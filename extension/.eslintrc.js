@@ -4,7 +4,7 @@ module.exports = {
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
   ],
-  plugins: ["import", "simple-import-sort"],
+  plugins: ["import", "simple-import-sort", "eslint-plugin-unused-imports"],
   rules: {
     "import/no-cycle": "error",
     "@typescript-eslint/consistent-type-imports": "error",
@@ -44,6 +44,7 @@ module.exports = {
       },
     ],
     "simple-import-sort/exports": "error",
+    "unused-imports/no-unused-imports": "error",
   },
   overrides: [
     {
