@@ -67,7 +67,8 @@ export type BaseRemoteData = {
 };
 
 export type RemoteGithubData = BaseRemoteData & {
-  repository: string;
+  repositories: string[];
+  organizations: string[];
 };
 
 export type RemoteProviderData = RemoteGithubData;
