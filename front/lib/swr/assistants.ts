@@ -828,13 +828,12 @@ export function useAgentVersionMarkers({
 export function useAgentToolExecution({
   workspaceId,
   agentConfigurationId,
-  days = 30,
+  days = DEFAULT_PERIOD_DAYS,
   disabled,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   days?: number;
-  size?: number;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetToolExecutionResponse> = fetcher;

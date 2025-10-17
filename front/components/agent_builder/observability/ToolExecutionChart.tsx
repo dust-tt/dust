@@ -58,7 +58,7 @@ export function ToolExecutionChart({
         allToolsSet.add(toolName);
         toolTotalCounts.set(
           toolName,
-          (toolTotalCounts.get(toolName) || 0) + toolData.count
+          (toolTotalCounts.get(toolName) ?? 0) + toolData.count
         );
       });
     });
@@ -109,13 +109,18 @@ export function ToolExecutionChart({
       return null;
     }
 
+    const getColorForTool = (toolName: string) => {
+      const idx = topTools.indexOf(toolName);
+      return TOOL_COLORS[(idx >= 0 ? idx : 0) % TOOL_COLORS.length];
+    };
+
     const rows = payload
       .filter((p) => typeof p.value === "number" && p.value > 0)
-      .sort((a, b) => (b.value as number) - (a.value as number))
-      .map((p, idx) => ({
+      .sort((a, b) => b.value - a.value)
+      .map((p) => ({
         label: p.name || "",
         value: `${p.value}%`,
-        colorClassName: TOOL_COLORS[idx % TOOL_COLORS.length],
+        colorClassName: getColorForTool(p.name || ""),
       }));
 
     return (

@@ -29,6 +29,7 @@ type VersionBucket = TermBucket & {
   tools?: {
     tool_names?: estypes.AggregationsMultiBucketAggregateBase<ToolBucket>;
   };
+  first_seen?: estypes.AggregationsMinAggregate;
 };
 
 type ToolExecutionAggs = {
@@ -43,9 +44,13 @@ export async function fetchToolExecutionMetrics(
       terms: {
         field: "agent_version",
         size: 100,
-        order: { _key: "desc" },
+        // Order versions chronologically by their first observed timestamp
+        order: { first_seen: "asc" },
       },
       aggs: {
+        first_seen: {
+          min: { field: "timestamp" },
+        },
         tools: {
           nested: { path: "tools_used" },
           aggs: {
