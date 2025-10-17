@@ -12,6 +12,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import _ from "lodash";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 
@@ -531,16 +532,37 @@ function WebhookSourceSheetContent({
       return;
     }
 
+    const agents = _.uniq(
+      webhookSourcesWithViews
+        .map((source) => source.usage?.agents ?? [])
+        .flat()
+        .map((agent) => `@${agent.name}`)
+    );
+
     const confirmed = await confirm({
-      title: "Confirm Removal",
+      title: `Are you sure you want to remove ${webhookSource.name}?`,
       message: (
-        <div>
-          Are you sure you want to remove{" "}
-          <span className="font-semibold">{webhookSource.name}</span>?
+        <>
+          {agents.length === 1 && (
+            <div>
+              <span className="font-semibold">{agents[0]}</span> is using this
+              webhook source.
+              <br />
+              The associated trigger(s) will be automatically removed from it.
+            </div>
+          )}
+          {agents.length > 1 && (
+            <div>
+              <span className="font-semibold">{agents.join(", ")}</span> are
+              using this webhook source.
+              <br />
+              The associated trigger(s) will be automatically removed from them.
+            </div>
+          )}
           <div className="mt-2 font-semibold">
             This action cannot be undone.
           </div>
-        </div>
+        </>
       ),
       validateLabel: "Remove",
       validateVariant: "warning",
