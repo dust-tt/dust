@@ -193,7 +193,6 @@ export function UsageMetricsChart({
     </div>
   );
 
-
   return (
     <ChartContainer
       title="Usage Metrics"
