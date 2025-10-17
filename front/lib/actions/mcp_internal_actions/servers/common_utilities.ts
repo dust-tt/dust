@@ -8,7 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { Ok } from "@app/types";
 
 const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
-const MAX_WAIT_DURATION_MS = 30 * 60 * 1_000;
+const MAX_WAIT_DURATION_MS = 3 * 60 * 1_000;
 
 function createServer(
   auth: Authenticator,
@@ -82,9 +82,9 @@ function createServer(
         .positive()
         .max(
           MAX_WAIT_DURATION_MS,
-          `Duration must be less than or equal to ${MAX_WAIT_DURATION_MS} milliseconds (30 minutes).`
+          `Duration must be less than or equal to ${MAX_WAIT_DURATION_MS} milliseconds (3 minutes).`
         )
-        .describe("The time to wait in milliseconds, up to 30 minutes."),
+        .describe("The time to wait in milliseconds, up to 3 minutes."),
     },
     withToolLogging(
       auth,

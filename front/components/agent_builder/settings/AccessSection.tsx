@@ -52,7 +52,7 @@ export function AccessSection() {
 
   return (
     <SettingSectionContainer title="Editors & Access">
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
         <EditorsSheet />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

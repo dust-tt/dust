@@ -681,6 +681,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "research_agent"
   | "salesforce_synced_queries"
   | "salesforce_tool"
+  | "salesforce_tool_write"
   | "show_debug_tools"
   | "slack_semantic_search"
   | "slack_bot_mcp"
@@ -845,6 +846,7 @@ const LightAgentConfigurationSchema = z.object({
   templateId: z.string().nullable(),
   groupIds: z.array(z.string()).optional(),
   requestedGroupIds: z.array(z.array(z.string())),
+  requestedSpaceIds: z.array(z.string()),
 });
 
 export type LightAgentConfigurationType = z.infer<
@@ -2813,7 +2815,8 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GoogleSpreadsheetLogo"
   | "FreshserviceLogo"
   | "HubspotLogo"
-  | "OutlookLogo"
+  | "MicrosoftOutlookLogo"
+  | "MicrosoftTeamsLogo"
   | "JiraLogo"
   | "LinearLogo"
   | "MicrosoftLogo"

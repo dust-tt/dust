@@ -28,6 +28,7 @@ export const AgentMessageCompletionStatus = ({
   }
 
   let displayText = "Message breakdown";
+  let timeString: null | string = null;
 
   // If we have a completed timestamp, we can show the duration.
   if (agentMessage.completedTs !== null) {
@@ -38,11 +39,15 @@ export const AgentMessageCompletionStatus = ({
       statusText = "Cancelled after";
     }
     const completedInMs = agentMessage.completedTs - agentMessage.created;
-    const timeString = formatDurationString(completedInMs);
-    displayText = `${statusText} ${timeString}`;
+    timeString = formatDurationString(completedInMs);
+    displayText = statusText;
   }
 
   const isOpened = data === agentMessage.sId;
+
+  // For mobile we want to hide the status text ("Completed in" etc) and show only timestamp.
+  // But if there is no timestamp and display text is just "Message breakdown" we don't want to hide it.
+  const hasCompletedTimestamp = typeof timeString === "string";
 
   return (
     <div
@@ -54,7 +59,13 @@ export const AgentMessageCompletionStatus = ({
       )}
       onClick={onClick}
     >
-      <span>{displayText}</span>
+      <div>
+        <span className={hasCompletedTimestamp ? "hidden sm:inline-block" : ""}>
+          {displayText}
+        </span>
+        {hasCompletedTimestamp && <span> {timeString}</span>}
+      </div>
+
       <Icon visual={ChevronRightIcon} size="xs" />
     </div>
   );

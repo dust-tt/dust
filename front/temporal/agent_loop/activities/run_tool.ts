@@ -7,6 +7,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
@@ -34,6 +35,17 @@ export async function runToolActivity(
 
   const runAgentDataRes = await getAgentLoopData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
+    // If the conversation is not found, we cannot run the tool and should stop execution here.
+    if (runAgentDataRes.error.message === "conversation_not_found") {
+      logger.warn(
+        {
+          actionId,
+          runIds,
+        },
+        "conversation_not_found while running tool, stopping execution"
+      );
+      return { deferredEvents };
+    }
     throw runAgentDataRes.error;
   }
 

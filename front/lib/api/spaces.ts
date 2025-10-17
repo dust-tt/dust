@@ -6,7 +6,7 @@ import {
   getAgentConfigurations,
   updateAgentRequestedGroupIds,
 } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
+import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -150,15 +150,19 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           const [agentConfig] = agentConfigs;
 
           // Get the required group IDs from the agent's actions
-          const requestedGroupIds =
-            await getAgentConfigurationGroupIdsFromActions(auth, {
+          const requirements =
+            await getAgentConfigurationRequirementsFromActions(auth, {
               actions: agentConfig.actions,
               ignoreSpaces: [space],
             });
 
           const res = await updateAgentRequestedGroupIds(
             auth,
-            { agentId, newGroupIds: requestedGroupIds },
+            {
+              agentId,
+              newGroupIds: requirements.requestedGroupIds,
+              newSpaceIds: requirements.requestedSpaceIds,
+            },
             { transaction: t }
           );
 

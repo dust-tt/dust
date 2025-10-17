@@ -56,6 +56,7 @@ import {
   Ok,
 } from "@app/types";
 
+const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
 const RUN_AGENT_TOOL_LOG_NAME = "run_agent";
 
 function isRunAgentHandoffMode(
@@ -306,14 +307,14 @@ export default async function createServer(
           toolsetsToAdd,
           fileOrContentFragmentIds,
         },
-        { sendNotification, _meta }
+        { sendNotification, _meta, signal }
       ) => {
         assert(
           agentLoopContext?.runContext,
           "agentLoopContext is required to run the run_agent tool"
         );
 
-        const abortSignal = null;
+        const abortSignal = signal ?? null;
         let childCancellationPromise: Promise<void> | null = null;
         const finalizeAndReturn = async <T>(
           result: Result<T, MCPError>
@@ -460,18 +461,41 @@ export default async function createServer(
           }
         };
 
-        /*if (abortSignal) {
-          if (abortSignal.aborted) {
+        if (abortSignal) {
+          if (
+            abortSignal.aborted &&
+            abortSignal.reason === ABORT_SIGNAL_CANCEL_REASON
+          ) {
             requestChildCancellation();
             return finalizeAndReturn(
-              new Err(new MCPError("Agent run cancelled", { tracked: false }))
+              new Err(
+                new MCPError(
+                  `Agent run cancelled, reason: ${abortSignal.reason}`,
+                  { tracked: false }
+                )
+              )
             );
           }
 
-          abortSignal.addEventListener("abort", requestChildCancellation, {
-            once: true,
-          });
-        }*/
+          abortSignal.addEventListener(
+            "abort",
+            () => {
+              // Run_agent is retryable and resumable on interrupt, so it
+              // endures timeouts, deploys, etc. To cancel tools, we passed an
+              // abort signal in PR XXX. On trigger, the signal cancels the.
+              // This signal aborts the tool both on unintended interruptions
+              // and on requested cancellations. But for run agent, behaviour
+              // differs on those cases: on 1 we want to retry, while on 2. we
+              // do want to cancel.
+              if (abortSignal.reason === ABORT_SIGNAL_CANCEL_REASON) {
+                requestChildCancellation();
+              }
+            },
+            {
+              once: true,
+            }
+          );
+        }
 
         if (isNewConversation) {
           logger.info(

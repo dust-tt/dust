@@ -63,10 +63,16 @@ export const AssistantInputBar = ({
     );
 
   const agentMentions = useMemo(() => {
-    return !lastUserMessage || !isUserMessage(lastUserMessage)
-      ? emptyArray<AgentMention>()
-      : lastUserMessage.mentions.filter(isAgentMention);
-  }, [lastUserMessage]);
+    // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
+    // Especially since the draft agent have a new sId every time it is updated.
+    if (context.agentBuilderContext?.draftAgent) {
+      return [{ configurationId: context.agentBuilderContext.draftAgent.sId }];
+    }
+    if (!lastUserMessage || !isUserMessage(lastUserMessage)) {
+      return emptyArray<AgentMention>();
+    }
+    return lastUserMessage.mentions.filter(isAgentMention);
+  }, [lastUserMessage, context.agentBuilderContext?.draftAgent]);
 
   const { bottomOffset } = useVirtuosoLocation();
   const distanceUntilButtonVisibe = 100;

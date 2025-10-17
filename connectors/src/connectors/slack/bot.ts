@@ -1438,6 +1438,7 @@ async function isAgentAccessingRestrictedSpace(
       return new Err(new Error(`Agent ${agentId} not found`));
     }
 
+    // TODO(2025-10-17 thomas): Check requestedSpaceIds instead of requestedGroupIds.
     // If the agent has no requestedGroupIds, it's not from a restricted space
     if (!agent.requestedGroupIds || agent.requestedGroupIds.length === 0) {
       return new Ok(false);

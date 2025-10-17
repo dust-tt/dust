@@ -26,6 +26,7 @@ export function _getNoopAgent(): AgentConfigurationType | null {
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,
