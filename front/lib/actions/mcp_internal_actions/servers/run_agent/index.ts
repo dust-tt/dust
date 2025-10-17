@@ -306,14 +306,14 @@ export default async function createServer(
           toolsetsToAdd,
           fileOrContentFragmentIds,
         },
-        { sendNotification, _meta }
+        { sendNotification, _meta, signal }
       ) => {
         assert(
           agentLoopContext?.runContext,
           "agentLoopContext is required to run the run_agent tool"
         );
 
-        const abortSignal = null;
+        const abortSignal = signal ?? null;
         let childCancellationPromise: Promise<void> | null = null;
         const finalizeAndReturn = async <T>(
           result: Result<T, MCPError>
@@ -460,7 +460,7 @@ export default async function createServer(
           }
         };
 
-        /*if (abortSignal) {
+        if (abortSignal) {
           if (abortSignal.aborted) {
             requestChildCancellation();
             return finalizeAndReturn(
@@ -471,7 +471,7 @@ export default async function createServer(
           abortSignal.addEventListener("abort", requestChildCancellation, {
             once: true,
           });
-        }*/
+        }
 
         if (isNewConversation) {
           logger.info(
