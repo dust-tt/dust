@@ -41,6 +41,12 @@ const Help: FC = () => {
           <Text bold>cache:clear</Text> Clear agents cache
         </Text>
       </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>test-chat</Text> Test LLM providers directly (supports
+          /list_models, /select_model, etc.)
+        </Text>
+      </Box>
       <Box marginTop={1}>
         <Text>Options:</Text>
       </Box>

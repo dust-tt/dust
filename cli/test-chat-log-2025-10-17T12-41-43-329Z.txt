@@ -1,0 +1,28 @@
+=== Test Chat Log ===
+Date: 2025-10-17T12:41:43.330Z
+Model: Mistral Large (mistral-large-latest)
+Display Mode: default
+Stream Mode: default
+
+=== Output ===
+Selected model: Mistral Large (mistral-large-latest)
+
+> Hello there
+
+Assistant:
+Hello! 😊 How can I assist you today? Whether you have a question, need help with something, or just want to chat—I'm here for it! 🚀✨
+
+
+=== Conversation JSON ===
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello there"
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! 😊 How can I assist you today? Whether you have a question, need help with something, or just want to chat—I'm here for it! 🚀✨"
+    }
+  ]
+}

@@ -14,8 +14,12 @@
     "allowImportingTsExtensions": false,
     "allowJs": true,
     "declaration": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@app/*": ["../../front/*"]
+    }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "../../front/lib/llm/**/*", "../../front/types/**/*"],
   "exclude": ["node_modules", "dist"]
 }
