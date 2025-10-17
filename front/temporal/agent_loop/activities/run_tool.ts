@@ -170,6 +170,7 @@ export async function runToolActivity(
 
       case "tool_personal_auth_required":
       case "tool_approve_execution":
+        // Note from seb to pr: is it still possible to reach that place now that we block on approval https://github.com/dust-tt/dust/blob/15fac5beeb615f37c90bc81871699ee0b6466721/front/temporal/agent_loop/workflows.ts#L277 ?
         // Defer personal auth events to be sent after all tools complete.
         deferredEvents.push({
           event,
