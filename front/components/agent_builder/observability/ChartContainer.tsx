@@ -30,6 +30,7 @@ export function ChartContainer({
 }: ChartContainerProps) {
   const message = isLoading ? null : errorMessage ?? emptyMessage;
 
+
   return (
     <div className="bg-card rounded-lg border border-border p-4">
       <div className="mb-4 flex items-center justify-between">
