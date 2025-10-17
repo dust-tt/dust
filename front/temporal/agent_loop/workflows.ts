@@ -28,7 +28,7 @@ import type {
 } from "@app/types/assistant/agent_run";
 
 const toolActivityStartToCloseTimeout = `${DEFAULT_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1} minutes`;
-export const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT = 10_000; // 10 seconds.
+export const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT = 20_000;
 
 const { runModelAndCreateActionsActivity } = proxyActivities<
   typeof runModelAndCreateWrapperActivities
@@ -39,7 +39,7 @@ const { runModelAndCreateActionsActivity } = proxyActivities<
 const { runToolActivity } = proxyActivities<typeof runToolActivities>({
   // Activity timeout keeps a short buffer above the tool timeout to detect worker restarts promptly.
   startToCloseTimeout: toolActivityStartToCloseTimeout,
-  // heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT,
+  heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT,
   retry: {
     // Do not retry tool activities. Those are not idempotent.
     maximumAttempts: 1,
@@ -50,7 +50,7 @@ const { runToolActivity: runRetryableToolActivity } = proxyActivities<
   typeof runToolActivities
 >({
   startToCloseTimeout: toolActivityStartToCloseTimeout,
-  //heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT,
+  heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT,
   retry: {
     maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
   },
