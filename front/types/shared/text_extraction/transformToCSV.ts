@@ -69,7 +69,7 @@ export function transformStreamToCSV(
 
         if (currentTag === selector) {
           htmlParsingTransform.push(`${TABLE_PREFIX}${text}\n`);
-        } else if (currentTag === HTML_TAGS.CELL) {
+        } else if (state.insideCell) {
           state.currentCellText += text;
         }
       },
