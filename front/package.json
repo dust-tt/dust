@@ -138,6 +138,7 @@
     "react-markdown": "^8.0.7",
     "react-multi-select-component": "^4.3.4",
     "react-textarea-autosize": "^8.4.0",
+    "recharts": "^3.2.1",
     "redis": "^4.6.8",
     "sanitize-html": "^2.13.0",
     "sequelize": "^6.31.0",
