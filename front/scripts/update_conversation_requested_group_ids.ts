@@ -1,5 +1,6 @@
 import isEqual from "lodash/isEqual";
 import sortBy from "lodash/sortBy";
+import type { WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
@@ -46,7 +47,9 @@ async function updateConversationRequestedGroupIds(
   );
 
   // Build where clause
-  const whereClause: any = { workspaceId: workspace.id };
+  const whereClause: WhereOptions<ConversationModel> = {
+    workspaceId: workspace.id,
+  };
 
   if (options.conversationIds && options.conversationIds.length > 0) {
     whereClause.sId = options.conversationIds;
@@ -97,69 +100,96 @@ async function updateConversationRequestedGroupIds(
     }
 
     for (const conversation of conversations) {
-      try {
-        // Get all agent messages in this conversation with their versions
-        const messages = await Message.findAll({
-          where: {
-            conversationId: conversation.id,
-            workspaceId: workspace.id,
+      // Get all agent messages in this conversation with their versions
+      const messages = await Message.findAll({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: workspace.id,
+        },
+        attributes: [],
+        include: [
+          {
+            model: AgentMessage,
+            as: "agentMessage",
+            required: true,
+            attributes: ["agentConfigurationId", "agentConfigurationVersion"],
           },
-          attributes: [],
-          include: [
-            {
-              model: AgentMessage,
-              as: "agentMessage",
-              required: true,
-              attributes: ["agentConfigurationId", "agentConfigurationVersion"],
-            },
-          ],
-        });
+        ],
+      });
 
-        // Extract unique (agentConfigurationId, version) pairs
-        const agentVersionPairs = new Map<
-          string,
-          { sId: string; version: number }
-        >();
-        for (const message of messages) {
-          if (message.agentMessage) {
-            const key = `${message.agentMessage.agentConfigurationId}-${message.agentMessage.agentConfigurationVersion}`;
-            agentVersionPairs.set(key, {
-              sId: message.agentMessage.agentConfigurationId,
-              version: message.agentMessage.agentConfigurationVersion,
-            });
-          }
+      // Extract unique (agentConfigurationId, version) pairs
+      const agentVersionPairs = new Map<
+        string,
+        { sId: string; version: number }
+      >();
+      for (const message of messages) {
+        if (message.agentMessage) {
+          const key = `${message.agentMessage.agentConfigurationId}-${message.agentMessage.agentConfigurationVersion}`;
+          agentVersionPairs.set(key, {
+            sId: message.agentMessage.agentConfigurationId,
+            version: message.agentMessage.agentConfigurationVersion,
+          });
         }
+      }
 
-        if (agentVersionPairs.size === 0) {
-          logger.info(
-            {
-              conversationId: conversation.sId,
-              conversationTitle: conversation.title,
-            },
-            "No agents in conversation, skipping"
-          );
-          skippedCount++;
-          continue;
-        }
-
-        // Get the exact agent versions that were used in the conversation
-        // Fetch directly from DB to get specific versions (not just latest)
-        const agentConfigs = await AgentConfiguration.findAll({
-          where: {
-            workspaceId: workspace.id,
-            [Op.or]: Array.from(agentVersionPairs.values()).map((v) => ({
-              sId: v.sId,
-              version: v.version,
-            })),
-          },
-        });
-
-        // Enrich with actions if needed (uses auth with dangerouslyRequestAllGroups)
-        const agents = await enrichAgentConfigurations(auth, agentConfigs, {
-          variant: "light",
-        });
-
+      if (agentVersionPairs.size === 0) {
         logger.info(
+          {
+            conversationId: conversation.sId,
+            conversationTitle: conversation.title,
+          },
+          "No agents in conversation, skipping"
+        );
+        skippedCount++;
+        continue;
+      }
+
+      // Get the exact agent versions that were used in the conversation
+      // Fetch directly from DB to get specific versions (not just latest)
+      const agentConfigs = await AgentConfiguration.findAll({
+        where: {
+          workspaceId: workspace.id,
+          [Op.or]: Array.from(agentVersionPairs.values()).map((v) => ({
+            sId: v.sId,
+            version: v.version,
+          })),
+        },
+      });
+
+      // Enrich with actions if needed (uses auth with dangerouslyRequestAllGroups)
+      const agents = await enrichAgentConfigurations(auth, agentConfigs, {
+        variant: "light",
+      });
+
+      logger.info(
+        {
+          conversationId: conversation.sId,
+          requestedAgentVersions: Array.from(agentVersionPairs.values()),
+          foundAgents: agents.map((a: LightAgentConfigurationType) => ({
+            sId: a.sId,
+            version: a.version,
+          })),
+          foundCount: agents.length,
+          requestedCount: agentVersionPairs.size,
+        },
+        "Fetched exact agent versions for conversation"
+      );
+
+      if (agents.length === 0) {
+        logger.warn(
+          {
+            conversationId: conversation.sId,
+            conversationTitle: conversation.title,
+            requestedAgentVersions: Array.from(agentVersionPairs.values()),
+          },
+          "No agents found in database, skipping"
+        );
+        errorCount++;
+        continue;
+      }
+
+      if (agents.length < agentVersionPairs.size) {
+        logger.warn(
           {
             conversationId: conversation.sId,
             requestedAgentVersions: Array.from(agentVersionPairs.values()),
@@ -167,154 +197,112 @@ async function updateConversationRequestedGroupIds(
               sId: a.sId,
               version: a.version,
             })),
-            foundCount: agents.length,
-            requestedCount: agentVersionPairs.size,
+            missing: agentVersionPairs.size - agents.length,
           },
-          "Fetched exact agent versions for conversation"
+          "Some agent versions not found in database"
+        );
+      }
+
+      // Calculate new requestedGroupIds from agents
+      // Note: agents.requestedGroupIds is string[][] (sIds) from the API after enrichment
+      const agentRequirements: string[][] = agents.flatMap(
+        (agent: LightAgentConfigurationType) => agent.requestedGroupIds
+      );
+
+      logger.info(
+        {
+          conversationId: conversation.sId,
+          agentRequirements,
+          agentsWithGroupIds: agents.map((a: LightAgentConfigurationType) => ({
+            sId: a.sId,
+            version: a.version,
+            requestedGroupIds: a.requestedGroupIds,
+          })),
+        },
+        "Agent requirements extracted"
+      );
+
+      // Remove duplicates and sort each requirement
+      const uniqueRequirements = agentRequirements
+        .map((r) => sortBy(r))
+        .filter(
+          (req, index, self) => self.findIndex((r) => isEqual(r, req)) === index
         );
 
-        if (agents.length === 0) {
-          logger.warn(
-            {
-              conversationId: conversation.sId,
-              conversationTitle: conversation.title,
-              requestedAgentVersions: Array.from(agentVersionPairs.values()),
-            },
-            "No agents found in database, skipping"
-          );
-          errorCount++;
-          continue;
-        }
-
-        if (agents.length < agentVersionPairs.size) {
-          logger.warn(
-            {
-              conversationId: conversation.sId,
-              requestedAgentVersions: Array.from(agentVersionPairs.values()),
-              foundAgents: agents.map((a: LightAgentConfigurationType) => ({
-                sId: a.sId,
-                version: a.version,
-              })),
-              missing: agentVersionPairs.size - agents.length,
-            },
-            "Some agent versions not found in database"
-          );
-        }
-
-        // Calculate new requestedGroupIds from agents
-        // Note: agents.requestedGroupIds is string[][] (sIds) from the API after enrichment
-        const agentRequirements: string[][] = agents.flatMap(
-          (agent: LightAgentConfigurationType) => agent.requestedGroupIds
-        );
-
-        logger.info(
-          {
-            conversationId: conversation.sId,
-            agentRequirements,
-            agentsWithGroupIds: agents.map(
-              (a: LightAgentConfigurationType) => ({
-                sId: a.sId,
-                version: a.version,
-                requestedGroupIds: a.requestedGroupIds,
-              })
-            ),
-          },
-          "Agent requirements extracted"
-        );
-
-        // Remove duplicates and sort each requirement
-        const uniqueRequirements = agentRequirements
-          .map((r) => sortBy(r))
-          .filter(
-            (req, index, self) =>
-              self.findIndex((r) => isEqual(r, req)) === index
-          );
-
-        // Convert sIds to modelIds
-        const newRequestedGroupIds: ModelId[][] = uniqueRequirements.map(
-          (groupSIds) =>
-            groupSIds.map((groupSId) => {
-              const modelId = getResourceIdFromSId(groupSId);
-              if (modelId === null) {
-                throw new Error(
-                  `Invalid group sId: ${groupSId} for conversation ${conversation.sId}`
-                );
-              }
-              return modelId;
-            })
-        );
-
-        // Convert current requestedGroupIds (stored as BIGINT, returned as strings by Sequelize)
-        // Parse strings to numbers for proper comparison
-        const currentRequestedGroupIds = conversation.requestedGroupIds.map(
-          (groupArray) =>
-            groupArray.map((groupId) =>
-              typeof groupId === "string" ? parseInt(groupId, 10) : groupId
-            )
-        );
-
-        // Normalize for comparison
-        const normalizedNewGroupIds = normalizeArrays(newRequestedGroupIds);
-        const normalizedCurrentGroupIds = normalizeArrays(
-          currentRequestedGroupIds
-        );
-
-        // Check if changed
-        if (
-          isArrayEqual2DUnordered(
-            normalizedNewGroupIds,
-            normalizedCurrentGroupIds
-          )
-        ) {
-          logger.info(
-            {
-              conversationId: conversation.sId,
-              conversationTitle: conversation.title,
-            },
-            "Conversation group IDs are already up to date, skipping"
-          );
-          skippedCount++;
-          continue;
-        }
-
-        logger.info(
-          {
-            conversationId: conversation.sId,
-            conversationTitle: conversation.title,
-            agentCount: agents.length,
-            currentGroupIds: normalizedCurrentGroupIds,
-            newGroupIds: normalizedNewGroupIds,
-            execute,
-          },
-          execute
-            ? "Updating conversation requestedGroupIds"
-            : "[DRY RUN] Would update conversation requestedGroupIds"
-        );
-
-        if (execute) {
-          await ConversationModel.update(
-            { requestedGroupIds: normalizedNewGroupIds },
-            {
-              where: {
-                id: conversation.id,
-                workspaceId: workspace.id,
-              },
+      // Convert sIds to modelIds
+      const newRequestedGroupIds: ModelId[][] = uniqueRequirements.map(
+        (groupSIds) =>
+          groupSIds.map((groupSId) => {
+            const modelId = getResourceIdFromSId(groupSId);
+            if (modelId === null) {
+              throw new Error(
+                `Invalid group sId: ${groupSId} for conversation ${conversation.sId}`
+              );
             }
-          );
-          updatedCount++;
-        } else {
-          updatedCount++;
-        }
-      } catch (error) {
-        logger.error(
+            return modelId;
+          })
+      );
+
+      // Convert current requestedGroupIds (stored as BIGINT, returned as strings by Sequelize)
+      // Parse strings to numbers for proper comparison
+      const currentRequestedGroupIds = conversation.requestedGroupIds.map(
+        (groupArray) =>
+          groupArray.map((groupId) =>
+            typeof groupId === "string" ? parseInt(groupId, 10) : groupId
+          )
+      );
+
+      // Normalize for comparison
+      const normalizedNewGroupIds = normalizeArrays(newRequestedGroupIds);
+      const normalizedCurrentGroupIds = normalizeArrays(
+        currentRequestedGroupIds
+      );
+
+      // Check if changed
+      if (
+        isArrayEqual2DUnordered(
+          normalizedNewGroupIds,
+          normalizedCurrentGroupIds
+        )
+      ) {
+        logger.info(
           {
             conversationId: conversation.sId,
             conversationTitle: conversation.title,
-            error,
           },
-          "Error updating conversation requestedGroupIds"
+          "Conversation group IDs are already up to date, skipping"
         );
-        errorCount++;
+        skippedCount++;
+        continue;
+      }
+
+      logger.info(
+        {
+          conversationId: conversation.sId,
+          conversationTitle: conversation.title,
+          agentCount: agents.length,
+          currentGroupIds: normalizedCurrentGroupIds,
+          newGroupIds: normalizedNewGroupIds,
+          execute,
+        },
+        execute
+          ? "Updating conversation requestedGroupIds"
+          : "[DRY RUN] Would update conversation requestedGroupIds"
+      );
+
+      if (execute) {
+        await ConversationModel.update(
+          { requestedGroupIds: normalizedNewGroupIds },
+          {
+            where: {
+              id: conversation.id,
+              workspaceId: workspace.id,
+            },
+          }
+        );
+        updatedCount++;
+      } else {
+        updatedCount++;
       }
 
       processedCount++;

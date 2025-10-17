@@ -1,3 +1,5 @@
+import type { WhereOptions } from "sequelize";
+
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
@@ -35,7 +37,9 @@ async function updateAgentRequestedGroupIds(
   );
 
   // Build where clause
-  const whereClause: any = { workspaceId: workspace.id };
+  const whereClause: WhereOptions<AgentConfiguration> = {
+    workspaceId: workspace.id,
+  };
 
   if (options.onlyActive) {
     whereClause.status = "active";
@@ -68,110 +72,95 @@ async function updateAgentRequestedGroupIds(
   let errorCount = 0;
 
   for (const agent of agentConfigurations) {
-    try {
-      // Get the full agent configuration with actions
-      // Using dangerouslyRequestAllGroups auth ensures we can access all agents
-      const agentConfigurationList = await getAgentConfigurations(auth, {
-        agentIds: [agent.sId],
-        variant: "full",
-      });
+    // Get the full agent configuration with actions
+    // Using dangerouslyRequestAllGroups auth ensures we can access all agents
+    const agentConfigurationList = await getAgentConfigurations(auth, {
+      agentIds: [agent.sId],
+      variant: "full",
+    });
 
-      if (agentConfigurationList.length === 0) {
-        logger.warn(
-          { agentId: agent.sId, agentName: agent.name },
-          "Agent configuration not found, skipping"
-        );
-        errorCount++;
-        continue;
+    if (agentConfigurationList.length === 0) {
+      logger.warn(
+        { agentId: agent.sId, agentName: agent.name },
+        "Agent configuration not found, skipping"
+      );
+      errorCount++;
+      continue;
+    }
+
+    const agentConfiguration = agentConfigurationList[0];
+
+    // Calculate the correct group IDs from actions
+    // Note: You may see workspace_isolation_violation warnings in logs - these are benign
+    // monitoring warnings, not actual errors. The auth parameter ensures proper scoping.
+    const newRequirements = await getAgentConfigurationRequirementsFromActions(
+      auth,
+      {
+        actions: agentConfiguration.actions,
       }
+    );
 
-      const agentConfiguration = agentConfigurationList[0];
+    // Convert current requestedGroupIds from string[][] (sIds) to number[][] (modelIds)
+    const currentRequestedGroupIds = agentConfiguration.requestedGroupIds.map(
+      (groupArray) =>
+        groupArray.map((groupSId) => {
+          const modelId = getResourceIdFromSId(groupSId);
+          if (modelId === null) {
+            throw new Error(
+              `Invalid group sId: ${groupSId} for agent ${agent.sId}`
+            );
+          }
+          return modelId;
+        })
+    );
 
-      // Calculate the correct group IDs from actions
-      // Note: You may see workspace_isolation_violation warnings in logs - these are benign
-      // monitoring warnings, not actual errors. The auth parameter ensures proper scoping.
-      const newRequestedGroupIds =
-        await getAgentConfigurationRequirementsFromActions(auth, {
-          actions: agentConfiguration.actions,
-        });
+    // Normalize the arrays for comparison
+    const normalizedNewGroupIds = normalizeArrays(
+      newRequirements.requestedGroupIds
+    );
+    const normalizedCurrentGroupIds = normalizeArrays(currentRequestedGroupIds);
 
-      // Convert current requestedGroupIds from string[][] (sIds) to number[][] (modelIds)
-      const currentRequestedGroupIds = agentConfiguration.requestedGroupIds.map(
-        (groupArray) =>
-          groupArray.map((groupSId) => {
-            const modelId = getResourceIdFromSId(groupSId);
-            if (modelId === null) {
-              throw new Error(
-                `Invalid group sId: ${groupSId} for agent ${agent.sId}`
-              );
-            }
-            return modelId;
-          })
-      );
-
-      // Normalize the arrays for comparison
-      const normalizedNewGroupIds = normalizeArrays(
-        newRequestedGroupIds.requestedGroupIds
-      );
-      const normalizedCurrentGroupIds = normalizeArrays(
-        currentRequestedGroupIds
-      );
-
-      // Check if the group IDs have changed
-      if (
-        isArrayEqual2DUnordered(
-          normalizedNewGroupIds,
-          normalizedCurrentGroupIds
-        )
-      ) {
-        logger.info(
-          {
-            agentId: agent.sId,
-            agentName: agent.name,
-          },
-          "Agent group IDs are already up to date, skipping"
-        );
-        skippedCount++;
-        continue;
-      }
-
+    // Check if the group IDs have changed
+    if (
+      isArrayEqual2DUnordered(normalizedNewGroupIds, normalizedCurrentGroupIds)
+    ) {
       logger.info(
         {
           agentId: agent.sId,
           agentName: agent.name,
-          currentGroupIds: normalizedCurrentGroupIds,
-          newGroupIds: normalizedNewGroupIds,
-          execute,
         },
-        execute
-          ? "Updating agent requestedGroupIds"
-          : "[DRY RUN] Would update agent requestedGroupIds"
+        "Agent group IDs are already up to date, skipping"
       );
+      skippedCount++;
+      continue;
+    }
 
-      if (execute) {
-        await AgentConfiguration.update(
-          { requestedGroupIds: normalizedNewGroupIds },
-          {
-            where: {
-              sId: agent.sId,
-              workspaceId: workspace.id,
-            },
-          }
-        );
-        updatedCount++;
-      } else {
-        updatedCount++;
-      }
-    } catch (error) {
-      logger.error(
+    logger.info(
+      {
+        agentId: agent.sId,
+        agentName: agent.name,
+        currentGroupIds: normalizedCurrentGroupIds,
+        newGroupIds: normalizedNewGroupIds,
+        execute,
+      },
+      execute
+        ? "Updating agent requestedGroupIds"
+        : "[DRY RUN] Would update agent requestedGroupIds"
+    );
+
+    if (execute) {
+      await AgentConfiguration.update(
+        { requestedGroupIds: normalizedNewGroupIds },
         {
-          agentId: agent.sId,
-          agentName: agent.name,
-          error,
-        },
-        "Error updating agent requestedGroupIds"
+          where: {
+            sId: agent.sId,
+            workspaceId: workspace.id,
+          },
+        }
       );
-      errorCount++;
+      updatedCount++;
+    } else {
+      updatedCount++;
     }
   }
 
