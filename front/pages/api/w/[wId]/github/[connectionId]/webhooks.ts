@@ -256,9 +256,9 @@ async function handler(
         });
       }
 
-      const { webhookSourceId } = req.body;
+      const deleteWebhookSourceId = req.query.webhookSourceId;
 
-      if (!webhookSourceId || typeof webhookSourceId !== "string") {
+      if (!deleteWebhookSourceId || typeof deleteWebhookSourceId !== "string") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -272,7 +272,7 @@ async function handler(
         // Fetch the webhook source to get remote metadata
         const webhookSourceResource = await WebhookSourceResource.fetchById(
           auth,
-          webhookSourceId
+          deleteWebhookSourceId
         );
 
         if (!webhookSourceResource) {

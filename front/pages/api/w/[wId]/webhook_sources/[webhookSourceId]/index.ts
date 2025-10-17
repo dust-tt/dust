@@ -114,19 +114,26 @@ async function handler(
           webhookSourceResource.oauthConnectionId
         ) {
           try {
-            await fetch(
-              `${req.headers.origin ?? ""}/api/w/${auth.workspace()?.sId}/${webhookSourceResource.kind}/${webhookSourceResource.oauthConnectionId}/webhooks`,
-              {
-                method: "DELETE",
-                headers: {
-                  "Content-Type": "application/json",
-                  Cookie: req.headers.cookie ?? "",
-                },
-                body: JSON.stringify({
-                  webhookSourceId: webhookSourceResource.sId,
-                }),
-              }
+            const workspace = auth.workspace();
+            if (!workspace) {
+              throw new Error("Workspace not found");
+            }
+
+            const deleteUrl = new URL(
+              `${req.headers.origin ?? ""}/api/w/${workspace.sId}/${webhookSourceResource.kind}/${webhookSourceResource.oauthConnectionId}/webhooks`
             );
+            deleteUrl.searchParams.set(
+              "webhookSourceId",
+              webhookSourceResource.sId()
+            );
+
+            await fetch(deleteUrl.toString(), {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+                Cookie: req.headers.cookie ?? "",
+              },
+            });
           } catch (error: any) {
             logger.error(
               `Failed to delete remote webhook on ${webhookSourceResource.kind}`,
