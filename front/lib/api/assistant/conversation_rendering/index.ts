@@ -8,6 +8,7 @@ import type {
   MessageTypeMultiActions,
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
+  ModelMessageTypeMultiActions,
   Result,
 } from "@app/types";
 import {
@@ -192,10 +193,14 @@ export async function renderConversationForModel(
     );
   }
 
-  // Remove tokenCount from final messages
-  const finalMessages: MessageTypeMultiActions[] = selected.map(
-    ({ tokenCount: _tokenCount, ...msg }) => msg
-  );
+  // Remove tokenCount from final messages and remove content fragments from return type
+  const finalMessages = selected
+    .map(({ tokenCount: _tokenCount, ...msg }) => msg)
+    // There should be no content fragments as they have been merged into user messages
+    .filter(
+      (message): message is ModelMessageTypeMultiActions =>
+        message.role !== "content_fragment"
+    );
 
   logger.info(
     {
