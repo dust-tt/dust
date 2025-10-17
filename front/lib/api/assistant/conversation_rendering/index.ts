@@ -5,9 +5,9 @@ import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 import type {
   ConversationType,
+  MessageTypeMultiActions,
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
-  ModelMessageTypeMultiActions,
   Result,
 } from "@app/types";
 import {
@@ -193,7 +193,7 @@ export async function renderConversationForModel(
   }
 
   // Remove tokenCount from final messages
-  const finalMessages: ModelMessageTypeMultiActions[] = selected.map(
+  const finalMessages: MessageTypeMultiActions[] = selected.map(
     ({ tokenCount: _tokenCount, ...msg }) => msg
   );
 
@@ -275,7 +275,7 @@ function groupMessagesIntoInteractions(
 }
 
 async function countTokensForMessages(
-  messages: ModelMessageTypeMultiActions[],
+  messages: MessageTypeMultiActions[],
   model: ModelConfigurationType
 ): Promise<Result<MessageWithTokens[], Error>> {
   const textRepresentations: string[] = [];

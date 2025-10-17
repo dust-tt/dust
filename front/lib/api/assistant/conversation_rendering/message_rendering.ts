@@ -15,8 +15,8 @@ import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
   ConversationType,
+  MessageTypeMultiActions,
   ModelConfigurationType,
-  ModelMessageTypeMultiActions,
 } from "@app/types";
 import {
   assertNever,
@@ -34,8 +34,8 @@ export function renderAgentSteps(
   message: AgentMessageType,
   conversation: ConversationType,
   excludeActions: boolean
-): ModelMessageTypeMultiActions[] {
-  const messages: ModelMessageTypeMultiActions[] = [];
+): MessageTypeMultiActions[] {
+  const messages: MessageTypeMultiActions[] = [];
 
   if (excludeActions) {
     // In Exclude Actions mode, we only render the last step that has text content.
@@ -142,8 +142,8 @@ export async function renderAllMessages(
     excludeImages?: boolean;
     onMissingAction: "inject-placeholder" | "skip";
   }
-): Promise<ModelMessageTypeMultiActions[]> {
-  const messages: ModelMessageTypeMultiActions[] = [];
+): Promise<MessageTypeMultiActions[]> {
+  const messages: MessageTypeMultiActions[] = [];
 
   // Render loop: render all messages and all actions.
   for (const versions of conversation.content) {
