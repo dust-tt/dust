@@ -1,4 +1,4 @@
-import { cn, Spinner } from "@dust-tt/sparkle";
+import { cn } from "@dust-tt/sparkle";
 import { useState } from "react";
 import {
   Bar,
@@ -13,6 +13,8 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
+import { ChartContainer } from "@app/components/agent_builder/observability/ChartContainer";
+import { ChartLegend } from "@app/components/agent_builder/observability/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
 import type {
   ObservabilityIntervalType,
@@ -118,62 +120,40 @@ export function UsageMetricsChart({
   const isLoading = isUsageMetricsLoading || isVersionMarkersLoading;
   const isError = isUsageMetricsError || isVersionMarkersError;
 
+  const legendItems = USAGE_METRICS_LEGEND.map(({ key, label }) => ({
+    key,
+    label,
+    colorClassName: USAGE_METRICS_PALETTE[key],
+  }));
+
   return (
-    <div className="bg-card rounded-lg border border-border p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-medium text-foreground">Usage Metrics</h3>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            {OBSERVABILITY_TIME_RANGE.map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={cn(
-                  "rounded px-2 py-1 text-xs",
-                  period === p
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {p}d
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            {OBSERVABILITY_INTERVALS.map((i) => (
-              <button
-                key={i}
-                onClick={() => setInterval(i)}
-                className={cn(
-                  "rounded px-2 py-1 text-xs",
-                  interval === i
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {i}
-              </button>
-            ))}
-          </div>
+    <ChartContainer
+      title="Usage Metrics"
+      period={period}
+      onPeriodChange={setPeriod}
+      isLoading={isLoading}
+      isError={isError}
+      errorMessage="Failed to load observability data."
+      additionalControls={
+        <div className="flex items-center gap-2">
+          {OBSERVABILITY_INTERVALS.map((i) => (
+            <button
+              key={i}
+              onClick={() => setInterval(i)}
+              className={cn(
+                "rounded px-2 py-1 text-xs",
+                interval === i
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {i}
+            </button>
+          ))}
         </div>
-      </div>
-      {isLoading ? (
-        <div
-          className="flex items-center justify-center"
-          style={{ height: CHART_HEIGHT }}
-        >
-          <Spinner size="lg" />
-        </div>
-      ) : isError ? (
-        <div
-          className="flex items-center justify-center"
-          style={{ height: CHART_HEIGHT }}
-        >
-          <p className="text-sm text-muted-foreground">
-            Failed to load observability data.
-          </p>
-        </div>
-      ) : (
+      }
+    >
+      <>
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
           <BarChart
             data={data}
@@ -218,20 +198,8 @@ export function UsageMetricsChart({
             ))}
           </BarChart>
         </ResponsiveContainer>
-      )}
-      <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
-        {USAGE_METRICS_LEGEND.map(({ key, label }) => (
-          <div key={key} className="flex items-center gap-2">
-            <span
-              className={cn(
-                "inline-block h-3 w-3 rounded-sm bg-current",
-                USAGE_METRICS_PALETTE[key]
-              )}
-            />
-            <span className="text-sm text-muted-foreground">{label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
+        <ChartLegend items={legendItems} />
+      </>
+    </ChartContainer>
   );
 }
