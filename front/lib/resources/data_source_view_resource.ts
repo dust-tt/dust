@@ -418,7 +418,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
             [Op.in]: dataSourceViewModelIds,
           },
         },
-        dangerouslyBypassWorkspaceIsolationSecurity: true,
       }
     );
 
