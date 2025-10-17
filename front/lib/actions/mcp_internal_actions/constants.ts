@@ -8,6 +8,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import {
+  DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
   FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
@@ -1284,7 +1285,7 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
-      instructions: null,
+      instructions: DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
     },
   },
   agent_management: {
