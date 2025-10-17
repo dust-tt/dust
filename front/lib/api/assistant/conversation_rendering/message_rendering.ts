@@ -2,6 +2,12 @@
  * Message rendering logic shared between legacy and enhanced implementations
  */
 
+import type { Step } from "@app/lib/api/assistant/conversation_rendering/helpers";
+import {
+  getSteps,
+  renderContentFragment,
+  renderUserMessage,
+} from "@app/lib/api/assistant/conversation_rendering/helpers";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type {
@@ -19,9 +25,6 @@ import {
   isUserMessageType,
 } from "@app/types";
 import type { TextContentType } from "@app/types/assistant/agent_message_content";
-
-import type { Step } from "./common";
-import { getSteps, renderContentFragment, renderUserMessage } from "./common";
 
 /**
  * Renders agent message steps into model messages
