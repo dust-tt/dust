@@ -206,6 +206,9 @@ export async function notionSyncWorkflow({
   await executeChild(notionUpdateAllParentsFieldsWorkflow, {
     workflowId: `${topLevelWorkflowId}-update-parents-fields`,
     args: [{ connectorId }],
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
   });
 
   await saveSuccessSync(connectorId);
