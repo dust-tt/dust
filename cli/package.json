@@ -28,7 +28,6 @@
   "license": "MIT",
   "dependencies": {
     "@dust-tt/client": "^1.1.9",
-    "@mistralai/mistralai": "^1.10.0",
     "@modelcontextprotocol/sdk": "^1.9.0",
     "clipboardy": "^4.0.0",
     "execa": "^9.6.0",

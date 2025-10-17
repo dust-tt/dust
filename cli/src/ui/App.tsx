@@ -10,7 +10,6 @@ import Chat from "./commands/Chat.js";
 import Logout from "./commands/Logout.js";
 import NonInteractiveChat from "./commands/NonInteractiveChat.js";
 import Status from "./commands/Status.js";
-import TestChat from "./commands/TestChat.js";
 import UpdateInfo from "./components/UpdateInfo.js";
 import Help from "./Help.js";
 
@@ -129,8 +128,6 @@ const App: FC<AppProps> = ({ cli }) => {
       );
     case "cache:clear":
       return <Cache />;
-    case "test-chat":
-      return <TestChat apiKey={process.env.MISTRAL_API_KEY} />;
     case "help":
       return <Help />;
     default:
