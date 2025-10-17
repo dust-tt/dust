@@ -1,37 +1,28 @@
 import type { ModelProviderIdType } from "@app/types";
 
-export interface ProviderMetadata {
-  provider: ModelProviderIdType;
+export type ProviderMetadata = Record<string, any> & {
+  providerId: ModelProviderIdType;
   modelId: string;
-  metadata: Record<string, any>;
-}
+};
 
-export type LLMEventType =
-  | "text_delta"
-  | "reasoning_delta"
-  | "tool_call"
-  | "token_usage"
-  | "success"
-  | "error"
-  | "text_generated"
-  | "reasoning_generated";
+export type Delta = {
+  delta: string;
+};
+
+export type Text = {
+  text: string;
+};
 
 // Stream events
-export interface LLMEvent {
-  type: LLMEventType;
-  content: string | ToolCall | LLMOutputItem[] | CompletionError | TokenUsage;
-  metadata: ProviderMetadata;
-}
-
-export interface TextDeltaEvent extends LLMEvent {
+export interface TextDeltaEvent {
   type: "text_delta";
-  content: string;
+  content: Delta;
   metadata: ProviderMetadata;
 }
 
-export interface ReasoningDeltaEvent extends LLMEvent {
+export interface ReasoningDeltaEvent {
   type: "reasoning_delta";
-  content: string;
+  content: Delta;
   metadata: ProviderMetadata;
 }
 
@@ -41,7 +32,7 @@ export interface ToolCall {
   arguments: string;
 }
 
-export interface ToolCallEvent extends LLMEvent {
+export interface ToolCallEvent {
   type: "tool_call";
   content: ToolCall;
   metadata: ProviderMetadata;
@@ -49,15 +40,15 @@ export interface ToolCallEvent extends LLMEvent {
 
 // Output items
 
-export interface TextGeneratedEvent extends LLMEvent {
+export interface TextGeneratedEvent {
   type: "text_generated";
-  content: string;
+  content: Text;
   metadata: ProviderMetadata;
 }
 
-export interface ReasoningGeneratedEvent extends LLMEvent {
+export interface ReasoningGeneratedEvent {
   type: "reasoning_generated";
-  content: string;
+  content: Text;
   metadata: ProviderMetadata;
 }
 
@@ -76,13 +67,13 @@ export interface TokenUsage {
   totalTokens: number;
 }
 
-export interface TokenUsageEvent extends LLMEvent {
+export interface TokenUsageEvent {
   type: "token_usage";
   content: TokenUsage;
   metadata: ProviderMetadata;
 }
 
-export interface SuccessCompletionEvent extends LLMEvent {
+export interface SuccessCompletionEvent {
   type: "success";
   content: LLMOutputItem[];
   metadata: ProviderMetadata;
@@ -93,8 +84,18 @@ export interface CompletionError {
   code: string;
 }
 
-export interface ErrorCompletionEvent extends LLMEvent {
+export interface ErrorCompletionEvent {
   type: "error";
   content: CompletionError;
   metadata: ProviderMetadata;
 }
+
+export type LLMEvent =
+  | TextDeltaEvent
+  | ReasoningDeltaEvent
+  | ToolCallEvent
+  | TextGeneratedEvent
+  | ReasoningGeneratedEvent
+  | TokenUsageEvent
+  | SuccessCompletionEvent
+  | ErrorCompletionEvent;
