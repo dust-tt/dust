@@ -76,6 +76,7 @@ export function renderActionForMultiActionsModel(
   );
 
   let output;
+
   if (outputItems.length === 0) {
     output = "Successfully executed action, no output.";
   } else if (outputItems.every((item) => isTextContent(item))) {
@@ -86,6 +87,7 @@ export function renderActionForMultiActionsModel(
     } else {
       output = outputItems
         .map((item) => renderResourceForModel(item))
+        .filter((item) => !!item.trim().length)
         .join("\n\n");
     }
   }
