@@ -64,7 +64,7 @@ function HeroSection() {
               variant="primary"
               size="md"
               label="Get started"
-              href="/signup"
+              href="/home/pricing"
               className="w-full sm:w-auto"
               onClick={withTracking(TRACKING_AREAS.FRAMES, "hero_get_started")}
             />
