@@ -2310,6 +2310,13 @@ const PostParentsResponseSchema = z.object({
 });
 export type PostParentsResponseType = z.infer<typeof PostParentsResponseSchema>;
 
+const CheckUpsertQueueResponseSchema = z.object({
+  running_count: z.number(),
+});
+export type CheckUpsertQueueResponseType = z.infer<
+  typeof CheckUpsertQueueResponseSchema
+>;
+
 const GetDocumentsResponseSchema = z.object({
   documents: z.array(CoreAPIDocumentSchema),
   total: z.number(),

@@ -40,6 +40,10 @@ const {
   startToCloseTimeout: "10 minute",
 });
 
+const { drainDocumentUpsertQueue } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "1 minute",
+});
+
 const {
   saveSuccessSync,
   saveStartSync,
@@ -202,6 +206,12 @@ export async function notionSyncWorkflow({
     } while (discoveredResources && PROCESS_ALL_DISCOVERED_RESOURCES);
   }
 
+  // Drain the upsert queue before updating parents to ensure all document upserts are complete
+  await executeChild(notionDrainDocumentUpsertQueueWorkflow, {
+    workflowId: `${topLevelWorkflowId}-drain-upsert-queue`,
+    args: [{ connectorId }],
+  });
+
   // Compute parents after all documents are added/updated
   await executeChild(notionUpdateAllParentsFieldsWorkflow, {
     workflowId: `${topLevelWorkflowId}-update-parents-fields`,
@@ -218,6 +228,34 @@ export async function notionSyncWorkflow({
     startFromTs: lastSyncedPeriodTs,
     forceResync: false,
   });
+}
+
+export async function notionDrainDocumentUpsertQueueWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const startTime = Date.now();
+  const timeoutMs = 60 * 60 * 1000; // 1 hour
+
+  // This sleep is to ensure that any activities that were just scheduled have time to start before our first check
+  await sleep(1000);
+
+  while (Date.now() - startTime < timeoutMs) {
+    // Call the activity which polls up to 5 times (5 seconds max)
+    const isDrained = await drainDocumentUpsertQueue({ connectorId });
+
+    if (isDrained) {
+      return;
+    }
+
+    // Queue not yet drained, sleep for 5 seconds before trying again
+    await sleep(5000);
+  }
+
+  throw new Error(
+    `Timeout (1 hour) waiting for upsert queue to drain for connector ${connectorId}`
+  );
 }
 
 export async function notionUpdateAllParentsFieldsWorkflow({
