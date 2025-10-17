@@ -40,25 +40,8 @@ export type Step = {
  * Renders an action result for multi-actions model
  */
 export function renderActionForMultiActionsModel(
-  action: AgentMCPActionWithOutputType,
-  model: ModelConfigurationType
+  action: AgentMCPActionWithOutputType
 ): FunctionMessageTypeModel {
-  const totalTextLength =
-    action.output?.reduce(
-      (acc, curr) => acc + (curr.type === "text" ? curr.text?.length ?? 0 : 0),
-      0
-    ) ?? 0;
-
-  if (totalTextLength > model.contextSize * 0.9) {
-    return {
-      role: "function" as const,
-      name: action.functionCallName,
-      function_call_id: action.functionCallId,
-      content:
-        "The tool returned too much content. The response cannot be processed.",
-    };
-  }
-
   if (action.status === "denied") {
     return {
       role: "function" as const,
@@ -133,7 +116,7 @@ export async function getSteps(
         name: action.functionCallName,
         arguments: JSON.stringify(action.params),
       },
-      result: renderActionForMultiActionsModel(action, model),
+      result: renderActionForMultiActionsModel(action),
     });
   }
 
