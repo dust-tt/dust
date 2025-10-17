@@ -38,6 +38,12 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
+          <Text bold>test-mcp</Text> Start a test MCP server with dynamic tool
+          management
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
           <Text bold>cache:clear</Text> Clear agents cache
         </Text>
       </Box>
