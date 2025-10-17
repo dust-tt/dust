@@ -134,6 +134,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: {
       create_issue: "low",
+      comment_on_issue: "low",
       add_issue_to_project: "low",
       get_pull_request: "never_ask",
       list_organization_projects: "never_ask",
