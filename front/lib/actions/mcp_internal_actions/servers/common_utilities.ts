@@ -8,6 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { Ok } from "@app/types";
 
 const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
+const MAX_WAIT_DURATION_MS = 30 * 60 * 1_000;
 
 function createServer(
   auth: Authenticator,
@@ -65,6 +66,88 @@ function createServer(
           {
             type: "text",
             text: `Random float: ${value}`,
+          },
+        ]);
+      }
+    )
+  );
+
+  server.tool(
+    "wait",
+    `Pause execution for the provided number of milliseconds (maximum ${MAX_WAIT_DURATION_MS}).`,
+    {
+      duration_ms: z
+        .number()
+        .int()
+        .positive()
+        .max(
+          MAX_WAIT_DURATION_MS,
+          `Duration must be less than or equal to ${MAX_WAIT_DURATION_MS} milliseconds (30 minutes).`
+        )
+        .describe("The time to wait in milliseconds, up to 30 minutes."),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "wait",
+        agentLoopContext,
+      },
+      async ({ duration_ms }) => {
+        await new Promise((resolve) => setTimeout(resolve, duration_ms));
+
+        return new Ok([
+          {
+            type: "text",
+            text: `Waited for ${duration_ms} milliseconds.`,
+          },
+        ]);
+      }
+    )
+  );
+
+  server.tool(
+    "get_current_time",
+    "Return the current date and time in multiple convenient formats.",
+    {
+      include_formats: z
+        .array(
+          z
+            .enum(["iso", "utc", "timestamp", "locale"])
+            .describe("Specify which formats to return. Defaults to all.")
+        )
+        .max(4)
+        .optional(),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "get_current_time",
+        agentLoopContext,
+      },
+      async ({ include_formats }) => {
+        const now = new Date();
+        const formats = new Set(
+          include_formats ?? ["iso", "utc", "timestamp", "locale"]
+        );
+
+        const parts: string[] = [];
+        if (formats.has("iso")) {
+          parts.push(`ISO: ${now.toISOString()}`);
+        }
+        if (formats.has("utc")) {
+          parts.push(`UTC: ${now.toUTCString()}`);
+        }
+        if (formats.has("timestamp")) {
+          parts.push(`UNIX (ms): ${now.getTime()}`);
+        }
+        if (formats.has("locale")) {
+          parts.push(`Locale: ${now.toLocaleString()}`);
+        }
+
+        return new Ok([
+          {
+            type: "text",
+            text: parts.join("\n"),
           },
         ]);
       }

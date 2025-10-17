@@ -1196,7 +1196,7 @@ The directive should be used to display a clickable version of the agent name in
       name: "common_utilities",
       version: "1.0.0",
       description:
-        "Miscellaneous helper tools such as random numbers, timestamps, and timers.",
+        "Miscellaneous helper tools such as random numbers, time retrieval, and timers.",
       icon: "ActionAtomIcon",
       authorization: null,
       documentationUrl: null,
