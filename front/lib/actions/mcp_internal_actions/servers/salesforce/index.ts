@@ -13,12 +13,18 @@ import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/a
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 
 const SF_API_VERSION = "57.0";
 
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const SALESFORCE_TOOL_LOG_NAME = "salesforce";
+
+interface SalesforceRecord {
+  Id: string;
+  [key: string]: any;
+}
 
 function createServer(
   auth: Authenticator,
@@ -213,6 +219,81 @@ function createServer(
             text: "Object described successfully. Summary provided.",
           },
           { type: "text", text: summary },
+        ]);
+      }
+    )
+  );
+
+  server.tool(
+    "update_object",
+    "Update one or more records in Salesforce",
+    {
+      objectName: z
+        .string()
+        .describe("The name of the Salesforce object (e.g., Account, Contact)"),
+      records: z
+        .array(
+          z
+            .object({
+              Id: z.string().min(1).describe("The Salesforce record ID"),
+            })
+            .passthrough()
+        )
+        .min(1)
+        .describe(
+          "Record(s) to update. Must include Id field and any fields to update"
+        ),
+      allOrNone: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("If true, all updates must succeed or all fail"),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
+        agentLoopContext,
+        enableAlerting: false,
+      },
+      async ({ objectName, records, allOrNone }, { authInfo }) => {
+        const owner = auth.getNonNullableWorkspace();
+        const featureFlags = await getFeatureFlags(owner);
+
+        if (!featureFlags.includes("salesforce_tool_write")) {
+          return new Err(
+            new MCPError(
+              "Salesforce write operations are not enabled for this workspace."
+            )
+          );
+        }
+
+        const accessToken = authInfo?.token;
+        const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
+
+        const conn = new jsforce.Connection({
+          instanceUrl,
+          accessToken,
+          version: SF_API_VERSION,
+        });
+        await conn.identity();
+
+        const result = await conn
+          .sobject(objectName)
+          .update(records as SalesforceRecord[], {
+            allOrNone,
+          });
+
+        const results = Array.isArray(result) ? result : [result];
+        const successCount = results.filter((r) => r.success).length;
+        const failureCount = results.length - successCount;
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Update completed: ${successCount} successful, ${failureCount} failed`,
+          },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
         ]);
       }
     )
