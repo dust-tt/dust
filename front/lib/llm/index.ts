@@ -1,52 +1,26 @@
 import type { LLM } from "@app/lib/llm/llm";
-import { AnthropicLLM } from "@app/lib/llm/providers/anthropic";
-import { MistralLLM } from "@app/lib/llm/providers/mistral";
-import { OpenAILLM } from "@app/lib/llm/providers/openai";
-import { getProviderFromModelId } from "@app/types/assistant/models/models";
+import type { AgentReasoningEffort } from "@app/types";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 export function getLLM({
-  modelId,
+  model,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   temperature,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  reasoningEffort,
 }: {
-  modelId: string;
+  model: ModelConfigurationType;
   temperature: number;
+  reasoningEffort: AgentReasoningEffort;
 }): Result<LLM, Error> {
-  const providerResult = getProviderFromModelId(modelId);
-  if (providerResult.isErr()) {
-    return providerResult;
-  }
+  let llm: LLM;
 
-  const provider = providerResult.value;
-
-  let model: LLM;
-
-  switch (provider) {
-    case "mistral":
-      try {
-        model = new MistralLLM({ modelId, temperature });
-      } catch (error) {
-        return new Err(new Error(`Failed to create MistralLLM: ${error}`));
-      }
-      break;
-    case "anthropic":
-      try {
-        model = new AnthropicLLM({ modelId, temperature: 1 });
-      } catch (error) {
-        return new Err(new Error(`Failed to create AnthropicLLM: ${error}`));
-      }
-      break;
-    case "openai":
-      try {
-        model = new OpenAILLM({ modelId, temperature });
-      } catch (error) {
-        return new Err(new Error(`Failed to create OpenAILLM: ${error}`));
-      }
-      break;
+  switch (model.providerId) {
     default:
-      return new Err(new Error(`Unsupported provider: ${provider}`));
+      return new Err(new Error(`Unsupported provider: ${model.providerId}`));
   }
 
-  return new Ok(model);
+  return new Ok(llm);
 }

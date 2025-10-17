@@ -25,7 +25,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (_, { authInfo }) => {
@@ -85,7 +84,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ top = 250, skip = 0, userTimezone }, { authInfo }) => {
@@ -155,7 +153,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -219,7 +216,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ calendarId, eventId, userTimezone }, { authInfo }) => {
@@ -302,7 +298,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -404,7 +399,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -482,7 +476,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ calendarId, eventId, userTimezone }, { authInfo }) => {
@@ -540,7 +533,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (

@@ -396,7 +396,11 @@ function createServer(
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
       async ({
         query,
         dataSources,
@@ -501,7 +505,11 @@ function createServer(
       SearchToolInputSchema.shape,
       withToolLogging(
         auth,
-        { toolNameForMonitoring: SEARCH_TOOL_NAME, agentLoopContext },
+        {
+          toolNameForMonitoring: SEARCH_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
         async (params) => searchCallback(auth, agentLoopContext, params)
       )
     );
@@ -540,7 +548,11 @@ function createServer(
       },
       withToolLogging(
         auth,
-        { toolNameForMonitoring: SEARCH_TOOL_NAME, agentLoopContext },
+        {
+          toolNameForMonitoring: SEARCH_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
         async (params) =>
           searchCallback(auth, agentLoopContext, params, {
             tagsIn: params.tagsIn,
@@ -568,6 +580,7 @@ function createServer(
       {
         toolNameForMonitoring: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
         agentLoopContext,
+        enableAlerting: true,
       },
       async ({ nodeId, dataSources }) => {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);

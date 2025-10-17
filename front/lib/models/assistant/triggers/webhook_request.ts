@@ -1,6 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import type { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
@@ -26,6 +27,8 @@ export class WebhookRequestModel extends WorkspaceAwareModel<WebhookRequestModel
   declare status: WebhookRequestStatus;
   declare webhookSourceId: ForeignKey<WebhookSourceModel["id"]>;
   declare webhookSource: NonAttribute<WebhookSourceModel>;
+
+  declare webhookRequestTriggers: NonAttribute<WebhookRequestTriggerModel[]>;
 
   // Processing data
   declare processedAt: Date | null;

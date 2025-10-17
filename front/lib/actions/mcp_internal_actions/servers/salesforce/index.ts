@@ -36,7 +36,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ query }, { authInfo }) => {
@@ -74,7 +73,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ filter }, { authInfo }) => {
@@ -118,7 +116,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ objectName }, { authInfo }) => {
@@ -231,7 +228,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ recordId }, { authInfo }) => {
@@ -297,7 +293,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ recordId, attachmentId }, { authInfo }) => {

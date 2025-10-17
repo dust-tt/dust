@@ -23,14 +23,6 @@ export async function setupOAuthConnection({
   extraConfig: OAuthCredentials;
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
-    // Clear any stale OAuth data from previous attempts
-    const storageKey = `oauth_finalize_${provider}`;
-    try {
-      localStorage.removeItem(storageKey);
-    } catch (e) {
-      // Ignore localStorage errors
-    }
-
     let url = `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}`;
     if (extraConfig) {
       url += `&extraConfig=${encodeURIComponent(JSON.stringify(extraConfig))}`;
@@ -86,7 +78,7 @@ export async function setupOAuthConnection({
         handleFinalization(event.data);
       });
     } catch (e) {
-      // BroadcastChannel not supported, will use localStorage
+      // BroadcastChannel not supported
     }
 
     const cleanup = () => {

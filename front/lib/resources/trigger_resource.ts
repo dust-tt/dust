@@ -12,6 +12,9 @@ import { DustError } from "@app/lib/error";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
 import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
+import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
+import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
+import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -208,6 +211,40 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     try {
+      if (this.kind === "webhook" && this.webhookSourceViewId) {
+        const webhookSourceView = await WebhookSourcesViewModel.findOne({
+          where: {
+            id: this.webhookSourceViewId,
+            workspaceId: owner.id,
+          },
+        });
+
+        if (!webhookSourceView) {
+          return new Err(new Error("Webhook source view not found"));
+        }
+
+        const webhookRequests = await WebhookRequestModel.findAll({
+          where: {
+            workspaceId: owner.id,
+            webhookSourceId: webhookSourceView.webhookSourceId,
+          },
+        });
+
+        await WebhookRequestTriggerModel.destroy({
+          where: {
+            workspaceId: owner.id,
+            webhookRequestId: {
+              [Op.in]: webhookRequests.map((w) => w.id),
+            },
+          },
+        });
+        await WebhookRequestModel.destroy({
+          where: {
+            id: { [Op.in]: webhookRequests.map((w) => w.id) },
+          },
+        });
+      }
+
       await TriggerSubscriberModel.destroy({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,

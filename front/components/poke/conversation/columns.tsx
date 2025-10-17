@@ -33,7 +33,7 @@ export function makeColumnsForConversations(
 
         return (
           <LinkWrapper
-            href={`/poke/${owner.sId}/conversations/${conversation.sId}`}
+            href={`/poke/${owner.sId}/conversation/${conversation.sId}`}
           >
             {conversation.sId}
           </LinkWrapper>

@@ -79,7 +79,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "action_not_blocked",
-            message: "Action not blocked.",
+            message: result.error.message,
           },
         });
       case "action_not_found":
@@ -87,7 +87,7 @@ async function handler(
           status_code: 404,
           api_error: {
             type: "action_not_found",
-            message: "Action not found.",
+            message: result.error.message,
           },
         });
       default:

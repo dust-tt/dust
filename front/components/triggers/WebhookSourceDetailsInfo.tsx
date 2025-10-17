@@ -24,6 +24,7 @@ import { useController, useFormContext } from "react-hook-form";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
+import { WebhookSourceGithubDetails } from "@app/components/triggers/WebhookSourceGithubDetails";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import {
@@ -191,11 +192,16 @@ export function WebhookSourceDetailsInfo({
           </div>
         </div>
 
+        {webhookSourceView.webhookSource.kind === "github" && (
+          <WebhookSourceGithubDetails
+            webhookSource={webhookSourceView.webhookSource}
+          />
+        )}
+
         <div>
           <Page.H variant="h6">Source Name</Page.H>
           <Page.P>{webhookSourceView.webhookSource.name}</Page.P>
         </div>
-
         {webhookSourceView.webhookSource.kind !== "custom" &&
           WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[
             webhookSourceView.webhookSource.kind
@@ -234,7 +240,6 @@ export function WebhookSourceDetailsInfo({
               </div>
             </div>
           )}
-
         {webhookSourceView.webhookSource.secret && (
           <div>
             <Page.H variant="h6">Secret</Page.H>
@@ -254,7 +259,6 @@ export function WebhookSourceDetailsInfo({
             </div>
           </div>
         )}
-
         {webhookSourceView.webhookSource.signatureHeader && (
           <>
             <div>
@@ -270,7 +274,6 @@ export function WebhookSourceDetailsInfo({
             </div>
           </>
         )}
-
         {webhookSourceView.webhookSource.customHeaders &&
           Object.keys(webhookSourceView.webhookSource.customHeaders).length >
             0 && (
@@ -295,7 +298,6 @@ export function WebhookSourceDetailsInfo({
               </div>
             </div>
           )}
-
         {webhookSourceView.webhookSource.secret &&
           webhookSourceView.webhookSource.signatureHeader &&
           webhookSourceView.webhookSource.signatureAlgorithm && (

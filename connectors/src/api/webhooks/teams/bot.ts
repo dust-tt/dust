@@ -1,31 +1,33 @@
 import type {
   ConversationPublicType,
-  LightAgentConfigurationType,
+  PublicPostContentFragmentRequestBody,
+  PublicPostMessagesRequestBody,
   Result,
   UserMessageType,
 } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
+import type { ChatMessage } from "@microsoft/microsoft-graph-types";
 import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
-import jaroWinkler from "talisman/metrics/jaro-winkler";
 
+import { processFileAttachments } from "@connectors/api/webhooks/teams/content_fragments";
 import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
+import { getMessagesFromConversation } from "@connectors/connectors/microsoft/lib/graph_api";
 import { apiConfig } from "@connectors/lib/api/config";
+import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
+import { processMessageForMention } from "@connectors/lib/bot/mentions";
 import { MicrosoftBotMessage } from "@connectors/lib/models/microsoft_bot";
+import { getActionName } from "@connectors/lib/tools_utils";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { getHeaderFromUserEmail } from "@connectors/types";
 
-const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
-
-import { getActionName } from "@connectors/lib/tools_utils";
-
 import {
   createResponseAdaptiveCard,
   createStreamingAdaptiveCard,
-  makeConversationUrl,
 } from "./adaptive_cards";
 import { sendActivity, updateActivity } from "./bot_messaging_utils";
+import { validateTeamsUser } from "./user_validation";
 
 export async function botAnswerMessage(
   context: TurnContext,
@@ -35,16 +37,22 @@ export async function botAnswerMessage(
 ): Promise<Result<undefined, Error>> {
   const {
     conversation: { id: conversationId },
-    from: { aadObjectId: userAadObjectId },
     id: userActivityId,
     replyToId,
   } = context.activity;
 
-  if (!userActivityId || !userAadObjectId) {
-    return new Err(
-      new Error("No user activity ID or user AAD object ID found")
-    );
+  if (!userActivityId) {
+    return new Err(new Error("No user activity ID found"));
   }
+
+  // Validate user first - this will handle all user validation and error messaging
+  const validatedUser = await validateTeamsUser(context, connector);
+  if (!validatedUser) {
+    // Error message already sent by validateTeamsUser
+    return new Ok(undefined);
+  }
+
+  const { email, displayName, userAadObjectId } = validatedUser;
 
   // Check for existing Dust conversation for this Teams conversation
   const allMicrosoftBotMessages = await MicrosoftBotMessage.findAll({
@@ -58,15 +66,6 @@ export async function botAnswerMessage(
   // Find the most recent message that has a Dust conversation ID
   const lastMicrosoftBotMessage =
     allMicrosoftBotMessages.find((msg) => msg.dustConversationId) || null;
-
-  // Get Microsoft Graph client
-  const client = await getMicrosoftClient(connector.connectionId);
-
-  // Get user info from Microsoft Graph
-  const userInfo = await client.api(`/users/${userAadObjectId}`).get();
-
-  const displayName = userInfo?.displayName || "Unknown User";
-  const email = userInfo?.mail;
 
   const dustAPI = new DustAPI(
     { url: apiConfig.getDustFrontAPIUrl() },
@@ -93,91 +92,39 @@ export async function botAnswerMessage(
   // Teams mentions come in a different format than Slack
   const messageWithoutMarkdown = removeMarkdown(message);
 
-  let mention: { assistantName: string; assistantId: string } | undefined;
-
   // Extract all @mentions, ~mentions and +mentions (Teams typically uses @)
-  const mentionCandidates =
-    messageWithoutMarkdown.match(
-      /(?<!\S)[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/g
-    ) || [];
+  const mentionResult = processMessageForMention({
+    message: messageWithoutMarkdown,
+    activeAgentConfigurations,
+  });
 
-  if (mentionCandidates.length > 1) {
-    return new Err(
-      new Error("Only one agent at a time can be called through Teams.")
+  if (mentionResult.isErr()) {
+    return new Err(mentionResult.error);
+  }
+
+  const mention = mentionResult.value.mention;
+  message = mentionResult.value.processedMessage;
+
+  const buildContentFragmentRes = await makeContentFragments(
+    context,
+    dustAPI,
+    connector,
+    lastMicrosoftBotMessage
+  );
+
+  if (buildContentFragmentRes.isErr()) {
+    logger.error(
+      {
+        error: buildContentFragmentRes.error,
+        connectorId: connector.id,
+        teamsConversationId: conversationId,
+      },
+      "Failed to build content fragments"
     );
+    // Continue without content fragments rather than failing completely
   }
 
-  const [mentionCandidate] = mentionCandidates;
-  if (mentionCandidate) {
-    let bestCandidate:
-      | {
-          assistantId: string;
-          assistantName: string;
-          distance: number;
-        }
-      | undefined = undefined;
-
-    for (const agentConfiguration of activeAgentConfigurations) {
-      const distance =
-        1 -
-        jaroWinkler(
-          mentionCandidate.slice(1).toLowerCase(),
-          agentConfiguration.name.toLowerCase()
-        );
-
-      if (bestCandidate === undefined || bestCandidate.distance > distance) {
-        bestCandidate = {
-          assistantId: agentConfiguration.sId,
-          assistantName: agentConfiguration.name,
-          distance: distance,
-        };
-      }
-    }
-
-    if (bestCandidate) {
-      mention = {
-        assistantId: bestCandidate.assistantId,
-        assistantName: bestCandidate.assistantName,
-      };
-      message = message.replace(
-        mentionCandidate,
-        `:mention[${bestCandidate.assistantName}]{sId=${bestCandidate.assistantId}}`
-      );
-    } else {
-      return new Err(
-        new Error(`Assistant ${mentionCandidate} has not been found.`)
-      );
-    }
-  }
-
-  if (!mention) {
-    // Use default agent if no mention found
-    let defaultAssistant: LightAgentConfigurationType | undefined = undefined;
-    for (const agent of DEFAULT_AGENTS) {
-      defaultAssistant = activeAgentConfigurations.find(
-        (ac) => ac.sId === agent && ac.status === "active"
-      );
-      if (defaultAssistant) {
-        break;
-      }
-    }
-    if (!defaultAssistant) {
-      return new Err(
-        new Error("No agent has been configured to reply on Teams.")
-      );
-    }
-    mention = {
-      assistantId: defaultAssistant.sId,
-      assistantName: defaultAssistant.name,
-    };
-  }
-
-  if (!message.includes(":mention")) {
-    // if the message does not contain the mention, we add it as a prefix.
-    message = `:mention[${mention.assistantName}]{sId=${mention.assistantId}} ${message}`;
-  }
-
-  const messageReqBody = {
+  const messageReqBody: PublicPostMessagesRequestBody = {
     content: message,
     mentions: [{ configurationId: mention.assistantId }],
     context: {
@@ -210,6 +157,27 @@ export async function botAnswerMessage(
 
     // If it doesn't exist, we will create a new one later.
     if (conversationRes.isOk()) {
+      // Add content fragments if available
+      if (buildContentFragmentRes.isOk() && buildContentFragmentRes.value) {
+        for (const cf of buildContentFragmentRes.value) {
+          const contentFragmentRes = await dustAPI.postContentFragment({
+            conversationId: lastMicrosoftBotMessage.dustConversationId,
+            contentFragment: cf,
+          });
+          if (contentFragmentRes.isErr()) {
+            logger.error(
+              {
+                error: contentFragmentRes.error,
+                connectorId: connector.id,
+                teamsConversationId: conversationId,
+              },
+              "Failed to post content fragment"
+            );
+            // Continue without this content fragment
+          }
+        }
+      }
+
       const messageRes = await dustAPI.postUserMessage({
         conversationId: lastMicrosoftBotMessage.dustConversationId,
         message: messageReqBody,
@@ -239,6 +207,7 @@ export async function botAnswerMessage(
     }
   }
 
+  // If the conversation does not exist, we create a new one.
   if (!conversation || !userMessage) {
     logger.info(
       {
@@ -252,6 +221,9 @@ export async function botAnswerMessage(
       title: null,
       visibility: "unlisted",
       message: messageReqBody,
+      contentFragments: buildContentFragmentRes.isOk()
+        ? buildContentFragmentRes.value
+        : undefined,
     });
     if (newConversationRes.isErr()) {
       return new Err(new Error(newConversationRes.error.message));
@@ -446,3 +418,165 @@ const sendTeamsResponse = async (
   // Send new streaming message
   return sendActivity(context, adaptiveCard);
 };
+
+async function makeContentFragments(
+  context: TurnContext,
+  dustAPI: DustAPI,
+  connector: ConnectorResource,
+  lastMicrosoftBotMessage: MicrosoftBotMessage | null
+): Promise<Result<PublicPostContentFragmentRequestBody[] | undefined, Error>> {
+  // Get Microsoft Graph client for authenticated file downloads
+  const client = await getMicrosoftClient(connector.connectionId);
+  const teamsConversationId = context.activity.conversation.id;
+
+  // Detect conversation type based on ID pattern
+  // Channel conversations typically contain thread patterns like @thread.tacv2
+  // Chat conversations (1:1 or group) have different formats
+  const isChannelConversation =
+    teamsConversationId.includes("@thread.") ||
+    teamsConversationId.includes("@teams.") ||
+    context.activity.channelData?.teamsChannelId;
+
+  // For regular chats (non-channel), we don't need message history
+  // but we still want to process file attachments from the current message
+  if (!isChannelConversation) {
+    logger.info(
+      {
+        connectorId: connector.id,
+        teamsConversationId,
+      },
+      "Processing current message attachments for Teams chat"
+    );
+
+    // Get current message attachments from the Bot Framework context
+    const currentMessageAttachments = context.activity.attachments || [];
+
+    if (currentMessageAttachments.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const allContentFragments = await processFileAttachments(
+      currentMessageAttachments,
+      dustAPI,
+      client
+    );
+
+    logger.info(
+      {
+        connectorId: connector.id,
+        attachments: allContentFragments.length,
+      },
+      `Processed ${allContentFragments.length} file attachments from Teams chat message`
+    );
+
+    return new Ok(
+      allContentFragments.length > 0 ? allContentFragments : undefined
+    );
+  }
+
+  // Get conversation history using the most reliable API approach
+  const conversationHistory = await getMessagesFromConversation(
+    logger,
+    client,
+    teamsConversationId
+  );
+
+  const messages: ChatMessage[] = conversationHistory.results || [];
+
+  const startIndex =
+    messages.findIndex((msg) => msg.id === context.activity.id) + 1;
+  // Filter for new user messages since last bot interaction (excluded) or root message (included)
+  const lastBotMessageId = lastMicrosoftBotMessage?.agentActivityId;
+  const rootMessageId =
+    teamsConversationId.match(/;messageid=([^;]+)/i)?.[1] || undefined;
+
+  const endIndex = lastMicrosoftBotMessage
+    ? messages.findIndex((msg) => msg.id === lastBotMessageId)
+    : messages.findIndex((msg) => msg.id === rootMessageId) + 1;
+
+  // Get only messages that come after the last bot message (or all if no previous bot message)
+  const messagesToConsider =
+    endIndex >= 0
+      ? messages.slice(startIndex, endIndex)
+      : messages.slice(startIndex);
+
+  const newMessages = messagesToConsider.filter(
+    (message) => message.from?.user
+  );
+
+  const allContentFragments: PublicPostContentFragmentRequestBody[] = [];
+
+  // Process file attachments from both new messages AND the current message
+  const allMessagesToCheckForFiles = [
+    ...newMessages,
+    // Add current message to check for attachments
+    ...messages.filter((message) => {
+      return message.id === context.activity.id;
+    }),
+  ];
+
+  const allAttachments = allMessagesToCheckForFiles.flatMap(
+    (m: ChatMessage) => m.attachments || []
+  );
+
+  // Upload file attachments
+  const fileContentFragments = await processFileAttachments(
+    allAttachments,
+    dustAPI,
+    client
+  );
+
+  allContentFragments.push(...fileContentFragments);
+
+  // Create conversation history fragment
+  const conversationText = newMessages
+    .slice()
+    .reverse()
+    .map((msg: unknown) => {
+      const message = msg as {
+        from?: { user?: { displayName?: string } };
+        createdDateTime?: string;
+        body?: { content?: string };
+      };
+      const sender = message.from?.user?.displayName || "Unknown User";
+      const timestamp = message.createdDateTime
+        ? new Date(message.createdDateTime).toISOString()
+        : "Unknown time";
+      const content = (message.body?.content || "")
+        .replace(/<[^>]*>/g, "")
+        .trim();
+      return `[${timestamp}] ${sender}: ${content}`;
+    })
+    .join("\n\n");
+
+  const title = lastMicrosoftBotMessage
+    ? "Teams - new messages"
+    : "Teams conversation history";
+  const fileName = `teams_conversation-${teamsConversationId}.txt`;
+
+  const fileRes = await dustAPI.uploadFile({
+    contentType: "text/plain",
+    fileName,
+    fileSize: conversationText.length,
+    useCase: "conversation",
+    useCaseMetadata: lastMicrosoftBotMessage
+      ? { conversationId: lastMicrosoftBotMessage.conversationId }
+      : undefined,
+    fileObject: new File([conversationText], fileName, {
+      type: "text/plain",
+    }),
+  });
+
+  if (fileRes.isOk()) {
+    allContentFragments.push({
+      title,
+      url: null,
+      fileId: fileRes.value.sId,
+      context: null,
+    });
+  }
+
+  return new Ok(
+    allContentFragments.length > 0 ? allContentFragments : undefined
+  );
+}

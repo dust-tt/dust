@@ -127,7 +127,7 @@ export const CATEGORY_DETAILS: {
   apps: {
     label: "Apps",
     icon: CommandLineIcon,
-    // flag: "legacy_dust_apps",
+    flag: "legacy_dust_apps",
   },
   actions: {
     label: "Tools",

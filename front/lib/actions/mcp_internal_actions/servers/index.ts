@@ -8,6 +8,7 @@ import {
 import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
+import { default as commonUtilitiesServer } from "@app/lib/actions/mcp_internal_actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actions/servers/confluence";
 import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
@@ -28,6 +29,7 @@ import { default as interactiveContentServer } from "@app/lib/actions/mcp_intern
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
 import { default as jitTestingServer } from "@app/lib/actions/mcp_internal_actions/servers/jit_testing";
 import { default as microsoftDriveServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_drive";
+import { default as microsoftTeamsServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_teams";
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
 import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday";
 import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
@@ -108,6 +110,8 @@ export async function getInternalMCPServer(
       return primitiveTypesDebuggerServer(auth, agentLoopContext);
     case "jit_testing":
       return jitTestingServer(auth, agentLoopContext);
+    case "common_utilities":
+      return commonUtilitiesServer(auth, agentLoopContext);
     case "web_search_&_browse":
       return webtoolsServer(auth, agentLoopContext);
     case "search":
@@ -153,7 +157,9 @@ export async function getInternalMCPServer(
     case "jira":
       return jiraServer(auth, agentLoopContext);
     case "microsoft_drive":
-      return microsoftDriveServer(auth);
+      return microsoftDriveServer(auth, agentLoopContext);
+    case "microsoft_teams":
+      return microsoftTeamsServer(auth, agentLoopContext);
     case "monday":
       return mondayServer(auth, agentLoopContext);
     case "slack":

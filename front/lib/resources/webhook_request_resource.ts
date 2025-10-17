@@ -7,11 +7,14 @@ import type {
 
 import type { Authenticator } from "@app/lib/auth";
 import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
+import type { WebhookRequestTriggerStatus } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
+import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
+import type { TriggerType } from "@app/types/assistant/triggers";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -30,18 +33,30 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     super(WebhookRequestModel, blob);
   }
 
-  getGcsPath(this: WebhookRequestResource, auth: Authenticator): string {
-    const workspace = auth.getNonNullableWorkspace();
-    if (workspace.id !== this.workspaceId) {
-      throw new Error("Workspace ID mismatch");
-    }
-    return `${workspace.sId}/webhook_source_${this.webhookSourceId}/webhook_request_${this.id}.json`;
+  async markAsProcessed(this: WebhookRequestResource) {
+    return this.update({
+      status: "processed",
+      processedAt: new Date(),
+    });
   }
 
   async markAsFailed(this: WebhookRequestResource, errorMessage: string) {
     return this.update({
       status: "failed",
       errorMessage,
+    });
+  }
+
+  async markRelatedTrigger(
+    this: WebhookRequestResource,
+    trigger: TriggerType,
+    status: WebhookRequestTriggerStatus
+  ) {
+    await WebhookRequestTriggerModel.create({
+      workspaceId: this.workspaceId,
+      webhookRequestId: this.id,
+      triggerId: trigger.id,
+      status,
     });
   }
 
@@ -81,23 +96,19 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
   static async fetchById(
     auth: Authenticator,
     id: ModelId
-  ): Promise<Result<WebhookRequestResource | null, Error>> {
-    try {
-      const resources = await this.baseFetch(auth, {
-        where: {
-          id,
-        },
-        limit: 1,
-      });
+  ): Promise<WebhookRequestResource | null> {
+    const resources = await this.baseFetch(auth, {
+      where: {
+        id,
+      },
+      limit: 1,
+    });
 
-      if (resources.length === 0) {
-        return new Ok(null);
-      }
-
-      return new Ok(resources[0]);
-    } catch (error) {
-      return new Err(error as Error);
+    if (resources.length === 0) {
+      return null;
     }
+
+    return resources[0];
   }
 
   static async fetchByWebhookSourceId(
@@ -118,6 +129,18 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     } catch (error) {
       return new Err(error as Error);
     }
+  }
+
+  static getGcsPath({
+    workspaceId,
+    webhookSourceId,
+    webRequestId,
+  }: {
+    workspaceId: string;
+    webhookSourceId: ModelId;
+    webRequestId: ModelId;
+  }): string {
+    return `${workspaceId}/webhook_source_${webhookSourceId}/webhook_request_${webRequestId}.json`;
   }
 
   async delete(

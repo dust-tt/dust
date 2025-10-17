@@ -9,6 +9,7 @@ import type {
   TrackerConfigurationType,
   WithAPIErrorResponse,
 } from "@app/types";
+import { isString } from "@app/types";
 
 export type PokeFetchTrackerResponse = {
   tracker: TrackerConfigurationType;
@@ -20,7 +21,7 @@ async function handler(
   session: SessionWithUser
 ): Promise<void> {
   const { wId, tId } = req.query;
-  if (typeof wId !== "string" || typeof tId !== "string") {
+  if (!isString(wId) || !isString(tId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

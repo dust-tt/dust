@@ -3,7 +3,6 @@ import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import { runScrubFreeEndedWorkspacesSignal } from "@app/temporal/scrub_workspace/signals";
 import {
   downgradeFreeEndedWorkspacesWorkflow,
   immediateWorkspaceScrubWorkflow,
@@ -16,6 +15,7 @@ import {
   DOWNGRADE_FREE_ENDED_WORKSPACES_WORKFLOW_ID,
   QUEUE_NAME,
 } from "./config";
+import { runScrubFreeEndedWorkspacesSignal } from "./signals";
 
 export async function launchScheduleWorkspaceScrubWorkflow({
   workspaceId,
@@ -126,6 +126,7 @@ function getWorkflowId(workspaceId: string) {
   return `schedule-workspace-scrub-${workspaceId}`;
 }
 
+// Do not remove it @PopDaph needs this
 export async function launchDowngradeFreeEndedWorkspacesWorkflow(): Promise<
   Result<undefined, Error>
 > {
@@ -142,6 +143,7 @@ export async function launchDowngradeFreeEndedWorkspacesWorkflow(): Promise<
   return new Ok(undefined);
 }
 
+// Do not remove it @PopDaph needs this
 export async function stopDowngradeFreeEndedWorkspacesWorkflow() {
   const client = await getTemporalClientForFrontNamespace();
 

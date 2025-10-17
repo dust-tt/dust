@@ -13,6 +13,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
 import type { ModelId, Result } from "@app/types";
@@ -144,6 +145,23 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     });
   }
 
+  async updateRemoteMetadata(
+    updates: Partial<
+      Pick<WebhookSourceModel, "remoteMetadata" | "oauthConnectionId">
+    >,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await WebhookSourceModel.update(updates, {
+      where: {
+        id: this.id,
+      },
+      transaction,
+    });
+
+    // Update the current instance
+    Object.assign(this, updates);
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}
@@ -156,6 +174,25 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     const owner = auth.getNonNullableWorkspace();
 
     try {
+      // Find all webhook sources views for this webhook source
+      const webhookSourceViews = await WebhookSourcesViewModel.findAll({
+        where: {
+          workspaceId: owner.id,
+          webhookSourceId: this.id,
+        },
+      });
+
+      // Delete all triggers for each webhook source view
+      for (const webhookSourceView of webhookSourceViews) {
+        const triggers = await TriggerResource.listByWebhookSourceViewId(
+          auth,
+          webhookSourceView.id
+        );
+        for (const trigger of triggers) {
+          await trigger.delete(auth, { transaction });
+        }
+      }
+
       // Directly delete the WebhookSourceViewModel to avoid a circular dependency.
       await WebhookSourcesViewModel.destroy({
         where: {
@@ -227,6 +264,8 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
       signatureHeader: this.signatureHeader,
       signatureAlgorithm: this.signatureAlgorithm,
       customHeaders: this.customHeaders,
+      remoteMetadata: this.remoteMetadata,
+      oauthConnectionId: this.oauthConnectionId,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
     };

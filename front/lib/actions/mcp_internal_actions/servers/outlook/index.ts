@@ -107,7 +107,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ search, top = 10, skip = 0, select }, { authInfo }) => {
@@ -193,7 +192,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ search, top = 10, skip = 0 }, { authInfo }) => {
@@ -288,7 +286,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -372,7 +369,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ messageId, subject, to }, { authInfo }) => {
@@ -441,7 +437,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -569,7 +564,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ search, top = 20, skip = 0, select }, { authInfo }) => {
@@ -663,7 +657,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
@@ -787,7 +780,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: OUTLOOK_TOOL_NAME,
-        skipAlerting: true,
         agentLoopContext,
       },
       async (
