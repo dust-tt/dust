@@ -774,7 +774,7 @@ The directive should be used to display a clickable version of the agent name in
         scope:
           "Mail.ReadWrite Mail.ReadWrite.Shared Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read offline_access" as const,
       },
-      icon: "OutlookLogo",
+      icon: "MicrosoftOutlookLogo",
       documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
       instructions: null,
     },
@@ -807,7 +807,7 @@ The directive should be used to display a clickable version of the agent name in
         scope:
           "Calendars.ReadWrite Calendars.ReadWrite.Shared User.Read MailboxSettings.Read offline_access" as const,
       },
-      icon: "OutlookLogo",
+      icon: "MicrosoftOutlookLogo",
       documentationUrl: "https://docs.dust.tt/docs/outlook-calendar-tool-setup",
       instructions: null,
     },
@@ -1118,7 +1118,7 @@ The directive should be used to display a clickable version of the agent name in
         scope:
           "User.Read Chat.Read ChatMessage.Read ChannelMessage.Read.All" as const,
       },
-      icon: "MicrosoftLogo", // TODO: Add Microsoft Teams icon
+      icon: "MicrosoftTeamsLogo",
       documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
       instructions: null,
     },
