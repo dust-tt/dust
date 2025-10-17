@@ -9,13 +9,15 @@ import { ConnectorsAPI, removeNulls } from "@app/types";
  * Helper function to pause all connectors for a workspace.
  * This is used when a workspace is downgraded to prevent further processing.
  */
-export async function pauseWorkspaceConnectors(workspaceId: string): Promise<void> {
+export async function pauseWorkspaceConnectors(
+  workspaceId: string
+): Promise<void> {
   try {
     const workspace = await WorkspaceResource.fetchById(workspaceId);
     if (!workspace) {
       throw new Error(`Workspace not found: ${workspaceId}`);
     }
-    
+
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const dataSources = await DataSourceResource.listByWorkspace(auth);
     const connectorIds = removeNulls(dataSources.map((ds) => ds.connectorId));
