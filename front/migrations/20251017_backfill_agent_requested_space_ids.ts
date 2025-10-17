@@ -85,6 +85,7 @@ async function updateAgentRequestedSpaceIds(
           version: agent.version,
         },
         hooks: false,
+        silent: true,
       }
     );
   }

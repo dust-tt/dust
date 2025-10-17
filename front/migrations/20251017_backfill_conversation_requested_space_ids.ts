@@ -131,6 +131,7 @@ async function updateConversationRequestedSpaceIds(
           id: conversation.id,
         },
         hooks: false,
+        silent: true,
       }
     );
   }
