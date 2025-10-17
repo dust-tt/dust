@@ -15,7 +15,7 @@ import {
 } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import * as t from "io-ts";
-import _ from "lodash";
+import { throttle } from "lodash";
 import slackifyMarkdown from "slackify-markdown";
 
 import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
@@ -131,16 +131,12 @@ async function streamAgentAnswerToSlack(
 
   let answer = "";
   const actions: AgentActionPublicType[] = [];
-  const debouncedPostSlackMessageUpdate = _.debounce(
-    postSlackMessageUpdate,
-    500,
-    { maxWait: 1500 }
-  );
+  const throttledPostSlackMessageUpdate = throttle(postSlackMessageUpdate, 500);
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "tool_params":
       case "tool_notification": {
-        await debouncedPostSlackMessageUpdate({
+        await throttledPostSlackMessageUpdate({
           messageUpdate: {
             isThinking: true,
             assistantName,
@@ -214,7 +210,7 @@ async function streamAgentAnswerToSlack(
             connector.workspaceId,
             conversation.sId
           );
-          await debouncedPostSlackMessageUpdate({
+          await throttledPostSlackMessageUpdate({
             messageUpdate: {
               text:
                 "The agent took an action that requires personal authentication. " +
@@ -272,7 +268,7 @@ async function streamAgentAnswerToSlack(
         if (slackContent.length > MAX_SLACK_MESSAGE_LENGTH) {
           break;
         }
-        await debouncedPostSlackMessageUpdate({
+        await throttledPostSlackMessageUpdate({
           messageUpdate: {
             text: slackContent,
             assistantName,
@@ -314,7 +310,7 @@ async function streamAgentAnswerToSlack(
         if (shouldSplitMessage) {
           const splitMessages = splitContentForSlack(slackContent);
 
-          debouncedPostSlackMessageUpdate.cancel();
+          throttledPostSlackMessageUpdate.cancel();
 
           // If we have files, we need to delete and repost the message
           if (filesUploaded.length > 0) {
