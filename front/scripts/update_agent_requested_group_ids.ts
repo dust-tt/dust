@@ -1,6 +1,6 @@
 import type { WhereOptions } from "sequelize";
 
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -74,12 +74,13 @@ async function updateAgentRequestedGroupIds(
   for (const agent of agentConfigurations) {
     // Get the full agent configuration with actions
     // Using dangerouslyRequestAllGroups auth ensures we can access all agents
-    const agentConfigurationList = await getAgentConfigurations(auth, {
-      agentIds: [agent.sId],
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      agentVersion: agent.version,
       variant: "full",
     });
 
-    if (agentConfigurationList.length === 0) {
+    if (!agentConfiguration) {
       logger.warn(
         { agentId: agent.sId, agentName: agent.name },
         "Agent configuration not found, skipping"
@@ -87,8 +88,6 @@ async function updateAgentRequestedGroupIds(
       errorCount++;
       continue;
     }
-
-    const agentConfiguration = agentConfigurationList[0];
 
     // Calculate the correct group IDs from actions
     // Note: You may see workspace_isolation_violation warnings in logs - these are benign
@@ -154,6 +153,7 @@ async function updateAgentRequestedGroupIds(
         {
           where: {
             sId: agent.sId,
+            version: agent.version,
             workspaceId: workspace.id,
           },
           hooks: false,
