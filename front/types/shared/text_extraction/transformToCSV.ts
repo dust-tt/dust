@@ -8,6 +8,8 @@ import { TABLE_PREFIX } from "../../files";
 interface ParserState {
   tags: string[];
   currentRow: string[];
+  insideCell: boolean;
+  currentCellText: string;
 }
 
 const HTML_TAGS = {
@@ -47,6 +49,8 @@ export function transformStreamToCSV(
   const state: ParserState = {
     tags: [],
     currentRow: [],
+    insideCell: false,
+    currentCellText: "",
   };
 
   // Create a single parser instance for the entire stream.
@@ -54,6 +58,10 @@ export function transformStreamToCSV(
     {
       onopentag(name) {
         state.tags.push(name);
+        if (name === HTML_TAGS.CELL) {
+          state.insideCell = true;
+          state.currentCellText = "";
+        }
       },
 
       ontext(text) {
@@ -62,7 +70,7 @@ export function transformStreamToCSV(
         if (currentTag === selector) {
           htmlParsingTransform.push(`${TABLE_PREFIX}${text}\n`);
         } else if (currentTag === HTML_TAGS.CELL) {
-          state.currentRow.push(text);
+          state.currentCellText += text;
         }
       },
 
@@ -75,6 +83,10 @@ export function transformStreamToCSV(
             const csv = stringify([state.currentRow]);
             htmlParsingTransform.push(csv);
             state.currentRow = [];
+          }
+          if (lastTag === HTML_TAGS.CELL) {
+            state.currentRow.push(state.currentCellText);
+            state.insideCell = false;
           }
         }
       },
