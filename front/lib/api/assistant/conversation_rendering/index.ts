@@ -160,31 +160,33 @@ export async function renderConversationForModel(
   for (let i = prunedMessagesWithTokens.length - 1; i >= 0; i--) {
     const cfMessage = prunedMessagesWithTokens[i];
 
-    if (isContentFragmentMessageTypeModel(cfMessage)) {
-      const userMessage = prunedMessagesWithTokens[i + 1];
-      if (!userMessage || userMessage.role !== "user") {
-        logger.error(
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            selected: prunedMessagesWithTokens.map((m) => ({
-              ...m,
-              content:
-                getTextContentFromMessage(m)?.slice(0, 100) + " (truncated...)",
-            })),
-          },
-          "Unexpected state, cannot find user message after a Content Fragment"
-        );
-        throw new Error(
-          "Unexpected state, cannot find user message after a Content Fragment"
-        );
-      }
-
-      userMessage.content = [...cfMessage.content, ...userMessage.content];
-      selected.push(userMessage);
-    } else {
+    if (!isContentFragmentMessageTypeModel(cfMessage)) {
       selected.push(cfMessage);
+
+      continue;
     }
+
+    const userMessage = prunedMessagesWithTokens[i + 1];
+    if (!userMessage || userMessage.role !== "user") {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          selected: prunedMessagesWithTokens.map((m) => ({
+            ...m,
+            content:
+              getTextContentFromMessage(m)?.slice(0, 100) + " (truncated...)",
+          })),
+        },
+        "Unexpected state, cannot find user message after a Content Fragment"
+      );
+      throw new Error(
+        "Unexpected state, cannot find user message after a Content Fragment"
+      );
+    }
+
+    userMessage.content = [...cfMessage.content, ...userMessage.content];
+    selected.push(userMessage);
   }
 
   if (selected.length === 0) {
