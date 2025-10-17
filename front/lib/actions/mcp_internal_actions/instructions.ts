@@ -97,3 +97,14 @@ export const FRESHSERVICE_SERVER_INSTRUCTIONS = `
         4. request_service_item(display_id: 123, fields: {field1: "value1", field2: "value2"})
         \`\`\`
     `;
+
+export const DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS =
+  "The tools can be used to browse and search content with a filesystem-like navigation." +
+  "Content is structured in nodes. Nodes are identified by a unique ID called `nodeId`. " +
+  "The `list` tool can be used to list the direct contents under a node, like 'ls' in Unix. " +
+  "Can be used to explore the filesystem structure step by step " +
+  "by being called repeatedly with the 'nodeId' output in a step passed to the next step's nodeId. " +
+  "The `find` tool can be used to find content based on their title starting from a specific root node, like using 'find' in Unix." +
+  "The `cat` tool can be used to read the actual content in a document node, like 'cat in Unix." +
+  "The `locate_in_tree` tool can be used to find the path to a node in the filesystem tree." +
+  "The `semantic_search` tool can be used to perform a semantic search within the folders and files designated by `nodeIds`.";
