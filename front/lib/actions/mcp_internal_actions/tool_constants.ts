@@ -10,6 +10,7 @@ export const INTERNAL_MCP_TOOLS_RUNNING_LABELS = {
     comment_on_issue: "Adding comment to issue...",
     add_issue_to_project: "Adding issue to project...",
     get_pull_request: "Fetching pull request...",
+    create_pull_request_review: "Creating pull request review...",
     list_organization_projects: "Listing organization projects...",
     list_issues: "Listing issues...",
     list_pull_requests: "Listing pull requests...",
