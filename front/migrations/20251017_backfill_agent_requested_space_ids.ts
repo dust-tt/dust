@@ -5,7 +5,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -23,76 +23,72 @@ async function updateAgentRequestedSpaceIds(
   execute: boolean,
   logger: Logger
 ): Promise<{ updated: boolean; error?: string }> {
-  try {
-    // Skip if requestedSpaceIds is already populated
-    if (agent.requestedSpaceIds.length > 0) {
-      logger.info(
-        { agentId: agent.sId },
-        "Agent already has requestedSpaceIds, skipping"
-      );
-      return { updated: false };
-    }
+  // Skip if requestedSpaceIds is already populated
+  if (agent.requestedSpaceIds.length > 0) {
+    logger.info(
+      { agentId: agent.sId },
+      "Agent already has requestedSpaceIds, skipping"
+    );
+    return { updated: false };
+  }
 
-    // Get the full agent configuration with actions
-    const agentConfiguration = await getAgentConfiguration(auth, {
+  // Get the full agent configuration with actions
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: agent.sId,
+    agentVersion: agent.version,
+    variant: "full",
+  });
+
+  if (!agentConfiguration) {
+    logger.info({ agentId: agent.sId }, "Agent configuration not found");
+    return { updated: false, error: "Agent configuration not found" };
+  }
+
+  // Calculate the correct space IDs from actions
+  const requirements = await getAgentConfigurationRequirementsFromActions(
+    auth,
+    { actions: agentConfiguration.actions }
+  );
+
+  // Skip if no space IDs are required
+  if (
+    !requirements.requestedSpaceIds ||
+    requirements.requestedSpaceIds.length === 0
+  ) {
+    logger.info(
+      { agentId: agent.sId },
+      "Agent has no space requirements, skipping"
+    );
+    return { updated: false };
+  }
+
+  logger.info(
+    {
       agentId: agent.sId,
       agentVersion: agent.version,
-      variant: "full",
-    });
+      agentName: agent.name,
+      newSpaceIds: requirements.requestedSpaceIds,
+      execute,
+    },
+    "Updating agent requestedSpaceIds"
+  );
 
-    if (!agentConfiguration) {
-      logger.info({ agentId: agent.sId }, "Agent configuration not found");
-      return { updated: false, error: "Agent configuration not found" };
-    }
-
-    // Calculate the correct space IDs from actions
-    const requirements = await getAgentConfigurationRequirementsFromActions(
-      auth,
-      { actions: agentConfiguration.actions }
-    );
-
-    // Skip if no space IDs are required
-    if (
-      !requirements.requestedSpaceIds ||
-      requirements.requestedSpaceIds.length === 0
-    ) {
-      logger.info(
-        { agentId: agent.sId },
-        "Agent has no space requirements, skipping"
-      );
-      return { updated: false };
-    }
-
-    logger.info(
+  if (execute) {
+    await AgentConfiguration.update(
       {
-        agentId: agent.sId,
-        agentVersion: agent.version,
-        agentName: agent.name,
-        newSpaceIds: requirements.requestedSpaceIds,
-        execute,
+        requestedSpaceIds: requirements.requestedSpaceIds,
       },
-      "Updating agent requestedSpaceIds"
-    );
-
-    if (execute) {
-      await AgentConfiguration.update(
-        {
-          requestedSpaceIds: requirements.requestedSpaceIds,
+      {
+        where: {
+          workspaceId: agent.workspaceId,
+          sId: agent.sId,
+          version: agent.version,
         },
-        { where: { sId: agent.sId, version: agent.version } }
-      );
-    }
-
-    return { updated: true };
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    logger.error(
-      { agentId: agent.sId, error: errorMessage },
-      "Error updating agent requestedSpaceIds"
+      }
     );
-    return { updated: false, error: errorMessage };
   }
+
+  return { updated: true };
 }
 
 async function updateAgentsForWorkspace(
@@ -100,9 +96,7 @@ async function updateAgentsForWorkspace(
   execute: boolean,
   logger: Logger
 ): Promise<AgentUpdateStats> {
-  const workspace = await WorkspaceModel.findOne({
-    where: { sId: workspaceId },
-  });
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
   if (!workspace) {
     logger.error({ workspaceId }, "Workspace not found");
     return { total: 0, updated: 0, errors: 0 };
