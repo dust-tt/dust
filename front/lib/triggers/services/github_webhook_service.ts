@@ -2,6 +2,7 @@ import { Octokit } from "@octokit/core";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isString, OAuthAPI, Ok } from "@app/types";
 
@@ -296,7 +297,7 @@ export class GitHubWebhookService implements RemoteWebhookService {
 
       // If some webhooks failed to delete, log the errors but don't fail the entire operation
       if (errors.length > 0) {
-        console.warn(`Some webhooks failed to delete: ${errors.join(", ")}`);
+        logger.warn(`Some webhooks failed to delete: ${errors.join(", ")}`);
       }
 
       return new Ok(undefined);
