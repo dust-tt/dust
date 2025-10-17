@@ -1,8 +1,8 @@
 import type { ModelProviderIdType } from "@app/types";
 
-export interface ProviderMetadata<P extends ModelProviderIdType> {
-  provider: P;
-  model: string;
+export interface ProviderMetadata {
+  provider: ModelProviderIdType;
+  modelId: string;
   metadata: Record<string, any>;
 }
 
@@ -11,13 +11,13 @@ export interface ProviderMetadata<P extends ModelProviderIdType> {
 export interface TextDeltaEvent {
   type: "text_delta";
   delta: string;
-  metadata: ProviderMetadata<ModelProviderIdType>;
+  metadata: ProviderMetadata;
 }
 
 export interface ReasoningDeltaEvent {
   type: "reasoning_delta";
   delta: string;
-  metadata: ProviderMetadata<ModelProviderIdType>;
+  metadata: ProviderMetadata;
 }
 
 export interface ToolCall {
@@ -29,7 +29,7 @@ export interface ToolCall {
 export interface ToolCallEvent {
   type: "tool_call";
   toolCall: ToolCall;
-  metadata: ProviderMetadata<ModelProviderIdType>;
+  metadata: ProviderMetadata;
 }
 
 export type LLMStreamEvent =
@@ -43,13 +43,13 @@ export type LLMStreamEvent =
 export interface TextGenerated {
   type: "text_generated";
   text: string;
-  metadata: ProviderMetadata<ModelProviderIdType>;
+  metadata: ProviderMetadata;
 }
 
 export interface ReasoningGenerated {
   type: "reasoning_generated";
   reasoning: string;
-  metadata: ProviderMetadata<ModelProviderIdType>;
+  metadata: ProviderMetadata;
 }
 
 export type LLMOutputItem = TextGenerated | ReasoningGenerated | ToolCallEvent;
@@ -67,7 +67,7 @@ export interface SuccessCompletionResult {
   type: "success";
   items: LLMOutputItem[];
   tokenUsage?: TokenUsage;
-  metadata: ProviderMetadata<ModelProviderIdType>;
+  metadata: ProviderMetadata;
 }
 
 export interface ErrorCompletionResult {
@@ -77,7 +77,7 @@ export interface ErrorCompletionResult {
     code: string;
   };
   tokenUsage?: TokenUsage;
-  metadata: ProviderMetadata<ModelProviderIdType>;
+  metadata: ProviderMetadata;
 }
 
 export type LLMCompletionResult =
