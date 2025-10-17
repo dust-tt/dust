@@ -14,7 +14,6 @@ import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigg
 import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
 import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
 import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
-import { WebhookSourceModel } from "@app/lib/models/assistant/triggers/webhook_source";
 import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";

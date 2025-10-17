@@ -36,7 +36,11 @@ function createServer(
     {},
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "handoff", agentLoopContext },
+      {
+        toolNameForMonitoring: "handoff",
+        agentLoopContext,
+        enableAlerting: true,
+      },
       async () => {
         if (!agentLoopContext?.runContext) {
           return new Err(new MCPError("No conversation context available"));

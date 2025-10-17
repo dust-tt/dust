@@ -118,6 +118,7 @@ function createServer(
       {
         toolNameForMonitoring: GET_DATABASE_SCHEMA_TOOL_NAME,
         agentLoopContext,
+        enableAlerting: true,
       },
       async ({ tables }) => {
         // Fetch table configurations
@@ -224,6 +225,7 @@ function createServer(
       {
         toolNameForMonitoring: EXECUTE_DATABASE_QUERY_TOOL_NAME,
         agentLoopContext,
+        enableAlerting: true,
       },
       async ({ tables, query, fileName }) => {
         // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.

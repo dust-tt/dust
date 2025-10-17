@@ -1,4 +1,4 @@
-import { makeColumnsForConversations } from "@app/components/poke/conversations/columns";
+import { makeColumnsForConversations } from "@app/components/poke/conversation/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type {
   ConversationWithoutContentType,

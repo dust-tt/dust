@@ -15,7 +15,8 @@
     "cli": "npx tsx src/admin/cli.ts",
     "initdb": "./admin/init_db.sh",
     "create-db-migration": "./create_db_migration_file.sh",
-    "teams:create-app": "tsx ./scripts/create-teams-app.ts"
+    "teams:create-app": "tsx ./scripts/create-teams-app.ts",
+    "discord:register-commands": "tsx ./scripts/register-discord-commands.ts"
   },
   "dependencies": {
     "@dust-tt/client": "file:../sdks/js",
@@ -47,6 +48,7 @@
     "dd-trace": "^5.52.0",
     "eventsource-parser": "^1.0.0",
     "express": "^4.18.2",
+    "file-type": "^20.5.0",
     "fp-ts": "^2.16.0",
     "fs-extra": "^11.1.1",
     "googleapis": "^118.0.0",
@@ -100,6 +102,7 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-simple-import-sort": "^12.1.0",
+    "eslint-plugin-unused-imports": "^4.2.0",
     "lint-staged": "^16.1.6",
     "prettier": "^3.0",
     "tsx": "^4.10.2",

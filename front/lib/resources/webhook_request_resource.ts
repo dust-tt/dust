@@ -33,14 +33,6 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     super(WebhookRequestModel, blob);
   }
 
-  getGcsPath(this: WebhookRequestResource, auth: Authenticator): string {
-    const workspace = auth.getNonNullableWorkspace();
-    if (workspace.id !== this.workspaceId) {
-      throw new Error("Workspace ID mismatch");
-    }
-    return `${workspace.sId}/webhook_source_${this.webhookSourceId}/webhook_request_${this.id}.json`;
-  }
-
   async markAsProcessed(this: WebhookRequestResource) {
     return this.update({
       status: "processed",
@@ -137,6 +129,18 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     } catch (error) {
       return new Err(error as Error);
     }
+  }
+
+  static getGcsPath({
+    workspaceId,
+    webhookSourceId,
+    webRequestId,
+  }: {
+    workspaceId: string;
+    webhookSourceId: ModelId;
+    webRequestId: ModelId;
+  }): string {
+    return `${workspaceId}/webhook_source_${webhookSourceId}/webhook_request_${webRequestId}.json`;
   }
 
   async delete(

@@ -116,6 +116,7 @@ function createServer(
       {
         toolNameForMonitoring: CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
         agentLoopContext,
+        enableAlerting: true,
       },
       async (
         { file_name, mime_type, content, description },
@@ -232,6 +233,7 @@ function createServer(
       {
         toolNameForMonitoring: EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
         agentLoopContext,
+        enableAlerting: true,
       },
       async (
         { file_id, old_string, new_string, expected_replacements },
@@ -298,6 +300,7 @@ function createServer(
       {
         toolNameForMonitoring: REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
         agentLoopContext,
+        enableAlerting: true,
       },
       async ({ file_id }, { sendNotification, _meta }) => {
         if (!agentLoopContext?.runContext) {
@@ -369,6 +372,7 @@ function createServer(
       {
         toolNameForMonitoring: RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
         agentLoopContext,
+        enableAlerting: true,
       },
       async ({ file_id, new_file_name }, { sendNotification, _meta }) => {
         const { agentConfiguration } = agentLoopContext?.runContext ?? {};
@@ -430,6 +434,7 @@ function createServer(
       {
         toolNameForMonitoring: RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
         agentLoopContext,
+        enableAlerting: true,
       },
       async ({ file_id }) => {
         const result = await getClientExecutableFileContent(auth, file_id);

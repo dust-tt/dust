@@ -74,7 +74,13 @@ export async function runTriggerWebhookActivity({
   let body: any;
   try {
     const bucket = getWebhookRequestsBucket();
-    const file = bucket.file(webhookRequest.getGcsPath(auth));
+    const file = bucket.file(
+      WebhookRequestResource.getGcsPath({
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        webhookSourceId: webhookSource.id,
+        webRequestId: webhookRequest.id,
+      })
+    );
     const [content] = await file.download();
     const { headers: h, body: b } = JSON.parse(content.toString());
     headers = h;
@@ -188,48 +194,37 @@ export async function runTriggerWebhookActivity({
     // Filter here to avoid a lot of type checking later.
     .filter(isWebhookTrigger);
 
-  let filteredTriggers: WebhookTriggerType[] = [];
+  const filteredTriggers: WebhookTriggerType[] = [];
 
-  switch (webhookSource.kind) {
-    case "custom":
-      // Custom webhooks don't have filters, add all triggers
-      filteredTriggers = triggers;
-      break;
-    case "test":
-    case "github":
-      for (const t of triggers) {
-        if (!t.configuration.filter) {
-          // No filter, add the trigger
+  for (const t of triggers) {
+    if (!t.configuration.filter) {
+      // No filter, add the trigger
+      filteredTriggers.push(t);
+    } else {
+      try {
+        // Filter triggers by payload matching
+        const parsedFilter = parseMatcherExpression(t.configuration.filter);
+        const r = matchPayload(body, parsedFilter);
+        if (r) {
+          // Filter matches, add the trigger
+          // TODO: check individually if the trigger is rate limited (next PR)
           filteredTriggers.push(t);
         } else {
-          try {
-            // Filter triggers by payload matching
-            const parsedFilter = parseMatcherExpression(t.configuration.filter);
-            const r = matchPayload(body, parsedFilter);
-            if (r) {
-              // Filter matches, add the trigger
-              // TODO: check individually if the trigger is rate limited (next PR)
-              filteredTriggers.push(t);
-            } else {
-              // Filter doesn't match, skip the trigger but store in the mapping list.
-              await webhookRequest.markRelatedTrigger(t, "not_matched");
-            }
-          } catch (err) {
-            logger.error(
-              {
-                triggerId: t.id,
-                triggerName: t.name,
-                filter: t.configuration.filter,
-                err: normalizeError(err),
-              },
-              "Invalid filter expression in webhook trigger"
-            );
-          }
+          // Filter doesn't match, skip the trigger but store in the mapping list.
+          await webhookRequest.markRelatedTrigger(t, "not_matched");
         }
+      } catch (err) {
+        logger.error(
+          {
+            triggerId: t.id,
+            triggerName: t.name,
+            filter: t.configuration.filter,
+            err: normalizeError(err),
+          },
+          "Invalid filter expression in webhook trigger"
+        );
       }
-      break;
-    default:
-      assertNever(webhookSource.kind);
+    }
   }
 
   // If no triggers match after filtering, return early without launching workflows.

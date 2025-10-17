@@ -195,8 +195,14 @@ describe("parseMatcherExpression", () => {
       expect(() => parseMatcherExpression("()")).toThrow("Empty expression");
     });
 
+    it("should throw on unbalanced parentheses", () => {
+      expect(() => parseMatcherExpression('(eq "field" "value"')).toThrow(
+        "Unbalanced parentheses"
+      );
+    });
+
     it("should throw on missing opening paren", () => {
-      expect(() => parseMatcherExpression('eq "field" "value")')).toThrow(
+      expect(() => parseMatcherExpression('e(q "field" "value")')).toThrow(
         "Expression must start with '('"
       );
     });

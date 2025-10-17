@@ -395,7 +395,11 @@ export function CodeBlockWithExtendedSupport({
             variant={"outline"}
             label={showMermaid ? "Markdown" : "Mermaid"}
             icon={showMermaid ? CommandLineIcon : SparklesIcon}
-            onClick={() => setShowMermaid(!showMermaid)}
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowMermaid(!showMermaid);
+            }}
             tooltip={showMermaid ? "Switch to Markdown" : "Switch to Mermaid"}
           />
         }
@@ -423,7 +427,9 @@ export function CodeBlockWithExtendedSupport({
             variant={"outline"}
             label={showPrettyJson ? "Raw JSON" : "Pretty JSON"}
             icon={showPrettyJson ? CommandLineIcon : SparklesIcon}
-            onClick={() => {
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
               const newValue = !showPrettyJson;
               setShowPrettyJson(newValue);
               setPrettyJsonPreference(newValue);

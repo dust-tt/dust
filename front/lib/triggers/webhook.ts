@@ -3,6 +3,9 @@ import type { IncomingHttpHeaders } from "node:http";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
+import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
+import type { WebhookRequestTriggerStatus } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
+import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { launchAgentTriggerWebhookWorkflow } from "@app/lib/triggers/temporal/webhook/client";
@@ -14,6 +17,7 @@ import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, errorToString, Ok } from "@app/types";
+import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WebhookSourceType } from "@app/types/triggers/webhooks";
 
 const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10% of workspace message limit
@@ -145,7 +149,11 @@ export const processWebhookRequest = async (
   const webhookRequest = webhookRequestRes.value;
 
   try {
-    const gcsPath = webhookRequest.getGcsPath(auth);
+    const gcsPath = WebhookRequestResource.getGcsPath({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      webhookSourceId: webhookSource.id,
+      webRequestId: webhookRequest.id,
+    });
 
     // Store in GCS
     await bucket.uploadRawContentToBucket({
@@ -163,3 +171,87 @@ export const processWebhookRequest = async (
     return new Err(error as Error);
   }
 };
+
+export async function fetchRecentWebhookRequestTriggersWithPayload(
+  auth: Authenticator,
+  {
+    trigger,
+    limit = 15,
+  }: {
+    trigger: TriggerType;
+    limit?: number;
+  }
+): Promise<
+  Array<{
+    id: number;
+    timestamp: number;
+    status: WebhookRequestTriggerStatus;
+    payload?: {
+      headers?: Record<string, string | string[]>;
+      body?: unknown;
+    };
+  }>
+> {
+  const workspace = auth.getNonNullableWorkspace();
+  const webhookRequestTriggers = await WebhookRequestTriggerModel.findAll({
+    where: {
+      workspaceId: workspace.id,
+      triggerId: trigger.id,
+    },
+    include: [
+      {
+        model: WebhookRequestModel,
+        as: "webhookRequest",
+        required: true,
+        attributes: ["id", "createdAt", "webhookSourceId"],
+      },
+    ],
+    order: [["createdAt", "DESC"]],
+    limit,
+  });
+
+  // Fetch payloads from GCS for each request
+  const bucket = getWebhookRequestsBucket();
+  const requests = await Promise.all(
+    webhookRequestTriggers.map(async (wrt) => {
+      let payload:
+        | {
+            headers?: Record<string, string | string[]>;
+            body?: unknown;
+          }
+        | undefined;
+
+      try {
+        const gcsPath = WebhookRequestResource.getGcsPath({
+          workspaceId: workspace.sId,
+          webhookSourceId: wrt.webhookRequest.webhookSourceId,
+          webRequestId: wrt.webhookRequest.id,
+        });
+
+        const file = bucket.file(gcsPath);
+        const [content] = await file.download();
+        if (content) {
+          payload = JSON.parse(content.toString());
+        }
+      } catch (error) {
+        logger.warn(
+          {
+            webhookRequestId: wrt.webhookRequest.id,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Failed to fetch webhook request payload from GCS"
+        );
+        // Continue without payload if GCS fetch fails
+      }
+
+      return {
+        id: wrt.webhookRequest.id,
+        timestamp: wrt.webhookRequest.createdAt.getTime(),
+        status: wrt.status,
+        payload,
+      };
+    })
+  );
+
+  return requests;
+}
