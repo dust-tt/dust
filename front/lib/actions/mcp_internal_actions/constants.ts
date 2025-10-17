@@ -435,7 +435,7 @@ The directive should be used to display a clickable version of the agent name in
       describe_object: "never_ask",
       list_attachments: "never_ask",
       read_attachment: "never_ask",
-      update_object: "low",
+      update_object: "high",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
