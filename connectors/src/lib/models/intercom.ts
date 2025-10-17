@@ -2,7 +2,7 @@ import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { IntercomSyncAllConversationsStatus } from "@connectors/connectors/intercom/lib/types";
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
 export const DEFAULT_CONVERSATIONS_SLIDING_WINDOW = 180;
@@ -61,7 +61,7 @@ IntercomWorkspaceModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       {
         fields: ["connectorId", "intercomWorkspaceId"],
@@ -130,7 +130,7 @@ IntercomHelpCenterModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       {
         fields: ["connectorId", "helpCenterId"],
@@ -212,7 +212,7 @@ IntercomCollectionModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       {
         fields: ["connectorId", "collectionId"],
@@ -304,7 +304,7 @@ IntercomArticleModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       {
         fields: ["connectorId", "articleId"],
@@ -359,7 +359,7 @@ IntercomTeamModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       {
         fields: ["connectorId", "teamId"],
@@ -412,7 +412,7 @@ IntercomConversationModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       {
         fields: ["connectorId", "conversationId"],

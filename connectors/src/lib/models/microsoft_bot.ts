@@ -1,7 +1,7 @@
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
 export class MicrosoftBotConfigurationModel extends ConnectorBaseModel<MicrosoftBotConfigurationModel> {
@@ -33,7 +33,7 @@ MicrosoftBotConfigurationModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "microsoft_bot_configurations",
     indexes: [
       { fields: ["connectorId"], unique: true },
@@ -99,7 +99,7 @@ MicrosoftBotMessage.init(
   },
   {
     modelName: "microsoft_bot_messages",
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       {
         fields: ["connectorId"],

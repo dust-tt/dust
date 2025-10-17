@@ -1,7 +1,7 @@
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
 type AllowedPermissions = "selected" | "unselected" | "inherited";
@@ -45,7 +45,7 @@ RemoteDatabaseModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "remote_databases",
     indexes: [{ fields: ["connectorId", "internalId"], unique: true }],
   }
@@ -96,7 +96,7 @@ RemoteSchemaModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "remote_schemas",
     indexes: [{ fields: ["connectorId", "internalId"], unique: true }],
   }
@@ -152,7 +152,7 @@ RemoteTableModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "remote_tables",
     indexes: [{ fields: ["connectorId", "internalId"], unique: true }],
   }
