@@ -1,14 +1,14 @@
 import assert from "assert";
-//import { default as cls } from "cls-hooked";
 import { Sequelize } from "sequelize";
 
 import { dbConfig } from "@app/lib/resources/storage/config";
+import { wrapSequelize } from "@app/lib/resources/storage/wrappers/sqlcommenter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { isDevelopment } from "@app/types";
 
 // Directly require 'pg' here to make sure we are using the same version of the
 // package as the one used by pg package.
-// The doc recommends doing this : https://github.com/brianc/node-pg-types?tab=readme-ov-file#use
+// The doc recommends doing this: https://github.com/brianc/node-pg-types?tab=readme-ov-file#use
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const types = require("pg").types;
 
@@ -17,6 +17,8 @@ const acquireAttempts = new WeakMap();
 const { DB_LOGGING_ENABLED = false } = process.env;
 
 function sequelizeLogger(message: string) {
+  // WARNING: This logger is used to generate migrations, don't change it without creating a new migration
+  // eslint-disable-next-line no-console
   console.log(message.replace("Executing (default): ", ""));
 }
 
@@ -48,7 +50,7 @@ export const frontSequelize = new Sequelize(
       beforePoolAcquire: (options) => {
         acquireAttempts.set(options, Date.now());
       },
-      afterPoolAcquire: (connection, options) => {
+      afterPoolAcquire: (_, options) => {
         const elapsedTime = Date.now() - acquireAttempts.get(options);
         if (elapsedTime > CONNECTION_ACQUISITION_THRESHOLD_MS) {
           statsDClient.distribution(
@@ -63,6 +65,8 @@ export const frontSequelize = new Sequelize(
     },
   }
 );
+
+wrapSequelize(frontSequelize);
 
 let frontReplicaDbInstance: Sequelize | null = null;
 
