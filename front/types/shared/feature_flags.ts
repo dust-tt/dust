@@ -218,6 +218,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Use Claude 4.5 Haiku as the default model for the @dust global agent",
     stage: "on_demand",
   },
+  llm_router_direct_requests: {
+    description: "Use direct LLM call over Dust app run in a conversation.",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
