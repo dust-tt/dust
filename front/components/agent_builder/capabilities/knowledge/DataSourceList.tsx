@@ -231,6 +231,8 @@ export function DataSourceList({
       }
 
       // Remove each node from the tree
+      // TODO(yuka 17/10/2025): I don't think we need to compute every node path if its parentId is `in`,
+      // we can simple remove that instead of going through each item (and it should be the same when you select all).
       for (const item of itemsToUnselect) {
         const nodePath = computeNavigationPath(navigationHistory);
         nodePath.push(getLastNavigationHistoryEntryId(item.entry));
@@ -241,7 +243,24 @@ export function DataSourceList({
           ...item.entry,
         });
       }
+
+      // Also remove the current parent if it's in the tree
+      // This handles the case where we selected all within a folder view
+      const currentPath = computeNavigationPath(navigationHistory);
+      const currentPathStr = pathToString(currentPath);
+      if (
+        newTreeValue.in.some((item) => item.path === currentPathStr) &&
+        navigationHistory.length > 0
+      ) {
+        const currentEntry = navigationHistory[navigationHistory.length - 1];
+        newTreeValue = removeNodeFromTree(newTreeValue, {
+          path: currentPathStr,
+          name: navigationHistoryEntryTitle(currentEntry),
+          ...currentEntry,
+        });
+      }
     }
+
     field.onChange(newTreeValue);
   }, [
     items,
