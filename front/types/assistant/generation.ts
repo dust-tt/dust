@@ -81,7 +81,9 @@ export interface FunctionMessageTypeModel {
   content: string | Content[];
 }
 
-export type ModelMessageTypeMultiActions =
+// export type ModelMessageTypeMultiActions =
+
+export type MessageTypeMultiActions =
   | ContentFragmentMessageTypeModel
   | UserMessageTypeModel
   | AssistantFunctionCallMessageTypeModel
@@ -89,13 +91,13 @@ export type ModelMessageTypeMultiActions =
   | FunctionMessageTypeModel;
 
 export function isContentFragmentMessageTypeModel(
-  contentFragment: ModelMessageTypeMultiActions
+  contentFragment: MessageTypeMultiActions
 ): contentFragment is ContentFragmentMessageTypeModel {
   return contentFragment.role === "content_fragment";
 }
 
 export type ModelConversationTypeMultiActions = {
-  messages: ModelMessageTypeMultiActions[];
+  messages: MessageTypeMultiActions[];
 };
 
 /**
