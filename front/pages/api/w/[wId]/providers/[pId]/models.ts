@@ -105,20 +105,30 @@ async function handler(
                   m.id.startsWith("code-") ||
                   m.id.startsWith("gpt-3.5-turbo") ||
                   m.id.startsWith("gpt-4") ||
+                  m.id.startsWith("gpt-5") ||
                   m.id.startsWith("o1-") ||
                   m.id.startsWith("o3-") ||
                   m.id.startsWith("o4-")
                 );
               });
             }
+            // Prioritize newer GPT families (gpt-5 before gpt-4) while keeping
+            // a stable alphabetical order within the same family.
+            const rank = (id: string) =>
+              id.startsWith("gpt-5")
+                ? 0
+                : id.startsWith("gpt-4")
+                ? 1
+                : id.startsWith("gpt-3.5")
+                ? 2
+                : 3;
             f.sort((a, b) => {
-              if (a.id < b.id) {
-                return -1;
+              const ra = rank(a.id);
+              const rb = rank(b.id);
+              if (ra !== rb) {
+                return ra - rb;
               }
-              if (a.id > b.id) {
-                return 1;
-              }
-              return 0;
+              return a.id.localeCompare(b.id);
             });
             res.status(200).json({ models: f });
           }
@@ -173,14 +183,26 @@ async function handler(
                 );
               });
             }
+            // For Azure, use the underlying model name to rank families when available
+            // so gpt-5 deployments appear before gpt-4, then fall back to id.
+            const arank = (m: { id: string; model?: string }) => {
+              const key = m.model ?? m.id;
+              return key.startsWith("gpt-5")
+                ? 0
+                : key.startsWith("gpt-4")
+                ? 1
+                : key.startsWith("gpt-3.5")
+                ? 2
+                : 3;
+            };
             f.sort((a, b) => {
-              if (a.id < b.id) {
-                return -1;
+              const ra = arank(a);
+              const rb = arank(b);
+              if (ra !== rb) {
+                return ra - rb;
               }
-              if (a.id > b.id) {
-                return 1;
-              }
-              return 0;
+              // Stable fallback by id to preserve predictability
+              return a.id.localeCompare(b.id);
             });
             res.status(200).json({
               models: f.map((m) => {
