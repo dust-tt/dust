@@ -8,6 +8,7 @@ import type {
   MessageTypeMultiActions,
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
+  ModelMessageTypeMultiActions,
   Result,
 } from "@app/types";
 import {
@@ -151,9 +152,14 @@ export async function renderConversationForModel(
     }
   }
 
+  const selected: (MessageTypeMultiActions & {
+    tokenCount: number;
+  })[] = [];
+
   // Merge content fragments into user messages.
   for (let i = prunedMessagesWithTokens.length - 1; i >= 0; i--) {
     const cfMessage = prunedMessagesWithTokens[i];
+
     if (isContentFragmentMessageTypeModel(cfMessage)) {
       const userMessage = prunedMessagesWithTokens[i + 1];
       if (!userMessage || userMessage.role !== "user") {
@@ -175,11 +181,13 @@ export async function renderConversationForModel(
       }
 
       userMessage.content = [...cfMessage.content, ...userMessage.content];
-      prunedMessagesWithTokens.splice(i, 1);
+      selected.push(userMessage);
+    } else {
+      selected.push(cfMessage);
     }
   }
 
-  if (prunedMessagesWithTokens.length === 0) {
+  if (selected.length === 0) {
     logger.error(
       {
         workspaceId: conversation.owner.sId,
@@ -193,7 +201,7 @@ export async function renderConversationForModel(
   }
 
   // Remove tokenCount from final messages
-  const finalMessages: MessageTypeMultiActions[] = prunedMessagesWithTokens.map(
+  const finalMessages: MessageTypeMultiActions[] = selected.map(
     ({ tokenCount: _tokenCount, ...msg }) => msg
   );
 
