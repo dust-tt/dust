@@ -30,7 +30,7 @@ import {
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
 import type { WhitelistableFeature, WorkspaceType } from "@app/types";
-import { assertNever, isString } from "@app/types";
+import { assertNever, isString, removeNulls } from "@app/types";
 
 function getDataSourceURI(config: DataSourceConfiguration): string {
   const { workspaceId, sId, dataSourceViewId, filter } = config;
@@ -641,140 +641,114 @@ export function getMCPServerRequirements(
         key !== "useSummary" || featureFlags?.includes("web_summarization")
     );
 
-  const requiredEnums: Record<
-    string,
-    {
-      options: { value: string; label: string; description?: string }[];
-      description?: string;
-      default: string | null;
-    }
-  > = Object.fromEntries(
-    Object.entries(
-      findPathsToConfiguration({
-        mcpServerView,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
-      })
-    ).map(([key, schema]) => {
-      const optionsProperty = schema.properties?.options;
-      if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
-        return [key, { options: [], description: schema.description }];
-      }
+  const requiredEnums: MCPServerRequirements["requiredEnums"] =
+    Object.fromEntries(
+      Object.entries(
+        findPathsToConfiguration({
+          mcpServerView,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
+        })
+      ).map(([key, schema]) => {
+        const optionsProperty = schema.properties?.options;
+        if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
+          return [key, { options: [], description: schema.description }];
+        }
 
-      const defaultValue = extractSchemaDefault(schema);
-      assert(
-        defaultValue === null || isString(defaultValue),
-        `Value stored does not have the correct type, expected string, got ${typeof defaultValue}.`
-      );
+        const defaultValue = extractSchemaDefault(schema);
+        assert(
+          defaultValue === null || isString(defaultValue),
+          `Value stored does not have the correct type, expected string, got ${typeof defaultValue}.`
+        );
 
-      const options = Array.isArray(optionsProperty.anyOf)
-        ? (optionsProperty.anyOf
-            .map((v) => {
-              if (
+        const options = Array.isArray(optionsProperty.anyOf)
+          ? removeNulls(
+              optionsProperty.anyOf.map((v) =>
                 isJSONSchemaObject(v) &&
                 isJSONSchemaObject(v.properties?.value) &&
                 isJSONSchemaObject(v.properties?.label) &&
                 v.properties.value.const &&
                 v.properties.label.const
-              ) {
-                return {
-                  value: v.properties.value.const,
-                  label: v.properties.label.const,
-                  description: isString(v.description)
-                    ? v.description
-                    : undefined,
-                };
-              }
-              return null;
-            })
-            .filter((v) => v !== null) as {
-            value: string;
-            label: string;
-            description?: string;
-          }[])
-        : [];
+                  ? {
+                      value: v.properties.value.const,
+                      label: v.properties.label.const,
+                      description: isString(v.description)
+                        ? v.description
+                        : undefined,
+                    }
+                  : null
+              )
+            )
+          : [];
 
-      if (options.length === 0) {
-        throw new Error(`No valid enum options found for key ${key}`);
-      }
+        if (options.length === 0) {
+          throw new Error(`No valid enum options found for key ${key}`);
+        }
 
-      return [
-        key,
-        {
-          options,
-          description: schema.description,
-          default: defaultValue,
-        },
-      ];
-    })
-  );
-
-  const requiredLists: Record<
-    string,
-    {
-      options: { value: string; label: string; description?: string }[];
-      description?: string;
-      values?: string[];
-      default: string | null;
-    }
-  > = Object.fromEntries(
-    Object.entries(
-      findPathsToConfiguration({
-        mcpServerView,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
+        return [
+          key,
+          {
+            options,
+            description: schema.description,
+            default: defaultValue,
+          },
+        ];
       })
-    ).map(([key, schema]) => {
-      const optionsProperty = schema.properties?.options;
+    );
 
-      if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
-        return [key, { options: [], description: schema.description }];
-      }
+  const requiredLists: MCPServerRequirements["requiredLists"] =
+    Object.fromEntries(
+      Object.entries(
+        findPathsToConfiguration({
+          mcpServerView,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
+        })
+      ).map(([key, schema]) => {
+        const optionsProperty = schema.properties?.options;
 
-      const options =
-        (optionsProperty.anyOf
-          ?.map((v) => {
-            if (
-              isJSONSchemaObject(v) &&
-              isJSONSchemaObject(v.properties?.value) &&
-              isJSONSchemaObject(v.properties?.label) &&
-              v.properties.value.const &&
-              v.properties.label.const
-            ) {
-              return {
-                value: v.properties.value.const,
-                label: v.properties.label.const,
-                description: isString(v.description)
-                  ? v.description
-                  : undefined,
-              };
-            }
-            return null;
-          })
-          .filter((v) => v !== null) as {
-          value: string;
-          label: string;
-          description?: string;
-        }[]) ?? [];
+        if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
+          return [key, { options: [], description: schema.description }];
+        }
 
-      if (options.length === 0) {
-        throw new Error(`No valid list options found for key ${key}`);
-      }
+        const options = optionsProperty.anyOf
+          ? removeNulls(
+              optionsProperty.anyOf.map((v) =>
+                isJSONSchemaObject(v) &&
+                isJSONSchemaObject(v.properties?.value) &&
+                isJSONSchemaObject(v.properties?.label) &&
+                v.properties.value.const &&
+                v.properties.label.const
+                  ? {
+                      value: v.properties.value.const,
+                      label: v.properties.label.const,
+                      description: isString(v.description)
+                        ? v.description
+                        : undefined,
+                    }
+                  : null
+              )
+            )
+          : [];
 
-      const defaultValue = extractSchemaDefault(schema);
-      assert(
-        defaultValue === null || isString(defaultValue),
-        `Value stored does not have the correct type, expected string, got ${typeof defaultValue}.`
-      );
+        if (options.length === 0) {
+          throw new Error(`No valid list options found for key ${key}`);
+        }
 
-      return [
-        key,
-        {
-          options,
-          description: schema.description,
-          default: defaultValue,
-        },
-      ];
-    })
-  );
+        const defaultValue = extractSchemaDefault(schema);
+        assert(
+          defaultValue === null || isString(defaultValue),
+          `Value stored does not have the correct type, expected string, got ${typeof defaultValue}.`
+        );
+
+        return [
+          key,
+          {
+            options,
+            description: schema.description,
+            default: defaultValue,
+          },
+        ];
+      })
+    );
 
   const requiresDustAppConfiguration =
     Object.keys(
