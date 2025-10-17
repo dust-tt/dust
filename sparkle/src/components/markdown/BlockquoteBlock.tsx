@@ -11,7 +11,7 @@ export const blockquoteVariants = cva(
         surface: [
           "s-text-foreground dark:s-text-foreground-night",
           "s-bg-muted-background dark:s-bg-muted-background-night",
-          "s-border border-border dark:border-border-dark",
+          "s-border border-border dark:border-border-night",
         ],
       },
     },
