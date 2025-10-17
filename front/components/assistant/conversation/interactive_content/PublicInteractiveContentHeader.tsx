@@ -47,7 +47,7 @@ export function PublicInteractiveContentHeader({
           {!user && (
             <Button
               label="Try it yourself"
-              href="/home"
+              href={`/home?utm_source=public-frames`}
               variant="outline"
               icon={RocketIcon}
               onClick={withTracking(TRACKING_AREAS.FRAMES, "sign_up")}
