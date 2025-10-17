@@ -5,6 +5,7 @@ import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 import type {
   ConversationType,
+  MessageTypeMultiActions,
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
@@ -151,35 +152,44 @@ export async function renderConversationForModel(
     }
   }
 
-  // Merge content fragments into user messages.
-  for (let i = selected.length - 1; i >= 0; i--) {
-    const cfMessage = selected[i];
-    if (isContentFragmentMessageTypeModel(cfMessage)) {
-      const userMessage = selected[i + 1];
-      if (!userMessage || userMessage.role !== "user") {
-        logger.error(
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            selected: selected.map((m) => ({
-              ...m,
-              content:
-                getTextContentFromMessage(m)?.slice(0, 100) + " (truncated...)",
-            })),
-          },
-          "Unexpected state, cannot find user message after a Content Fragment"
-        );
-        throw new Error(
-          "Unexpected state, cannot find user message after a Content Fragment"
-        );
-      }
+  const selectedWithoutContentFragments: (ModelMessageTypeMultiActions & {
+    tokenCount: number;
+  })[] = [];
 
-      userMessage.content = [...cfMessage.content, ...userMessage.content];
-      selected.splice(i, 1);
+  // Merge content fragments into user messages.
+  for (let i = 0; i <= selected.length - 1; i++) {
+    const cfMessage = selected[i];
+
+    if (!isContentFragmentMessageTypeModel(cfMessage)) {
+      selectedWithoutContentFragments.push(cfMessage);
+
+      continue;
     }
+
+    const userMessage = selected[i + 1];
+    if (!userMessage || userMessage.role !== "user") {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          selected: selected.map((m) => ({
+            ...m,
+            content:
+              getTextContentFromMessage(m)?.slice(0, 100) + " (truncated...)",
+          })),
+        },
+        "Unexpected state, cannot find user message after a Content Fragment"
+      );
+      throw new Error(
+        "Unexpected state, cannot find user message after a Content Fragment"
+      );
+    }
+
+    userMessage.content = [...cfMessage.content, ...userMessage.content];
+    selectedWithoutContentFragments.push(userMessage);
   }
 
-  if (selected.length === 0) {
+  if (selectedWithoutContentFragments.length === 0) {
     logger.error(
       {
         workspaceId: conversation.owner.sId,
@@ -193,9 +203,10 @@ export async function renderConversationForModel(
   }
 
   // Remove tokenCount from final messages
-  const finalMessages: ModelMessageTypeMultiActions[] = selected.map(
-    ({ tokenCount: _tokenCount, ...msg }) => msg
-  );
+  const finalMessages: ModelMessageTypeMultiActions[] =
+    selectedWithoutContentFragments.map(
+      ({ tokenCount: _tokenCount, ...msg }) => msg
+    );
 
   logger.info(
     {
@@ -275,7 +286,7 @@ function groupMessagesIntoInteractions(
 }
 
 async function countTokensForMessages(
-  messages: ModelMessageTypeMultiActions[],
+  messages: MessageTypeMultiActions[],
   model: ModelConfigurationType
 ): Promise<Result<MessageWithTokens[], Error>> {
   const textRepresentations: string[] = [];
