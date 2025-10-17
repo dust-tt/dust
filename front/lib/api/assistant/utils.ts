@@ -1,8 +1,8 @@
-import type { MessageTypeMultiActions } from "@app/types";
+import type { ModelMessageTypeMultiActions } from "@app/types";
 import { isImageContent, isTextContent } from "@app/types";
 
 export function getTextContentFromMessage(
-  message: MessageTypeMultiActions
+  message: ModelMessageTypeMultiActions
 ): string {
   const { content } = message;
 
@@ -35,7 +35,7 @@ export function getTextContentFromMessage(
 
 // This function is used to get the text representation of the messages to calculate the token amount
 export function getTextRepresentationFromMessages(
-  messages: MessageTypeMultiActions[]
+  messages: ModelMessageTypeMultiActions[]
 ): string[] {
   return [
     ...messages.map((m) => {

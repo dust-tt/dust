@@ -14,8 +14,8 @@ import type {
   ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
-  MessageTypeMultiActions,
   ModelConfigurationType,
+  ModelMessageTypeMultiActions,
   UserMessageType,
 } from "@app/types";
 import { removeNulls } from "@app/types";
@@ -229,7 +229,9 @@ export async function getSteps(
 /**
  * Renders a user message with metadata
  */
-export function renderUserMessage(m: UserMessageType): MessageTypeMultiActions {
+export function renderUserMessage(
+  m: UserMessageType
+): ModelMessageTypeMultiActions {
   // Replace all `:mention[{name}]{.*}` with `@name`.
   const content = m.content.replaceAll(
     /:mention\[([^\]]+)\]\{[^}]+\}/g,
@@ -316,7 +318,7 @@ export async function renderContentFragment(
   conversation: ConversationType,
   model: ModelConfigurationType,
   excludeImages: boolean
-): Promise<MessageTypeMultiActions | null> {
+): Promise<ModelMessageTypeMultiActions | null> {
   const renderedContentFragment = await renderLightContentFragmentForModel(
     auth,
     m,
