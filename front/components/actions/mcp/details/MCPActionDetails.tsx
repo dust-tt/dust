@@ -58,9 +58,9 @@ import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/renderi
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
-import { isString } from "@app/types";
 import {
   asDisplayName,
+  isString,
   isSupportedImageContentType,
   parseTimeFrame,
 } from "@app/types";
