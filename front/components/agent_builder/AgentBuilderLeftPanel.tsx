@@ -37,7 +37,7 @@ export function AgentBuilderLeftPanel({
     onCancel();
   };
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full w-full flex-col">
       <BarHeader
         variant="default"
         className="mx-4"
