@@ -1187,6 +1187,53 @@ async function getResourcesNotSeenInGarbageCollectionRunBatch(
 
 const PARENTS_UPDATE_BATCH_SIZE = 250;
 
+/**
+ * Helper to check if there are any pages or databases that need parent updates.
+ * Returns true if there are items that were created or moved since the last parent update.
+ */
+async function hasRecentlyChangedItems(connectorId: ModelId): Promise<boolean> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+  const notionConnectorState = await NotionConnectorState.findOne({
+    where: {
+      connectorId: connector.id,
+    },
+  });
+  if (!notionConnectorState) {
+    throw new Error("Could not find notionConnectorState");
+  }
+
+  const parentsLastUpdatedAt =
+    notionConnectorState.parentsLastUpdatedAt?.getTime() || 0;
+
+  const whereClause = {
+    connectorId: connector.id,
+    lastCreatedOrMovedRunTs: {
+      [Op.gt]: new Date(parentsLastUpdatedAt),
+    },
+  };
+
+  // Check if there are any pages that need updating
+  const pageExists = await NotionPage.findOne({
+    where: whereClause,
+    attributes: ["id"],
+  });
+
+  if (pageExists) {
+    return true;
+  }
+
+  // Check if there are any databases that need updating
+  const databaseExists = await NotionDatabase.findOne({
+    where: whereClause,
+    attributes: ["id"],
+  });
+
+  return !!databaseExists;
+}
+
 export async function updateParentsFields({
   connectorId,
   cursors,
@@ -1315,6 +1362,12 @@ export async function drainDocumentUpsertQueue({
 }: {
   connectorId: ModelId;
 }): Promise<boolean> {
+  // First check if there are any items that need parent updates
+  const hasChanges = await hasRecentlyChangedItems(connectorId);
+  if (!hasChanges) {
+    return true; // No changes, so queue is effectively drained
+  }
+
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("Could not find connector");
