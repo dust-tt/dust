@@ -12,6 +12,30 @@ export type RateLimit = {
 export async function throttleWithRedis<T>(
   rateLimit: RateLimit,
   key: string,
+  canBeIgnored: false,
+  func: () => Promise<T>,
+  extraLogs: Record<string, string>
+): Promise<T>;
+
+export async function throttleWithRedis<T>(
+  rateLimit: RateLimit,
+  key: string,
+  canBeIgnored: true,
+  func: () => Promise<T>,
+  extraLogs: Record<string, string>
+): Promise<T | undefined>;
+
+export async function throttleWithRedis<T>(
+  rateLimit: RateLimit,
+  key: string,
+  canBeIgnored: boolean,
+  func: () => Promise<T>,
+  extraLogs: Record<string, string>
+): Promise<T | undefined>;
+
+export async function throttleWithRedis<T>(
+  rateLimit: RateLimit,
+  key: string,
   canBeIgnored: boolean,
   func: () => Promise<T>,
   extraLogs: Record<string, string>
