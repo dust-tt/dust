@@ -168,7 +168,7 @@ async function updateConversationsForWorkspace(
   };
 
   // Process conversations in paginated batches to handle large datasets
-  const batchSize = 100;
+  const batchSize = 1000;
   let offset = 0;
   let hasMore = true;
 
