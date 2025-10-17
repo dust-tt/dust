@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -104,36 +103,6 @@ async function handler(
                 "The webhook source you're trying to delete was not found.",
             },
           });
-        }
-
-        // If this webhook has remote metadata and the kind supports remote deletion, try to delete it from the provider
-        const supportedKinds = ["github"];
-        if (
-          supportedKinds.includes(webhookSourceResource.kind) &&
-          webhookSourceResource.remoteMetadata &&
-          webhookSourceResource.oauthConnectionId
-        ) {
-          try {
-            await fetch(
-              `${req.headers.origin ?? ""}/api/w/${auth.workspace()?.sId}/${webhookSourceResource.kind}/${webhookSourceResource.oauthConnectionId}/webhooks`,
-              {
-                method: "DELETE",
-                headers: {
-                  "Content-Type": "application/json",
-                  Cookie: req.headers.cookie ?? "",
-                },
-                body: JSON.stringify({
-                  webhookSourceId: webhookSourceResource.sId,
-                }),
-              }
-            );
-          } catch (error: any) {
-            logger.error(
-              `Failed to delete remote webhook on ${webhookSourceResource.kind}`,
-              error instanceof Error ? error.message : error
-            );
-            // Continue with local deletion even if remote deletion fails
-          }
         }
 
         const deleteResult = await webhookSourceResource.delete(auth);
