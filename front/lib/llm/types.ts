@@ -6,17 +6,32 @@ export interface ProviderMetadata {
   metadata: Record<string, any>;
 }
 
-// Stream events
+export type LLMEventType =
+  | "text_delta"
+  | "reasoning_delta"
+  | "tool_call"
+  | "token_usage"
+  | "success"
+  | "error"
+  | "text_generated"
+  | "reasoning_generated";
 
-export interface TextDeltaEvent {
-  type: "text_delta";
-  delta: string;
+// Stream events
+export interface LLMEvent {
+  type: LLMEventType;
+  content: string | ToolCall | LLMOutputItem[] | CompletionError | TokenUsage;
   metadata: ProviderMetadata;
 }
 
-export interface ReasoningDeltaEvent {
+export interface TextDeltaEvent extends LLMEvent {
+  type: "text_delta";
+  content: string;
+  metadata: ProviderMetadata;
+}
+
+export interface ReasoningDeltaEvent extends LLMEvent {
   type: "reasoning_delta";
-  delta: string;
+  content: string;
   metadata: ProviderMetadata;
 }
 
@@ -26,33 +41,30 @@ export interface ToolCall {
   arguments: string;
 }
 
-export interface ToolCallEvent {
+export interface ToolCallEvent extends LLMEvent {
   type: "tool_call";
-  toolCall: ToolCall;
+  content: ToolCall;
   metadata: ProviderMetadata;
 }
-
-export type LLMStreamEvent =
-  | TextDeltaEvent
-  | ReasoningDeltaEvent
-  | ToolCallEvent
-  | LLMCompletionResult;
 
 // Output items
 
-export interface TextGenerated {
+export interface TextGeneratedEvent extends LLMEvent {
   type: "text_generated";
-  text: string;
+  content: string;
   metadata: ProviderMetadata;
 }
 
-export interface ReasoningGenerated {
+export interface ReasoningGeneratedEvent extends LLMEvent {
   type: "reasoning_generated";
-  reasoning: string;
+  content: string;
   metadata: ProviderMetadata;
 }
 
-export type LLMOutputItem = TextGenerated | ReasoningGenerated | ToolCallEvent;
+export type LLMOutputItem =
+  | TextGeneratedEvent
+  | ReasoningGeneratedEvent
+  | ToolCallEvent;
 
 // Completion results
 
@@ -61,25 +73,28 @@ export interface TokenUsage {
   reasoningTokens?: number;
   outputTokens: number;
   cachedTokens?: number;
+  totalTokens: number;
 }
 
-export interface SuccessCompletionResult {
+export interface TokenUsageEvent extends LLMEvent {
+  type: "token_usage";
+  content: TokenUsage;
+  metadata: ProviderMetadata;
+}
+
+export interface SuccessCompletionEvent extends LLMEvent {
   type: "success";
-  items: LLMOutputItem[];
-  tokenUsage?: TokenUsage;
+  content: LLMOutputItem[];
   metadata: ProviderMetadata;
 }
 
-export interface ErrorCompletionResult {
+export interface CompletionError {
+  message: string;
+  code: string;
+}
+
+export interface ErrorCompletionEvent extends LLMEvent {
   type: "error";
-  error: {
-    message: string;
-    code: string;
-  };
-  tokenUsage?: TokenUsage;
+  content: CompletionError;
   metadata: ProviderMetadata;
 }
-
-export type LLMCompletionResult =
-  | SuccessCompletionResult
-  | ErrorCompletionResult;
