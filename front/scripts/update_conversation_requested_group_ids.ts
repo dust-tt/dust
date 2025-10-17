@@ -73,14 +73,14 @@ async function updateConversationRequestedGroupIds(
 
   // Process conversations in batches to avoid memory issues
   const effectiveLimit = options.limit ?? totalCount;
-  let offset = 0;
+  let lastId = 0;
 
   while (processedCount < effectiveLimit) {
     const batchLimit = Math.min(BATCH_SIZE, effectiveLimit - processedCount);
 
     logger.info(
       {
-        offset,
+        lastId,
         batchLimit,
         processedSoFar: processedCount,
         totalToProcess: effectiveLimit,
@@ -89,10 +89,12 @@ async function updateConversationRequestedGroupIds(
     );
 
     const conversations = await ConversationModel.findAll({
-      where: whereClause,
-      order: [["createdAt", "DESC"]],
+      where: {
+        ...whereClause,
+        id: { [Op.gt]: lastId },
+      },
+      order: [["id", "ASC"]],
       limit: batchLimit,
-      offset,
     });
 
     if (conversations.length === 0) {
@@ -310,7 +312,10 @@ async function updateConversationRequestedGroupIds(
       processedCount++;
     }
 
-    offset += conversations.length;
+    // Update lastId to the last processed conversation's id
+    if (conversations.length > 0) {
+      lastId = conversations[conversations.length - 1].id;
+    }
 
     logger.info(
       {
