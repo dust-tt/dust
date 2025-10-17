@@ -37,11 +37,13 @@ type DialogMode =
 interface AgentBuilderTriggersBlockProps {
   owner: LightWorkspaceType;
   isTriggersLoading?: boolean;
+  agentConfigurationId: string | null;
 }
 
 export function AgentBuilderTriggersBlock({
   owner,
   isTriggersLoading,
+  agentConfigurationId,
 }: AgentBuilderTriggersBlockProps) {
   const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
 
@@ -259,6 +261,7 @@ export function AgentBuilderTriggersBlock({
         }
         onClose={handleCloseModal}
         onSave={handleTriggerSave}
+        agentConfigurationId={agentConfigurationId}
       />
     </AgentBuilderSectionContainer>
   );

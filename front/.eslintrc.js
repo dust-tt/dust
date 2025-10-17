@@ -5,7 +5,12 @@ module.exports = {
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
   ],
-  plugins: ["import", "simple-import-sort", "dust"],
+  plugins: [
+    "import",
+    "simple-import-sort",
+    "dust",
+    "eslint-plugin-unused-imports",
+  ],
   rules: {
     "import/no-cycle": "error",
     curly: ["error", "all"],
@@ -20,6 +25,7 @@ module.exports = {
         varsIgnorePattern: "^_",
       },
     ],
+    "unused-imports/no-unused-imports": "error",
     "no-case-declarations": 0,
     "@next/next/no-img-element": 0,
     "@typescript-eslint/no-floating-promises": "error",

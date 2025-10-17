@@ -98,9 +98,18 @@ describe("getDefaultConfiguration", () => {
             {
               key: "is_enabled",
               description: "Whether the feature is enabled",
+              default: null,
             },
-            { key: "admin_mode", description: "Admin mode setting" },
-            { key: "nested.deep.flag", description: "A deeply nested boolean" },
+            {
+              key: "admin_mode",
+              description: "Admin mode setting",
+              default: null,
+            },
+            {
+              key: "nested.deep.flag",
+              description: "A deeply nested boolean",
+              default: null,
+            },
           ],
           requiredEnums: {},
           requiredLists: {},
@@ -139,8 +148,16 @@ describe("getDefaultConfiguration", () => {
               description: "Feature enabled",
               default: true,
             },
-            { key: "debug_mode", description: "Debug mode", default: false },
-            { key: "auto_save", description: "Auto save" }, // no explicit default
+            {
+              key: "debug_mode",
+              description: "Debug mode",
+              default: false,
+            },
+            {
+              key: "auto_save",
+              description: "Auto save",
+              default: null,
+            },
           ],
           requiredEnums: {},
           requiredLists: {},
@@ -204,6 +221,7 @@ describe("getDefaultConfiguration", () => {
                 { value: "high", label: "High" },
               ],
               description: "Priority level",
+              default: null,
             },
             category: {
               options: [
@@ -212,6 +230,7 @@ describe("getDefaultConfiguration", () => {
                 { value: "C", label: "Option C" },
               ],
               description: "Category selection",
+              default: null,
             },
             "nested.enum": {
               options: [
@@ -219,6 +238,7 @@ describe("getDefaultConfiguration", () => {
                 { value: "option2", label: "Option 2" },
               ],
               description: "Nested enum",
+              default: null,
             },
           },
           requiredLists: {},
@@ -257,10 +277,12 @@ describe("getDefaultConfiguration", () => {
                 { value: "option2", label: "Option 2" },
               ],
               description: "Valid enum",
+              default: null,
             },
             empty_enum: {
               options: [],
               description: "Empty enum",
+              default: null,
             },
           },
           requiredLists: {},
@@ -305,7 +327,8 @@ describe("getDefaultConfiguration", () => {
                 { value: "published", label: "Published" },
                 { value: "archived", label: "Archived" },
               ],
-              description: "Status", // no explicit default, should use first
+              description: "Status",
+              default: null,
             },
           },
           requiredLists: {},
@@ -344,6 +367,7 @@ describe("getDefaultConfiguration", () => {
                 { value: "tag2", label: "Tag 2" },
               ],
               description: "Available tags",
+              default: null,
             },
             categories: {
               options: [
@@ -351,10 +375,12 @@ describe("getDefaultConfiguration", () => {
                 { value: "cat2", label: "Category 2" },
               ],
               description: "Available categories",
+              default: null,
             },
             "nested.lists": {
               options: [{ value: "item1", label: "Item 1" }],
               description: "Nested list",
+              default: null,
             },
           },
           requiresDustAppConfiguration: false,
@@ -395,7 +421,11 @@ describe("getDefaultConfiguration", () => {
               description: "Endpoint URL",
               default: "https://api.example.com",
             },
-            { key: "user_name", description: "User Name" }, // no default
+            {
+              key: "user_name",
+              description: "User Name",
+              default: null,
+            },
           ],
           requiredNumbers: [],
           requiredBooleans: [],
@@ -431,7 +461,7 @@ describe("getDefaultConfiguration", () => {
           requiredNumbers: [
             { key: "timeout", description: "Timeout in seconds", default: 30 },
             { key: "max_retries", description: "Maximum retries", default: 3 },
-            { key: "port", description: "Port number" }, // no default
+            { key: "port", description: "Port number", default: null },
           ],
           requiredBooleans: [],
           requiredEnums: {},
@@ -468,7 +498,9 @@ describe("getDefaultConfiguration", () => {
           requiredNumbers: [
             { key: "timeout", description: "Timeout", default: 30 },
           ],
-          requiredBooleans: [{ key: "is_enabled", description: "Enabled" }],
+          requiredBooleans: [
+            { key: "is_enabled", description: "Enabled", default: null },
+          ],
           requiredEnums: {
             priority: {
               options: [
@@ -477,12 +509,14 @@ describe("getDefaultConfiguration", () => {
                 { value: "high", label: "High" },
               ],
               description: "Priority",
+              default: null,
             },
           },
           requiredLists: {
             tags: {
               options: [{ value: "tag1", label: "Tag 1" }],
               description: "Tags",
+              default: null,
             },
           },
           requiresDustAppConfiguration: false,
@@ -514,8 +548,16 @@ describe("getDefaultConfiguration", () => {
           mayRequireTimeFrameConfiguration: false,
           mayRequireJsonSchemaConfiguration: false,
           requiredStrings: [
-            { key: "api.key", description: "API Key", default: "dev-key-123" },
-            { key: "api.endpoint", description: "API Endpoint" }, // no default
+            {
+              key: "api.key",
+              description: "API Key",
+              default: "dev-key-123",
+            },
+            {
+              key: "api.endpoint",
+              description: "API Endpoint",
+              default: null,
+            },
             {
               key: "database.connection.string",
               description: "DB Connection",
@@ -523,9 +565,21 @@ describe("getDefaultConfiguration", () => {
             },
           ],
           requiredNumbers: [
-            { key: "api.timeout", description: "API Timeout", default: 5000 },
-            { key: "database.pool.max", description: "Max Pool Size" }, // no default
-            { key: "server.port", description: "Server Port", default: 3000 },
+            {
+              key: "api.timeout",
+              description: "API Timeout",
+              default: 5000,
+            },
+            {
+              key: "database.pool.max",
+              description: "Max Pool Size",
+              default: null,
+            },
+            {
+              key: "server.port",
+              description: "Server Port",
+              default: 3000,
+            },
           ],
           requiredBooleans: [
             {
@@ -533,7 +587,11 @@ describe("getDefaultConfiguration", () => {
               description: "Auth enabled",
               default: true,
             },
-            { key: "features.logging.debug", description: "Debug logging" }, // no default (will use false)
+            {
+              key: "features.logging.debug",
+              description: "Debug logging",
+              default: null,
+            },
           ],
           requiredEnums: {
             "logging.level": {
@@ -552,7 +610,8 @@ describe("getDefaultConfiguration", () => {
                 { value: "staging", label: "Staging" },
                 { value: "production", label: "Production" },
               ],
-              description: "Environment", // no default (will use first)
+              description: "Environment",
+              default: null,
             },
           },
           requiredLists: {
@@ -569,7 +628,8 @@ describe("getDefaultConfiguration", () => {
                 { value: "localhost", label: "Localhost" },
                 { value: "example.com", label: "Example" },
               ],
-              description: "Allowed origins", // no default (will use empty array)
+              description: "Allowed origins",
+              default: null,
             },
           },
           requiresDustAppConfiguration: false,
@@ -627,7 +687,11 @@ describe("getDefaultConfiguration", () => {
           requiredStrings: [],
           requiredNumbers: [],
           requiredBooleans: [
-            { key: "level1.level2.level3.deep_flag", description: "Deep flag" },
+            {
+              key: "level1.level2.level3.deep_flag",
+              description: "Deep flag",
+              default: null,
+            },
           ],
           requiredEnums: {
             "a.b.c.d.enum": {
@@ -636,12 +700,14 @@ describe("getDefaultConfiguration", () => {
                 { value: "y", label: "Y" },
               ],
               description: "Deeply nested enum",
+              default: null,
             },
           },
           requiredLists: {
             "config.advanced.options": {
               options: [{ value: "opt1", label: "Option 1" }],
               description: "Advanced options",
+              default: null,
             },
           },
           requiresDustAppConfiguration: false,

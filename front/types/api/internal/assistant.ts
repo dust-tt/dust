@@ -233,10 +233,25 @@ export type BuilderSuggestionsRequestType = t.TypeOf<
   typeof InternalPostBuilderSuggestionsRequestBodySchema
 >;
 
+export type BuilderSuggestionInputType =
+  BuilderSuggestionsRequestType["inputs"];
+
+export type BuilderSuggestionType = BuilderSuggestionsRequestType["type"];
+
+const BuilderTextSuggestionTypeSchema = t.union([
+  t.array(t.string),
+  t.null,
+  t.undefined,
+]);
+
+export type BuilderTextSuggestionsType = t.TypeOf<
+  typeof BuilderTextSuggestionTypeSchema
+>;
+
 export const BuilderSuggestionsResponseBodySchema = t.union([
   t.type({
     status: t.literal("ok"),
-    suggestions: t.union([t.array(t.string), t.null, t.undefined]),
+    suggestions: BuilderTextSuggestionTypeSchema,
   }),
   t.type({
     status: t.literal("unavailable"),

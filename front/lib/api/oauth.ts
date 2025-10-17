@@ -7,6 +7,7 @@ import type {
 } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence";
 import { ConfluenceToolsOAuthProvider } from "@app/lib/api/oauth/providers/confluence_tools";
+import { DiscordOAuthProvider } from "@app/lib/api/oauth/providers/discord";
 import { FreshserviceOAuthProvider } from "@app/lib/api/oauth/providers/freshservice";
 import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
 import { GmailOAuthProvider } from "@app/lib/api/oauth/providers/gmail";
@@ -50,6 +51,7 @@ export type OAuthError = {
 const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   confluence: new ConfluenceOAuthProvider(),
   confluence_tools: new ConfluenceToolsOAuthProvider(),
+  discord: new DiscordOAuthProvider(),
   freshservice: new FreshserviceOAuthProvider(),
   github: new GithubOAuthProvider(),
   gmail: new GmailOAuthProvider(),

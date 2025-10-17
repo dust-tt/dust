@@ -46,7 +46,7 @@ import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/in
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  makeMCPToolTextError,
+  makeMCPToolExit,
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type {
@@ -433,7 +433,10 @@ export async function* tryCallMCPTool(
       toolCallResult = await toolPromise;
     } catch (toolError) {
       if (abortSignal?.aborted) {
-        return makeMCPToolTextError("The tool execution was cancelled.");
+        return makeMCPToolExit({
+          message: "The tool execution was cancelled.",
+          isError: true,
+        });
       }
 
       throw toolError;

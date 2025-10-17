@@ -6,7 +6,6 @@ import {
   Checkbox,
   ContactsRobotIcon,
   DocumentIcon,
-  DotIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -17,8 +16,6 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  ExclamationCircleIcon,
-  Icon,
   Label,
   ListCheckIcon,
   MagicIcon,
@@ -585,6 +582,21 @@ const RenderConversations = ({
   );
 };
 
+function getConversationDotStatus(
+  conversation: ConversationWithoutContentType
+): "blocked" | "unread" | "idle" {
+  if (conversation.actionRequired) {
+    return "blocked";
+  }
+  if (conversation.hasError) {
+    return "blocked";
+  }
+  if (conversation.unread) {
+    return "unread";
+  }
+  return "idle";
+}
+
 const RenderConversation = ({
   conversation,
   isMultiSelect,
@@ -615,10 +627,6 @@ const RenderConversation = ({
       ? "New Conversation"
       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
-  const UnreadIcon = () => (
-    <Icon visual={DotIcon} className="-ml-1 -mr-2 text-highlight" />
-  );
-
   return (
     <>
       {isMultiSelect ? (
@@ -639,13 +647,7 @@ const RenderConversation = ({
       ) : (
         <NavigationListItem
           selected={router.query.cId === conversation.sId}
-          icon={
-            conversation.actionRequired
-              ? ExclamationCircleIcon
-              : conversation.unread
-                ? UnreadIcon
-                : undefined
-          }
+          status={getConversationDotStatus(conversation)}
           label={conversationLabel}
           moreMenu={
             <ConversationMenu

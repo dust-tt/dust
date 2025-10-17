@@ -18,10 +18,9 @@ import { useController } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { asDisplayName } from "@app/types";
-
-type OptionalDescribedKey = { key: string; description?: string };
 
 function formatKeyForDisplay(key: string): string {
   const segments = key.split(".");
@@ -33,10 +32,14 @@ function getKeyPrefix(key: string): string {
   return segments.length > 1 ? segments[0] : "";
 }
 
-function groupKeysByPrefix(
-  items: OptionalDescribedKey[]
-): Record<string, OptionalDescribedKey[]> {
-  const groups: Record<string, OptionalDescribedKey[]> = {};
+function groupKeysByPrefix<
+  T extends (
+    | MCPServerRequirements["requiredStrings"]
+    | MCPServerRequirements["requiredNumbers"]
+    | MCPServerRequirements["requiredBooleans"]
+  )[number],
+>(items: T[]): Record<string, T[]> {
+  const groups: Record<string, T[]> = {};
 
   items.forEach((item) => {
     const prefix = getKeyPrefix(item.key);
@@ -49,13 +52,15 @@ function groupKeysByPrefix(
   return groups;
 }
 
+interface BaseConfigurationInputProps {
+  configKey: string;
+  description?: string;
+}
+
 function BooleanConfigurationInput({
   configKey,
   description,
-}: {
-  configKey: string;
-  description?: string;
-}) {
+}: BaseConfigurationInputProps) {
   const { field } = useController<MCPFormData>({
     name: `configuration.additionalConfiguration.${configKey}`,
   });
@@ -88,11 +93,12 @@ function BooleanConfigurationInput({
   );
 }
 
+interface BooleanConfigurationSectionProps
+  extends Pick<MCPServerRequirements, "requiredBooleans"> {}
+
 function BooleanConfigurationSection({
   requiredBooleans,
-}: {
-  requiredBooleans: OptionalDescribedKey[];
-}) {
+}: BooleanConfigurationSectionProps) {
   if (requiredBooleans.length === 0) {
     return null;
   }
@@ -106,13 +112,15 @@ function BooleanConfigurationSection({
   ));
 }
 
+interface NumberConfigurationInputProps {
+  configKey: string;
+  description?: string;
+}
+
 function NumberConfigurationInput({
   configKey,
   description,
-}: {
-  configKey: string;
-  description?: string;
-}) {
+}: NumberConfigurationInputProps) {
   const { field, fieldState } = useController<MCPFormData>({
     name: `configuration.additionalConfiguration.${configKey}`,
   });
@@ -151,11 +159,12 @@ function NumberConfigurationInput({
   );
 }
 
+interface NumberConfigurationSectionProps
+  extends Pick<MCPServerRequirements, "requiredNumbers"> {}
+
 function NumberConfigurationSection({
   requiredNumbers,
-}: {
-  requiredNumbers: OptionalDescribedKey[];
-}) {
+}: NumberConfigurationSectionProps) {
   if (requiredNumbers.length === 0) {
     return null;
   }
@@ -169,13 +178,15 @@ function NumberConfigurationSection({
   ));
 }
 
+interface StringConfigurationInputProps {
+  configKey: string;
+  description?: string;
+}
+
 function StringConfigurationInput({
   configKey,
   description,
-}: {
-  configKey: string;
-  description?: string;
-}) {
+}: StringConfigurationInputProps) {
   const { field, fieldState } = useController<MCPFormData>({
     name: `configuration.additionalConfiguration.${configKey}`,
   });
@@ -214,11 +225,12 @@ function StringConfigurationInput({
   );
 }
 
+interface StringConfigurationSectionProps
+  extends Pick<MCPServerRequirements, "requiredStrings"> {}
+
 function StringConfigurationSection({
   requiredStrings,
-}: {
-  requiredStrings: OptionalDescribedKey[];
-}) {
+}: StringConfigurationSectionProps) {
   if (requiredStrings.length === 0) {
     return null;
   }
@@ -232,15 +244,17 @@ function StringConfigurationSection({
   ));
 }
 
+interface EnumConfigurationInputProps {
+  configKey: string;
+  enumOptions: MCPServerRequirements["requiredEnums"][string]["options"];
+  description?: string;
+}
+
 function EnumConfigurationInput({
   configKey,
   enumOptions,
   description,
-}: {
-  configKey: string;
-  enumOptions: { value: string; label: string; description?: string }[];
-  description?: string;
-}) {
+}: EnumConfigurationInputProps) {
   const { field, fieldState } = useController<MCPFormData>({
     name: `configuration.additionalConfiguration.${configKey}`,
   });
@@ -310,17 +324,12 @@ function EnumConfigurationInput({
   );
 }
 
+interface EnumConfigurationSectionProps
+  extends Pick<MCPServerRequirements, "requiredEnums"> {}
+
 function EnumConfigurationSection({
   requiredEnums,
-}: {
-  requiredEnums: Record<
-    string,
-    {
-      options: { value: string; label: string; description?: string }[];
-      description?: string;
-    }
-  >;
-}) {
+}: EnumConfigurationSectionProps) {
   if (Object.keys(requiredEnums).length === 0) {
     return null;
   }
@@ -337,15 +346,17 @@ function EnumConfigurationSection({
   );
 }
 
+interface ListConfigurationInputProps {
+  configKey: string;
+  listOptions: MCPServerRequirements["requiredLists"][string]["options"];
+  description?: string;
+}
+
 function ListConfigurationInput({
   configKey,
   listOptions,
   description,
-}: {
-  configKey: string;
-  listOptions: { value: string; label: string; description?: string }[];
-  description?: string;
-}) {
+}: ListConfigurationInputProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const { field, fieldState } = useController<MCPFormData>({
     name: `configuration.additionalConfiguration.${configKey}`,
@@ -433,17 +444,12 @@ function ListConfigurationInput({
   );
 }
 
+interface ListConfigurationSectionProps
+  extends Pick<MCPServerRequirements, "requiredLists"> {}
+
 function ListConfigurationSection({
   requiredLists,
-}: {
-  requiredLists: Record<
-    string,
-    {
-      options: { value: string; label: string; description?: string }[];
-      description?: string;
-    }
-  >;
-}) {
+}: ListConfigurationSectionProps) {
   if (Object.keys(requiredLists).length === 0) {
     return null;
   }
@@ -460,25 +466,16 @@ function ListConfigurationSection({
   );
 }
 
-interface GroupedConfigurationSectionProps {
+interface GroupedConfigurationSectionProps
+  extends Pick<
+    MCPServerRequirements,
+    | "requiredStrings"
+    | "requiredNumbers"
+    | "requiredBooleans"
+    | "requiredEnums"
+    | "requiredLists"
+  > {
   prefix: string;
-  requiredStrings: OptionalDescribedKey[];
-  requiredNumbers: OptionalDescribedKey[];
-  requiredBooleans: OptionalDescribedKey[];
-  requiredEnums: Record<
-    string,
-    {
-      options: { value: string; label: string; description?: string }[];
-      description?: string;
-    }
-  >;
-  requiredLists: Record<
-    string,
-    {
-      options: { value: string; label: string; description?: string }[];
-      description?: string;
-    }
-  >;
 }
 
 function GroupedConfigurationSection({
@@ -518,25 +515,15 @@ function GroupedConfigurationSection({
   );
 }
 
-interface AdditionalConfigurationSectionProps {
-  requiredStrings: OptionalDescribedKey[];
-  requiredNumbers: OptionalDescribedKey[];
-  requiredBooleans: OptionalDescribedKey[];
-  requiredEnums: Record<
-    string,
-    {
-      options: { value: string; label: string; description?: string }[];
-      description?: string;
-    }
-  >;
-  requiredLists: Record<
-    string,
-    {
-      options: { value: string; label: string; description?: string }[];
-      description?: string;
-    }
-  >;
-}
+interface AdditionalConfigurationSectionProps
+  extends Pick<
+    MCPServerRequirements,
+    | "requiredStrings"
+    | "requiredNumbers"
+    | "requiredBooleans"
+    | "requiredEnums"
+    | "requiredLists"
+  > {}
 
 export function AdditionalConfigurationSection({
   requiredStrings,
@@ -573,20 +560,8 @@ export function AdditionalConfigurationSection({
     [filteredBooleanConfigurations]
   );
   const groupedEnums = useMemo(() => {
-    const groups: Record<
-      string,
-      Record<
-        string,
-        {
-          options: {
-            value: string;
-            label: string;
-            description?: string;
-          }[];
-          description?: string;
-        }
-      >
-    > = {};
+    const groups: Record<string, MCPServerRequirements["requiredEnums"]> = {};
+
     Object.entries(requiredEnums).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {
@@ -594,24 +569,13 @@ export function AdditionalConfigurationSection({
       }
       groups[prefix][key] = values;
     });
+
     return groups;
   }, [requiredEnums]);
 
   const groupedLists = useMemo(() => {
-    const groups: Record<
-      string,
-      Record<
-        string,
-        {
-          options: {
-            value: string;
-            label: string;
-            description?: string;
-          }[];
-          description?: string;
-        }
-      >
-    > = {};
+    const groups: Record<string, MCPServerRequirements["requiredLists"]> = {};
+
     Object.entries(requiredLists).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {
@@ -619,6 +583,7 @@ export function AdditionalConfigurationSection({
       }
       groups[prefix][key] = values;
     });
+
     return groups;
   }, [requiredLists]);
 

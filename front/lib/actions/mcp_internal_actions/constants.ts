@@ -91,6 +91,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "slideshow",
   "jira",
   "microsoft_drive",
+  "microsoft_teams",
   "missing_action_catcher",
   "monday",
   "notion",
@@ -98,6 +99,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "outlook_calendar",
   "outlook",
   "primitive_types_debugger",
+  "common_utilities",
   "jit_testing",
   "reasoning",
   "run_agent",
@@ -132,6 +134,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: {
       create_issue: "low",
+      comment_on_issue: "low",
       add_issue_to_project: "low",
       get_pull_request: "never_ask",
       list_organization_projects: "never_ask",
@@ -317,7 +320,9 @@ The directive should be used to display a clickable version of the agent name in
     id: 10,
     availability: "auto",
     allowMultipleInstances: true,
-    isRestricted: undefined,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("legacy_dust_apps");
+    },
     isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
@@ -490,6 +495,7 @@ The directive should be used to display a clickable version of the agent name in
       update_event: "low",
       delete_event: "low",
       check_availability: "never_ask",
+      get_user_timezones: "never_ask",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -506,7 +512,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "GcalLogo",
       documentationUrl: "https://docs.dust.tt/docs/google-calendar",
       instructions:
-        "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool.",
+        "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool (3) use get_user_timezones to check attendee timezones for better scheduling.",
     },
   },
   conversation_files: {
@@ -1070,7 +1076,9 @@ The directive should be used to display a clickable version of the agent name in
     },
     isPreview: false,
     tools_stakes: {
-      search_files: "never_ask",
+      search_in_files: "never_ask",
+      search_drive_items: "never_ask",
+      get_file_content: "never_ask",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1085,7 +1093,35 @@ The directive should be used to display a clickable version of the agent name in
           "User.Read Files.Read.All Sites.Read.All ExternalItem.Read.All" as const,
       },
       icon: "MicrosoftLogo",
-      documentationUrl: "https://docs.dust.tt/docs/microsoft-tool-setup",
+      documentationUrl: "https://docs.dust.tt/docs/microsoft-drive-tool-setup",
+      instructions: null,
+    },
+  },
+  microsoft_teams: {
+    id: 36,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("microsoft_teams_mcp_server");
+    },
+    isPreview: false,
+    tools_stakes: {
+      search_messages: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "microsoft_teams",
+      version: "1.0.0",
+      description: "Search messages in Microsoft Teams.",
+      authorization: {
+        provider: "microsoft_tools" as const,
+        supported_use_cases: ["personal_actions"] as const,
+        scope:
+          "User.Read Chat.Read ChatMessage.Read ChannelMessage.Read.All" as const,
+      },
+      icon: "MicrosoftLogo", // TODO: Add Microsoft Teams icon
+      documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
       instructions: null,
     },
   },
@@ -1144,6 +1180,26 @@ The directive should be used to display a clickable version of the agent name in
       description:
         "Demo server showing a basic interaction with various configurable blocks.",
       icon: "ActionEmotionLaughIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  common_utilities: {
+    id: 1017,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_stakes: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "common_utilities",
+      version: "1.0.0",
+      description:
+        "Miscellaneous helper tools such as random numbers, time retrieval, and timers.",
+      icon: "ActionAtomIcon",
       authorization: null,
       documentationUrl: null,
       instructions: null,

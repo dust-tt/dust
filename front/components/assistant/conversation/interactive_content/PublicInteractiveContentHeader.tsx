@@ -50,7 +50,7 @@ export function PublicInteractiveContentHeader({
               href="/home"
               variant="outline"
               icon={RocketIcon}
-              onClick={withTracking(TRACKING_AREAS.FRAME, "sign_up")}
+              onClick={withTracking(TRACKING_AREAS.FRAMES, "sign_up")}
               className="hidden sm:flex"
             />
           )}

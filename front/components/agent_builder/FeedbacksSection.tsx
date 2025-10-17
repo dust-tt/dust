@@ -295,15 +295,11 @@ function FeedbackCard({ owner, feedback, className }: FeedbackCardProps) {
       }
     >
       <div className="flex flex-shrink-0 items-center gap-3 px-4 py-3">
-        {feedback.userImageUrl ? (
-          <Avatar
-            size="sm"
-            visual={feedback.userImageUrl}
-            name={feedback.userName}
-          />
-        ) : (
-          <Spinner size="sm" />
-        )}
+        <Avatar
+          size="sm"
+          visual={feedback.userImageUrl}
+          name={feedback.userName}
+        />
         <div className="flex flex-col">
           <div className="font-semibold">{feedback.userName}</div>
           <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">

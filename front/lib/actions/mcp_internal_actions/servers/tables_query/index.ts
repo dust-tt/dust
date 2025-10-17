@@ -66,6 +66,7 @@ function getSectionColumnsPrefix(
     case "zendesk":
     case "bigquery":
     case "gong":
+    case "discord_bot":
     case null:
       return null;
     default:
@@ -81,6 +82,23 @@ type TablesQueryOutputResources =
   | SqlQueryOutputType
   | ToolGeneratedFileType
   | ToolMarkerResourceType;
+
+/**
+ * Verifies that the user has read access to all provided data source views.
+ * @returns null if user has access to all views, MCPError if access is denied
+ */
+function verifyDataSourceViewReadAccess(
+  auth: Authenticator,
+  dataSourceViews: DataSourceViewResource[]
+): MCPError | null {
+  const unreadableViews = dataSourceViews.filter((dsv) => !dsv.canRead(auth));
+  if (unreadableViews.length > 0) {
+    return new MCPError(
+      `Access denied: You do not have read permission to all the required documents.`
+    );
+  }
+  return null;
+}
 
 function createServer(
   auth: Authenticator,
@@ -100,6 +118,7 @@ function createServer(
       {
         toolNameForMonitoring: GET_DATABASE_SCHEMA_TOOL_NAME,
         agentLoopContext,
+        enableAlerting: true,
       },
       async ({ tables }) => {
         // Fetch table configurations
@@ -126,6 +145,16 @@ function createServer(
         const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
           ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
         ]);
+
+        // Security check: Verify user has canRead access to all data source views
+        const accessError = verifyDataSourceViewReadAccess(
+          auth,
+          dataSourceViews
+        );
+        if (accessError) {
+          return new Err(accessError);
+        }
+
         const dataSourceViewsMap = new Map(
           dataSourceViews.map((dsv) => [dsv.sId, dsv])
         );
@@ -196,6 +225,7 @@ function createServer(
       {
         toolNameForMonitoring: EXECUTE_DATABASE_QUERY_TOOL_NAME,
         agentLoopContext,
+        enableAlerting: true,
       },
       async ({ tables, query, fileName }) => {
         // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
@@ -229,6 +259,16 @@ function createServer(
         const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
           ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
         ]);
+
+        // Security check: Verify user has canRead access to all data source views
+        const accessError = verifyDataSourceViewReadAccess(
+          auth,
+          dataSourceViews
+        );
+        if (accessError) {
+          return new Err(accessError);
+        }
+
         const dataSourceViewsMap = new Map(
           dataSourceViews.map((dsv) => [dsv.sId, dsv])
         );

@@ -4,8 +4,16 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { LightAgentConfigurationType, UserType } from "@app/types";
-import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types";
+import type {
+  LightAgentConfigurationType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+  getLargeWhitelistedModel,
+  isProviderWhitelisted,
+} from "@app/types";
 
 /**
  * Transforms a light agent configuration (server-side) into agent builder form data (client-side).
@@ -47,7 +55,23 @@ export function transformAgentConfigurationToFormData(
   };
 }
 
-export function getDefaultAgentFormData(user: UserType): AgentBuilderFormData {
+export function getDefaultAgentFormData({
+  user,
+  owner,
+}: {
+  user: UserType;
+  owner: WorkspaceType;
+}): AgentBuilderFormData {
+  const preferredModel = CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG;
+  const fallbackModel = getLargeWhitelistedModel(owner);
+
+  // We use the preferred model unless the provider is deactivated for the workspace but we have a fallback model.
+  // (We have no fallback model if all providers are deactivated which can be done in the workspace settings).
+  const modelConfiguration =
+    !isProviderWhitelisted(owner, preferredModel.providerId) && fallbackModel
+      ? fallbackModel
+      : preferredModel;
+
   return {
     agentSettings: {
       name: "",
@@ -62,12 +86,11 @@ export function getDefaultAgentFormData(user: UserType): AgentBuilderFormData {
     instructions: "",
     generationSettings: {
       modelSettings: {
-        modelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
-        providerId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: modelConfiguration.modelId,
+        providerId: modelConfiguration.providerId,
       },
       temperature: 0.7,
-      reasoningEffort:
-        CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+      reasoningEffort: modelConfiguration.defaultReasoningEffort,
       responseFormat: undefined,
     },
     actions: [],
@@ -84,9 +107,10 @@ export function getDefaultAgentFormData(user: UserType): AgentBuilderFormData {
  */
 export function transformTemplateToFormData(
   template: FetchAssistantTemplateResponse,
-  user: UserType
+  user: UserType,
+  owner: WorkspaceType
 ): AgentBuilderFormData {
-  const defaultFormData = getDefaultAgentFormData(user);
+  const defaultFormData = getDefaultAgentFormData({ user, owner });
 
   return {
     ...defaultFormData,

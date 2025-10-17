@@ -81,7 +81,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: "gmail",
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ q, pageToken }, { authInfo }) => {
@@ -169,7 +168,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: "gmail",
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ to, cc, bcc, subject, contentType, body }, { authInfo }) => {
@@ -256,7 +254,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: "gmail",
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ draftId, subject, to }, { authInfo }) => {
@@ -313,7 +310,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: "gmail",
-        skipAlerting: true,
         agentLoopContext,
       },
       async ({ q, maxResults = 10, pageToken }, { authInfo }) => {
@@ -453,7 +449,6 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: "gmail",
-        skipAlerting: true,
         agentLoopContext,
       },
       async (

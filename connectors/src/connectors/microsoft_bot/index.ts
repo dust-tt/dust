@@ -8,11 +8,11 @@ import type {
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
-import { getClient } from "@connectors/connectors/microsoft";
+import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import { getOrganization } from "@connectors/connectors/microsoft/lib/graph_api";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { MicrosoftBotConfigurationResource } from "@connectors/resources/microsoft_resource";
+import { MicrosoftBotConfigurationResource } from "@connectors/resources/microsoft_bot_resources";
 import type { ContentNode, DataSourceConfig } from "@connectors/types";
 
 export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
@@ -25,7 +25,7 @@ export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
   }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
-    const client = await getClient(connectionId);
+    const client = await getMicrosoftClient(connectionId);
 
     const org = await getOrganization(logger, client);
 

@@ -30,11 +30,6 @@ use super::openai_compatible_helpers::openai_compatible_chat_completion;
 use super::openai_compatible_helpers::TransformSystemMessages;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct AzureOpenAIScaleSettings {
-    scale_type: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 struct AzureOpenAIDeployment {
     model: String,
     owner: String,

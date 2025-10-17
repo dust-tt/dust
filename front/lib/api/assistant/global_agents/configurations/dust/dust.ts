@@ -19,8 +19,10 @@ import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_r
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
+  WhitelistableFeature,
 } from "@app/types";
 import {
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
@@ -39,6 +41,7 @@ export function _getDustGlobalAgent(
     searchMCPServerView,
     deepDiveMCPServerView,
     interactiveContentMCPServerView,
+    featureFlags,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
@@ -47,6 +50,7 @@ export function _getDustGlobalAgent(
     searchMCPServerView: MCPServerViewResource | null;
     deepDiveMCPServerView: MCPServerViewResource | null;
     interactiveContentMCPServerView: MCPServerViewResource | null;
+    featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -61,6 +65,12 @@ export function _getDustGlobalAgent(
     }
 
     if (isProviderWhitelisted(owner, "anthropic")) {
+      // When the `dust_default_haiku_feature` feature flag is enabled for this workspace,
+      // use Claude 4.5 Haiku as the default model for the @dust global agent instead of Sonnet.
+      if (featureFlags.includes("dust_default_haiku_feature")) {
+        return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
+      }
+
       return CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG;
     }
 
@@ -106,7 +116,7 @@ export function _getDustGlobalAgent(
   - It requires doing several web searches, or browsing 3+ web pages
   - It requires running SQL queries
   - It requires 3+ steps of tool uses
-  - The user specifically asks for a "deep dive", a "deep research", a "comprehensive analysis" or other terms that indicate a deep research task
+  - The user specifically asks for a "deep dive", a "deep research", a "comprehensive search", a "comprehensive analysis" or "comprehensive report" or other terms that indicate a deep research task
 
   Any other request is considered "simple".
 

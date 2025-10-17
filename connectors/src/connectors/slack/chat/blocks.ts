@@ -8,8 +8,8 @@ import {
   REJECT_TOOL_EXECUTION,
   STATIC_AGENT_CONFIG,
 } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
-import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
+import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { truncate } from "@connectors/types";
 
 /*
@@ -44,7 +44,7 @@ export function makeMarkdownBlock(text?: string) {
     : [];
 }
 
-function makeFootnotesBlock(footnotes: SlackMessageFootnotes) {
+function makeFootnotesBlock(footnotes: MessageFootnotes) {
   // We are limited to 10 blocks when posting a message on Slack,
   // so we are posting 5 footnotes at most to leave rooms for other blocks (e.g. conversation link, divier, ...).
   const elements = footnotes.slice(0, 5).map((f) => ({
@@ -72,7 +72,7 @@ function makeContextSectionBlocks({
   state: "thinking" | "answered";
   assistantName: string;
   conversationUrl: string | null;
-  footnotes: SlackMessageFootnotes | undefined;
+  footnotes: MessageFootnotes | undefined;
   workspaceId: string;
 }) {
   const blocks = [];
@@ -260,7 +260,7 @@ export type SlackMessageUpdate = {
   assistantName: string;
   agentConfigurations: LightAgentConfigurationType[];
   text?: string;
-  footnotes?: SlackMessageFootnotes;
+  footnotes?: MessageFootnotes;
   conversationId?: string;
   messageId?: string;
 };

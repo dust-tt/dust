@@ -73,6 +73,7 @@ export type UserMessageOrigin =
   | "n8n"
   | "raycast"
   | "slack"
+  | "teams"
   | "triggered"
   | "web"
   | "zapier"
@@ -229,6 +230,7 @@ export type ConversationWithoutContentType = {
   updated?: number;
   unread: boolean;
   actionRequired: boolean;
+  hasError: boolean;
   owner: WorkspaceType;
   sId: string;
   title: string | null;

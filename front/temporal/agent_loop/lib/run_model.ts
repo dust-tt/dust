@@ -20,6 +20,7 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import {
   categorizeAgentErrorMessage,
   categorizeConversationRenderErrorMessage,
@@ -29,7 +30,6 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
-import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { config as regionsConfig } from "@app/lib/api/regions/config";

@@ -360,20 +360,26 @@ export async function handleMembershipInvitations(
       if (maxUsers !== -1) {
         await getWorkspaceAdministrationVersionLock(owner, t);
 
-        const availableSeats =
-          maxUsers -
-          (await MembershipResource.getMembersCountForWorkspace({
+        const membersCount =
+          await MembershipResource.getMembersCountForWorkspace({
             workspace: owner,
             activeOnly: true,
             transaction: t,
-          }));
+          });
+
+        const availableSeats = Math.max(maxUsers - membersCount, 0);
 
         if (availableSeats < invitationRequests.length) {
+          const message =
+            availableSeats === 0
+              ? `Plan limited to ${maxUsers} seats. All seats used`
+              : `Plan limited to ${maxUsers} seats. Can't invite ${invitationRequests.length} members (only ${availableSeats} seats available). `;
+
           return new Err({
             status_code: 400,
             api_error: {
               type: "plan_limit_error",
-              message: `Not enough seats lefts (${availableSeats} seats remaining). Please upgrade or remove inactive members to add more.`,
+              message,
             },
           });
         }

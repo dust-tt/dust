@@ -5,7 +5,7 @@ import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import * as _ from "lodash";
 
-import { getClient } from "@connectors/connectors/microsoft";
+import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   clientApiPost,
   extractPath,
@@ -90,7 +90,7 @@ export async function getRootNodesToSyncFromResources(
   }
 
   const logger = getActivityLogger(connector);
-  const client = await getClient(connector.connectionId);
+  const client = await getMicrosoftClient(connector.connectionId);
 
   // get root folders and drives and drill down site-root and sites to their
   // child drives (converted to MicrosoftNode types)
@@ -263,7 +263,7 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
     throw new Error(`Connector ${connectorId} not found`);
   }
   const logger = getActivityLogger(connector);
-  const client = await getClient(connector.connectionId);
+  const client = await getMicrosoftClient(connector.connectionId);
 
   for (const [driveId, nodeIds] of Object.entries(groupedItems)) {
     const { deltaLink } = await getDeltaResults({
@@ -446,7 +446,7 @@ export async function syncFiles({
     },
     `[SyncFiles] Start sync`
   );
-  const client = await getClient(connector.connectionId);
+  const client = await getMicrosoftClient(connector.connectionId);
 
   // TODO(pr): handle pagination
   const childrenResult = await getFilesAndFolders(
@@ -623,7 +623,7 @@ export async function syncDeltaForRootNodesInDrive({
     return;
   }
 
-  const client = await getClient(connector.connectionId);
+  const client = await getMicrosoftClient(connector.connectionId);
 
   const logger = getActivityLogger(connector);
   logger.info({ connectorId, rootNodeIds }, "Syncing delta for node");
@@ -953,7 +953,7 @@ export async function fetchDeltaForRootNodesInDrive({
     return { gcsFilePath: null };
   }
 
-  const client = await getClient(connector.connectionId);
+  const client = await getMicrosoftClient(connector.connectionId);
 
   logger.info({ connectorId, rootNodeIds }, "Fetching delta for node");
 
@@ -1377,7 +1377,7 @@ export async function microsoftGarbageCollectionActivity({
     { connectorId, idCursor },
     "Garbage collection activity for cursor"
   );
-  const client = await getClient(connector.connectionId);
+  const client = await getMicrosoftClient(connector.connectionId);
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -1898,7 +1898,7 @@ export async function processDeltaChangesFromGCS({
           skipped++;
         }
       } else {
-        const client = await getClient(connector.connectionId);
+        const client = await getMicrosoftClient(connector.connectionId);
         const { item, type } = driveItem.root
           ? {
               item: await getItem(

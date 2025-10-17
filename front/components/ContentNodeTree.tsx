@@ -146,9 +146,9 @@ function ContentNodeTreeChildren({
     isLoadingMore,
   } = useResourcesHook(parentId);
 
-  const filteredNodes = resources.filter(
-    (n) => filter.trim().length === 0 || n.title.includes(filter)
-  );
+  const filteredNodes = resources
+    .filter((n) => filter.trim().length === 0 || n.title.includes(filter))
+    .sort((a, b) => a.title.localeCompare(b.title));
 
   const getCheckedState = useCallback(
     (node: ContentNode) => {

@@ -50,7 +50,7 @@ export function getDefaultConfiguration(
   for (const [key, { options, default: defaultValue }] of Object.entries(
     requiredEnums
   )) {
-    if (defaultValue !== undefined) {
+    if (defaultValue !== null) {
       set(additionalConfig, key, defaultValue);
     } else if (options.length > 0) {
       set(additionalConfig, key, options[0].value);
@@ -60,21 +60,17 @@ export function getDefaultConfiguration(
   for (const [key, { default: defaultValue }] of Object.entries(
     requiredLists
   )) {
-    set(
-      additionalConfig,
-      key,
-      defaultValue !== undefined ? [defaultValue] : []
-    );
+    set(additionalConfig, key, defaultValue !== null ? [defaultValue] : []);
   }
 
   for (const { key, default: defaultValue } of requiredStrings) {
-    if (defaultValue !== undefined) {
+    if (defaultValue !== null) {
       set(additionalConfig, key, defaultValue);
     }
   }
 
   for (const { key, default: defaultValue } of requiredNumbers) {
-    if (defaultValue !== undefined) {
+    if (defaultValue !== null) {
       set(additionalConfig, key, defaultValue);
     }
   }

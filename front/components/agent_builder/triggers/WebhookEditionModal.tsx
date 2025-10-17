@@ -27,6 +27,7 @@ import { z } from "zod";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
 import { useWebhookFilterGeneration } from "@app/components/agent_builder/triggers/useWebhookFilterGeneration";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
@@ -55,6 +56,7 @@ interface WebhookEditionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (trigger: AgentBuilderWebhookTriggerType) => void;
+  agentConfigurationId: string | null;
 }
 
 type WebhookOption = {
@@ -70,6 +72,7 @@ export function WebhookEditionModal({
   isOpen,
   onClose,
   onSave,
+  agentConfigurationId,
 }: WebhookEditionModalProps) {
   const { user } = useUser();
 
@@ -80,7 +83,7 @@ export function WebhookEditionModal({
       webhookSourceViewSId: "",
       event: undefined,
       filter: "",
-      includePayload: false,
+      includePayload: true,
     }),
     []
   );
@@ -209,6 +212,8 @@ export function WebhookEditionModal({
   }, [defaultValues, form, isOpen, trigger]);
 
   const handleClose = () => {
+    // Reset natural description to clear the filter generation status
+    setNaturalDescription("");
     form.reset(defaultValues);
     onClose();
   };
@@ -255,17 +260,19 @@ export function WebhookEditionModal({
     handleClose();
   };
 
+  const formFilter = form.getValues("filter");
+
   const filterGenerationResult = useMemo(() => {
     switch (filterGenerationStatus) {
       case "idle":
-        if (generatedFilter) {
+        if (formFilter) {
           return (
             <CollapsibleComponent
               rootProps={{ defaultOpen: true }}
               triggerChildren={
-                <Label className="cursor-pointer">Generated filter</Label>
+                <Label className="cursor-pointer">Current filter</Label>
               }
-              contentChildren={<TriggerFilterRenderer data={generatedFilter} />}
+              contentChildren={<TriggerFilterRenderer data={formFilter} />}
             />
           );
         }
@@ -289,7 +296,7 @@ export function WebhookEditionModal({
       default:
         return null;
     }
-  }, [filterGenerationStatus, filterErrorMessage, generatedFilter]);
+  }, [filterGenerationStatus, filterErrorMessage, formFilter]);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -431,37 +438,62 @@ export function WebhookEditionModal({
               )}
 
               {/* Filters input */}
-              {selectedPreset && availableEvents.length > 0 && (
-                <div className="space-y-1">
-                  <Label htmlFor="trigger-filter-description">
-                    Filter Description
-                  </Label>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Describe in natural language the conditions under which the
-                    agent should trigger.
-                  </p>
-                  <TextArea
-                    id="trigger-filter-description"
-                    placeholder='e.g. "New pull requests that changes more than 500 lines of code, or have the `auto-review` label."'
-                    rows={3}
-                    value={naturalDescription}
-                    disabled={!isEditor}
-                    onChange={(e) => {
-                      if (!selectedEvent || !selectedPreset) {
-                        form.setError("event", {
-                          type: "manual",
-                          message: "Please select an event first",
-                        });
-                        return;
+              <div className="space-y-1">
+                {selectedPreset && availableEvents.length > 0 && (
+                  <>
+                    <Label htmlFor="trigger-filter-description">
+                      Filter Description (optional)
+                    </Label>
+                    <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      Describe in natural language the conditions under which
+                      the agent should trigger. Will always trigger if left
+                      empty.
+                    </p>
+                    <TextArea
+                      id="trigger-filter-description"
+                      placeholder='e.g. "New pull requests that changes more than 500 lines of code, or have the `auto-review` label."'
+                      rows={3}
+                      value={naturalDescription}
+                      disabled={!isEditor}
+                      onChange={(e) => {
+                        if (!selectedEvent || !selectedPreset) {
+                          form.setError("event", {
+                            type: "manual",
+                            message: "Please select an event first",
+                          });
+                          return;
+                        }
+
+                        setNaturalDescription(e.target.value);
+                      }}
+                    />
+                  </>
+                )}
+
+                {selectedWebhookSource?.kind === "custom" && (
+                  <>
+                    <Label htmlFor="trigger-filter-description">
+                      Filter Expression (optional)
+                    </Label>
+                    <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      Enter a filter that will be used to filter the webhook
+                      payload JSON. Will always trigger if left empty.
+                    </p>
+                    <TextArea
+                      id="trigger-filter-description"
+                      placeholder={
+                        'example:\n\n(and\n  (eq "action" "opened")\n  (exists "pull_request")\n)'
                       }
+                      rows={6}
+                      {...form.register("filter")}
+                      disabled={!isEditor}
+                      error={form.formState.errors.filter?.message}
+                    />
+                  </>
+                )}
 
-                      setNaturalDescription(e.target.value);
-                    }}
-                  />
-
-                  <div className="pt-2">{filterGenerationResult}</div>
-                </div>
-              )}
+                <div className="pt-2">{filterGenerationResult}</div>
+              </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex flex-col space-y-1">
@@ -497,6 +529,17 @@ export function WebhookEditionModal({
                   {...form.register("customPrompt")}
                 />
               </div>
+
+              {/* Recent Webhook Requests */}
+              {trigger && (
+                <div className="space-y-1">
+                  <RecentWebhookRequests
+                    owner={owner}
+                    agentConfigurationId={agentConfigurationId}
+                    trigger={trigger}
+                  />
+                </div>
+              )}
             </div>
 
             <TextArea

@@ -11,6 +11,7 @@ import type {
 import { MODEL_PROVIDER_IDS } from "@app/types";
 
 const modelProviders = [...MODEL_PROVIDER_IDS] as string[];
+// TODO(2025-10-16 flav) Move this away from the resource storage layer.
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
 export class WorkspaceModel extends BaseModel<WorkspaceModel> {

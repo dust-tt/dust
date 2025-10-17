@@ -150,6 +150,11 @@ const config = {
       "OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID"
     );
   },
+  getOAuthGithubAppWebhooks: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_ID"
+    );
+  },
   getOAuthNotionClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_NOTION_CLIENT_ID");
   },
@@ -205,6 +210,9 @@ const config = {
   },
   getOAuthMondayClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_MONDAY_CLIENT_ID");
+  },
+  getOAuthDiscordClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_DISCORD_CLIENT_ID");
   },
 
   // Text extraction.

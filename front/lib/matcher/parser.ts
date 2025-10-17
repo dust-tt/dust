@@ -19,6 +19,19 @@ import {
 export function parseMatcherExpression(expression: string): MatcherExpression {
   let index = 0;
 
+  // Check that it has a balanced number of parentheses.
+  let openParentheses = 0;
+  for (let i = 0; i < expression.length; i++) {
+    if (expression[i] === "(") {
+      openParentheses++;
+    } else if (expression[i] === ")") {
+      openParentheses--;
+    }
+  }
+  if (openParentheses !== 0) {
+    throw new Error("Unbalanced parentheses");
+  }
+
   function skipWhitespace() {
     while (index < expression.length && /\s/.test(expression[index])) {
       index++;
