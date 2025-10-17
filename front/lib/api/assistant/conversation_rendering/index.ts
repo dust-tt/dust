@@ -136,7 +136,7 @@ export async function renderConversationForModel(
   const prunedInteractions = [...previousInteractions, currentInteraction];
 
   // Select interactions that fit within token budget.
-  const prunedMessagesWithTokens: MessageWithTokens[] = [];
+  const selected: MessageWithTokens[] = [];
   let tokensUsed = baseTokens;
 
   // Go backward through interactions.
@@ -146,7 +146,7 @@ export async function renderConversationForModel(
     const interactionTokens = getInteractionTokenCount(interaction);
     if (tokensUsed + interactionTokens <= allowedTokenCount) {
       tokensUsed += interactionTokens;
-      prunedMessagesWithTokens.unshift(...interaction.messages);
+      selected.unshift(...interaction.messages);
     } else {
       break;
     }
@@ -157,8 +157,8 @@ export async function renderConversationForModel(
   })[] = [];
 
   // Merge content fragments into user messages.
-  for (let i = prunedMessagesWithTokens.length - 1; i >= 0; i--) {
-    const cfMessage = prunedMessagesWithTokens[i];
+  for (let i = selected.length - 1; i >= 0; i--) {
+    const cfMessage = selected[i];
 
     if (!isContentFragmentMessageTypeModel(cfMessage)) {
       selectedWithoutContentFragments.push(cfMessage);
@@ -166,13 +166,13 @@ export async function renderConversationForModel(
       continue;
     }
 
-    const userMessage = prunedMessagesWithTokens[i + 1];
+    const userMessage = selected[i + 1];
     if (!userMessage || userMessage.role !== "user") {
       logger.error(
         {
           workspaceId: conversation.owner.sId,
           conversationId: conversation.sId,
-          selected: prunedMessagesWithTokens.map((m) => ({
+          selected: selected.map((m) => ({
             ...m,
             content:
               getTextContentFromMessage(m)?.slice(0, 100) + " (truncated...)",
@@ -203,9 +203,10 @@ export async function renderConversationForModel(
   }
 
   // Remove tokenCount from final messages
-  const finalMessages: ModelMessageTypeMultiActions[] = selectedWithoutContentFragments.map(
-    ({ tokenCount: _tokenCount, ...msg }) => msg
-  );
+  const finalMessages: ModelMessageTypeMultiActions[] =
+    selectedWithoutContentFragments.map(
+      ({ tokenCount: _tokenCount, ...msg }) => msg
+    );
 
   logger.info(
     {
