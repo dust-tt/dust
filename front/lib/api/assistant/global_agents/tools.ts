@@ -5,7 +5,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";

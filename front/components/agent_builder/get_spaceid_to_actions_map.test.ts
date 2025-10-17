@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import type { AssistantBuilderMCPOrVizState } from "@app/components/assistant_builder/types";
-import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 import { getSpaceIdToActionsMap } from "./get_spaceid_to_actions_map";

@@ -1,6 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { ModelId } from "@app/types/shared/model_id";

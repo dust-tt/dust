@@ -28,6 +28,13 @@ import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
+import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  getOutputText,
+  isResourceContentWithText,
+  isTextContent,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
@@ -47,14 +54,7 @@ import {
   TABLE_QUERY_V2_SERVER_NAME,
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  getOutputText,
-  isResourceContentWithText,
-  isTextContent,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";

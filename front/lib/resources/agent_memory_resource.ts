@@ -5,7 +5,7 @@ import type {
   Transaction,
 } from "sequelize";
 
-import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
