@@ -154,7 +154,7 @@ export class MistralLLM extends LLM {
   }: {
     conversation: ModelConversationTypeMultiActions;
     prompt: string;
-  }): AsyncGenerator<any> {
+  }): AsyncGenerator<CompletionEvent> {
     const messages = this.getMessages({
       conversation,
       prompt,
