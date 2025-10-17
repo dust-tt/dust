@@ -6,14 +6,12 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export function getLLM({
   model,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  temperature,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  reasoningEffort,
+  _temperature,
+  _reasoningEffort,
 }: {
   model: ModelConfigurationType;
-  temperature: number;
-  reasoningEffort: AgentReasoningEffort;
+  _temperature: number;
+  _reasoningEffort: AgentReasoningEffort;
 }): Result<LLM, Error> {
   let llm: LLM;
 
