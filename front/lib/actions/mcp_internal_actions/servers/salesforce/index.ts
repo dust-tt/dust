@@ -13,6 +13,7 @@ import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/a
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 
 const SF_API_VERSION = "57.0";
@@ -252,9 +253,21 @@ function createServer(
       auth,
       {
         toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
-        skipAlerting: true,
+        agentLoopContext,
+        enableAlerting: false,
       },
       async ({ objectName, records, allOrNone }, { authInfo }) => {
+        const owner = auth.getNonNullableWorkspace();
+        const featureFlags = await getFeatureFlags(owner);
+
+        if (!featureFlags.includes("salesforce_tool_write")) {
+          return new Err(
+            new MCPError(
+              "Salesforce write operations are not enabled for this workspace."
+            )
+          );
+        }
+
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
 
