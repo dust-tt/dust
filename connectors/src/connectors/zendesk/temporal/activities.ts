@@ -5,6 +5,7 @@ import {
   getCategoryInternalId,
   getHelpCenterInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
+import { clearOrganizationCache } from "@connectors/connectors/zendesk/lib/in_memory_cache";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { syncCategory } from "@connectors/connectors/zendesk/lib/sync_category";
 import {
@@ -750,5 +751,9 @@ export async function syncZendeskTicketBatchActivity({
     `[Zendesk] Processing ${res.length} tickets in batch`
   );
 
+  // Clear the cache on the last batch.
+  if (!hasMore) {
+    clearOrganizationCache({ brandSubdomain });
+  }
   return { hasMore, nextLink };
 }
