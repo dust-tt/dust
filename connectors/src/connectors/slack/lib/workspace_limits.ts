@@ -137,7 +137,7 @@ function makeSlackMembershipAccessBlocksForConnector(
   };
 }
 
-async function postMessageForUnhautorizedUser(
+async function postMessageForUnauthorizedUser(
   connector: ConnectorResource,
   slackClient: WebClient,
   slackUserInfo: SlackUserInfo,
@@ -340,7 +340,7 @@ export async function notifyIfSlackUserIsNotAllowed(
       "Unauthorized Slack user attempted to access webhook."
     );
 
-    await postMessageForUnhautorizedUser(
+    await postMessageForUnauthorizedUser(
       connector,
       slackClient,
       slackUserInfo,

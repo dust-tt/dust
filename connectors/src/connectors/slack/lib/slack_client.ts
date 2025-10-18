@@ -93,7 +93,7 @@ export async function getSlackClient(
   // By default, we want to reject on rate limit errors.
   const { rejectOnRateLimit = true } = options ?? {};
 
-  const slackClient = new WebClient(slackAccessToken, {
+  return new WebClient(slackAccessToken, {
     timeout: SLACK_NETWORK_TIMEOUT_MS,
     rejectRateLimitedCalls: rejectOnRateLimit,
     retryConfig: rejectOnRateLimit
@@ -103,8 +103,6 @@ export async function getSlackClient(
           factor: 2,
         },
   });
-
-  return slackClient;
 }
 
 export async function withSlackErrorHandling<T>(
