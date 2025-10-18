@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
+import { escape } from "html-escaper";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -630,13 +631,6 @@ const decodeMessageBody = (
   return "";
 };
 
-const escapeHtml = (text: string): string =>
-  text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-
 const createQuoteSection = (
   originalBody: string,
   originalDate: string | undefined,
@@ -648,11 +642,11 @@ const createQuoteSection = (
 
   const separator =
     originalDate && originalFrom
-      ? `On ${escapeHtml(originalDate)}, ${escapeHtml(originalFrom)} wrote:`
+      ? `On ${escape(originalDate)}, ${escape(originalFrom)} wrote:`
       : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        `${escapeHtml(originalFrom || "Original sender")} wrote:`;
+        `${escape(originalFrom || "Original sender")} wrote:`;
 
-  const quotedOriginal = `<blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">${escapeHtml(originalBody).replace(/\n/g, "<br>")}</blockquote>`;
+  const quotedOriginal = `<blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">${escape(originalBody).replace(/\n/g, "<br>")}</blockquote>`;
 
   return `<br><br><div class="gmail_quote">${separator}<br>${quotedOriginal}</div>`;
 };
@@ -675,7 +669,7 @@ const buildReplyBody = (
     return `<div dir="ltr">${userBody.trim()}${quoteSection}</div>`;
   } else {
     // Plain text content - convert to HTML with escaping
-    const escapedBody = escapeHtml(userBody.trim()).replace(/\n/g, "<br>");
+    const escapedBody = escape(userBody.trim()).replace(/\n/g, "<br>");
     return `<div dir="ltr"><div>${escapedBody}</div>${quoteSection}</div>`;
   }
 };
