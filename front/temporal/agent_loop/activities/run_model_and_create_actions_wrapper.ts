@@ -5,6 +5,7 @@ import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
@@ -115,6 +116,13 @@ export async function runModelAndCreateActionsActivity({
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
     step,
   });
+
+  const needsApproval = createResult.actionBlobs.some((a) => a.needsApproval);
+  if (needsApproval) {
+    await ConversationResource.markAsActionRequired(auth, {
+      conversation: runAgentData.conversation,
+    });
+  }
 
   return {
     runId,
