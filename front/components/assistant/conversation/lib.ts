@@ -169,7 +169,9 @@ export function createPlaceholderAgentMessage({
         pictureUrl: "",
         status: "active",
         canRead: true,
+        // TODO(2025-10-17 thomas): Remove.
         requestedGroupIds: [],
+        requestedSpaceIds: [],
       },
       citations: {},
       generatedFiles: [],

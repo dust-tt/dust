@@ -7,6 +7,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME,
   RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
@@ -18,6 +19,7 @@ import {
   createClientExecutableFile,
   editClientExecutableFile,
   getClientExecutableFileContent,
+  getClientExecutableFileShareUrl,
   renameClientExecutableFile,
   revertClientExecutableFileChanges,
 } from "@app/lib/api/files/client_executable";
@@ -457,25 +459,42 @@ function createServer(
     )
   );
 
-  // TODO(INTERACTIVE_CONTENT 2025-09-01): Register data source file system tools for the Interactive
-  // Content server once supported in the agent builder.
-  // // Register data source file system tools for the Interactive Content server with custom
-  // // descriptions tailored for Frame use cases (visual assets and templates).
-  // registerListTool(auth, server, agentLoopContext, {
-  //   name: "list_assets",
-  //   extraDescription:
-  //     "Browse available visual assets and templates in the connected data sources. " +
-  //     "Use this to explore folders containing images, icons, slideshow templates, " +
-  //     "or other resources that can be incorporated into Frame files.",
-  // });
+  server.tool(
+    GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME,
+    "Get the share URL for an Interactive Content file. Returns the share URL if the file is " +
+      "currently shared.",
+    {
+      file_id: z
+        .string()
+        .describe(
+          "The ID of the Interactive Content file to get share URL for (e.g., 'fil_abc123')"
+        ),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: false,
+      },
+      async ({ file_id }) => {
+        const shareUrlRes = await getClientExecutableFileShareUrl(
+          auth,
+          file_id
+        );
+        if (shareUrlRes.isErr()) {
+          return new Err(new MCPError(shareUrlRes.error.message));
+        }
 
-  // registerCatTool(auth, server, agentLoopContext, {
-  //   name: "cat_assets",
-  //   extraDescription:
-  //     "Read template files or asset configurations from the connected data sources. " +
-  //     "Use this to retrieve slideshow templates, HTML/CSS snippets, React component examples, " +
-  //     "or configuration files that can serve as a starting point or be incorporated into Frame files.",
-  // });
+        return new Ok([
+          {
+            type: "text",
+            text: `URL: ${shareUrlRes.value}`,
+          },
+        ]);
+      }
+    )
+  );
 
   return server;
 }

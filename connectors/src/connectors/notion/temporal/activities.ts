@@ -51,7 +51,6 @@ import {
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
-  checkDataSourceUpsertQueueStatus,
   deleteDataSourceDocument,
   deleteDataSourceTable,
   deleteDataSourceTableRow,
@@ -1358,6 +1357,7 @@ export async function updateParentsFields({
  * This activity polls up to 5 times with 1 second intervals (max 5 seconds total).
  */
 export async function drainDocumentUpsertQueue({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   connectorId,
 }: {
   connectorId: ModelId;

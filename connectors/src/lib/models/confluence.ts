@@ -1,7 +1,7 @@
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
 export class ConfluenceConfiguration extends ConnectorBaseModel<ConfluenceConfiguration> {
@@ -38,7 +38,7 @@ ConfluenceConfiguration.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "confluence_configurations",
     indexes: [
       { fields: ["connectorId"], unique: true },
@@ -88,7 +88,7 @@ ConfluenceSpace.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "confluence_spaces",
     indexes: [{ fields: ["connectorId", "spaceId"], unique: true }],
   }
@@ -162,7 +162,7 @@ ConfluencePage.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["connectorId", "pageId"], unique: true },
       { fields: ["connectorId", "spaceId", "parentId"] },
@@ -240,7 +240,7 @@ ConfluenceFolder.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["connectorId", "folderId"], unique: true },
       { fields: ["connectorId", "spaceId", "parentId"] },

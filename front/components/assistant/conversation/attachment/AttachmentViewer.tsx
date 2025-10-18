@@ -166,7 +166,7 @@ export const AttachmentViewer = ({
                 onClick={onClickDownload}
                 icon={ArrowDownOnSquareIcon}
                 size="mini"
-                tooltip="Download audio file"
+                tooltip="Download file"
                 variant="ghost"
                 className={"mr-2 align-middle"}
               />

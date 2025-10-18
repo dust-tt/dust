@@ -5,6 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { tagsSorter } from "@app/lib/utils";
@@ -171,6 +172,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       templateId: agent.templateId
         ? TemplateResource.modelIdToSId({ id: agent.templateId })
         : null,
+      // TODO(2025-10-17 thomas): Remove requestedGroupIds.
       requestedGroupIds: agent.requestedGroupIds.map((groups) =>
         groups.map((id) =>
           GroupResource.modelIdToSId({
@@ -178,6 +180,12 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
             workspaceId: auth.getNonNullableWorkspace().id,
           })
         )
+      ),
+      requestedSpaceIds: agent.requestedSpaceIds.map((spaceId) =>
+        SpaceResource.modelIdToSId({
+          id: spaceId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        })
       ),
       tags: tags.map((t) => t.toJSON()).sort(tagsSorter),
       canRead: isAuthor || isMember || agent.scope === "visible",

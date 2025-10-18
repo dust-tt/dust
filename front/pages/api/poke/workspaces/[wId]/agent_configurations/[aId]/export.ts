@@ -25,6 +25,7 @@ export type ExportAgentConfigurationResponseBody = {
     | "versionAuthorId"
     | "userFavorite"
     | "requestedGroupIds"
+    | "requestedSpaceIds"
   > & {
     // If empty, no actions are performed, otherwise the actions are performed.
     actions: Omit<MCPServerConfigurationType, "id" | "sId">[];

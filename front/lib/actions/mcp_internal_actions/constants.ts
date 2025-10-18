@@ -8,6 +8,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import {
+  DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
   FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
@@ -134,6 +135,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: {
       create_issue: "low",
+      comment_on_issue: "low",
       add_issue_to_project: "low",
       get_pull_request: "never_ask",
       list_organization_projects: "never_ask",
@@ -434,6 +436,7 @@ The directive should be used to display a clickable version of the agent name in
       describe_object: "never_ask",
       list_attachments: "never_ask",
       read_attachment: "never_ask",
+      update_object: "high",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -774,7 +777,7 @@ The directive should be used to display a clickable version of the agent name in
         scope:
           "Mail.ReadWrite Mail.ReadWrite.Shared Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read offline_access" as const,
       },
-      icon: "OutlookLogo",
+      icon: "MicrosoftOutlookLogo",
       documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
       instructions: null,
     },
@@ -807,7 +810,7 @@ The directive should be used to display a clickable version of the agent name in
         scope:
           "Calendars.ReadWrite Calendars.ReadWrite.Shared User.Read MailboxSettings.Read offline_access" as const,
       },
-      icon: "OutlookLogo",
+      icon: "MicrosoftOutlookLogo",
       documentationUrl: "https://docs.dust.tt/docs/outlook-calendar-tool-setup",
       instructions: null,
     },
@@ -1118,7 +1121,7 @@ The directive should be used to display a clickable version of the agent name in
         scope:
           "User.Read Chat.Read ChatMessage.Read ChannelMessage.Read.All" as const,
       },
-      icon: "MicrosoftLogo", // TODO: Add Microsoft Teams icon
+      icon: "MicrosoftTeamsLogo",
       documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
       instructions: null,
     },
@@ -1196,7 +1199,7 @@ The directive should be used to display a clickable version of the agent name in
       name: "common_utilities",
       version: "1.0.0",
       description:
-        "Miscellaneous helper tools such as random numbers, timestamps, and timers.",
+        "Miscellaneous helper tools such as random numbers, time retrieval, and timers.",
       icon: "ActionAtomIcon",
       authorization: null,
       documentationUrl: null,
@@ -1282,7 +1285,7 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
-      instructions: null,
+      instructions: DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
     },
   },
   agent_management: {

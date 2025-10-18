@@ -779,3 +779,28 @@ export async function revertClientExecutableFileChanges(
     });
   }
 }
+
+export async function getClientExecutableFileShareUrl(
+  auth: Authenticator,
+  fileId: string
+): Promise<Result<string, Error>> {
+  const fileResource = await FileResource.fetchById(auth, fileId);
+  if (!fileResource) {
+    return new Err(new Error(`File not found: ${fileId}`));
+  }
+
+  if (!fileResource.isInteractiveContent) {
+    return new Err(
+      new Error(
+        `File '${fileId}' is not an Interactive Content file and cannot be shared.`
+      )
+    );
+  }
+
+  const shareInfo = await fileResource.getShareInfo();
+  if (!shareInfo) {
+    return new Err(new Error(`File '${fileId}' isn't shared.`));
+  }
+
+  return new Ok(shareInfo.shareUrl);
+}

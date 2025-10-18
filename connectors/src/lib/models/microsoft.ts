@@ -2,7 +2,7 @@ import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
 export class MicrosoftConfigurationModel extends ConnectorBaseModel<MicrosoftConfigurationModel> {
@@ -41,7 +41,7 @@ MicrosoftConfigurationModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "microsoft_configurations",
     indexes: [{ fields: ["connectorId"], unique: true }],
     relationship: "hasOne",
@@ -80,7 +80,7 @@ MicrosoftRootModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "microsoft_roots",
     indexes: [
       { fields: ["connectorId", "internalId"], unique: true },
@@ -159,7 +159,7 @@ MicrosoftNodeModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "microsoft_nodes",
     indexes: [
       { fields: ["internalId", "connectorId"], unique: true },

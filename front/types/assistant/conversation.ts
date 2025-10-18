@@ -187,6 +187,7 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     status: AgentConfigurationStatus;
     canRead: boolean;
     requestedGroupIds: string[][];
+    requestedSpaceIds: string[];
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
@@ -238,6 +239,7 @@ export type ConversationWithoutContentType = {
   depth: number;
   triggerId: string | null;
   requestedGroupIds: string[][];
+  requestedSpaceIds: string[];
 };
 
 /**

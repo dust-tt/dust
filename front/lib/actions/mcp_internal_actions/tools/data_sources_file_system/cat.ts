@@ -20,7 +20,11 @@ import { CoreAPI, Err, Ok } from "@app/types";
 const catToolInputSchema = {
   dataSources:
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
-  nodeId: z.string().describe("The ID of the node to read."),
+  nodeId: z
+    .string()
+    .describe(
+      "The ID of the node to read. This is not the human-readable node title."
+    ),
   offset: z
     .number()
     .optional()

@@ -90,6 +90,20 @@ async function handler(
     });
   }
 
+  // If file is shared publicly, ensure workspace allows it.
+  if (
+    shareScope === "public" &&
+    !workspace.canShareInteractiveContentPublicly
+  ) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
+
   // For workspace sharing, check authentication.
   if (shareScope === "workspace") {
     const auth = await getAuthForSharedEndpointWorkspaceMembersOnly(

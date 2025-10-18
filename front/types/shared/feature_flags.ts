@@ -108,6 +108,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Salesforce MCP tool (activated by default on most plans, FF to override the plan config)",
     stage: "on_demand",
   },
+  salesforce_tool_write: {
+    description: "Salesforce MCP tool: write operations (update_object)",
+    stage: "on_demand",
+  },
   show_debug_tools: {
     description: "Display debug tools in the interface",
     stage: "dust_only",
@@ -216,6 +220,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   dust_default_haiku_feature: {
     description:
       "Use Claude 4.5 Haiku as the default model for the @dust global agent",
+    stage: "on_demand",
+  },
+  llm_router_direct_requests: {
+    description: "Use direct LLM call over Dust app run in a conversation.",
     stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;

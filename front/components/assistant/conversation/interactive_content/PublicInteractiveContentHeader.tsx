@@ -16,6 +16,8 @@ interface PublicInteractiveContentHeaderProps {
   conversationUrl: string | null;
 }
 
+const UTM_PARAM = `utm_source=public-frames`;
+
 // Applying flex & justify-center to the title won't make it centered in the header
 // since it has the logo on the left (and will soon have buttons on the right).
 // To make it perfectly centered, we need to set the same flex basis for both the right and left
@@ -29,7 +31,10 @@ export function PublicInteractiveContentHeader({
     <AppLayoutTitle className="h-12 bg-gray-50 px-4 @container dark:bg-gray-900">
       <div className="flex h-full min-w-0 max-w-full items-center">
         <div className="grow-1 flex shrink-0 basis-12 items-center md:basis-60">
-          <PublicWebsiteLogo size="small" />
+          <PublicWebsiteLogo
+            size="small"
+            utmParam={user ? undefined : UTM_PARAM}
+          />
         </div>
 
         <div className="flex flex-1 justify-center">
@@ -47,7 +52,7 @@ export function PublicInteractiveContentHeader({
           {!user && (
             <Button
               label="Try it yourself"
-              href="/home"
+              href={`/?${UTM_PARAM}`}
               variant="outline"
               icon={RocketIcon}
               onClick={withTracking(TRACKING_AREAS.FRAMES, "sign_up")}
