@@ -10,7 +10,7 @@ const FUNCTION_NAME = "send_suggestions";
 const specifications = [
   {
     name: FUNCTION_NAME,
-    description: "Send suggestions of names for the assistants",
+    description: "Send suggestions of names for the agent",
     inputSchema: {
       type: "object",
       properties: {
@@ -18,9 +18,9 @@ const specifications = [
           type: "array",
           items: {
             type: "string",
-            description: "A suggestion of name for the assistant.",
+            description: "A suggestion of name for the agent.",
           },
-          description: "Suggest one to three names for the assistant",
+          description: "Suggest one to three names for the agent",
         },
       },
       required: ["suggestions"],
@@ -33,13 +33,13 @@ function getConversationContext(inputs: BuilderSuggestionInputType) {
   const description = "description" in inputs ? inputs.description : "";
 
   const instructionsText = instructions
-    ? "\nAssistant instructions\n======\n" + JSON.stringify(instructions)
+    ? "\nAgent instructions\n======\n" + JSON.stringify(instructions)
     : "";
   const descriptionText = description
-    ? "Assistant description\n======\n" + JSON.stringify(description)
+    ? "Agent description\n======\n" + JSON.stringify(description)
     : "";
   const initialPrompt =
-    "Please suggest one to three good names for an AI assistant" +
+    "Please suggest one to three good names for an AI agent" +
     (instructions || description ? " based on the following data:" : ".");
 
   return {
@@ -89,10 +89,10 @@ export async function getBuilderNameSuggestions(
     {
       conversation: getConversationContext(inputs),
       prompt:
-        "The user is currently creating an assistant based on a large language model." +
-        "The assistant has instructions and a description. You are provided with a single " +
+        "The user is currently creating an agent based on a large language model." +
+        "The agent has instructions and a description. You are provided with a single " +
         "message, consisting of this information if it is available. Your role is to " +
-        "suggest good names for the assistant.",
+        "suggest good names for the agent.",
       specifications,
     }
   );

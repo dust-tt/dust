@@ -5,6 +5,7 @@ import * as reporter from "io-ts-reporters";
 import { runAction } from "@app/lib/actions/server";
 import { getBuilderDescriptionSuggestions } from "@app/lib/api/assistant/suggestions/description";
 import { getBuilderNameSuggestions } from "@app/lib/api/assistant/suggestions/name";
+import { getBuilderTagSuggestions } from "@app/lib/api/assistant/suggestions/tags";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdActionRegistry } from "@app/lib/registry";
@@ -76,8 +77,10 @@ export async function getBuilderSuggestions(
     case "description":
       return getBuilderDescriptionSuggestions(auth, inputs);
 
-    case "emoji":
     case "tags":
+      return getBuilderTagSuggestions(auth, inputs);
+
+    case "emoji":
     case "instructions":
     case "autocompletion": {
       const config = cloneBaseConfig(
