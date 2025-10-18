@@ -5,6 +5,7 @@ import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 import type {
   ConversationType,
+  MessageTypeMultiActions,
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
@@ -192,10 +193,14 @@ export async function renderConversationForModel(
     );
   }
 
-  // Remove tokenCount from final messages
-  const finalMessages: ModelMessageTypeMultiActions[] = selected.map(
-    ({ tokenCount: _tokenCount, ...msg }) => msg
-  );
+  // Remove tokenCount from final messages and remove content fragments from return type
+  const finalMessages = selected
+    .map(({ tokenCount: _tokenCount, ...msg }) => msg)
+    // There should be no content fragments as they have been merged into user messages
+    .filter(
+      (message): message is ModelMessageTypeMultiActions =>
+        message.role !== "content_fragment"
+    );
 
   logger.info(
     {
@@ -275,7 +280,7 @@ function groupMessagesIntoInteractions(
 }
 
 async function countTokensForMessages(
-  messages: ModelMessageTypeMultiActions[],
+  messages: MessageTypeMultiActions[],
   model: ModelConfigurationType
 ): Promise<Result<MessageWithTokens[], Error>> {
   const textRepresentations: string[] = [];
