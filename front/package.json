@@ -70,6 +70,7 @@
     "@types/cls-hooked": "^4.3.9",
     "@types/json-schema": "^7.0.15",
     "@uiw/react-textarea-code-editor": "^3.0.2",
+    "@valtown/sdk": "^2.0.0",
     "@virtuoso.dev/message-list": "^1.14.0",
     "@workos-inc/node": "^7.50.0",
     "adm-zip": "^0.5.16",
