@@ -28,7 +28,7 @@ type UsageMetricsAggs = {
   by_interval?: estypes.AggregationsMultiBucketAggregateBase<ByIntervalBucket>;
 };
 
-type UsageMetricsInterval = "day" | "week";
+export type UsageMetricsInterval = "day" | "week";
 
 export async function fetchUsageMetrics(
   baseQuery: estypes.QueryDslQueryContainer,
