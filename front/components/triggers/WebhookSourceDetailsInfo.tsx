@@ -198,10 +198,6 @@ export function WebhookSourceDetailsInfo({
           />
         )}
 
-        <div>
-          <Page.H variant="h6">Source Name</Page.H>
-          <Page.P>{webhookSourceView.webhookSource.name}</Page.P>
-        </div>
         {webhookSourceView.webhookSource.kind !== "custom" &&
           WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[
             webhookSourceView.webhookSource.kind
