@@ -136,7 +136,9 @@ export async function getAgentConfigurationRequirementsFromActions(
     // We skip the permissions for internal tools as they are automatically available to all users.
     // This mimic the previous behavior of generic internal tools (search etc..).
     if (view.serverType === "internal") {
-      const availability = getAvailabilityOfInternalMCPServerById(view.sId);
+      const availability = getAvailabilityOfInternalMCPServerById(
+        view.mcpServerId
+      );
       switch (availability) {
         case "auto":
         case "auto_hidden_builder":
