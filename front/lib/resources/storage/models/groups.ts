@@ -1,7 +1,8 @@
-import type { CreationOptional, Transaction } from "sequelize";
+import type { CreationOptional, NonAttribute, Transaction } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
+import type { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { GroupKind } from "@app/types";
 import { isGlobalGroupKind, isSystemGroupKind } from "@app/types";
@@ -15,6 +16,9 @@ export class GroupModel extends WorkspaceAwareModel<GroupModel> {
 
   // Group ID on workOS, unique across all directories.
   declare workOSGroupId: string | null;
+
+  // Association
+  declare groupSpaces?: NonAttribute<GroupSpaceModel[]>;
 }
 
 GroupModel.init(

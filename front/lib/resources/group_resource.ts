@@ -26,7 +26,10 @@ import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
-import type { ResourceFindOptions } from "@app/lib/resources/types";
+import type {
+  ResourceFindOptions,
+  TypedIncludeable,
+} from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -52,6 +55,14 @@ import {
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const BUILDER_GROUP_NAME = "dust-builders";
 
+function getIncludeClauseForGroupSpaces(
+  includeGroupSpaces?: boolean
+): TypedIncludeable<GroupModel>[] {
+  return includeGroupSpaces
+    ? [{ model: GroupSpaceModel, as: "groupSpaces" }]
+    : [];
+}
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -60,8 +71,15 @@ export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
 export class GroupResource extends BaseResource<GroupModel> {
   static model: ModelStatic<GroupModel> = GroupModel;
 
-  constructor(model: ModelStatic<GroupModel>, blob: Attributes<GroupModel>) {
+  declare spaceIds: ModelId[];
+
+  constructor(
+    model: ModelStatic<GroupModel>,
+    blob: Attributes<GroupModel>,
+    spaceIds?: ModelId[]
+  ) {
     super(GroupModel, blob);
+    this.spaceIds = spaceIds ?? [];
   }
 
   static async makeNew(
@@ -374,10 +392,12 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async internalFetchAllWorkspaceGroups({
     workspaceId,
     groupKinds = ["global", "regular", "system", "provisioned"],
+    includeGroupSpaces = false,
     transaction,
   }: {
     workspaceId: ModelId;
     groupKinds?: GroupKind[];
+    includeGroupSpaces?: boolean;
     transaction?: Transaction;
   }): Promise<GroupResource[]> {
     const groups = await this.model.findAll({
@@ -387,17 +407,28 @@ export class GroupResource extends BaseResource<GroupModel> {
           [Op.in]: groupKinds,
         },
       },
+      include: getIncludeClauseForGroupSpaces(includeGroupSpaces),
       transaction,
     });
 
-    return groups.map((group) => new this(GroupModel, group.get()));
+    return groups.map(
+      (group) =>
+        new this(
+          GroupModel,
+          group.get(),
+          group.groupSpaces?.map((v) => v.vaultId) ?? []
+        )
+    );
   }
 
   static async listWorkspaceGroupsFromKey(
     key: KeyResource,
-    groupKinds: GroupKind[] = ["global", "regular", "system", "provisioned"]
+    groupKinds: GroupKind[] = ["global", "regular", "system", "provisioned"],
+    { includeGroupSpaces }: { includeGroupSpaces?: boolean } = {}
   ): Promise<GroupResource[]> {
     let groups: GroupModel[] = [];
+
+    const include = getIncludeClauseForGroupSpaces(includeGroupSpaces);
 
     if (key.isSystem) {
       groups = await this.model.findAll({
@@ -407,6 +438,7 @@ export class GroupResource extends BaseResource<GroupModel> {
             [Op.in]: groupKinds,
           },
         },
+        include,
       });
     } else if (key.scope === "restricted_group_only") {
       // Special case for restricted keys.
@@ -416,6 +448,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           workspaceId: key.workspaceId,
           id: key.groupId,
         },
+        include,
       });
     } else {
       // We fetch the associated group and the global group.
@@ -424,6 +457,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           workspaceId: key.workspaceId,
           [Op.or]: [{ id: key.groupId }, { kind: "global" }],
         },
+        include,
       });
     }
 
@@ -431,12 +465,20 @@ export class GroupResource extends BaseResource<GroupModel> {
       throw new Error("Group for key not found.");
     }
 
-    return groups.map((group) => new this(GroupModel, group.get()));
+    return groups.map(
+      (group) =>
+        new this(
+          GroupModel,
+          group.get(),
+          group.groupSpaces?.map((v) => v.vaultId) ?? []
+        )
+    );
   }
 
   static async listGroupsWithSystemKey(
     key: KeyResource,
-    groupIds: string[]
+    groupIds: string[],
+    { includeGroupSpaces }: { includeGroupSpaces?: boolean } = {}
   ): Promise<GroupResource[]> {
     if (!key.isSystem) {
       throw new Error("Only system keys are supported.");
@@ -449,14 +491,23 @@ export class GroupResource extends BaseResource<GroupModel> {
           [Op.in]: removeNulls(groupIds.map((id) => getResourceIdFromSId(id))),
         },
       },
+      include: getIncludeClauseForGroupSpaces(includeGroupSpaces),
     });
 
-    return groups.map((group) => new this(GroupModel, group.get()));
+    return groups.map(
+      (group) =>
+        new this(
+          GroupModel,
+          group.get(),
+          group.groupSpaces?.map((v) => v.vaultId) ?? []
+        )
+    );
   }
 
   static async internalFetchWorkspaceGlobalGroup(
     workspaceId: ModelId,
-    transaction?: Transaction
+    transaction?: Transaction,
+    { includeGroupSpaces }: { includeGroupSpaces?: boolean } = {}
   ): Promise<GroupResource | null> {
     const group = await this.model.findOne({
       where: {
@@ -464,13 +515,18 @@ export class GroupResource extends BaseResource<GroupModel> {
         kind: "global",
       },
       transaction,
+      include: getIncludeClauseForGroupSpaces(includeGroupSpaces),
     });
 
     if (!group) {
       return null;
     }
 
-    return new this(GroupModel, group.get());
+    return new this(
+      GroupModel,
+      group.get(),
+      group.groupSpaces?.map((v) => v.vaultId) ?? []
+    );
   }
 
   static async internalFetchWorkspaceSystemGroup(
@@ -508,7 +564,14 @@ export class GroupResource extends BaseResource<GroupModel> {
       limit,
       order,
     });
-    return groupModels.map((b) => new this(this.model, b.get()));
+    return groupModels.map(
+      (group) =>
+        new this(
+          this.model,
+          group.get(),
+          group.groupSpaces?.map((v) => v.vaultId) ?? []
+        )
+    );
   }
 
   static async fetchById(
@@ -531,7 +594,8 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async fetchByIds(
     auth: Authenticator,
-    ids: string[]
+    ids: string[],
+    { includeGroupSpaces }: { includeGroupSpaces?: boolean } = {}
   ): Promise<
     Result<
       GroupResource[],
@@ -551,6 +615,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           [Op.in]: groupModelIds,
         },
       },
+      includes: getIncludeClauseForGroupSpaces(includeGroupSpaces),
     });
 
     if (groups.length !== ids.length) {
@@ -795,11 +860,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     user,
     workspace,
     groupKinds = ["global", "regular", "provisioned", "agent_editors"],
+    includeGroupSpaces = false,
     transaction,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     groupKinds?: Omit<GroupKind, "system">[];
+    includeGroupSpaces?: boolean;
     transaction?: Transaction;
   }): Promise<GroupResource[]> {
     // First we need to check if the user is a member of the workspace.
@@ -843,6 +910,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           },
           required: true,
         },
+        ...getIncludeClauseForGroupSpaces(includeGroupSpaces),
       ],
       where: {
         workspaceId: workspace.id,
@@ -857,7 +925,14 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     const groups = [...(globalGroup ? [globalGroup] : []), ...userGroups];
 
-    return groups.map((group) => new this(GroupModel, group.get()));
+    return groups.map(
+      (group) =>
+        new this(
+          GroupModel,
+          group.get(),
+          group.groupSpaces?.map((v) => v.vaultId) ?? []
+        )
+    );
   }
 
   async isMember(user: UserResource): Promise<boolean> {

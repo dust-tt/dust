@@ -31,6 +31,7 @@ import type {
   APIErrorWithStatusCode,
   GroupType,
   LightWorkspaceType,
+  ModelId,
   PermissionType,
   PlanType,
   ResourcePermission,
@@ -84,6 +85,7 @@ export class Authenticator {
   _user: UserResource | null;
   _groups: GroupResource[];
   _workspace: WorkspaceResource | null;
+  _spaceIds: ModelId[];
 
   // Should only be called from the static methods below.
   constructor({
@@ -106,6 +108,13 @@ export class Authenticator {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._user = user || null;
     this._groups = groups;
+    this._spaceIds = groups.flatMap((g) => g.spaceIds);
+
+    console.log(
+      "********* groups",
+      groups.map((g) => g.id)
+    );
+    console.log("********* spaceIds", this._spaceIds);
     this._role = role;
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._subscription = subscription || null;
@@ -203,7 +212,7 @@ export class Authenticator {
         WorkspaceResource.fetchById(wId),
         this.userFromSession(session),
       ]);
-
+      const includeGroupSpaces = true;
       let role = "none" as RoleType;
       let groups: GroupResource[] = [];
       let subscription: SubscriptionResource | null = null;
@@ -217,6 +226,7 @@ export class Authenticator {
           GroupResource.listUserGroupsInWorkspace({
             user,
             workspace: renderLightWorkspaceType({ workspace }),
+            includeGroupSpaces,
           }),
           SubscriptionResource.fetchActiveByWorkspace(
             renderLightWorkspaceType({ workspace })
@@ -239,6 +249,7 @@ export class Authenticator {
       this._groups = await GroupResource.listUserGroupsInWorkspace({
         user: this._user,
         workspace: renderLightWorkspaceType({ workspace: this._workspace }),
+        includeGroupSpaces: true,
         transaction,
       });
     } else {
@@ -272,6 +283,7 @@ export class Authenticator {
         user?.isDustSuperUser
           ? GroupResource.internalFetchAllWorkspaceGroups({
               workspaceId: workspace.id,
+              includeGroupSpaces: true,
             })
           : [],
         SubscriptionResource.fetchActiveByWorkspace(
@@ -318,6 +330,7 @@ export class Authenticator {
         GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
+          includeGroupSpaces: true,
         }),
         SubscriptionResource.fetchActiveByWorkspace(
           renderLightWorkspaceType({ workspace })
@@ -368,6 +381,7 @@ export class Authenticator {
       GroupResource.listUserGroupsInWorkspace({
         user,
         workspace: renderLightWorkspaceType({ workspace }),
+        includeGroupSpaces: true,
       }),
       SubscriptionResource.fetchActiveByWorkspace(
         renderLightWorkspaceType({ workspace })
@@ -446,7 +460,9 @@ export class Authenticator {
         [requestedGroups, keySubscription, workspaceSubscription] =
           await Promise.all([
             // Key related attributes.
-            GroupResource.listGroupsWithSystemKey(key, requestedGroupIds),
+            GroupResource.listGroupsWithSystemKey(key, requestedGroupIds, {
+              includeGroupSpaces: true,
+            }),
             getSubscriptionForWorkspace(keyWorkspace),
             // Workspace related attributes.
             getSubscriptionForWorkspace(workspace),
@@ -454,7 +470,13 @@ export class Authenticator {
       } else {
         [keyGroups, keySubscription, workspaceSubscription] = await Promise.all(
           [
-            GroupResource.listWorkspaceGroupsFromKey(key),
+            GroupResource.listWorkspaceGroupsFromKey(
+              key,
+              ["global", "regular", "system", "provisioned"],
+              {
+                includeGroupSpaces: true,
+              }
+            ),
             getSubscriptionForWorkspace(keyWorkspace),
             // Workspace related attributes.
             getSubscriptionForWorkspace(workspace),
@@ -517,7 +539,8 @@ export class Authenticator {
 
     const groups = await GroupResource.listGroupsWithSystemKey(
       systemKeyForWorkspaceRes.value,
-      groupIds
+      groupIds,
+      { includeGroupSpaces: true }
     );
 
     return new Authenticator({
@@ -545,7 +568,9 @@ export class Authenticator {
     let subscription: SubscriptionResource | null = null;
 
     [globalGroup, subscription] = await Promise.all([
-      GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
+      GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id, undefined, {
+        includeGroupSpaces: true,
+      }),
       SubscriptionResource.fetchActiveByWorkspace(
         renderLightWorkspaceType({ workspace })
       ),
@@ -577,10 +602,15 @@ export class Authenticator {
         if (options?.dangerouslyRequestAllGroups) {
           return GroupResource.internalFetchAllWorkspaceGroups({
             workspaceId: workspace.id,
+            includeGroupSpaces: true,
           });
         } else {
           const globalGroup =
-            await GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id);
+            await GroupResource.internalFetchWorkspaceGlobalGroup(
+              workspace.id,
+              undefined,
+              { includeGroupSpaces: true }
+            );
           return globalGroup ? [globalGroup] : [];
         }
       })(),
@@ -592,7 +622,7 @@ export class Authenticator {
     return new Authenticator({
       workspace,
       role: "admin",
-      groups,
+      groups, //load spaces
       subscription,
     });
   }
@@ -652,6 +682,7 @@ export class Authenticator {
     const groups = await GroupResource.listUserGroupsInWorkspace({
       user,
       workspace: renderLightWorkspaceType({ workspace: owner }),
+      includeGroupSpaces: true,
     });
 
     return new Authenticator({
@@ -952,7 +983,8 @@ export class Authenticator {
 
       const groupsResult = await GroupResource.fetchByIds(
         tempAuth,
-        authType.groupIds
+        authType.groupIds,
+        { includeGroupSpaces: true }
       );
 
       if (groupsResult.isOk()) {
