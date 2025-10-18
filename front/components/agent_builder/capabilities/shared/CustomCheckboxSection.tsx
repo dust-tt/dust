@@ -2,7 +2,7 @@ import { Checkbox } from "@dust-tt/sparkle";
 import { useController } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 interface CustomCheckboxSectionProps {

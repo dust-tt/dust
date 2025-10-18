@@ -56,11 +56,11 @@ import {
   useKnowledgePageContext,
 } from "@app/components/data_source_view/context/PageContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import {
   ADVANCED_SEARCH_SWITCH,
   SEARCH_SERVER_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
 

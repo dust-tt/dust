@@ -16,7 +16,7 @@ import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
 

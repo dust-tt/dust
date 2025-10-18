@@ -4,19 +4,26 @@ import {
   INTERNAL_MIME_TYPES,
   isAgentPauseOutputResourceType,
 } from "@dust-tt/client";
+import type {
+  RegisteredTool,
+  ToolCallback,
+} from "@modelcontextprotocol/sdk/server/mcp.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+import type { ZodRawShape } from "zod";
 
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  AGENT_MEMORY_SERVER_NAME,
-  INTERNAL_MCP_SERVERS,
-  isInternalMCPServerOfName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   ToolEarlyExitEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/server_constants";
+import {
+  AGENT_MEMORY_SERVER_NAME,
+  INTERNAL_MCP_SERVERS,
+  isInternalMCPServerOfName,
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
+import type { INTERNAL_MCP_TOOLS_RUNNING_LABELS } from "@app/lib/actions/mcp_internal_actions/tool_constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -27,19 +34,67 @@ import type {
   OAuthProvider,
 } from "@app/types";
 
-export function makeInternalMCPServer(
-  serverName: InternalMCPServerNameType,
+/**
+ * Type for the `tool` method on an internal MCP server, with the first parameter
+ * constrained to valid tool names for the specific server type.
+ *
+ * All overloads must be manually redefined because TypeScript can't transform function
+ * signatures, and intersection types don't narrow parameters.
+ */
+type InternalMcpServerToolMethod<S extends InternalMCPServerNameType> = {
+  (
+    name: keyof (typeof INTERNAL_MCP_TOOLS_RUNNING_LABELS)[S],
+    cb: ToolCallback
+  ): RegisteredTool;
+  (
+    name: keyof (typeof INTERNAL_MCP_TOOLS_RUNNING_LABELS)[S],
+    description: string,
+    cb: ToolCallback
+  ): RegisteredTool;
+  <Args extends ZodRawShape>(
+    name: keyof (typeof INTERNAL_MCP_TOOLS_RUNNING_LABELS)[S],
+    paramsSchemaOrAnnotations: Args | ToolAnnotations,
+    cb: ToolCallback<Args>
+  ): RegisteredTool;
+  <Args extends ZodRawShape>(
+    name: keyof (typeof INTERNAL_MCP_TOOLS_RUNNING_LABELS)[S],
+    description: string,
+    paramsSchemaOrAnnotations: Args | ToolAnnotations,
+    cb: ToolCallback<Args>
+  ): RegisteredTool;
+  <Args extends ZodRawShape>(
+    name: keyof (typeof INTERNAL_MCP_TOOLS_RUNNING_LABELS)[S],
+    paramsSchema: Args,
+    annotations: ToolAnnotations,
+    cb: ToolCallback<Args>
+  ): RegisteredTool;
+  <Args extends ZodRawShape>(
+    name: keyof (typeof INTERNAL_MCP_TOOLS_RUNNING_LABELS)[S],
+    description: string,
+    paramsSchema: Args,
+    annotations: ToolAnnotations,
+    cb: ToolCallback<Args>
+  ): RegisteredTool;
+};
+
+type InternalMcpServer<S extends InternalMCPServerNameType> = Omit<
+  McpServer,
+  "tool"
+> & { tool: InternalMcpServerToolMethod<S> };
+
+export function makeInternalMCPServer<S extends InternalMCPServerNameType>(
+  serverName: S,
   options?: {
     augmentedInstructions?: string;
   }
-): McpServer {
+): InternalMcpServer<S> {
   const { serverInfo } = INTERNAL_MCP_SERVERS[serverName];
   const instructions =
     options?.augmentedInstructions ?? serverInfo.instructions ?? undefined;
 
   return new McpServer(serverInfo, {
     instructions,
-  });
+  }) as InternalMcpServer<S>;
 }
 
 export function makePersonalAuthenticationError(

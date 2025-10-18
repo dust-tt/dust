@@ -12,7 +12,7 @@ import type {
 import type {
   InternalMCPServerNameType,
   MCPServerAvailability,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import {
   isLightClientSideMCPToolConfiguration,

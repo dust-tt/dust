@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";

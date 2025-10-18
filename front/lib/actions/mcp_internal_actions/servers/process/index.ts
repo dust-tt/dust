@@ -11,15 +11,15 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  FIND_TAGS_TOOL_NAME,
-  PROCESS_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   ConfigurableToolInputSchemas,
   JsonSchemaSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  FIND_TAGS_TOOL_NAME,
+  PROCESS_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/tools/utils";

@@ -37,14 +37,14 @@ import type {
 } from "@app/lib/actions/mcp";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import {
   makeMCPToolExit,
   makePersonalAuthenticationError,

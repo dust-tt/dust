@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   INTERNAL_MCP_SERVERS,
   LEGACY_INTERNAL_MCP_SERVER_IDS,
-} from "./constants";
+} from "./server_constants";
 
 describe("INTERNAL_MCP_SERVERS", () => {
   it("should have unique IDs for all servers", () => {
@@ -60,7 +60,11 @@ describe("INTERNAL_MCP_SERVERS", () => {
     ];
     expect(
       autoInternalTools,
-      "Internal tools with availabilty auto or auto_hidden_builder are not up to date.\nIf you are adding or removing a tool, just update the hard coded list.\nHowever, if you are changing the availability from auto(_xxx) to manual, you need to run a migration on existing agents that were configured with that tool to update their requestedGroupIds (see getAgentConfigurationGroupIdsFromActions())."
+      "Internal tools with availability auto or auto_hidden_builder are not up to date.\n" +
+        "If you are adding or removing a tool, you only need to update the hard coded list.\n" +
+        "However, if you are changing the availability from auto(_xxx) to manual, " +
+        "you need to run a migration on existing agents that were configured with that " +
+        "tool to update their requestedGroupIds (see getAgentConfigurationGroupIdsFromActions())."
     ).toEqual(HARD_CODED_AUTO_INTERNAL_TOOLS);
   });
 });

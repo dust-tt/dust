@@ -17,14 +17,14 @@ import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type {
   AutoInternalMCPServerNameType,
   MCPServerAvailability,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerById,
   getAvailabilityOfInternalMCPServerByName,
   isAutoInternalMCPServerName,
   isValidInternalMCPServerId,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
