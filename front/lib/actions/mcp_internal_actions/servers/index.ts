@@ -48,6 +48,7 @@ import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
+import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
@@ -182,6 +183,8 @@ export async function getInternalMCPServer(
       return dataWarehousesServer(auth, agentLoopContext);
     case "toolsets":
       return toolsetsServer(auth, agentLoopContext);
+    case "val_town":
+      return valtownServer(auth, agentLoopContext);
     case "deep_dive":
       return deepDiveServer(auth, agentLoopContext);
     default:
