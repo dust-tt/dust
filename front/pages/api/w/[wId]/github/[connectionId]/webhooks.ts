@@ -61,12 +61,22 @@ async function handler(
         });
       }
 
-      if (!isString(remoteMetadata.repository)) {
+      // Support both legacy format (single repository) and new format (arrays)
+      const hasLegacyRepository = isString(remoteMetadata.repository);
+      const hasRepositories =
+        Array.isArray(remoteMetadata.repositories) &&
+        remoteMetadata.repositories.length > 0;
+      const hasOrganizations =
+        Array.isArray(remoteMetadata.organizations) &&
+        remoteMetadata.organizations.length > 0;
+
+      if (!hasLegacyRepository && !hasRepositories && !hasOrganizations) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "remoteMetadata.repository is required",
+            message:
+              "remoteMetadata must contain at least one repository or organization",
           },
         });
       }

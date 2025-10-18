@@ -68,9 +68,9 @@ type WebhookSourceSheetProps = {
 };
 
 /**
- * Creates the actual webhook on the remote provider's servers and stores metadata locally
+ * Creates the actual webhooks on the remote provider's servers and stores metadata locally
  */
-async function createActualWebhook({
+async function createActualWebhooks({
   webhookSource,
   providerData,
   subscribedEvents,
@@ -103,7 +103,7 @@ async function createActualWebhook({
         body: JSON.stringify({
           connectionId,
           remoteMetadata: remoteWebhookData,
-          webhookUrl: webhookUrl,
+          webhookUrl,
           events: subscribedEvents,
           secret: webhookSource.secret,
         }),
@@ -112,40 +112,44 @@ async function createActualWebhook({
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(
-        error.api_error?.message ||
-          `Failed to create ${webhookSource.kind} webhook`
-      );
+      throw new Error(error.api_error?.message || "Failed to create webhooks");
     }
 
-    const webhookResponse = await response.json();
+    const result = await response.json();
+    const { webhookIds, errors } = result;
 
-    // Store the webhook metadata in the webhook source
-    if (webhookResponse.webhook?.id) {
-      await fetch(`/api/w/${owner.sId}/webhook_sources/${webhookSource.sId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
+    // Store the webhook metadata with all webhook IDs
+    await fetch(`/api/w/${owner.sId}/webhook_sources/${webhookSource.sId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        remoteMetadata: {
+          ...remoteWebhookData,
+          webhookIds,
         },
-        body: JSON.stringify({
-          remoteMetadata: {
-            ...remoteWebhookData,
-            id: String(webhookResponse.webhook.id),
-          },
-          oauthConnectionId: connectionId,
-        }),
+        oauthConnectionId: connectionId,
+      }),
+    });
+
+    if (errors && errors.length > 0) {
+      sendNotification({
+        type: "error",
+        title: `Some ${webhookSource.kind} webhooks failed`,
+        description: `Created ${Object.keys(webhookIds).length} webhooks, but ${errors.length} failed. Errors: ${errors.slice(0, 3).join(", ")}${errors.length > 3 ? "..." : ""}`,
+      });
+    } else {
+      sendNotification({
+        type: "success",
+        title: `${webhookSource.kind} webhooks created`,
+        description: `Successfully created ${Object.keys(webhookIds).length} webhooks on ${webhookSource.kind}.`,
       });
     }
-
-    sendNotification({
-      type: "success",
-      title: `${webhookSource.kind} webhook created`,
-      description: `Webhook successfully created on ${webhookSource.kind}.`,
-    });
   } catch (error) {
     sendNotification({
       type: "error",
-      title: `Failed to create ${webhookSource.kind} webhook`,
+      title: `Failed to create ${webhookSource.kind} webhooks`,
       description:
         error instanceof Error ? error.message : "Unknown error occurred",
     });
@@ -346,9 +350,9 @@ function WebhookSourceSheetContent({
 
       const webhookSource = await createWebhookSource(apiData);
 
-      // If we have provider data, create the actual webhook on the remote provider
+      // If we have provider data, create the actual webhooks on the remote provider
       if (webhookSource && providerData) {
-        await createActualWebhook({
+        await createActualWebhooks({
           webhookSource: { ...webhookSource, kind: mode.kind },
           providerData,
           subscribedEvents: data.subscribedEvents,
