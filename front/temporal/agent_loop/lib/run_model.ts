@@ -227,11 +227,7 @@ export async function runModelActivity(
   const availableActions = isLastStep ? [] : mcpActions.flatMap((s) => s.tools);
 
   let fallbackPrompt = "You are a conversational agent";
-  if (
-    agentConfiguration.actions.length ||
-    agentConfiguration.visualizationEnabled ||
-    availableActions.length > 0
-  ) {
+  if (agentConfiguration.actions.length || availableActions.length > 0) {
     fallbackPrompt += " with access to tool use.";
   } else {
     fallbackPrompt += ".";

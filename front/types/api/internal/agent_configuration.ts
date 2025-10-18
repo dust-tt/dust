@@ -201,7 +201,6 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     model: t.intersection([ModelConfigurationSchema, IsSupportedModelSchema]),
     actions: t.array(MCPServerActionConfigurationSchema),
     templateId: t.union([t.string, t.null, t.undefined]),
-    visualizationEnabled: t.boolean,
     tags: t.array(TagSchema),
     editors: t.array(EditorSchema),
   }),
