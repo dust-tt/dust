@@ -57,7 +57,7 @@ type ToolNameForServer<S extends InternalMCPServerNameType> =
  *
  * Servers listed in DynamicToolServers accept any string as tool name.
  */
-type InternalMcpServerToolMethod<S extends InternalMCPServerNameType> =
+export type InternalMcpServerToolMethod<S extends InternalMCPServerNameType> =
   S extends DynamicToolServers
     ? McpServer["tool"]
     : {
