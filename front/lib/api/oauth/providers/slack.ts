@@ -97,8 +97,11 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
           };
         case "labs_transcripts":
           assert(
-            "Unreachable provider `labs_transcripts` in SlackOAuthProvider"
+            "Unreachable useCase `labs_transcripts` in SlackOAuthProvider"
           );
+          return { user_scopes: [], bot_scopes: [] };
+        case "webhooks":
+          assert("Unreachable useCase `webhooks` in SlackOAuthProvider");
           return { user_scopes: [], bot_scopes: [] };
         default:
           assertNever(useCase);
@@ -120,8 +123,11 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
           return config.getOAuthSlackBotClientId();
         case "labs_transcripts":
           assert(
-            "Unreachable provider `labs_transcripts` in SlackOAuthProvider"
+            "Unreachable useCase `labs_transcripts` in SlackOAuthProvider"
           );
+          return "";
+        case "webhooks":
+          assert("Unreachable useCase `webhooks` in SlackOAuthProvider");
           return "";
         default:
           assertNever(useCase);

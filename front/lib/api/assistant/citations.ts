@@ -148,7 +148,9 @@ export function getLightAgentMessageFromAgentMessage(
       pictureUrl: agentMessage.configuration.pictureUrl,
       status: agentMessage.configuration.status,
       canRead: agentMessage.configuration.canRead,
+      // TODO(2025-10-17 thomas): Remove requestedGroupIds.
       requestedGroupIds: agentMessage.configuration.requestedGroupIds,
+      requestedSpaceIds: agentMessage.configuration.requestedSpaceIds,
     },
     citations: getCitationsFromActions(agentMessage.actions),
     generatedFiles: agentMessage.actions

@@ -67,7 +67,7 @@ const getCachedTenantToken = cacheWithRedis(
 /**
  * Acquire tenant-specific token for Bot Framework API calls
  */
-async function getTenantSpecificToken(): Promise<string | null> {
+export async function getTenantSpecificToken(): Promise<string | null> {
   try {
     return await getCachedTenantToken();
   } catch (error) {

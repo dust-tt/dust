@@ -45,6 +45,7 @@ export type ContentNodeAttachmentType = BaseConversationAttachmentType & {
   nodeId: string;
   nodeDataSourceViewId: string;
   nodeType: ContentNodeType;
+  sourceUrl: string | null;
 };
 
 export type ConversationAttachmentType =
@@ -131,6 +132,7 @@ export function getAttachmentFromContentNodeContentFragment(
     contentFragmentId: cf.contentFragmentId,
     nodeId: cf.nodeId,
     nodeType: cf.nodeType,
+    sourceUrl: cf.sourceUrl,
   };
 }
 
@@ -226,6 +228,10 @@ export function renderAttachmentXml({
     `isQueryable="${attachment.isQueryable}"`,
     `isSearchable="${attachment.isSearchable}"`,
   ];
+
+  if (isContentNodeAttachmentType(attachment) && attachment.sourceUrl) {
+    params.push(`sourceUrl="${attachment.sourceUrl}"`);
+  }
 
   let tag = `<attachment ${params.join(" ")}`;
 

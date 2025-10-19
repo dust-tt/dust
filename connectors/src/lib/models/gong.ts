@@ -1,7 +1,7 @@
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
 export class GongConfigurationModel extends ConnectorBaseModel<GongConfigurationModel> {
@@ -56,7 +56,7 @@ GongConfigurationModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "gong_configurations",
     indexes: [{ fields: ["connectorId"], unique: true }],
     relationship: "hasOne",
@@ -107,7 +107,7 @@ GongUserModel.init(
     indexes: [{ fields: ["connectorId", "gongId"], unique: true }],
     modelName: "gong_users",
     relationship: "hasMany",
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
   }
 );
 
@@ -151,7 +151,7 @@ GongTranscriptModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "gong_transcripts",
     indexes: [{ fields: ["connectorId", "callId"], unique: true }],
   }

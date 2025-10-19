@@ -9,7 +9,10 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { canReadMessage } from "@app/lib/api/assistant/messages";
-import { getContentFragmentGroupIds } from "@app/lib/api/assistant/permissions";
+import {
+  getContentFragmentGroupIds,
+  getContentFragmentSpaceIds,
+} from "@app/lib/api/assistant/permissions";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
@@ -113,6 +116,7 @@ export async function createConversation(
     depth,
     triggerId,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
   });
 
   return {
@@ -128,8 +132,8 @@ export async function createConversation(
     unread: false,
     actionRequired: false,
     hasError: false,
-    requestedGroupIds:
-      conversation.getConversationRequestedGroupIdsFromModel(auth),
+    requestedGroupIds: conversation.getRequestedGroupIdsFromModel(auth),
+    requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
   };
 }
 
@@ -1655,6 +1659,8 @@ async function isMessagesLimitReached({
 }
 
 /**
+ * TODO(2025-10-17 thomas): Remove groups requirements, only handle requiredSpaces
+ *
  * Update the conversation requestedGroupIds based on the mentioned agents. This function is purely
  * additive - requirements are never removed.
  *
@@ -1679,9 +1685,11 @@ export async function updateConversationRequestedGroupIds(
     t: Transaction;
   }
 ): Promise<void> {
-  let newRequirements: string[][] = [];
+  let newGroupsRequirements: string[][] = [];
+  let newSpaceRequirements: string[] = [];
   if (agents) {
-    newRequirements = agents.flatMap((agent) => agent.requestedGroupIds);
+    newGroupsRequirements = agents.flatMap((agent) => agent.requestedGroupIds);
+    newSpaceRequirements = agents.flatMap((agent) => agent.requestedSpaceIds);
   }
   if (contentFragment) {
     const rawRequestedGroupIds = await getContentFragmentGroupIds(
@@ -1696,35 +1704,55 @@ export async function updateConversationRequestedGroupIds(
         })
       )
     );
-    newRequirements.push(...requestedGroupIds);
+    newGroupsRequirements.push(...requestedGroupIds);
+
+    const requestedSpaceId = await getContentFragmentSpaceIds(
+      auth,
+      contentFragment
+    );
+
+    newSpaceRequirements.push(requestedSpaceId);
   }
+
   // Remove duplicates and sort each requirement.
-  newRequirements = _.uniqWith(
-    newRequirements.map((r) => sortBy(r)),
+  newGroupsRequirements = _.uniqWith(
+    newGroupsRequirements.map((r) => sortBy(r)),
     isEqual
   );
-  const currentRequirements = conversation.requestedGroupIds;
+
+  newSpaceRequirements = _.uniq(newSpaceRequirements);
+
+  const currentGroupsRequirements = conversation.requestedGroupIds;
+  const currentSpaceRequirements = conversation.requestedSpaceIds;
 
   // Check if each new requirement already exists in current requirements.
-  const areAllRequirementsPresent = newRequirements.every((newReq) =>
-    currentRequirements.some(
+  const areAllGroupRequirementsPresent = newGroupsRequirements.every((newReq) =>
+    currentGroupsRequirements.some(
       // newReq was sorted, so we need to sort currentReq as well.
       (currentReq) => isEqual(newReq, sortBy(currentReq))
     )
   );
 
+  const areAllSpaceRequirementsPresent = newSpaceRequirements.every((newReq) =>
+    currentSpaceRequirements.includes(newReq)
+  );
+
   // Early return if all new requirements are already present.
-  if (areAllRequirementsPresent) {
+  if (areAllGroupRequirementsPresent && areAllSpaceRequirementsPresent) {
     return;
   }
 
   // Get missing requirements.
-  const requirementsToAdd = newRequirements.filter(
+  const groupRequirementsToAdd = newGroupsRequirements.filter(
     (newReq) =>
-      !currentRequirements.some((currentReq) =>
+      !currentGroupsRequirements.some((currentReq) =>
         // newReq was sorted, so we need to sort currentReq as well.
         isEqual(newReq, sortBy(currentReq))
       )
+  );
+
+  const spaceRequirementsToAdd = newSpaceRequirements.filter(
+    (newReq) => !currentSpaceRequirements.includes(newReq)
   );
 
   // Convert all sIds to modelIds.
@@ -1740,15 +1768,21 @@ export async function updateConversationRequestedGroupIds(
     return sIdToModelId.get(sId)!;
   };
 
-  const allRequirements = [
-    ...currentRequirements.map((req) => sortBy(req.map(getModelId))),
-    ...requirementsToAdd.map((req) => sortBy(req.map(getModelId))),
+  const allGroupsRequirements = [
+    ...currentGroupsRequirements.map((req) => sortBy(req.map(getModelId))),
+    ...groupRequirementsToAdd.map((req) => sortBy(req.map(getModelId))),
+  ];
+
+  const allSpaceRequirements = [
+    ...currentSpaceRequirements.map(getModelId),
+    ...spaceRequirementsToAdd.map(getModelId),
   ];
 
   await ConversationResource.updateRequestedGroupIds(
     auth,
     conversation.sId,
-    normalizeArrays(allRequirements),
+    normalizeArrays(allGroupsRequirements),
+    allSpaceRequirements,
     t
   );
 }

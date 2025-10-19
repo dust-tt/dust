@@ -50,6 +50,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "deep_dive", id: 29 },
       { name: "search", id: 1006 },
       { name: "run_agent", id: 1008 },
+      { name: "common_utilities", id: 1017 },
       { name: "reasoning", id: 1007 },
       { name: "query_tables_v2", id: 1009 },
       { name: "data_sources_file_system", id: 1010 },

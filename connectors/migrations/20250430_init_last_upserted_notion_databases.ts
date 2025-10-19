@@ -1,7 +1,7 @@
 import { makeScript } from "scripts/helpers";
 
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 
 makeScript({}, async ({ execute }, logger) => {
   const notionConnectors = await ConnectorResource.listByType("notion", {});
@@ -18,7 +18,7 @@ makeScript({}, async ({ execute }, logger) => {
     // We initialize lastUpsertedRunTs to firstSeenTs (to allow prioritizing
     // databases that were never upserted yet).
     if (execute) {
-      await sequelizeConnection.query(
+      await connectorsSequelize.query(
         `UPDATE notion_databases SET "lastUpsertedRunTs" = "firstSeenTs" WHERE "connectorId" = :connectorId`,
         {
           replacements: { connectorId: c.id },

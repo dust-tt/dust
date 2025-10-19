@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
+import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -57,22 +57,28 @@ async function updateAgentConfigurationGroupIds(
     }
 
     // Calculate the correct group IDs using the updated function
-    const newRequestedGroupIds = await getAgentConfigurationGroupIdsFromActions(
+    const newRequirements = await getAgentConfigurationRequirementsFromActions(
       auth,
       { actions: ac.actions }
     );
 
     // Normalize the arrays for comparison
-    const normalizedNewGroupIds = normalizeArrays(newRequestedGroupIds);
+    const normalizedNewGroupIds = normalizeArrays(
+      newRequirements.requestedGroupIds
+    );
     const normalizedCurrentGroupIds = normalizeArrays(agent.requestedGroupIds);
 
     // Check if the group IDs have changed
     if (
-      isArrayEqual2DUnordered(normalizedNewGroupIds, normalizedCurrentGroupIds)
+      isArrayEqual2DUnordered(
+        normalizedNewGroupIds,
+        normalizedCurrentGroupIds
+      ) &&
+      _.isEqual(newRequirements.requestedSpaceIds, agent.requestedSpaceIds)
     ) {
       logger.debug(
         { agentId: agent.sId },
-        "Agent group IDs are already up to date"
+        "Agent requirements are already up to date"
       );
       return { updated: false };
     }
@@ -85,12 +91,15 @@ async function updateAgentConfigurationGroupIds(
         newGroupIds: normalizedNewGroupIds,
         execute,
       },
-      "Updating agent configuration group IDs for dust app permissions"
+      "Updating agent configuration requirements for permissions"
     );
 
     if (execute) {
       await AgentConfiguration.update(
-        { requestedGroupIds: normalizedNewGroupIds },
+        {
+          requestedGroupIds: normalizedNewGroupIds,
+          requestedSpaceIds: newRequirements.requestedSpaceIds,
+        },
         { where: { sId: agent.sId } }
       );
     }

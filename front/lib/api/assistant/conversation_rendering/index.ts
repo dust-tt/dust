@@ -1,3 +1,4 @@
+import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
@@ -24,7 +25,6 @@ import {
   progressivelyPruneInteraction,
   prunePreviousInteractions,
 } from "./pruning";
-import { renderAllMessages } from "./shared/message_rendering";
 
 // When previous iteractions pruning is enabled, we'll attempt to fully preserve this number of interactions.
 const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;

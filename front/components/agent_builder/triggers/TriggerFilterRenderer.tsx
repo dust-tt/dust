@@ -164,10 +164,17 @@ export function TriggerFilterRenderer({ data }: TriggerFilterRendererProps) {
       </div>
     );
   } catch (error) {
+    const errorMessage =
+      error instanceof Error &&
+      "message" in error &&
+      typeof error.message === "string"
+        ? error.message
+        : "unknown error";
     return (
       <div className="overflow-hidden px-4 py-4">
         <p className="text-sm text-warning">
-          Error parsing filter expression. Please check the filter syntax.
+          Error parsing filter expression: {errorMessage}. Please check the
+          filter syntax.
         </p>
       </div>
     );

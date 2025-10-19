@@ -24,7 +24,7 @@ export function AgentHandle({
   };
 
   if (!canMention) {
-    return <span>@{assistant.name}</span>;
+    return <span>{assistant.name}</span>;
   }
 
   return (
@@ -32,11 +32,11 @@ export function AgentHandle({
       href={href}
       shallow
       className={cn(
-        "cursor-pointer transition duration-200 hover:text-highlight active:text-highlight-600",
+        "max-w-[14rem] cursor-pointer truncate transition duration-200 hover:text-highlight active:text-highlight-600 sm:max-w-fit",
         isDisabled && "text-gray-600 text-opacity-75"
       )}
     >
-      @{assistant.name}
+      {assistant.name}
     </Link>
   );
 }

@@ -1304,6 +1304,21 @@ export async function updateParentsFields({
   return nextCursors;
 }
 
+/**
+ * Checks the upsert queue status with a short polling period.
+ * Returns true if the queue is drained (no running workflows), false otherwise.
+ * This activity polls up to 5 times with 1 second intervals (max 5 seconds total).
+ */
+export async function drainDocumentUpsertQueue({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<boolean> {
+  // Temporarily disable the queue draining until we can optimize it to make fewer front calls
+  return true;
+}
+
 export async function markParentsAsUpdated({
   connectorId,
   runTimestamp,

@@ -144,6 +144,14 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return new Ok(undefined);
   }
 
+  /**
+   * Getters
+   */
+
+  get canShareInteractiveContentPublicly(): boolean {
+    return this.blob.metadata?.allowContentCreationFileSharing !== false;
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }

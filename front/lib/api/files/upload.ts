@@ -10,6 +10,7 @@ import { fileSync } from "tmp";
 import config from "@app/lib/api/config";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { untrustedFetch } from "@app/lib/egress";
 import type { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { transcribeFile } from "@app/lib/utils/transcribe_service";
@@ -81,11 +82,11 @@ const uploadToPublicBucket: ProcessingFunction = async (
 // Images processing.
 
 const createReadableFromUrl = async (url: string): Promise<Readable> => {
-  const response = await fetch(url);
+  const response = await untrustedFetch(url);
   if (!response.ok || !response.body) {
     throw new Error(`Failed to fetch from URL: ${response.statusText}`);
   }
-  return Readable.fromWeb(response.body as any); // Type assertion needed due to Node.js types mismatch
+  return Readable.fromWeb(response.body);
 };
 
 const resizeAndUploadToFileStorage: ProcessingFunction = async (
@@ -659,7 +660,7 @@ export async function processAndStoreFromUrl(
   }
 
   try {
-    const response = await fetch(url);
+    const response = await untrustedFetch(url);
     if (!response.ok) {
       return new Err({
         name: "dust_error",
@@ -707,7 +708,7 @@ export async function processAndStoreFromUrl(
       file,
       content: {
         type: "readable",
-        value: Readable.fromWeb(response.body as any),
+        value: Readable.fromWeb(response.body),
       },
     });
   } catch (error) {

@@ -179,6 +179,7 @@ export function _getHelperGlobalAgent({
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,

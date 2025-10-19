@@ -12,11 +12,15 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import _ from "lodash";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 
 import { ConfirmContext } from "@app/components/Confirm";
-import type { CreateWebhookSourceFormData } from "@app/components/triggers/CreateWebhookSourceForm";
+import type {
+  CreateWebhookSourceFormData,
+  RemoteProviderData,
+} from "@app/components/triggers/CreateWebhookSourceForm";
 import {
   CreateWebhookSourceFormContent,
   CreateWebhookSourceSchema,
@@ -62,6 +66,93 @@ type WebhookSourceSheetProps = {
   mode: WebhookSourceSheetMode | null;
   onClose: () => void;
 };
+
+/**
+ * Creates the actual webhook on the remote provider's servers and stores metadata locally
+ */
+async function createActualWebhook({
+  webhookSource,
+  providerData,
+  subscribedEvents,
+  owner,
+  sendNotification,
+}: {
+  webhookSource: {
+    sId: string;
+    urlSecret: string;
+    secret: string | null;
+    kind: WebhookSourceKind;
+  };
+  providerData: RemoteProviderData;
+  subscribedEvents: string[];
+  owner: LightWorkspaceType;
+  sendNotification: ReturnType<typeof useSendNotification>;
+}): Promise<void> {
+  try {
+    const webhookUrl = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/triggers/hooks/${webhookSource.sId}/${webhookSource.urlSecret}`;
+
+    const { connectionId, ...remoteWebhookData } = providerData;
+
+    const response = await fetch(
+      `/api/w/${owner.sId}/${webhookSource.kind}/${connectionId}/webhooks`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          connectionId,
+          remoteMetadata: remoteWebhookData,
+          webhookUrl: webhookUrl,
+          events: subscribedEvents,
+          secret: webhookSource.secret,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        error.api_error?.message ||
+          `Failed to create ${webhookSource.kind} webhook`
+      );
+    }
+
+    const webhookResponse = await response.json();
+
+    // Store the webhook metadata in the webhook source
+    if (webhookResponse.webhook?.id) {
+      await fetch(`/api/w/${owner.sId}/webhook_sources/${webhookSource.sId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          remoteMetadata: {
+            ...remoteWebhookData,
+            id: String(webhookResponse.webhook.id),
+          },
+          oauthConnectionId: connectionId,
+        }),
+      });
+    }
+
+    sendNotification({
+      type: "success",
+      title: `${webhookSource.kind} webhook created`,
+      description: `Webhook successfully created on ${webhookSource.kind}.`,
+    });
+  } catch (error) {
+    sendNotification({
+      type: "error",
+      title: `Failed to create ${webhookSource.kind} webhook`,
+      description:
+        error instanceof Error ? error.message : "Unknown error occurred",
+    });
+    // Note: We don't throw here because the webhook source was already created
+    // The user can manually set up the webhook if needed
+  }
+}
 
 export function WebhookSourceSheet({
   owner,
@@ -143,6 +234,9 @@ function WebhookSourceSheetContent({
   >(mode.type);
   const [selectedTab, setSelectedTab] = useState<string>("info");
   const [isSaving, setIsSaving] = useState(false);
+  const [remoteProviderData, setRemoteProviderData] =
+    useState<RemoteProviderData | null>(null);
+  const [isPresetReadyToSubmit, setIsPresetReadyToSubmit] = useState(true);
 
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
@@ -236,7 +330,10 @@ function WebhookSourceSheetContent({
   }, [editForm.formState.isDirty, setIsDirty]);
 
   const onCreateSubmit = useCallback(
-    async (data: CreateWebhookSourceFormData) => {
+    async (
+      data: CreateWebhookSourceFormData,
+      providerData?: RemoteProviderData
+    ) => {
       const parsedCustomHeaders = validateCustomHeadersFromString(
         data.customHeaders
       );
@@ -247,12 +344,23 @@ function WebhookSourceSheetContent({
         includeGlobal: true,
       };
 
-      await createWebhookSource(apiData);
+      const webhookSource = await createWebhookSource(apiData);
+
+      // If we have provider data, create the actual webhook on the remote provider
+      if (webhookSource && providerData) {
+        await createActualWebhook({
+          webhookSource: { ...webhookSource, kind: mode.kind },
+          providerData,
+          subscribedEvents: data.subscribedEvents,
+          owner,
+          sendNotification,
+        });
+      }
 
       createForm.reset();
       onClose();
     },
-    [createWebhookSource, createForm, onClose]
+    [createWebhookSource, createForm, onClose, mode, owner, sendNotification]
   );
 
   const applySharingChanges = useCallback(
@@ -424,16 +532,37 @@ function WebhookSourceSheetContent({
       return;
     }
 
+    const agents = _.uniq(
+      webhookSourcesWithViews
+        .map((source) => source.usage?.agents ?? [])
+        .flat()
+        .map((agent) => `@${agent.name}`)
+    );
+
     const confirmed = await confirm({
-      title: "Confirm Removal",
+      title: `Are you sure you want to remove ${webhookSource.name}?`,
       message: (
-        <div>
-          Are you sure you want to remove{" "}
-          <span className="font-semibold">{webhookSource.name}</span>?
+        <>
+          {agents.length === 1 && (
+            <div>
+              <span className="font-semibold">{agents[0]}</span> is using this
+              webhook source.
+              <br />
+              The associated trigger(s) will be automatically removed from it.
+            </div>
+          )}
+          {agents.length > 1 && (
+            <div>
+              <span className="font-semibold">{agents.join(", ")}</span> are
+              using this webhook source.
+              <br />
+              The associated trigger(s) will be automatically removed from them.
+            </div>
+          )}
           <div className="mt-2 font-semibold">
             This action cannot be undone.
           </div>
-        </div>
+        </>
       ),
       validateLabel: "Remove",
       validateVariant: "warning",
@@ -447,7 +576,13 @@ function WebhookSourceSheetContent({
     if (deleted) {
       onClose();
     }
-  }, [confirm, webhookSource, deleteWebhookSource, onClose]);
+  }, [
+    confirm,
+    webhookSourcesWithViews,
+    webhookSource,
+    deleteWebhookSource,
+    onClose,
+  ]);
 
   const footerButtons = useMemo(() => {
     if (currentPageId === "create") {
@@ -460,9 +595,11 @@ function WebhookSourceSheetContent({
         rightButton: {
           label: createForm.formState.isSubmitting ? "Saving..." : "Save",
           variant: "primary",
-          disabled: createForm.formState.isSubmitting,
+          disabled: createForm.formState.isSubmitting || !isPresetReadyToSubmit,
           onClick: () => {
-            void createForm.handleSubmit(onCreateSubmit)();
+            void createForm.handleSubmit((data) =>
+              onCreateSubmit(data, remoteProviderData ?? undefined)
+            )();
           },
         },
       };
@@ -498,6 +635,8 @@ function WebhookSourceSheetContent({
     onCancel,
     onCreateSubmit,
     onEditSave,
+    isPresetReadyToSubmit,
+    remoteProviderData,
   ]);
 
   const pages: MultiPageSheetPage[] = useMemo(
@@ -513,6 +652,9 @@ function WebhookSourceSheetContent({
               <CreateWebhookSourceFormContent
                 form={createForm}
                 kind={mode.kind}
+                owner={owner}
+                onRemoteProviderDataChange={setRemoteProviderData}
+                onPresetReadyToSubmitChange={setIsPresetReadyToSubmit}
               />
             </div>
           </FormProvider>

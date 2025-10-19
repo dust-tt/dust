@@ -2,7 +2,7 @@ import assert from "assert";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import {
-  getAgentConfigurationGroupIdsFromActions,
+  getAgentConfigurationRequirementsFromActions,
   listAgentConfigurationsForGroups,
 } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
@@ -13,6 +13,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isArrayEqual2DUnordered, normalizeArrays } from "@app/lib/utils";
 import mainLogger from "@app/logger/logger";
 
+// TODO(2025-10-17 thomas): Remove this
 export async function updateSpacePermissions({
   spaceId,
   workspaceId,
@@ -80,12 +81,12 @@ export async function updateSpacePermissions({
       continue;
     }
 
-    const requestedGroupIds = await getAgentConfigurationGroupIdsFromActions(
+    const requirements = await getAgentConfigurationRequirementsFromActions(
       auth,
       { actions: ac.actions }
     );
 
-    const requestedGroupIdsToSIds = requestedGroupIds.map((gs) =>
+    const requestedGroupIdsToSIds = requirements.requestedGroupIds.map((gs) =>
       gs.map((gId) =>
         GroupResource.modelIdToSId({ id: gId, workspaceId: workspace.id })
       )
@@ -99,7 +100,7 @@ export async function updateSpacePermissions({
 
     await AgentConfiguration.update(
       {
-        requestedGroupIds: normalizeArrays(requestedGroupIds),
+        requestedGroupIds: normalizeArrays(requirements.requestedGroupIds),
       },
       {
         where: {

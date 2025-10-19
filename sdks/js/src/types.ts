@@ -681,6 +681,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "research_agent"
   | "salesforce_synced_queries"
   | "salesforce_tool"
+  | "salesforce_tool_write"
   | "show_debug_tools"
   | "slack_semantic_search"
   | "slack_bot_mcp"
@@ -696,6 +697,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_observability"
   | "legacy_dust_apps"
   | "dust_default_haiku_feature"
+  | "llm_router_direct_requests"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -844,6 +846,7 @@ const LightAgentConfigurationSchema = z.object({
   templateId: z.string().nullable(),
   groupIds: z.array(z.string()).optional(),
   requestedGroupIds: z.array(z.array(z.string())),
+  requestedSpaceIds: z.array(z.string()),
 });
 
 export type LightAgentConfigurationType = z.infer<
@@ -2310,6 +2313,13 @@ const PostParentsResponseSchema = z.object({
 });
 export type PostParentsResponseType = z.infer<typeof PostParentsResponseSchema>;
 
+const CheckUpsertQueueResponseSchema = z.object({
+  running_count: z.number(),
+});
+export type CheckUpsertQueueResponseType = z.infer<
+  typeof CheckUpsertQueueResponseSchema
+>;
+
 const GetDocumentsResponseSchema = z.object({
   documents: z.array(CoreAPIDocumentSchema),
   total: z.number(),
@@ -2805,7 +2815,8 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GoogleSpreadsheetLogo"
   | "FreshserviceLogo"
   | "HubspotLogo"
-  | "OutlookLogo"
+  | "MicrosoftOutlookLogo"
+  | "MicrosoftTeamsLogo"
   | "JiraLogo"
   | "LinearLogo"
   | "MicrosoftLogo"

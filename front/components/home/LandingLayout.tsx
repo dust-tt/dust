@@ -82,6 +82,14 @@ export default function LandingLayout({
     [setCookie]
   );
 
+  // If you come back to the public site (e.g. pricing page) with browser's back button from the app,
+  // you can have dark theme so we need to remove them manually
+  useEffect(() => {
+    document.documentElement.classList.remove("dark");
+    document.documentElement.classList.remove("s-dark");
+    document.body.classList.remove("bg-background-night");
+  }, []);
+
   useEffect(() => {
     if (cookieValue !== undefined) {
       setShowCookieBanner(false);
@@ -364,6 +372,7 @@ const Header = () => {
 
 interface PublicWebsiteLogoProps {
   size?: "default" | "small";
+  utmParam?: string;
 }
 
 const logoVariants = cva("", {
@@ -380,11 +389,12 @@ const logoVariants = cva("", {
 
 export const PublicWebsiteLogo = ({
   size = "default",
+  utmParam,
 }: PublicWebsiteLogoProps) => {
   const className = logoVariants({ size });
 
   return (
-    <Link href="/">
+    <Link href={`/${utmParam ? `?${utmParam}` : ""}`}>
       <Hover3D className={`relative ${className}`}>
         <Div3D depth={0} className={className}>
           <DustLogoLayer1 className={className} />
