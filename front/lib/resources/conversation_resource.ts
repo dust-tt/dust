@@ -320,20 +320,25 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       | ConversationType
       | ConversationResource
   ): boolean {
-    const requestedGroupIds =
-      conversation instanceof ConversationResource
-        ? conversation.getRequestedGroupIdsFromModel(auth)
-        : conversation.requestedGroupIds;
+    if (auth.shouldUseRequestedSpaces()) {
+      const requestedSpaceIds =
+        conversation instanceof ConversationResource
+          ? conversation.getRequestedSpaceIdsFromModel(auth)
+          : conversation.requestedSpaceIds;
 
-    return auth.canRead(
-      Authenticator.createResourcePermissionsFromGroupIds(requestedGroupIds)
-    );
+      return auth.canRead(
+        Authenticator.createResourcePermissionsFromSpaceIds(requestedSpaceIds)
+      );
+    } else {
+      const requestedGroupIds =
+        conversation instanceof ConversationResource
+          ? conversation.getRequestedGroupIdsFromModel(auth)
+          : conversation.requestedGroupIds;
 
-    // TODO(2025-10-17 thomas): Update permission to use space requirements.
-    // const requestedSpaceIds =
-    //   conversation instanceof ConversationResource
-    //     ? conversation.getRequestedSpaceIdsFromModel(auth)
-    //     : conversation.requestedGroupIds;
+      return auth.canRead(
+        Authenticator.createResourcePermissionsFromGroupIds(requestedGroupIds)
+      );
+    }
   }
 
   static async fetchConversationWithoutContent(

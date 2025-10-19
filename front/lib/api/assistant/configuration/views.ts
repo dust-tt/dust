@@ -394,14 +394,10 @@ export async function getAgentConfigurationsForView<
     : allAgentConfigurations.flat().filter(
         (a) =>
           auth.canRead(
-            Authenticator.createResourcePermissionsFromGroupIds(
-              a.requestedGroupIds
-            )
+            auth.shouldUseRequestedSpaces()
+              ? Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
+              : Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
           )
-        // TODO(2025-10-17 thomas): Update permission to use space requirements.
-        // auth.canRead(
-        //   Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
-        // )
       );
 
   return applySortAndLimit(allowedAgentConfigurations.flat());

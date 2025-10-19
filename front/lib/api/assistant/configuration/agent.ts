@@ -101,12 +101,10 @@ async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
   });
 
   const allowedAgents = agents.filter((a) =>
-    // TODO(2025-10-17 thomas): Update permission to use space requirements.
-    // auth.canRead(
-    //   Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
-    // )
     auth.canRead(
-      Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
+      auth.shouldUseRequestedSpaces()
+        ? Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
+        : Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
     )
   );
 
@@ -153,12 +151,10 @@ export async function listsAgentConfigurationVersions<
 
   // Filter by permissions
   const allowedAgents = allAgents.filter((a) =>
-    // TODO(2025-10-17 thomas): Update permission to use space requirements.
-    // auth.canRead(
-    //   Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
-    // )
     auth.canRead(
-      Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
+      auth.shouldUseRequestedSpaces()
+        ? Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
+        : Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
     )
   );
 
@@ -236,12 +232,10 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 
     // Filter by permissions
     const allowedAgents = allAgents.filter((a) =>
-      // TODO(2025-10-17 thomas): Update permission to use space requirements.
-      // auth.canRead(
-      //   Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
-      // )
       auth.canRead(
-        Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
+        auth.shouldUseRequestedSpaces()
+          ? Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
+          : Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
       )
     );
 

@@ -691,11 +691,14 @@ export function canReadMessage(
   auth: Authenticator,
   message: AgentMessageType | LightAgentMessageType
 ) {
-  // TODO(2025-10-17 thomas): Update permission to use space requirements.
   return auth.canRead(
-    Authenticator.createResourcePermissionsFromGroupIds(
-      message.configuration.requestedGroupIds
-    )
+    auth.shouldUseRequestedSpaces()
+      ? Authenticator.createResourcePermissionsFromSpaceIds(
+          message.configuration.requestedSpaceIds
+        )
+      : Authenticator.createResourcePermissionsFromGroupIds(
+          message.configuration.requestedGroupIds
+        )
   );
 }
 

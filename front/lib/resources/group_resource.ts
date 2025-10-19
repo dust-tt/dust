@@ -890,6 +890,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           kind: "global",
         },
         transaction,
+        include: getIncludeClauseForGroupSpaces(includeGroupSpaces),
       });
 
       if (!globalGroup) {

@@ -55,16 +55,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   const lastVersionEditors = await getEditors(auth, agentConfigurations[0]);
   const [latestAgentConfiguration] = agentConfigurations;
 
-  // TODO(2025-10-17 thomas): Use requestedSpaceIds instead of requestedGroupIds.
-  const uniqueGroupIds = Array.from(
-    new Set(latestAgentConfiguration.requestedGroupIds.flat())
+  const spaces = await SpaceResource.fetchByIds(
+    auth,
+    latestAgentConfiguration.requestedSpaceIds
   );
-  const groupRes = await GroupResource.fetchByIds(auth, uniqueGroupIds);
-  if (groupRes.isErr()) {
-    throw new Error(`Failed to fetch groups: ${groupRes.error.message}`);
-  }
-
-  const spaces = await SpaceResource.listForGroups(auth, groupRes.value);
 
   return {
     props: {

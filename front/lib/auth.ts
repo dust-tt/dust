@@ -43,7 +43,9 @@ import type {
 } from "@app/types";
 import {
   Err,
+  hasGroupPermissions,
   hasRolePermissions,
+  hasSpacePermissions,
   isAdmin,
   isBuilder,
   isDevelopment,
@@ -70,6 +72,14 @@ export interface AuthenticatorType {
   subscriptionId: string | null;
   key?: KeyAuthType;
 }
+
+const getIdFromSIdOrThrow = (spaceId: string) => {
+  const id = getResourceIdFromSId(spaceId);
+  if (!id) {
+    throw new Error(`Unexpected: Could not find id for sId ${spaceId}`);
+  }
+  return id;
+};
 
 /**
  * This is a class that will be used to check if a user can perform an action on a resource.
@@ -110,11 +120,6 @@ export class Authenticator {
     this._groups = groups;
     this._spaceIds = groups.flatMap((g) => g.spaceIds);
 
-    console.log(
-      "********* groups",
-      groups.map((g) => g.id)
-    );
-    console.log("********* spaceIds", this._spaceIds);
     this._role = role;
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._subscription = subscription || null;
@@ -146,14 +151,6 @@ export class Authenticator {
   static createResourcePermissionsFromGroupIds(
     groupIds: string[][]
   ): ResourcePermission[] {
-    const getIdFromSIdOrThrow = (groupId: string) => {
-      const id = getResourceIdFromSId(groupId);
-      if (!id) {
-        throw new Error(`Unexpected: Could not find id for group ${groupId}`);
-      }
-      return id;
-    };
-
     // Each group in the same entry enforces OR relationship.
     return groupIds.map((group) => ({
       groups: group.map((groupId) => ({
@@ -166,23 +163,24 @@ export class Authenticator {
   /**
    * Converts an array of spaces sIDs into ResourcePermission objects.
    *
-   * This utility method creates standard read/write permissions for each group of the spaces.
+   * This utility method creates standard read/write permissions for each space.
    *
    * Permission logic:
-   * - A user must belong to AT LEAST ONE group from EACH space.
-   *   Example: [space1, space2] means (group1-space1 OR group2-space1) AND (group1-space2 OR group2-space2)
+   * - A user must belong to ALL spaces
    *
    * @param spaceIds - Array of spaces string identifiers
-   * @returns Array of ResourcePermission objects, one entry per sub-array
+   * @returns Array with SpaceResourcePermissions, for each space.
    */
   static createResourcePermissionsFromSpaceIds(
     spaceIds: string[]
   ): ResourcePermission[] {
-    // TODO(2025-10-17 thomas): Implement permissions based on spaces.
-    spaceIds.flatMap(() => {
-      return [];
-    });
-    throw new Error("Not implemented");
+    // Each group in the same entry enforces OR relationship.
+    return spaceIds.map((spaceId) => ({
+      space: {
+        id: getIdFromSIdOrThrow(spaceId),
+        permissions: ["read", "write"],
+      },
+    }));
   }
 
   static async userFromSession(
@@ -856,10 +854,10 @@ export class Authenticator {
   }
 
   /**
-   * Determines if a user has a specific permission on a resource based on their role and group
-   * memberships.
+   * Determines if a user has a specific permission on a resource based on their role, group,
+   * and space memberships.
    *
-   * The permission check follows two independent paths (OR):
+   * The permission check follows three independent paths (OR):
    *
    * 1. Role-based permission check:
    *    Applies when the resource has role-based permissions configured.
@@ -872,9 +870,14 @@ export class Authenticator {
    *    Permission is granted if:
    *    - The user belongs to a group that has the required permission on this resource
    *
+   * 3. Space-based permission check:
+   *    Applies when using createResourcePermissionsFromSpaceIds.
+   *    Permission is granted if:
+   *    - The user belongs to at least one space that has the required permission on this resource
+   *
    * @param resourcePermission - The resource's permission configuration
    * @param permission - The specific permission being checked
-   * @returns true if either permission path grants access
+   * @returns true if any permission path grants access
    */
   private hasResourcePermission(
     resourcePermission: ResourcePermission,
@@ -906,11 +909,26 @@ export class Authenticator {
     }
 
     // Second path: Group-based permission check.
-    return this.groups().some((userGroup) =>
-      resourcePermission.groups.some(
-        (gp) => gp.id === userGroup.id && gp.permissions.includes(permission)
-      )
-    );
+    if (hasGroupPermissions(resourcePermission)) {
+      const groupPermissionGranted = this.groups().some((userGroup) =>
+        resourcePermission.groups.some(
+          (gp) => gp.id === userGroup.id && gp.permissions.includes(permission)
+        )
+      );
+      if (groupPermissionGranted) {
+        return true;
+      }
+    }
+
+    // Third path: Space-based permission check.
+    if (hasSpacePermissions(resourcePermission)) {
+      return (
+        this._spaceIds.includes(resourcePermission.space.id) &&
+        resourcePermission.space.permissions.includes(permission)
+      );
+    }
+
+    return false;
   }
 
   canAdministrate(resourcePermissions: ResourcePermission[]): boolean {
@@ -1009,6 +1027,10 @@ export class Authenticator {
       subscription,
       key: authType.key,
     });
+  }
+
+  shouldUseRequestedSpaces(): boolean {
+    return true;
   }
 }
 
