@@ -421,10 +421,19 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       }
     );
 
-    // Verify that the user has read access to all data source views
+    // Verify that the user has read access to all data source views.
     const unreadableViews = dataSourceViews.filter((dsv) => !dsv.canRead(auth));
     if (unreadableViews.length > 0) {
-      throw new Error("Access denied to the requested data.");
+      logger.warn(
+        {
+          userId: auth.user()?.id,
+          viewIds: unreadableViews.map((dsv) => dsv.id),
+        },
+        "There was an attempt to access unreadable data source views"
+      );
+
+      // Instead of returning an error, return an empty list to reduce disruption on calling code.
+      return [];
     }
 
     return dataSourceViews ?? [];
