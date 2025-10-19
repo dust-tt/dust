@@ -15,9 +15,9 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import type { ConversationType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 
 async function getUserMessageIdFromMessageId(
   auth: Authenticator,
@@ -178,12 +178,6 @@ export async function validateAction(
     );
     return new Ok(undefined);
   }
-
-  const workflowId = makeAgentLoopWorkflowId({
-    workspaceId: owner.sId,
-    conversationId,
-    agentMessageId,
-  });
 
   await launchAgentLoopWorkflow({
     auth,
