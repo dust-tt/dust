@@ -21,7 +21,9 @@ async function backfillWorkspacesGroup(execute: boolean) {
           (async () => {
             try {
               const workspaceGroup =
-                await GroupResource.internalFetchWorkspaceGlobalGroup(w.id);
+                await GroupResource.internalFetchWorkspaceGlobalGroup({
+                  workspaceId: w.id,
+                });
               if (!workspaceGroup) {
                 throw new Error("Workspace group not found");
               }

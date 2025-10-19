@@ -504,11 +504,15 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
   }
 
-  static async internalFetchWorkspaceGlobalGroup(
-    workspaceId: ModelId,
-    transaction?: Transaction,
-    { includeGroupSpaces }: { includeGroupSpaces?: boolean } = {}
-  ): Promise<GroupResource | null> {
+  static async internalFetchWorkspaceGlobalGroup({
+    workspaceId,
+    includeGroupSpaces,
+    transaction,
+  }: {
+    workspaceId: ModelId;
+    includeGroupSpaces?: boolean;
+    transaction?: Transaction;
+  }): Promise<GroupResource | null> {
     const group = await this.model.findOne({
       where: {
         workspaceId,

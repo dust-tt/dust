@@ -566,7 +566,8 @@ export class Authenticator {
     let subscription: SubscriptionResource | null = null;
 
     [globalGroup, subscription] = await Promise.all([
-      GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id, undefined, {
+      GroupResource.internalFetchWorkspaceGlobalGroup({
+        workspaceId: workspace.id,
         includeGroupSpaces: true,
       }),
       SubscriptionResource.fetchActiveByWorkspace(
@@ -604,11 +605,10 @@ export class Authenticator {
           });
         } else {
           const globalGroup =
-            await GroupResource.internalFetchWorkspaceGlobalGroup(
-              workspace.id,
-              undefined,
-              { includeGroupSpaces: true }
-            );
+            await GroupResource.internalFetchWorkspaceGlobalGroup({
+              workspaceId: workspace.id,
+              includeGroupSpaces: true,
+            });
           return globalGroup ? [globalGroup] : [];
         }
       })(),
@@ -620,7 +620,7 @@ export class Authenticator {
     return new Authenticator({
       workspace,
       role: "admin",
-      groups, //load spaces
+      groups,
       subscription,
     });
   }
