@@ -71,16 +71,16 @@ export function createResponseAdaptiveCard({
               {
                 type: "Input.ChoiceSet",
                 id: "selectedAgent",
-                value: assistant.assistantId,
+                value: assistant.assistantName,
                 choices: agentConfigurations.map((agent) => ({
                   title: agent.name,
-                  value: agent.sId,
+                  value: agent.name,
                 })),
                 placeholder: "Select an agent",
               },
               {
                 type: "Input.Text",
-                id: "originalMessageInput",
+                id: "originalMessage",
                 value: originalMessage,
                 isVisible: false,
               },
@@ -103,31 +103,6 @@ export function createResponseAdaptiveCard({
                   },
                 ],
                 horizontalAlignment: "Right",
-              },
-            ],
-          },
-          {
-            type: "Column",
-            width: "auto",
-            items: [
-              {
-                type: "ActionSet",
-                actions: [
-                  {
-                    type: "Action.Submit",
-                    iconUrl: "icon:ThumbLike",
-                    data: {
-                      verb: "like",
-                    },
-                  },
-                  {
-                    type: "Action.Submit",
-                    iconUrl: "icon:ThumbDislike",
-                    data: {
-                      verb: "dislike",
-                    },
-                  },
-                ],
               },
             ],
           },

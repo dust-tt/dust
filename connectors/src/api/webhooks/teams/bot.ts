@@ -246,7 +246,7 @@ export async function botAnswerMessage(
     );
   }
 
-  await MicrosoftBotMessage.create({
+  const m = await MicrosoftBotMessage.create({
     connectorId: connector.id,
     userAadObjectId: userAadObjectId,
     email: email,
@@ -272,10 +272,14 @@ export async function botAnswerMessage(
     return streamAgentResponseRes;
   }
 
-  const finalResponse = streamAgentResponseRes.value;
+  const res = streamAgentResponseRes.value;
+
+  m.update({
+    dustAgentMessageId: res.agentMessageId,
+  });
 
   const finalCard = createResponseAdaptiveCard({
-    response: finalResponse,
+    response: res.finalResponse,
     assistant: mention,
     conversationUrl: makeConversationUrl(
       connector.workspaceId,
@@ -308,7 +312,7 @@ async function streamAgentResponse({
   mention: { assistantName: string; assistantId: string };
   connector: ConnectorResource;
   agentActivityId: string;
-}): Promise<Result<string, Error>> {
+}): Promise<Result<{ agentMessageId: string; finalResponse: string }, Error>> {
   // For Bot Framework approach with streaming updates
   const streamRes = await dustAPI.streamAgentAnswerEvents({
     conversation,
@@ -390,7 +394,10 @@ async function streamAgentResponse({
   }
 
   if (agentMessageSuccess) {
-    return new Ok(finalResponse);
+    return new Ok({
+      agentMessageId: agentMessageSuccess.message.sId,
+      finalResponse,
+    });
   } else {
     return new Err(new Error("No response generated"));
   }
@@ -581,4 +588,83 @@ async function makeContentFragments(
   return new Ok(
     allContentFragments.length > 0 ? allContentFragments : undefined
   );
+}
+
+export async function sendFeedback({
+  context,
+  connector,
+  thumbDirection,
+}: {
+  context: TurnContext;
+  connector: ConnectorResource;
+  thumbDirection: "up" | "down";
+}) {
+  // Validate user first
+  const validatedUser = await validateTeamsUser(context, connector);
+  if (!validatedUser) {
+    logger.error("Failed to validate Teams user for feedback");
+    return false;
+  }
+
+  const { email, displayName } = validatedUser;
+
+  const conversationId = context.activity.conversation?.id;
+  const replyTo = context.activity.replyToId;
+
+  if (!conversationId || !replyTo) {
+    logger.error("No conversation ID or reply to ID found in activity");
+    return false;
+  }
+
+  // Find the MicrosoftBotMessage to get the Dust conversation ID
+  const microsoftBotMessage = await MicrosoftBotMessage.findOne({
+    where: {
+      connectorId: connector.id,
+      conversationId: conversationId,
+      agentActivityId: replyTo,
+    },
+    order: [["createdAt", "DESC"]],
+  });
+
+  if (!microsoftBotMessage || !microsoftBotMessage.dustConversationId) {
+    logger.error(
+      "No MicrosoftBotMessage found for conversation ID and reply to ID"
+    );
+    return false;
+  }
+
+  // const dustAPI = new DustAPI(
+  //   { url: apiConfig.getDustFrontAPIUrl() },
+  //   {
+  //     workspaceId: connector.workspaceId,
+  //     apiKey: connector.workspaceAPIKey,
+  //     extraHeaders: {
+  //       ...getHeaderFromUserEmail(email),
+  //     },
+  //   },
+  //   logger
+  // );
+
+  // Submit feedback using DustAPI
+  // const feedbackRes = await dustAPI.postFeedback(
+  //   microsoftBotMessage.dustConversationId,
+  //   agentMessageId,
+  //   {
+  //     thumbDirection,
+  //     feedbackContent: null,
+  //     isConversationShared: true, // Teams feedback is considered shared
+  //   }
+  // );
+
+  logger.info(
+    {
+      dustConversationId: microsoftBotMessage.dustConversationId,
+      thumbDirection,
+      userEmail: email,
+      userDisplayName: displayName,
+    },
+    "Feedback submitted from Teams"
+  );
+
+  return true;
 }
