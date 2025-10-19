@@ -20,6 +20,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Autocomplete feature for agent builder instructions (wip)",
     stage: "dust_only",
   },
+  ashby_tool: {
+    description: "Ashby tool for ATS integration",
+    stage: "dust_only",
+  },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model in the agent builder",
     stage: "on_demand",

@@ -172,7 +172,9 @@ export const INTERNAL_MCP_SERVERS = {
     id: 37,
     availability: "manual",
     allowMultipleInstances: false,
-    isRestricted: undefined,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("ashby_tool");
+    },
     isPreview: false,
     tools_stakes: {
       list_candidates: "never_ask",
