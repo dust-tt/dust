@@ -168,6 +168,9 @@ export async function validateAction(
       conversationId
     );
 
+  // Harmless very rare race condition here where 2 validations get
+  // blockedActions.length === 0. launchAgentLoopWorkflow will be called twice,
+  // but only one will succeed.
   if (blockedActions.length > 0) {
     logger.info(
       {
