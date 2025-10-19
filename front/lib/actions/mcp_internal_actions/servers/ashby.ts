@@ -9,6 +9,7 @@ import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/gu
 import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
 import { decrypt, Err, normalizeError, Ok } from "@app/types";
 
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
@@ -70,7 +71,7 @@ class AshbyClient {
   }: {
     cursor?: string;
     limit?: number;
-  }): Promise<AshbyCandidateListResponse> {
+  }): Promise<Result<AshbyCandidateListResponse, Error>> {
     const response = await fetch(`${ASHBY_API_BASE_URL}/candidate.list`, {
       method: "POST",
       headers: {
@@ -85,17 +86,26 @@ class AshbyClient {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(
-        `Ashby API error (${response.status}): ${errorText || response.statusText}`
+      return new Err(
+        new Error(
+          `Ashby API error (${response.status}): ${errorText || response.statusText}`
+        )
       );
     }
 
     const responseText = await response.text();
     if (!responseText) {
-      throw new Error("Ashby API returned empty response");
+      return new Err(new Error("Ashby API returned empty response"));
     }
 
-    const rawData = JSON.parse(responseText);
+    let rawData: unknown;
+    try {
+      rawData = JSON.parse(responseText);
+    } catch (e) {
+      const error = normalizeError(e);
+      return new Err(new Error(`Invalid JSON response: ${error.message}`));
+    }
+
     const parseResult = AshbyCandidateListResponseSchema.safeParse(rawData);
 
     if (!parseResult.success) {
@@ -103,12 +113,14 @@ class AshbyClient {
         error: parseResult.error.message,
         rawData,
       });
-      throw new Error(
-        `Invalid Ashby API response format: ${parseResult.error.message}`
+      return new Err(
+        new Error(
+          `Invalid Ashby API response format: ${parseResult.error.message}`
+        )
       );
     }
 
-    return parseResult.data;
+    return new Ok(parseResult.data);
   }
 }
 
@@ -170,62 +182,57 @@ function createServer(
         if (!apiKey) {
           return new Err(
             new MCPError(
-              "Ashby API key not found in workspace secrets. Please check the secret configuration.",
-              {
-                tracked: false,
-              }
+              "Ashby API key not found in workspace secrets. Please check the secret configuration."
             )
           );
         }
 
-        try {
-          const client = new AshbyClient(apiKey);
-          const response = await client.listCandidates({ cursor, limit });
+        const client = new AshbyClient(apiKey);
+        const result = await client.listCandidates({ cursor, limit });
 
-          const candidatesText = response.results
-            .map((candidate) => {
-              const lines = [`ID: ${candidate.id}`, `Name: ${candidate.name}`];
-
-              if (candidate.primaryEmailAddress) {
-                lines.push(`Email: ${candidate.primaryEmailAddress.value}`);
-              }
-
-              if (candidate.phoneNumbers && candidate.phoneNumbers.length > 0) {
-                lines.push(
-                  `Phone: ${candidate.phoneNumbers.map((p) => p.value).join(", ")}`
-                );
-              }
-
-              if (candidate.createdAt) {
-                lines.push(
-                  `Created: ${new Date(candidate.createdAt).toISOString()}`
-                );
-              }
-
-              return lines.join("\n");
-            })
-            .join("\n\n---\n\n");
-
-          let resultText = `Found ${response.results.length} candidate(s):\n\n${candidatesText}`;
-
-          if (response.nextCursor) {
-            resultText += `\n\nMore results available. Use cursor: ${response.nextCursor}`;
-          }
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: resultText,
-            },
-          ]);
-        } catch (e) {
-          const error = normalizeError(e);
+        if (result.isErr()) {
           return new Err(
-            new MCPError(
-              `Failed to list candidates: ${error.message || "Unknown error"}`
-            )
+            new MCPError(`Failed to list candidates: ${result.error.message}`)
           );
         }
+
+        const response = result.value;
+        const candidatesText = response.results
+          .map((candidate) => {
+            const lines = [`ID: ${candidate.id}`, `Name: ${candidate.name}`];
+
+            if (candidate.primaryEmailAddress) {
+              lines.push(`Email: ${candidate.primaryEmailAddress.value}`);
+            }
+
+            if (candidate.phoneNumbers && candidate.phoneNumbers.length > 0) {
+              lines.push(
+                `Phone: ${candidate.phoneNumbers.map((p) => p.value).join(", ")}`
+              );
+            }
+
+            if (candidate.createdAt) {
+              lines.push(
+                `Created: ${new Date(candidate.createdAt).toISOString()}`
+              );
+            }
+
+            return lines.join("\n");
+          })
+          .join("\n\n---\n\n");
+
+        let resultText = `Found ${response.results.length} candidate(s):\n\n${candidatesText}`;
+
+        if (response.nextCursor) {
+          resultText += `\n\nMore results available. Use cursor: ${response.nextCursor}`;
+        }
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: resultText,
+          },
+        ]);
       }
     )
   );
