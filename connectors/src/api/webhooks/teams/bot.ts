@@ -626,40 +626,43 @@ export async function sendFeedback({
     order: [["createdAt", "DESC"]],
   });
 
-  if (!microsoftBotMessage || !microsoftBotMessage.dustConversationId) {
+  if (
+    !microsoftBotMessage?.dustConversationId ||
+    !microsoftBotMessage?.dustAgentMessageId
+  ) {
     logger.error(
       "No MicrosoftBotMessage found for conversation ID and reply to ID"
     );
     return false;
   }
 
-  // const dustAPI = new DustAPI(
-  //   { url: apiConfig.getDustFrontAPIUrl() },
-  //   {
-  //     workspaceId: connector.workspaceId,
-  //     apiKey: connector.workspaceAPIKey,
-  //     extraHeaders: {
-  //       ...getHeaderFromUserEmail(email),
-  //     },
-  //   },
-  //   logger
-  // );
+  const dustAPI = new DustAPI(
+    { url: apiConfig.getDustFrontAPIUrl() },
+    {
+      workspaceId: connector.workspaceId,
+      apiKey: connector.workspaceAPIKey,
+      extraHeaders: {
+        ...getHeaderFromUserEmail(email),
+      },
+    },
+    logger
+  );
 
-  // Submit feedback using DustAPI
-  // const feedbackRes = await dustAPI.postFeedback(
-  //   microsoftBotMessage.dustConversationId,
-  //   agentMessageId,
-  //   {
-  //     thumbDirection,
-  //     feedbackContent: null,
-  //     isConversationShared: true, // Teams feedback is considered shared
-  //   }
-  // );
+  const feedbackRes = await dustAPI.postFeedback(
+    microsoftBotMessage.dustConversationId,
+    microsoftBotMessage.dustAgentMessageId,
+    {
+      thumbDirection,
+      feedbackContent: null,
+      isConversationShared: true, // Teams feedback is considered shared
+    }
+  );
 
   logger.info(
     {
       dustConversationId: microsoftBotMessage.dustConversationId,
       thumbDirection,
+      feedbackRes,
       userEmail: email,
       userDisplayName: displayName,
     },

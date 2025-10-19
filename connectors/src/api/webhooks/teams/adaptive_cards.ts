@@ -27,6 +27,37 @@ export function createResponseAdaptiveCard({
   agentConfigurations: LightAgentConfigurationType[];
   originalMessage: string;
 }): Partial<Activity> {
+  const feedbackActions =
+    assistant.assistantId === assistant.assistantName
+      ? []
+      : [
+          {
+            type: "Column",
+            width: "auto",
+            items: [
+              {
+                type: "ActionSet",
+                actions: [
+                  {
+                    type: "Action.Submit",
+                    iconUrl: "icon:ThumbLike",
+                    data: {
+                      verb: "like",
+                    },
+                  },
+                  {
+                    type: "Action.Submit",
+                    iconUrl: "icon:ThumbDislike",
+                    data: {
+                      verb: "dislike",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ];
+
   const card: AdaptiveCard = {
     type: "AdaptiveCard",
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -106,6 +137,7 @@ export function createResponseAdaptiveCard({
               },
             ],
           },
+          ...feedbackActions,
         ],
       },
     ],
