@@ -1,9 +1,9 @@
 import { assertNever, INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -38,11 +38,13 @@ import {
 const CANCELLATION_CHECK_INTERVAL = 500;
 const REASONING_GENERATION_TOKENS = 20480;
 
+const serverName = "reasoning";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("reasoning");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     "advanced_reasoning",

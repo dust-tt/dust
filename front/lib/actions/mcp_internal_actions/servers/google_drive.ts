@@ -1,9 +1,9 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { google } from "googleapis";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -22,11 +22,13 @@ const SUPPORTED_MIMETYPES = [
 const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
 const MAX_FILE_SIZE = 64 * 1024 * 1024; // 10 MB max original file size
 
+const serverName = "google_drive";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("google_drive");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   async function getDriveClient(authInfo?: AuthInfo) {
     const accessToken = authInfo?.token;

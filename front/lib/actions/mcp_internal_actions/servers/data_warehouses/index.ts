@@ -1,5 +1,4 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -23,6 +22,7 @@ import {
   getSchemaContent,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -37,11 +37,13 @@ const TABLES_FILESYSTEM_TOOL_NAME = "tables_filesystem_navigation";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
+const serverName = "data_warehouses";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("data_warehouses");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     DATA_WAREHOUSES_LIST_TOOL_NAME,

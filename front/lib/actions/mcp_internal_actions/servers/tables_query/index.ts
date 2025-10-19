@@ -1,5 +1,4 @@
 import { assertNever, INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
@@ -29,6 +28,7 @@ import {
   getSchemaContent,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -100,11 +100,13 @@ function verifyDataSourceViewReadAccess(
   return null;
 }
 
+const serverName = "query_tables_v2";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("query_tables_v2");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     GET_DATABASE_SCHEMA_TOOL_NAME,

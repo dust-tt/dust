@@ -1,9 +1,9 @@
 import { DustAPI } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { DEFAULT_AGENT_ROUTER_ACTION_NAME } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -20,11 +20,13 @@ const MAX_INSTRUCTIONS_LENGTH = 1000;
 const LIST_ALL_AGENTS_TOOL_NAME = "list_all_published_agents";
 export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content";
 
+const serverName = DEFAULT_AGENT_ROUTER_ACTION_NAME;
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer(DEFAULT_AGENT_ROUTER_ACTION_NAME);
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     LIST_ALL_AGENTS_TOOL_NAME,

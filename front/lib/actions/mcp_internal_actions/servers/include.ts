@@ -1,5 +1,4 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
@@ -23,6 +22,7 @@ import {
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -46,11 +46,13 @@ import {
   timeFrameFromNow,
 } from "@app/types";
 
+const serverName = "include_data";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("include_data");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   const commonInputsSchema = {
     timeFrame:

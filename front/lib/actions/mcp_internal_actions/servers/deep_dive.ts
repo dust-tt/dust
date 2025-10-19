@@ -1,8 +1,8 @@
 import { DustAPI } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   makeInternalMCPServer,
   makeMCPToolExit,
@@ -22,11 +22,13 @@ import {
   Ok,
 } from "@app/types";
 
+const serverName = "deep_dive";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("deep_dive");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   const owner = auth.getNonNullableWorkspace();
 

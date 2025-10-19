@@ -1,4 +1,3 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -37,6 +36,7 @@ import {
   JiraSortSchema,
   SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
@@ -49,11 +49,13 @@ import { Err, normalizeError, Ok } from "@app/types";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const JIRA_TOOL_NAME = "jira";
 
+const serverName = "jira";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("jira");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     "get_issue_read_fields",

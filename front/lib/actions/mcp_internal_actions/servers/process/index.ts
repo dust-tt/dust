@@ -1,5 +1,4 @@
 import { INTERNAL_MIME_TYPES, removeNulls } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import _ from "lodash";
@@ -23,6 +22,7 @@ import {
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -232,11 +232,13 @@ function makeExtractInformationFromDocumentsTool(
   );
 }
 
+const serverName = "extract_data";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("extract_data");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   const isJsonSchemaConfigured =
     (agentLoopContext?.listToolsContext &&

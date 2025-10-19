@@ -1,6 +1,6 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -10,11 +10,13 @@ import { Ok } from "@app/types";
 const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
 const MAX_WAIT_DURATION_MS = 3 * 60 * 1_000;
 
+const serverName = "common_utilities";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("common_utilities");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     "generate_random_number",

@@ -73,7 +73,7 @@ const ListToolInputSchema = {
 
 export function registerListTool(
   auth: Authenticator,
-  server: McpServer,
+  server: McpServer | { tool: McpServer["tool"] },
   agentLoopContext: AgentLoopContextType | undefined,
   { name, extraDescription }: { name: string; extraDescription?: string }
 ) {

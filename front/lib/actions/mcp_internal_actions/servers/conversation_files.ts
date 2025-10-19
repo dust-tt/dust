@@ -1,4 +1,3 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { computeTextByteSize } from "@app/lib/actions/action_output_limits";
@@ -7,6 +6,7 @@ import {
   DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -47,11 +47,13 @@ const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.
  * for future migration.
  */
 
+const serverName = "conversation_files";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("conversation_files");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,

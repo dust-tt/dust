@@ -1,10 +1,10 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import { google } from "googleapis";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -14,6 +14,8 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const GOOGLE_CALENDAR_TOOL_NAME = "google_calendar";
+
+const serverName = "google_calendar";
 
 interface GoogleCalendarEventDateTime {
   date?: string;
@@ -92,8 +94,8 @@ interface EnrichedGoogleCalendarEvent
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("google_calendar");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   async function getCalendarClient(authInfo?: AuthInfo) {
     const accessToken = authInfo?.token;

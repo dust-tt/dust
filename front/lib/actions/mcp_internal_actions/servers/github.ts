@@ -1,4 +1,3 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Octokit } from "@octokit/core";
 import type {
   RequestInfo as UndiciRequestInfo,
@@ -8,6 +7,7 @@ import { fetch as undiciFetch, ProxyAgent } from "undici";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -46,11 +46,13 @@ const createOctokit = async (
   });
 };
 
+const serverName = "github";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("github");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     "create_issue",

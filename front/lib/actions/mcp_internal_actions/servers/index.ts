@@ -93,97 +93,97 @@ export async function getInternalMCPServer(
 ): Promise<McpServer> {
   switch (internalMCPServerName) {
     case "github":
-      return githubServer(auth, agentLoopContext);
+      return githubServer(auth, agentLoopContext) as McpServer;
     case "hubspot":
-      return hubspotServer();
+      return hubspotServer() as McpServer;
     case "image_generation":
-      return imageGenerationServer(auth, agentLoopContext);
+      return imageGenerationServer(auth, agentLoopContext) as McpServer;
     case "elevenlabs":
-      return elevenlabsServer(auth, agentLoopContext);
+      return elevenlabsServer(auth, agentLoopContext) as McpServer;
     case "file_generation":
-      return generateFileServer(auth, agentLoopContext);
+      return generateFileServer(auth, agentLoopContext) as McpServer;
     case "interactive_content":
-      return interactiveContentServer(auth, agentLoopContext);
+      return interactiveContentServer(auth, agentLoopContext) as McpServer;
     case "query_tables_v2":
-      return tablesQueryServerV2(auth, agentLoopContext);
+      return tablesQueryServerV2(auth, agentLoopContext) as McpServer;
     case "primitive_types_debugger":
-      return primitiveTypesDebuggerServer(auth, agentLoopContext);
+      return primitiveTypesDebuggerServer(auth, agentLoopContext) as McpServer;
     case "jit_testing":
-      return jitTestingServer(auth, agentLoopContext);
+      return jitTestingServer(auth, agentLoopContext) as McpServer;
     case "common_utilities":
-      return commonUtilitiesServer(auth, agentLoopContext);
+      return commonUtilitiesServer(auth, agentLoopContext) as McpServer;
     case "web_search_&_browse":
-      return webtoolsServer(auth, agentLoopContext);
+      return webtoolsServer(auth, agentLoopContext) as McpServer;
     case "search":
       // If we are in advanced search mode, we use the data_sources_file_system server instead.
       if (isAdvancedSearchMode(agentLoopContext)) {
-        return dataSourcesFileSystemServer(auth, agentLoopContext);
+        return dataSourcesFileSystemServer(auth, agentLoopContext) as McpServer;
       }
-      return searchServer(auth, agentLoopContext);
+      return searchServer(auth, agentLoopContext) as McpServer;
     case "slideshow":
-      return slideshowServer(auth, agentLoopContext);
+      return slideshowServer(auth, agentLoopContext) as McpServer;
     case "missing_action_catcher":
-      return missingActionCatcherServer(auth, agentLoopContext);
+      return missingActionCatcherServer(auth, agentLoopContext) as McpServer;
     case "notion":
-      return notionServer(auth, agentLoopContext);
+      return notionServer(auth, agentLoopContext) as McpServer;
     case "openai_usage":
-      return openaiUsageServer(auth, agentLoopContext);
+      return openaiUsageServer(auth, agentLoopContext) as McpServer;
     case "include_data":
-      return includeDataServer(auth, agentLoopContext);
+      return includeDataServer(auth, agentLoopContext) as McpServer;
     case "run_agent":
-      return runAgentServer(auth, agentLoopContext);
+      return (await runAgentServer(auth, agentLoopContext)) as McpServer;
     case "reasoning":
-      return reasoningServer(auth, agentLoopContext);
+      return reasoningServer(auth, agentLoopContext) as McpServer;
     case "run_dust_app":
-      return dustAppServer(auth, agentLoopContext);
+      return (await dustAppServer(auth, agentLoopContext)) as McpServer;
     case "agent_router":
-      return agentRouterServer(auth, agentLoopContext);
+      return agentRouterServer(auth, agentLoopContext) as McpServer;
     case "extract_data":
-      return extractDataServer(auth, agentLoopContext);
+      return extractDataServer(auth, agentLoopContext) as McpServer;
     case "salesforce":
-      return salesforceServer(auth, agentLoopContext);
+      return salesforceServer(auth, agentLoopContext) as McpServer;
     case "gmail":
-      return gmailServer(auth, agentLoopContext);
+      return gmailServer(auth, agentLoopContext) as McpServer;
     case "google_calendar":
-      return calendarServer(auth, agentLoopContext);
+      return calendarServer(auth, agentLoopContext) as McpServer;
     case "google_drive":
-      return driveServer(auth, agentLoopContext);
+      return driveServer(auth, agentLoopContext) as McpServer;
     case "google_sheets":
-      return sheetsServer(auth, agentLoopContext);
+      return sheetsServer(auth, agentLoopContext) as McpServer;
     case "data_sources_file_system":
-      return dataSourcesFileSystemServer(auth, agentLoopContext);
+      return dataSourcesFileSystemServer(auth, agentLoopContext) as McpServer;
     case "conversation_files":
-      return conversationFilesServer(auth, agentLoopContext);
+      return conversationFilesServer(auth, agentLoopContext) as McpServer;
     case "jira":
-      return jiraServer(auth, agentLoopContext);
+      return jiraServer(auth, agentLoopContext) as McpServer;
     case "microsoft_drive":
-      return microsoftDriveServer(auth, agentLoopContext);
+      return microsoftDriveServer(auth, agentLoopContext) as McpServer;
     case "microsoft_teams":
-      return microsoftTeamsServer(auth, agentLoopContext);
+      return microsoftTeamsServer(auth, agentLoopContext) as McpServer;
     case "monday":
-      return mondayServer(auth, agentLoopContext);
+      return mondayServer(auth, agentLoopContext) as McpServer;
     case "slack":
-      return slackServer(auth, mcpServerId, agentLoopContext);
+      return (await slackServer(auth, mcpServerId, agentLoopContext)) as McpServer;
     case "slack_bot":
-      return slackBotServer(auth, mcpServerId, agentLoopContext);
+      return (await slackBotServer(auth, mcpServerId, agentLoopContext)) as McpServer;
     case AGENT_MEMORY_SERVER_NAME:
-      return agentMemoryServer(auth, agentLoopContext);
+      return agentMemoryServer(auth, agentLoopContext) as McpServer;
     case "confluence":
-      return confluenceServer(auth, agentLoopContext);
+      return confluenceServer(auth, agentLoopContext) as McpServer;
     case "outlook":
-      return outlookServer(auth, agentLoopContext);
+      return outlookServer(auth, agentLoopContext) as McpServer;
     case "outlook_calendar":
-      return outlookCalendarServer(auth, agentLoopContext);
+      return outlookCalendarServer(auth, agentLoopContext) as McpServer;
     case "agent_management":
-      return agentManagementServer(auth, agentLoopContext);
+      return agentManagementServer(auth, agentLoopContext) as McpServer;
     case "freshservice":
-      return freshserviceServer(auth, agentLoopContext);
+      return freshserviceServer(auth, agentLoopContext) as McpServer;
     case "data_warehouses":
-      return dataWarehousesServer(auth, agentLoopContext);
+      return dataWarehousesServer(auth, agentLoopContext) as McpServer;
     case "toolsets":
-      return toolsetsServer(auth, agentLoopContext);
+      return toolsetsServer(auth, agentLoopContext) as McpServer;
     case "deep_dive":
-      return deepDiveServer(auth, agentLoopContext);
+      return deepDiveServer(auth, agentLoopContext) as McpServer;
     default:
       assertNever(internalMCPServerName);
   }

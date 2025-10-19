@@ -1,10 +1,10 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
 import type { MCPError } from "@app/lib/actions/mcp_errors";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/server_constants";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -13,11 +13,13 @@ import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { Result } from "@app/types";
 import { Ok } from "@app/types";
 
+const serverName = AGENT_MEMORY_SERVER_NAME;
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer(AGENT_MEMORY_SERVER_NAME);
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   const isUserScopedMemory = true;
 

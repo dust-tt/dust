@@ -1,7 +1,6 @@
 import type { Result } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
 import type {
@@ -20,6 +19,7 @@ import type {
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   makeInternalMCPServer,
   makePersonalAuthenticationError,
@@ -73,6 +73,8 @@ const allowedColors = [
 
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const NOTION_TOOL_NAME = "notion";
+
+const serverName = "notion";
 
 const titleRichTextSchema = z
   .object({
@@ -305,8 +307,8 @@ async function withNotionClient<T>(
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("notion");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     "search",

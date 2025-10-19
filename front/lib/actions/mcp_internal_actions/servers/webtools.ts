@@ -1,5 +1,4 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
@@ -19,6 +18,7 @@ import {
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/server_constants";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { summarizeWithAgent } from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -36,11 +36,13 @@ import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
 
 const BROWSE_MAX_TOKENS_LIMIT = 32_000;
 
+const serverName = DEFAULT_WEBSEARCH_ACTION_NAME;
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer(DEFAULT_WEBSEARCH_ACTION_NAME);
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     WEBSEARCH_TOOL_NAME,

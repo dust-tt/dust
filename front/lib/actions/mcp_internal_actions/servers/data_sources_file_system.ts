@@ -1,5 +1,4 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
@@ -40,6 +39,7 @@ import {
   getCoreSearchArgs,
   makeDataSourceViewFilter,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -333,11 +333,13 @@ async function searchCallback(
   ]);
 }
 
+const serverName = "data_sources_file_system";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("data_sources_file_system");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   registerCatTool(auth, server, agentLoopContext, {
     name: FILESYSTEM_CAT_TOOL_NAME,

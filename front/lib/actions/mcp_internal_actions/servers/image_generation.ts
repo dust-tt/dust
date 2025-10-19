@@ -1,9 +1,9 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import OpenAI from "openai";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -23,7 +23,7 @@ const DEFAULT_IMAGE_MIME_TYPE = "image/png";
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
+): InternalMcpServer<"image_generation"> {
   const server = makeInternalMCPServer("image_generation");
 
   server.tool(

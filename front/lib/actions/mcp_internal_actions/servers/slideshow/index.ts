@@ -1,6 +1,5 @@
 import type { MCPProgressNotificationType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -9,6 +8,7 @@ import {
   EDIT_SLIDESHOW_FILE_TOOL_NAME,
   RETRIEVE_SLIDESHOW_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/types";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -28,6 +28,8 @@ import {
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
+const serverName = "slideshow";
+
 /**
  * Slideshow Server - Allows the model to create and update slideshow files.
  * Slideshow files are interactive presentations that users can view and navigate.
@@ -37,8 +39,8 @@ const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("slideshow");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     CREATE_SLIDESHOW_FILE_TOOL_NAME,

@@ -1,4 +1,3 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import jsforce from "jsforce";
 import { z } from "zod";
 
@@ -8,6 +7,7 @@ import {
   extractTextFromSalesforceAttachment,
   getAllSalesforceAttachments,
 } from "@app/lib/actions/mcp_internal_actions/servers/salesforce/salesforce_api_helper";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -21,6 +21,8 @@ const SF_API_VERSION = "57.0";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const SALESFORCE_TOOL_LOG_NAME = "salesforce";
 
+const serverName = "salesforce";
+
 interface SalesforceRecord {
   Id: string;
   [key: string]: any;
@@ -29,8 +31,8 @@ interface SalesforceRecord {
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("salesforce");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     "execute_read_query",

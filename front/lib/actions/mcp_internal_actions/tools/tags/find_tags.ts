@@ -33,7 +33,7 @@ export const findTagsSchema = {
 
 export function registerFindTagsTool(
   auth: Authenticator,
-  server: McpServer,
+  server: McpServer | { tool: McpServer["tool"] },
   agentLoopContext: AgentLoopContextType | undefined,
   { name, extraDescription }: { name: string; extraDescription?: string }
 ) {
