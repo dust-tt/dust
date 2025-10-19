@@ -421,6 +421,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       }
     );
 
+    // Verify that the user has read access to all data source views
+    const unreadableViews = dataSourceViews.filter((dsv) => !dsv.canRead(auth));
+    if (unreadableViews.length > 0) {
+      throw new Error("Access denied to the requested data.");
+    }
+
     return dataSourceViews ?? [];
   }
 
