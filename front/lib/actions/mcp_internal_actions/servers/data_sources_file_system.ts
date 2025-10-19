@@ -22,7 +22,7 @@ import {
   FIND_TAGS_TOOL_NAME,
   SEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/server_constants";
-import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
+import { makeCatToolImplementation } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
 import { registerListTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
 import {
   extractDataSourceIdFromNodeId,
@@ -341,9 +341,14 @@ function createServer(
 ): InternalMcpServer<typeof serverName> {
   const server = makeInternalMCPServer(serverName);
 
-  registerCatTool(auth, server, agentLoopContext, {
-    name: FILESYSTEM_CAT_TOOL_NAME,
-  });
+  const catTool = makeCatToolImplementation(auth, agentLoopContext);
+
+  server.tool(
+    FILESYSTEM_CAT_TOOL_NAME,
+    catTool.baseDescription,
+    catTool.schema,
+    catTool.callback
+  );
 
   server.tool(
     FILESYSTEM_FIND_TOOL_NAME,
