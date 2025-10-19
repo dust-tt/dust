@@ -344,12 +344,19 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     spaces: SpaceResource[],
     options?: ResourceFindOptions<MCPServerViewModel>
   ): Promise<MCPServerViewResource[]> {
+    // Filter out spaces that the user does not have read or administrate access to
+    const accessibleSpaces = spaces.filter((s) =>
+      s.canReadOrAdministrate(auth)
+    );
+    if (accessibleSpaces.length === 0) {
+      return [];
+    }
     return this.baseFetch(auth, {
       ...options,
       where: {
         ...options?.where,
         workspaceId: auth.getNonNullableWorkspace().id,
-        vaultId: spaces.map((s) => s.id),
+        vaultId: accessibleSpaces.map((s) => s.id),
       },
       order: [["id", "ASC"]],
     });

@@ -79,7 +79,7 @@ export const createPrivateApiMockRequest = async ({
       authenticationMethod: "GoogleOAuth",
       isSSO: false,
       workspaceId: workspace.sId,
-      organizationId: workspace.workOSOrganizationId || undefined,
+      organizationId: workspace.workOSOrganizationId ?? undefined,
       region: "us-central1",
     })
   );
