@@ -27,26 +27,8 @@ import {
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
 } from "@app/types/triggers/webhooks";
 
-export const validateCustomHeadersFromString = (value: string | null) => {
-  if (value === null || value.trim() === "") {
-    return { parsed: null };
-  }
-  try {
-    const parsed = JSON.parse(value);
-    const result = z.record(z.string()).nullable().safeParse(parsed);
-
-    return result.success ? { parsed: result.data } : null;
-  } catch {
-    return null;
-  }
-};
-
 export const CreateWebhookSourceSchema = basePostWebhookSourcesSchema
   .extend({
-    customHeaders: z
-      .string()
-      .nullable()
-      .refine(validateCustomHeadersFromString, "Invalid JSON format"),
     autoGenerate: z.boolean().default(true),
   })
   .refine(...refineSubscribedEvents)
@@ -295,27 +277,6 @@ export function CreateWebhookSourceFormContent({
             }
           />
         </div>
-      )}
-
-      {isCustom && (
-        <Controller
-          control={form.control}
-          name="customHeaders"
-          render={({ field }) => (
-            <div>
-              <Label htmlFor="customHeaders">Custom Headers (optional)</Label>
-              <TextArea
-                {...field}
-                value={field.value ?? undefined}
-                id="customHeaders"
-                placeholder='{"Authorization": "Bearer token", "Content-Type": "application/json"}'
-                error={form.formState.errors.customHeaders?.message}
-                showErrorLabel={true}
-                rows={4}
-              />
-            </div>
-          )}
-        />
       )}
     </>
   );

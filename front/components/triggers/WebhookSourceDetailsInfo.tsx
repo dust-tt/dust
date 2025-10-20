@@ -276,30 +276,6 @@ export function WebhookSourceDetailsInfo({
             </div>
           </>
         )}
-        {webhookSourceView.webhookSource.customHeaders &&
-          Object.keys(webhookSourceView.webhookSource.customHeaders).length >
-            0 && (
-            <div>
-              <Page.H variant="h6">Custom Headers</Page.H>
-              <div className="mt-2 space-y-1">
-                {Object.entries(
-                  webhookSourceView.webhookSource.customHeaders
-                ).map(([key, value]) => (
-                  <div
-                    key={key}
-                    className="flex items-center space-x-2 text-sm"
-                  >
-                    <span className="font-mono text-muted-foreground dark:text-muted-foreground-night">
-                      {key}:
-                    </span>
-                    <span className="text-foreground dark:text-foreground-night">
-                      {value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         {webhookSourceView.webhookSource.secret &&
           webhookSourceView.webhookSource.signatureHeader &&
           webhookSourceView.webhookSource.signatureAlgorithm && (

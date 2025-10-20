@@ -295,7 +295,6 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
       subscribedEvents: this.subscribedEvents,
       signatureHeader: this.signatureHeader,
       signatureAlgorithm: this.signatureAlgorithm,
-      customHeaders: this.customHeaders,
       remoteMetadata: this.remoteMetadata,
       oauthConnectionId: this.oauthConnectionId,
       createdAt: this.createdAt.getTime(),

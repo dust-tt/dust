@@ -21,7 +21,6 @@ export class WebhookSourceModel extends WorkspaceAwareModel<WebhookSourceModel> 
   declare kind: WebhookSourceKind;
   declare subscribedEvents: string[];
 
-  declare customHeaders: Record<string, string> | null;
   declare remoteMetadata: Record<string, any> | null;
   declare oauthConnectionId: string | null;
 }
@@ -61,10 +60,6 @@ WebhookSourceModel.init(
     kind: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    customHeaders: {
-      type: DataTypes.JSONB,
-      allowNull: true,
     },
     subscribedEvents: {
       type: DataTypes.ARRAY(DataTypes.STRING),
