@@ -73,8 +73,6 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
           webhookSourceId: webhookSource.id,
           description: "",
           icon: DEFAULT_WEBHOOK_ICON,
-          kind: webhookSource.kind,
-          subscribedEvents: webhookSource.subscribedEvents,
         },
         {
           transaction,

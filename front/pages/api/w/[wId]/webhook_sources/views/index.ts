@@ -84,7 +84,7 @@ async function handler(
       const flattenedWebhookSourceViews = webhookSourceViews
         .flat()
         .filter((v): v is WebhookSourceViewWithWebhookSourceType => v !== null)
-        // map to WebhookSourceViewInfoType: copy all fields but the webhookSource field
+        // map to WebhookSourceViewType: copy all fields but the webhookSource field
         .map(({ webhookSource, ...rest }) => rest);
 
       return res.status(200).json({
