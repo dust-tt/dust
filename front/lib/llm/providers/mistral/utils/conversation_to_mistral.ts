@@ -11,7 +11,7 @@ import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
   Content,
-  ModelMessageTypeMultiActions,
+  ModelMessageTypeMultiActionsWithoutContentFragment,
 } from "@app/types";
 import { assertNever } from "@app/types";
 import type {
@@ -96,7 +96,7 @@ function toAssistantMessage(
 }
 
 export function toMessage(
-  message: ModelMessageTypeMultiActions
+  message: ModelMessageTypeMultiActionsWithoutContentFragment
 ): ChatCompletionStreamRequest["messages"][number] {
   switch (message.role) {
     case "user": {
@@ -119,11 +119,6 @@ export function toMessage(
     case "assistant": {
       return toAssistantMessage(message);
     }
-    // TODO: remove after proper renderConversationForModel return type
-    case "content_fragment":
-      throw new Error(
-        "Content fragment messages are not supported in Mistral conversations."
-      );
     default:
       assertNever(message);
   }
