@@ -1238,32 +1238,12 @@ export const INTERNAL_MCP_TOOLS_LABELS = {
   >
 >;
 
-  return config.displayName;
-}
-
-/**
- * Get the running label for a tool (shown while executing).
- */
-export function getToolRunningLabel(
-  serverName: InternalMCPServerNameType,
-  toolName: string
-): string {
-  const serverLabels = INTERNAL_MCP_TOOLS_LABELS[serverName];
-  if (!serverLabels) {
-    return toolNameToDisplayName(toolName) + "...";
-  }
-
-  const config = (serverLabels as Record<string, ToolLabelConfig | undefined>)[
-    toolName
-  ];
-  if (!config) {
-    return toolNameToDisplayName(toolName) + "...";
-  }
-
-  if (typeof config === "string") {
-    // Legacy format: string is the running label
-    return config;
-  }
-
-  return config.runningLabel;
+export function isToolInServer<
+  T extends string,
+  S extends InternalMCPServerNameType,
+>(
+  toolName: T,
+  serverName: S
+): toolName is T & keyof (typeof INTERNAL_MCP_TOOLS_LABELS)[S] {
+  return toolName in INTERNAL_MCP_TOOLS_LABELS[serverName];
 }
