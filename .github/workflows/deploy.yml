@@ -151,11 +151,11 @@ jobs:
           component: ${{ inputs.component }}
           dd_api_key: ${{ secrets.DD_API_KEY }}
           dd_client_token: ${{ secrets.DD_CLIENT_TOKEN }}
-          depot_project_id: ${{ secrets.DEPOT_PROJECT_ID }}
+          depot_eu_project_id: ${{ secrets.DEPOT_EU_PROJECT_ID }}
+          depot_eu_token: ${{ secrets.DEPOT_EU_PROJECT_TOKEN }}
           depot_region: ${{ inputs.depot_region }}
-          depot_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
-          eu_depot_project_id: ${{ secrets.DEPOT_EU_PROJECT_ID }}
-          eu_depot_token: ${{ secrets.DEPOT_EU_PROJECT_TOKEN }}
+          depot_us_project_id: ${{ secrets.DEPOT_PROJECT_ID }}
+          depot_us_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           project_id: ${{ steps.project.outputs.PROJECT_ID }}
           region: ${{ matrix.region }}
           virtuoso_license_key: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
