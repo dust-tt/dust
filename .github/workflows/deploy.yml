@@ -36,6 +36,14 @@ on:
         options:
           - "check"
           - "force (dangerous)"
+      depot_region:
+        description: "Depot region to use for building"
+        required: true
+        default: "us"
+        type: choice
+        options:
+          - "us"
+          - "eu"
 
 permissions:
   contents: read
@@ -138,16 +146,20 @@ jobs:
       - name: Build Image
         uses: ./.github/actions/build-image
         with:
-          project_id: ${{ steps.project.outputs.PROJECT_ID }}
-          region: ${{ matrix.region }}
+          commit_sha_long: ${{ needs.prepare.outputs.long_sha }}
+          commit_sha: ${{ needs.prepare.outputs.short_sha }}
           component: ${{ inputs.component }}
-          workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
-          depot_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           dd_api_key: ${{ secrets.DD_API_KEY }}
           dd_client_token: ${{ secrets.DD_CLIENT_TOKEN }}
+          depot_project_id: ${{ secrets.DEPOT_PROJECT_ID }}
+          depot_region: ${{ inputs.depot_region }}
+          depot_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          eu_depot_project_id: ${{ secrets.DEPOT_EU_PROJECT_ID }}
+          eu_depot_token: ${{ secrets.DEPOT_EU_PROJECT_TOKEN }}
+          project_id: ${{ steps.project.outputs.PROJECT_ID }}
+          region: ${{ matrix.region }}
           virtuoso_license_key: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
-          commit_sha: ${{ needs.prepare.outputs.short_sha }}
-          commit_sha_long: ${{ needs.prepare.outputs.long_sha }}
+          workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
 
       - name: Notify Failure
         if: failure()

@@ -14,9 +14,18 @@ inputs:
   workload_identity_provider:
     description: "Workload Identity Provider"
     required: true
-  depot_token:
-    description: "Depot project token"
+  depot_project_id:
+    description: "US Depot project ID"
     required: true
+  depot_token:
+    description: "US Depot token"
+    required: true
+  eu_depot_project_id:
+    description: "EU Depot project ID"
+    required: false
+  eu_depot_token:
+    description: "EU Depot token"
+    required: false
   dd_api_key:
     description: "Datadog api key"
     required: false
@@ -32,6 +41,10 @@ inputs:
   virtuoso_license_key:
     description: "Virtuoso license key"
     required: false
+  depot_region:
+    description: "Depot region"
+    required: false
+    default: "us"
 
 runs:
   using: "composite"
@@ -59,9 +72,16 @@ runs:
     - name: "Build and Push"
       shell: bash
       env:
-        DEPOT_TOKEN: ${{ inputs.depot_token }}
+        DEPOT_TOKEN: ${{ inputs.depot_region == 'eu' && inputs.eu_depot_token || inputs.depot_token }}
       run: |
         COMPONENT="${{ inputs.component }}"
+
+        # Set depot project ID based on region
+        if [[ "${{ inputs.depot_region }}" == "us" ]]; then
+          DEPOT_PROJECT_ID="${{ inputs.depot_project_id }}"
+        else
+          DEPOT_PROJECT_ID="${{ inputs.eu_depot_project_id }}"
+        fi
 
         # Determine environment and base component name
         if [[ ${COMPONENT} == *"-qa" ]]; then
@@ -99,7 +119,7 @@ runs:
         fi
 
         depot build \
-          --project 3vz0lnf16v \
+          --project $DEPOT_PROJECT_ID \
           --platform linux/amd64 \
           --provenance=false \
           --cache-from type=gha,scope=${{ inputs.component }} \
