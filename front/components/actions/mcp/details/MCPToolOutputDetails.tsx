@@ -180,7 +180,7 @@ interface SearchResultProps {
   visual: React.ComponentType<{ className?: string }>;
   actionOutput: CallToolResult["content"] | null;
   viewType: "conversation" | "sidebar";
-  params: SearchInputType;
+  query: string;
 }
 
 export function SearchResultDetails({
@@ -188,13 +188,8 @@ export function SearchResultDetails({
   visual,
   viewType,
   actionOutput,
-  params,
+  query,
 }: SearchResultProps) {
-  const query = makeQueryTextForDataSourceSearch({
-    ...params,
-    timeFrame: parseTimeFrame(params.relativeTimeFrame),
-  });
-
   const warning = actionOutput
     ?.filter(isWarningResourceType)
     .map((o) => o.resource)?.[0];

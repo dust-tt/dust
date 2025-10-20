@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import { makeQueryTextForDataSourceSearch } from "@app/components/actions/mcp/details/input_rendering";
 import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
 import {
@@ -61,7 +62,8 @@ import {
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName,isString, isSupportedImageContentType } from "@app/types";
+import { parseTimeFrame } from "@app/types";
+import { asDisplayName, isSupportedImageContentType } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 export interface MCPActionDetailsProps {
@@ -131,7 +133,10 @@ export function MCPActionDetails({
           }
           actionOutput={output}
           visual={MagnifyingGlassIcon}
-          params={params}
+          query={makeQueryTextForDataSourceSearch({
+            ...params,
+            timeFrame: parseTimeFrame(params.relativeTimeFrame),
+          })}
         />
       );
     }
@@ -184,7 +189,7 @@ export function MCPActionDetails({
       return (
         <SearchResultDetails
           viewType={viewType}
-          defaultQuery={params.query as string}
+          query={params.query}
           actionName={
             viewType === "conversation" ? "Searching the web" : "Web search"
           }
