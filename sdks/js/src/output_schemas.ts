@@ -163,8 +163,6 @@ export const isExampleRowsResourceType = (
   );
 };
 
-// Data source search outputs.
-
 export const SearchResultResourceSchema = z.object({
   mimeType: z.literal(
     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT
