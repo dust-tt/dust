@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import AdmZip from "adm-zip";
 import { Readable } from "stream";
 import { z } from "zod";
 
@@ -9,6 +10,7 @@ import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers"
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { untrustedFetch } from "@app/lib/egress";
 import logger from "@app/logger/logger";
 import {
   Err,
@@ -19,6 +21,48 @@ import {
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
+
+/**
+ * Extracts text from a .docx file by unzipping it and parsing document.xml
+ */
+function extractTextFromDocx(buffer: Buffer): string {
+  try {
+    const zip = new AdmZip(buffer);
+    const documentXml = zip.readAsText("word/document.xml");
+
+    if (!documentXml) {
+      throw new Error("document.xml not found in .docx file");
+    }
+
+    // Extract text content from XML tags <w:t>...</w:t>
+    // This regex matches text elements in Word XML format
+    const textMatches = documentXml.match(/<w:t[^>]*>([^<]*)<\/w:t>/g);
+
+    if (!textMatches) {
+      return "";
+    }
+
+    // Extract the actual text content from each match
+    const text = textMatches
+      .map((match: string) => {
+        const textContent = match.replace(/<w:t[^>]*>([^<]*)<\/w:t>/, "$1");
+        // Decode XML entities
+        return textContent
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&amp;/g, "&")
+          .replace(/&quot;/g, '"')
+          .replace(/&apos;/g, "'");
+      })
+      .join("");
+
+    return text;
+  } catch (error) {
+    throw new Error(
+      `Failed to extract text from docx: ${normalizeError(error).message}`
+    );
+  }
+}
 
 function createServer(
   auth: Authenticator,
@@ -141,6 +185,106 @@ function createServer(
   );
 
   server.tool(
+    "update_word_document",
+    "Update an existing Word document on OneDrive/SharePoint by providing a new document.xml content. Uses driveId if provided, otherwise falls back to siteId.",
+    {
+      itemId: z.string().describe("The ID of the Word document to update."),
+      driveId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the drive containing the file. Takes priority over siteId if provided."
+        ),
+      siteId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the SharePoint site containing the file. Used if driveId is not provided."
+        ),
+      documentXml: z
+        .string()
+        .describe(
+          "The updated document.xml content to replace in the Word document."
+        ),
+    },
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "microsoft_drive", agentLoopContext },
+      async ({ itemId, driveId, siteId, documentXml }, { authInfo }) => {
+        const client = await getGraphClient(authInfo);
+        if (!client) {
+          return new Err(
+            new MCPError("Failed to authenticate with Microsoft Graph")
+          );
+        }
+
+        try {
+          let endpoint: string;
+
+          if (driveId) {
+            endpoint = `/drives/${driveId}/items/${itemId}`;
+          } else if (siteId) {
+            endpoint = `/sites/${siteId}/drive/items/${itemId}`;
+          } else {
+            return new Err(
+              new MCPError("Either driveId or siteId must be provided")
+            );
+          }
+
+          // Get the file metadata
+          const response = await client.api(endpoint).get();
+          const downloadUrl = response["@microsoft.graph.downloadUrl"];
+          const mimeType = response.file.mimeType;
+
+          // Verify it's a Word document
+          if (
+            mimeType !==
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          ) {
+            return new Err(
+              new MCPError(
+                `File is not a Word document. Mime type: ${mimeType}`
+              )
+            );
+          }
+
+          // Download the existing document
+          const docResponse = await untrustedFetch(downloadUrl);
+          const buffer = Buffer.from(await docResponse.arrayBuffer());
+
+          // Unzip, replace document.xml, and rezip
+          const zip = new AdmZip(buffer);
+          zip.updateFile(
+            "word/document.xml",
+            Buffer.from(documentXml, "utf-8")
+          );
+          const updatedBuffer = zip.toBuffer();
+
+          // Upload the modified document back
+          const uploadEndpoint = `${endpoint}/content`;
+          await client
+            .api(uploadEndpoint)
+            .header("Content-Type", mimeType)
+            .put(updatedBuffer);
+
+          return new Ok([
+            {
+              type: "text" as const,
+              text: "Document updated successfully",
+            },
+          ]);
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to update document"
+            )
+          );
+        }
+      }
+    )
+  );
+
+  server.tool(
     "get_file_content",
     "Retrieve the content of files from SharePoint/OneDrive (Powerpoint, Word, Excel, etc.). Uses driveId if provided, otherwise falls back to siteId.",
     {
@@ -203,7 +347,7 @@ function createServer(
           const downloadUrl = response["@microsoft.graph.downloadUrl"];
           const mimeType = response.file.mimeType;
 
-          const docResponse = await fetch(downloadUrl);
+          const docResponse = await untrustedFetch(downloadUrl);
           const buffer = Buffer.from(await docResponse.arrayBuffer());
 
           // Convert buffer to string based on mime type
@@ -211,6 +355,20 @@ function createServer(
 
           if (mimeType.startsWith("text/")) {
             content = buffer.toString("utf-8");
+          } else if (
+            mimeType ===
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          ) {
+            // Handle .docx files by unzipping and extracting document.xml
+            try {
+              content = extractTextFromDocx(buffer);
+            } catch (error) {
+              return new Err(
+                new MCPError(
+                  `Failed to extract text from docx: ${normalizeError(error).message}`
+                )
+              );
+            }
           } else if (isTextExtractionSupportedContentType(mimeType)) {
             try {
               const textExtraction = new TextExtraction(
