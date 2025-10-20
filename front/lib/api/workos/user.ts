@@ -163,8 +163,7 @@ export async function getWorkOSSessionFromCookie(
         };
       } else {
         return {
-          // Return the previous cookie in case it fails.
-          cookie: workOSSessionCookie,
+          cookie: "",
           session: undefined,
         };
       }
@@ -195,8 +194,10 @@ export async function getWorkOSSessionFromCookie(
     };
   } catch (error) {
     logger.error({ error }, "Session authentication error");
+
     return {
-      cookie: "",
+      // In case WorkOS fails, do not clear the cookie.
+      cookie: undefined,
       session: undefined,
     };
   }
