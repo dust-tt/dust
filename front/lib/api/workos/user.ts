@@ -17,6 +17,7 @@ import type {
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
+import { verifyWorkOSToken } from "@app/lib/api/workos";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -211,6 +212,37 @@ export async function getWorkOSSessionFromCookie(
     }>(sessionData, {
       password: config.getWorkOSCookiePassword(),
     });
+
+    const result = await verifyWorkOSToken(r.accessToken, {
+      ignoreExpiration: true,
+    });
+    if (result.isOk()) {
+      const payload = result.value;
+
+      const now = Math.floor(Date.now() / 1000);
+      const fiveDaysInSeconds = 5 * 24 * 60 * 60;
+      const maxExpiration = now - fiveDaysInSeconds;
+
+      if (payload.exp < maxExpiration) {
+        logger.error(
+          {
+            tokenExp: payload.exp,
+            maxAllowedExp: maxExpiration,
+            currentTime: now,
+          },
+          "Token expiration exceeds 5 days limit"
+        );
+        return {
+          cookie: undefined,
+          session: undefined,
+        };
+      }
+    } else {
+      return {
+        cookie: undefined,
+        session: undefined,
+      };
+    }
 
     return {
       cookie: undefined,
