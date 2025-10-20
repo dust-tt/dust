@@ -6,15 +6,17 @@ import { timeAgoFrom } from "@app/lib/utils";
 import type { ConnectorType } from "@app/types";
 import { assertNever, fileSizeToHumanReadable } from "@app/types";
 
-export default function ConnectorSyncingChip({
-  connector,
-  connectorError,
-  activeSeats,
-}: {
+interface ConnectorSyncingChipProps {
+  activeSeats: number;
   connector: ConnectorType;
   connectorError: string | null;
-  activeSeats: number;
-}) {
+}
+
+export default function ConnectorSyncingChip({
+  activeSeats,
+  connector,
+  connectorError,
+}: ConnectorSyncingChipProps) {
   if (connectorError) {
     return (
       <Chip color="warning">Error loading synchronization information</Chip>
