@@ -37,6 +37,7 @@ export type TriggerType = {
   enabled: boolean;
   webhookSourceViewSId?: string | null;
   createdAt: number;
+  executionPerDayLimitOverride: number | null;
 } & TriggerConfiguration;
 
 export type TriggerKind = TriggerType["kind"];
