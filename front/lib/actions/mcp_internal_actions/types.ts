@@ -25,14 +25,28 @@ export const SearchInputSchema = z.object({
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
 });
 
-export type SearchInputType = z.infer<typeof SearchInputSchema>;
-
 export function isSearchInputType(
   input: Record<string, unknown>
-): input is SearchInputType {
+): input is z.infer<typeof SearchInputSchema> {
   return (
     SearchInputSchema.safeParse(input).success ||
     SearchInputSchema.extend(TagsInputSchema.shape).safeParse(input).success
+  );
+}
+
+export const IncludeInputSchema = z.object({
+  timeFrame:
+    ConfigurableToolInputSchemas[
+      INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+    ].optional(),
+});
+
+export function isIncludeInputType(
+  input: Record<string, unknown>
+): input is z.infer<typeof IncludeInputSchema> {
+  return (
+    IncludeInputSchema.safeParse(input).success ||
+    IncludeInputSchema.extend(TagsInputSchema.shape).safeParse(input).success
   );
 }
 

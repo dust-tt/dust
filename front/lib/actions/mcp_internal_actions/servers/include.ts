@@ -12,7 +12,6 @@ import {
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
-  IncludeQueryResourceType,
   IncludeResultResourceType,
   WarningResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -98,10 +97,7 @@ function createServer(
         | TextContent
         | {
             type: "resource";
-            resource:
-              | IncludeResultResourceType
-              | IncludeQueryResourceType
-              | WarningResourceType;
+            resource: IncludeResultResourceType | WarningResourceType;
           }
       )[],
       MCPError
@@ -243,10 +239,6 @@ function createServer(
         type: "resource" as const,
         resource: result,
       })),
-      {
-        type: "resource" as const,
-        resource: makeQueryResource(timeFrame ?? null),
-      },
       ...(warningResource
         ? [
             {
@@ -291,16 +283,6 @@ function createServer(
   }
 
   return server;
-}
-
-function makeQueryResource(
-  timeFrame: TimeFrame | null
-): IncludeQueryResourceType {
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_QUERY,
-    text: `Requested to include documents ${renderRelativeTimeFrameForToolOutput(timeFrame)}.`,
-    uri: "",
-  };
 }
 
 function makeWarningResource(

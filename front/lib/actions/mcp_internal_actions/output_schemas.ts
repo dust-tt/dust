@@ -336,19 +336,6 @@ export const IncludeQueryResourceSchema = z.object({
   uri: z.literal(""),
 });
 
-export type IncludeQueryResourceType = z.infer<
-  typeof IncludeQueryResourceSchema
->;
-
-export const isIncludeQueryResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is { type: "resource"; resource: IncludeQueryResourceType } => {
-  return (
-    outputBlock.type === "resource" &&
-    IncludeQueryResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
 export const WarningResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WARNING),
   warningTitle: z.string(),

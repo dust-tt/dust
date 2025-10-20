@@ -55,7 +55,9 @@ import {
   isResourceContentWithText,
   isTextContent,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
+  isIncludeInputType,
   isSearchInputType,
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
@@ -170,7 +172,7 @@ export function MCPActionDetails({
   }
 
   if (isInternalMCPServerOfName(mcpServerId, "include_data")) {
-    if (toolName === INCLUDE_TOOL_NAME) {
+    if (toolName === INCLUDE_TOOL_NAME && isIncludeInputType(params)) {
       return (
         <SearchResultDetails
           viewType={viewType}
@@ -179,6 +181,7 @@ export function MCPActionDetails({
           }
           actionOutput={output}
           visual={ClockIcon}
+          query={`Requested to include documents ${renderRelativeTimeFrameForToolOutput(params.timeFrame ?? null)}.`}
         />
       );
     }
