@@ -48,6 +48,7 @@ export function createResponseAdaptiveCard({
                     data: {
                       verb: "like",
                     },
+                    msTeams: { feedback: { hide: true } },
                   },
                   {
                     type: "Action.Submit",
@@ -55,6 +56,7 @@ export function createResponseAdaptiveCard({
                     data: {
                       verb: "dislike",
                     },
+                    msTeams: { feedback: { hide: true } },
                   },
                 ],
               },
@@ -135,6 +137,7 @@ export function createResponseAdaptiveCard({
                     data: {
                       verb: "ask_agent",
                     },
+                    msTeams: { feedback: { hide: true } },
                   },
                 ],
                 horizontalAlignment: "Right",
