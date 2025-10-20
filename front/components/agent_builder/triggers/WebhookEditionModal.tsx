@@ -26,12 +26,12 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
 import { useWebhookFilterGeneration } from "@app/components/agent_builder/triggers/useWebhookFilterGeneration";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
-import { useSpaces } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import type { LightWorkspaceType } from "@app/types";
@@ -97,7 +97,7 @@ export function WebhookEditionModal({
   const selectedEvent = form.watch("event");
   const includePayload = form.watch("includePayload");
 
-  const { spaces } = useSpaces({ workspaceId: owner.sId, disabled: !isOpen });
+  const { spaces } = useSpacesContext();
   const { webhookSourceViews, isLoading: isWebhookSourceViewsLoading } =
     useWebhookSourceViewsFromSpaces(owner, spaces, !isOpen);
 

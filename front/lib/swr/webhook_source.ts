@@ -11,10 +11,8 @@ import type { GetWebhookSourceViewsResponseBody as GetSpecificWebhookSourceViews
 import type { GetWebhookSourceViewsListResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/views";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import type {
-  PostWebhookSourcesBody,
-  WebhookSourceType,
-  WebhookSourceViewWithWebhookSourceType,
-} from "@app/types/triggers/webhooks";
+  WebhookSourceViewType} from "@app/types/triggers/webhooks";
+import type {PostWebhookSourcesBody, WebhookSourceType, WebhookSourceViewWithWebhookSourceType} from "@app/types/triggers/webhooks";
 
 export function useWebhookSourceViews({
   owner,
@@ -65,7 +63,8 @@ export function useWebhookSourceViewsFromSpaces(
   });
 
   return {
-    webhookSourceViews: data?.webhookSourceViews ?? emptyArray(),
+    webhookSourceViews:
+      data?.webhookSourceViews ?? emptyArray<WebhookSourceViewType>(),
     isLoading: !error && !data && spaces.length !== 0,
     isError: error,
     mutateWebhookSourceViews: mutate,
