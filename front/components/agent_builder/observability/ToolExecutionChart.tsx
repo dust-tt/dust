@@ -23,13 +23,17 @@ import {
 } from "@app/components/agent_builder/observability/constants";
 import { useAgentToolExecution } from "@app/lib/swr/assistants";
 
+type ChartRow = { version: string; values: Record<string, number> };
+
+interface ToolExecutionChartProps {
+  workspaceId: string;
+  agentConfigurationId: string;
+}
+
 export function ToolExecutionChart({
   workspaceId,
   agentConfigurationId,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-}) {
+}: ToolExecutionChartProps) {
   const [period, setPeriod] =
     useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
 
@@ -49,58 +53,44 @@ export function ToolExecutionChart({
       return { chartData: [], topTools: [] };
     }
 
-    // Collect all unique tools across all versions
-    const allToolsSet = new Set<string>();
+    // Aggregate total counts per tool across all versions
     const toolTotalCounts = new Map<string, number>();
-
-    toolExecutionByVersion.forEach((versionData) => {
-      Object.entries(versionData.tools).forEach(([toolName, toolData]) => {
-        allToolsSet.add(toolName);
+    for (const v of toolExecutionByVersion) {
+      for (const [toolName, toolData] of Object.entries(v.tools)) {
         toolTotalCounts.set(
           toolName,
           (toolTotalCounts.get(toolName) ?? 0) + toolData.count
         );
-      });
-    });
+      }
+    }
 
-    // Get top tools by total usage
-    const sortedTools = Array.from(toolTotalCounts.entries())
+    // Top tools by total usage
+    const top = Array.from(toolTotalCounts.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, MAX_TOOLS_DISPLAYED)
       .map(([toolName]) => toolName);
 
-    // Transform data for stacked bar chart
-    const data = toolExecutionByVersion.map((versionData) => {
-      const dataPoint: Record<string, string | number> = {
-        version: `v${versionData.version}`,
-      };
+    // Build rows with numeric series for tools
+    const rows: ChartRow[] = toolExecutionByVersion.map((v) => {
+      const versionTotal = Object.values(v.tools).reduce(
+        (acc, t) => acc + t.count,
+        0
+      );
 
-      // Calculate total for this version
-      let versionTotal = 0;
-      Object.entries(versionData.tools).forEach(([, toolData]) => {
-        versionTotal += toolData.count;
-      });
+      const toolValues: Record<string, number> = {};
+      for (const toolName of top) {
+        const t = v.tools[toolName];
+        toolValues[toolName] = t
+          ? versionTotal > 0
+            ? Math.round((t.count / versionTotal) * PERCENTAGE_MULTIPLIER)
+            : 0
+          : 0;
+      }
 
-      // Add tool counts as percentages
-      sortedTools.forEach((toolName) => {
-        const toolData = versionData.tools[toolName];
-        if (toolData) {
-          const percentage =
-            versionTotal > 0
-              ? Math.round(
-                  (toolData.count / versionTotal) * PERCENTAGE_MULTIPLIER
-                )
-              : 0;
-          dataPoint[toolName] = percentage;
-        } else {
-          dataPoint[toolName] = 0;
-        }
-      });
-
-      return dataPoint;
+      return { version: `v${v.version}`, values: toolValues };
     });
 
-    return { chartData: data, topTools: sortedTools };
+    return { chartData: rows, topTools: top };
   }, [toolExecutionByVersion]);
 
   function CustomTooltip(props: TooltipContentProps<number, string>) {
@@ -123,12 +113,7 @@ export function ToolExecutionChart({
         colorClassName: getColorForTool(p.name || ""),
       }));
 
-    return (
-      <ChartTooltipCard
-        title={typeof label === "string" ? label : String(label ?? "")}
-        rows={rows}
-      />
-    );
+    return <ChartTooltipCard title={String(label)} rows={rows} />;
   }
 
   const legendItems = topTools.map((toolName, idx) => ({
@@ -179,7 +164,7 @@ export function ToolExecutionChart({
             {topTools.map((toolName, idx) => (
               <Bar
                 key={toolName}
-                dataKey={toolName}
+                dataKey={(row: ChartRow) => row.values[toolName] ?? 0}
                 stackId="a"
                 fill="currentColor"
                 className={TOOL_COLORS[idx % TOOL_COLORS.length]}
