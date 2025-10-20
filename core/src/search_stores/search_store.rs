@@ -815,7 +815,7 @@ impl ElasticsearchSearchStore {
 
                 // Apply additional filter if present (in addition to view_filter).
                 if let Some(ref filter) = f.filter {
-                    if index_name == DATA_SOURCE_NODE_INDEX_NAME && !filter.is_empty() && !counter.is_full() {
+                    if index_name == DATA_SOURCE_NODE_INDEX_NAME && !filter.is_empty() {
                         counter.add(1);
                         bool_query = bool_query.filter(Query::terms("parents", filter.clone()));
                     }
