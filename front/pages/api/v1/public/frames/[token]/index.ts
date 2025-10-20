@@ -68,7 +68,7 @@ async function handler(
   const { file, content: fileContent, shareScope } = result;
 
   // Only allow conversation Frame files.
-  if (!file.isInteractiveContent && file.contentType === frameContentType) {
+  if (!file.isInteractiveContent || file.contentType !== frameContentType) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

@@ -170,10 +170,9 @@ function getTableColumns(
           )}
           {ds.connector && info.row.original.workspaceId && ds.name && (
             <ConnectorSyncingChip
-              initialState={ds.connector}
-              workspaceId={info.row.original.workspaceId}
-              dataSource={ds}
               activeSeats={activeSeats}
+              connector={ds.connector}
+              connectorError={ds.fetchConnectorErrorMessage}
             />
           )}
         </DataTable.CellContent>
@@ -239,6 +238,7 @@ function getTableColumns(
       actionColumn,
     ];
   }
+
   if (isManaged || isWebsite) {
     return [
       nameColumn,
@@ -292,6 +292,7 @@ export const SpaceResourcesList = ({
   const [sorting, setSorting] = useState<SortingState>([
     { id: "name", desc: false },
   ]);
+
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Partial<Record<ConnectorProvider, boolean>>
   >({});

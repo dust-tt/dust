@@ -200,6 +200,7 @@ const webhookConfigSchema = z.object({
 
 const webhookTriggerSchema = z.object({
   sId: z.string().optional(),
+  enabled: z.boolean().default(true),
   name: z.string(),
   kind: z.enum(["webhook"]),
   customPrompt: z.string().nullable(),
@@ -211,6 +212,7 @@ const webhookTriggerSchema = z.object({
 
 const scheduleTriggerSchema = z.object({
   sId: z.string().optional(),
+  enabled: z.boolean().default(true),
   name: z.string(),
   kind: z.enum(["schedule"]),
   customPrompt: z.string().nullable(),

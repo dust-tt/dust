@@ -146,12 +146,22 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   }
 
   static async createViewInSpaceFromDataSource(
+    auth: Authenticator,
     space: SpaceResource,
     dataSource: DataSourceResource,
-    parentsIn: string[],
-    editedByUser?: UserResource | null
-  ) {
-    return this.makeNew(
+    parentsIn: string[]
+  ): Promise<Result<DataSourceViewResource, Error>> {
+    if (!dataSource.canAdministrate(auth)) {
+      return new Err(
+        new Error(
+          "You do not have the rights to create a view for this data source."
+        )
+      );
+    }
+
+    const editedByUser = auth.user();
+
+    const resource = await this.makeNew(
       {
         dataSourceId: dataSource.id,
         parentsIn,
@@ -162,6 +172,8 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       dataSource,
       editedByUser?.toJSON()
     );
+
+    return new Ok(resource);
   }
 
   // This view has access to all documents, which is represented by null.
