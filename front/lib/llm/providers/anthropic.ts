@@ -12,6 +12,8 @@ import type {
   LLMEvent,
   LLMOutputItem,
   ProviderMetadata,
+  ReasoningDeltaEvent,
+  TextDeltaEvent,
 } from "@app/lib/llm/types";
 import type { ModelConfigurationType, ModelConversationTypeMultiActions } from "@app/types";
 import type { Content } from "@app/types/assistant/generation";
@@ -22,6 +24,7 @@ export class AnthropicLLM extends LLM {
     providerId: "anthropic",
     modelId: this.model.modelId,
   };
+  private itemsAccumulator: LLMOutputItem[] = [];
   protected temperature: number;
   constructor({
     model,
@@ -37,6 +40,10 @@ export class AnthropicLLM extends LLM {
     this.temperature = temperature;
   }
 
+  private resetAccumulators(): void {
+    this.itemsAccumulator = [];
+  }
+
   async *stream({
     conversation,
     prompt,
@@ -44,42 +51,30 @@ export class AnthropicLLM extends LLM {
     conversation: ModelConversationTypeMultiActions;
     prompt: string;
   }): AsyncGenerator<LLMEvent> {
-    let items: LLMOutputItem[] = [];
-    const anthropicConversation = this.toAnthropicConversation(conversation);
-    const eventStream = await this.client.messages.stream({
+    this.resetAccumulators();
+    const messages = this.getMessages(conversation);
+    const events = await this.client.messages.stream({
       model: this.model.modelId,
       thinking: {
         type: "enabled",
         budget_tokens: 16000,
       },
       system: prompt,
-      messages: anthropicConversation,
+      messages,
       temperature: this.temperature,
       stream: true,
       max_tokens: 64000,
     });
 
-    for await (const event of eventStream) {
+    for await (const event of events) {
       switch (event.type) {
         case "content_block_delta":
           switch (event.delta.type) {
             case "text_delta":
-              yield {
-                type: "text_delta",
-                content: {
-                  delta: event.delta.text,
-                },
-                metadata: this.metadata,
-              };
+              yield this.textDelta(event.delta.text);
               break;
             case "thinking_delta":
-              yield {
-                type: "reasoning_delta",
-                content: {
-                  delta: event.delta.thinking,
-                },
-                metadata: this.metadata,
-              };
+                yield this.reasoningDelta(event.delta.thinking);
               break;
             default:
               continue;
@@ -87,23 +82,10 @@ export class AnthropicLLM extends LLM {
           break;
         case "message_start":
           this.metadata.messageId = event.message.id;
-          items = this.fromAnthropicContent(event.message.content);
+          yield* this.streamAnthropicContent(event.message.content);
           break;
         case "message_stop":
-          for (const item of items) {
-            if (item.type === "tool_call") {
-              yield {
-                type: "tool_call",
-                content: item.content,
-                metadata: this.metadata,
-              };
-            }
-          }
-          yield {
-            type: "success",
-            content: items,
-            metadata: this.metadata,
-          };
+          yield* this.yieldFinalEvents();
           break;
         default:
           continue;
@@ -111,30 +93,71 @@ export class AnthropicLLM extends LLM {
     }
   }
 
-  private fromAnthropicContent(content: ContentBlock[]): LLMOutputItem[] {
-    const items: LLMOutputItem[] = [];
+  private textDelta(delta: string): TextDeltaEvent {
+    return {
+      type: "text_delta",
+      content: {
+        delta,
+      },
+      metadata: this.metadata,
+    };
+  }
+
+  private reasoningDelta(delta: string): ReasoningDeltaEvent {
+    return {
+      type: "reasoning_delta",
+      content: {
+        delta,
+      },
+      metadata: this.metadata,
+    };
+  }
+
+  private async *yieldFinalEvents(): AsyncGenerator<LLMEvent> {
+    for (const item of this.itemsAccumulator) {
+      if (item.type === "tool_call") {
+        yield {
+          type: "tool_call",
+          content: item.content,
+          metadata: this.metadata,
+        };
+      }
+    }
+    yield {
+      type: "success",
+      content: this.itemsAccumulator,
+      metadata: this.metadata,
+    }
+  }
+
+  private async *streamAnthropicContent(content: ContentBlock[]): AsyncGenerator<LLMOutputItem> {
     for (const item of content) {
+      let output: LLMOutputItem;
       switch (item.type) {
         case "text":
-          items.push({
+          output = {
             type: "text_generated",
             content: {
               text: item.text,
             },
             metadata: this.metadata,
-          });
+          };
+          yield output;
+          this.itemsAccumulator.push(output);
           break;
         case "thinking":
-          items.push({
+          output = {
             type: "reasoning_generated",
             content: {
               text: item.thinking,
             },
             metadata: this.metadata,
-          });
+          };
+          yield output;
+          this.itemsAccumulator.push(output);
           break;
         case "tool_use":
-          items.push({
+          output = {
             type: "tool_call",
             content: {
               id: item.id,
@@ -142,11 +165,12 @@ export class AnthropicLLM extends LLM {
               arguments: JSON.stringify(item.input),
             },
             metadata: this.metadata,
-          });
+          };
+          yield output;
+          this.itemsAccumulator.push(output);
           break;
       }
     }
-    return items;
   }
 
   private toAnthropicContent(input: Content[]): ContentBlockParam[] {
@@ -175,7 +199,7 @@ export class AnthropicLLM extends LLM {
     return content;
   }
 
-  private toAnthropicConversation(
+  private getMessages(
     conversation: ModelConversationTypeMultiActions
   ): MessageParam[] {
     const messages: MessageParam[] = [];
