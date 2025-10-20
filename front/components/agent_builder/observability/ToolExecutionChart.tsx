@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -28,6 +28,33 @@ type ChartRow = { version: string; values: Record<string, number> };
 interface ToolExecutionChartProps {
   workspaceId: string;
   agentConfigurationId: string;
+}
+
+function ToolExecutionTooltip({
+  active,
+  payload,
+  label,
+  topTools,
+}: TooltipContentProps<number, string> & { topTools: string[] }) {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  const getColorForTool = (toolName: string) => {
+    const idx = topTools.indexOf(toolName);
+    return TOOL_COLORS[(idx >= 0 ? idx : 0) % TOOL_COLORS.length];
+  };
+
+  const rows = payload
+    .filter((p) => typeof p.value === "number" && p.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .map((p) => ({
+      label: p.name || "",
+      value: `${p.value}%`,
+      colorClassName: getColorForTool(p.name || ""),
+    }));
+
+  return <ChartTooltipCard title={String(label)} rows={rows} />;
 }
 
 export function ToolExecutionChart({
@@ -93,28 +120,12 @@ export function ToolExecutionChart({
     return { chartData: rows, topTools: top };
   }, [toolExecutionByVersion]);
 
-  function CustomTooltip(props: TooltipContentProps<number, string>) {
-    const { active, payload, label } = props;
-    if (!active || !payload || payload.length === 0) {
-      return null;
-    }
-
-    const getColorForTool = (toolName: string) => {
-      const idx = topTools.indexOf(toolName);
-      return TOOL_COLORS[(idx >= 0 ? idx : 0) % TOOL_COLORS.length];
-    };
-
-    const rows = payload
-      .filter((p) => typeof p.value === "number" && p.value > 0)
-      .sort((a, b) => b.value - a.value)
-      .map((p) => ({
-        label: p.name || "",
-        value: `${p.value}%`,
-        colorClassName: getColorForTool(p.name || ""),
-      }));
-
-    return <ChartTooltipCard title={String(label)} rows={rows} />;
-  }
+  const renderTooltip = useCallback(
+    (props: TooltipContentProps<number, string>) => (
+      <ToolExecutionTooltip {...props} topTools={topTools} />
+    ),
+    [topTools]
+  );
 
   const legendItems = topTools.map((toolName, idx) => ({
     key: toolName,
@@ -159,7 +170,7 @@ export function ToolExecutionChart({
             />
             <Tooltip
               cursor={{ fill: "hsl(var(--border) / 0.1)" }}
-              content={CustomTooltip}
+              content={renderTooltip}
             />
             {topTools.map((toolName, idx) => (
               <Bar
