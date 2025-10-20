@@ -231,13 +231,7 @@ function createServer(
       "Search the data sources specified by the user." +
         " The search is based on semantic similarity between the query and chunks of information" +
         " from the data sources.",
-      {
-        ...SearchInputSchema.shape,
-        dataSources:
-          ConfigurableToolInputSchemas[
-            INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-          ],
-      },
+      SearchInputSchema.shape,
       withToolLogging(
         auth,
         {
@@ -257,10 +251,6 @@ function createServer(
       {
         ...SearchInputSchema.shape,
         ...TagsInputSchema.shape,
-        dataSources:
-          ConfigurableToolInputSchemas[
-            INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-          ],
       },
       withToolLogging(
         auth,

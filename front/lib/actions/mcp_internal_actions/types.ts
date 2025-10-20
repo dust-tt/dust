@@ -1,4 +1,7 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
+
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
 export const SearchInputSchema = z.object({
   query: z
@@ -18,6 +21,8 @@ export const SearchInputSchema = z.object({
         " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
         " where {k} is a number. Be strict, do not invent invalid values."
     ),
+  dataSources:
+    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
 });
 
 export type SearchInputType = z.infer<typeof SearchInputSchema>;
