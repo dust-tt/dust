@@ -168,30 +168,6 @@ export const INTERNAL_MCP_SERVERS = {
       instructions: null,
     },
   },
-  ashby: {
-    id: 37,
-    availability: "manual",
-    allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("ashby_tool");
-    },
-    isPreview: false,
-    tools_stakes: {
-      list_candidates: "never_ask",
-    },
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    serverInfo: {
-      name: "ashby",
-      version: "1.0.0",
-      description: "Access and manage Ashby ATS data.",
-      authorization: null,
-      icon: "GithubLogo",
-      documentationUrl: null,
-      instructions: null,
-      requiresSecret: true,
-    },
-  },
   image_generation: {
     id: 2,
     availability: "auto",
@@ -1251,6 +1227,30 @@ The directive should be used to display a clickable version of the agent name in
       developerSecretSelectionDescription:
         "This is optional. If set, this secret will be used as a default Bearer token (Authorization header) for HTTP requests.",
       developerSecretSelection: "optional",
+    },
+  },
+  ashby: {
+    id: 39,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("ashby_tool");
+    },
+    isPreview: false,
+    tools_stakes: {
+      list_candidates: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "ashby",
+      version: "1.0.0",
+      description: "Access and manage Ashby ATS data.",
+      authorization: null,
+      icon: "GithubLogo",
+      documentationUrl: null,
+      instructions: null,
+      developerSecretSelection: true,
     },
   },
   [SEARCH_SERVER_NAME]: {
