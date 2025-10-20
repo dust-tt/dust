@@ -54,7 +54,10 @@ import {
   isResourceContentWithText,
   isTextContent,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isSearchInputType } from "@app/lib/actions/mcp_internal_actions/types";
+import {
+  isSearchInputType,
+  isWebsearchInputType,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
@@ -177,7 +180,7 @@ export function MCPActionDetails({
   }
 
   if (isInternalMCPServerOfName(mcpServerId, "web_search_&_browse")) {
-    if (toolName === WEBSEARCH_TOOL_NAME) {
+    if (toolName === WEBSEARCH_TOOL_NAME && isWebsearchInputType(params)) {
       return (
         <SearchResultDetails
           viewType={viewType}

@@ -22,7 +22,9 @@ export const SearchInputSchema = z.object({
 
 export type SearchInputType = z.infer<typeof SearchInputSchema>;
 
-export function isSearchInputType(input: unknown): input is SearchInputType {
+export function isSearchInputType(
+  input: Record<string, unknown>
+): input is SearchInputType {
   return SearchInputSchema.safeParse(input).success;
 }
 
@@ -42,3 +44,29 @@ export const TagsInputSchema = z.object({
         "Any document having one of these labels will be excluded from the search."
     ),
 });
+
+export const WebsearchInputSchema = z.object({
+  query: z
+    .string()
+    .describe(
+      "The query used to perform the Google search. If requested by the " +
+        "user, use the Google syntax `site:` to restrict the search " +
+        "to a particular website or domain."
+    ),
+  page: z
+    .number()
+    .optional()
+    .describe(
+      "A 1-indexed page number used to paginate through the search results." +
+        " Should only be provided if the page is strictly greater than 1 in order" +
+        " to go deeper into the search results for a specific query."
+    ),
+});
+
+export type WebsearchInputType = z.infer<typeof WebsearchInputSchema>;
+
+export function isWebsearchInputType(
+  input: Record<string, unknown>
+): input is WebsearchInputType {
+  return WebsearchInputSchema.safeParse(input).success;
+}
