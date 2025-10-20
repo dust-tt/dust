@@ -233,13 +233,13 @@ export async function getWorkOSSessionFromCookie(
           "Token expiration exceeds 5 days limit"
         );
         return {
-          cookie: undefined,
+          cookie: "",
           session: undefined,
         };
       }
     } else {
       return {
-        cookie: undefined,
+        cookie: "",
         session: undefined,
       };
     }
