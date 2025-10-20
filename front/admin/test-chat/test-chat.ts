@@ -34,7 +34,6 @@ import type {
   ModelConversationTypeMultiActions,
   UserMessageTypeModel,
 } from "@app/types";
-import { dustManagedCredentials } from "@app/types/api/credentials";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 
 // Providers that have LLM implementations
@@ -83,12 +82,9 @@ function createLLM({
   temperature = 0.7,
 }: {
   model: ModelConfigurationType;
-  apiKey: string;
   temperature?: number;
 }): LLM {
   const providerId = model.providerId as ImplementedProviderId;
-
-  // Set the API key for the provider
 
   switch (providerId) {
     case "mistral":
@@ -241,113 +237,79 @@ async function streamMessage(message: string) {
     console.error("\nNo model selected. Use /list_models and /select_model <modelId>\n");
     return;
   }
+  // Add user message to conversation
+  const userMessage: UserMessageTypeModel = {
+    role: "user" as const,
+    content: [{type: "text", text: message}],
+    name: "user",
+  };
 
-  try {
-    // Check for API key
-    const credentials = dustManagedCredentials();
-    let apiKey: string | undefined;
-    
-    switch (selectedModel.providerId) {
-      case "mistral":
-        apiKey = credentials.MISTRAL_API_KEY;
-        break;
-      case "openai":
-        apiKey = credentials.OPENAI_API_KEY;
-        break;
-      case "anthropic":
-        apiKey = credentials.ANTHROPIC_API_KEY;
-        break;
-      case "google_ai_studio":
-        apiKey = credentials.GOOGLE_AI_STUDIO_API_KEY;
-        break;
-    }
+  conversation.messages.push(userMessage);
+  outputLines.push(`> ${message}`, "", "Assistant:");
 
-    if (!apiKey) {
-      const errorMsg = `No API key provided. Set ${selectedModel.providerId.toUpperCase()}_API_KEY environment variable.`;
-      console.error(`\n${errorMsg}\n`);
-      outputLines.push(`Error: ${errorMsg}`, "");
-      return;
-    }
+  console.log(`\n> ${message}\n`);
+  console.log("Assistant: ");
 
-    // Add user message to conversation
-    const userMessage: UserMessageTypeModel = {
-      role: "user" as const,
-      content: [{type: "text", text: message}],
-      name: "user",
-    };
+  // Create LLM instance
+  const llm = createLLM({
+    model: selectedModel,
+  });
 
-    conversation.messages.push(userMessage);
-    outputLines.push(`> ${message}`, "", "Assistant:");
+  let fullText = "";
 
-    console.log(`\n> ${message}\n`);
-    console.log("Assistant: ");
-
-    // Create LLM instance
-    const llm = createLLM({
-      model: selectedModel,
-      apiKey,
+  if (streamMode === "default") {
+    // Use the stream() method
+    const events = llm.stream({
+      conversation,
+      prompt: "You are a helpful assistant.",
     });
 
-    let fullText = "";
-
-    if (streamMode === "default") {
-      // Use the stream() method
-      const events = llm.stream({
-        conversation,
-        prompt: "You are a helpful assistant.",
-      });
-
-      for await (const event of events) {
-        if (displayMode === "verbose") {
-          // In verbose mode, show full event objects as JSON
-          const eventStr = JSON.stringify(event, null, 2);
-          outputLines.push(eventStr);
-          console.log(eventStr);
-        } else {
-          // In default mode, parse events and display text
-          if (event.type === "text_delta") {
-            fullText += event.content.delta;
-            process.stdout.write(event.content.delta);
-          } else if (event.type === "success") {
-            // Stream complete
-            outputLines.push(fullText, "");
-            console.log("\n");
-          } else if (event.type === "error") {
-            const errorMsg = `Error: ${event.content.message}`;
-            outputLines.push(errorMsg, "");
-            console.error(`\n${errorMsg}\n`);
-            return;
-          }
-        }
-      }
-    } else {
-      // Use modelStream() method - always show as JSON
-      const modelEvents = (llm as any).modelStream({
-        conversation,
-        prompt: "You are a helpful assistant.",
-      });
-
-      for await (const event of modelEvents) {
-        // Always stringify model events
+    for await (const event of events) {
+      if (displayMode === "verbose") {
+        // In verbose mode, show full event objects as JSON
         const eventStr = JSON.stringify(event, null, 2);
         outputLines.push(eventStr);
         console.log(eventStr);
+      } else {
+        // In default mode, parse events and display text
+        if (event.type === "text_delta") {
+          fullText += event.content.delta;
+          process.stdout.write(event.content.delta);
+        } else if (event.type === "success") {
+          // Stream complete
+          outputLines.push(fullText, "");
+          console.log("\n");
+        } else if (event.type === "error") {
+          const errorMsg = `Error: ${event.content.message}`;
+          outputLines.push(errorMsg, "");
+          console.error(`\n${errorMsg}\n`);
+          return;
+        }
       }
     }
+  } else {
+    // Use modelStream() method - always show as JSON
+    const modelEvents = (llm as any).modelStream({
+      conversation,
+      prompt: "You are a helpful assistant.",
+    });
 
-    // Add assistant response to conversation
-    if (streamMode === "default" && fullText) {
-      const assistantMessage = {
-        role: "assistant" as const,
-        name: "assistant",
-        content: fullText,
-      };
-      conversation.messages.push(assistantMessage);
+    for await (const event of modelEvents) {
+      // Always stringify model events
+      const eventStr = JSON.stringify(event, null, 2);
+      outputLines.push(eventStr);
+      console.log(eventStr);
     }
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    outputLines.push(`Error: ${errorMessage}`, "");
-    console.error(`\nError: ${errorMessage}\n`);
+  }
+
+  // Add assistant response to conversation
+  if (streamMode === "default" && fullText) {
+    const assistantMessage = {
+      role: "assistant" as const,
+      name: "assistant",
+      content: fullText,
+    };
+    conversation.messages.push(assistantMessage);
   }
 }
 
@@ -405,23 +367,6 @@ async function handleCommand(input: string): Promise<boolean> {
 async function main() {
   console.log("\n=== Test LLM Chat Interface ===\n");
 
-  const credentials = dustManagedCredentials();
-  const hasAnyKey = !!(
-    credentials.MISTRAL_API_KEY ||
-    credentials.OPENAI_API_KEY ||
-    credentials.ANTHROPIC_API_KEY ||
-    credentials.GOOGLE_AI_STUDIO_API_KEY
-  );
-
-  if (!hasAnyKey) {
-    console.error("⚠️  Warning: No API keys found in environment variables.\n");
-    console.error("Set at least one of the following:");
-    console.error("  export MISTRAL_API_KEY='your-api-key'");
-    console.error("  export OPENAI_API_KEY='your-api-key'");
-    console.error("  export ANTHROPIC_API_KEY='your-api-key'");
-    console.error("  export GOOGLE_AI_STUDIO_API_KEY='your-api-key'\n");
-  }
-
   console.log(`Model: ${selectedModel ? `${selectedModel.displayName} (${selectedModel.modelId})` : "None"}`);
   console.log(`Display Mode: ${displayMode} | Stream Mode: ${streamMode}`);
   console.log("\nType /help for commands, /list_models to see available models\n");
@@ -468,4 +413,3 @@ main().catch((err) => {
   console.error("Fatal error:", err);
   process.exit(1);
 });
-
