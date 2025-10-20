@@ -11,7 +11,11 @@ import {
 import { useEffect, useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import { makeQueryTextForDataSourceSearch } from "@app/components/actions/mcp/details/input_rendering";
+import {
+  makeQueryTextForDataSourceSearch,
+  makeQueryTextForFind,
+  makeQueryTextForList,
+} from "@app/components/actions/mcp/details/input_rendering";
 import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
 import {
@@ -57,6 +61,8 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
+  isDataSourceFilesystemFindInputType,
+  isDataSourceFilesystemListInputType,
   isIncludeInputType,
   isSearchInputType,
   isWebsearchInputType,
@@ -144,8 +150,8 @@ export function MCPActionDetails({
     }
 
     if (
-      toolName === FILESYSTEM_LIST_TOOL_NAME ||
-      toolName === FILESYSTEM_FIND_TOOL_NAME
+      toolName === FILESYSTEM_FIND_TOOL_NAME &&
+      isDataSourceFilesystemFindInputType(params)
     ) {
       return (
         <SearchResultDetails
@@ -156,7 +162,26 @@ export function MCPActionDetails({
               : "Browse data sources"
           }
           actionOutput={output}
-          query="No query provided"
+          query={makeQueryTextForFind(params)}
+          visual={ActionDocumentTextIcon}
+        />
+      );
+    }
+
+    if (
+      toolName === FILESYSTEM_LIST_TOOL_NAME &&
+      isDataSourceFilesystemListInputType(params)
+    ) {
+      return (
+        <SearchResultDetails
+          viewType={viewType}
+          actionName={
+            viewType === "conversation"
+              ? "Browsing data sources"
+              : "Browse data sources"
+          }
+          actionOutput={output}
+          query={makeQueryTextForList(params)}
           visual={ActionDocumentTextIcon}
         />
       );

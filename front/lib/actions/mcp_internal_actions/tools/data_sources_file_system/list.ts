@@ -1,21 +1,18 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { FILESYSTEM_LIST_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
-  makeQueryResourceForList,
 } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
 import {
   getAgentDataSourceConfigurations,
   makeDataSourceViewFilter,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
+import { DataSourceFilesystemListInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -28,49 +25,6 @@ import type {
   Result,
 } from "@app/types";
 import { CoreAPI, Err, Ok } from "@app/types";
-
-const ListToolInputSchema = {
-  nodeId: z
-    .string()
-    .nullable()
-    .describe(
-      "The exact ID of the node to list the contents of. " +
-        "This ID can be found from previous search results in the 'nodeId' field. " +
-        "If not provided, the content at the root of the filesystem will be shown."
-    ),
-  mimeTypes: z
-    .array(z.string())
-    .optional()
-    .describe(
-      "The mime types to search for. If provided, only nodes with one of these mime types " +
-        "will be returned. If not provided, no filter will be applied. The mime types passed " +
-        "here must be one of the mime types found in the 'mimeType' field."
-    ),
-  dataSources:
-    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
-  sortBy: z
-    .enum(["title", "timestamp"])
-    .optional()
-    .describe(
-      "Field to sort the results by. 'title' sorts alphabetically A-Z, 'timestamp' sorts by " +
-        "most recent first. If not specified, results are returned in the default order, which is " +
-        "folders first, then both documents and tables and alphabetically by title."
-    ),
-  limit: z
-    .number()
-    .optional()
-    .describe(
-      "Maximum number of results to return. Initial searches should use 10-20."
-    ),
-  nextPageCursor: z
-    .string()
-    .optional()
-    .describe(
-      "Cursor for fetching the next page of results. This parameter should only be used to fetch " +
-        "the next page of a previous search. The value should be exactly the 'nextPageCursor' from " +
-        "the previous search result."
-    ),
-};
 
 export function registerListTool(
   auth: Authenticator,
@@ -91,7 +45,7 @@ export function registerListTool(
   server.tool(
     name,
     toolDescription,
-    ListToolInputSchema,
+    DataSourceFilesystemListInputSchema.shape,
     withToolLogging(
       auth,
       {
@@ -214,14 +168,6 @@ export function registerListTool(
         }
 
         return new Ok([
-          {
-            type: "resource",
-            resource: makeQueryResourceForList(
-              nodeId,
-              mimeTypes,
-              nextPageCursor
-            ),
-          },
           {
             type: "resource",
             resource: renderSearchResults(

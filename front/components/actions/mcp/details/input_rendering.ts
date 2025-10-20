@@ -59,12 +59,17 @@ export function makeQueryTextForDataSourceSearch({
     : `Searching ${timeFrameAsString}${tagsAsString}.`;
 }
 
-export function makeQueryTextForFind(
-  query?: string,
-  rootNodeId?: string,
-  mimeTypes?: string[],
-  nextPageCursor?: string
-): string {
+export function makeQueryTextForFind({
+  query,
+  rootNodeId,
+  mimeTypes,
+  nextPageCursor,
+}: {
+  query?: string;
+  rootNodeId?: string;
+  mimeTypes?: string[];
+  nextPageCursor?: string;
+}): string {
   const queryText = query ? ` "${query}"` : " all content";
   const scope = rootNodeId
     ? ` under ${rootNodeId}`
@@ -77,11 +82,15 @@ export function makeQueryTextForFind(
   return `Searching for${queryText}${scope}${types}${pagination}.`;
 }
 
-export function makeQueryTextForList(
-  nodeId: string | null,
-  mimeTypes?: string[],
-  nextPageCursor?: string
-): string {
+export function makeQueryTextForList({
+  nodeId,
+  mimeTypes,
+  nextPageCursor,
+}: {
+  nodeId: string | null;
+  mimeTypes?: string[];
+  nextPageCursor?: string;
+}): string {
   const location = nodeId ? ` within node "${nodeId}"` : " at the root level";
   const types = mimeTypes?.length
     ? ` (${mimeTypes.map(renderMimeType).join(", ")} files)`

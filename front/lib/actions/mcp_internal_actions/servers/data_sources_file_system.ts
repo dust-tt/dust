@@ -25,7 +25,6 @@ import { registerListTool } from "@app/lib/actions/mcp_internal_actions/tools/da
 import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
-  makeQueryResourceForFind,
 } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import {
@@ -37,6 +36,7 @@ import {
   getCoreSearchArgs,
   makeDataSourceViewFilter,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { DataSourceFilesystemFindInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -335,52 +335,7 @@ function createServer(
     "Find content based on their title starting from a specific node. Can be used to find specific " +
       "nodes by searching for their titles. The query title can be omitted to list all nodes " +
       "starting from a specific node. This is like using 'find' in Unix.",
-    {
-      query: z
-        .string()
-        .optional()
-        .describe(
-          "The title to search for. This supports partial matching and does not require the " +
-            "exact title. For example, searching for 'budget' will find 'Budget 2024.xlsx', " +
-            "'Q1 Budget Report', etc..."
-        ),
-      rootNodeId: z
-        .string()
-        .optional()
-        .describe(
-          "The node ID of the node to start the search from. If not provided, the search will " +
-            "start from the root of the filesystem. This ID can be found from previous search " +
-            "results in the 'nodeId' field. This parameter restricts the search to the children " +
-            "and descendant of a specific node. If a node output by this tool or the list tool" +
-            "has children (hasChildren: true), it means that it can be passed as a rootNodeId."
-        ),
-      mimeTypes: z
-        .array(z.string())
-        .optional()
-        .describe(
-          "The mime types to search for. If provided, only nodes with one of these mime types " +
-            "will be returned. If not provided, no filter will be applied. The mime types passed " +
-            "here must be one of the mime types found in the 'mimeType' field."
-        ),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      limit: z
-        .number()
-        .optional()
-        .describe(
-          "Maximum number of results to return. Initial searches should use 10-20."
-        ),
-      nextPageCursor: z
-        .string()
-        .optional()
-        .describe(
-          "Cursor for fetching the next page of results. This parameter should only be used to fetch " +
-            "the next page of a previous search. The value should be exactly the 'nextPageCursor' from " +
-            "the previous search result."
-        ),
-    },
+    DataSourceFilesystemFindInputSchema.shape,
     withToolLogging(
       auth,
       {
@@ -454,15 +409,6 @@ function createServer(
         }
 
         return new Ok([
-          {
-            type: "resource" as const,
-            resource: makeQueryResourceForFind(
-              query,
-              rootNodeId,
-              mimeTypes,
-              nextPageCursor
-            ),
-          },
           {
             type: "resource" as const,
             resource: renderSearchResults(

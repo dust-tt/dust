@@ -92,3 +92,103 @@ export function isWebsearchInputType(
 ): input is WebsearchInputType {
   return WebsearchInputSchema.safeParse(input).success;
 }
+
+export const DataSourceFilesystemFindInputSchema = z.object({
+  query: z
+    .string()
+    .optional()
+    .describe(
+      "The title to search for. This supports partial matching and does not require the " +
+        "exact title. For example, searching for 'budget' will find 'Budget 2024.xlsx', " +
+        "'Q1 Budget Report', etc..."
+    ),
+  rootNodeId: z
+    .string()
+    .optional()
+    .describe(
+      "The node ID of the node to start the search from. If not provided, the search will " +
+        "start from the root of the filesystem. This ID can be found from previous search " +
+        "results in the 'nodeId' field. This parameter restricts the search to the children " +
+        "and descendant of a specific node. If a node output by this tool or the list tool" +
+        "has children (hasChildren: true), it means that it can be passed as a rootNodeId."
+    ),
+  mimeTypes: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "The mime types to search for. If provided, only nodes with one of these mime types " +
+        "will be returned. If not provided, no filter will be applied. The mime types passed " +
+        "here must be one of the mime types found in the 'mimeType' field."
+    ),
+  dataSources:
+    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+  limit: z
+    .number()
+    .optional()
+    .describe(
+      "Maximum number of results to return. Initial searches should use 10-20."
+    ),
+  nextPageCursor: z
+    .string()
+    .optional()
+    .describe(
+      "Cursor for fetching the next page of results. This parameter should only be used to fetch " +
+        "the next page of a previous search. The value should be exactly the 'nextPageCursor' from " +
+        "the previous search result."
+    ),
+});
+
+export function isDataSourceFilesystemFindInputType(
+  input: Record<string, unknown>
+): input is z.infer<typeof DataSourceFilesystemFindInputSchema> {
+  return DataSourceFilesystemFindInputSchema.safeParse(input).success;
+}
+
+export const DataSourceFilesystemListInputSchema = z.object({
+  nodeId: z
+    .string()
+    .nullable()
+    .describe(
+      "The exact ID of the node to list the contents of. " +
+        "This ID can be found from previous search results in the 'nodeId' field. " +
+        "If not provided, the content at the root of the filesystem will be shown."
+    ),
+  mimeTypes: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "The mime types to search for. If provided, only nodes with one of these mime types " +
+        "will be returned. If not provided, no filter will be applied. The mime types passed " +
+        "here must be one of the mime types found in the 'mimeType' field."
+    ),
+  dataSources:
+    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+  sortBy: z
+    .enum(["title", "timestamp"])
+    .optional()
+    .describe(
+      "Field to sort the results by. 'title' sorts alphabetically A-Z, 'timestamp' sorts by " +
+        "most recent first. If not specified, results are returned in the default order, which is " +
+        "folders first, then both documents and tables and alphabetically by title."
+    ),
+  limit: z
+    .number()
+    .optional()
+    .describe(
+      "Maximum number of results to return. Initial searches should use 10-20."
+    ),
+  nextPageCursor: z
+    .string()
+    .optional()
+    .describe(
+      "Cursor for fetching the next page of results. This parameter should only be used to fetch " +
+        "the next page of a previous search. The value should be exactly the 'nextPageCursor' from " +
+        "the previous search result."
+    ),
+});
+
+export function isDataSourceFilesystemListInputType(
+  input: Record<string, unknown>
+): input is z.infer<typeof DataSourceFilesystemListInputSchema> {
+  return DataSourceFilesystemListInputSchema.safeParse(input).success;
+}
