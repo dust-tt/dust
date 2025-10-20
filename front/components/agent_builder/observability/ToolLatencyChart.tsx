@@ -18,108 +18,129 @@ import {
   CHART_HEIGHT,
   DEFAULT_PERIOD_DAYS,
   MAX_TOOLS_DISPLAYED,
-  PERCENTAGE_MULTIPLIER,
 } from "@app/components/agent_builder/observability/constants";
-import { getToolColor } from "@app/components/agent_builder/observability/utils";
-import { useAgentToolExecution } from "@app/lib/swr/assistants";
+import {
+  calculateTopTools,
+  getToolColor,
+} from "@app/components/agent_builder/observability/utils";
+import type { ToolLatencyByVersion } from "@app/lib/api/assistant/observability/tool_latency";
+import { useAgentToolLatency } from "@app/lib/swr/assistants";
 
 type ChartRow = { version: string; values: Record<string, number> };
 
-interface ToolExecutionChartProps {
+interface ToolLatencyChartProps {
   workspaceId: string;
   agentConfigurationId: string;
 }
 
-function ToolExecutionTooltip({
+function ToolLatencyTooltip({
   active,
   payload,
   label,
   topTools,
-}: TooltipContentProps<number, string> & { topTools: string[] }) {
+  toolLatencyByVersion,
+}: TooltipContentProps<number, string> & {
+  topTools: string[];
+  toolLatencyByVersion: ToolLatencyByVersion[];
+}) {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
 
+  // Extract version from label (format: "v123")
+  const version = String(label).replace(/^v/, "");
+  const versionData = toolLatencyByVersion.find((v) => v.version === version);
+
   const rows = payload
     .filter((p) => typeof p.value === "number" && p.value > 0)
     .sort((a, b) => b.value - a.value)
-    .map((p) => ({
-      label: p.name || "",
-      value: `${p.value}%`,
-      colorClassName: getToolColor(p.name || "", topTools),
-    }));
+    .flatMap((p) => {
+      const toolName = p.name || "";
+      const toolData = versionData?.tools[toolName];
+      const colorClassName = getToolColor(toolName, topTools);
+
+      if (!toolData) {
+        return [
+          {
+            label: toolName,
+            value: `${p.value}ms`,
+            colorClassName,
+          },
+        ];
+      }
+
+      return [
+        {
+          label: `${toolName} (avg)`,
+          value: `${toolData.avgLatencyMs}ms`,
+          colorClassName,
+        },
+        {
+          label: `${toolName} (p50)`,
+          value: `${toolData.p50LatencyMs}ms`,
+          colorClassName,
+        },
+        {
+          label: `${toolName} (p95)`,
+          value: `${toolData.p95LatencyMs}ms`,
+          colorClassName,
+        },
+      ];
+    });
 
   return <ChartTooltipCard title={String(label)} rows={rows} />;
 }
 
-export function ToolExecutionChart({
+export function ToolLatencyChart({
   workspaceId,
   agentConfigurationId,
-}: ToolExecutionChartProps) {
+}: ToolLatencyChartProps) {
   const [period, setPeriod] =
     useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
 
-  const {
-    toolExecutionByVersion,
-    isToolExecutionLoading,
-    isToolExecutionError,
-  } = useAgentToolExecution({
-    workspaceId,
-    agentConfigurationId,
-    days: period,
-    disabled: !workspaceId || !agentConfigurationId,
-  });
+  const { toolLatencyByVersion, isToolLatencyLoading, isToolLatencyError } =
+    useAgentToolLatency({
+      workspaceId,
+      agentConfigurationId,
+      days: period,
+      disabled: !workspaceId || !agentConfigurationId,
+    });
 
   const { chartData, topTools } = useMemo(() => {
-    if (!toolExecutionByVersion || toolExecutionByVersion.length === 0) {
+    if (!toolLatencyByVersion || toolLatencyByVersion.length === 0) {
       return { chartData: [], topTools: [] };
     }
 
-    // Aggregate total counts per tool across all versions
-    const toolTotalCounts = new Map<string, number>();
-    for (const v of toolExecutionByVersion) {
-      for (const [toolName, toolData] of Object.entries(v.tools)) {
-        toolTotalCounts.set(
-          toolName,
-          (toolTotalCounts.get(toolName) ?? 0) + toolData.count
-        );
-      }
-    }
+    // Calculate top tools by weighted average latency
+    const top = calculateTopTools(
+      toolLatencyByVersion,
+      (toolData) => toolData.avgLatencyMs * toolData.count,
+      MAX_TOOLS_DISPLAYED
+    );
 
-    // Top tools by total usage
-    const top = Array.from(toolTotalCounts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, MAX_TOOLS_DISPLAYED)
-      .map(([toolName]) => toolName);
-
-    // Build rows with numeric series for tools
-    const rows: ChartRow[] = toolExecutionByVersion.map((v) => {
-      const versionTotal = Object.values(v.tools).reduce(
-        (acc, t) => acc + t.count,
-        0
-      );
-
+    // Build rows with average latency values for each tool
+    const rows: ChartRow[] = toolLatencyByVersion.map((v) => {
       const toolValues: Record<string, number> = {};
       for (const toolName of top) {
         const t = v.tools[toolName];
-        toolValues[toolName] = t
-          ? versionTotal > 0
-            ? Math.round((t.count / versionTotal) * PERCENTAGE_MULTIPLIER)
-            : 0
-          : 0;
+        toolValues[toolName] = t ? t.avgLatencyMs : 0;
       }
 
       return { version: `v${v.version}`, values: toolValues };
     });
 
     return { chartData: rows, topTools: top };
-  }, [toolExecutionByVersion]);
+  }, [toolLatencyByVersion]);
 
   const renderTooltip = useCallback(
     (props: TooltipContentProps<number, string>) => (
-      <ToolExecutionTooltip {...props} topTools={topTools} />
+      <ToolLatencyTooltip
+        {...props}
+        topTools={topTools}
+        toolLatencyByVersion={toolLatencyByVersion ?? []}
+      />
     ),
-    [topTools]
+    [topTools, toolLatencyByVersion]
   );
 
   const legendItems = topTools.map((toolName) => ({
@@ -130,30 +151,32 @@ export function ToolExecutionChart({
 
   return (
     <ChartContainer
-      title="Tool Usage by Version"
+      title="Average Tool Latency by Version"
       period={period}
       onPeriodChange={setPeriod}
-      isLoading={isToolExecutionLoading}
+      isLoading={isToolLatencyLoading}
       errorMessage={
-        isToolExecutionError ? "Failed to load tool execution data." : undefined
+        isToolLatencyError ? "Failed to load tool latency data." : undefined
       }
       emptyMessage={
         chartData.length === 0
-          ? "No tool execution data available for this period."
+          ? "No tool latency data available for this period."
           : undefined
       }
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <BarChart
           data={chartData}
-          margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
+          margin={{ top: 10, right: 30, left: 20, bottom: 20 }}
+          barGap={2}
+          barCategoryGap="20%"
         >
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey="version" className="text-xs text-muted-foreground" />
           <YAxis
             className="text-xs text-muted-foreground"
             label={{
-              value: "Usage %",
+              value: "Latency (ms)",
               angle: -90,
               position: "insideLeft",
               style: { textAnchor: "middle" },
@@ -167,7 +190,6 @@ export function ToolExecutionChart({
             <Bar
               key={toolName}
               dataKey={(row: ChartRow) => row.values[toolName] ?? 0}
-              stackId="a"
               fill="currentColor"
               className={getToolColor(toolName, topTools)}
               name={toolName}
@@ -178,9 +200,9 @@ export function ToolExecutionChart({
       <ChartLegend items={legendItems} />
       <div className="mt-4 text-xs text-muted-foreground">
         <p>
-          Shows the relative usage frequency (%) of the top{" "}
-          {MAX_TOOLS_DISPLAYED} tools for each agent version. Higher percentages
-          indicate more frequent tool usage within that version.
+          Shows the average execution latency (ms) of the top{" "}
+          {MAX_TOOLS_DISPLAYED} slowest tools for each agent version. Hover over
+          bars to see avg, p50 (median), and p95 latency values.
         </p>
       </div>
     </ChartContainer>
