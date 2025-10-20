@@ -1,34 +1,22 @@
-import {
-  Button,
-  classNames,
-  DataTable,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyCTA,
-  PlusIcon,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { classNames, DataTable, EmptyCTA, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
+import { AddTriggerMenu } from "@app/components/triggers/AddTriggerMenu";
 import type { WebhookSourceSheetMode } from "@app/components/triggers/WebhookSourceSheet";
 import { WebhookSourceSheet } from "@app/components/triggers/WebhookSourceSheet";
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { filterWebhookSource } from "@app/lib/webhookSource";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
-import type { WebhookSourceWithSystemViewAndUsageType } from "@app/types/triggers/webhooks";
-import {
-  WEBHOOK_SOURCE_KIND,
-  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
+import type {
+  WebhookSourceKind,
+  WebhookSourceWithSystemViewAndUsageType,
 } from "@app/types/triggers/webhooks";
 
 type RowData = {
@@ -220,43 +208,8 @@ export const AdminTriggersList = ({
     return columns;
   }, [setAgentSId]);
 
-  const CreateWebhookCTA = () => {
-    const { hasFeature } = useFeatureFlags({
-      workspaceId: owner.sId,
-    });
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            label="Create webhook source"
-            variant="outline"
-            icon={PlusIcon}
-            size="sm"
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {WEBHOOK_SOURCE_KIND.filter((kind) => {
-            const preset = WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind];
-            return (
-              preset.featureFlag === undefined || hasFeature(preset.featureFlag)
-            );
-          })
-            .sort((kindA, kindB) =>
-              WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kindA].name.localeCompare(
-                WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kindB].name
-              )
-            )
-            .map((kind) => (
-              <DropdownMenuItem
-                key={kind}
-                label={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].name}
-                icon={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].icon}
-                onClick={() => setSheetMode({ type: "create", kind })}
-              />
-            ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
+  const createWebhook = (kind: WebhookSourceKind) => {
+    setSheetMode({ type: "create", kind });
   };
 
   if (isWebhookSourcesWithViewsLoading) {
@@ -279,11 +232,15 @@ export const AdminTriggersList = ({
       {rows.length === 0 ? (
         <EmptyCTA
           message="You don’t have any triggers yet."
-          action={<CreateWebhookCTA />}
+          action={
+            <AddTriggerMenu owner={owner} createWebhook={createWebhook} />
+          }
         />
       ) : (
         <>
-          {portalToHeader(<CreateWebhookCTA />)}
+          {portalToHeader(
+            <AddTriggerMenu owner={owner} createWebhook={createWebhook} />
+          )}
           <DataTable
             data={rows}
             columns={columns}

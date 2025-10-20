@@ -8,7 +8,7 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
-import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
+import { AddToolsMenu } from "@app/components/actions/mcp/AddToolsMenu";
 import { CreateMCPServerSheet } from "@app/components/actions/mcp/CreateMCPServerSheet";
 import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
@@ -326,7 +326,7 @@ export const AdminActionsList = ({
       />
       {rows.length > 0 &&
         portalToHeader(
-          <AddActionMenu
+          <AddToolsMenu
             owner={owner}
             enabledMCPServers={mcpServers}
             setIsLoading={setIsLoading}
@@ -346,7 +346,7 @@ export const AdminActionsList = ({
           <EmptyCTA
             message="You don’t have any tools yet."
             action={
-              <AddActionMenu
+              <AddToolsMenu
                 buttonVariant="outline"
                 owner={owner}
                 enabledMCPServers={mcpServers}
