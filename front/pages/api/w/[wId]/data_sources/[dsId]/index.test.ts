@@ -102,7 +102,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]", () => {
     });
   });
 
-  it("successfully updates assistantDefaultSelected to true", async () => {
+  it("successfully updates assistantDefaultSelected to true (admin only)", async () => {
     const { req, res, workspace, globalGroup } =
       await createPrivateApiMockRequest({
         method: "POST",
