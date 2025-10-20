@@ -17,6 +17,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  SliderToggle,
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
@@ -41,6 +42,7 @@ import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
 
 const webhookFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
+  enabled: z.boolean().default(true),
   customPrompt: z.string(),
   webhookSourceViewSId: z.string().min(1, "Select a webhook source"),
   event: z.string().optional(),
@@ -79,6 +81,7 @@ export function WebhookEditionModal({
   const defaultValues = useMemo(
     (): WebhookFormData => ({
       name: "Webhook Trigger",
+      enabled: true,
       customPrompt: "",
       webhookSourceViewSId: "",
       event: undefined,
@@ -199,6 +202,7 @@ export function WebhookEditionModal({
 
     form.reset({
       name: trigger.name,
+      enabled: trigger.enabled,
       customPrompt: trigger.customPrompt ?? "",
       webhookSourceViewSId: trigger.webhookSourceViewSId ?? "",
       event,
@@ -239,6 +243,7 @@ export function WebhookEditionModal({
 
     const triggerData: AgentBuilderWebhookTriggerType = {
       sId: trigger?.sId,
+      enabled: data.enabled,
       name: data.name.trim(),
       customPrompt: data.customPrompt.trim(),
       kind: "webhook",
@@ -331,6 +336,29 @@ export function WebhookEditionModal({
                   message={form.formState.errors.name?.message}
                   messageStatus="error"
                 />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Status</Label>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  When disabled, the trigger will not run.
+                </p>
+                <div className="flex flex-row items-center gap-2">
+                  <SliderToggle
+                    size="xs"
+                    disabled={!isEditor}
+                    selected={form.watch("enabled")}
+                    onClick={() => {
+                      if (!isEditor) {
+                        return;
+                      }
+                      form.setValue("enabled", !form.watch("enabled"));
+                    }}
+                  />
+                  {form.watch("enabled")
+                    ? "The trigger is currently enabled"
+                    : "The trigger is currently disabled"}
+                </div>
               </div>
 
               {/* Webhook Configuration */}
