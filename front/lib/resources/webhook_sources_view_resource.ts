@@ -21,7 +21,7 @@ import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resourc
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { ModelId, Result } from "@app/types";
 import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type { WebhookSourceViewWithWebhookSourceType } from "@app/types/triggers/webhooks";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -239,12 +239,18 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     spaces: SpaceResource[],
     options?: ResourceFindOptions<WebhookSourcesViewModel>
   ): Promise<WebhookSourcesViewResource[]> {
+    const allowedSpaces = spaces.filter((space) =>
+      space.canReadOrAdministrate(auth)
+    );
+    if (allowedSpaces.length === 0) {
+      return [];
+    }
     return this.baseFetch(auth, {
       ...options,
       where: {
         ...options?.where,
         workspaceId: auth.getNonNullableWorkspace().id,
-        vaultId: spaces.map((s) => s.id),
+        vaultId: allowedSpaces.map((s) => s.id),
       },
     });
   }
@@ -254,6 +260,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     space: SpaceResource,
     options?: ResourceFindOptions<WebhookSourcesViewModel>
   ): Promise<WebhookSourcesViewResource[]> {
+    if (!space.canReadOrAdministrate(auth)) {
+      return [];
+    }
     return this.listBySpaces(auth, [space], options);
   }
 
@@ -262,7 +271,6 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     options?: ResourceFindOptions<WebhookSourcesViewModel>
   ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-
     return this.listBySpace(auth, systemSpace, options);
   }
 
@@ -518,7 +526,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
   }
 
   // Serialization.
-  toJSON(): WebhookSourceViewType {
+  toJSON(): WebhookSourceViewWithWebhookSourceType {
     return {
       id: this.id,
       sId: this.sId,

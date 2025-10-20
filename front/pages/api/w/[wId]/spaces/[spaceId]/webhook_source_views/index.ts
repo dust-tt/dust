@@ -9,16 +9,16 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceKind, WithAPIErrorResponse } from "@app/types";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type { WebhookSourceViewWithWebhookSourceType } from "@app/types/triggers/webhooks";
 
 export type GetWebhookSourceViewsResponseBody = {
   success: boolean;
-  webhookSourceViews: WebhookSourceViewType[];
+  webhookSourceViews: WebhookSourceViewWithWebhookSourceType[];
 };
 
 export type PostWebhookSourceViewResponseBody = {
   success: boolean;
-  webhookSourceView: WebhookSourceViewType;
+  webhookSourceView: WebhookSourceViewWithWebhookSourceType;
 };
 
 const postWebhookSourceViewBodySchema = z.object({

@@ -5,14 +5,14 @@ import {
   getAvatarFromIcon,
   ResourceAvatar,
 } from "@app/components/resources/resources_icons";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type { WebhookSourceViewWithWebhookSourceType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
 export const WebhookSourceViewIcon = ({
   webhookSourceView,
   size = "sm",
 }: {
-  webhookSourceView: WebhookSourceViewType;
+  webhookSourceView: WebhookSourceViewWithWebhookSourceType;
   size?: ComponentProps<typeof Avatar>["size"];
 }) => {
   const kind = webhookSourceView.webhookSource.kind;

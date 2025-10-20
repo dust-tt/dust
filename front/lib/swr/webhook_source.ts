@@ -12,7 +12,7 @@ import type { LightWorkspaceType, SpaceType } from "@app/types";
 import type {
   PostWebhookSourcesBody,
   WebhookSourceType,
-  WebhookSourceViewType,
+  WebhookSourceViewWithWebhookSourceType,
 } from "@app/types/triggers/webhooks";
 
 export function useWebhookSourceViews({
@@ -346,7 +346,7 @@ export function useRemoveWebhookSourceViewFromSpace({
       webhookSourceView,
       space,
     }: {
-      webhookSourceView: WebhookSourceViewType;
+      webhookSourceView: WebhookSourceViewWithWebhookSourceType;
       space: SpaceType;
     }): Promise<void> => {
       try {
