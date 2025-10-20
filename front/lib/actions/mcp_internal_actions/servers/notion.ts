@@ -271,14 +271,16 @@ async function withNotionClient<T>(
   fn: (notion: Client) => Promise<T>,
   authInfo?: AuthInfo
 ): Promise<Result<CallToolResult["content"], MCPError>> {
+  const accessToken = authInfo?.token;
+  if (!accessToken) {
+    return new Ok(makePersonalAuthenticationError("notion").content);
+  }
+
   try {
-    const accessToken = authInfo?.token;
-    if (!accessToken) {
-      return new Ok(makePersonalAuthenticationError("notion").content);
-    }
     const notion = new Client({ auth: accessToken });
 
     const result = await fn(notion);
+
     return new Ok([
       { type: "text" as const, text: "Success" },
       { type: "text" as const, text: JSON.stringify(result, null, 2) },
