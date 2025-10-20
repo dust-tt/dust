@@ -12,6 +12,7 @@ import {
 } from "@app/types/assistant/models/mistral";
 import SUPPORTED_MODEL_CONFIGS from "@app/types/assistant/models/models";
 import {
+  GPT_4_1_MINI_MODEL_CONFIG,
   GPT_5_MINI_NO_REASONING_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
   O4_MINI_MODEL_ID,
@@ -34,7 +35,7 @@ export function getSmallWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "openai")) {
-    return GPT_5_MINI_NO_REASONING_MODEL_CONFIG;
+    return GPT_4_1_MINI_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "anthropic")) {
     return CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG;
