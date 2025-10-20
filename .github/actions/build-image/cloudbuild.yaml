@@ -1,7 +1,13 @@
 steps:
-  - name: "gcr.io/cloud-builders/docker"
+  - name: "gcr.io/cloud-builders/gcloud"
+    entrypoint: "bash"
     args:
-      - "$(cat .cloudbuild_args)"
+      - "-c"
+      - |
+        echo "Running docker with dynamic args..."
+        docker_cmd=$(cat .cloudbuild_args)
+        echo "Command: docker $docker_cmd"
+        docker $docker_cmd
 
 options:
   machineType: "E2_HIGHCPU_8"
