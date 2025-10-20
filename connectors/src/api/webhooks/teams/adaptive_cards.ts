@@ -2,6 +2,7 @@ import type { LightAgentConfigurationType } from "@dust-tt/client";
 import type { AdaptiveCard } from "@microsoft/teams-ai";
 import type { Activity } from "botbuilder";
 
+import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 
 const DUST_URL = "https://dust.tt/home";
@@ -15,12 +16,14 @@ export function createResponseAdaptiveCard({
   assistantName,
   conversationUrl,
   workspaceId,
+  footnotes,
   isError = false,
 }: {
   response: string;
   assistantName: string;
   conversationUrl: string | null;
   workspaceId: string;
+  footnotes?: MessageFootnotes;
   isError?: boolean;
 }): Partial<Activity> {
   const card: AdaptiveCard = {
@@ -39,11 +42,34 @@ export function createResponseAdaptiveCard({
     actions: [],
   };
 
+  // Add footnotes section if present
+  if (footnotes && footnotes.length > 0) {
+    const footnotesText = footnotes
+      .map((footnote) => `[**[${footnote.index}]** ${footnote.text}](${footnote.link})`)
+      .join(" • ");
+
+    card.body.push({
+      type: "Container",
+      spacing: "Medium",
+      separator: true,
+      items: [
+        {
+          type: "TextBlock",
+          text: footnotesText,
+          wrap: true,
+          size: "Small",
+          color: "Accent",
+          spacing: "Small",
+        },
+      ],
+    });
+  }
+
   // Add separator and footer section
   card.body.push({
     type: "Container",
     spacing: "Medium",
-    separator: true,
+    separator: footnotes && footnotes.length > 0 ? false : true,
     items: [
       {
         type: "TextBlock",
@@ -53,7 +79,7 @@ export function createResponseAdaptiveCard({
           workspaceId,
           isError,
         }),
-        wrap: true,
+        wrap: false,
         size: "Small",
         color: "Good",
       },
