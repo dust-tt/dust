@@ -6,6 +6,7 @@ import {
 } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AGENT_MEMORY_SERVER_NAME,
@@ -18,14 +19,18 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type {
   AgentConfigurationType,
   AgentMessageType,
   ConversationType,
   OAuthProvider,
 } from "@app/types";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export function makeInternalMCPServer(
   serverName: InternalMCPServerNameType,
@@ -183,4 +188,18 @@ export function isJITMCPServerView(view: MCPServerViewType): boolean {
     // Only tools that do not require any configuration can be enabled directly in a conversation.
     getMCPServerRequirements(view).noRequirement
   );
+}
+
+export async function ensureAuthorizedDataSourceViews(
+  auth: Authenticator,
+  viewIds: string[]
+): Promise<Result<DataSourceViewResource[], MCPError>> {
+  const unique = [...new Set(viewIds)];
+  const views = await DataSourceViewResource.fetchByIds(auth, unique);
+  if (views.length !== unique.length || views.some((v) => !v.canRead(auth))) {
+    return new Err(
+      new MCPError("Access denied to one or more configured data sources.")
+    );
+  }
+  return new Ok(views);
 }

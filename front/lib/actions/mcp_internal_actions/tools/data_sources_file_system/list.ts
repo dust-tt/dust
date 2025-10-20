@@ -15,6 +15,7 @@ import {
   getAgentDataSourceConfigurations,
   makeDataSourceViewFilter,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -116,6 +117,14 @@ export function registerListTool(
           return new Err(new MCPError(fetchResult.error.message));
         }
         const agentDataSourceConfigurations = fetchResult.value;
+
+        const authRes = await ensureAuthorizedDataSourceViews(
+          auth,
+          agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
+        );
+        if (authRes.isErr()) {
+          return new Err(authRes.error);
+        }
 
         const options = {
           cursor: nextPageCursor,

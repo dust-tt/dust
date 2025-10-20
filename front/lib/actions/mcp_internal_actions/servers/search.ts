@@ -20,7 +20,10 @@ import {
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  ensureAuthorizedDataSourceViews,
+  makeInternalMCPServer,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -98,6 +101,14 @@ export async function searchFunction({
   const coreSearchArgs = removeNulls(
     coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
   );
+
+  const authRes = await ensureAuthorizedDataSourceViews(
+    auth,
+    coreSearchArgs.map((a) => a.dataSourceView.sId)
+  );
+  if (authRes.isErr()) {
+    return authRes;
+  }
 
   if (coreSearchArgs.length === 0) {
     return new Err(
