@@ -23,9 +23,17 @@ type TermBucket = {
   doc_count: number;
 };
 
+// We request keyed percentiles below; reflect that in type so indexing is safe.
+type KeyedTDigestPercentiles = Omit<
+  estypes.AggregationsTDigestPercentilesAggregate,
+  "values"
+> & {
+  values: Record<string, number | null>;
+};
+
 type ToolBucket = TermBucket & {
   avg_latency?: estypes.AggregationsAvgAggregate;
-  percentiles?: estypes.AggregationsTDigestPercentilesAggregate;
+  percentiles?: KeyedTDigestPercentiles;
 };
 
 type VersionBucket = TermBucket & {
@@ -69,6 +77,7 @@ export async function fetchToolLatencyMetrics(
                   percentiles: {
                     field: "tools_used.execution_time_ms",
                     percents: [50, 95],
+                    keyed: true,
                   },
                 },
               },
