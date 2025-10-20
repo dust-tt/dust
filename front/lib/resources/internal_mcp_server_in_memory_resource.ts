@@ -189,8 +189,6 @@ export class InternalMCPServerInMemoryResource {
 
     const server = await InternalMCPServerInMemoryResource.init(auth, sid);
 
-    console.log("======================== server", sid, server);
-
     if (!server) {
       throw new DustError(
         "internal_server_not_found",
