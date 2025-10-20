@@ -3,12 +3,6 @@ steps:
     args:
       - "$(cat .cloudbuild_args)"
 
-substitutions:
-  _DOCKERFILE: ""
-  _IMAGE_TAG: ""
-  _COMMIT_HASH: ""
-  _COMMIT_HASH_LONG: ""
-
 options:
   machineType: "E2_HIGHCPU_8"
   logging: CLOUD_LOGGING_ONLY

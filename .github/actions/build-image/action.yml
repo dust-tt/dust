@@ -110,5 +110,4 @@ runs:
 
         gcloud builds submit --quiet \
           --config=./.github/actions/build-image/cloudbuild.yaml \
-          --substitutions=_DOCKERFILE=unused,_IMAGE_TAG=unused,_COMMIT_HASH=unused \
           .
