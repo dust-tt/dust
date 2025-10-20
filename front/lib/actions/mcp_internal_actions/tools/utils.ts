@@ -22,6 +22,7 @@ import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   ConnectorProvider,
+  CoreAPIDatasourceViewFilter,
   CoreAPISearchFilter,
   DataSourceViewType,
   Result,
@@ -36,15 +37,19 @@ export type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
     connectorProvider: ConnectorProvider | null;
     name: string;
   };
+  dataSourceView: DataSourceViewResource;
 };
 
 export function makeDataSourceViewFilter(
   agentDataSourceConfigurations: ResolvedDataSourceConfiguration[]
-) {
-  return agentDataSourceConfigurations.map(({ dataSource, filter }) => ({
-    data_source_id: dataSource.dustAPIDataSourceId,
-    view_filter: filter.parents?.in ?? [],
-  }));
+): CoreAPIDatasourceViewFilter[] {
+  return agentDataSourceConfigurations.map(
+    ({ dataSource, dataSourceView, filter }) => ({
+      data_source_id: dataSource.dustAPIDataSourceId,
+      view_filter: dataSourceView.parentsIn ?? [],
+      filter: filter.parents?.in ?? undefined,
+    })
+  );
 }
 
 async function fetchAgentDataSourceConfiguration(
@@ -310,6 +315,17 @@ export async function getAgentDataSourceConfigurations(
             id: agentConfig.dataSourceView.id,
             workspaceId: agentConfig.dataSourceView.workspaceId,
           });
+
+          const dataSourceView = await DataSourceViewResource.fetchById(
+            auth,
+            dataSourceViewSId
+          );
+          if (!dataSourceView) {
+            return new Err(
+              new Error(`Data source view not found: ${dataSourceViewSId}`)
+            );
+          }
+
           const resolved: ResolvedDataSourceConfiguration = {
             workspaceId: agentConfig.dataSourceView.workspace.sId,
             dataSourceViewId: dataSourceViewSId,
@@ -343,6 +359,7 @@ export async function getAgentDataSourceConfigurations(
               connectorProvider: agentConfig.dataSource.connectorProvider,
               name: agentConfig.dataSource.name,
             },
+            dataSourceView,
           };
           return new Ok(resolved);
         }
@@ -386,6 +403,7 @@ export async function getAgentDataSourceConfigurations(
               connectorProvider: dataSource.connectorProvider,
               name: dataSource.name,
             },
+            dataSourceView,
           };
           return new Ok(resolved);
         }

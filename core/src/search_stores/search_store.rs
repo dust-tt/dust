@@ -99,6 +99,8 @@ pub struct DatasourceViewFilter {
     view_filter: Vec<String>,
     #[serde(default = "default_search_scope")]
     search_scope: SearchScopeType,
+    #[serde(default)]
+    filter: Option<Vec<String>>,
 }
 
 fn default_search_scope() -> SearchScopeType {
@@ -803,12 +805,20 @@ impl ElasticsearchSearchStore {
 
                 counter.add(1);
                 let mut bool_query =
-                    Query::bool().filter(Query::term("data_source_id", f.data_source_id));
+                    Query::bool().filter(Query::term("data_source_id", f.data_source_id.clone()));
 
                 // Only add parents filter if the index supports it.
                 if index_name == DATA_SOURCE_NODE_INDEX_NAME && !f.view_filter.is_empty() {
                     counter.add(1);
-                    bool_query = bool_query.filter(Query::terms("parents", f.view_filter));
+                    bool_query = bool_query.filter(Query::terms("parents", f.view_filter.clone()));
+                }
+
+                // Apply additional filter if present (in addition to view_filter).
+                if let Some(ref filter) = f.filter {
+                    if index_name == DATA_SOURCE_NODE_INDEX_NAME && !filter.is_empty() && !counter.is_full() {
+                        counter.add(1);
+                        bool_query = bool_query.filter(Query::terms("parents", filter.clone()));
+                    }
                 }
 
                 Some(Query::Bool(bool_query))
