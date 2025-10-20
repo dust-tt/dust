@@ -404,28 +404,6 @@ export const isIncludeResultResourceType = (
 
 // Websearch results.
 
-export const WebsearchQueryResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_QUERY),
-  text: z.string(),
-  uri: z.literal(""),
-});
-
-export type WebsearchQueryResourceType = z.infer<
-  typeof WebsearchQueryResourceSchema
->;
-
-export const isWebsearchQueryResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: WebsearchQueryResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    WebsearchQueryResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
 export const WebsearchResultResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT),
   title: z.string(),
