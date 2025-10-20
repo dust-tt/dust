@@ -118,12 +118,102 @@ const getRefreshedCookie = cacheWithRedis(
   }
 );
 
+async function getFallbackWorkOSSession(workOSSessionCookie: string): Promise<{
+  cookie: string | undefined;
+  session: SessionWithUser | undefined;
+}> {
+  const {
+    sessionData,
+    organizationId,
+    authenticationMethod,
+    workspaceId,
+    region,
+  } = await unsealData<SessionCookie>(workOSSessionCookie, {
+    password: config.getWorkOSCookiePassword(),
+  });
+
+  // Bypassing workos token validation
+  const r = await unsealData<{
+    organizationId: string;
+    user: {
+      id: string;
+      email: string;
+      emailVerified: boolean;
+      firstName: string;
+      profilePictureUrl: string;
+      lastName: string;
+    };
+    accessToken: string;
+    refreshToken: string;
+  }>(sessionData, {
+    password: config.getWorkOSCookiePassword(),
+  });
+
+  const result = await verifyWorkOSToken(r.accessToken, {
+    ignoreExpiration: true,
+  });
+  if (result.isOk()) {
+    const payload = result.value;
+
+    const now = Math.floor(Date.now() / 1000);
+    const fiveDaysInSeconds = 5 * 24 * 60 * 60;
+    const maxExpiration = now - fiveDaysInSeconds;
+
+    if (payload.exp < maxExpiration) {
+      logger.error(
+        {
+          tokenExp: payload.exp,
+          maxAllowedExp: maxExpiration,
+          currentTime: now,
+        },
+        "Token expiration exceeds 5 days limit"
+      );
+      return {
+        cookie: "",
+        session: undefined,
+      };
+    }
+  } else {
+    return {
+      cookie: "",
+      session: undefined,
+    };
+  }
+
+  return {
+    cookie: undefined,
+    session: {
+      type: "workos" as const,
+      sessionId: "unknown",
+      region,
+      user: {
+        email: r.user.email,
+        email_verified: r.user.emailVerified,
+        name: r.user.email ?? "",
+        family_name: r.user.lastName ?? "",
+        given_name: r.user.firstName ?? "",
+        nickname: getUserNicknameFromEmail(r.user.email) ?? "",
+        auth0Sub: null,
+        workOSUserId: r.user.id,
+      },
+      organizationId,
+      workspaceId,
+      isSSO: authenticationMethod?.toLowerCase() === "sso",
+      authenticationMethod,
+    },
+  };
+}
+
 export async function getWorkOSSessionFromCookie(
   workOSSessionCookie: string
 ): Promise<{
   cookie: string | undefined;
   session: SessionWithUser | undefined;
 }> {
+  if (config.getWorkOSFallbackEnabled() ?? false) {
+    return getFallbackWorkOSSession(workOSSessionCookie);
+  }
+
   const {
     sessionData,
     organizationId,
@@ -196,75 +286,9 @@ export async function getWorkOSSessionFromCookie(
   } catch (error) {
     logger.error({ error }, "Session authentication error");
 
-    // Bypassing workos token validation
-    const r = await unsealData<{
-      organizationId: string;
-      user: {
-        id: string;
-        email: string;
-        emailVerified: boolean;
-        firstName: string;
-        profilePictureUrl: string;
-        lastName: string;
-      };
-      accessToken: string;
-      refreshToken: string;
-    }>(sessionData, {
-      password: config.getWorkOSCookiePassword(),
-    });
-
-    const result = await verifyWorkOSToken(r.accessToken, {
-      ignoreExpiration: true,
-    });
-    if (result.isOk()) {
-      const payload = result.value;
-
-      const now = Math.floor(Date.now() / 1000);
-      const fiveDaysInSeconds = 5 * 24 * 60 * 60;
-      const maxExpiration = now - fiveDaysInSeconds;
-
-      if (payload.exp < maxExpiration) {
-        logger.error(
-          {
-            tokenExp: payload.exp,
-            maxAllowedExp: maxExpiration,
-            currentTime: now,
-          },
-          "Token expiration exceeds 5 days limit"
-        );
-        return {
-          cookie: "",
-          session: undefined,
-        };
-      }
-    } else {
-      return {
-        cookie: "",
-        session: undefined,
-      };
-    }
-
     return {
-      cookie: undefined,
-      session: {
-        type: "workos" as const,
-        sessionId: "unknown",
-        region,
-        user: {
-          email: r.user.email,
-          email_verified: r.user.emailVerified,
-          name: r.user.email ?? "",
-          family_name: r.user.lastName ?? "",
-          given_name: r.user.firstName ?? "",
-          nickname: getUserNicknameFromEmail(r.user.email) ?? "",
-          auth0Sub: null,
-          workOSUserId: r.user.id,
-        },
-        organizationId,
-        workspaceId,
-        isSSO: authenticationMethod?.toLowerCase() === "sso",
-        authenticationMethod,
-      },
+      cookie: "",
+      session: undefined,
     };
   }
 }

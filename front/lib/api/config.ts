@@ -236,6 +236,12 @@ const config = {
   },
 
   // WorkOS
+  getWorkOSFallbackEnabled: (): boolean | undefined => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("WORKOS_FALLBACK_ENABLED") ===
+      "true"
+    );
+  },
   getWorkOSApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_API_KEY");
   },

@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
@@ -8,6 +9,10 @@ const MAX_CONCURRENT_WORKOS_FETCH = 10;
 const WORKOS_ORG_CACHE_TTL_MS = 60 * 60 * 1000;
 
 async function findWorkOSOrganizationsForUserIdUncached(userId: string) {
+  if (config.getWorkOSFallbackEnabled() ?? false) {
+    return [];
+  }
+
   const response = await getWorkOS().userManagement.listOrganizationMemberships(
     {
       userId,
