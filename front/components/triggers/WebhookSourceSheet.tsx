@@ -24,7 +24,6 @@ import type {
 import {
   CreateWebhookSourceFormContent,
   CreateWebhookSourceSchema,
-  validateCustomHeadersFromString,
 } from "@app/components/triggers/CreateWebhookSourceForm";
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import {
@@ -279,7 +278,6 @@ function WebhookSourceSheetContent({
       autoGenerate: true,
       signatureHeader: "",
       signatureAlgorithm: "sha256",
-      customHeaders: null,
       kind: mode.kind,
       subscribedEvents:
         mode.kind === "custom"
@@ -334,13 +332,8 @@ function WebhookSourceSheetContent({
       data: CreateWebhookSourceFormData,
       providerData?: RemoteProviderData
     ) => {
-      const parsedCustomHeaders = validateCustomHeadersFromString(
-        data.customHeaders
-      );
-
       const apiData = {
         ...data,
-        customHeaders: parsedCustomHeaders?.parsed ?? null,
         includeGlobal: true,
       };
 
