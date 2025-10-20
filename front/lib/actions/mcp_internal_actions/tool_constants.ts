@@ -1,19 +1,6 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/server_constants";
 
 /**
- * Tool label configuration.
- * Can be either:
- * - A string (legacy format, used as running label, display name derived from tool name)
- * - An object with displayName and runningLabel
- */
-type ToolLabelConfig =
-  | string
-  | {
-      displayName: string;
-      runningLabel: string;
-    };
-
-/**
  * Maps internal MCP server names to their tools' labels.
  * Each tool has:
  * - displayName: The name shown in the details sidebar when not running
@@ -1240,42 +1227,16 @@ export const INTERNAL_MCP_TOOLS_LABELS = {
       runningLabel: "Browsing page...",
     },
   },
-} satisfies Record<InternalMCPServerNameType, Record<string, ToolLabelConfig>>;
-
-/**
- * Helper to convert a tool name to a display name.
- * Converts snake_case to Title Case.
- */
-function toolNameToDisplayName(toolName: string): string {
-  return toolName
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-/**
- * Get the display name for a tool (shown in sidebar when not running).
- */
-export function getToolDisplayName(
-  serverName: InternalMCPServerNameType,
-  toolName: string
-): string {
-  const serverLabels = INTERNAL_MCP_TOOLS_LABELS[serverName];
-  if (!serverLabels) {
-    return toolNameToDisplayName(toolName);
-  }
-
-  const config = (serverLabels as Record<string, ToolLabelConfig | undefined>)[
-    toolName
-  ];
-  if (!config) {
-    return toolNameToDisplayName(toolName);
-  }
-
-  if (typeof config === "string") {
-    // Legacy format: derive display name from tool name
-    return toolNameToDisplayName(toolName);
-  }
+} satisfies Record<
+  InternalMCPServerNameType,
+  Record<
+    string,
+    {
+      displayName: string;
+      runningLabel: string;
+    }
+  >
+>;
 
   return config.displayName;
 }
