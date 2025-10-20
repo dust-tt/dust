@@ -74,7 +74,7 @@ export function withToolLogging<T>(
       };
     }
 
-    logger.info(loggerArgs, "Tool execution start");
+    logger.info.bind(logger)(loggerArgs, "Tool execution start");
 
     const tags = [
       `tool:${toolNameForMonitoring}`,
@@ -106,9 +106,9 @@ export function withToolLogging<T>(
         error: result.error,
       };
       if (result.error.tracked) {
-        logger.error(logContext, "Tool execution error");
+        logger.error.bind(logger)(logContext, "Tool execution error");
       } else {
-        logger.warn(logContext, "Tool execution error");
+        logger.warn.bind(logger)(logContext, "Tool execution error");
       }
 
       return {
@@ -130,7 +130,7 @@ export function withToolLogging<T>(
       );
     }
 
-    logger.info(
+    logger.info.bind(logger)(
       {
         ...loggerArgs,
         duration: elapsed,

@@ -2,6 +2,7 @@ import type { LightAgentConfigurationType } from "@dust-tt/client";
 import type { AdaptiveCard } from "@microsoft/teams-ai";
 import type { Activity } from "botbuilder";
 
+import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 
 const DUST_URL = "https://dust.tt/home";
@@ -15,6 +16,7 @@ export function createResponseAdaptiveCard({
   assistant,
   conversationUrl,
   workspaceId,
+  footnotes,
   isError = false,
   agentConfigurations,
   originalMessage,
@@ -23,6 +25,7 @@ export function createResponseAdaptiveCard({
   assistant: { assistantName: string; assistantId: string };
   conversationUrl: string | null;
   workspaceId: string;
+  footnotes?: MessageFootnotes;
   isError?: boolean;
   agentConfigurations: LightAgentConfigurationType[];
   originalMessage: string;
@@ -151,10 +154,52 @@ export function createResponseAdaptiveCard({
     actions: [],
   };
 
-  // Add separator and footer section
-  card.body.push();
+  // Add footnotes section if present
+  if (footnotes && footnotes.length > 0) {
+    const footnotesText = footnotes
+      .map(
+        (footnote) =>
+          `[**[${footnote.index}]** ${footnote.text}](${footnote.link})`
+      )
+      .join(" • ");
 
-  card.body.push();
+    card.body.push({
+      type: "Container",
+      spacing: "Medium",
+      separator: true,
+      items: [
+        {
+          type: "TextBlock",
+          text: footnotesText,
+          wrap: true,
+          size: "Small",
+          color: "Accent",
+          spacing: "Small",
+        },
+      ],
+    });
+  }
+
+  // Add separator and footer section
+  card.body.push({
+    type: "Container",
+    spacing: "Medium",
+    separator: footnotes && footnotes.length > 0 ? false : true,
+    items: [
+      {
+        type: "TextBlock",
+        text: createFooterText({
+          assistantName: assistant.assistantName,
+          conversationUrl,
+          workspaceId,
+          isError,
+        }),
+        wrap: true,
+        size: "Small",
+        color: "Good",
+      },
+    ],
+  });
 
   return {
     type: "message",
