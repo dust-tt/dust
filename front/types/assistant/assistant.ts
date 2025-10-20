@@ -13,7 +13,6 @@ import {
 import SUPPORTED_MODEL_CONFIGS from "@app/types/assistant/models/models";
 import {
   GPT_4_1_MINI_MODEL_CONFIG,
-  GPT_5_MINI_NO_REASONING_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
   O4_MINI_MODEL_ID,
 } from "@app/types/assistant/models/openai";
