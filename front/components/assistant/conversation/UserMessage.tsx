@@ -65,7 +65,7 @@ export function UserMessage({
   );
 
   const renderName = useCallback((name: string | null) => {
-    return <div className="heading-base">{name}</div>;
+    return <div>{name}</div>;
   }, []);
 
   return (
