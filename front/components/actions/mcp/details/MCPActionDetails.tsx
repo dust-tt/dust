@@ -54,20 +54,11 @@ import {
   isResourceContentWithText,
   isTextContent,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
-import {
-  isSearchInputType,
-  SearchInputSchema,
-} from "@app/lib/actions/mcp_internal_actions/types";
+import { isSearchInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
-import {
-  asDisplayName,
-  isString,
-  isSupportedImageContentType,
-  parseTimeFrame,
-} from "@app/types";
+import { asDisplayName,isString, isSupportedImageContentType } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 export interface MCPActionDetailsProps {
@@ -128,20 +119,18 @@ export function MCPActionDetails({
     isInternalMCPServerOfName(mcpServerId, "search") ||
     isInternalMCPServerOfName(mcpServerId, "data_sources_file_system")
   ) {
-    if (toolName === SEARCH_TOOL_NAME) {
-      if (isSearchInputType(params)) {
-        return (
-          <SearchResultDetails
-            viewType={viewType}
-            actionName={
-              viewType === "conversation" ? "Searching data" : "Search data"
-            }
-            actionOutput={output}
-            visual={MagnifyingGlassIcon}
-            params={params}
-          />
-        );
-      }
+    if (toolName === SEARCH_TOOL_NAME && isSearchInputType(params)) {
+      return (
+        <SearchResultDetails
+          viewType={viewType}
+          actionName={
+            viewType === "conversation" ? "Searching data" : "Search data"
+          }
+          actionOutput={output}
+          visual={MagnifyingGlassIcon}
+          params={params}
+        />
+      );
     }
 
     if (
@@ -157,6 +146,7 @@ export function MCPActionDetails({
               : "Browse data sources"
           }
           actionOutput={output}
+          params={params}
           visual={ActionDocumentTextIcon}
         />
       );
