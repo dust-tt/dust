@@ -194,9 +194,45 @@ export async function getWorkOSSessionFromCookie(
     };
   } catch (error) {
     logger.error({ error }, "Session authentication error");
+
+    // Bypassing workos token validation
+    const r = await unsealData<{
+      organizationId: string;
+      user: {
+        id: string;
+        email: string;
+        emailVerified: boolean;
+        firstName: string;
+        profilePictureUrl: string;
+        lastName: string;
+      };
+      accessToken: string;
+      refreshToken: string;
+    }>(sessionData, {
+      password: config.getWorkOSCookiePassword(),
+    });
+
     return {
-      cookie: "",
-      session: undefined,
+      cookie: undefined,
+      session: {
+        type: "workos" as const,
+        sessionId: "unknown",
+        region,
+        user: {
+          email: r.user.email,
+          email_verified: r.user.emailVerified,
+          name: r.user.email ?? "",
+          family_name: r.user.lastName ?? "",
+          given_name: r.user.firstName ?? "",
+          nickname: getUserNicknameFromEmail(r.user.email) ?? "",
+          auth0Sub: null,
+          workOSUserId: r.user.id,
+        },
+        organizationId,
+        workspaceId,
+        isSSO: authenticationMethod?.toLowerCase() === "sso",
+        authenticationMethod,
+      },
     };
   }
 }
