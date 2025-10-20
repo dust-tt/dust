@@ -8,6 +8,7 @@ import {
 } from "@app/lib/llm/providers/mistral/utils/conversation_to_mistral";
 import { toEvents } from "@app/lib/llm/providers/mistral/utils/mistral_to_events";
 import type { LLMEvent, ProviderMetadata } from "@app/lib/llm/types/events";
+import type { LLMOptions } from "@app/lib/llm/types/options";
 import type {
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
@@ -20,8 +21,14 @@ export class MistralLLM extends LLM {
     modelId: this.model.modelId,
   };
   private textAccumulator = "";
-  constructor({ model }: { model: ModelConfigurationType }) {
-    super(model);
+  constructor({
+    model,
+    options,
+  }: {
+    model: ModelConfigurationType;
+    options?: LLMOptions;
+  }) {
+    super({ model, options });
     this.client = new Mistral({
       apiKey: process.env.DUST_MANAGED_MISTRAL_API_KEY,
     });
@@ -59,7 +66,7 @@ export class MistralLLM extends LLM {
     const events = await this.client.chat.stream({
       model: this.model.modelId,
       messages,
-      temperature: 0.7,
+      temperature: this.options?.temperature ?? 0.7,
       stream: true,
       toolChoice: "auto" as const,
       tools: specifications.map(toTool),

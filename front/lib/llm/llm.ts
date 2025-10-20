@@ -1,5 +1,6 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { LLMEvent } from "@app/lib/llm/types/events";
+import type { LLMOptions } from "@app/lib/llm/types/options";
 import type {
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
@@ -7,9 +8,17 @@ import type {
 
 export abstract class LLM {
   protected model: ModelConfigurationType;
+  protected options: LLMOptions | undefined;
 
-  constructor(model: ModelConfigurationType) {
+  constructor({
+    model,
+    options,
+  }: {
+    model: ModelConfigurationType;
+    options?: LLMOptions;
+  }) {
     this.model = model;
+    this.options = options;
   }
 
   abstract stream({
