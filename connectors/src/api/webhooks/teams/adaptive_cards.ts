@@ -79,77 +79,6 @@ export function createResponseAdaptiveCard({
         spacing: "Medium",
         color: isError ? "Attention" : "Default",
       },
-      {
-        type: "Container",
-        spacing: "Medium",
-        separator: true,
-        items: [
-          {
-            type: "TextBlock",
-            text: createFooterText({
-              assistantName: assistant.assistantName,
-              conversationUrl,
-              workspaceId,
-              isError,
-            }),
-            wrap: true,
-            size: "Small",
-            color: "Good",
-          },
-        ],
-      },
-      {
-        type: "ColumnSet",
-        spacing: "Medium",
-        separator: true,
-        id: "actions_set",
-        columns: [
-          {
-            type: "Column",
-            width: "stretch",
-            items: [
-              {
-                type: "Input.ChoiceSet",
-                id: "selectedAgent",
-                value: assistant.assistantName,
-                choices: agentConfigurations.map((agent) => ({
-                  title: agent.name,
-                  value: agent.name,
-                })),
-                placeholder: "Select an agent",
-              },
-              {
-                type: "Input.Text",
-                id: "originalMessage",
-                value: originalMessage,
-                isVisible: false,
-              },
-            ],
-          },
-          {
-            type: "Column",
-            width: "auto",
-            items: [
-              {
-                type: "ActionSet",
-                actions: [
-                  {
-                    type: "Action.Submit",
-                    title: "Resend",
-                    iconUrl: "icon:Bot",
-                    data: {
-                      verb: "ask_agent",
-                    },
-                    msTeams: { feedback: { hide: true } },
-                  },
-                ],
-                horizontalAlignment: "Right",
-              },
-            ],
-          },
-          ...feedbackActions,
-        ],
-      },
     ],
     actions: [],
   };
@@ -184,7 +113,7 @@ export function createResponseAdaptiveCard({
   card.body.push({
     type: "Container",
     spacing: "Medium",
-    separator: footnotes && footnotes.length > 0 ? false : true,
+    separator: true,
     items: [
       {
         type: "TextBlock",
@@ -198,6 +127,58 @@ export function createResponseAdaptiveCard({
         size: "Small",
         color: "Good",
       },
+    ],
+  });
+
+  card.body.push({
+    type: "ColumnSet",
+    spacing: "Medium",
+    id: "actions_set",
+    columns: [
+      {
+        type: "Column",
+        width: "stretch",
+        items: [
+          {
+            type: "Input.ChoiceSet",
+            id: "selectedAgent",
+            value: assistant.assistantName,
+            choices: agentConfigurations.map((agent) => ({
+              title: agent.name,
+              value: agent.name,
+            })),
+            placeholder: "Select an agent",
+          },
+          {
+            type: "Input.Text",
+            id: "originalMessage",
+            value: originalMessage,
+            isVisible: false,
+          },
+        ],
+      },
+      {
+        type: "Column",
+        width: "auto",
+        items: [
+          {
+            type: "ActionSet",
+            actions: [
+              {
+                type: "Action.Submit",
+                title: "Resend",
+                iconUrl: "icon:Bot",
+                data: {
+                  verb: "ask_agent",
+                },
+                msTeams: { feedback: { hide: true } },
+              },
+            ],
+            horizontalAlignment: "Right",
+          },
+        ],
+      },
+      ...feedbackActions,
     ],
   });
 
