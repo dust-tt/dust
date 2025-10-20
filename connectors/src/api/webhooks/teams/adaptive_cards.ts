@@ -27,8 +27,12 @@ export function createResponseAdaptiveCard({
   agentConfigurations: LightAgentConfigurationType[];
   originalMessage: string;
 }): Partial<Activity> {
+  const currentAgent = agentConfigurations.find(
+    (agent) => agent.sId === assistant.assistantId
+  );
+
   const feedbackActions =
-    assistant.assistantId === assistant.assistantName
+    currentAgent?.scope === "global"
       ? []
       : [
           {
