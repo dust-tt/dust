@@ -1,7 +1,7 @@
 import type {
-  CustomServerIconType,
+  CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
+} from "@app/components/resources/resources_icons";
 
 export const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes.
 
@@ -27,7 +27,7 @@ export const DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION =
 
 export const DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME = "list_files";
 
-export const DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME = "include_file";
+export const DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME = "cat";
 
 export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME =
   "query_conversation_tables";
@@ -74,5 +74,5 @@ export type MCPValidationMetadataType = {
   mcpServerName: string;
   agentName: string;
   pubsubMessageId?: string;
-  icon?: InternalAllowedIconType | CustomServerIconType;
+  icon?: InternalAllowedIconType | CustomResourceIconType;
 };

@@ -1,17 +1,15 @@
-import { cn, ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
+import { ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
-import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import {
   ConversationErrorDisplay,
   ErrorDisplay,
 } from "@app/components/assistant/conversation/ConversationError";
 import ConversationSidePanelContainer from "@app/components/assistant/conversation/ConversationSidePanelContainer";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import {
   ConversationsNavigationProvider,
   useConversationsNavigation,
@@ -48,7 +46,7 @@ export interface ConversationLayoutProps {
   isAdmin: boolean;
 }
 
-export default function ConversationLayout({
+export function ConversationLayout({
   children,
   pageProps,
 }: {
@@ -209,8 +207,6 @@ function ConversationInnerLayout({
   conversationError,
   activeConversationId,
 }: ConversationInnerLayoutProps) {
-  const { currentPanel } = useConversationSidePanelContext();
-
   return (
     <ErrorBoundary fallback={<UncaughtConversationErrorFallback />}>
       <div className="flex h-full w-full flex-col">
@@ -226,16 +222,7 @@ function ConversationInnerLayout({
               ) : (
                 <FileDropProvider>
                   <GenerationContextProvider>
-                    <div
-                      id={CONVERSATION_VIEW_SCROLL_LAYOUT}
-                      className={cn(
-                        "dd-privacy-mask h-full overflow-y-auto overscroll-y-none scroll-smooth px-4",
-                        // Hide conversation on mobile when any panel is opened.
-                        currentPanel && "hidden md:block"
-                      )}
-                    >
-                      {children}
-                    </div>
+                    {children}
                   </GenerationContextProvider>
                 </FileDropProvider>
               )}

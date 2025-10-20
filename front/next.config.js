@@ -9,12 +9,12 @@ const showReactScan = isDev && process.env.REACT_SCAN === "true";
 const CONTENT_SECURITY_POLICIES = [
   "default-src 'none';",
   `script-src 'self' 'unsafe-inline' 'unsafe-eval' dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.cr-relay.com *.licdn.com *.datadoghq-browser-agent.com *.doubleclick.net *.hsadspixel.net *.wistia.net ${showReactScan ? "unpkg.com" : ""};`,
-  `script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.cr-relay.com *.licdn.com *.datadoghq-browser-agent.com *.doubleclick.net *.hsadspixel.net *.wistia.net *.hsappstatic.net *.hubspotusercontent-eu1.net ${showReactScan ? "unpkg.com" : ""};`,
+  `script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.cr-relay.com *.licdn.com *.datadoghq-browser-agent.com *.doubleclick.net *.hsadspixel.net *.wistia.net *.hsappstatic.net *.hubspotusercontent-eu1.net import-cdn.default.com ${showReactScan ? "unpkg.com" : ""};`,
   `style-src 'self' 'unsafe-inline' *.fontawesome.com *.googleapis.com;`,
   `style-src-elem 'self' 'unsafe-inline' *.fontawesome.com *.googleapis.com *.gstatic.com;`,
   `img-src 'self' data: blob: webkit-fake-url: https:;`,
-  `connect-src 'self' blob: dust.tt *.dust.tt https://dust.tt https://*.dust.tt browser-intake-datadoghq.eu *.google-analytics.com *.googlesyndication.com *.googleadservices.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.hubapi.com *.hsappstatic.net *.cr-relay.com *.usercentrics.eu *.ads.linkedin.com px.ads.linkedin.com google.com *.google.com *.workos.com translate-pa.googleapis.com;`,
-  `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net *.googletagmanager.com *.doubleclick.net *.hsforms.com${isDev ? " http://localhost:3007" : ""};`,
+  `connect-src 'self' blob: dust.tt *.dust.tt https://dust.tt https://*.dust.tt browser-intake-datadoghq.eu *.google-analytics.com *.googlesyndication.com *.googleadservices.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.hubapi.com *.hsappstatic.net *.cr-relay.com *.usercentrics.eu *.ads.linkedin.com px.ads.linkedin.com google.com *.google.com *.workos.com translate-pa.googleapis.com forms.default.com nucleus.default.com *.default.com;`,
+  `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net *.googletagmanager.com *.doubleclick.net *.default.com *.hsforms.com${isDev ? " http://localhost:3007" : ""};`,
   `font-src 'self' data: dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.gstatic.com *.wistia.net fonts.cdnfonts.com migaku-public-data.migaku.com;`,
   `media-src 'self' data:;`,
   `object-src 'none';`,
@@ -55,8 +55,7 @@ const config = {
       },
       {
         source: "/platform-privacy",
-        destination:
-          "https://dust-tt.notion.site/Platform-Privacy-Policy-c75f1cd20df04c58872f6aa43f768d41?pvs=74",
+        destination: "/home/platform-privacy",
         permanent: true,
       },
       {
@@ -72,17 +71,32 @@ const config = {
       },
       {
         source: "/w/:wId/u/chat/:cId",
-        destination: "/w/:wId/assistant/:cId",
+        destination: "/w/:wId/conversation/:cId",
         permanent: true,
       },
       {
         source: "/w/:wId/assistant/:cId",
-        destination: "/w/:wId/agent/:cId",
+        destination: "/w/:wId/conversation/:cId",
+        permanent: true,
+      },
+      {
+        source: "/w/:wId/agent/:cId",
+        destination: "/w/:wId/conversation/:cId",
+        permanent: true,
+      },
+      {
+        source: "/poke/:wId/conversations/:cId",
+        destination: "/poke/:wId/conversation/:cId",
         permanent: true,
       },
       {
         source: "/contact",
         destination: "/home/contact",
+        permanent: true,
+      },
+      {
+        source: "/frames",
+        destination: "/home/frames",
         permanent: true,
       },
       {

@@ -3,14 +3,13 @@ import React from "react";
 
 import {
   ArrowPathIcon,
-  AtomIcon,
-  Avatar,
+  BoltIcon,
   Button,
+  ChevronRightIcon,
   Citation,
   CitationIcons,
   CitationTitle,
   ClipboardIcon,
-  ClockIcon,
   ConversationContainer,
   ConversationMessage,
   GithubIcon,
@@ -47,7 +46,9 @@ export const ConversationExample = () => {
               </Citation>,
             ]}
             infoChip={
-              <Avatar size="xs" visual={<ClockIcon className="h-4 w-4" />} />
+              <span className="s-translate-y-1 s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <Icon size="xs" visual={BoltIcon} />
+              </span>
             }
           >
             I only want to show citations if a citations reactnode has been
@@ -202,6 +203,7 @@ export const ConversationHandoffExample = () => {
           <ConversationMessage
             type="agent"
             name="@soupinou"
+            timestamp="17:10"
             pictureUrl="https://avatars.githubusercontent.com/u/138893015?&v=4"
             buttons={[
               <Button
@@ -225,14 +227,14 @@ export const ConversationHandoffExample = () => {
             />
           </ConversationMessage>
           <ConversationMessage
-            type="agentAsTool"
-            name="Deep Dive"
-            renderName={(name) => (
-              <span className="s-inline-flex s-items-center s-text-faint dark:s-text-faint-night">
-                <Icon visual={AtomIcon} size="sm" />
-                <span className="s-ml-1">{name}</span>
+            name="@deep-dive"
+            type="agent"
+            completionStatus={
+              <span className="s-flex s-cursor-pointer s-items-center s-gap-1 s-text-xs">
+                <span>Completed in 9 min 30 sec</span>
+                <Icon visual={ChevronRightIcon} size="xs" />
               </span>
-            )}
+            }
             citations={[
               <Citation href="https://www.google.com">
                 <CitationIcons>

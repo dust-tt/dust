@@ -2,33 +2,44 @@ import {
   Button,
   classNames,
   DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyCTA,
   PlusIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 
 import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
-import { CreateWebhookSourceDialog } from "@app/components/triggers/CreateWebhookSourceDialog";
+import { UsedByButton } from "@app/components/spaces/UsedByButton";
+import type { WebhookSourceSheetMode } from "@app/components/triggers/WebhookSourceSheet";
+import { WebhookSourceSheet } from "@app/components/triggers/WebhookSourceSheet";
+import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { filterWebhookSource } from "@app/lib/webhookSource";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
-import type { WebhookSourceWithSystemView } from "@app/types/triggers/webhooks";
+import type { WebhookSourceWithSystemViewAndUsageType } from "@app/types/triggers/webhooks";
+import {
+  WEBHOOK_SOURCE_KIND,
+  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
+} from "@app/types/triggers/webhooks";
 
 type RowData = {
-  webhookSource: WebhookSourceWithSystemView;
+  webhookSource: WebhookSourceWithSystemViewAndUsageType;
   spaces: SpaceType[];
   onClick?: () => void;
 };
 
 const NameCell = ({ row }: { row: RowData }) => {
   const { webhookSource } = row;
-
+  const systemView = webhookSource.systemView;
   return (
     <DataTable.CellContent grow>
       <div
@@ -37,32 +48,40 @@ const NameCell = ({ row }: { row: RowData }) => {
           webhookSource.systemView ? "" : "opacity-50"
         )}
       >
+        {systemView && <WebhookSourceViewIcon webhookSourceView={systemView} />}
         <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
           <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
-            {webhookSource.systemView?.customName ?? webhookSource.name}
+            {systemView?.customName ?? webhookSource.name}
           </div>
+          {systemView?.description && (
+            <div className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
+              {systemView.description}
+            </div>
+          )}
         </div>
       </div>
     </DataTable.CellContent>
   );
 };
 
-type AdminTriggersListProps = {
+interface AdminTriggersListProps {
   owner: LightWorkspaceType;
-  setSelectedWebhookSourceId: Dispatch<SetStateAction<string | null>>;
   isWebhookSourcesWithViewsLoading: boolean;
-  webhookSourcesWithSystemView: WebhookSourceWithSystemView[];
+  webhookSourcesWithSystemView: WebhookSourceWithSystemViewAndUsageType[];
   filter: string;
-};
+  setAgentSId: (a: string | null) => void;
+}
 
 export const AdminTriggersList = ({
   owner,
-  setSelectedWebhookSourceId,
   isWebhookSourcesWithViewsLoading,
   webhookSourcesWithSystemView,
   filter,
+  setAgentSId,
 }: AdminTriggersListProps) => {
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [sheetMode, setSheetMode] = useState<WebhookSourceSheetMode | null>(
+    null
+  );
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: false,
@@ -78,7 +97,13 @@ export const AdminTriggersList = ({
 
         const onClick = !webhookSource.systemView
           ? undefined
-          : () => setSelectedWebhookSourceId(webhookSource.sId);
+          : () => {
+              setSheetMode({
+                type: "edit",
+                webhookSource,
+                kind: webhookSource.kind,
+              });
+            };
 
         return {
           webhookSource,
@@ -86,7 +111,7 @@ export const AdminTriggersList = ({
           onClick,
         };
       }),
-    [spaces, setSelectedWebhookSourceId, webhookSourcesWithSystemView]
+    [spaces, webhookSourcesWithSystemView]
   );
   const columns = useMemo((): ColumnDef<RowData>[] => {
     const columns: ColumnDef<RowData, any>[] = [];
@@ -105,6 +130,24 @@ export const AdminTriggersList = ({
           return rowA.original.webhookSource.name.localeCompare(
             rowB.original.webhookSource.name
           );
+        },
+      },
+      {
+        header: "Used by",
+        accessorFn: (row) => row.webhookSource.usage?.count ?? 0,
+        cell: (info) => (
+          <DataTable.CellContent>
+            <UsedByButton
+              usage={{
+                count: info.row.original.webhookSource.usage?.count ?? 0,
+                agents: info.row.original.webhookSource.usage?.agents ?? [],
+              }}
+              onItemClick={setAgentSId}
+            />
+          </DataTable.CellContent>
+        ),
+        meta: {
+          className: "w-24",
         },
       },
       {
@@ -175,17 +218,46 @@ export const AdminTriggersList = ({
     );
 
     return columns;
-  }, []);
+  }, [setAgentSId]);
 
-  const CreateWebhookCTA = () => (
-    <Button
-      label="Create webhook source"
-      variant="outline"
-      icon={PlusIcon}
-      size="sm"
-      onClick={() => setIsCreateOpen(true)}
-    />
-  );
+  const CreateWebhookCTA = () => {
+    const { hasFeature } = useFeatureFlags({
+      workspaceId: owner.sId,
+    });
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            label="Create webhook source"
+            variant="outline"
+            icon={PlusIcon}
+            size="sm"
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {WEBHOOK_SOURCE_KIND.filter((kind) => {
+            const preset = WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind];
+            return (
+              preset.featureFlag === undefined || hasFeature(preset.featureFlag)
+            );
+          })
+            .sort((kindA, kindB) =>
+              WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kindA].name.localeCompare(
+                WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kindB].name
+              )
+            )
+            .map((kind) => (
+              <DropdownMenuItem
+                key={kind}
+                label={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].name}
+                icon={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].icon}
+                onClick={() => setSheetMode({ type: "create", kind })}
+              />
+            ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
 
   if (isWebhookSourcesWithViewsLoading) {
     return (
@@ -197,9 +269,11 @@ export const AdminTriggersList = ({
 
   return (
     <>
-      <CreateWebhookSourceDialog
-        isOpen={isCreateOpen}
-        setIsOpen={setIsCreateOpen}
+      <WebhookSourceSheet
+        mode={sheetMode}
+        onClose={() => {
+          setSheetMode(null);
+        }}
         owner={owner}
       />
       {rows.length === 0 ? (

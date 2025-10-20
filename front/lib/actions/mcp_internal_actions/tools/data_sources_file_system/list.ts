@@ -93,7 +93,11 @@ export function registerListTool(
     ListToolInputSchema,
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_LIST_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
       async ({
         nodeId,
         dataSources,
@@ -148,7 +152,11 @@ export function registerListTool(
           // If it's a data source node ID, extract the data source ID and list its root contents.
           const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
           if (!dataSourceId) {
-            return new Err(new MCPError("Invalid data source node ID format"));
+            return new Err(
+              new MCPError("Invalid data source node ID format", {
+                tracked: false,
+              })
+            );
           }
 
           const dataSourceConfig = agentDataSourceConfigurations.find(
@@ -189,7 +197,11 @@ export function registerListTool(
         }
 
         if (searchResult.isErr()) {
-          return new Err(new MCPError("Failed to list folder contents"));
+          return new Err(
+            new MCPError(
+              `Failed to list folder contents: ${searchResult.error.message}`
+            )
+          );
         }
 
         return new Ok([

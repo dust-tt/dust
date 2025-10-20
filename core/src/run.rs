@@ -144,7 +144,7 @@ impl RunStatus {
         match self
             .blocks
             .iter()
-            .position(|s| (s.block_type == status.block_type && s.name == status.name))
+            .position(|s| s.block_type == status.block_type && s.name == status.name)
         {
             Some(i) => {
                 let _ = std::mem::replace(&mut self.blocks[i], status);

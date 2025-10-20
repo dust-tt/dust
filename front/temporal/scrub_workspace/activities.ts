@@ -30,6 +30,7 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -91,6 +92,15 @@ export async function scrubWorkspaceData({
 }: {
   workspaceId: string;
 }) {
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    logger.info(
+      { workspaceId },
+      "Workspace not found, it was probably already deleted"
+    );
+    return true;
+  }
+
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
     dangerouslyRequestAllGroups: true,
   });
@@ -356,4 +366,25 @@ async function cleanupCustomerio(auth: Authenticator) {
       "Failed to delete workspace on Customer.io"
     );
   });
+}
+
+export async function endSubscriptionFreeEndedWorkspacesActivity(): Promise<{
+  workspaceIds: string[];
+}> {
+  const { workspaces } =
+    await SubscriptionResource.internalFetchWorkspacesWithFreeEndedSubscriptions();
+
+  await concurrentExecutor(
+    workspaces,
+    async (workspace) => {
+      await SubscriptionResource.endActiveSubscription(workspace);
+    },
+    {
+      concurrency: 4,
+    }
+  );
+
+  return {
+    workspaceIds: workspaces.map((w) => w.sId),
+  };
 }

@@ -281,6 +281,7 @@ export const IntercomCommandSchema = t.type({
     t.literal("check-missing-conversations"),
     t.literal("check-teams"),
     t.literal("set-conversations-sliding-window"),
+    t.literal("search-conversations"),
   ]),
   args: t.type({
     force: t.union([t.literal("true"), t.undefined]),
@@ -289,8 +290,15 @@ export const IntercomCommandSchema = t.type({
     day: t.union([t.string, t.undefined]),
     helpCenterId: t.union([t.number, t.undefined]),
     conversationsSlidingWindow: t.union([t.number, t.undefined]),
+    teamId: t.union([t.string, t.undefined]),
+    closedAfter: t.union([t.number, t.undefined]),
+    state: t.union([
+      t.union([t.literal("open"), t.literal("closed")]),
+      t.undefined,
+    ]),
   }),
 });
+
 export type IntercomCommandType = t.TypeOf<typeof IntercomCommandSchema>;
 
 export const IntercomCheckConversationResponseSchema = t.type({
@@ -350,6 +358,24 @@ export const IntercomForceResyncArticlesResponseSchema = t.type({
 export type IntercomForceResyncArticlesResponseType = t.TypeOf<
   typeof IntercomForceResyncArticlesResponseSchema
 >;
+
+export const IntercomSearchConversationsResponseSchema = t.type({
+  conversations: t.array(
+    t.type({
+      id: t.string,
+      open: t.boolean,
+      state: t.string,
+      created_at: t.number,
+      last_closed_at: t.union([t.number, t.null]),
+    })
+  ),
+  totalCount: t.number,
+});
+
+export type IntercomSearchConversationsResponseType = t.TypeOf<
+  typeof IntercomSearchConversationsResponseSchema
+>;
+
 /**
  * </ Intercom>
  */
@@ -400,6 +426,7 @@ export const NotionCommandSchema = t.type({
     t.literal("update-parents-fields"),
     t.literal("clear-parents-last-updated-at"),
     t.literal("update-orphaned-resources-parents"),
+    t.literal("api-request"),
   ]),
   args: t.record(
     t.string,
@@ -460,6 +487,14 @@ export const NotionMeResponseSchema = t.type({
   botOwner: t.UnknownRecord, // notion type, can't be iots'd
 });
 export type NotionMeResponseType = t.TypeOf<typeof NotionMeResponseSchema>;
+
+export const NotionApiRequestResponseSchema = t.type({
+  status: t.number,
+  data: t.unknown, // notion API response type, can't be iots'd
+});
+export type NotionApiRequestResponseType = t.TypeOf<
+  typeof NotionApiRequestResponseSchema
+>;
 /**
  * </Notion>
  */
@@ -818,6 +853,8 @@ export const AdminResponseSchema = t.union([
   IntercomFetchArticlesResponseSchema,
   IntercomFetchConversationResponseSchema,
   IntercomForceResyncArticlesResponseSchema,
+  IntercomSearchConversationsResponseSchema,
+  NotionApiRequestResponseSchema,
   NotionCheckUrlResponseSchema,
   NotionDeleteUrlResponseSchema,
   NotionMeResponseSchema,

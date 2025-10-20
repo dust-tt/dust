@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
+import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -12,13 +13,13 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type {
   WebhookSourceType,
-  WebhookSourceWithViews,
+  WebhookSourceWithViewsAndUsageType,
 } from "@app/types/triggers/webhooks";
-import { PostWebhookSourcesSchema } from "@app/types/triggers/webhooks";
+import { postWebhookSourcesSchema } from "@app/types/triggers/webhooks";
 
 export type GetWebhookSourcesResponseBody = {
   success: true;
-  webhookSourcesWithViews: WebhookSourceWithViews[];
+  webhookSourcesWithViews: WebhookSourceWithViewsAndUsageType[];
 };
 
 export type PostWebhookSourcesResponseBody = {
@@ -43,6 +44,7 @@ async function handler(
         await WebhookSourceResource.listByWorkspace(auth);
 
       try {
+        const usageBySourceId = await getWebhookSourcesUsage({ auth });
         const webhookSourcesWithViews = await concurrentExecutor(
           webhookSourceResources,
           async (webhookSourceResource) => {
@@ -65,7 +67,10 @@ async function handler(
 
         return res.status(200).json({
           success: true,
-          webhookSourcesWithViews,
+          webhookSourcesWithViews: webhookSourcesWithViews.map((source) => ({
+            ...source,
+            usage: usageBySourceId[source.id] ?? { count: 0, agents: [] },
+          })),
         });
       } catch (error) {
         return res.status(500).json({
@@ -78,7 +83,7 @@ async function handler(
     }
 
     case "POST": {
-      const bodyValidation = PostWebhookSourcesSchema.safeParse(req.body);
+      const bodyValidation = postWebhookSourcesSchema.safeParse(req.body);
 
       if (!bodyValidation.success) {
         const pathError = fromError(bodyValidation.error).toString();
@@ -99,19 +104,31 @@ async function handler(
         signatureAlgorithm,
         customHeaders,
         includeGlobal,
+        subscribedEvents,
+        kind,
       } = bodyValidation.data;
 
       const workspace = auth.getNonNullableWorkspace();
+
+      const trimmedSignatureHeader = signatureHeader.trim();
 
       try {
         const webhookSourceRes = await WebhookSourceResource.makeNew(auth, {
           workspaceId: workspace.id,
           name,
           secret:
-            secret && secret.length > 0 ? secret : generateSecureSecret(64),
-          signatureHeader,
+            trimmedSignatureHeader.length === 0
+              ? null
+              : secret && secret.length > 0
+                ? secret
+                : generateSecureSecret(64),
+          urlSecret: generateSecureSecret(64),
+          kind,
+          signatureHeader:
+            trimmedSignatureHeader.length > 0 ? trimmedSignatureHeader : null,
           signatureAlgorithm,
           customHeaders,
+          subscribedEvents,
         });
 
         if (webhookSourceRes.isErr()) {

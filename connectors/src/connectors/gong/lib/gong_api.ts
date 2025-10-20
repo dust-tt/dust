@@ -8,6 +8,7 @@ import {
   HTTPError,
   isNotFoundError,
 } from "@connectors/lib/error";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 
@@ -67,6 +68,37 @@ export const GongParticipantCodec = t.intersection([
   CatchAllCodec,
 ]);
 
+const GongContextObjectCodec = t.intersection([
+  t.type({
+    objectType: t.string,
+    objectId: t.union([t.string, t.null]),
+    fields: t.array(
+      t.intersection([
+        t.type({
+          name: t.string,
+          value: t.union([
+            t.string,
+            t.number,
+            t.array(t.number),
+            t.array(t.string),
+            t.null,
+          ]),
+        }),
+        CatchAllCodec,
+      ])
+    ),
+  }),
+  CatchAllCodec,
+]);
+
+const GongContextCodec = t.intersection([
+  t.type({
+    system: t.string,
+    objects: t.array(GongContextObjectCodec),
+  }),
+  CatchAllCodec,
+]);
+
 const GongTranscriptMetadataWithoutTrackersCodec = t.intersection([
   t.type({
     metaData: t.intersection([
@@ -95,6 +127,7 @@ const GongTranscriptMetadataWithoutTrackersCodec = t.intersection([
     ]),
     // Parties are not defined on imported calls.
     parties: t.union([t.array(GongParticipantCodec), t.undefined]),
+    context: t.union([t.array(GongContextCodec), t.undefined]),
   }),
   CatchAllCodec,
 ]);
@@ -150,6 +183,9 @@ const GongPaginatedResults = <C extends t.Mixed, F extends string>(
     } as Record<F, t.ArrayC<C>>),
   ]);
 
+// https://help.gong.io/docs/what-the-gong-api-provides
+const GONG_RATE_LIMIT = { limit: 3, windowInMs: 1_000 };
+
 export class GongClient {
   private readonly baseUrl = "https://api.gong.io/v2";
 
@@ -157,117 +193,6 @@ export class GongClient {
     private readonly authToken: string,
     private readonly connectorId: ModelId
   ) {}
-
-  /**
-   * Handles response parsing and error handling for all API requests.
-   */
-  private async handleResponse<T>(
-    response: Response,
-    endpoint: string,
-    codec: t.Type<T>
-  ): Promise<T> {
-    if (!response.ok) {
-      if (response.status === 403 && response.statusText === "Forbidden") {
-        throw new ExternalOAuthTokenError();
-      }
-
-      // Handle rate limiting
-      // https://gong.app.gong.io/settings/api/documentation#overview
-      if (response.status === 429) {
-        const headers = Object.fromEntries(
-          Array.from(response.headers.entries()).filter(
-            ([key]) =>
-              key.toLowerCase().startsWith("x-") ||
-              key.toLowerCase().startsWith("rate-")
-          )
-        );
-
-        logger.info(
-          {
-            connectorId: this.connectorId,
-            endpoint,
-            headers,
-            provider: "gong",
-          },
-          "Rate limit hit on Gong API."
-        );
-      }
-
-      if (response.status === 404) {
-        throw new HTTPError(response.statusText, response.status);
-      }
-
-      // Don't attempt to parse the body in JSON.
-      const body = await response.text();
-
-      throw GongAPIError.fromAPIError(response, {
-        endpoint,
-        connectorId: this.connectorId,
-        body,
-      });
-    }
-
-    const responseBody = await response.json();
-    const result = codec.decode(responseBody);
-
-    if (isLeft(result)) {
-      const pathErrors = reporter.formatValidationErrors(result.left);
-
-      throw GongAPIError.fromValidationError({
-        connectorId: this.connectorId,
-        endpoint,
-        pathErrors,
-      });
-    }
-
-    return result.right;
-  }
-
-  private async postRequest<T>(
-    endpoint: string,
-    body: unknown,
-    codec: t.Type<T>
-  ): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.authToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-      // Timeout after 30 seconds.
-      signal: AbortSignal.timeout(30000),
-    });
-
-    return this.handleResponse(response, endpoint, codec);
-  }
-
-  private async getRequest<T>(
-    endpoint: string,
-    searchParams: Record<string, string | number | boolean | undefined>,
-    codec: t.Type<T>
-  ): Promise<T> {
-    const urlSearchParams = new URLSearchParams(
-      Object.entries(searchParams)
-        .filter(([, value]) => value !== undefined)
-        .map(([key, value]) => [key, String(value)])
-    );
-
-    const response = await fetch(
-      `${this.baseUrl}${endpoint}?${urlSearchParams.toString()}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${this.authToken}`,
-          "Content-Type": "application/json",
-        },
-        // Timeout after 30 seconds.
-        signal: AbortSignal.timeout(30000),
-      }
-    );
-
-    return this.handleResponse(response, endpoint, codec);
-  }
 
   // https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/transcript
   async getTranscripts({
@@ -349,10 +274,12 @@ export class GongClient {
     callIds,
     pageCursor = null,
     trackersEnabled = false,
+    accountsEnabled = false,
   }: {
     callIds: string[];
     pageCursor?: string | null;
     trackersEnabled?: boolean;
+    accountsEnabled?: boolean;
   }): Promise<{
     callsMetadata: GongTranscriptMetadata[];
     nextPageCursor: string | null;
@@ -371,6 +298,7 @@ export class GongClient {
         callIds,
       },
       contentSelector: {
+        ...(accountsEnabled ? { context: "Extended" } : {}),
         exposedFields: {
           parties: true,
           ...(trackersEnabled ? { content: { trackers: true } } : {}),
@@ -397,7 +325,7 @@ export class GongClient {
             GongTranscriptMetadataWithoutTrackersCodec
           )
         );
-        // Adding empty trackers to the calls metadata to present a uniformed type.
+        // Adding empty trackers to present a uniformed type.
         return {
           callsMetadata: callsMetadata.calls.map((callMetadata) => ({
             ...callMetadata,
@@ -415,5 +343,145 @@ export class GongClient {
       }
       throw err;
     }
+  }
+
+  /**
+   * Handles response parsing and error handling for all API requests.
+   */
+  private async handleResponse<T>(
+    response: Response,
+    endpoint: string,
+    codec: t.Type<T>
+  ): Promise<T> {
+    if (!response.ok) {
+      if (response.status === 403 && response.statusText === "Forbidden") {
+        throw new ExternalOAuthTokenError();
+      }
+
+      // Handle rate limiting
+      // https://gong.app.gong.io/settings/api/documentation#overview
+      if (response.status === 429) {
+        const headers = Object.fromEntries(
+          Array.from(response.headers.entries()).filter(
+            ([key]) =>
+              key.toLowerCase().startsWith("x-") ||
+              key.toLowerCase().startsWith("rate-")
+          )
+        );
+
+        logger.info(
+          {
+            connectorId: this.connectorId,
+            endpoint,
+            headers,
+            provider: "gong",
+          },
+          "Rate limit hit on Gong API."
+        );
+      }
+
+      if (response.status === 404) {
+        throw new HTTPError(response.statusText, response.status);
+      }
+
+      // Don't attempt to parse the body in JSON.
+      const body = await response.text();
+
+      throw GongAPIError.fromAPIError(response, {
+        endpoint,
+        connectorId: this.connectorId,
+        body,
+      });
+    }
+
+    const responseBody = await response.json();
+    const result = codec.decode(responseBody);
+
+    if (isLeft(result)) {
+      const pathErrors = reporter.formatValidationErrors(result.left);
+
+      throw GongAPIError.fromValidationError({
+        connectorId: this.connectorId,
+        endpoint,
+        pathErrors,
+      });
+    }
+
+    return result.right;
+  }
+
+  private async postRequest<T>(
+    endpoint: string,
+    body: unknown,
+    codec: t.Type<T>
+  ): Promise<T> {
+    const method = "POST";
+
+    return throttleWithRedis<T>(
+      GONG_RATE_LIMIT,
+      `gong:${this.connectorId}`,
+      false,
+      async () => {
+        const response = await fetch(`${this.baseUrl}${endpoint}`, {
+          method,
+          headers: {
+            Authorization: `Bearer ${this.authToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+          // Timeout after 30 seconds.
+          signal: AbortSignal.timeout(30000),
+        });
+
+        return this.handleResponse(response, endpoint, codec);
+      },
+      {
+        provider: "gong",
+        endpoint,
+        method,
+        connectorId: String(this.connectorId),
+      }
+    );
+  }
+
+  private async getRequest<T>(
+    endpoint: string,
+    searchParams: Record<string, string | number | boolean | undefined>,
+    codec: t.Type<T>
+  ): Promise<T> {
+    const urlSearchParams = new URLSearchParams(
+      Object.entries(searchParams)
+        .filter(([, value]) => value !== undefined)
+        .map(([key, value]) => [key, String(value)])
+    );
+
+    const method = "GET";
+
+    return throttleWithRedis<T>(
+      GONG_RATE_LIMIT,
+      `gong:${this.connectorId}`,
+      false,
+      async () => {
+        const response = await fetch(
+          `${this.baseUrl}${endpoint}?${urlSearchParams.toString()}`,
+          {
+            method,
+            headers: {
+              Authorization: `Bearer ${this.authToken}`,
+              "Content-Type": "application/json",
+            },
+            // Timeout after 30 seconds.
+            signal: AbortSignal.timeout(30000),
+          }
+        );
+        return this.handleResponse(response, endpoint, codec);
+      },
+      {
+        provider: "gong",
+        endpoint,
+        method,
+        connectorId: String(this.connectorId),
+      }
+    );
   }
 }

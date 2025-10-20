@@ -79,6 +79,8 @@ const SLACK_ERROR_TEXT =
 
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
+const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
+
 type BotAnswerParams = {
   responseUrl?: string;
   slackTeamId: string;
@@ -134,6 +136,19 @@ export async function botAnswerMessage(
 
     return new Ok(undefined);
   } catch (e) {
+    // This means that the message has been deleted, so we don't need to send an error message.
+    // So we don't log an error.
+    if (isSlackWebAPIPlatformError(e) && e.data.error === "message_not_found") {
+      logger.info(
+        {
+          connectorId: connector.id,
+          slackTeamId,
+        },
+        "Message not found when answering to Slack Chat Bot message"
+      );
+      return new Ok(undefined);
+    }
+
     logger.error(
       {
         error: e,
@@ -142,10 +157,7 @@ export async function botAnswerMessage(
       },
       "Unexpected exception answering to Slack Chat Bot message"
     );
-    if (isSlackWebAPIPlatformError(e) && e.data.error === "message_not_found") {
-      // This means that the message has been deleted, so we don't need to send an error message.
-      return new Ok(undefined);
-    }
+
     const slackClient = await getSlackClient(connector.id);
     try {
       reportSlackUsage({
@@ -267,13 +279,20 @@ export async function botValidateToolExecution(
   }: ToolValidationParams,
   params: BotAnswerParams
 ) {
-  const { slackChannel, slackMessageTs, slackTeamId, responseUrl } = params;
+  const {
+    slackChannel,
+    slackMessageTs,
+    slackTeamId,
+    responseUrl,
+    slackUserId,
+    slackBotId,
+  } = params;
 
   const connectorRes = await getSlackConnector(params);
   if (connectorRes.isErr()) {
     return connectorRes;
   }
-  const { connector } = connectorRes.value;
+  const { connector, slackConfig } = connectorRes.value;
 
   try {
     const slackChatBotMessage = await SlackChatBotMessage.findOne({
@@ -282,14 +301,74 @@ export async function botValidateToolExecution(
     if (!slackChatBotMessage) {
       throw new Error("Missing Slack message");
     }
+    const slackClient = await getSlackClient(connector.id);
+
+    const userEmailHeader =
+      slackChatBotMessage.slackEmail !== "unknown"
+        ? slackChatBotMessage.slackEmail
+        : undefined;
+    let slackUserInfo: SlackUserInfo | null = null;
+    let requestedGroups: string[] | undefined = undefined;
+
+    if (slackUserId) {
+      try {
+        slackUserInfo = await getSlackUserInfoMemoized(
+          connector.id,
+          slackClient,
+          slackUserId
+        );
+      } catch (e) {
+        if (isSlackWebAPIPlatformError(e)) {
+          logger.error(
+            {
+              error: e,
+              connectorId: connector.id,
+              slackUserId,
+            },
+            "Failed to get slack user info"
+          );
+        }
+        throw e;
+      }
+    } else if (slackBotId) {
+      throw new Error("Unreachable: bot cannot validate tool execution.");
+    }
+
+    if (!slackUserInfo) {
+      throw new Error("Failed to get slack user info");
+    }
+
+    if (slackUserInfo.is_bot) {
+      throw new Error("Unreachable: bot cannot validate tool execution.");
+    }
+
+    const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
+      connector,
+      slackClient,
+      slackUserInfo,
+      {
+        slackChannelId: slackChannel,
+        slackTeamId,
+        slackMessageTs,
+      },
+      slackConfig.whitelistedDomains
+    );
+    if (!hasChatbotAccess.authorized) {
+      return new Ok(undefined);
+    }
+
+    // If the user is allowed, we retrieve the groups he has access to.
+    requestedGroups = hasChatbotAccess.groupIds;
 
     const dustAPI = new DustAPI(
       { url: apiConfig.getDustFrontAPIUrl() },
       {
         apiKey: connector.workspaceAPIKey,
-        // We neither need group ids nor user email headers here because validate tool endpoint is not
-        // gated by group ids or user email headers.
-        extraHeaders: {},
+        // Validation must include user's groups and email for personal tools and group-gated actions.
+        extraHeaders: {
+          ...getHeaderFromGroupIds(requestedGroups),
+          ...getHeaderFromUserEmail(userEmailHeader),
+        },
         workspaceId: connector.workspaceId,
       },
       logger
@@ -359,7 +438,6 @@ export async function botValidateToolExecution(
         );
       }
     }
-    const slackClient = await getSlackClient(connector.id);
 
     reportSlackUsage({
       connectorId: connector.id,
@@ -831,12 +909,14 @@ async function answerMessage(
       };
     } else {
       // If no mention is found and no channel-based routing rule is found, we use the default agent.
-      let defaultAssistant: LightAgentConfigurationType | null = null;
-      defaultAssistant =
-        activeAgentConfigurations.find((ac) => ac.sId === "dust") || null;
-      if (!defaultAssistant || defaultAssistant.status !== "active") {
-        defaultAssistant =
-          activeAgentConfigurations.find((ac) => ac.sId === "gpt-4") || null;
+      let defaultAssistant: LightAgentConfigurationType | undefined = undefined;
+      for (const agent of DEFAULT_AGENTS) {
+        defaultAssistant = activeAgentConfigurations.find(
+          (ac) => ac.sId === agent && ac.status === "active"
+        );
+        if (defaultAssistant) {
+          break;
+        }
       }
       if (!defaultAssistant) {
         return new Err(
@@ -1358,6 +1438,7 @@ async function isAgentAccessingRestrictedSpace(
       return new Err(new Error(`Agent ${agentId} not found`));
     }
 
+    // TODO(2025-10-17 thomas): Check requestedSpaceIds instead of requestedGroupIds.
     // If the agent has no requestedGroupIds, it's not from a restricted space
     if (!agent.requestedGroupIds || agent.requestedGroupIds.length === 0) {
       return new Ok(false);

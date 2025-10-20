@@ -64,7 +64,11 @@ export function registerCatTool(
     catToolInputSchema,
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_CAT_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: FILESYSTEM_CAT_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
       async ({ dataSources, nodeId, offset, limit, grep }) => {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
@@ -143,7 +147,10 @@ export function registerCatTool(
         if (readResult.isErr()) {
           return new Err(
             new MCPError(
-              `Could not read node: ${nodeId} (error: ${readResult.error.message})`
+              `Could not read node: ${nodeId} (error: ${readResult.error.message})`,
+              {
+                tracked: readResult.error.code !== "invalid_regex",
+              }
             )
           );
         }

@@ -17,6 +17,7 @@ import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_a
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
 
 type AddActionMenuProps = {
@@ -60,6 +61,7 @@ export const AddActionMenu = ({
           variant={buttonVariant}
           icon={PlusIcon}
           size="sm"
+          onClick={withTracking(TRACKING_AREAS.TOOLS, "add_tools_menu")}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -78,7 +80,11 @@ export const AddActionMenu = ({
               icon={PlusIcon}
               label="Add MCP Server"
               // Empty call is required given onClick passes a MouseEvent
-              onClick={() => createRemoteMCPServer()}
+              onClick={withTracking(
+                TRACKING_AREAS.TOOLS,
+                "add_mcp_server",
+                () => createRemoteMCPServer()
+              )}
               size="sm"
             />
           }
@@ -104,16 +110,21 @@ export const AddActionMenu = ({
               key={mcpServer.sId}
               label={getMcpServerDisplayName(mcpServer)}
               icon={() => getAvatar(mcpServer, "xs")}
-              onClick={async () => {
-                const remoteMcpServer = getDefaultRemoteMCPServerByName(
-                  mcpServer.name
-                );
-                if (remoteMcpServer) {
-                  createRemoteMCPServer(remoteMcpServer);
-                } else {
-                  createInternalMCPServer(mcpServer);
-                }
-              }}
+              onClick={withTracking(
+                TRACKING_AREAS.TOOLS,
+                "tool_select",
+                async () => {
+                  const remoteMcpServer = getDefaultRemoteMCPServerByName(
+                    mcpServer.name
+                  );
+                  if (remoteMcpServer) {
+                    createRemoteMCPServer(remoteMcpServer);
+                  } else {
+                    createInternalMCPServer(mcpServer);
+                  }
+                },
+                { tool_name: mcpServer.name }
+              )}
             />
           ))}
       </DropdownMenuContent>

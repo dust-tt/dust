@@ -86,7 +86,7 @@ const iconVariants = cva("s-shrink-0", {
   },
 });
 
-const titleVariants = cva("s-text-sm s-font-semibold", {
+const titleVariants = cva("s-heading-sm", {
   variants: {
     variant: {
       primary: "s-text-foreground dark:s-text-foreground-night",

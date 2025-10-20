@@ -25,8 +25,10 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare visibility: CreationOptional<ConversationVisibility>;
   declare depth: CreationOptional<number>;
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
+  declare hasError: CreationOptional<boolean>;
 
   declare requestedGroupIds: number[][];
+  declare requestedSpaceIds: number[];
 }
 
 ConversationModel.init(
@@ -64,10 +66,20 @@ ConversationModel.init(
       allowNull: false,
       defaultValue: [],
     },
+    requestedSpaceIds: {
+      type: DataTypes.ARRAY(DataTypes.BIGINT),
+      allowNull: false,
+      defaultValue: [],
+    },
     triggerId: {
       type: DataTypes.BIGINT,
       allowNull: true,
       defaultValue: null,
+    },
+    hasError: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

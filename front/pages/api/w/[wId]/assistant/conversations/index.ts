@@ -27,7 +27,6 @@ import {
   ConversationError,
   InternalPostConversationsRequestBodySchema,
 } from "@app/types";
-import { ExecutionModeSchema } from "@app/types/assistant/agent_run";
 
 export type GetConversationsResponseBody = {
   conversations: ConversationWithoutContentType[];
@@ -75,14 +74,6 @@ async function handler(
 
       const { title, visibility, message, contentFragments } =
         bodyValidation.right;
-
-      const executionModeParseResult = ExecutionModeSchema.safeParse(
-        req.query.execution
-      );
-
-      const executionMode = executionModeParseResult.success
-        ? executionModeParseResult.data
-        : undefined;
 
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
@@ -212,7 +203,6 @@ async function handler(
           },
           // For now we never skip tools when interacting with agents from the web client.
           skipToolsValidation: false,
-          executionMode,
         });
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);

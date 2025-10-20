@@ -9,6 +9,8 @@ export const OAUTH_USE_CASES = [
   "platform_actions",
   "personal_actions",
   "bot",
+  // Get a token to manage webhooks in the provider.
+  "webhooks",
 ] as const;
 
 export type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];
@@ -25,6 +27,7 @@ export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
 export const OAUTH_PROVIDERS = [
   "confluence",
   "confluence_tools",
+  "discord",
   "freshservice",
   "github",
   "google_drive",
@@ -47,6 +50,7 @@ export const OAUTH_PROVIDERS = [
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   confluence_tools: "Confluence Tools",
+  discord: "Discord",
   freshservice: "Freshservice",
   github: "GitHub",
   gmail: "Gmail",
@@ -192,6 +196,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "intercom":
     case "jira":
     case "mcp":
+    case "discord":
       return null;
     case "mcp_static":
       if (useCase === "personal_actions" || useCase === "platform_actions") {

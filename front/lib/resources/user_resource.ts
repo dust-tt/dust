@@ -193,6 +193,12 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  async updateImage(imageUrl: string | null) {
+    return this.update({
+      imageUrl,
+    });
+  }
+
   async updateInfo(
     username: string,
     firstName: string,
@@ -417,12 +423,31 @@ export class UserResource extends BaseResource<UserModel> {
     },
     paginationParams: SearchMembersPaginationParams
   ): Promise<{ users: UserResource[]; total: number }> {
-    const userWhereClause: any = {};
+    const userWhereClause: WhereOptions<UserModel> = {};
     if (options.email) {
       userWhereClause.email = {
         [Op.iLike]: `%${options.email}%`,
       };
     }
+
+    const memberships = await MembershipModel.findAll({
+      where: {
+        workspaceId: owner.id,
+        startAt: { [Op.lte]: new Date() },
+        endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+      },
+    });
+    userWhereClause.id = {
+      [Op.in]: memberships.map((m) => m.userId),
+    };
+
+    // Create a map of userId to membership for consistent lookup.
+    const membershipsByUserId = new Map<number, MembershipModel>();
+    memberships.forEach((membership) => {
+      if (!membershipsByUserId.has(membership.userId)) {
+        membershipsByUserId.set(membership.userId, membership);
+      }
+    });
 
     const { count, rows: users } = await UserModel.findAndCountAll({
       where: userWhereClause,
@@ -431,11 +456,10 @@ export class UserResource extends BaseResource<UserModel> {
           model: MembershipModel,
           as: "memberships",
           where: {
-            workspaceId: owner.id,
-            startAt: { [Op.lte]: new Date() },
-            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+            id: {
+              [Op.in]: memberships.map((m) => m.id),
+            },
           },
-          required: true,
         },
       ],
       order: [[paginationParams.orderColumn, paginationParams.orderDirection]],
@@ -444,7 +468,16 @@ export class UserResource extends BaseResource<UserModel> {
     });
 
     return {
-      users: users.map((u) => new UserResource(UserModel, u.get())),
+      users: users.map((u) => {
+        const userBlob = u.get();
+        const membership = membershipsByUserId.get(u.id);
+
+        // Augment user with their membership in the workspace.
+        return new UserResource(UserModel, {
+          ...userBlob,
+          ...(membership && { memberships: [membership] }),
+        });
+      }),
       total: count,
     };
   }

@@ -13,12 +13,22 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { GitHubWebhookService } from "@app/lib/triggers/services/github_webhook_service";
+import type { RemoteWebhookService } from "@app/lib/triggers/services/remote_webhook_service";
+import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
+import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok, redactString } from "@app/types";
 import type { WebhookSourceType } from "@app/types/triggers/webhooks";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
+
+// Service registry: map webhook source kind to its service implementation
+const WEBHOOK_SERVICES: Record<string, RemoteWebhookService> = {
+  github: new GitHubWebhookService(),
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -61,6 +71,8 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
           editedAt: new Date(),
           editedByUserId: auth.user()?.id,
           webhookSourceId: webhookSource.id,
+          description: "",
+          icon: DEFAULT_WEBHOOK_ICON,
         },
         {
           transaction,
@@ -141,6 +153,23 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     });
   }
 
+  async updateRemoteMetadata(
+    updates: Partial<
+      Pick<WebhookSourceModel, "remoteMetadata" | "oauthConnectionId">
+    >,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await WebhookSourceModel.update(updates, {
+      where: {
+        id: this.id,
+      },
+      transaction,
+    });
+
+    // Update the current instance
+    Object.assign(this, updates);
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}
@@ -152,7 +181,50 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
 
     const owner = auth.getNonNullableWorkspace();
 
+    const service = WEBHOOK_SERVICES[this.kind];
+    if (service && this.remoteMetadata && this.oauthConnectionId) {
+      try {
+        const result = await service.deleteWebhooks({
+          auth,
+          connectionId: this.oauthConnectionId,
+          remoteMetadata: this.remoteMetadata,
+        });
+
+        if (result.isErr()) {
+          logger.error(
+            `Failed to delete remote webhook on ${this.kind}`,
+            result.error.message
+          );
+        }
+      } catch (error) {
+        logger.error(
+          `Failed to delete remote webhook on ${this.kind}`,
+          error instanceof Error ? error.message : error
+        );
+        // Continue with local deletion even if remote deletion fails
+      }
+    }
+
     try {
+      // Find all webhook sources views for this webhook source
+      const webhookSourceViews = await WebhookSourcesViewModel.findAll({
+        where: {
+          workspaceId: owner.id,
+          webhookSourceId: this.id,
+        },
+      });
+
+      // Delete all triggers for each webhook source view
+      for (const webhookSourceView of webhookSourceViews) {
+        const triggers = await TriggerResource.listByWebhookSourceViewId(
+          auth,
+          webhookSourceView.id
+        );
+        for (const trigger of triggers) {
+          await trigger.delete(auth, { transaction });
+        }
+      }
+
       // Directly delete the WebhookSourceViewModel to avoid a circular dependency.
       await WebhookSourcesViewModel.destroy({
         where: {
@@ -218,9 +290,14 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
       sId: this.sId(),
       name: this.name,
       secret,
+      urlSecret: this.urlSecret,
+      kind: this.kind,
+      subscribedEvents: this.subscribedEvents,
       signatureHeader: this.signatureHeader,
       signatureAlgorithm: this.signatureAlgorithm,
       customHeaders: this.customHeaders,
+      remoteMetadata: this.remoteMetadata,
+      oauthConnectionId: this.oauthConnectionId,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
     };

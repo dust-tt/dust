@@ -1,4 +1,4 @@
-import type { Fetcher } from "swr";
+import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -12,9 +12,17 @@ import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/app
 import type { LightWorkspaceType } from "@app/types";
 import type { JobType } from "@app/types/job_type";
 
-export function useUser() {
+export function useUser(
+  swrOptions?: SWRConfiguration & {
+    disabled?: boolean;
+  }
+) {
   const userFetcher: Fetcher<GetUserResponseBody> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults("/api/user", userFetcher);
+  const { data, error, mutate } = useSWRWithDefaults(
+    "/api/user",
+    userFetcher,
+    swrOptions
+  );
 
   return {
     user: data ? data.user : null,
@@ -74,7 +82,8 @@ export function usePatchUser() {
     firstName: string,
     lastName: string,
     notifySuccess: boolean,
-    jobType?: JobType
+    jobType?: JobType,
+    imageUrl?: string | null
   ) => {
     const res = await fetch("/api/user", {
       method: "PATCH",
@@ -85,6 +94,7 @@ export function usePatchUser() {
         firstName,
         lastName,
         jobType,
+        imageUrl,
       }),
     });
 

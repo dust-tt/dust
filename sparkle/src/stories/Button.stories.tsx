@@ -14,6 +14,7 @@ const ICONS = {
 const meta = {
   title: "Primitives/Button",
   component: Button,
+  tags: ["autodocs"],
   argTypes: {
     variant: {
       description: "The visual style variant of the button",

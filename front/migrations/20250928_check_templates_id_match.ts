@@ -157,7 +157,10 @@ async function fixTemplateMismatch(
             transaction: t,
           }
         );
-        await localTemplate.model.destroy({ transaction: t });
+        await localTemplate.model.destroy({
+          where: { id: localTemplate.id },
+          transaction: t,
+        });
 
         return affectedCount;
       }

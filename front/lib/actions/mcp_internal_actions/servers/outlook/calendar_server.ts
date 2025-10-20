@@ -1,41 +1,64 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import * as OutlookApi from "@app/lib/actions/mcp_internal_actions/servers/outlook/outlook_api_helper";
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import { Err, Ok } from "@app/types";
 
-const createServer = (): McpServer => {
+const OUTLOOK_CALENDAR_TOOL_NAME = "outlook_calendar";
+
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("outlook_calendar");
 
   server.tool(
     "get_user_timezone",
     "Get the user's configured timezone from their Outlook mailbox settings. This should be called before creating, updating, or searching for events to ensure proper timezone handling.",
     {},
-    async (_, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
-      }
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+      },
+      async (_, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
 
-      const result = await OutlookApi.getUserTimezone(accessToken);
+        const result = await OutlookApi.getUserTimezone(accessToken);
 
-      if (typeof result === "string") {
-        return makeMCPToolJSONSuccess({
-          message: "User timezone retrieved successfully",
-          result: {
-            timezone: result,
-            description:
-              "Use this timezone value when creating, updating, or searching for calendar events to ensure times are displayed correctly.",
-          },
-        });
-      } else {
-        return makeMCPToolTextError(result.error);
+        if (typeof result === "string") {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: "User timezone retrieved successfully",
+            },
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  timezone: result,
+                  description:
+                    "Use this timezone value when creating, updating, or searching for calendar events to ensure times are displayed correctly.",
+                },
+                null,
+                2
+              ),
+            },
+          ]);
+        } else {
+          return new Err(new MCPError(result.error));
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -57,27 +80,34 @@ const createServer = (): McpServer => {
           "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value."
         ),
     },
-    async ({ top = 250, skip = 0, userTimezone }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ top = 250, skip = 0, userTimezone }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
+
+        const result = await OutlookApi.listCalendars(accessToken, {
+          top,
+          skip,
+          userTimezone,
+        });
+
+        if ("error" in result) {
+          return new Err(new MCPError(result.error));
+        }
+
+        return new Ok([
+          { type: "text" as const, text: "Calendars listed successfully" },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ]);
       }
-
-      const result = await OutlookApi.listCalendars(accessToken, {
-        top,
-        skip,
-        userTimezone,
-      });
-
-      if ("error" in result) {
-        return makeMCPToolTextError(result.error);
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Calendars listed successfully",
-        result,
-      });
-    }
+    )
   );
 
   server.tool(
@@ -119,42 +149,49 @@ const createServer = (): McpServer => {
           "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value for proper timezone handling."
         ),
     },
-    async (
+    withToolLogging(
+      auth,
       {
-        calendarId,
-        search,
-        startTime,
-        endTime,
-        top = 50,
-        skip = 0,
-        userTimezone,
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        agentLoopContext,
       },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
+      async (
+        {
+          calendarId,
+          search,
+          startTime,
+          endTime,
+          top = 50,
+          skip = 0,
+          userTimezone,
+        },
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
+
+        const result = await OutlookApi.listEvents(accessToken, {
+          calendarId,
+          search,
+          startTime,
+          endTime,
+          top,
+          skip,
+          userTimezone,
+        });
+
+        if ("error" in result) {
+          return new Err(new MCPError(result.error));
+        }
+
+        return new Ok([
+          { type: "text" as const, text: "Events searched successfully" },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ]);
       }
-
-      const result = await OutlookApi.listEvents(accessToken, {
-        calendarId,
-        search,
-        startTime,
-        endTime,
-        top,
-        skip,
-        userTimezone,
-      });
-
-      if ("error" in result) {
-        return makeMCPToolTextError(result.error);
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Events searched successfully",
-        result,
-      });
-    }
+    )
   );
 
   server.tool(
@@ -175,27 +212,34 @@ const createServer = (): McpServer => {
           "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value."
         ),
     },
-    async ({ calendarId, eventId, userTimezone }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ calendarId, eventId, userTimezone }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
+
+        const result = await OutlookApi.getEvent(accessToken, {
+          calendarId,
+          eventId,
+          userTimezone,
+        });
+
+        if ("error" in result) {
+          return new Err(new MCPError(result.error));
+        }
+
+        return new Ok([
+          { type: "text" as const, text: "Event fetched successfully" },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ]);
       }
-
-      const result = await OutlookApi.getEvent(accessToken, {
-        calendarId,
-        eventId,
-        userTimezone,
-      });
-
-      if ("error" in result) {
-        return makeMCPToolTextError(result.error);
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Event fetched successfully",
-        result,
-      });
-    }
+    )
   );
 
   server.tool(
@@ -250,54 +294,61 @@ const createServer = (): McpServer => {
           "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value."
         ),
     },
-    async (
+    withToolLogging(
+      auth,
       {
-        calendarId,
-        subject,
-        body,
-        contentType = "text",
-        startDateTime,
-        endDateTime,
-        timeZone = "UTC",
-        attendees,
-        location,
-        isAllDay = false,
-        importance = "normal",
-        showAs = "busy",
-        userTimezone,
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        agentLoopContext,
       },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
+      async (
+        {
+          calendarId,
+          subject,
+          body,
+          contentType = "text",
+          startDateTime,
+          endDateTime,
+          timeZone = "UTC",
+          attendees,
+          location,
+          isAllDay = false,
+          importance = "normal",
+          showAs = "busy",
+          userTimezone,
+        },
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
+
+        const result = await OutlookApi.createEvent(accessToken, {
+          calendarId,
+          subject,
+          body,
+          contentType,
+          startDateTime,
+          endDateTime,
+          timeZone,
+          attendees,
+          location,
+          isAllDay,
+          importance,
+          showAs,
+          userTimezone,
+        });
+
+        if ("error" in result) {
+          return new Err(new MCPError(result.error));
+        }
+
+        return new Ok([
+          { type: "text" as const, text: "Event created successfully" },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ]);
       }
-
-      const result = await OutlookApi.createEvent(accessToken, {
-        calendarId,
-        subject,
-        body,
-        contentType,
-        startDateTime,
-        endDateTime,
-        timeZone,
-        attendees,
-        location,
-        isAllDay,
-        importance,
-        showAs,
-        userTimezone,
-      });
-
-      if ("error" in result) {
-        return makeMCPToolTextError(result.error);
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Event created successfully",
-        result,
-      });
-    }
+    )
   );
 
   server.tool(
@@ -344,56 +395,63 @@ const createServer = (): McpServer => {
           "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value."
         ),
     },
-    async (
+    withToolLogging(
+      auth,
       {
-        calendarId,
-        eventId,
-        subject,
-        body,
-        contentType,
-        startDateTime,
-        endDateTime,
-        timeZone,
-        attendees,
-        location,
-        isAllDay,
-        importance,
-        showAs,
-        userTimezone,
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        agentLoopContext,
       },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
+      async (
+        {
+          calendarId,
+          eventId,
+          subject,
+          body,
+          contentType,
+          startDateTime,
+          endDateTime,
+          timeZone,
+          attendees,
+          location,
+          isAllDay,
+          importance,
+          showAs,
+          userTimezone,
+        },
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
+
+        const result = await OutlookApi.updateEvent(accessToken, {
+          calendarId,
+          eventId,
+          subject,
+          body,
+          contentType,
+          startDateTime,
+          endDateTime,
+          timeZone,
+          attendees,
+          location,
+          isAllDay,
+          importance,
+          showAs,
+          userTimezone,
+        });
+
+        if ("error" in result) {
+          return new Err(new MCPError(result.error));
+        }
+
+        return new Ok([
+          { type: "text" as const, text: "Event updated successfully" },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ]);
       }
-
-      const result = await OutlookApi.updateEvent(accessToken, {
-        calendarId,
-        eventId,
-        subject,
-        body,
-        contentType,
-        startDateTime,
-        endDateTime,
-        timeZone,
-        attendees,
-        location,
-        isAllDay,
-        importance,
-        showAs,
-        userTimezone,
-      });
-
-      if ("error" in result) {
-        return makeMCPToolTextError(result.error);
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Event updated successfully",
-        result,
-      });
-    }
+    )
   );
 
   server.tool(
@@ -414,27 +472,33 @@ const createServer = (): McpServer => {
           "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value."
         ),
     },
-    async ({ calendarId, eventId, userTimezone }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ calendarId, eventId, userTimezone }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
+
+        const result = await OutlookApi.deleteEvent(accessToken, {
+          calendarId,
+          eventId,
+          userTimezone,
+        });
+
+        if ("error" in result) {
+          return new Err(new MCPError(result.error));
+        }
+
+        return new Ok([
+          { type: "text" as const, text: "Event deleted successfully" },
+        ]);
       }
-
-      const result = await OutlookApi.deleteEvent(accessToken, {
-        calendarId,
-        eventId,
-        userTimezone,
-      });
-
-      if ("error" in result) {
-        return makeMCPToolTextError(result.error);
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Event deleted successfully",
-        result: "",
-      });
-    }
+    )
   );
 
   server.tool(
@@ -465,35 +529,42 @@ const createServer = (): McpServer => {
           "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value."
         ),
     },
-    async (
-      { emails, startTime, endTime, intervalInMinutes = 60, userTimezone },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+      },
+      async (
+        { emails, startTime, endTime, intervalInMinutes = 60, userTimezone },
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
+
+        const result = await OutlookApi.checkAvailability(accessToken, {
+          emails,
+          startTime,
+          endTime,
+          intervalInMinutes,
+          userTimezone,
+        });
+
+        if ("error" in result) {
+          return new Err(new MCPError(result.error));
+        }
+
+        return new Ok([
+          { type: "text" as const, text: "Availability checked successfully" },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ]);
       }
-
-      const result = await OutlookApi.checkAvailability(accessToken, {
-        emails,
-        startTime,
-        endTime,
-        intervalInMinutes,
-        userTimezone,
-      });
-
-      if ("error" in result) {
-        return makeMCPToolTextError(result.error);
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Availability checked successfully",
-        result,
-      });
-    }
+    )
   );
 
   return server;
-};
+}
 
 export default createServer;

@@ -13,7 +13,9 @@ export async function getStaticProps() {
 }
 
 export default function InvestmentFirms() {
-  return <IndustryTemplate config={investmentConfig} />;
+  return (
+    <IndustryTemplate config={investmentConfig} trackingPrefix="investment" />
+  );
 }
 
 InvestmentFirms.getLayout = (

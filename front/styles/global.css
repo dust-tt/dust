@@ -62,18 +62,6 @@ main {
   }
 }
 
-.blinking-cursor > :not(pre):last-child::after {
-  content: "";
-  width: 8px;
-  height: 16px;
-  @apply bg-success-400;
-  display: inline-block;
-  @apply animate-cursor-blink;
-  margin-left: 5px;
-  position: relative;
-  top: 4px;
-}
-
 @keyframes shake {
   10%,
   90% {
@@ -141,10 +129,6 @@ main {
   animation: fade-collapse 500ms ease-out forwards;
 }
 
-.s-blinking-cursor > :not(pre):last-child::after {
-  /* ... existing code ... */
-}
-
 /* Privacy mask style for dd-privacy-mask elements - only when enabled */
 .privacy-mask-enabled .dd-privacy-mask {
   filter: blur(5px) !important;
@@ -158,4 +142,17 @@ main {
   .dark * {
     scrollbar-color: theme("colors.gray.700") theme("colors.gray.900");
   }
+}
+
+/* Remove this once we have migrated to tailwindcss v4 */
+.h-dvh {
+  height: 100dvh;
+}
+
+.min-h-dvh {
+  min-height: 100dvh;
+}
+
+.max-h-dvh {
+  max-height: 100dvh;
 }

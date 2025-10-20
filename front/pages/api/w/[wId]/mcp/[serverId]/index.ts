@@ -2,13 +2,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
+import type { CustomResourceIconType } from "@app/components/resources/resources_icons";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import type { CustomServerIconType } from "@app/lib/actions/mcp_icons";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { headersArrayToRecord } from "@app/types";
@@ -85,9 +86,12 @@ async function handler(
       const { serverType, id } = getServerTypeAndIdFromSId(serverId);
       switch (serverType) {
         case "internal": {
+          const systemSpace =
+            await SpaceResource.fetchWorkspaceSystemSpace(auth);
           const server = await InternalMCPServerInMemoryResource.fetchById(
             auth,
-            serverId
+            serverId,
+            systemSpace
           );
 
           if (!server) {
@@ -164,7 +168,7 @@ async function handler(
       if ("icon" in r.data) {
         if (server instanceof RemoteMCPServerResource) {
           const r2 = await server.updateMetadata(auth, {
-            icon: r.data.icon as CustomServerIconType | undefined,
+            icon: r.data.icon as CustomResourceIconType | undefined,
             lastSyncAt: new Date(),
           });
           if (r2.isErr()) {
@@ -244,10 +248,16 @@ async function handler(
     case "DELETE": {
       const { serverType } = getServerTypeAndIdFromSId(serverId);
 
+      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+
       const server =
         serverType == "remote"
           ? await RemoteMCPServerResource.fetchById(auth, serverId)
-          : await InternalMCPServerInMemoryResource.fetchById(auth, serverId);
+          : await InternalMCPServerInMemoryResource.fetchById(
+              auth,
+              serverId,
+              systemSpace
+            );
 
       if (!server) {
         return apiError(req, res, {

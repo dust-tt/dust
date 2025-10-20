@@ -36,21 +36,20 @@ interface ConversationMessageProps
   isDisabled?: boolean;
   name?: string;
   timestamp?: string;
+  completionStatus?: React.ReactNode;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
   infoChip?: React.ReactNode;
   type: ConversationMessageType;
 }
 
-export type ConversationMessageType = "user" | "agent" | "agentAsTool";
+export type ConversationMessageType = "user" | "agent";
 
 const messageVariants = cva("s-flex s-w-full s-flex-col s-rounded-2xl", {
   variants: {
     type: {
       user: "s-bg-muted-background dark:s-bg-muted-background-night s-px-5 s-py-4 s-gap-2",
       agent: "s-w-full s-gap-3",
-      agentAsTool:
-        "s-w-full s-gap-3 s-border s-border-border dark:s-border-border-night s-rounded-2xl s-px-5 s-py-5",
     },
   },
   defaultVariants: {
@@ -63,7 +62,6 @@ const buttonsVariants = cva("s-flex s-justify-start s-gap-2 s-pt-2", {
     type: {
       user: "s-justify-end",
       agent: "s-justify-start",
-      agentAsTool: "s-justify-start",
     },
   },
   defaultVariants: {
@@ -87,6 +85,7 @@ export const ConversationMessage = React.forwardRef<
       isDisabled = false,
       name,
       timestamp,
+      completionStatus,
       pictureUrl,
       renderName = (name) => <span>{name}</span>,
       infoChip,
@@ -103,11 +102,11 @@ export const ConversationMessage = React.forwardRef<
             avatarUrl={pictureUrl}
             name={name}
             timestamp={timestamp}
+            completionStatus={completionStatus}
             isBusy={avatarBusy}
             isDisabled={isDisabled}
             renderName={renderName}
             infoChip={infoChip}
-            type={type}
           />
 
           <ConversationMessageContent citations={citations} type={type}>
@@ -136,7 +135,7 @@ interface ConversationMessageContentProps
 export const ConversationMessageContent = React.forwardRef<
   HTMLDivElement,
   ConversationMessageContentProps
->(({ children, citations, className, type, ...props }, ref) => {
+>(({ children, citations, className, ...props }, ref) => {
   return (
     <div
       ref={ref}
@@ -146,13 +145,7 @@ export const ConversationMessageContent = React.forwardRef<
       )}
       {...props}
     >
-      <div
-        className={cn(
-          "s-text-sm @sm:s-text-base",
-          "s-text-foreground dark:s-text-foreground-night",
-          type !== "agentAsTool" && "@md:s-px-4"
-        )}
-      >
+      <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
         {children}
       </div>
       {citations && citations.length > 0 && (
@@ -171,9 +164,9 @@ interface ConversationMessageHeaderProps
   isDisabled?: boolean;
   name?: string;
   timestamp?: string;
+  completionStatus?: React.ReactNode;
   infoChip?: React.ReactNode;
   renderName: (name: string | null) => React.ReactNode;
-  type: ConversationMessageType;
 }
 
 export const ConversationMessageHeader = React.forwardRef<
@@ -188,7 +181,7 @@ export const ConversationMessageHeader = React.forwardRef<
       name = "",
       timestamp,
       infoChip,
-      type,
+      completionStatus,
       renderName,
       className,
       ...props
@@ -204,40 +197,31 @@ export const ConversationMessageHeader = React.forwardRef<
         )}
         {...props}
       >
-        {type !== "agentAsTool" && (
-          <>
-            <Avatar
-              className="@sm:s-hidden"
-              name={name}
-              visual={avatarUrl}
-              busy={isBusy}
-              disabled={isDisabled}
-              size="xs"
-            />
-            <Avatar
-              className="s-hidden @sm:s-flex"
-              name={name}
-              visual={avatarUrl}
-              busy={isBusy}
-              disabled={isDisabled}
-              size="sm"
-            />
-          </>
-        )}
-        <div className="s-flex s-w-full s-flex-row s-justify-between s-gap-0.5">
-          <div
-            className={cn(
-              "s-heading-sm @sm:s-text-base",
-              "s-text-foreground dark:s-text-foreground-night",
-              "s-flex s-flex-row s-items-center s-gap-2"
-            )}
-          >
-            {renderName(name)}
-            {infoChip}
-            <span className="s-text-xs s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <Avatar
+          className="@sm:s-hidden"
+          name={name}
+          visual={avatarUrl}
+          busy={isBusy}
+          disabled={isDisabled}
+          size="xs"
+        />
+        <Avatar
+          className="s-hidden @sm:s-flex"
+          name={name}
+          visual={avatarUrl}
+          busy={isBusy}
+          disabled={isDisabled}
+          size="sm"
+        />
+        <div className="s-inline-flex s-w-full s-justify-between s-gap-0.5">
+          <div className="s-inline-flex s-items-baseline s-gap-2 s-text-foreground dark:s-text-foreground-night">
+            <span className="s-heading-sm">{renderName(name)}</span>
+            <span className="s-heading-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
               {timestamp}
             </span>
+            {infoChip && infoChip}
           </div>
+          {completionStatus ?? null}
         </div>
       </div>
     );

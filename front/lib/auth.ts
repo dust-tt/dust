@@ -154,6 +154,28 @@ export class Authenticator {
     }));
   }
 
+  /**
+   * Converts an array of spaces sIDs into ResourcePermission objects.
+   *
+   * This utility method creates standard read/write permissions for each group of the spaces.
+   *
+   * Permission logic:
+   * - A user must belong to AT LEAST ONE group from EACH space.
+   *   Example: [space1, space2] means (group1-space1 OR group2-space1) AND (group1-space2 OR group2-space2)
+   *
+   * @param spaceIds - Array of spaces string identifiers
+   * @returns Array of ResourcePermission objects, one entry per sub-array
+   */
+  static createResourcePermissionsFromSpaceIds(
+    spaceIds: string[]
+  ): ResourcePermission[] {
+    // TODO(2025-10-17 thomas): Implement permissions based on spaces.
+    spaceIds.flatMap(() => {
+      return [];
+    });
+    throw new Error("Not implemented");
+  }
+
   static async userFromSession(
     session: SessionWithUser | null
   ): Promise<UserResource | null> {

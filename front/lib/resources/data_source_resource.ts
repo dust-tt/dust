@@ -38,6 +38,7 @@ import { DataSourceViewModel } from "./storage/models/data_source_view";
 export type FetchDataSourceOrigin =
   | "registry_lookup"
   | "v1_data_sources_search"
+  | "v1_data_sources_check_upsert_queue"
   | "v1_data_sources_documents"
   | "v1_data_sources_documents_document_get_or_upsert"
   | "v1_data_sources_documents_document_parents"

@@ -333,10 +333,10 @@ async function searchCallback(
   ]);
 }
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("data_sources_file_system");
 
   registerCatTool(auth, server, agentLoopContext, {
@@ -396,7 +396,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_FIND_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
       async ({
         query,
         dataSources,
@@ -501,7 +505,11 @@ const createServer = (
       SearchToolInputSchema.shape,
       withToolLogging(
         auth,
-        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        {
+          toolNameForMonitoring: SEARCH_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
         async (params) => searchCallback(auth, agentLoopContext, params)
       )
     );
@@ -540,7 +548,11 @@ const createServer = (
       },
       withToolLogging(
         auth,
-        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        {
+          toolNameForMonitoring: SEARCH_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
         async (params) =>
           searchCallback(auth, agentLoopContext, params, {
             tagsIn: params.tagsIn,
@@ -565,7 +577,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
       async ({ nodeId, dataSources }) => {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const fetchResult = await getAgentDataSourceConfigurations(
@@ -726,6 +742,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

@@ -14,6 +14,7 @@ export const blockquoteVariants = cva(
         surface: [
           "s-text-foreground dark:s-text-foreground-night",
           "s-bg-muted-background dark:s-bg-muted-background-night",
+          "s-border border-border dark:border-border-night",
         ],
       },
     },
@@ -45,7 +46,11 @@ export const MemoBlockquoteBlock = memo(
       : undefined;
 
     return (
-      <ContentBlockWrapper content={clipboardContent} className="s-my-2">
+      <ContentBlockWrapper
+        content={clipboardContent}
+        className="s-my-2"
+        buttonDisplay="inside"
+      >
         <blockquote className={blockquoteVariants({ variant })}>
           {children}
         </blockquote>

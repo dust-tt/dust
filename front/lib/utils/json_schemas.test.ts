@@ -6,8 +6,123 @@ import { describe, expect, it } from "vitest";
 
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ensurePathExists, setValueAtPath } from "@app/lib/utils/json_schemas";
 
 describe("JSON Schema Utilities", () => {
+  describe("ensurePathExists and setValueAtPath", () => {
+    it("should initialize intermediate objects based on path", () => {
+      const obj: Record<string, unknown> = {};
+
+      ensurePathExists(obj, ["filter", "stringParam"]);
+      setValueAtPath(obj, ["filter", "stringParam"], "test-value");
+
+      expect(obj).toEqual({
+        filter: {
+          stringParam: "test-value",
+        },
+      });
+    });
+
+    it("should initialize intermediate arrays based on path", () => {
+      const obj: Record<string, unknown> = {};
+
+      // ensurePathExists creates path up to (but not including) the last element
+      // So for path ["filter", "items", 0, "field"], it creates filter.items[0]
+      ensurePathExists(obj, ["filter", "items", 0, "field"]);
+      setValueAtPath(obj, ["filter", "items", 0, "field"], "test");
+
+      expect(obj).toEqual({
+        filter: {
+          items: [{ field: "test" }],
+        },
+      });
+    });
+
+    it("should handle array property named 'items' (like filter.items array)", () => {
+      // Real-world scenario: schema has filter.items as an array property
+      // Path ["filter", "items", 0, "field"] should create:
+      // - filter as object
+      // - items as array (because next key is 0, a number)
+      // - items[0] as object
+      // - field as the value
+      const obj: Record<string, unknown> = {};
+
+      ensurePathExists(obj, ["filter", "items", 0, "field"]);
+      setValueAtPath(obj, ["filter", "items", 0, "field"], "indicator-id");
+
+      expect(obj).toEqual({
+        filter: {
+          items: [
+            {
+              field: "indicator-id",
+            },
+          ],
+        },
+      });
+    });
+
+    it("should handle configuration storage path with double 'items' marker", () => {
+      // When iterateOverSchemaPropertiesRecursive processes an array property named "items",
+      // it generates path: ["filter", "items", "items", "field"]
+      // - first "items" is the actual property name
+      // - second "items" is the marker added for array element schema
+      // For configuration storage, this becomes nested objects (not actual arrays)
+      const obj: Record<string, unknown> = {};
+
+      ensurePathExists(obj, ["filter", "items", "items", "field"]);
+      setValueAtPath(obj, ["filter", "items", "items", "field"], {
+        value: "indicator-id",
+        mimeType: "application/vnd.dust.tool-input.string",
+      });
+
+      expect(obj).toEqual({
+        filter: {
+          items: {
+            items: {
+              field: {
+                value: "indicator-id",
+                mimeType: "application/vnd.dust.tool-input.string",
+              },
+            },
+          },
+        },
+      });
+    });
+
+    it("should handle multiple array indices", () => {
+      const obj: Record<string, unknown> = {};
+
+      // Set multiple items in the array
+      ensurePathExists(obj, ["items", 0, "name"]);
+      setValueAtPath(obj, ["items", 0, "name"], "first");
+
+      ensurePathExists(obj, ["items", 1, "name"]);
+      setValueAtPath(obj, ["items", 1, "name"], "second");
+
+      expect(obj).toEqual({
+        items: [{ name: "first" }, { name: "second" }],
+      });
+    });
+
+    it("should not overwrite existing values", () => {
+      const obj: Record<string, unknown> = {
+        filter: {
+          existingKey: "existing-value",
+        },
+      };
+
+      ensurePathExists(obj, ["filter", "newKey"]);
+      setValueAtPath(obj, ["filter", "newKey"], "new-value");
+
+      expect(obj).toEqual({
+        filter: {
+          existingKey: "existing-value",
+          newKey: "new-value",
+        },
+      });
+    });
+  });
+
   describe("findMatchingSchemaKeys", () => {
     it("should return property keys when properties match the target schema", () => {
       // Create a complex schema with nested properties
@@ -245,7 +360,7 @@ describe("JSON Schema Utilities", () => {
           },
           optionalTimeFrame:
             ConfigurableToolInputJSONSchemas[
-              INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+              INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
             ],
         },
         required: ["optionalString"],
@@ -253,7 +368,7 @@ describe("JSON Schema Utilities", () => {
 
       const r = findMatchingSubSchemas(
         mainSchema,
-        INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+        INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
       );
       expect(Object.keys(r)).toStrictEqual(["optionalTimeFrame"]);
     });

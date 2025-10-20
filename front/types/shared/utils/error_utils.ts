@@ -1,5 +1,7 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import { errorToString } from "@dust-tt/client";
+
 import { DustError } from "@app/lib/error";
-import { errorToString, normalizeError } from "@dust-tt/client";
 export { errorToString, normalizeError } from "@dust-tt/client";
 
 export function normalizeAsInternalDustError(

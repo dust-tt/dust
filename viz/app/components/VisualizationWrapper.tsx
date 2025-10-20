@@ -1,5 +1,6 @@
 "use client";
 
+import { isDevelopment } from "@viz/app/types";
 import type {
   CommandResultMap,
   VisualizationRPCCommand,
@@ -25,9 +26,10 @@ import * as shadcnAll from "@viz/components/ui";
 import * as lucideAll from "lucide-react";
 import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
 
-// Regular expression to capture the value inside a className attribute. This pattern assumes
-// double quotes for simplicity.
-const classNameRegex = /className\s*=\s*"([^"]*)"/g;
+// Regular expressions to capture the value inside a className attribute.
+// We check both double and single quotes separately to handle mixed usage.
+const classNameDoubleQuoteRegex = /className\s*=\s*"([^"]*)"/g;
+const classNameSingleQuoteRegex = /className\s*=\s*'([^']*)'/g;
 
 // Regular expression to capture Tailwind arbitrary values:
 // Matches a word boundary, then one or more lowercase letters or hyphens,
@@ -44,10 +46,20 @@ const arbitraryRegex = /\b[a-z-]+-\[[^\]]+\]/g;
  */
 function validateTailwindCode(code: string): void {
   const matches: string[] = [];
-  let classMatch: RegExpExecArray | null = null;
 
-  // Iterate through all occurrences of the className attribute in the code.
-  while ((classMatch = classNameRegex.exec(code)) !== null) {
+  // Check double-quoted className attributes
+  let classMatch: RegExpExecArray | null = null;
+  while ((classMatch = classNameDoubleQuoteRegex.exec(code)) !== null) {
+    const classContent = classMatch[1];
+    if (classContent) {
+      // Find all matching arbitrary values within the class attribute's value.
+      const arbitraryMatches = classContent.match(arbitraryRegex) || [];
+      matches.push(...arbitraryMatches);
+    }
+  }
+
+  // Check single-quoted className attributes
+  while ((classMatch = classNameSingleQuoteRegex.exec(code)) !== null) {
     const classContent = classMatch[1];
     if (classContent) {
       // Find all matching arbitrary values within the class attribute's value.
@@ -145,7 +157,9 @@ export function useVisualizationAPI(
       const messageHandler = (event: MessageEvent) => {
         if (!allowedOrigins.includes(event.origin)) {
           console.log(
-            `Ignored message from unauthorized origin: ${event.origin}, expected one of: ${allowedOrigins.join(", ")}`
+            `Ignored message from unauthorized origin: ${
+              event.origin
+            }, expected one of: ${allowedOrigins.join(", ")}`
           );
           return;
         }
@@ -153,7 +167,10 @@ export function useVisualizationAPI(
         // Validate message structure using zod.
         const validatedMessage = validateMessage(event.data);
         if (!validatedMessage) {
-          console.log("Invalid message format received:", event.data);
+          if (isDevelopment()) {
+            // Log to help debug the addition of new event types.
+            console.log("Invalid message format received:", event.data);
+          }
           return;
         }
 
@@ -255,6 +272,8 @@ export function VisualizationWrapperWithErrorBoundary({
       onErrored={(e) => {
         sendCrossDocumentMessage("setErrorMessage", {
           errorMessage: e instanceof Error ? e.message : `${e}`,
+          fileId: identifier,
+          isInteractiveContent: isFullHeight,
         });
       }}
     >
@@ -365,6 +384,15 @@ export function VisualizationWrapper({
         }
       } catch (err) {
         console.error("Failed to convert to Blob", err);
+        window.parent.postMessage(
+          {
+            type: "EXPORT_ERROR",
+            identifier,
+            errorMessage:
+              "Failed to export as PNG. This can happen when the content references external images.",
+          },
+          "*"
+        );
       }
     }
   }, [ref, downloadFile, identifier]);
@@ -381,6 +409,15 @@ export function VisualizationWrapper({
         await downloadFile(blob, `visualization-${identifier}.svg`);
       } catch (err) {
         console.error("Failed to convert to Blob", err);
+        window.parent.postMessage(
+          {
+            type: "EXPORT_ERROR",
+            identifier,
+            errorMessage:
+              "Failed to export as SVG. This can happen when the content references external images.",
+          },
+          "*"
+        );
       }
     }
   }, [ref, downloadFile, identifier]);
@@ -430,25 +467,25 @@ export function VisualizationWrapper({
       }`}
     >
       {!isFullHeight && (
-        <div className="flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
+        <div className='flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50'>
           <button
             onClick={handleScreenshotDownload}
-            title="Download screenshot"
-            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
+            title='Download screenshot'
+            className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
           >
             Png
           </button>
           <button
             onClick={handleSVGDownload}
-            title="Download SVG"
-            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
+            title='Download SVG'
+            className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
           >
             Svg
           </button>
           <button
-            title="Show code"
+            title='Show code'
             onClick={handleDisplayCode}
-            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
+            className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
           >
             Code
           </button>
@@ -484,7 +521,9 @@ export function makeSendCrossDocumentMessage({
       const messageUniqueId = Math.random().toString();
       const listener = (event: MessageEvent) => {
         if (!allowedOrigins.includes(event.origin)) {
-          console.log(`Ignored message from unauthorized origin: ${event.origin}`);
+          console.log(
+            `Ignored message from unauthorized origin: ${event.origin}`
+          );
           // Simply ignore messages from unauthorized origins.
           return;
         }

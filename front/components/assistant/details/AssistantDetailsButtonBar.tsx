@@ -24,7 +24,10 @@ import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { getAgentBuilderRoute, getAgentRoute } from "@app/lib/utils/router";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+} from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder, normalizeError } from "@app/types";
@@ -79,6 +82,11 @@ export function AssistantDetailsButtonBar({
               ? StarIcon
               : StarStrokeIcon
           }
+          tooltip={
+            agentConfiguration.userFavorite || isFavoriteDisabled
+              ? "Remove from favorites"
+              : "Add to favorites"
+          }
           size="sm"
           className="group-hover:hidden"
           variant="outline"
@@ -88,6 +96,11 @@ export function AssistantDetailsButtonBar({
 
         <Button
           icon={StarIcon}
+          tooltip={
+            agentConfiguration.userFavorite || isFavoriteDisabled
+              ? "Remove from favorites"
+              : "Add to favorites"
+          }
           size="sm"
           className="hidden group-hover:block"
           variant="outline"
@@ -100,7 +113,8 @@ export function AssistantDetailsButtonBar({
         icon={ChatBubbleBottomCenterTextIcon}
         size="sm"
         variant="outline"
-        href={getAgentRoute(
+        tooltip="New conversation"
+        href={getConversationRoute(
           owner.sId,
           "new",
           `agent=${agentConfiguration.sId}`
@@ -111,6 +125,7 @@ export function AssistantDetailsButtonBar({
         !isRestrictedFromAgentCreation && (
           <Button
             size="sm"
+            tooltip="Edit agent"
             href={
               canEditAssistant
                 ? getAgentBuilderRoute(owner.sId, agentConfiguration.sId)

@@ -15,7 +15,7 @@ import {
 } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import * as t from "io-ts";
-import _ from "lodash";
+import { throttle } from "lodash";
 import slackifyMarkdown from "slackify-markdown";
 
 import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
@@ -25,12 +25,12 @@ import {
   makeToolValidationBlock,
   MAX_SLACK_MESSAGE_LENGTH,
 } from "@connectors/connectors/slack/chat/blocks";
-import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { annotateCitations } from "@connectors/lib/bot/citations";
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
@@ -131,16 +131,12 @@ async function streamAgentAnswerToSlack(
 
   let answer = "";
   const actions: AgentActionPublicType[] = [];
-  const debouncedPostSlackMessageUpdate = _.debounce(
-    postSlackMessageUpdate,
-    500,
-    { maxWait: 1500 }
-  );
+  const throttledPostSlackMessageUpdate = throttle(postSlackMessageUpdate, 500);
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "tool_params":
       case "tool_notification": {
-        await debouncedPostSlackMessageUpdate({
+        await throttledPostSlackMessageUpdate({
           messageUpdate: {
             isThinking: true,
             assistantName,
@@ -214,7 +210,7 @@ async function streamAgentAnswerToSlack(
             connector.workspaceId,
             conversation.sId
           );
-          await postSlackMessageUpdate({
+          await throttledPostSlackMessageUpdate({
             messageUpdate: {
               text:
                 "The agent took an action that requires personal authentication. " +
@@ -272,7 +268,7 @@ async function streamAgentAnswerToSlack(
         if (slackContent.length > MAX_SLACK_MESSAGE_LENGTH) {
           break;
         }
-        await debouncedPostSlackMessageUpdate({
+        await throttledPostSlackMessageUpdate({
           messageUpdate: {
             text: slackContent,
             assistantName,
@@ -297,6 +293,9 @@ async function streamAgentAnswerToSlack(
           finalAnswer,
           actions
         );
+        const files = actions.flatMap((action) => action.generatedFiles);
+        const filesUploaded = await getFilesFromDust(files, dustAPI);
+
         const slackContent = slackifyMarkdown(
           normalizeContentForSlack(formattedContent)
         );
@@ -311,24 +310,41 @@ async function streamAgentAnswerToSlack(
         if (shouldSplitMessage) {
           const splitMessages = splitContentForSlack(slackContent);
 
-          debouncedPostSlackMessageUpdate.cancel();
-          await postSlackMessageUpdate({
-            messageUpdate: {
-              text: splitMessages[0],
-              assistantName,
-              agentConfigurations,
-              footnotes,
-              conversationId: conversation.sId,
-              messageId,
-            },
-            ...conversationData,
-            canBeIgnored: false,
-            extraLogs: {
-              source: "streamAgentAnswerToSlack",
-              eventType: event.type,
-              shouldSplitMessage: "true",
-            },
-          });
+          throttledPostSlackMessageUpdate.cancel();
+
+          // If we have files, we need to delete and repost the message
+          if (filesUploaded.length > 0) {
+            await deleteAndRepostMessageWithFiles({
+              messageUpdate: {
+                text: splitMessages[0],
+                assistantName,
+                agentConfigurations,
+                footnotes,
+                conversationId: conversation.sId,
+                messageId,
+              },
+              ...conversationData,
+              uploadedFiles: filesUploaded,
+            });
+          } else {
+            await postSlackMessageUpdate({
+              messageUpdate: {
+                text: splitMessages[0],
+                assistantName,
+                agentConfigurations,
+                footnotes,
+                conversationId: conversation.sId,
+                messageId,
+              },
+              ...conversationData,
+              canBeIgnored: false,
+              extraLogs: {
+                source: "streamAgentAnswerToSlack",
+                eventType: event.type,
+                shouldSplitMessage: "true",
+              },
+            });
+          }
 
           // Post additional messages as thread replies
           if (splitMessages.length > 1) {
@@ -338,24 +354,40 @@ async function streamAgentAnswerToSlack(
             );
           }
         } else {
-          // Use normal single message update (with truncation if needed)
-          await postSlackMessageUpdate({
-            messageUpdate: {
-              text: slackContent,
-              assistantName,
-              agentConfigurations,
-              footnotes,
-              conversationId: conversation.sId,
-              messageId,
-            },
-            ...conversationData,
-            canBeIgnored: false,
-            extraLogs: {
-              source: "streamAgentAnswerToSlack",
-              eventType: event.type,
-              shouldSplitMessage: "false",
-            },
-          });
+          // If we have files, we need to delete and repost the message
+          if (filesUploaded.length > 0) {
+            await deleteAndRepostMessageWithFiles({
+              messageUpdate: {
+                text: slackContent,
+                assistantName,
+                agentConfigurations,
+                footnotes,
+                conversationId: conversation.sId,
+                messageId,
+              },
+              ...conversationData,
+              uploadedFiles: filesUploaded,
+            });
+          } else {
+            // Use normal single message update (with truncation if needed)
+            await postSlackMessageUpdate({
+              messageUpdate: {
+                text: slackContent,
+                assistantName,
+                agentConfigurations,
+                footnotes,
+                conversationId: conversation.sId,
+                messageId,
+              },
+              ...conversationData,
+              canBeIgnored: false,
+              extraLogs: {
+                source: "streamAgentAnswerToSlack",
+                eventType: event.type,
+                shouldSplitMessage: "false",
+              },
+            });
+          }
         }
         // Post ephemeral message with feedback buttons and agent selection
         if (
@@ -440,6 +472,76 @@ async function streamAgentAnswerToSlack(
   );
 }
 
+async function deleteAndRepostMessageWithFiles({
+  messageUpdate,
+  slack,
+  connector,
+  conversation,
+  mainMessage,
+  uploadedFiles,
+}: {
+  messageUpdate: SlackMessageUpdate;
+  slack: {
+    slackChannelId: string;
+    slackClient: WebClient;
+    slackMessageTs: string;
+    slackUserInfo: SlackUserInfo;
+    slackUserId: string | null;
+  };
+  connector: ConnectorResource;
+  conversation: ConversationPublicType;
+  mainMessage: ChatPostMessageResponse;
+  uploadedFiles: { file: Buffer; filename: string }[];
+}): Promise<void> {
+  const { slackChannelId, slackClient } = slack;
+  const conversationUrl = makeConversationUrl(
+    connector.workspaceId,
+    conversation.sId
+  );
+
+  // First post a new message with files
+  const response = await slackClient.filesUploadV2({
+    ...makeMessageUpdateBlocksAndText(
+      conversationUrl,
+      connector.workspaceId,
+      messageUpdate
+    ),
+    channel_id: slackChannelId,
+    file_uploads: uploadedFiles,
+    thread_ts: mainMessage.message?.thread_ts, // Preserve thread context if it exists
+  });
+
+  if (response?.error) {
+    logger.error(
+      {
+        provider: "slack",
+        connectorId: connector.id,
+        conversationId: conversation.sId,
+        err: response.error,
+      },
+      "Failed to repost Slack message with files."
+    );
+  }
+
+  // Then, delete the original message
+  try {
+    await slackClient.chat.delete({
+      channel: slackChannelId,
+      ts: mainMessage.ts as string,
+    });
+  } catch (error) {
+    logger.error(
+      {
+        provider: "slack",
+        connectorId: connector.id,
+        conversationId: conversation.sId,
+        err: error,
+      },
+      "Failed to delete original Slack message."
+    );
+  }
+}
+
 async function postSlackMessageUpdate({
   messageUpdate,
   slack,
@@ -482,6 +584,7 @@ async function postSlackMessageUpdate({
         ),
         channel: slackChannelId,
         ts: mainMessage.ts as string,
+        // Note: file_ids is not supported by chat.update API, so we need to delete and repost the message
       }),
     extraLogs
   );
@@ -643,4 +746,46 @@ async function getMessageSplittingFromFeatureFlag(
     );
     return false;
   }
+}
+
+async function getFilesFromDust(
+  files: Array<{
+    fileId: string;
+    title: string;
+    contentType: string;
+    snippet: string | null;
+    hidden?: boolean;
+  }>,
+  dustAPI: DustAPI
+): Promise<{ file: Buffer; filename: string }[]> {
+  const uploadPromises = files
+    .filter((file) => !file.hidden) // Skip hidden files
+    .map(async (file) => {
+      try {
+        const fileBuffer = await dustAPI.downloadFile({ fileID: file.fileId });
+        if (!fileBuffer || fileBuffer.isErr()) {
+          return null;
+        }
+        return {
+          file: fileBuffer.value,
+          filename: file.title,
+        };
+      } catch (error) {
+        logger.error(
+          {
+            fileId: file.fileId,
+            title: file.title,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Error downloading file from Dust"
+        );
+        return null;
+      }
+    });
+
+  const uploadResults = await Promise.all(uploadPromises);
+  return uploadResults.filter((result) => result !== null) as {
+    file: Buffer;
+    filename: string;
+  }[];
 }

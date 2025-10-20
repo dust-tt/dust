@@ -11,6 +11,7 @@ import { MarkdownStyleExtension } from "@app/components/assistant/conversation/i
 import { MentionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionExtension";
 import { MentionStorageExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
+import { PastedAttachmentExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
@@ -26,6 +27,7 @@ import { URLStorageExtension } from "./extensions/URLStorageExtension";
 export interface EditorMention {
   id: string;
   label: string;
+  description?: string;
 }
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
@@ -56,6 +58,12 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
   // If the node is a 'hardBreak' or a 'paragraph', add a newline character.
   if (node.type && ["hardBreak", "paragraph"].includes(node.type)) {
     textContent += "\n";
+  }
+
+  if (node.type === "pastedAttachment") {
+    const title = node.attrs?.title ?? "";
+    const fileId = node.attrs?.fileId ?? "";
+    textContent += `:pasted_attachment[${title}]{fileId=${fileId}}`;
   }
 
   // If the node has content, recursively get text and mentions from each child node
@@ -92,7 +100,15 @@ const useEditorService = (editor: Editor | null) => {
         editor?.chain().focus().insertContent(text).run();
       },
       // Insert mention helper function.
-      insertMention: ({ id, label }: { id: string; label: string }) => {
+      insertMention: ({
+        id,
+        label,
+        description,
+      }: {
+        id: string;
+        label: string;
+        description?: string;
+      }) => {
         const shouldAddSpaceBeforeMention =
           !editor?.isEmpty &&
           editor?.getText()[editor?.getText().length - 1] !== " ";
@@ -102,7 +118,7 @@ const useEditorService = (editor: Editor | null) => {
           .insertContent(shouldAddSpaceBeforeMention ? " " : "") // Add an extra space before the mention.
           .insertContent({
             type: "mention",
-            attrs: { id, label },
+            attrs: { id, label, description },
           })
           .insertContent(" ") // Add an extra space after the mention.
           .run();
@@ -179,6 +195,10 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.getText().trim();
       },
 
+      blur() {
+        return editor?.commands.blur();
+      },
+
       clearEditor() {
         return editor?.commands.clearContent();
       },
@@ -220,9 +240,14 @@ export interface CustomEditorProps {
     };
   };
   owner: WorkspaceType;
-  // If provided, large pasted text will be routed to this callback
-  onLongTextPaste?: (text: string) => void;
+  // If provided, large pasted text will be routed to this callback along with selection bounds
+  onLongTextPaste?: (payload: {
+    text: string;
+    from: number;
+    to: number;
+  }) => void;
   longTextPasteCharsThreshold?: number;
+  onInlineText?: (fileId: string, textContent: string) => void;
 }
 
 const useCustomEditor = ({
@@ -234,6 +259,7 @@ const useCustomEditor = ({
   owner,
   onLongTextPaste,
   longTextPasteCharsThreshold,
+  onInlineText,
 }: CustomEditorProps) => {
   const extensions = [
     StarterKit.configure({
@@ -260,6 +286,9 @@ const useCustomEditor = ({
     }),
     MarkdownStyleExtension,
     ParagraphExtension,
+    PastedAttachmentExtension.configure({
+      onInlineText,
+    }),
     URLStorageExtension,
   ];
   if (onUrlDetected) {
@@ -287,7 +316,8 @@ const useCustomEditor = ({
           return false;
         }
         if (isLongTextPaste(text, longTextPasteCharsThreshold)) {
-          onLongTextPaste(text);
+          const { from, to } = view.state.selection;
+          onLongTextPaste({ text, from, to });
           return true;
         }
         return false;

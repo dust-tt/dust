@@ -12,39 +12,10 @@ import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 export const CARD_VARIANTS = ["primary", "secondary", "tertiary"] as const;
-
 export type CardVariantType = (typeof CARD_VARIANTS)[number];
 
-const variantClasses: Record<CardVariantType, string> = {
-  primary: cn(
-    "s-bg-muted-background",
-    "s-border-border/0",
-    "dark:s-bg-muted-background-night",
-    "dark:s-border-border-night/0"
-  ),
-  secondary: cn(
-    "s-bg-background",
-    "s-border-border",
-    "dark:s-bg-background-night",
-    "dark:s-border-border-night"
-  ),
-  tertiary: cn(
-    "s-bg-background",
-    "s-border-border/0",
-    "dark:s-bg-background-night",
-    "dark:s-border-border-night/0"
-  ),
-};
-
-export const CARD_VARIANTS_SIZES = ["sm", "md", "lg"] as const;
-
-export type CardSizeType = (typeof CARD_VARIANTS_SIZES)[number];
-
-const sizeVariants: Record<CardSizeType, string> = {
-  sm: "s-p-3 s-rounded-xl",
-  md: "s-p-4 s-rounded-2xl",
-  lg: "s-p-5 s-rounded-3xl",
-};
+export const CARD_SIZES = ["sm", "md", "lg"] as const;
+export type CardSizeType = (typeof CARD_SIZES)[number];
 
 const interactiveClasses = cn(
   "s-cursor-pointer",
@@ -64,8 +35,31 @@ const cardVariants = cva(
   ),
   {
     variants: {
-      variant: variantClasses,
-      size: sizeVariants,
+      variant: {
+        primary: cn(
+          "s-bg-muted-background",
+          "s-border-border/0",
+          "dark:s-bg-muted-background-night",
+          "dark:s-border-border-night/0"
+        ),
+        secondary: cn(
+          "s-bg-background",
+          "s-border-border",
+          "dark:s-bg-background-night",
+          "dark:s-border-border-night"
+        ),
+        tertiary: cn(
+          "s-bg-background",
+          "s-border-border/0",
+          "dark:s-bg-background-night",
+          "dark:s-border-border-night/0"
+        ),
+      },
+      size: {
+        sm: "s-p-3 s-rounded-xl",
+        md: "s-p-4 s-rounded-2xl",
+        lg: "s-p-5 s-rounded-3xl",
+      },
     },
     defaultVariants: {
       variant: "primary",

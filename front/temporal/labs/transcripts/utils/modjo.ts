@@ -212,7 +212,7 @@ export async function retrieveModjoTranscripts(
 
   const fileIdsToProcess: string[] = [];
   let page = 1;
-  const perPage = 50;
+  const perPage = 15;
 
   let hasMorePages = true;
   while (hasMorePages) {

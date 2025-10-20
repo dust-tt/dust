@@ -1,16 +1,16 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import {
-  makeInternalMCPServer,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import { Err, Ok } from "@app/types";
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("missing_action_catcher");
   if (agentLoopContext) {
     const actionName = agentLoopContext.runContext
@@ -21,29 +21,42 @@ const createServer = (
       throw new Error("No action name found");
     }
 
-    server.tool(actionName, "", {}, async () => {
-      return makeMCPToolTextError(
-        `Tool "${actionName}" not found. ` +
-          "This answer to the function call is a catch-all. " +
-          "Please verify that the function name is correct : " +
-          "pay attention to case sensitivity and separators between words in the name. " +
-          "It's safe to retry automatically with another name."
-      );
-    });
+    server.tool(
+      actionName,
+      "",
+      {},
+      withToolLogging(
+        auth,
+        { toolNameForMonitoring: "tool_not_found", agentLoopContext },
+        async () => {
+          return new Err(
+            new MCPError(
+              `Tool "${actionName}" not found. ` +
+                "This answer to the function call is a catch-all. " +
+                "Please verify that the function name is correct : " +
+                "pay attention to case sensitivity and separators between words in the name. " +
+                "It's safe to retry automatically with another name.",
+              { tracked: false }
+            )
+          );
+        }
+      )
+    );
   } else {
     server.tool(
       "placeholder_tool",
       "This tool is a placeholder to catch missing actions.",
       {},
-      async () => {
-        return {
-          isError: false,
-          content: [{ type: "text", text: "No action name found" }],
-        };
-      }
+      withToolLogging(
+        auth,
+        { toolNameForMonitoring: "placeholder_tool", agentLoopContext },
+        async () => {
+          return new Ok([{ type: "text", text: "No action name found" }]);
+        }
+      )
     );
   }
   return server;
-};
+}
 
 export default createServer;

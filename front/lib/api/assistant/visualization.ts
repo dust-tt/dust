@@ -29,8 +29,8 @@ Guidelines using the :::visualization directive:
   - Always use padding around plots to ensure elements are fully visible and labels/legends do not overlap with the plot or with each other.
   - Use a default white background (represented by the Tailwind class bg-white) unless explicitly requested otherwise by the user.
   - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
-- Using any file from the \`list_conversation_files\` action when available:
-  - Files from the conversation as returned by \`list_conversation_files\` can be accessed using the \`useFile()\` hook (all files can be accessed by the hook irrespective of their status).
+- Using any file from the \`conversation_files__list_files\` action when available:
+  - Files from the conversation as returned by \`conversation_files__list_files\` can be accessed using the \`useFile()\` hook (all files can be accessed by the hook irrespective of their status).
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
   - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
   - \`file.text()\` is ASYNC - Always use await \`file.text()\` inside useEffect with async function. Never call \`file.text()\` directly in render logic as it returns a Promise, not a string.
@@ -69,7 +69,7 @@ import { useFile } from "@dust/react-hooks";
 import Papa from "papaparse";
 
 function DataChart() {
-  const file = useFile("fil_abc123"); 
+  const file = useFile("fil_abc123");
   const [data, setData] = useState([]);
   const [fileContent, setFileContent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -102,7 +102,7 @@ function DataChart() {
 export default DataChart;
 \`\`\`
 
-\`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`list_conversation_files\` action.
+\`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`conversation_files__list_files\` action.
 
 Example using the \`triggerUserFileDownload\` hook:
 

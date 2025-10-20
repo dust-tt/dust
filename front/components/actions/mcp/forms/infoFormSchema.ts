@@ -8,13 +8,9 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { HeaderRow } from "@app/types";
 import { sanitizeHeadersArray } from "@app/types";
 
-export type InfoFormValues = {
-  name: string;
-  description: string;
-  icon?: string;
-  sharedSecret?: string;
-  customHeaders?: HeaderRow[] | null;
-};
+import type { ServerSettings } from "./mcpServerFormSchema";
+
+export type InfoFormValues = ServerSettings;
 
 export function getInfoFormDefaults(view: MCPServerViewType): InfoFormValues {
   const baseDefaultValues = {

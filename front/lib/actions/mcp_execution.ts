@@ -1,4 +1,5 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { extname } from "path";
 import type { Logger } from "pino";
 
 import {
@@ -225,14 +226,19 @@ export async function processToolResults(
             isSupportedFileContentType(block.resource.mimeType)
           ) {
             if (isBlobResource(block)) {
-              const fileName = isResourceWithName(block)
-                ? block.name
-                : `generated-file-${Date.now()}${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0]}`;
+              const extensionFromContentType =
+                extensionsForContentType(
+                  block.resource.mimeType as SupportedFileContentType
+                )[0] || "";
+              const extensionFromURI = extname(block.resource.uri);
+              const fileName = extensionFromURI
+                ? block.resource.uri
+                : `${block.resource.uri}${extensionFromContentType}`;
 
               return handleBase64Upload(auth, {
                 base64Data: block.resource.blob,
                 mimeType: block.resource.mimeType,
-                fileName,
+                fileName: fileName,
                 block,
                 fileUseCase,
                 fileUseCaseMetadata,

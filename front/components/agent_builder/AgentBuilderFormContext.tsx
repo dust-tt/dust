@@ -4,11 +4,9 @@ import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
 import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
-import {
-  MODEL_IDS,
-  MODEL_PROVIDER_IDS,
-  REASONING_EFFORT_IDS,
-} from "@app/types/assistant/assistant";
+import { MODEL_IDS } from "@app/types/assistant/models/models";
+import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import { REASONING_EFFORT_IDS } from "@app/types/assistant/models/reasoning";
 
 const modelIdSchema = z.enum(MODEL_IDS);
 const providerIdSchema = z.enum(MODEL_PROVIDER_IDS);
@@ -100,7 +98,7 @@ const baseActionSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
-  configurable: z.boolean().optional(),
+  configurationRequired: z.boolean().optional(),
 });
 
 const TAG_KINDS = z.union([z.literal("standard"), z.literal("protected")]);
@@ -196,6 +194,8 @@ const scheduleConfigSchema = z.object({
 
 const webhookConfigSchema = z.object({
   includePayload: z.boolean(),
+  event: z.string().optional(),
+  filter: z.string().optional(),
 });
 
 const webhookTriggerSchema = z.object({
@@ -248,7 +248,9 @@ export const agentBuilderFormSchema = z.object({
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
   actions: z.array(actionSchema),
-  triggers: z.array(triggerSchema),
+  triggersToCreate: z.array(triggerSchema),
+  triggersToUpdate: z.array(triggerSchema),
+  triggersToDelete: z.array(z.string()),
   maxStepsPerRun: z
     .number()
     .min(1, "Max steps per run must be at least 1")

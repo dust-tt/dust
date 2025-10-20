@@ -10,10 +10,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { decrypt, Err, Ok } from "@app/types";
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("openai_usage");
 
   const makeOpenAIRequest = async (
@@ -45,15 +45,24 @@ const createServer = (
       const errorBody = await response.text();
       if (response.status === 401) {
         throw new MCPError(
-          "Invalid OpenAI Admin API key. Ensure you're using an admin key (starts with sk-admin-), not a regular API key."
+          "Invalid OpenAI Admin API key. Ensure you're using an admin key (starts with sk-admin-), not a regular API key.",
+          {
+            tracked: false,
+          }
         );
       } else if (response.status === 403) {
         throw new MCPError(
-          "Insufficient permissions. This endpoint requires an OpenAI Admin API key with usage.read scope."
+          "Insufficient permissions. This endpoint requires an OpenAI Admin API key with usage.read scope.",
+          {
+            tracked: false,
+          }
         );
       } else if (response.status === 429) {
         throw new MCPError(
-          "OpenAI API rate limit exceeded. Please try again later."
+          "OpenAI API rate limit exceeded. Please try again later.",
+          {
+            tracked: false,
+          }
         );
       }
       throw new MCPError(`OpenAI API error (${response.status}): ${errorBody}`);
@@ -128,7 +137,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "get_completions_usage", agentLoopContext },
+      { toolNameForMonitoring: "openai_usage", agentLoopContext },
       async (params) => {
         const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
         if (
@@ -138,7 +147,10 @@ const createServer = (
         ) {
           return new Err(
             new MCPError(
-              "OpenAI Admin API key not configured. Please configure a secret containing an admin key in the agent settings."
+              "OpenAI Admin API key not configured. Please configure a secret containing an admin key in the agent settings.",
+              {
+                tracked: false,
+              }
             )
           );
         }
@@ -156,7 +168,10 @@ const createServer = (
         if (!adminApiKey) {
           return new Err(
             new MCPError(
-              "OpenAI Admin API key not found in workspace secrets. Please check the secret configuration."
+              "OpenAI Admin API key not found in workspace secrets. Please check the secret configuration.",
+              {
+                tracked: false,
+              }
             )
           );
         }
@@ -164,7 +179,10 @@ const createServer = (
         if (!adminApiKey.startsWith("sk-admin-")) {
           return new Err(
             new MCPError(
-              "This endpoint requires an OpenAI Admin API key (starts with sk-admin-), not a regular API key."
+              "This endpoint requires an OpenAI Admin API key (starts with sk-admin-), not a regular API key.",
+              {
+                tracked: false,
+              }
             )
           );
         }
@@ -182,7 +200,10 @@ const createServer = (
           if (limit > rule.max) {
             return new Err(
               new MCPError(
-                `Limit ${limit} exceeds maximum allowed for bucket_width=${params.bucket_width}. Maximum is ${rule.max}.`
+                `Limit ${limit} exceeds maximum allowed for bucket_width=${params.bucket_width}. Maximum is ${rule.max}.`,
+                {
+                  tracked: false,
+                }
               )
             );
           }
@@ -277,7 +298,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "get_organization_costs", agentLoopContext },
+      { toolNameForMonitoring: "openai_usage", agentLoopContext },
       async (params) => {
         const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
         if (
@@ -287,7 +308,10 @@ const createServer = (
         ) {
           return new Err(
             new MCPError(
-              "OpenAI Admin API key not configured. Please configure a secret containing an admin key in the agent settings."
+              "OpenAI Admin API key not configured. Please configure a secret containing an admin key in the agent settings.",
+              {
+                tracked: false,
+              }
             )
           );
         }
@@ -305,7 +329,10 @@ const createServer = (
         if (!adminApiKey) {
           return new Err(
             new MCPError(
-              "OpenAI Admin API key not found in workspace secrets. Please check the secret configuration."
+              "OpenAI Admin API key not found in workspace secrets. Please check the secret configuration.",
+              {
+                tracked: false,
+              }
             )
           );
         }
@@ -313,7 +340,10 @@ const createServer = (
         if (!adminApiKey.startsWith("sk-admin-")) {
           return new Err(
             new MCPError(
-              "This endpoint requires an OpenAI Admin API key (starts with sk-admin-), not a regular API key."
+              "This endpoint requires an OpenAI Admin API key (starts with sk-admin-), not a regular API key.",
+              {
+                tracked: false,
+              }
             )
           );
         }
@@ -363,6 +393,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

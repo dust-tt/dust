@@ -17,7 +17,7 @@ import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
   ModelId,
@@ -621,12 +621,13 @@ export async function getAssistantsUsageData(
              MAX(CAST(ac."createdAt" AS DATE))  AS "lastEdit"
       FROM "agent_messages" a
              JOIN "messages" m ON a."id" = m."agentMessageId"
-             JOIN "messages" parent ON m."parentId" = parent."id"
-             JOIN "user_messages" um ON um."id" = parent."userMessageId"
-             JOIN "users" u ON um."userId" = u."id"
+             LEFT JOIN "messages" parent ON m."parentId" = parent."id"
+             LEFT JOIN "user_messages" um ON um."id" = parent."userMessageId"
+             LEFT JOIN "users" u ON um."userId" = u."id"
              JOIN "agent_configurations" ac ON a."agentConfigurationId" = ac."sId"
              JOIN "users" aut ON ac."authorId" = aut."id"
-      WHERE a."createdAt" BETWEEN :startDate AND :endDate
+      WHERE a."status" = 'succeeded'
+        AND a."createdAt" BETWEEN :startDate AND :endDate
         AND ac."workspaceId" = :wId
         AND ac."status" = 'active'
         AND ac."scope" != 'hidden'
@@ -699,9 +700,10 @@ function reconstructConversationUrl(
   workspace: WorkspaceType,
   conversationId: string
 ) {
-  return getAgentRoute(
+  return getConversationRoute(
     workspace.sId,
     conversationId,
+    undefined,
     config.getClientFacingUrl()
   );
 }

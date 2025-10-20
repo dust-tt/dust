@@ -19,7 +19,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   AgentMention,
   MentionType,
@@ -38,18 +38,21 @@ export function HelpDropdown({
   const router = useRouter();
   const sendNotification = useSendNotification();
 
-  const { setSelectedAssistant, setAnimate } = useContext(InputBarContext);
+  const { setSelectedAssistant } = useContext(InputBarContext);
 
   const handleAskHelp = () => {
-    if (router.pathname === "/w/[wId]/agent/[cId]") {
-      // If we're on /agent/new page, we just set the selected agent on top of what's already there in the input bar if any.
+    if (router.pathname === "/w/[wId]/conversation/[cId]") {
+      // If we're on /conversation/new page, we just set the selected agent on top of what's already there in the input bar if any.
       // This allows to not lose your potential input when you click on the help button.
       setSelectedAssistant({ configurationId: GLOBAL_AGENTS_SID.HELPER });
-      setAnimate(true);
     } else {
       // Otherwise we just push the route and prefill the input bar with the @help mention.
       void router.push(
-        getAgentRoute(owner.sId, "new", `agent=${GLOBAL_AGENTS_SID.HELPER}`)
+        getConversationRoute(
+          owner.sId,
+          "new",
+          `agent=${GLOBAL_AGENTS_SID.HELPER}`
+        )
       );
     }
   };

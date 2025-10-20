@@ -3,12 +3,9 @@ import {
   BracesIcon,
   Button,
   ExternalLinkIcon,
-  HistoryIcon,
-  Icon,
   IconButton,
   ListCheckIcon,
   SearchInput,
-  Tooltip,
   Tree,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
@@ -16,7 +13,7 @@ import React, { useCallback, useContext, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
 import type { APIError, ContentNode } from "@app/types";
 
 const unselectedChildren = (
@@ -149,9 +146,9 @@ function ContentNodeTreeChildren({
     isLoadingMore,
   } = useResourcesHook(parentId);
 
-  const filteredNodes = resources.filter(
-    (n) => filter.trim().length === 0 || n.title.includes(filter)
-  );
+  const filteredNodes = resources
+    .filter((n) => filter.trim().length === 0 || n.title.includes(filter))
+    .sort((a, b) => a.title.localeCompare(b.title));
 
   const getCheckedState = useCallback(
     (node: ContentNode) => {
@@ -205,7 +202,7 @@ function ContentNodeTreeChildren({
         filteredNodes.length === 0 &&
         (emptyComponent ?? <Tree.Empty label="No documents" />)}
 
-      {filteredNodes.map((n, i) => {
+      {filteredNodes.map((n) => {
         const checkedState = getCheckedState(n);
         return (
           <Tree.Item
@@ -264,22 +261,6 @@ function ContentNodeTreeChildren({
                     variant="outline"
                   />
                 )}
-                {n.lastUpdatedAt ? (
-                  <Tooltip
-                    label={
-                      <span>{new Date(n.lastUpdatedAt).toLocaleString()}</span>
-                    }
-                    side={i === 0 ? "bottom" : "top"}
-                    trigger={
-                      <div className="flex flex-row gap-1 text-gray-600">
-                        <Icon visual={HistoryIcon} size="xs" />
-                        <span className="text-xs">
-                          {timeAgoFrom(n.lastUpdatedAt)} ago
-                        </span>
-                      </div>
-                    }
-                  />
-                ) : null}
                 {onDocumentViewClick && (
                   <IconButton
                     size="xs"

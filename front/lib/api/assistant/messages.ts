@@ -119,6 +119,32 @@ export async function generateParsedContents(
   return parsedContents;
 }
 
+// Ensure at least one whitespace boundary between adjacent text fragments when
+// reconstructing content from step contents. If neither the previous fragment
+// ends with whitespace nor the next fragment starts with whitespace, insert a
+// single "\n" between them. This avoids words being concatenated across step
+// boundaries without altering content that already contains spacing.
+function interleaveConditionalNewlines(parts: string[]): string[] {
+  if (parts.length === 0) {
+    return [];
+  }
+  const out: string[] = [];
+  out.push(parts[0]);
+  for (let i = 1; i < parts.length; i++) {
+    const prev = parts[i - 1];
+    const curr = parts[i];
+    const prevLast = prev.length ? prev[prev.length - 1] : "";
+    const currFirst = curr.length ? curr[0] : "";
+    const prevEndsWs = /\s/.test(prevLast);
+    const currStartsWs = /\s/.test(currFirst);
+    if (!prevEndsWs && !currStartsWs) {
+      out.push("\n");
+    }
+    out.push(curr);
+  }
+  return out;
+}
+
 async function batchRenderUserMessages(
   auth: Authenticator,
   messages: Message[]
@@ -187,7 +213,8 @@ async function batchRenderUserMessages(
         origin: userMessage.userContextOrigin,
         originMessageId: userMessage.userContextOriginMessageId,
         clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
-        lastTriggerRunAt: userMessage.userContextLastTriggerRunAt,
+        lastTriggerRunAt:
+          userMessage.userContextLastTriggerRunAt?.getTime() ?? null,
       },
     } satisfies UserMessageType;
     return m;
@@ -260,6 +287,10 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       },
       {} as Record<string, AgentStepContentResource[]>
     );
+
+  // Create maps for efficient lookups
+  const messagesBySId = new Map(messages.map((m) => [m.sId, m]));
+  const messagesById = new Map(messages.map((m) => [m.id, m]));
 
   // The only async part here is the content parsing, but it's "fake async" as the content parsing is not doing
   // any IO or network. We need it to be async as we want to re-use the async generators for the content parsing.
@@ -339,10 +370,13 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
 
       const { content, chainOfThought } = await (async () => {
+        const textFragments = interleaveConditionalNewlines(
+          textContents.map((c) => c.content.value)
+        );
+
         if (reasoningContents.length > 0) {
-          // don't use the content parser, we just use raw contents and native CoT
           return {
-            content: textContents.map((c) => c.content.value).join(""),
+            content: textFragments.join(""),
             chainOfThought: reasoningContents
               .map((sc) => sc.content.value.reasoning)
               .filter((r) => !!r)
@@ -354,15 +388,31 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
             message.sId,
             getDelimitersConfiguration({ agentConfiguration })
           );
-          const parsedContent = await contentParser.parseContents(
-            textContents.map((r) => r.content.value)
-          );
+          const parsedContent =
+            await contentParser.parseContents(textFragments);
           return {
             content: parsedContent.content,
             chainOfThought: parsedContent.chainOfThought,
           };
         }
       })();
+
+      const parentMessage = message.parentId
+        ? messagesById.get(message.parentId) ?? null
+        : null;
+
+      let parentAgentMessage: Message | null = null;
+      if (
+        parentMessage &&
+        parentMessage?.userMessage &&
+        parentMessage.userMessage.userContextOrigin === "agent_handover" &&
+        parentMessage.userMessage.userContextOriginMessageId
+      ) {
+        parentAgentMessage =
+          messagesBySId.get(
+            parentMessage.userMessage.userContextOriginMessageId
+          ) ?? null;
+      }
 
       const m = {
         id: message.id,
@@ -374,8 +424,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         visibility: message.visibility,
         version: message.version,
         rank: message.rank,
-        parentMessageId:
-          messages.find((m) => m.id === message.parentId)?.sId ?? null,
+        parentMessageId: parentMessage?.sId ?? null,
+        parentAgentMessageId: parentAgentMessage?.sId ?? null,
         status: agentMessage.status,
         actions,
         content,
@@ -641,6 +691,7 @@ export function canReadMessage(
   auth: Authenticator,
   message: AgentMessageType | LightAgentMessageType
 ) {
+  // TODO(2025-10-17 thomas): Update permission to use space requirements.
   return auth.canRead(
     Authenticator.createResourcePermissionsFromGroupIds(
       message.configuration.requestedGroupIds
@@ -651,13 +702,15 @@ export function canReadMessage(
 export async function fetchMessageInConversation(
   auth: Authenticator,
   conversation: ConversationWithoutContentType,
-  messageId: string
+  messageId: string,
+  version?: number
 ) {
   return Message.findOne({
     where: {
       conversationId: conversation.id,
       sId: messageId,
       workspaceId: auth.getNonNullableWorkspace()?.id,
+      ...(version ? { version } : {}),
     },
     include: [
       {

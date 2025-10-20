@@ -26,11 +26,15 @@ import {
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
-import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
-import { getCitationIcon } from "@app/components/markdown/MarkdownCitation";
+import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
+import { getCitationIcon } from "@app/components/markdown/MCPReferenceCitation";
+import {
+  getMentionPlugin,
+  mentionDirective,
+} from "@app/components/markdown/MentionBlock";
+import { getIcon } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getIcon } from "@app/lib/actions/mcp_icons";
 import {
   isAgentPauseOutputResourceType,
   isRunAgentChainOfThoughtProgressOutput,
@@ -44,6 +48,7 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
+import type { AllSupportedFileContentType } from "@app/types";
 
 export function MCPRunAgentActionDetails({
   lastNotification,
@@ -72,13 +77,10 @@ export function MCPRunAgentActionDetails({
     disabled: addedMCPServerViewIds.length === 0,
   });
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const queryResource = toolOutput?.find(isRunAgentQueryResourceType) || null;
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const resultResource = toolOutput?.find(isRunAgentResultResourceType) || null;
+  const queryResource = toolOutput?.find(isRunAgentQueryResourceType) ?? null;
+  const resultResource = toolOutput?.find(isRunAgentResultResourceType) ?? null;
   const handoverResource =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    toolOutput?.find(isAgentPauseOutputResourceType) || null;
+    toolOutput?.find(isAgentPauseOutputResourceType) ?? null;
 
   const generatedFiles =
     toolOutput
@@ -94,7 +96,7 @@ export function MCPRunAgentActionDetails({
   >(null);
   const [streamedResponse, setStreamedResponse] = useState<string | null>(null);
   const [activeReferences, setActiveReferences] = useState<
-    { index: number; document: MarkdownCitation }[]
+    { index: number; document: MCPReferenceCitation }[]
   >([]);
 
   useEffect(() => {
@@ -140,10 +142,7 @@ export function MCPRunAgentActionDetails({
   });
 
   const isBusy = useMemo(() => {
-    if (resultResource) {
-      return false;
-    }
-    return true;
+    return !resultResource;
   }, [resultResource]);
 
   const isStreamingChainOfThought = useMemo(() => {
@@ -165,7 +164,7 @@ export function MCPRunAgentActionDetails({
     if (!resultResource?.resource.refs) {
       return {};
     }
-    const markdownCitations: { [key: string]: MarkdownCitation } = {};
+    const mcpReferenceCitations: { [key: string]: MCPReferenceCitation } = {};
     Object.entries(resultResource.resource.refs).forEach(([key, citation]) => {
       const IconComponent = getCitationIcon(
         citation.provider,
@@ -173,32 +172,35 @@ export function MCPRunAgentActionDetails({
         undefined,
         citation.href
       );
-      markdownCitations[key] = {
+      mcpReferenceCitations[key] = {
+        contentType: citation.mimeType as AllSupportedFileContentType,
         title: citation.title,
         href: citation.href,
         description: citation.description,
         icon: <IconComponent />,
+        fileId: key,
       };
     });
-    return markdownCitations;
+    return mcpReferenceCitations;
   }, [resultResource, isDark]);
 
-  const updateActiveReferences = (doc: MarkdownCitation, index: number) => {
+  const updateActiveReferences = (doc: MCPReferenceCitation, index: number) => {
     const existingIndex = activeReferences.find((r) => r.index === index);
     if (!existingIndex) {
       setActiveReferences([...activeReferences, { index, document: doc }]);
     }
   };
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective()],
+    () => [getCiteDirective(), mentionDirective],
     []
   );
 
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       sup: CiteBlock,
+      mention: getMentionPlugin(owner),
     }),
-    []
+    [owner]
   );
 
   if (!childAgent) {
@@ -224,13 +226,11 @@ export function MCPRunAgentActionDetails({
       }
     >
       {viewType === "conversation" ? (
-        <>
-          {query && (
-            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              {query}
-            </div>
-          )}
-        </>
+        query && (
+          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+            {query}
+          </div>
+        )
       ) : (
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <div className="flex flex-col gap-4">
@@ -271,121 +271,125 @@ export function MCPRunAgentActionDetails({
             )}
             {handoverResource && (
               <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                <ContentMessage title="Handover" variant="primary" size="lg">
-                  {handoverResource.resource.text}
+                <ContentMessage title="Handoff" variant="primary" size="lg">
+                  <Markdown
+                    content={handoverResource.resource.text}
+                    additionalMarkdownPlugins={additionalMarkdownPlugins}
+                    additionalMarkdownComponents={additionalMarkdownComponents}
+                  />
                 </ContentMessage>
               </div>
             )}
             {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
             {childAgent && (chainOfThought || response) && (
-              <CollapsibleComponent
-                rootProps={{ defaultOpen: true }}
-                triggerChildren={
-                  <div className="flex w-full items-center gap-4">
-                    <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+              <div className="relative">
+                {conversationUrl && (
+                  <div className="absolute right-0">
+                    <Button
+                      icon={ExternalLinkIcon}
+                      label="View full conversation"
+                      variant="outline"
+                      onClick={() => window.open(conversationUrl, "_blank")}
+                      size="xs"
+                      className="!p-1"
+                    />
+                  </div>
+                )}
+                <CollapsibleComponent
+                  rootProps={{ defaultOpen: true }}
+                  triggerChildren={
+                    <span className="p-1 text-sm font-semibold text-foreground dark:text-foreground-night">
                       @{childAgent.name}'s Answer
                     </span>
-                    <div className="ml-auto">
-                      {conversationUrl && (
-                        <Button
-                          icon={ExternalLinkIcon}
-                          label="View full conversation"
-                          variant="outline"
-                          onClick={() => window.open(conversationUrl, "_blank")}
-                          size="xs"
-                          className="!p-1"
-                        />
-                      )}
-                    </div>
-                  </div>
-                }
-                contentChildren={
-                  <div className="flex flex-col gap-4">
-                    {chainOfThought && (
-                      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                        <ContentMessage
-                          title="Agent thoughts"
-                          variant="primary"
-                          size="lg"
-                        >
-                          <Markdown
-                            content={chainOfThought}
-                            isStreaming={isStreamingChainOfThought}
-                            forcedTextSize="text-sm"
-                            textColor="text-muted-foreground"
-                            isLastMessage={false}
-                          />
-                        </ContentMessage>
-                      </div>
-                    )}
-                    {response && (
-                      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                        <ContentMessage
-                          title="Response"
-                          variant="primary"
-                          size="lg"
-                        >
-                          <CitationsContext.Provider
-                            value={{
-                              references,
-                              updateActiveReferences,
-                            }}
+                  }
+                  contentChildren={
+                    <div className="flex flex-col gap-4">
+                      {chainOfThought && (
+                        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                          <ContentMessage
+                            title="Agent thoughts"
+                            variant="primary"
+                            size="lg"
                           >
                             <Markdown
-                              content={response}
-                              isStreaming={isStreamingResponse}
+                              content={chainOfThought}
+                              isStreaming={isStreamingChainOfThought}
                               forcedTextSize="text-sm"
                               textColor="text-muted-foreground"
                               isLastMessage={false}
-                              additionalMarkdownPlugins={
-                                additionalMarkdownPlugins
-                              }
-                              additionalMarkdownComponents={
-                                additionalMarkdownComponents
-                              }
                             />
-                          </CitationsContext.Provider>
+                          </ContentMessage>
+                        </div>
+                      )}
+                      {response && (
+                        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                          <ContentMessage
+                            title="Response"
+                            variant="primary"
+                            size="lg"
+                          >
+                            <CitationsContext.Provider
+                              value={{
+                                references,
+                                updateActiveReferences,
+                              }}
+                            >
+                              <Markdown
+                                content={response}
+                                isStreaming={isStreamingResponse}
+                                forcedTextSize="text-sm"
+                                textColor="text-muted-foreground"
+                                isLastMessage={false}
+                                additionalMarkdownPlugins={
+                                  additionalMarkdownPlugins
+                                }
+                                additionalMarkdownComponents={
+                                  additionalMarkdownComponents
+                                }
+                              />
+                            </CitationsContext.Provider>
 
-                          {activeReferences.length > 0 && (
-                            <div className="mt-4">
-                              <CitationGrid variant="grid">
-                                {activeReferences
-                                  .sort((a, b) => a.index - b.index)
-                                  .map(({ document, index }) => (
-                                    <Citation
-                                      key={index}
-                                      onClick={
-                                        document.href
-                                          ? () =>
-                                              window.open(
-                                                document.href,
-                                                "_blank"
-                                              )
-                                          : undefined
-                                      }
-                                      tooltip={
-                                        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                                        document.description || document.title
-                                      }
-                                    >
-                                      <CitationIcons>
-                                        <CitationIndex>{index}</CitationIndex>
-                                        {document.icon}
-                                      </CitationIcons>
-                                      <CitationTitle>
-                                        {document.title}
-                                      </CitationTitle>
-                                    </Citation>
-                                  ))}
-                              </CitationGrid>
-                            </div>
-                          )}
-                        </ContentMessage>
-                      </div>
-                    )}
-                  </div>
-                }
-              />
+                            {activeReferences.length > 0 && (
+                              <div className="mt-4">
+                                <CitationGrid variant="grid">
+                                  {activeReferences
+                                    .sort((a, b) => a.index - b.index)
+                                    .map(({ document, index }) => (
+                                      <Citation
+                                        key={index}
+                                        onClick={
+                                          document.href
+                                            ? () =>
+                                                window.open(
+                                                  document.href,
+                                                  "_blank"
+                                                )
+                                            : undefined
+                                        }
+                                        tooltip={
+                                          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                                          document.description || document.title
+                                        }
+                                      >
+                                        <CitationIcons>
+                                          <CitationIndex>{index}</CitationIndex>
+                                          {document.icon}
+                                        </CitationIcons>
+                                        <CitationTitle>
+                                          {document.title}
+                                        </CitationTitle>
+                                      </Citation>
+                                    ))}
+                                </CitationGrid>
+                              </div>
+                            )}
+                          </ContentMessage>
+                        </div>
+                      )}
+                    </div>
+                  }
+                />
+              </div>
             )}
             {generatedFiles.length > 0 && (
               <div className="flex flex-col gap-2">

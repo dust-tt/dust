@@ -15,6 +15,7 @@ function makeEditorSuggestions(
       label: agent.name,
       pictureUrl: agent.pictureUrl,
       userFavorite: agent.userFavorite,
+      description: agent.description,
     }));
 }
 

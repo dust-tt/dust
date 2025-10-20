@@ -1,17 +1,22 @@
 import type { NotificationType } from "@dust-tt/sparkle";
 import type * as t from "io-ts";
 
+import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
+import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 import type {
   ContentFragmentsType,
+  ContentFragmentType,
   ConversationType,
   ConversationVisibility,
+  FileContentFragmentType,
   InternalPostConversationsRequestBodySchema,
   MentionType,
   Result,
   SubmitMessageError,
+  SupportedContentFragmentType,
   SupportedContentNodeContentType,
   UserMessageType,
   UserType,
@@ -29,13 +34,15 @@ export function createPlaceholderUserMessage({
   input,
   mentions,
   user,
-  lastMessageRank,
+  rank,
+  contentFragments,
 }: {
   input: string;
-  mentions: MentionType[];
+  mentions: EditorMention[];
   user: UserType;
-  lastMessageRank: number;
-}): UserMessageType {
+  rank: number;
+  contentFragments?: ContentFragmentsType;
+}): UserMessageType & { contentFragments: ContentFragmentType[] } {
   const createdAt = new Date().getTime();
   const { email, fullName, image, username } = user;
 
@@ -43,13 +50,13 @@ export function createPlaceholderUserMessage({
     id: -1,
     content: input,
     created: createdAt,
-    mentions,
+    mentions: mentions.map((mention) => ({ configurationId: mention.id })),
     user,
     visibility: "visible",
     type: "user_message",
-    sId: `placeholder-${createdAt.toString()}`,
+    sId: `placeholder-user-message-${createdAt.toString()}`,
     version: 0,
-    rank: lastMessageRank + 1,
+    rank: rank,
     context: {
       email,
       fullName,
@@ -58,6 +65,123 @@ export function createPlaceholderUserMessage({
       username,
       origin: "web",
     },
+    contentFragments: [
+      ...(contentFragments?.uploaded ?? []).map(
+        (cf) =>
+          ({
+            type: "content_fragment" as const,
+            contentFragmentType: "file" as const,
+            fileId: cf.fileId,
+            title: cf.title,
+            snippet: null,
+            generatedTables: [],
+            textUrl: "",
+            textBytes: null,
+            id: Math.random(),
+            sId: cf.fileId,
+            created: Date.now(),
+            visibility: "visible" as const,
+            version: 0,
+            rank,
+            sourceUrl: null,
+            contentType: cf.contentType,
+            context: {
+              username: user.username,
+              fullName: user.fullName,
+              email: user.email,
+              profilePictureUrl: user.image,
+            },
+            contentFragmentId: "placeholder-content-fragment",
+            contentFragmentVersion: "latest" as const,
+            expiredReason: null,
+          }) satisfies FileContentFragmentType
+      ),
+      ...(contentFragments?.contentNodes ?? []).map(
+        (cf) =>
+          ({
+            type: "content_fragment" as const,
+            contentFragmentType: "content_node" as const,
+
+            contentType: cf.mimeType as SupportedContentFragmentType,
+
+            title: cf.title,
+            id: Math.random(),
+
+            sId: cf.internalId,
+
+            nodeId: cf.internalId,
+            nodeDataSourceViewId: cf.dataSourceView.sId,
+            nodeType: cf.type,
+            contentNodeData: {
+              nodeId: cf.internalId,
+              nodeDataSourceViewId: cf.dataSourceView.sId,
+              nodeType: cf.type,
+              provider: cf.dataSourceView.dataSource.connectorProvider,
+              spaceName: "myspace",
+            },
+
+            created: Date.now(),
+            visibility: "visible" as const,
+            version: 0,
+            rank,
+            sourceUrl: null,
+
+            context: {
+              username: user.username,
+              fullName: user.fullName,
+              email: user.email,
+              profilePictureUrl: user.image,
+            },
+            contentFragmentId: "placeholder-content-fragment",
+            contentFragmentVersion: "latest" as const,
+            expiredReason: null,
+          }) satisfies ContentFragmentType
+      ),
+    ],
+  };
+}
+
+export function createPlaceholderAgentMessage({
+  mention,
+  rank,
+}: {
+  mention: EditorMention;
+  rank: number;
+}): MessageTemporaryState {
+  const createdAt = new Date().getTime();
+  return {
+    message: {
+      sId: `placeholder-agent-message-${createdAt.toString()}`,
+      rank: rank,
+      type: "agent_message",
+      version: 0,
+      created: createdAt,
+      completedTs: null,
+      parentMessageId: null,
+      parentAgentMessageId: null,
+      status: "created",
+      content: null,
+      chainOfThought: null,
+      error: null,
+      configuration: {
+        sId: mention.id,
+        name: mention.label,
+        pictureUrl: "",
+        status: "active",
+        canRead: true,
+        // TODO(2025-10-17 thomas): Remove.
+        requestedGroupIds: [],
+        requestedSpaceIds: [],
+      },
+      citations: {},
+      generatedFiles: [],
+      actions: [],
+    },
+    agentState: "placeholder",
+    isRetrying: false,
+    lastUpdated: new Date(),
+    actionProgress: new Map(),
+    useFullChainOfThought: false,
   };
 }
 
@@ -66,7 +190,6 @@ export async function submitMessage({
   user,
   conversationId,
   messageData,
-  executionMode,
 }: {
   owner: WorkspaceType;
   user: UserType;
@@ -77,7 +200,6 @@ export async function submitMessage({
     contentFragments: ContentFragmentsType;
     clientSideMCPServerIds?: string[];
   };
-  executionMode?: string;
 }): Promise<Result<PostMessagesResponseBody, SubmitMessageError>> {
   const { input, mentions, contentFragments, clientSideMCPServerIds } =
     messageData;
@@ -145,9 +267,8 @@ export async function submitMessage({
   }
 
   // Create a new user message.
-  const queryParams = executionMode ? `?execution=${executionMode}` : "";
   const mRes = await fetch(
-    `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages${queryParams}`,
+    `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages`,
     {
       method: "POST",
       headers: {
@@ -222,7 +343,6 @@ export async function createConversationWithMessage({
   messageData,
   visibility = "unlisted",
   title,
-  executionMode,
 }: {
   owner: WorkspaceType;
   user: UserType;
@@ -235,7 +355,6 @@ export async function createConversationWithMessage({
   };
   visibility?: ConversationVisibility;
   title?: string;
-  executionMode?: string;
 }): Promise<Result<ConversationType, SubmitMessageError>> {
   const {
     input,
@@ -292,17 +411,13 @@ export async function createConversationWithMessage({
   };
 
   // Create new conversation and post the initial message at the same time.
-  const queryParams = executionMode ? `?execution=${executionMode}` : "";
-  const cRes = await fetch(
-    `/api/w/${owner.sId}/assistant/conversations${queryParams}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    }
-  );
+  const cRes = await fetch(`/api/w/${owner.sId}/assistant/conversations`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
 
   if (!cRes.ok) {
     const data = await cRes.json();

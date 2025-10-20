@@ -150,6 +150,11 @@ const config = {
       "OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID"
     );
   },
+  getOAuthGithubAppWebhooks: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_ID"
+    );
+  },
   getOAuthNotionClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_NOTION_CLIENT_ID");
   },
@@ -205,6 +210,9 @@ const config = {
   },
   getOAuthMondayClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_MONDAY_CLIENT_ID");
+  },
+  getOAuthDiscordClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_DISCORD_CLIENT_ID");
   },
 
   // Text extraction.
@@ -274,6 +282,21 @@ const config = {
     return EnvironmentConfig.getOptionalEnvVariable(
       "UNTRUSTED_EGRESS_PROXY_PORT"
     );
+  },
+  getElasticsearchConfig: (): {
+    url: string;
+    username: string;
+    password: string;
+    analyticsIndex: string;
+  } => {
+    return {
+      url: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_URL"),
+      username: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_USERNAME"),
+      password: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_PASSWORD"),
+      analyticsIndex: EnvironmentConfig.getEnvVariable(
+        "ELASTICSEARCH_ANALYTICS_INDEX"
+      ),
+    };
   },
 };
 

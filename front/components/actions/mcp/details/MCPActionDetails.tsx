@@ -18,6 +18,7 @@ import {
   FilesystemPathDetails,
 } from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
 import { MCPDataWarehousesBrowseDetails } from "@app/components/actions/mcp/details/MCPDataWarehousesBrowseDetails";
+import { MCPDeepDiveActionDetails } from "@app/components/actions/mcp/details/MCPDeepDiveActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
@@ -26,7 +27,7 @@ import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MC
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
-import { InternalActionIcons } from "@app/lib/actions/mcp_icons";
+import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import {
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
@@ -59,6 +60,7 @@ import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
 import {
   asDisplayName,
+  isString,
   isSupportedImageContentType,
   parseTimeFrame,
 } from "@app/types";
@@ -122,8 +124,9 @@ export function MCPActionDetails({
     isInternalMCPServerOfName(mcpServerId, "search") ||
     isInternalMCPServerOfName(mcpServerId, "data_sources_file_system")
   ) {
-    if (toolName === SEARCH_TOOL_NAME) {
-      const timeFrame = parseTimeFrame(params.relativeTimeFrame as string);
+    if (toolName === SEARCH_TOOL_NAME && isString(params.relativeTimeFrame)) {
+      const timeFrame = parseTimeFrame(params.relativeTimeFrame);
+      // TODO: remove these typecasts
       const queryResource = makeQueryResource({
         query: params.query as string,
         timeFrame: timeFrame,
@@ -187,10 +190,7 @@ export function MCPActionDetails({
     }
   }
 
-  if (
-    isInternalMCPServerOfName(mcpServerId, "web_search_&_browse") ||
-    isInternalMCPServerOfName(mcpServerId, "web_search_&_browse_with_summary")
-  ) {
+  if (isInternalMCPServerOfName(mcpServerId, "web_search_&_browse")) {
     if (toolName === WEBSEARCH_TOOL_NAME) {
       return (
         <SearchResultDetails
@@ -230,6 +230,10 @@ export function MCPActionDetails({
 
   if (isInternalMCPServerOfName(mcpServerId, "run_agent")) {
     return <MCPRunAgentActionDetails {...toolOutputDetailsProps} />;
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "deep_dive")) {
+    return <MCPDeepDiveActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (isInternalMCPServerOfName(mcpServerId, "toolsets")) {

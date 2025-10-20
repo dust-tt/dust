@@ -1,19 +1,18 @@
 import { assertNever, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  makeInternalMCPServer,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
-import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
+import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getRedisClient } from "@app/lib/api/redis";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -28,23 +27,16 @@ import type {
   ReasoningModelConfigurationType,
 } from "@app/types";
 import {
-  DEFAULT_REASONING_MODEL_ID,
+  Err,
   isModelId,
   isModelProviderId,
   isProviderWhitelisted,
   isReasoningEffortId,
+  Ok,
 } from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
-const DEFAULT_REASONING_MODEL_PROVIDER_ID = "openai";
 const REASONING_GENERATION_TOKENS = 20480;
-
-export const DEFAULT_REASONING_CONFIGURATION = {
-  modelId: DEFAULT_REASONING_MODEL_ID,
-  providerId: DEFAULT_REASONING_MODEL_PROVIDER_ID,
-  temperature: null,
-  reasoningEffort: null,
-};
 
 function createServer(
   auth: Authenticator,
@@ -56,95 +48,94 @@ function createServer(
     "advanced_reasoning",
     "Offload a reasoning-heavy task to a powerful reasoning model. The reasoning model does not have access to any tools.",
     {
-      model: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
-      ].default({
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
-        ...DEFAULT_REASONING_CONFIGURATION,
-      }),
+      model:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
+        ],
     },
-    async (
-      { model: { modelId, providerId, temperature, reasoningEffort } },
-      { sendNotification, _meta }
-    ) => {
-      if (!agentLoopContext?.runContext) {
-        throw new Error("Unreachable: missing agentLoopRunContext.");
-      }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "advanced_reasoning", agentLoopContext },
+      async (
+        { model: { modelId, providerId, temperature, reasoningEffort } },
+        { sendNotification, _meta }
+      ) => {
+        if (!agentLoopContext?.runContext) {
+          throw new Error("Unreachable: missing agentLoopRunContext.");
+        }
 
-      const agentLoopRunContext = agentLoopContext.runContext;
+        const agentLoopRunContext = agentLoopContext.runContext;
 
-      if (
-        !isModelId(modelId) ||
-        !isModelProviderId(providerId) ||
-        (reasoningEffort !== null && !isReasoningEffortId(reasoningEffort))
-      ) {
-        return makeMCPToolTextError("Invalid model ID.");
-      }
+        if (
+          !isModelId(modelId) ||
+          !isModelProviderId(providerId) ||
+          (reasoningEffort !== null && !isReasoningEffortId(reasoningEffort))
+        ) {
+          return new Err(new MCPError("Invalid model ID."));
+        }
 
-      const actionOutput = {
-        content: "",
-        thinking: "",
-      };
+        const actionOutput = {
+          content: "",
+          thinking: "",
+        };
 
-      const { conversation, agentConfiguration, agentMessage } =
-        agentLoopRunContext;
+        const { conversation, agentConfiguration, agentMessage } =
+          agentLoopRunContext;
 
-      for await (const event of runReasoning(auth, {
-        reasoningModel: { modelId, providerId, temperature, reasoningEffort },
-        conversation,
-        agentConfiguration,
-        agentMessage,
-      })) {
-        switch (event.type) {
-          case "error": {
-            return makeMCPToolTextError(event.message);
-          }
-          case "token": {
-            const { classification, text } = event.token;
-            if (
-              classification === "opening_delimiter" ||
-              classification === "closing_delimiter"
-            ) {
-              continue;
+        for await (const event of runReasoning(auth, {
+          reasoningModel: { modelId, providerId, temperature, reasoningEffort },
+          conversation,
+          agentConfiguration,
+          agentMessage,
+        })) {
+          switch (event.type) {
+            case "error": {
+              return new Err(new MCPError(event.message));
             }
-            if (classification === "chain_of_thought") {
-              actionOutput.thinking += text;
-            } else {
-              actionOutput.content += text;
-            }
+            case "token": {
+              const { classification, text } = event.token;
+              if (
+                classification === "opening_delimiter" ||
+                classification === "closing_delimiter"
+              ) {
+                continue;
+              }
+              if (classification === "chain_of_thought") {
+                actionOutput.thinking += text;
+              } else {
+                actionOutput.content += text;
+              }
 
-            if (_meta?.progressToken) {
-              const notification: MCPProgressNotificationType = {
-                method: "notifications/progress",
-                params: {
-                  progress: 0,
-                  total: 1,
-                  progressToken: _meta?.progressToken,
-                  data: {
-                    label: "Thinking...",
-                    output: {
-                      type: "text",
-                      text,
+              if (_meta?.progressToken) {
+                const notification: MCPProgressNotificationType = {
+                  method: "notifications/progress",
+                  params: {
+                    progress: 0,
+                    total: 1,
+                    progressToken: _meta?.progressToken,
+                    data: {
+                      label: "Thinking...",
+                      output: {
+                        type: "text",
+                        text,
+                      },
                     },
                   },
-                },
-              };
+                };
 
-              await sendNotification(notification);
+                await sendNotification(notification);
+              }
+
+              break;
             }
-
-            break;
+            case "runId":
+              break;
+            default:
+              assertNever(event);
           }
-          case "runId":
-            break;
-          default:
-            assertNever(event);
         }
-      }
 
-      return {
-        isError: false,
-        content: [
+        return new Ok([
           {
             type: "resource",
             resource: {
@@ -161,9 +152,9 @@ function createServer(
               uri: "",
             },
           },
-        ],
-      };
-    }
+        ]);
+      }
+    )
   );
 
   return server;

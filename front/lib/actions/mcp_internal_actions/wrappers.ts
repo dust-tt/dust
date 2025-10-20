@@ -17,15 +17,19 @@ import { errorToString } from "@app/types";
  * Wraps a tool callback with logging and monitoring.
  * The tool callback is expected to return a `Result<CallToolResult["content"], MCPError>`,
  * Errors are caught and logged unless not tracked, and the error is returned as a text content.
+ *
+ * The tool name is used as a tag in the DD metric, it's 1 tool name <=> 1 monitor.
  */
 export function withToolLogging<T>(
   auth: Authenticator,
   {
-    toolName,
+    toolNameForMonitoring,
     agentLoopContext,
+    enableAlerting = false,
   }: {
-    toolName: string;
-    agentLoopContext?: AgentLoopContextType;
+    toolNameForMonitoring: string;
+    agentLoopContext: AgentLoopContextType | undefined;
+    enableAlerting?: boolean;
   },
   toolCallback: (
     params: T,
@@ -47,10 +51,9 @@ export function withToolLogging<T>(
     > = {
       workspace: {
         sId: owner.sId,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        plan_code: auth.plan()?.code || null,
+        plan_code: auth.plan()?.code ?? null,
       },
-      toolName,
+      toolName: toolNameForMonitoring,
     };
 
     // Adding agent loop context if available.
@@ -74,32 +77,32 @@ export function withToolLogging<T>(
     logger.info(loggerArgs, "Tool execution start");
 
     const tags = [
-      `tool:${toolName}`,
+      `tool:${toolNameForMonitoring}`,
       `workspace:${owner.sId}`,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      `workspace_plan_code:${auth.plan()?.code || null}`,
+      `workspace_plan_code:${auth.plan()?.code ?? null}`,
     ];
 
-    statsDClient.increment("use_tools.count", 1, tags);
+    if (enableAlerting) {
+      statsDClient.increment("use_tools.count", 1, tags);
+    }
     const startTime = performance.now();
 
     const result = await toolCallback(params, extra);
 
     // When we get an Err, we monitor it if tracked and return it as a text content.
     if (result.isErr()) {
-      if (result.error.tracked) {
+      if (enableAlerting && result.error.tracked) {
         statsDClient.increment("use_tools_error.count", 1, [
           "error_type:run_error",
           ...tags,
         ]);
+      }
 
-        logger.error(
-          {
-            error: result.error.message,
-            ...loggerArgs,
-          },
-          "Tool execution error"
-        );
+      const logContext = { ...loggerArgs, error: result.error };
+      if (result.error.tracked) {
+        logger.error(logContext, "Tool execution error");
+      } else {
+        logger.warn(logContext, "Tool execution error");
       }
 
       return {
@@ -114,7 +117,21 @@ export function withToolLogging<T>(
     }
 
     const elapsed = performance.now() - startTime;
-    statsDClient.distribution("run_tool.duration.distribution", elapsed, tags);
+    if (enableAlerting) {
+      statsDClient.distribution(
+        "run_tool.duration.distribution",
+        elapsed,
+        tags
+      );
+    }
+
+    logger.info(
+      {
+        ...loggerArgs,
+        duration: elapsed,
+      },
+      "Tool execution success"
+    );
 
     return { isError: false, content: result.value };
   };

@@ -12,7 +12,7 @@ import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
-import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES, stripNullBytes } from "@connectors/types";
 
 export async function markFolderAsVisited(
   connectorId: ModelId,
@@ -49,13 +49,14 @@ export async function markFolderAsVisited(
   );
 
   const parents = parentGoogleIds.map((parent) => getInternalId(parent));
+  const name = stripNullBytes(file.name) ?? "";
 
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: getInternalId(file.id),
     parents,
     parentId: parents[1] || null,
-    title: file.name ?? "",
+    title: name,
     mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
     sourceUrl: getSourceUrlForGoogleDriveFiles(file),
   });
@@ -64,7 +65,7 @@ export async function markFolderAsVisited(
     connectorId: connectorId,
     dustFileId: getInternalId(driveFileId),
     driveFileId: file.id,
-    name: file.name,
+    name,
     mimeType: file.mimeType,
     parentId: parents[1] ? getDriveFileId(parents[1]) : null,
     lastSeenTs: new Date(),

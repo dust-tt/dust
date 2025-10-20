@@ -17,10 +17,16 @@ import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { TimeFrame } from "@app/types";
 import { isTimeFrame } from "@app/types";
 
+export type AdditionalConfigurationValueType =
+  | boolean
+  | number
+  | string
+  | string[];
+
 // Note, in storage, we store the path using "." in the key of the record.
 export type AdditionalConfigurationType = Record<
   string,
-  boolean | number | string | string[]
+  AdditionalConfigurationValueType
 >;
 
 export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPServerConfiguration> {

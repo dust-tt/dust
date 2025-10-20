@@ -1,15 +1,15 @@
 import type { IncludeOptions, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
 import {
   renderDataSourceConfiguration,
   renderTableConfiguration,
 } from "@app/lib/actions/configuration/helpers";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type {
-  CustomServerIconType,
-  InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
@@ -133,8 +133,10 @@ export async function fetchMCPServerActionConfigurations(
     );
     let serverName: string | null = null;
     let serverDescription: string | null = null;
-    let serverIcon: InternalAllowedIconType | CustomServerIconType | undefined =
-      undefined;
+    let serverIcon:
+      | InternalAllowedIconType
+      | CustomResourceIconType
+      | undefined = undefined;
 
     if (!mcpServerView) {
       logger.warn(
@@ -165,10 +167,14 @@ export async function fetchMCPServerActionConfigurations(
         icon: serverIcon,
         mcpServerViewId: mcpServerView?.sId ?? "",
         internalMCPServerId: config.internalMCPServerId,
-        dataSources: dataSourceConfigurations.map(
-          renderDataSourceConfiguration
-        ),
-        tables: tablesConfigurations.map(renderTableConfiguration),
+        dataSources:
+          dataSourceConfigurations.length > 0
+            ? dataSourceConfigurations.map(renderDataSourceConfiguration)
+            : null,
+        tables:
+          tablesConfigurations.length > 0
+            ? tablesConfigurations.map(renderTableConfiguration)
+            : null,
         dustAppConfiguration: dustApp
           ? {
               id: dustApp.id,

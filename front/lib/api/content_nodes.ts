@@ -57,14 +57,16 @@ export function getContentNodeInternalIdFromTableId(
     case "salesforce":
       return tableId;
 
-    case "intercom":
     case "confluence":
     case "github":
-    case "slack":
-    case "slack_bot":
-    case "zendesk":
-    case "webcrawler":
     case "gong":
+    case "intercom":
+    case "microsoft_bot":
+    case "slack_bot":
+    case "slack":
+    case "webcrawler":
+    case "zendesk":
+    case "discord_bot":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`
       );

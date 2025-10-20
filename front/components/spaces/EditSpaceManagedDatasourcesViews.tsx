@@ -26,6 +26,7 @@ import { RequestDataSourceModal } from "@app/components/data_source/RequestDataS
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import {
@@ -102,13 +103,18 @@ export function EditSpaceManagedDataSourcesViews({
   });
   const filterSystemSpaceDataSourceViews = useMemo(
     () =>
-      systemSpaceDataSourceViews.filter(
-        (dsv) =>
+      systemSpaceDataSourceViews.filter((dsv) => {
+        const connectorConfig = dsv.dataSource.connectorProvider
+          ? CONNECTOR_CONFIGURATIONS[dsv.dataSource.connectorProvider]
+          : null;
+
+        return (
           isManaged(dsv.dataSource) &&
           (!dataSourceView ||
             dsv.dataSource.sId === dataSourceView.dataSource.sId) &&
-          dsv.dataSource.connectorProvider !== "slack_bot"
-      ),
+          !connectorConfig?.isHiddenAsDataSource
+        );
+      }),
     [systemSpaceDataSourceViews, dataSourceView]
   );
 

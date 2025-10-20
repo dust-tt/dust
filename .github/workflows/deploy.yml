@@ -43,7 +43,7 @@ permissions:
 
 concurrency:
   group: "deploy_${{ inputs.component }}"
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: false
 
 jobs:
   check-branch:
@@ -145,6 +145,7 @@ jobs:
           depot_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           dd_api_key: ${{ secrets.DD_API_KEY }}
           dd_client_token: ${{ secrets.DD_CLIENT_TOKEN }}
+          virtuoso_license_key: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
           commit_sha: ${{ needs.prepare.outputs.short_sha }}
           commit_sha_long: ${{ needs.prepare.outputs.long_sha }}
 

@@ -3,11 +3,12 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { google } from "googleapis";
 import { z } from "zod";
 
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const SUPPORTED_MIMETYPES = [
@@ -21,7 +22,10 @@ const SUPPORTED_MIMETYPES = [
 const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
 const MAX_FILE_SIZE = 64 * 1024 * 1024; // 10 MB max original file size
 
-const createServer = (): McpServer => {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("google_drive");
 
   async function getDriveClient(authInfo?: AuthInfo) {
@@ -44,28 +48,37 @@ const createServer = (): McpServer => {
     {
       pageToken: z.string().optional().describe("Page token for pagination."),
     },
-    async ({ pageToken }, { authInfo }) => {
-      const drive = await getDriveClient(authInfo);
-      if (!drive) {
-        return makeMCPToolTextError("Failed to authenticate with Google Drive");
-      }
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "google_drive",
+        agentLoopContext,
+      },
+      async ({ pageToken }, { authInfo }) => {
+        const drive = await getDriveClient(authInfo);
+        if (!drive) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Drive")
+          );
+        }
 
-      try {
-        const res = await drive.drives.list({
-          pageToken,
-          pageSize: 100,
-          fields: "nextPageToken, drives(id, name, createdTime)",
-        });
+        try {
+          const res = await drive.drives.list({
+            pageToken,
+            pageSize: 100,
+            fields: "nextPageToken, drives(id, name, createdTime)",
+          });
 
-        return makeMCPToolJSONSuccess({
-          result: res.data,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to list drives"
-        );
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
+        } catch (err) {
+          return new Err(
+            new MCPError(normalizeError(err).message || "Failed to list drives")
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -129,60 +142,72 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         .describe("Maximum number of files to return (max 1000)."),
       pageToken: z.string().optional().describe("Page token for pagination."),
     },
-    async (
-      { q, pageToken, pageSize, driveId, includeSharedDrives, orderBy },
-      { authInfo }
-    ) => {
-      const drive = await getDriveClient(authInfo);
-      if (!drive) {
-        return makeMCPToolTextError("Failed to authenticate with Google Drive");
-      }
-
-      try {
-        const requestParams: {
-          q?: string;
-          pageToken?: string;
-          pageSize?: number;
-          fields: string;
-          orderBy?: string;
-          driveId?: string;
-          includeItemsFromAllDrives?: boolean;
-          supportsAllDrives?: boolean;
-          corpora?: string;
-        } = {
-          q,
-          pageToken,
-          pageSize: pageSize ? Math.min(pageSize, 1000) : undefined,
-          fields:
-            "nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, owners, parents, webViewLink, shared)",
-          orderBy,
-        };
-
-        if (driveId) {
-          // Search in a specific shared drive
-          requestParams.driveId = driveId;
-          requestParams.includeItemsFromAllDrives = true;
-          requestParams.supportsAllDrives = true;
-          requestParams.corpora = "drive";
-        } else if (includeSharedDrives) {
-          // Search across all drives (personal + shared)
-          requestParams.includeItemsFromAllDrives = true;
-          requestParams.supportsAllDrives = true;
-          requestParams.corpora = "allDrives";
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "google_drive",
+        agentLoopContext,
+      },
+      async (
+        { q, pageToken, pageSize, driveId, includeSharedDrives, orderBy },
+        { authInfo }
+      ) => {
+        const drive = await getDriveClient(authInfo);
+        if (!drive) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Drive")
+          );
         }
-        // If neither driveId nor includeSharedDrives, search only personal drive (default behavior)
 
-        const res = await drive.files.list(requestParams);
+        try {
+          const requestParams: {
+            q?: string;
+            pageToken?: string;
+            pageSize?: number;
+            fields: string;
+            orderBy?: string;
+            driveId?: string;
+            includeItemsFromAllDrives?: boolean;
+            supportsAllDrives?: boolean;
+            corpora?: string;
+          } = {
+            q,
+            pageToken,
+            pageSize: pageSize ? Math.min(pageSize, 1000) : undefined,
+            fields:
+              "nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, owners, parents, webViewLink, shared)",
+            orderBy,
+          };
 
-        return makeMCPToolJSONSuccess({
-          result: res.data,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to search files"
-        );
+          if (driveId) {
+            // Search in a specific shared drive
+            requestParams.driveId = driveId;
+            requestParams.includeItemsFromAllDrives = true;
+            requestParams.supportsAllDrives = true;
+            requestParams.corpora = "drive";
+          } else if (includeSharedDrives) {
+            // Search across all drives (personal + shared)
+            requestParams.includeItemsFromAllDrives = true;
+            requestParams.supportsAllDrives = true;
+            requestParams.corpora = "allDrives";
+          }
+          // If neither driveId nor includeSharedDrives, search only personal drive (default behavior)
+
+          const res = await drive.files.list(requestParams);
+
+          return new Ok([
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
+        } catch (err) {
+          const error = normalizeError(err);
+          return new Err(
+            new MCPError(error.message || "Failed to search files", {
+              cause: error,
+            })
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -206,104 +231,134 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
           `Maximum number of characters to return. Defaults to ${MAX_CONTENT_SIZE}.`
         ),
     },
-    async ({ fileId, offset, limit }, { authInfo }) => {
-      const drive = await getDriveClient(authInfo);
-      if (!drive) {
-        return makeMCPToolTextError("Failed to authenticate with Google Drive");
-      }
-
-      try {
-        // First, get file metadata to determine the mimetype
-        const fileMetadata = await drive.files.get({
-          fileId,
-          supportsAllDrives: true,
-          fields: "id, name, mimeType, size",
-        });
-        const file = fileMetadata.data;
-
-        if (!file.mimeType || !SUPPORTED_MIMETYPES.includes(file.mimeType)) {
-          return makeMCPToolTextError(
-            `Unsupported file type: ${file.mimeType}. Supported types: ${SUPPORTED_MIMETYPES.join(", ")}`
-          );
-        }
-        if (file.size && parseInt(file.size) > MAX_FILE_SIZE) {
-          return makeMCPToolTextError(
-            `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "google_drive",
+        agentLoopContext,
+      },
+      async ({ fileId, offset, limit }, { authInfo }) => {
+        const drive = await getDriveClient(authInfo);
+        if (!drive) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Drive")
           );
         }
 
-        let content: string;
-
-        switch (file.mimeType) {
-          case "application/vnd.google-apps.document":
-          case "application/vnd.google-apps.presentation": {
-            // Export Google Docs and Presentations as plain text
-            const exportRes = await drive.files.export({
-              fileId,
-              mimeType: "text/plain",
-            });
-            if (typeof exportRes.data !== "string") {
-              return makeMCPToolTextError(
-                "Failed to export file content as text/plain"
-              );
-            }
-            content = exportRes.data;
-            break;
-          }
-          case "text/plain":
-          case "text/markdown":
-          case "text/csv": {
-            // Download regular text files
-            const downloadRes = await drive.files.get({
-              fileId,
-              alt: "media",
-            });
-
-            if (typeof downloadRes.data !== "string") {
-              return makeMCPToolTextError(
-                "Failed to download file content as text"
-              );
-            }
-            content = downloadRes.data;
-            break;
-          }
-          default:
-            return makeMCPToolTextError(
-              `Unsupported file type: ${file.mimeType}`
-            );
-        }
-
-        // Apply offset and limit
-        const totalContentLength = content.length;
-        const startIndex = Math.max(0, offset);
-        const endIndex = Math.min(content.length, startIndex + limit);
-        const truncatedContent = content.slice(startIndex, endIndex);
-
-        const hasMore = endIndex < content.length;
-        const nextOffset = hasMore ? endIndex : undefined;
-
-        return makeMCPToolJSONSuccess({
-          result: {
+        try {
+          // First, get file metadata to determine the mimetype
+          const fileMetadata = await drive.files.get({
             fileId,
-            fileName: file.name,
-            mimeType: file.mimeType,
-            content: truncatedContent,
-            returnedContentLength: truncatedContent.length,
-            totalContentLength,
-            offset: startIndex,
-            nextOffset,
-            hasMore,
-          },
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to get file content"
-        );
+            supportsAllDrives: true,
+            fields: "id, name, mimeType, size",
+          });
+          const file = fileMetadata.data;
+
+          if (!file.mimeType || !SUPPORTED_MIMETYPES.includes(file.mimeType)) {
+            return new Err(
+              new MCPError(
+                `Unsupported file type: ${file.mimeType}. Supported types: ${SUPPORTED_MIMETYPES.join(", ")}`,
+                {
+                  tracked: false,
+                }
+              )
+            );
+          }
+          if (file.size && parseInt(file.size, 10) > MAX_FILE_SIZE) {
+            return new Err(
+              new MCPError(
+                `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`,
+                {
+                  tracked: false,
+                }
+              )
+            );
+          }
+
+          let content: string;
+
+          switch (file.mimeType) {
+            case "application/vnd.google-apps.document":
+            case "application/vnd.google-apps.presentation": {
+              // Export Google Docs and Presentations as plain text
+              const exportRes = await drive.files.export({
+                fileId,
+                mimeType: "text/plain",
+              });
+              if (typeof exportRes.data !== "string") {
+                return new Err(
+                  new MCPError("Failed to export file content as text/plain")
+                );
+              }
+              content = exportRes.data;
+              break;
+            }
+            case "text/plain":
+            case "text/markdown":
+            case "text/csv": {
+              // Download regular text files
+              const downloadRes = await drive.files.get({
+                fileId,
+                alt: "media",
+              });
+
+              if (typeof downloadRes.data !== "string") {
+                return new Err(
+                  new MCPError("Failed to download file content as text")
+                );
+              }
+              content = downloadRes.data;
+              break;
+            }
+            default:
+              return new Err(
+                new MCPError(`Unsupported file type: ${file.mimeType}`, {
+                  tracked: false,
+                })
+              );
+          }
+
+          // Apply offset and limit
+          const totalContentLength = content.length;
+          const startIndex = Math.max(0, offset);
+          const endIndex = Math.min(content.length, startIndex + limit);
+          const truncatedContent = content.slice(startIndex, endIndex);
+
+          const hasMore = endIndex < content.length;
+          const nextOffset = hasMore ? endIndex : undefined;
+
+          return new Ok([
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  fileId,
+                  fileName: file.name,
+                  mimeType: file.mimeType,
+                  content: truncatedContent,
+                  returnedContentLength: truncatedContent.length,
+                  totalContentLength,
+                  offset: startIndex,
+                  nextOffset,
+                  hasMore,
+                },
+                null,
+                2
+              ),
+            },
+          ]);
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to get file content"
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   return server;
-};
+}
 
 export default createServer;

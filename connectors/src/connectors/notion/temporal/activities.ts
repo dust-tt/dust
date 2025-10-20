@@ -231,7 +231,7 @@ export async function fetchDatabaseChildPages({
     returnUpToDatePageIdsForExistingDatabase ||
     // If the database is new (either we never seen it before, or the first time we saw it was
     // during this run), we return all the pages.
-    isExistingDatabase
+    !isExistingDatabase
   ) {
     return {
       pageIds: pages.map((p) => p.id),
@@ -1304,6 +1304,21 @@ export async function updateParentsFields({
   return nextCursors;
 }
 
+/**
+ * Checks the upsert queue status with a short polling period.
+ * Returns true if the queue is drained (no running workflows), false otherwise.
+ * This activity polls up to 5 times with 1 second intervals (max 5 seconds total).
+ */
+export async function drainDocumentUpsertQueue({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<boolean> {
+  // Temporarily disable the queue draining until we can optimize it to make fewer front calls
+  return true;
+}
+
 export async function markParentsAsUpdated({
   connectorId,
   runTimestamp,
@@ -1944,77 +1959,6 @@ export async function renderAndUpsertPageFromCache({
     throw new Error("Could not find page in cache");
   }
 
-  if (notionPageInDb?.parentType === "database" && notionPageInDb.parentId) {
-    localLogger.info(
-      "notionRenderAndUpsertPageFromCache: Retrieving parent database from connectors DB."
-    );
-    const parentDb = await NotionDatabase.findOne({
-      where: {
-        connectorId: connector.id,
-        notionDatabaseId: notionPageInDb.parentId,
-      },
-    });
-
-    if (parentDb) {
-      // Only do structured data incremental sync if the DB has already been synced as structured data.
-      if (parentDb.structuredDataUpsertedTs) {
-        localLogger.info(
-          "notionRenderAndUpsertPageFromCache: Upserting page in structured data."
-        );
-        const { tableId, tableName, tableDescription } =
-          getTableInfoFromDatabase(parentDb);
-
-        const { csv } = await renderDatabaseFromPages({
-          databaseTitle: null,
-          pagesProperties: [
-            JSON.parse(
-              pageCacheEntry.pagePropertiesText
-            ) as PageObjectProperties,
-          ],
-          dustIdColumn: [pageId],
-          cellSeparator: ",",
-          rowBoundary: "",
-        });
-
-        const parentPageOrDbIds = await getParents(
-          connector.id,
-          parentDb.notionDatabaseId,
-          [],
-          true,
-          runTimestamp.toString()
-        );
-        await heartbeat();
-
-        const parents = parentPageOrDbIds.map((id) => `notion-${id}`);
-
-        await ignoreTablesError("Notion Database", () =>
-          upsertDataSourceTableFromCsv({
-            dataSourceConfig: dataSourceConfigFromConnector(connector),
-            tableId,
-            tableName,
-            tableDescription,
-            tableCsv: csv,
-            loggerArgs,
-            // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
-            truncate: false,
-            parents: parents,
-            parentId: parents[1] || null,
-            title: parentDb.title ?? "Untitled Notion Database",
-            mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
-            sourceUrl:
-              parentDb.notionUrl ??
-              `https://www.notion.so/${parentDb.notionDatabaseId.replace(/-/g, "")}`,
-            allowEmptySchema: true,
-          })
-        );
-      } else {
-        localLogger.info(
-          "notionRenderAndUpsertPageFromCache: Skipping page as parent database has not been synced as structured data."
-        );
-      }
-    }
-  }
-
   localLogger.info(
     "notionRenderAndUpsertPageFromCache: Retrieving blocks from cache."
   );
@@ -2252,6 +2196,77 @@ export async function renderAndUpsertPageFromCache({
     lastCreatedOrMovedRunTs: createdOrMoved ? runTimestamp : undefined,
   });
 
+  if (parentType === "database" && parentId) {
+    localLogger.info(
+      "notionRenderAndUpsertPageFromCache: Retrieving parent database from connectors DB."
+    );
+    const parentDb = await NotionDatabase.findOne({
+      where: {
+        connectorId: connector.id,
+        notionDatabaseId: parentId,
+      },
+    });
+
+    if (parentDb) {
+      // Only do structured data incremental sync if the DB has already been synced as structured data.
+      if (parentDb.structuredDataUpsertedTs) {
+        localLogger.info(
+          "notionRenderAndUpsertPageFromCache: Upserting page in structured data."
+        );
+        const { tableId, tableName, tableDescription } =
+          getTableInfoFromDatabase(parentDb);
+
+        const { csv } = await renderDatabaseFromPages({
+          databaseTitle: null,
+          pagesProperties: [
+            JSON.parse(
+              pageCacheEntry.pagePropertiesText
+            ) as PageObjectProperties,
+          ],
+          dustIdColumn: [pageId],
+          cellSeparator: ",",
+          rowBoundary: "",
+        });
+
+        const parentPageOrDbIds = await getParents(
+          connector.id,
+          parentDb.notionDatabaseId,
+          [],
+          true,
+          runTimestamp.toString()
+        );
+        await heartbeat();
+
+        const parents = parentPageOrDbIds.map((id) => `notion-${id}`);
+
+        await ignoreTablesError("Notion Database", () =>
+          upsertDataSourceTableFromCsv({
+            dataSourceConfig: dataSourceConfigFromConnector(connector),
+            tableId,
+            tableName,
+            tableDescription,
+            tableCsv: csv,
+            loggerArgs,
+            // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
+            truncate: false,
+            parents: parents,
+            parentId: parents[1] || null,
+            title: parentDb.title ?? "Untitled Notion Database",
+            mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
+            sourceUrl:
+              parentDb.notionUrl ??
+              `https://www.notion.so/${parentDb.notionDatabaseId.replace(/-/g, "")}`,
+            allowEmptySchema: true,
+          })
+        );
+      } else {
+        localLogger.info(
+          "notionRenderAndUpsertPageFromCache: Skipping page as parent database has not been synced as structured data."
+        );
+      }
+    }
+  }
+
   const childDatabaseIdsToCheck = blockCacheEntries
     .filter((b) => b.blockType === "child_database")
     .map((b) => b.notionBlockId);
@@ -2330,7 +2345,13 @@ export async function clearWorkflowCache({
     dataSourceId: connector.dataSourceId,
   });
 
-  localLogger.info("notionClearConnectorCacheActivity: Clearing cache.");
+  localLogger.info(
+    {
+      connectorId: connector.id,
+      workflowId: topLevelWorkflowId,
+    },
+    "notionClearConnectorCacheActivity: Clearing cache."
+  );
   await NotionConnectorPageCacheEntry.destroy({
     where: {
       connectorId: connector.id,
@@ -2465,7 +2486,17 @@ async function renderPageSection({
   // Change block parents so that H1/H2/H3 blocks are treated as nesting
   // for that we need to traverse with a topological sort, leafs treated first
   const orderedParentIds: string[] = [];
+  const visitedNodes = new Set<string>();
   const addNode = (nodeId: string) => {
+    // Prevent infinite recursion on circular references
+    if (visitedNodes.has(nodeId)) {
+      localLogger.warn(
+        `Circular reference detected in block hierarchy at node: ${nodeId}`
+      );
+      return;
+    }
+    visitedNodes.add(nodeId);
+
     const children = blocksByParentId[nodeId];
     if (!children) {
       return;
@@ -2475,8 +2506,14 @@ async function renderPageSection({
       addNode(child.notionBlockId);
     }
   };
+
   addNode("root");
   orderedParentIds.reverse();
+
+  localLogger.info(
+    { pagesCount: visitedNodes.size },
+    "Rendered page sections."
+  );
 
   const adaptedBlocksByParentId: Record<
     string,
@@ -2535,11 +2572,26 @@ async function renderPageSection({
     }
   }
 
+  const renderingStack = new Set<string>();
+
   const renderBlockSection = async (
     b: NotionConnectorBlockCacheEntry,
     depth: number,
     indent = ""
   ): Promise<CoreAPIDataSourceDocumentSection> => {
+    // Prevent infinite recursion on circular references
+    if (renderingStack.has(b.notionBlockId)) {
+      localLogger.warn(
+        `Circular reference detected while rendering block: ${b.notionBlockId} at depth ${depth}`
+      );
+      return {
+        prefix: null,
+        content: `[Circular reference detected for block ${b.notionBlockId}]\n`,
+        sections: [],
+      };
+    }
+    renderingStack.add(b.notionBlockId);
+
     const startTime = Date.now();
     // Initial rendering (remove base64 images from rendered block)
     let renderedBlock = b.blockText ? `${indent}${b.blockText}` : "";
@@ -2583,6 +2635,9 @@ async function renderPageSection({
         await renderBlockSection(child, depth + 1, indent)
       );
     }
+
+    // Remove from rendering stack after processing
+    renderingStack.delete(b.notionBlockId);
     const elapsedTime = Date.now() - startTime;
     if (elapsedTime > LONG_RENDER_BLOCK_SECTION_TIME_MS) {
       localLogger.info(
@@ -2605,6 +2660,12 @@ async function renderPageSection({
   for (const block of topLevelBlocks) {
     renderedPageSection.sections.push(await renderBlockSection(block, 0));
   }
+
+  localLogger.info(
+    { blocksCount: topLevelBlocks.length },
+    "Rendered block sections."
+  );
+
   return renderedPageSection;
 }
 

@@ -1,5 +1,6 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type { AllSupportedFileContentType } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 import type { ContentFragmentType } from "../content_fragment";
@@ -72,6 +73,7 @@ export type UserMessageOrigin =
   | "n8n"
   | "raycast"
   | "slack"
+  | "teams"
   | "triggered"
   | "web"
   | "zapier"
@@ -89,7 +91,7 @@ export type UserMessageContext = {
   profilePictureUrl: string | null;
   origin?: UserMessageOrigin | null;
   originMessageId?: string | null;
-  lastTriggerRunAt?: Date | null;
+  lastTriggerRunAt?: number | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
 };
@@ -129,6 +131,10 @@ export interface CitationType {
   title: string;
   provider: string;
   faviconUrl?: string;
+  contentType:
+    | AllSupportedFileContentType
+    | "application/vnd.dust.tool-output.data-source-search-result"
+    | "application/vnd.dust.tool-output.websearch-result";
 }
 
 /**
@@ -146,6 +152,7 @@ export type BaseAgentMessageType = {
   created: number;
   completedTs: number | null;
   parentMessageId: string | null;
+  parentAgentMessageId: string | null; // If handover, this is the agent message that summoned this agent.
   status: AgentMessageStatus;
   content: string | null;
   chainOfThought: string | null;
@@ -180,6 +187,7 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     status: AgentConfigurationStatus;
     canRead: boolean;
     requestedGroupIds: string[][];
+    requestedSpaceIds: string[];
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
@@ -223,6 +231,7 @@ export type ConversationWithoutContentType = {
   updated?: number;
   unread: boolean;
   actionRequired: boolean;
+  hasError: boolean;
   owner: WorkspaceType;
   sId: string;
   title: string | null;
@@ -230,6 +239,7 @@ export type ConversationWithoutContentType = {
   depth: number;
   triggerId: string | null;
   requestedGroupIds: string[][];
+  requestedSpaceIds: string[];
 };
 
 /**

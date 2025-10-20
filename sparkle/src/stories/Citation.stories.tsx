@@ -74,7 +74,7 @@ export const CitationsExample = () => (
         </CitationIcons>
         <CitationTitle>Linkedin, Edouard Wautier</CitationTitle>
       </Citation>
-      
+
       <Citation onClick={() => alert("Card clicked")} className="s-w-48">
         <CitationIcons>
           <FaviconIcon websiteUrl="https://github.com" size="sm" />

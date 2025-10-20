@@ -13,8 +13,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type { PokeItemBase } from "@app/types";
-import type { ConnectorType } from "@app/types";
+import type { ConnectorType, PokeItemBase } from "@app/types";
 import { ConnectorsAPI } from "@app/types";
 
 async function searchPokeWorkspaces(
@@ -60,9 +59,7 @@ async function searchPokeWorkspaces(
   return [];
 }
 
-async function searchPokeConnectors(
-  searchTerm: string
-): Promise<PokeItemBase[]> {
+async function searchConnectorModelId(searchTerm: string) {
   const connectorModelId = parseInt(searchTerm);
   if (!isNaN(connectorModelId)) {
     const connectorsAPI = new ConnectorsAPI(
@@ -85,6 +82,26 @@ async function searchPokeConnectors(
       ];
     }
   }
+  return null;
+}
+
+async function searchPokeConnectors(
+  searchTerm: string
+): Promise<PokeItemBase[]> {
+  const searchResult = await searchConnectorModelId(searchTerm);
+  if (searchResult) {
+    return searchResult;
+  }
+
+  // Support embedded sId in formats like "XXX-YYY-sID" or "XXX-YYY-sID-OTHERSTUFFWITHNUMBERS".
+  // useful for logs that are in datadog
+  const hyphenParts = searchTerm.split("-");
+  if (hyphenParts.length >= 3) {
+    const searchResult = await searchConnectorModelId(hyphenParts[2]);
+    if (searchResult) {
+      return searchResult;
+    }
+  }
 
   return [];
 }
@@ -99,14 +116,12 @@ export async function searchPokeResources(
   }
 
   // Fallback to handle resources without the cool sId format.
-  const resources = (
+  return (
     await Promise.all([
       searchPokeWorkspaces(searchTerm),
       searchPokeConnectors(searchTerm),
     ])
   ).flat();
-
-  return resources;
 }
 
 async function searchPokeResourcesBySId(

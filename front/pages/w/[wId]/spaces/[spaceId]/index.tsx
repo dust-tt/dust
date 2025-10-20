@@ -15,7 +15,6 @@ import { useSpaceInfo } from "@app/lib/swr/spaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {
-    userId: string;
     canWriteInSpace: boolean;
     isBuilder: boolean;
   }
@@ -62,7 +61,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       plan,
       space: space.toJSON(),
       subscription,
-      userId: auth.getNonNullableUser().sId,
     },
   };
 });
@@ -72,7 +70,6 @@ export default function Space({
   isBuilder,
   canWriteInSpace,
   owner,
-  userId,
   space,
   plan,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -85,11 +82,7 @@ export default function Space({
   });
 
   const router = useRouter();
-
-  const isMember = React.useMemo(
-    () => spaceInfo?.members?.some((m) => m.sId === userId),
-    [userId, spaceInfo?.members]
-  );
+  const isMember = spaceInfo?.isMember ?? false;
 
   return (
     <Page.Vertical gap="xl" align="stretch">

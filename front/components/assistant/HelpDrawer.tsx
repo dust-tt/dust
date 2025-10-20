@@ -13,19 +13,13 @@ import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useCallback, useState } from "react";
 
-import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
+import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
-import { getAgentRoute } from "@app/lib/utils/router";
-import type {
-  AgentMention,
-  MentionType,
-  Result,
-  RoleType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+import { getConversationRoute } from "@app/lib/utils/router";
+import type { Result, RoleType, UserType, WorkspaceType } from "@app/types";
 import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
 
 // describe the type of userContent where the
@@ -115,7 +109,7 @@ export function HelpDrawer({
   const handleHelpSubmit = useCallback(
     async (
       input: string,
-      mentions: MentionType[]
+      mentions: EditorMention[]
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
         return new Err({
@@ -131,19 +125,18 @@ export function HelpDrawer({
         ? input
         : `@help ${input.trimStart()}`;
       const mentionsWithHelp = mentions.some(
-        (mention) => mention.configurationId === GLOBAL_AGENTS_SID.HELPER
+        (mention) => mention.id === GLOBAL_AGENTS_SID.HELPER
       )
         ? mentions
-        : [
-            ...mentions,
-            { configurationId: GLOBAL_AGENTS_SID.HELPER } as AgentMention,
-          ];
+        : [...mentions, { id: GLOBAL_AGENTS_SID.HELPER } as EditorMention];
       const conversationRes = await createConversationWithMessage({
         owner,
         user,
         messageData: {
           input: inputWithHelp.replace("@help", ":mention[help]{sId=helper}"),
-          mentions: mentionsWithHelp,
+          mentions: mentionsWithHelp.map((mention) => ({
+            configurationId: mention.id,
+          })),
           contentFragments: {
             uploaded: [],
             contentNodes: [],
@@ -167,7 +160,9 @@ export function HelpDrawer({
         });
       } else {
         // We start the push before creating the message to optimize for instantaneity as well.
-        void router.push(getAgentRoute(owner.sId, conversationRes.value.sId));
+        void router.push(
+          getConversationRoute(owner.sId, conversationRes.value.sId)
+        );
         return new Ok(undefined);
       }
     },
@@ -217,7 +212,7 @@ export function HelpDrawer({
                           size="sm"
                           onClick={() => {
                             void handleHelpSubmit(`@help ${iceBreaker}`, [
-                              { configurationId: GLOBAL_AGENTS_SID.HELPER },
+                              { id: GLOBAL_AGENTS_SID.HELPER, label: "Help" },
                             ]);
                           }}
                           key={index}
@@ -227,7 +222,7 @@ export function HelpDrawer({
                   </div>
                 </div>
               </div>
-              <AssistantInputBar
+              <InputBar
                 owner={owner}
                 onSubmit={handleHelpSubmit}
                 conversationId={null}

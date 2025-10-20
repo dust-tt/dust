@@ -30,20 +30,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "assistant-v2-title-generator": {
-    app: {
-      appId: "84dfc1d4f7",
-      appHash:
-        "6ea231add2ae690ee959c5d8d5d06420ea2feae7dd32ac13a4e655910087e313",
-    },
-    config: {
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "update_title",
-        use_cache: false,
-      },
-    },
-  },
   "assistant-v2-retrieval": {
     app: {
       appId: "471b6aa923",
@@ -177,39 +163,11 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "assistant-builder-name-suggestions": {
-    app: {
-      appId: "34a8c4a2aa",
-      appHash:
-        "65020161030b555f4d2efc9d1ce3a6d0020dcf76e663f746bd98213c90a0675f",
-    },
-    config: {
-      CREATE_SUGGESTIONS: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "send_suggestions",
-        use_cache: false,
-      },
-    },
-  },
   "assistant-builder-emoji-suggestions": {
     app: {
       appId: "b69YdlJ3PJ",
       appHash:
         "0b6b63def0224321f2bece0751bad632baca33f6d5bb596bbeb3f95b6bea5966",
-    },
-    config: {
-      CREATE_SUGGESTIONS: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "send_suggestions",
-        use_cache: false,
-      },
-    },
-  },
-  "assistant-builder-description-suggestions": {
-    app: {
-      appId: "aba0057f4c",
-      appHash:
-        "e4bda2ba50f160712c08309628b4a6bf2b68dd7e9709669cc29ac43e36d663f7",
     },
     config: {
       CREATE_SUGGESTIONS: {
@@ -337,11 +295,25 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
+  "assistant-builder-webhook-filter-generator": {
+    app: {
+      appId: "XNcJCE7lUj",
+      appHash:
+        "9fa1ef11941288335a3cfcdcef9b4c811464ba3dddd8d72e2c0ca7922f7a0e93",
+    },
+    config: {
+      CREATE_FILTER: {
+        function_call: "set_filter",
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
   "voice-find-agent-and-tools": {
     app: {
       appId: "F15zoc9d8a",
       appHash:
-        "b8e00639db1b38ccb0eca33781858fd2adf00f37ad81940451e257c17ce8dd27",
+        "ce806cd503d298c64ae97a8f786a60be62d81aa000fca02c363efec51356926f",
     },
     config: {
       GET_AUGMENTED_MESSAGE: {
