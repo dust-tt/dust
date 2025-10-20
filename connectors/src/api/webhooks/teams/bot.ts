@@ -103,6 +103,7 @@ export async function botAnswerMessage(
   }
 
   const mention = mentionResult.value.mention;
+
   message = mentionResult.value.processedMessage;
 
   const buildContentFragmentRes = await makeContentFragments(
@@ -274,7 +275,7 @@ export async function botAnswerMessage(
 
   const res = streamAgentResponseRes.value;
 
-  m.update({
+  await m.update({
     dustAgentMessageId: res.agentMessageId,
   });
 

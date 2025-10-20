@@ -282,29 +282,6 @@ export function createErrorAdaptiveCard({
   };
 }
 
-/**
- * Creates an agent selection adaptive card
- */
-export function createAgentSelectionCard(
-  agentConfigurations: LightAgentConfigurationType[],
-  originalMessage: string
-): Partial<Activity> {
-  return {
-    type: "message",
-    attachments: [
-      {
-        contentType: "application/vnd.microsoft.card.adaptive",
-        content: {
-          type: "AdaptiveCard",
-          $schema: "https://adaptivecards.io/schemas/adaptive-card.json",
-          version: "1.5",
-          body: [],
-        },
-      },
-    ],
-  };
-}
-
 function createFooterText({
   assistantName,
   conversationUrl,
