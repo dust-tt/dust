@@ -70,6 +70,17 @@ async function handler(
     });
   }
 
+  // Prevent users from requesting access to data sources outside their workspace (e,g: public).
+  if (dataSource.workspaceId !== auth.getNonNullableWorkspace().id) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source was not found.",
+      },
+    });
+  }
+
   if (!dataSource.editedByUser?.sId) {
     return apiError(req, res, {
       status_code: 403,
