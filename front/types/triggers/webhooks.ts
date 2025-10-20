@@ -59,17 +59,21 @@ export type WebhookSourceType = {
   subscribedEvents: string[];
 };
 
-export type WebhookSourceViewType = {
+export type WebhookSourceViewInfoType = {
   id: ModelId;
   sId: string;
   customName: string | null;
   description: string;
   icon: InternalAllowedIconType | CustomResourceIconType;
+  subscribedEvents: string[];
   createdAt: number;
   updatedAt: number;
   spaceId: string;
-  webhookSource: WebhookSourceType;
   editedByUser: EditedByUser | null;
+};
+
+export type WebhookSourceViewType = WebhookSourceViewInfoType & {
+  webhookSource: WebhookSourceType;
 };
 
 export type WebhookSourceWithViewsType = WebhookSourceType & {
