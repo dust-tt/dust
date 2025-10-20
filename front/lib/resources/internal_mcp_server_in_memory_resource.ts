@@ -192,8 +192,7 @@ export class InternalMCPServerInMemoryResource {
     if (!server) {
       throw new DustError(
         "internal_server_not_found",
-        "Failed to create internal MCP server, the id is probably invalid." +
-          sid
+        "Failed to create internal MCP server, the id is probably invalid."
       );
     }
 
