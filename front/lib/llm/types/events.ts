@@ -28,7 +28,7 @@ export interface ReasoningDeltaEvent {
 
 // Output items
 export interface ToolCall {
-  id: string;
+  id?: string;
   name: string;
   arguments: string;
 }
@@ -80,7 +80,7 @@ export interface SuccessCompletionEvent {
 
 export interface CompletionError {
   message: string;
-  code: string;
+  code: number;
 }
 
 export interface ErrorCompletionEvent {
