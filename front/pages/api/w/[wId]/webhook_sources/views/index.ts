@@ -85,7 +85,7 @@ async function handler(
         .flat()
         .filter((v): v is WebhookSourceViewWithWebhookSourceType => v !== null)
         // map to WebhookSourceViewType: copy all fields but the webhookSource field
-        .map(({ webhookSource, ...rest }) => rest);
+        .map(({ webhookSource: _, ...rest }) => rest);
 
       return res.status(200).json({
         success: true,

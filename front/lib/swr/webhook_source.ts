@@ -8,7 +8,9 @@ import type { GetWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/s
 import type { GetWebhookSourcesResponseBody } from "@app/pages/api/w/[wId]/webhook_sources";
 import type { DeleteWebhookSourceResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]";
 import type { GetWebhookSourceViewsResponseBody as GetSpecificWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/views";
+import type { GetWebhookSourceViewsListResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/views";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type {
   PostWebhookSourcesBody,
   WebhookSourceType,
@@ -45,6 +47,29 @@ export function useWebhookSourceViews({
     webhookSourceViews,
     isWebhookSourceViewsLoading: !error && !data && !disabled,
     isWebhookSourceViewsError: error,
+    mutateWebhookSourceViews: mutate,
+  };
+}
+
+export function useWebhookSourceViewsFromSpaces(
+  owner: LightWorkspaceType,
+  spaces: SpaceType[],
+  disabled?: boolean
+) {
+  const configFetcher: Fetcher<GetWebhookSourceViewsListResponseBody> = fetcher;
+
+  const spaceIds = spaces.map((s) => s.sId).join(",");
+
+  const url = `/api/w/${owner.sId}/webhook_sources/views?spaceIds=${spaceIds}`;
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
+    disabled,
+  });
+
+  return {
+    webhookSourceViews:
+      data?.webhookSourceViews ?? emptyArray<WebhookSourceViewType>(),
+    isLoading: !error && !data && spaces.length !== 0,
+    isError: error,
     mutateWebhookSourceViews: mutate,
   };
 }
