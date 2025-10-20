@@ -37,6 +37,9 @@ describe("GET /api/w/[wId]/webhook_sources/views/[viewId]", () => {
     const webhookSourceView =
       await webhookSourceViewFactory.create(globalSpace);
 
+    // Get the webhook source name from the toJSON() output since customName can be null
+    const webhookSourceName = webhookSourceView.toJSON().customName;
+
     expect(webhookSourceView).not.toBeNull();
     req.query.viewId = webhookSourceView.sId;
 
@@ -47,9 +50,7 @@ describe("GET /api/w/[wId]/webhook_sources/views/[viewId]", () => {
     expect(responseData.webhookSourceView).toBeDefined();
     expect(responseData.webhookSourceView.sId).toBe(webhookSourceView.sId);
     expect(responseData.webhookSourceView.webhookSource).toBeDefined();
-    expect(responseData.webhookSourceView.customName).toBe(
-      webhookSourceView.customName
-    );
+    expect(responseData.webhookSourceView.customName).toBe(webhookSourceName);
     expect(responseData.webhookSourceView.description).toBe(
       webhookSourceView.description
     );
