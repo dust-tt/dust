@@ -2,6 +2,7 @@ import type { estypes } from "@elastic/elasticsearch";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
+import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolExecutionByVersion } from "@app/lib/api/assistant/observability/tool_execution";
 import { fetchToolExecutionMetrics } from "@app/lib/api/assistant/observability/tool_execution";
@@ -9,8 +10,6 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-
-const DEFAULT_PERIOD = 30;
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional(),
@@ -89,7 +88,7 @@ async function handler(
         });
       }
 
-      const days = q.data.days ?? DEFAULT_PERIOD;
+      const days = q.data.days ?? DEFAULT_PERIOD_DAYS;
       const owner = auth.getNonNullableWorkspace();
 
       const baseQuery = buildAgentAnalyticsBaseQuery(

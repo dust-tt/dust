@@ -148,51 +148,46 @@ export function ToolExecutionChart({
           : undefined
       }
     >
-      <>
-        <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-          <BarChart
-            data={chartData}
-            margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-            <XAxis
-              dataKey="version"
-              className="text-xs text-muted-foreground"
+      <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+        <BarChart
+          data={chartData}
+          margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+          <XAxis dataKey="version" className="text-xs text-muted-foreground" />
+          <YAxis
+            className="text-xs text-muted-foreground"
+            label={{
+              value: "Usage %",
+              angle: -90,
+              position: "insideLeft",
+              style: { textAnchor: "middle" },
+            }}
+          />
+          <Tooltip
+            cursor={{ fill: "hsl(var(--border) / 0.1)" }}
+            content={renderTooltip}
+          />
+          {topTools.map((toolName, idx) => (
+            <Bar
+              key={toolName}
+              dataKey={(row: ChartRow) => row.values[toolName] ?? 0}
+              stackId="a"
+              fill="currentColor"
+              className={TOOL_COLORS[idx % TOOL_COLORS.length]}
+              name={toolName}
             />
-            <YAxis
-              className="text-xs text-muted-foreground"
-              label={{
-                value: "Usage %",
-                angle: -90,
-                position: "insideLeft",
-                style: { textAnchor: "middle" },
-              }}
-            />
-            <Tooltip
-              cursor={{ fill: "hsl(var(--border) / 0.1)" }}
-              content={renderTooltip}
-            />
-            {topTools.map((toolName, idx) => (
-              <Bar
-                key={toolName}
-                dataKey={(row: ChartRow) => row.values[toolName] ?? 0}
-                stackId="a"
-                fill="currentColor"
-                className={TOOL_COLORS[idx % TOOL_COLORS.length]}
-                name={toolName}
-              />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-        <ChartLegend items={legendItems} />
-        <div className="mt-4 text-xs text-muted-foreground">
-          <p>
-            Shows the relative usage frequency (%) of the top{" "}
-            {MAX_TOOLS_DISPLAYED} tools for each agent version. Higher
-            percentages indicate more frequent tool usage within that version.
-          </p>
-        </div>
-      </>
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+      <ChartLegend items={legendItems} />
+      <div className="mt-4 text-xs text-muted-foreground">
+        <p>
+          Shows the relative usage frequency (%) of the top{" "}
+          {MAX_TOOLS_DISPLAYED} tools for each agent version. Higher percentages
+          indicate more frequent tool usage within that version.
+        </p>
+      </div>
     </ChartContainer>
   );
 }
