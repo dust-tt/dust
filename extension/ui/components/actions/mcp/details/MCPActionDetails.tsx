@@ -1,4 +1,3 @@
-import type { TimeFrame } from "@app/shared/lib/time_frame";
 import { parseTimeFrame } from "@app/shared/lib/time_frame";
 import { asDisplayName } from "@app/shared/lib/utils";
 import {
@@ -7,6 +6,10 @@ import {
   isIncludeInputType,
   isSearchInputType,
   isWebsearchInputType,
+  makeQueryTextForDataSourceSearch,
+  makeQueryTextForFind,
+  makeQueryTextForList,
+  renderRelativeTimeFrameForInclude,
 } from "@app/shared/lib/mcp_input_types";
 import { ActionDetailsWrapper } from "@app/ui/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/ui/components/actions/mcp/details/MCPBrowseActionDetails";
@@ -55,106 +58,6 @@ export const FILESYSTEM_CAT_TOOL_NAME = "cat";
 export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
-
-export function renderMimeType(mimeType: string) {
-  return mimeType
-    .replace("application/vnd.dust.", "")
-    .replace("-", " ")
-    .replace(".", " ");
-}
-
-function renderRelativeTimeFrameForToolOutput(
-  relativeTimeFrame: TimeFrame | null
-): string {
-  return relativeTimeFrame
-    ? "over the last " +
-        (relativeTimeFrame.duration > 1
-          ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
-          : `${relativeTimeFrame.unit}`)
-    : "across all time periods";
-}
-
-function renderTagsForToolOutput(
-  tagsIn?: string[],
-  tagsNot?: string[]
-): string {
-  const tagsInAsString =
-    tagsIn && tagsIn.length > 0 ? `, with labels ${tagsIn?.join(", ")}` : "";
-  const tagsNotAsString =
-    tagsNot && tagsNot.length > 0
-      ? `, excluding labels ${tagsNot?.join(", ")}`
-      : "";
-  return `${tagsInAsString}${tagsNotAsString}`;
-}
-
-function renderSearchNodeIds(nodeIds?: string[]): string {
-  return nodeIds && nodeIds.length > 0
-    ? `within ${nodeIds.length} different subtrees `
-    : "";
-}
-
-function makeQueryTextForDataSourceSearch({
-  query,
-  timeFrame,
-  tagsIn,
-  tagsNot,
-  nodeIds,
-}: {
-  query: string;
-  timeFrame: TimeFrame | null;
-  tagsIn?: string[];
-  tagsNot?: string[];
-  nodeIds?: string[];
-}): string {
-  const timeFrameAsString = renderRelativeTimeFrameForToolOutput(timeFrame);
-  const tagsAsString = renderTagsForToolOutput(tagsIn, tagsNot);
-  const nodeIdsAsString = renderSearchNodeIds(nodeIds);
-
-  return query
-    ? `Searching "${query}" ${nodeIdsAsString}${timeFrameAsString}${tagsAsString}.`
-    : `Searching ${timeFrameAsString}${tagsAsString}.`;
-}
-
-function makeQueryTextForFind({
-  query,
-  rootNodeId,
-  mimeTypes,
-  nextPageCursor,
-}: {
-  query?: string;
-  rootNodeId?: string;
-  mimeTypes?: string[];
-  nextPageCursor?: string;
-}): string {
-  const queryText = query ? ` "${query}"` : " all content";
-  const scope = rootNodeId
-    ? ` under ${rootNodeId}`
-    : " across the entire data sources";
-  const types = mimeTypes?.length
-    ? ` (${mimeTypes.map(renderMimeType).join(", ")} files)`
-    : "";
-  const pagination = nextPageCursor ? " - next page" : "";
-
-  return `Searching for${queryText}${scope}${types}${pagination}.`;
-}
-
-function makeQueryTextForList({
-  nodeId,
-  mimeTypes,
-  nextPageCursor,
-}: {
-  nodeId: string | null;
-  mimeTypes?: string[];
-  nextPageCursor?: string;
-}): string {
-  const location = nodeId ? ` within node "${nodeId}"` : " at the root level";
-  const types = mimeTypes?.length
-    ? ` (${mimeTypes.map(renderMimeType).join(", ")} files)`
-    : "";
-  const pagination = nextPageCursor ? " - next page" : "";
-
-  return `Listing content${location}${types}${pagination}.`;
-}
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
   const {
@@ -246,7 +149,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           }
           actionOutput={output}
           visual={ClockIcon}
-          query={`Requested to include documents ${renderRelativeTimeFrameForToolOutput(
+          query={`Requested to include documents ${renderRelativeTimeFrameForInclude(
             params.timeFrame ? (parseTimeFrame(params.timeFrame) ?? null) : null
           )}.`}
         />
