@@ -33,7 +33,7 @@ function extractTextFromDocx(buffer: Buffer): string {
     if (!documentXml) {
       throw new Error("document.xml not found in .docx file");
     }
-    return documentXml
+    return documentXml;
   } catch (error) {
     throw new Error(
       `Failed to extract text from docx: ${normalizeError(error).message}`
@@ -251,11 +251,20 @@ function createServer(
             },
           ]);
         } catch (err) {
-          return new Err(
-            new MCPError(
-              normalizeError(err).message || "Failed to update document"
-            )
-          );
+          const originalError =
+            normalizeError(err).message || "Failed to update document";
+          let errorMessage = originalError;
+
+          if (
+            originalError.includes("locked") ||
+            originalError.includes("being uploaded")
+          ) {
+            errorMessage = `The document is currently locked (likely open in Word Online or being edited by another user).
+              To resolve this issue, close the document in your browser/Word and try again.
+              Original error: ${originalError}`;
+          }
+
+          return new Err(new MCPError(errorMessage));
         }
       }
     )
@@ -297,7 +306,7 @@ function createServer(
         .optional()
         .describe(
           "If true, the content will be returned as XML (for .docx file only). Otherwise, it will be returned as text/html. Must be true if you want to edit the document."
-        )
+        ),
     },
     withToolLogging(
       auth,
@@ -340,7 +349,8 @@ function createServer(
             content = buffer.toString("utf-8");
           } else if (
             mimeType ===
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" && getAsXml === true
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document" &&
+            getAsXml === true
           ) {
             // Handle .docx files by unzipping and extracting document.xml
             try {
