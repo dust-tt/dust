@@ -33,30 +33,7 @@ function extractTextFromDocx(buffer: Buffer): string {
     if (!documentXml) {
       throw new Error("document.xml not found in .docx file");
     }
-
-    // Extract text content from XML tags <w:t>...</w:t>
-    // This regex matches text elements in Word XML format
-    const textMatches = documentXml.match(/<w:t[^>]*>([^<]*)<\/w:t>/g);
-
-    if (!textMatches) {
-      return "";
-    }
-
-    // Extract the actual text content from each match
-    const text = textMatches
-      .map((match: string) => {
-        const textContent = match.replace(/<w:t[^>]*>([^<]*)<\/w:t>/, "$1");
-        // Decode XML entities
-        return textContent
-          .replace(/&lt;/g, "<")
-          .replace(/&gt;/g, ">")
-          .replace(/&amp;/g, "&")
-          .replace(/&quot;/g, '"')
-          .replace(/&apos;/g, "'");
-      })
-      .join("");
-
-    return text;
+    return documentXml
   } catch (error) {
     throw new Error(
       `Failed to extract text from docx: ${normalizeError(error).message}`
@@ -315,11 +292,17 @@ function createServer(
         .describe(
           `Maximum number of characters to return. Defaults to ${MAX_CONTENT_SIZE}.`
         ),
+      getAsXml: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, the content will be returned as XML (for .docx file only). Otherwise, it will be returned as text/html. Must be true if you want to edit the document."
+        )
     },
     withToolLogging(
       auth,
       { toolNameForMonitoring: "microsoft_drive", agentLoopContext },
-      async ({ itemId, driveId, siteId, offset, limit }, { authInfo }) => {
+      async ({ itemId, driveId, siteId, offset, limit, getAsXml }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
           return new Err(
@@ -357,7 +340,7 @@ function createServer(
             content = buffer.toString("utf-8");
           } else if (
             mimeType ===
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" && getAsXml === true
           ) {
             // Handle .docx files by unzipping and extracting document.xml
             try {
