@@ -34,10 +34,6 @@ import type {
   OAuthProvider,
 } from "@app/types";
 
-/**
- * Servers that register tools with dynamic names (e.g., from database).
- * These servers bypass tool name validation.
- */
 type DynamicToolServers =
   | "run_dust_app"
   | "run_agent"
