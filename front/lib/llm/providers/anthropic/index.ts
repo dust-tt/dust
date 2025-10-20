@@ -8,7 +8,11 @@ import type {
   LLMOutputItem,
   ProviderMetadata,
 } from "@app/lib/llm/types";
-import type { AgentReasoningEffort, ModelConfigurationType, ModelConversationTypeMultiActions } from "@app/types";
+import type {
+  AgentReasoningEffort,
+  ModelConfigurationType,
+  ModelConversationTypeMultiActions,
+} from "@app/types";
 
 import { toMessages } from "./utils/conversation_to_anthropic";
 
@@ -63,10 +67,13 @@ export class AnthropicLLM extends LLM {
   }): AsyncGenerator<MessageStreamEvent> {
     const events = await this.client.messages.stream({
       model: this.model.modelId,
-      thinking: this.reasoningEffort !== "none" ? {
-        type: "enabled",
-        budget_tokens: 16000,
-      } : undefined,
+      thinking:
+        this.reasoningEffort !== "none"
+          ? {
+              type: "enabled",
+              budget_tokens: 16000,
+            }
+          : undefined,
       system: prompt,
       messages: toMessages(conversation),
       temperature: 1, //this.temperature,
