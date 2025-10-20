@@ -130,7 +130,7 @@ export function withToolLogging<T>(
       );
     }
 
-    logger.info(
+    logger.info.bind(logger)(
       {
         ...loggerArgs,
         duration: elapsed,
