@@ -805,7 +805,7 @@ impl ElasticsearchSearchStore {
 
                 counter.add(1);
                 let mut bool_query =
-                    Query::bool().filter(Query::term("data_source_id", f.data_source_id.clone()));
+                    Query::bool().filter(Query::term("data_source_id", f.data_source_id));
 
                 // Only add parents filter if the index supports it.
                 if index_name == DATA_SOURCE_NODE_INDEX_NAME && !f.view_filter.is_empty() {
