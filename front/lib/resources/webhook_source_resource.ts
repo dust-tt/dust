@@ -66,11 +66,13 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
       // Immediately create a view for the webhook source in the system space.
       await WebhookSourcesViewModel.create(
         {
+          customName: blob.name,
           workspaceId: auth.getNonNullableWorkspace().id,
           vaultId: systemSpace.id,
           editedAt: new Date(),
           editedByUserId: auth.user()?.id,
           webhookSourceId: webhookSource.id,
+          // on creation there is no custom icon or description
           description: "",
           icon: DEFAULT_WEBHOOK_ICON,
         },

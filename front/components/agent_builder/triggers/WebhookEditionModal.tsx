@@ -122,7 +122,7 @@ export function WebhookEditionModal({
       .forEach((view) => {
         options.push({
           value: view.sId,
-          label: view.customName ?? "Untitled Webhook Source View",
+          label: view.customName,
           kind: view.kind,
           icon: (props) => (
             <WebhookSourceViewIcon webhookSourceView={view} {...props} />

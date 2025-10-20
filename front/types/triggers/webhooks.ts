@@ -62,7 +62,7 @@ export type WebhookSourceType = {
 export type WebhookSourceViewType = {
   id: ModelId;
   sId: string;
-  customName: string | null;
+  customName: string;
   description: string;
   icon: InternalAllowedIconType | CustomResourceIconType;
   kind: WebhookSourceKind;
