@@ -259,7 +259,7 @@ function createServer(
         } catch (err) {
           const originalError =
             normalizeError(err).message || "Failed to update document";
-          let errorMessage = originalError;
+          let errorMessage = "Failed to update document";
 
           if (
             originalError.includes("locked") ||
