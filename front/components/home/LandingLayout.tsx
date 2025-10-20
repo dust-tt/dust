@@ -146,7 +146,9 @@ export default function LandingLayout({
                 TRACKING_AREAS.NAVIGATION,
                 "sign_in",
                 () => {
-                  window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
+                  // Temporary redirect to outage page to offer email-based login
+                  const returnTo = encodeURIComponent(postLoginReturnToUrl);
+                  window.location.href = `/home/login-outage?returnTo=${returnTo}`;
                 }
               )}
             />
