@@ -45,7 +45,10 @@ export function createResponseAdaptiveCard({
   // Add footnotes section if present
   if (footnotes && footnotes.length > 0) {
     const footnotesText = footnotes
-      .map((footnote) => `[**[${footnote.index}]** ${footnote.text}](${footnote.link})`)
+      .map(
+        (footnote) =>
+          `[**[${footnote.index}]** ${footnote.text}](${footnote.link})`
+      )
       .join(" • ");
 
     card.body.push({
