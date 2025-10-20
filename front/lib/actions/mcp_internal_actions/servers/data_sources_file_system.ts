@@ -1,18 +1,9 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  FILESYSTEM_CAT_TOOL_NAME,
-  FILESYSTEM_FIND_TOOL_NAME,
-  FILESYSTEM_LIST_TOOL_NAME,
-  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
-  FIND_TAGS_TOOL_NAME,
-  SEARCH_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
@@ -23,14 +14,22 @@ import {
   makeQueryResource,
   renderSearchResults,
 } from "@app/lib/actions/mcp_internal_actions/rendering";
-import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
-import { registerListTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
+import {
+  FILESYSTEM_CAT_TOOL_NAME,
+  FILESYSTEM_FIND_TOOL_NAME,
+  FILESYSTEM_LIST_TOOL_NAME,
+  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+  FIND_TAGS_TOOL_NAME,
+  SEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
+import { makeCatToolImplementation } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
+import { makeListToolImplementation } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
 import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
   makeQueryResourceForFind,
 } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
-import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
+import { makeFindTagsToolImplementation } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import {
   checkConflictingTags,
   shouldAutoGenerateTags,
@@ -40,6 +39,7 @@ import {
   getCoreSearchArgs,
   makeDataSourceViewFilter,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -333,15 +333,22 @@ async function searchCallback(
   ]);
 }
 
+const serverName = "data_sources_file_system";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("data_sources_file_system");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
-  registerCatTool(auth, server, agentLoopContext, {
-    name: FILESYSTEM_CAT_TOOL_NAME,
-  });
+  const catTool = makeCatToolImplementation(auth, agentLoopContext);
+
+  server.tool(
+    FILESYSTEM_CAT_TOOL_NAME,
+    catTool.baseDescription,
+    catTool.schema,
+    catTool.callback
+  );
 
   server.tool(
     FILESYSTEM_FIND_TOOL_NAME,
@@ -488,9 +495,13 @@ function createServer(
     )
   );
 
-  registerListTool(auth, server, agentLoopContext, {
-    name: FILESYSTEM_LIST_TOOL_NAME,
-  });
+  const listTool = makeListToolImplementation(auth, agentLoopContext);
+  server.tool(
+    FILESYSTEM_LIST_TOOL_NAME,
+    listTool.description,
+    listTool.schema,
+    listTool.callback
+  );
 
   // Check if tags are dynamic before creating the search tool.
   const areTagsDynamic = agentLoopContext
@@ -516,10 +527,13 @@ function createServer(
   } else {
     // If tags are dynamic, then we add a tool for the agent to discover tags and let it pass tags
     // in the search tool.
-    registerFindTagsTool(auth, server, agentLoopContext, {
-      name: FIND_TAGS_TOOL_NAME,
-      extraDescription: `This tool is meant to be used before the ${SEARCH_TOOL_NAME} tool.`,
-    });
+    const findTagsTool = makeFindTagsToolImplementation(auth, agentLoopContext);
+    server.tool(
+      FIND_TAGS_TOOL_NAME,
+      `${findTagsTool.description}\nThis tool is meant to be used before the ${SEARCH_TOOL_NAME} tool.`,
+      findTagsTool.schema,
+      findTagsTool.callback
+    );
 
     server.tool(
       SEARCH_TOOL_NAME,

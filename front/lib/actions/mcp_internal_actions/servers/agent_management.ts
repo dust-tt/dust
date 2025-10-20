@@ -1,9 +1,9 @@
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { AgentCreationResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -13,13 +13,15 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
 
+const serverName = "agent_management";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
+): InternalMcpServer<typeof serverName> {
   void agentLoopContext;
 
-  const server = makeInternalMCPServer("agent_management");
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     "create_agent",

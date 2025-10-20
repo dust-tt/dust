@@ -6,7 +6,7 @@ import {
   TOOL_NAME_SEPARATOR,
   tryListMCPTools,
 } from "@app/lib/actions/mcp_actions";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import {
   isDustAppChatBlockType,
   runActionStreamed,

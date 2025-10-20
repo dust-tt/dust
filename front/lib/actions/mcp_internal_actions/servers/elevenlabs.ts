@@ -1,9 +1,9 @@
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -37,11 +37,13 @@ const VOICE_TO_VOICE_ID = {
   male: "bIHbv24MWmeRgasZH58o",
 };
 
+const serverName = "elevenlabs";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("elevenlabs");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     "text_to_speech",

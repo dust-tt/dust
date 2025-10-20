@@ -3,7 +3,6 @@ import type {
   ConversationPublicType,
 } from "@dust-tt/client";
 import { DustAPI, INTERNAL_MIME_TYPES, isAgentMessage } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import _ from "lodash";
 import { z } from "zod";
@@ -20,6 +19,7 @@ import type {
   RunAgentBlockingEvent,
 } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { makeToolBlockedAwaitingInputResponse } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   makeInternalMCPServer,
   makeMCPToolExit,
@@ -58,6 +58,8 @@ import {
 
 const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
 const RUN_AGENT_TOOL_LOG_NAME = "run_agent";
+
+const serverName = "run_agent";
 
 function isRunAgentHandoffMode(
   agentLoopContext?: AgentLoopContextType
@@ -199,8 +201,8 @@ const configurableProperties = {
 export default async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): Promise<McpServer> {
-  const server = makeInternalMCPServer("run_agent");
+): Promise<InternalMcpServer<typeof serverName>> {
+  const server = makeInternalMCPServer(serverName);
   const owner = auth.getNonNullableWorkspace();
 
   let childAgentId: string | null = null;

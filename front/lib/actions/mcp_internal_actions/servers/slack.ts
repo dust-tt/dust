@@ -1,5 +1,4 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import uniqBy from "lodash/uniqBy";
 import { z } from "zod";
 
@@ -17,6 +16,7 @@ import {
   executePostMessage,
   getSlackClient,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack_bot/slack_api_helper";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   makeInternalMCPServer,
   makePersonalAuthenticationError,
@@ -48,6 +48,8 @@ export type SlackSearchMatch = {
 
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const SLACK_TOOL_LOG_NAME = "slack";
+
+const serverName = "slack";
 
 export const slackSearch = async (
   query: string,
@@ -283,8 +285,8 @@ async function createServer(
   auth: Authenticator,
   mcpServerId: string,
   agentLoopContext?: AgentLoopContextType
-): Promise<McpServer> {
-  const server = makeInternalMCPServer("slack");
+): Promise<InternalMcpServer<typeof serverName>> {
+  const server = makeInternalMCPServer(serverName);
 
   const c = await getConnectionForMCPServer(auth, {
     mcpServerId,

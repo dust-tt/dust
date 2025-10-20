@@ -1,5 +1,4 @@
 import { FilterOperatorEnum } from "@hubspot/api-client/lib/codegen/crm/contacts";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
@@ -53,10 +52,13 @@ import {
   validateRequests,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 
-function createServer(): McpServer {
-  const server = makeInternalMCPServer("hubspot");
+const serverName = "hubspot";
+
+function createServer(): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     "get_object_properties",

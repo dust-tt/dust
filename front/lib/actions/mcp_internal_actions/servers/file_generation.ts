@@ -1,7 +1,6 @@
 import { basename } from "node:path";
 import { Readable } from "node:stream";
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { UploadResult } from "convertapi";
 import ConvertAPI from "convertapi";
 import { marked } from "marked";
@@ -9,6 +8,7 @@ import { extname } from "path";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -94,11 +94,13 @@ function getContentTypeFromOutputFormat(
   }
 }
 
+const serverName = "file_generation";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("file_generation");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
   server.tool(
     "get_supported_source_formats_for_output_format",
     "Get a list of source formats supported for a target output format.",

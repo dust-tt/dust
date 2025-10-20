@@ -1,25 +1,25 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  FIND_TAGS_TOOL_NAME,
-  SEARCH_SERVER_NAME,
-  SEARCH_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
-import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
+import {
+  FIND_TAGS_TOOL_NAME,
+  SEARCH_SERVER_NAME,
+  SEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
+import { makeFindTagsToolImplementation } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import {
   checkConflictingTags,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -41,7 +41,7 @@ import {
   timeFrameFromNow,
 } from "@app/types";
 
-export async function searchFunction({
+async function searchFunction({
   query,
   relativeTimeFrame,
   dataSources,
@@ -212,11 +212,13 @@ export async function searchFunction({
   ]);
 }
 
+const serverName = SEARCH_SERVER_NAME;
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer(SEARCH_SERVER_NAME);
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   const commonInputsSchema = {
     query: z
@@ -299,10 +301,13 @@ function createServer(
       )
     );
 
-    registerFindTagsTool(auth, server, agentLoopContext, {
-      name: FIND_TAGS_TOOL_NAME,
-      extraDescription: `This tool is meant to be used before the ${SEARCH_TOOL_NAME} tool.`,
-    });
+    const findTagsTool = makeFindTagsToolImplementation(auth, agentLoopContext);
+    server.tool(
+      FIND_TAGS_TOOL_NAME,
+      `${findTagsTool.description}\nThis tool is meant to be used before the ${SEARCH_TOOL_NAME} tool.`,
+      findTagsTool.schema,
+      findTagsTool.callback
+    );
   }
 
   return server;

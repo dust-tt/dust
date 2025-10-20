@@ -1,4 +1,3 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -9,6 +8,7 @@ import {
   executePostMessage,
   getSlackClient,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack_bot/slack_api_helper";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -18,12 +18,14 @@ import { Err, normalizeError, Ok } from "@app/types";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const SLACK_TOOL_LOG_NAME = "slack_bot";
 
+const serverName = "slack_bot";
+
 async function createServer(
   auth: Authenticator,
   mcpServerId: string,
   agentLoopContext?: AgentLoopContextType
-): Promise<McpServer> {
-  const server = makeInternalMCPServer("slack_bot");
+): Promise<InternalMcpServer<typeof serverName>> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     "post_message",

@@ -1,5 +1,4 @@
 import { assertNever, INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
@@ -8,10 +7,6 @@ import {
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  EXECUTE_DATABASE_QUERY_TOOL_NAME,
-  GET_DATABASE_SCHEMA_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   SqlQueryOutputType,
@@ -24,11 +19,16 @@ import {
   GET_DATABASE_SCHEMA_MARKER,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  EXECUTE_DATABASE_QUERY_TOOL_NAME,
+  GET_DATABASE_SCHEMA_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
+import {
   getDatabaseExampleRowsContent,
   getQueryWritingInstructionsContent,
   getSchemaContent,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -100,11 +100,13 @@ function verifyDataSourceViewReadAccess(
   return null;
 }
 
+const serverName = "query_tables_v2";
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("query_tables_v2");
+): InternalMcpServer<typeof serverName> {
+  const server = makeInternalMCPServer(serverName);
 
   server.tool(
     GET_DATABASE_SCHEMA_TOOL_NAME,
