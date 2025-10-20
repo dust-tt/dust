@@ -321,7 +321,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
 
   public async updateName(
     auth: Authenticator,
-    name?: string
+    name: string
   ): Promise<Result<number, DustError<"unauthorized">>> {
     if (!this.canAdministrate(auth)) {
       return new Err(
@@ -330,7 +330,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     }
 
     const [affectedCount] = await this.update({
-      customName: name ?? null,
+      customName: name,
       editedAt: new Date(),
       editedByUserId: auth.getNonNullableUser().id,
     });
@@ -340,7 +340,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
   public static async bulkUpdateName(
     auth: Authenticator,
     viewIds: ModelId[],
-    name?: string
+    name: string
   ): Promise<void> {
     if (viewIds.length === 0) {
       return;
@@ -348,7 +348,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
 
     await this.model.update(
       {
-        customName: name ?? null,
+        customName: name,
         editedAt: new Date(),
         editedByUserId: auth.getNonNullableUser().id,
       },
@@ -531,7 +531,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return {
       id: this.id,
       sId: this.sId,
-      customName: this.customName,
+      customName: this.customName ?? webhookSource.name,
       description: this.description,
       icon: normalizeWebhookIcon(this.icon),
       kind: webhookSource.kind,

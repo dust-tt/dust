@@ -71,6 +71,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
           editedAt: new Date(),
           editedByUserId: auth.user()?.id,
           webhookSourceId: webhookSource.id,
+          // on creation there is no custom icon or description
           description: "",
           icon: DEFAULT_WEBHOOK_ICON,
         },

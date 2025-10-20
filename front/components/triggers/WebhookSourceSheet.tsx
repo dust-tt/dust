@@ -662,8 +662,9 @@ function WebhookSourceSheetContent({
       },
       {
         id: "edit",
-        title:
-          systemView?.customName ?? webhookSource?.name ?? "Webhook Source",
+        title: systemView
+          ? systemView.customName
+          : webhookSource?.name ?? "Webhook Source",
         description: "Webhook source for triggering assistants.",
         icon: systemView
           ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />

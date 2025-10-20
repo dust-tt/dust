@@ -861,7 +861,7 @@ const SpaceTriggersSubMenu = ({
         <Tree isLoading={isWebhookSourceViewsLoading}>
           {webhookSourceViews.map((webhookView) => (
             <SpaceTriggerItem
-              label={webhookView.customName ?? webhookView.webhookSource.name}
+              label={webhookView.customName}
               icon={webhookView.icon}
               key={webhookView.sId}
             />

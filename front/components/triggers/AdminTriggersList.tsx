@@ -51,7 +51,7 @@ const NameCell = ({ row }: { row: RowData }) => {
         {systemView && <WebhookSourceViewIcon webhookSourceView={systemView} />}
         <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
           <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
-            {systemView?.customName ?? webhookSource.name}
+            {systemView ? systemView.customName : webhookSource.name}
           </div>
           {systemView?.description && (
             <div className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
