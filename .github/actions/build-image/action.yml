@@ -90,11 +90,27 @@ runs:
           build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$COMPONENT")
         fi
 
+        # Create substitutions for build args
+        substitutions="_DOCKERFILE=./dockerfiles/${BASE_COMPONENT}.Dockerfile"
+        substitutions+=",_IMAGE_TAG=${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}:${{ inputs.commit_sha }}"
+        substitutions+=",_COMMIT_HASH=${{ inputs.commit_sha }}"
+        substitutions+=",_COMMIT_HASH_LONG=${{ inputs.commit_sha_long }}"
+
+        # Add build args as environment variables in a temp cloudbuild file
+        cp ./.github/actions/build-image/cloudbuild.yaml /tmp/cloudbuild.yaml
+
+        # Add build args to the docker build step
+        for ((i=0; i<${#build_args[@]}; i++)); do
+          if [[ "${build_args[i]}" == "--build-arg" && $((i+1)) < ${#build_args[@]} ]]; then
+            # Next element is the actual build arg
+            i=$((i+1))
+            arg="${build_args[i]}"
+            # Add each build arg as a separate --build-arg line
+            sed -i "/- 'COMMIT_HASH_LONG=\$_COMMIT_HASH_LONG'/a\\      - '--build-arg'\\      - '$arg'" /tmp/cloudbuild.yaml
+          fi
+        done
+
         gcloud builds submit --quiet \
-          --machine-type=e2-highcpu-8 \
-          --tag=${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}:${{ inputs.commit_sha }} \
-          --file=./dockerfiles/${BASE_COMPONENT}.Dockerfile \
-          --build-arg=COMMIT_HASH=${{ inputs.commit_sha }} \
-          $([ -n "${{ inputs.commit_sha_long }}" ] && echo "--build-arg=COMMIT_HASH_LONG=${{ inputs.commit_sha_long }}") \
-          ${build_args[@]/#/} \
+          --config=/tmp/cloudbuild.yaml \
+          --substitutions="$substitutions" \
           .

@@ -1,0 +1,25 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--platform=linux/amd64'
+      - '-f'
+      - '$_DOCKERFILE'
+      - '-t'
+      - '$_IMAGE_TAG'
+      - '--build-arg'
+      - 'COMMIT_HASH=$_COMMIT_HASH'
+      - '--build-arg'
+      - 'COMMIT_HASH_LONG=$_COMMIT_HASH_LONG'
+      - '--push'
+      - '.'
+
+substitutions:
+  _DOCKERFILE: ''
+  _IMAGE_TAG: ''
+  _COMMIT_HASH: ''
+  _COMMIT_HASH_LONG: ''
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
