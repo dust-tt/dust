@@ -110,4 +110,5 @@ runs:
 
         gcloud builds submit --quiet \
           --config=./.github/actions/build-image/cloudbuild.yaml \
+          --service-account="projects/${PROJECT_ID}/serviceAccounts/cloudbuild-runtime@${PROJECT_ID}.iam.gserviceaccount.com" \
           .
