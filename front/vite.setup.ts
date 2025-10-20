@@ -6,14 +6,10 @@ import { default as cls } from "cls-hooked";
 import { Sequelize } from "sequelize";
 import { afterEach, beforeEach, vi } from "vitest";
 
-import { getFeatureFlags } from "@app/lib/auth";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 beforeEach(async (c) => {
   vi.clearAllMocks();
-
-  // Clear feature flags cache before each test
-  getFeatureFlags.reset();
 
   // Mock Redis
   vi.mock("@app/lib/api/redis", () => ({
