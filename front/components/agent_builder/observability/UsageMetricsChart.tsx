@@ -1,5 +1,5 @@
 import { cn } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -32,6 +32,47 @@ import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
+
+function parseUTCDate(s: string): number {
+  const parts = s.split("-");
+  if (parts.length === 3) {
+    const yy = Number(parts[0]);
+    const mm = Number(parts[1]);
+    const dd = Number(parts[2]);
+    if (Number.isFinite(yy) && Number.isFinite(mm) && Number.isFinite(dd)) {
+      return Date.UTC(yy, mm - 1, dd);
+    }
+  }
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
+function snapVersionMarkersToLabels(
+  markers: Array<{ version: string; timestamp: string }>,
+  labels: string[]
+): Array<{ version: string; x: string }> {
+  if (!labels.length || !markers.length) {
+    return [];
+  }
+
+  const labelTimes = labels.map((s) => ({ s, t: parseUTCDate(s) }));
+
+  const snapToLabel = (ts: string): string => {
+    const markerT = parseUTCDate(ts);
+    let best: { s: string; t: number } | null = null;
+    for (const lt of labelTimes) {
+      if (lt.t <= markerT && (!best || lt.t > best.t)) {
+        best = lt;
+      }
+    }
+    return best ? best.s : labels[0];
+  };
+
+  return markers.map((m) => ({
+    version: m.version,
+    x: snapToLabel(m.timestamp),
+  }));
+}
 
 interface UsageMetricsData {
   messages: number;
@@ -114,8 +155,6 @@ export function UsageMetricsChart({
       disabled: !workspaceId || !agentConfigurationId,
     });
 
-  const data = usageMetrics?.points ?? [];
-  const markers = versionMarkers ?? [];
   const isLoading = isUsageMetricsLoading || isVersionMarkersLoading;
   const isError = isUsageMetricsError || isVersionMarkersError;
 
@@ -125,42 +164,15 @@ export function UsageMetricsChart({
     colorClassName: USAGE_METRICS_PALETTE[key],
   }));
 
-  // Helpers for snapping version markers to available bucket labels
-  const parseUTCDate = (s: string): number => {
-    const parts = s.split("-");
-    if (parts.length === 3) {
-      const yy = Number(parts[0]);
-      const mm = Number(parts[1]);
-      const dd = Number(parts[2]);
-      if (Number.isFinite(yy) && Number.isFinite(mm) && Number.isFinite(dd)) {
-        return Date.UTC(yy, mm - 1, dd);
-      }
-    }
-    const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? 0 : d.getTime();
-  };
-
-  const snappedMarkers: { version: string; x: string }[] =
-    !data.length || !markers.length
-      ? []
-      : (() => {
-          const labels = data.map((d) => d.date);
-          const labelTimes = labels.map((s) => ({ s, t: parseUTCDate(s) }));
-          const snapToLabel = (ts: string): string => {
-            const markerT = parseUTCDate(ts);
-            let best: { s: string; t: number } | null = null;
-            for (const lt of labelTimes) {
-              if (lt.t <= markerT && (!best || lt.t > best.t)) {
-                best = lt;
-              }
-            }
-            return best ? best.s : labels[0];
-          };
-          return markers.map((m) => ({
-            version: m.version,
-            x: snapToLabel(m.timestamp),
-          }));
-        })();
+  const { data, snappedMarkers } = useMemo(() => {
+    const dataPoints = usageMetrics?.points ?? [];
+    const markers = versionMarkers ?? [];
+    const labels = dataPoints.map((d) => d.date);
+    return {
+      data: dataPoints,
+      snappedMarkers: snapVersionMarkersToLabels(markers, labels),
+    };
+  }, [usageMetrics?.points, versionMarkers]);
 
   const intervalControls = (
     <div className="flex items-center gap-2">
