@@ -90,45 +90,26 @@ runs:
           build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$COMPONENT")
         fi
 
-        # Generate cloudbuild.yaml with all build args
-        cat > /tmp/cloudbuild.yaml << 'EOF'
-
-        steps:
-          - name: 'gcr.io/cloud-builders/docker'
-            args:
-              - 'build'
-              - '--platform=linux/amd64'
-              - '-f'
-        EOF
-        echo "      - './dockerfiles/${BASE_COMPONENT}.Dockerfile'" >> /tmp/cloudbuild.yaml
-        echo "      - '-t'" >> /tmp/cloudbuild.yaml
-        echo "      - '${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}:${{ inputs.commit_sha }}'" >> /tmp/cloudbuild.yaml
-        echo "      - '--build-arg'" >> /tmp/cloudbuild.yaml
-        echo "      - 'COMMIT_HASH=${{ inputs.commit_sha }}'" >> /tmp/cloudbuild.yaml
-
-        if [[ -n "${{ inputs.commit_sha_long }}" ]]; then
-          echo "      - '--build-arg'" >> /tmp/cloudbuild.yaml
-          echo "      - 'COMMIT_HASH_LONG=${{ inputs.commit_sha_long }}'" >> /tmp/cloudbuild.yaml
-        fi
-
-        # Add all the build args
-        for ((i=0; i<${#build_args[@]}; i++)); do
-          if [[ "${build_args[i]}" == "--build-arg" && $((i+1)) < ${#build_args[@]} ]]; then
-            i=$((i+1))
-            echo "      - '--build-arg'" >> /tmp/cloudbuild.yaml
-            echo "      - '${build_args[i]}'" >> /tmp/cloudbuild.yaml
-          fi
-        done
-
-        cat >> /tmp/cloudbuild.yaml << 'EOF'
-        - '--push'
-        - '.'
-
-        options:
-          machineType: 'E2_HIGHCPU_8'
-          logging: CLOUD_LOGGING_ONLY
-        EOF
+        # Create a temporary args file for cloudbuild.yaml
+        echo "Creating .cloudbuild_args file..."
+        {
+          echo "build"
+          echo "--platform=linux/amd64"
+          echo "-f"
+          echo "./dockerfiles/${BASE_COMPONENT}.Dockerfile"
+          echo "-t"
+          echo "${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}:${{ inputs.commit_sha }}"
+          for arg in "${build_args[@]}"; do
+            echo "$arg"
+          done
+          echo "--build-arg=COMMIT_HASH=${{ inputs.commit_sha }}"
+          [[ -n "${{ inputs.commit_sha_long }}" ]] && echo "--build-arg=COMMIT_HASH_LONG=${{ inputs.commit_sha_long }}"
+          echo "--push"
+          echo "."
+        } > .cloudbuild_args
 
         gcloud builds submit --quiet \
-          --config=/tmp/cloudbuild.yaml \
+          --config=./.github/actions/build-image/cloudbuild.yaml \
+          --substitutions=_DOCKERFILE=unused,_IMAGE_TAG=unused,_COMMIT_HASH=unused \
+          --gcs-log-dir=gs://${{ inputs.project_id }}-build-logs/cloudbuild/ \
           .
