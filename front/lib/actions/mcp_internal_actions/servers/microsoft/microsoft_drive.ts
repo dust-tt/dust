@@ -1,10 +1,15 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import AdmZip from "adm-zip";
+import type AdmZip from "adm-zip";
 import { Readable } from "stream";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { getGraphClient } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
+import {
+  extractTextFromDocx,
+  getGraphClient,
+  validateDocumentXml,
+  validateZipFile,
+} from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -21,25 +26,6 @@ import {
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
-
-/**
- * Extracts text from a .docx file by unzipping it and parsing document.xml
- */
-function extractTextFromDocx(buffer: Buffer): string {
-  try {
-    const zip = new AdmZip(buffer);
-    const documentXml = zip.readAsText("word/document.xml");
-
-    if (!documentXml) {
-      throw new Error("document.xml not found in .docx file");
-    }
-    return documentXml;
-  } catch (error) {
-    throw new Error(
-      `Failed to extract text from docx: ${normalizeError(error).message}`
-    );
-  }
-}
 
 function createServer(
   auth: Authenticator,
@@ -196,6 +182,16 @@ function createServer(
         }
 
         try {
+          // Validate the XML content for security vulnerabilities
+          const validationResult = validateDocumentXml(documentXml);
+          if (!validationResult.isValid) {
+            return new Err(
+              new MCPError(
+                `Invalid or potentially malicious XML content: ${validationResult.error}`
+              )
+            );
+          }
+
           let endpoint: string;
 
           if (driveId) {
@@ -229,8 +225,18 @@ function createServer(
           const docResponse = await untrustedFetch(downloadUrl);
           const buffer = Buffer.from(await docResponse.arrayBuffer());
 
+          // Validate ZIP file to prevent zip bomb attacks
+          const zipValidation = validateZipFile(buffer);
+          if (!zipValidation.isValid) {
+            return new Err(
+              new MCPError(
+                `Invalid or potentially malicious ZIP file: ${zipValidation.error}`
+              )
+            );
+          }
+
           // Unzip, replace document.xml, and rezip
-          const zip = new AdmZip(buffer);
+          const zip = zipValidation.zip as AdmZip;
           zip.updateFile(
             "word/document.xml",
             Buffer.from(documentXml, "utf-8")
@@ -311,7 +317,10 @@ function createServer(
     withToolLogging(
       auth,
       { toolNameForMonitoring: "microsoft_drive", agentLoopContext },
-      async ({ itemId, driveId, siteId, offset, limit, getAsXml }, { authInfo }) => {
+      async (
+        { itemId, driveId, siteId, offset, limit, getAsXml },
+        { authInfo }
+      ) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
           return new Err(
