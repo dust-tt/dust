@@ -28,7 +28,7 @@ import * as fs from "fs";
 import * as readline from "readline";
 
 import type { LLM } from "@app/lib/llm/llm";
-import { MistralLLM } from "@app/lib/llm/providers/mistral";
+import { AnthropicLLM } from "@app/lib/llm/providers/anthropic";
 import type {
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
@@ -37,7 +37,7 @@ import type {
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 
 // Providers that have LLM implementations
-const IMPLEMENTED_PROVIDERS = ["mistral"] as const;
+const IMPLEMENTED_PROVIDERS = ["anthropic"] as const;
 type ImplementedProviderId = (typeof IMPLEMENTED_PROVIDERS)[number];
 
 function isProviderImplemented(
@@ -85,10 +85,11 @@ function createLLM({
   const providerId = model.providerId as ImplementedProviderId;
 
   switch (providerId) {
-    case "mistral":
-      return new MistralLLM({
+    case "anthropic":
+      return new AnthropicLLM({
         temperature,
         model,
+        reasoningEffort: "light",
       });
     default:
       throw new Error(`Provider ${providerId} not implemented`);
