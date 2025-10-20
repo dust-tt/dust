@@ -17,7 +17,7 @@ export class WebhookSourcesViewModel extends SoftDeletableWorkspaceAwareModel<We
 
   declare webhookSourceId: ForeignKey<WebhookSourceModel["id"]>;
 
-  declare customName: string;
+  declare customName: string | null;
   declare description: string;
   declare icon: string;
 
@@ -49,7 +49,7 @@ WebhookSourcesViewModel.init(
     },
     customName: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     description: {
       type: DataTypes.TEXT,

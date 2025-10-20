@@ -66,7 +66,6 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
       // Immediately create a view for the webhook source in the system space.
       await WebhookSourcesViewModel.create(
         {
-          customName: blob.name,
           workspaceId: auth.getNonNullableWorkspace().id,
           vaultId: systemSpace.id,
           editedAt: new Date(),

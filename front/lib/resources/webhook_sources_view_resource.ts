@@ -531,7 +531,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return {
       id: this.id,
       sId: this.sId,
-      customName: this.customName,
+      customName: this.customName ?? webhookSource.name,
       description: this.description,
       icon: normalizeWebhookIcon(this.icon),
       kind: webhookSource.kind,
