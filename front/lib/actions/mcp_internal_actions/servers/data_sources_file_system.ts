@@ -23,13 +23,13 @@ import {
   SEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import { makeCatToolImplementation } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
-import { registerListTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
+import { makeListToolImplementation } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
 import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
   makeQueryResourceForFind,
 } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
-import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
+import { makeFindTagsToolImplementation } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import {
   checkConflictingTags,
   shouldAutoGenerateTags,
@@ -495,9 +495,13 @@ function createServer(
     )
   );
 
-  registerListTool(auth, server, agentLoopContext, {
-    name: FILESYSTEM_LIST_TOOL_NAME,
-  });
+  const listTool = makeListToolImplementation(auth, agentLoopContext);
+  server.tool(
+    FILESYSTEM_LIST_TOOL_NAME,
+    listTool.description,
+    listTool.schema,
+    listTool.callback
+  );
 
   // Check if tags are dynamic before creating the search tool.
   const areTagsDynamic = agentLoopContext
@@ -523,10 +527,13 @@ function createServer(
   } else {
     // If tags are dynamic, then we add a tool for the agent to discover tags and let it pass tags
     // in the search tool.
-    registerFindTagsTool(auth, server, agentLoopContext, {
-      name: FIND_TAGS_TOOL_NAME,
-      extraDescription: `This tool is meant to be used before the ${SEARCH_TOOL_NAME} tool.`,
-    });
+    const findTagsTool = makeFindTagsToolImplementation(auth, agentLoopContext);
+    server.tool(
+      FIND_TAGS_TOOL_NAME,
+      `${findTagsTool.description}\nThis tool is meant to be used before the ${SEARCH_TOOL_NAME} tool.`,
+      findTagsTool.schema,
+      findTagsTool.callback
+    );
 
     server.tool(
       SEARCH_TOOL_NAME,

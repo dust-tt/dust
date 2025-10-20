@@ -19,7 +19,7 @@ import {
   FIND_TAGS_TOOL_NAME,
   PROCESS_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/server_constants";
-import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
+import { makeFindTagsToolImplementation } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { InternalMcpServer } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -342,10 +342,13 @@ function createServer(
       toolImplementation
     );
 
-    registerFindTagsTool(auth, server, agentLoopContext, {
-      name: FIND_TAGS_TOOL_NAME,
-      extraDescription: `This tool is meant to be used before the ${PROCESS_TOOL_NAME} tool.`,
-    });
+    const findTagsTool = makeFindTagsToolImplementation(auth, agentLoopContext);
+    server.tool(
+      FIND_TAGS_TOOL_NAME,
+      `${findTagsTool.description}\nThis tool is meant to be used before the ${PROCESS_TOOL_NAME} tool.`,
+      findTagsTool.schema,
+      findTagsTool.callback
+    );
   } else {
     server.tool(
       PROCESS_TOOL_NAME,

@@ -223,6 +223,10 @@ export const INTERNAL_MCP_TOOLS_LABELS = {
       displayName: "Retrieve Recent Documents",
       runningLabel: "Loading recent documents...",
     },
+    find_tags: {
+      displayName: "Find Tags",
+      runningLabel: "Finding tags...",
+    },
   },
   run_dust_app: {
     run_dust_app: {
@@ -312,6 +316,10 @@ export const INTERNAL_MCP_TOOLS_LABELS = {
     extract_information_from_documents: {
       displayName: "Extract Information from Documents",
       runningLabel: "Extracting data from documents...",
+    },
+    find_tags: {
+      displayName: "Find Tags",
+      runningLabel: "Finding tags...",
     },
   },
   missing_action_catcher: {
@@ -1097,6 +1105,10 @@ export const INTERNAL_MCP_TOOLS_LABELS = {
       displayName: "Semantic Search",
       runningLabel: "Searching...",
     },
+    find_tags: {
+      displayName: "Find Tags",
+      runningLabel: "Finding tags...",
+    },
   },
   run_agent: {
     run_agent: {
@@ -1178,6 +1190,10 @@ export const INTERNAL_MCP_TOOLS_LABELS = {
     semantic_search: {
       displayName: "Semantic Search",
       runningLabel: "Searching...",
+    },
+    find_tags: {
+      displayName: "Find Tags",
+      runningLabel: "Finding tags...",
     },
   },
   agent_management: {

@@ -13,7 +13,7 @@ import {
   SEARCH_SERVER_NAME,
   SEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/server_constants";
-import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
+import { makeFindTagsToolImplementation } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import {
   checkConflictingTags,
   shouldAutoGenerateTags,
@@ -301,10 +301,13 @@ function createServer(
       )
     );
 
-    registerFindTagsTool(auth, server, agentLoopContext, {
-      name: FIND_TAGS_TOOL_NAME,
-      extraDescription: `This tool is meant to be used before the ${SEARCH_TOOL_NAME} tool.`,
-    });
+    const findTagsTool = makeFindTagsToolImplementation(auth, agentLoopContext);
+    server.tool(
+      FIND_TAGS_TOOL_NAME,
+      `${findTagsTool.description}\nThis tool is meant to be used before the ${SEARCH_TOOL_NAME} tool.`,
+      findTagsTool.schema,
+      findTagsTool.callback
+    );
   }
 
   return server;

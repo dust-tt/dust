@@ -1,5 +1,4 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -28,7 +27,7 @@ import type {
 } from "@app/types";
 import { CoreAPI, Err, Ok } from "@app/types";
 
-const ListToolInputSchema = {
+const ListToolInputSchema = z.object({
   nodeId: z
     .string()
     .nullable()
@@ -69,161 +68,153 @@ const ListToolInputSchema = {
         "the next page of a previous search. The value should be exactly the 'nextPageCursor' from " +
         "the previous search result."
     ),
-};
+});
 
-export function registerListTool(
+export function makeListToolImplementation(
   auth: Authenticator,
-  server: McpServer | { tool: McpServer["tool"] },
-  agentLoopContext: AgentLoopContextType | undefined,
-  { name, extraDescription }: { name: string; extraDescription?: string }
+  agentLoopContext: AgentLoopContextType | undefined
 ) {
-  const baseDescription =
+  const description =
     "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
     "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
     "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
     "the next step's nodeId. If a node output by this tool or the find tool has children " +
     "(hasChildren: true), it means that this tool can be used again on it.";
-  const toolDescription = extraDescription
-    ? baseDescription + " " + extraDescription
-    : baseDescription;
 
-  server.tool(
-    name,
-    toolDescription,
-    ListToolInputSchema,
-    withToolLogging(
+  async function listToolCallback({
+    nodeId,
+    dataSources,
+    limit,
+    mimeTypes,
+    sortBy,
+    nextPageCursor,
+  }: z.infer<typeof ListToolInputSchema>) {
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const fetchResult = await getAgentDataSourceConfigurations(
+      auth,
+      dataSources
+    );
+
+    if (fetchResult.isErr()) {
+      return new Err(new MCPError(fetchResult.error.message));
+    }
+    const agentDataSourceConfigurations = fetchResult.value;
+
+    const options = {
+      cursor: nextPageCursor,
+      limit,
+      sort: sortBy
+        ? [
+            {
+              field: sortBy,
+              direction: getSearchNodesSortDirection(sortBy),
+            },
+          ]
+        : undefined,
+    };
+
+    let searchResult: Result<CoreAPISearchNodesResponse, CoreAPIError>;
+
+    if (!nodeId) {
+      // When nodeId is null, search for data sources only.
+      const dataSourceViewFilter = makeDataSourceViewFilter(
+        agentDataSourceConfigurations
+      ).map((view) => ({
+        ...view,
+        search_scope: "data_source_name" as const,
+      }));
+
+      searchResult = await coreAPI.searchNodes({
+        filter: {
+          data_source_views: dataSourceViewFilter,
+          mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+        },
+        options,
+      });
+    } else if (isDataSourceNodeId(nodeId)) {
+      // If it's a data source node ID, extract the data source ID and list its root contents.
+      const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
+      if (!dataSourceId) {
+        return new Err(
+          new MCPError("Invalid data source node ID format", {
+            tracked: false,
+          })
+        );
+      }
+
+      const dataSourceConfig = agentDataSourceConfigurations.find(
+        ({ dataSource }) => dataSource.dustAPIDataSourceId === dataSourceId
+      );
+
+      if (!dataSourceConfig) {
+        return new Err(
+          new MCPError(`Data source not found for ID: ${dataSourceId}`)
+        );
+      }
+
+      searchResult = await coreAPI.searchNodes({
+        filter: {
+          data_source_views: makeDataSourceViewFilter([dataSourceConfig]),
+          node_ids: dataSourceConfig.filter.parents?.in ?? undefined,
+          parent_id: dataSourceConfig.filter.parents?.in
+            ? undefined
+            : ROOT_PARENT_ID,
+          mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+        },
+        options,
+      });
+    } else {
+      // Regular node listing.
+      const dataSourceViewFilter = makeDataSourceViewFilter(
+        agentDataSourceConfigurations
+      );
+
+      searchResult = await coreAPI.searchNodes({
+        filter: {
+          data_source_views: dataSourceViewFilter,
+          parent_id: nodeId,
+          mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+        },
+        options,
+      });
+    }
+
+    if (searchResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to list folder contents: ${searchResult.error.message}`
+        )
+      );
+    }
+
+    return new Ok([
+      {
+        type: "resource" as const,
+        resource: makeQueryResourceForList(nodeId, mimeTypes, nextPageCursor),
+      },
+      {
+        type: "resource" as const,
+        resource: renderSearchResults(
+          searchResult.value,
+          agentDataSourceConfigurations
+        ),
+      },
+    ]);
+  }
+
+  return {
+    description,
+    schema: ListToolInputSchema.shape,
+    callback: withToolLogging(
       auth,
       {
         toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
         agentLoopContext,
         enableAlerting: true,
       },
-      async ({
-        nodeId,
-        dataSources,
-        limit,
-        mimeTypes,
-        sortBy,
-        nextPageCursor,
-      }) => {
-        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-        const fetchResult = await getAgentDataSourceConfigurations(
-          auth,
-          dataSources
-        );
-
-        if (fetchResult.isErr()) {
-          return new Err(new MCPError(fetchResult.error.message));
-        }
-        const agentDataSourceConfigurations = fetchResult.value;
-
-        const options = {
-          cursor: nextPageCursor,
-          limit,
-          sort: sortBy
-            ? [
-                {
-                  field: sortBy,
-                  direction: getSearchNodesSortDirection(sortBy),
-                },
-              ]
-            : undefined,
-        };
-
-        let searchResult: Result<CoreAPISearchNodesResponse, CoreAPIError>;
-
-        if (!nodeId) {
-          // When nodeId is null, search for data sources only.
-          const dataSourceViewFilter = makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          ).map((view) => ({
-            ...view,
-            search_scope: "data_source_name" as const,
-          }));
-
-          searchResult = await coreAPI.searchNodes({
-            filter: {
-              data_source_views: dataSourceViewFilter,
-              mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
-            },
-            options,
-          });
-        } else if (isDataSourceNodeId(nodeId)) {
-          // If it's a data source node ID, extract the data source ID and list its root contents.
-          const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
-          if (!dataSourceId) {
-            return new Err(
-              new MCPError("Invalid data source node ID format", {
-                tracked: false,
-              })
-            );
-          }
-
-          const dataSourceConfig = agentDataSourceConfigurations.find(
-            ({ dataSource }) => dataSource.dustAPIDataSourceId === dataSourceId
-          );
-
-          if (!dataSourceConfig) {
-            return new Err(
-              new MCPError(`Data source not found for ID: ${dataSourceId}`)
-            );
-          }
-
-          searchResult = await coreAPI.searchNodes({
-            filter: {
-              data_source_views: makeDataSourceViewFilter([dataSourceConfig]),
-              node_ids: dataSourceConfig.filter.parents?.in ?? undefined,
-              parent_id: dataSourceConfig.filter.parents?.in
-                ? undefined
-                : ROOT_PARENT_ID,
-              mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
-            },
-            options,
-          });
-        } else {
-          // Regular node listing.
-          const dataSourceViewFilter = makeDataSourceViewFilter(
-            agentDataSourceConfigurations
-          );
-
-          searchResult = await coreAPI.searchNodes({
-            filter: {
-              data_source_views: dataSourceViewFilter,
-              parent_id: nodeId,
-              mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
-            },
-            options,
-          });
-        }
-
-        if (searchResult.isErr()) {
-          return new Err(
-            new MCPError(
-              `Failed to list folder contents: ${searchResult.error.message}`
-            )
-          );
-        }
-
-        return new Ok([
-          {
-            type: "resource",
-            resource: makeQueryResourceForList(
-              nodeId,
-              mimeTypes,
-              nextPageCursor
-            ),
-          },
-          {
-            type: "resource",
-            resource: renderSearchResults(
-              searchResult.value,
-              agentDataSourceConfigurations
-            ),
-          },
-        ]);
-      }
-    )
-  );
+      listToolCallback
+    ),
+  };
 }
 
 function getSearchNodesSortDirection(
