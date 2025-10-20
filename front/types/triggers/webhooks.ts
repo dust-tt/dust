@@ -65,7 +65,6 @@ export type WebhookSourceViewInfoType = {
   customName: string | null;
   description: string;
   icon: InternalAllowedIconType | CustomResourceIconType;
-  subscribedEvents: string[];
   createdAt: number;
   updatedAt: number;
   spaceId: string;
