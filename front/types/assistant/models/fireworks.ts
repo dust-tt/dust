@@ -1,7 +1,7 @@
 import type { ModelConfigurationType } from "@app/types";
 
 export const FIREWORKS_DEEPSEEK_R1_MODEL_ID =
-  "accounts/fireworks/models/deepseek-r1" as const;
+  "accounts/fireworks/models/deepseek-r1-0528" as const;
 export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
   "accounts/fireworks/models/kimi-k2-instruct" as const;
 export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
