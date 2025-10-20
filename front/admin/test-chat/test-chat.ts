@@ -32,36 +32,10 @@ import { MistralLLM } from "@app/lib/llm/providers/mistral";
 import type {
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
-  ModelProviderIdType,
+  UserMessageTypeModel,
 } from "@app/types";
 import { dustManagedCredentials } from "@app/types/api/credentials";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
-
-// Set credentials from environment variables
-function setCliCredentials(creds: Record<string, string>): void {
-  const credentials = dustManagedCredentials();
-  Object.assign(credentials, creds);
-}
-
-// Initialize credentials from environment
-function initializeCredentials(): void {
-  const creds: Record<string, string> = {};
-  
-  if (process.env.MISTRAL_API_KEY) {
-    creds.MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
-  }
-  if (process.env.OPENAI_API_KEY) {
-    creds.OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-  }
-  if (process.env.ANTHROPIC_API_KEY) {
-    creds.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-  }
-  if (process.env.GOOGLE_AI_STUDIO_API_KEY) {
-    creds.GOOGLE_AI_STUDIO_API_KEY = process.env.GOOGLE_AI_STUDIO_API_KEY;
-  }
-  
-  setCliCredentials(creds);
-}
 
 // Providers that have LLM implementations
 const IMPLEMENTED_PROVIDERS = ["mistral"] as const;
@@ -104,29 +78,8 @@ function getModelConfig(
   return getAvailableModels().find((m) => m.modelId === modelId);
 }
 
-function setProviderApiKey(
-  providerId: ModelProviderIdType,
-  apiKey: string
-): void {
-  switch (providerId) {
-    case "mistral":
-      setCliCredentials({ MISTRAL_API_KEY: apiKey });
-      break;
-    case "openai":
-      setCliCredentials({ OPENAI_API_KEY: apiKey });
-      break;
-    case "anthropic":
-      setCliCredentials({ ANTHROPIC_API_KEY: apiKey });
-      break;
-    case "google_ai_studio":
-      setCliCredentials({ GOOGLE_AI_STUDIO_API_KEY: apiKey });
-      break;
-  }
-}
-
 function createLLM({
   model,
-  apiKey,
   temperature = 0.7,
 }: {
   model: ModelConfigurationType;
@@ -136,7 +89,6 @@ function createLLM({
   const providerId = model.providerId as ImplementedProviderId;
 
   // Set the API key for the provider
-  setProviderApiKey(providerId, apiKey);
 
   switch (providerId) {
     case "mistral":
@@ -318,9 +270,10 @@ async function streamMessage(message: string) {
     }
 
     // Add user message to conversation
-    const userMessage = {
+    const userMessage: UserMessageTypeModel = {
       role: "user" as const,
-      content: message,
+      content: [{type: "text", text: message}],
+      name: "user",
     };
 
     conversation.messages.push(userMessage);
@@ -386,6 +339,7 @@ async function streamMessage(message: string) {
     if (streamMode === "default" && fullText) {
       const assistantMessage = {
         role: "assistant" as const,
+        name: "assistant",
         content: fullText,
       };
       conversation.messages.push(assistantMessage);
@@ -450,9 +404,6 @@ async function handleCommand(input: string): Promise<boolean> {
 // Main loop
 async function main() {
   console.log("\n=== Test LLM Chat Interface ===\n");
-
-  // Initialize credentials
-  initializeCredentials();
 
   const credentials = dustManagedCredentials();
   const hasAnyKey = !!(
