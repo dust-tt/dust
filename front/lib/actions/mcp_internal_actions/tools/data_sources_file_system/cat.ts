@@ -46,11 +46,6 @@ const CatToolInputSchema = z.object({
     ),
 });
 
-/**
- * Factory function that creates the schema and callback implementation for the cat tool.
- * Returns the reusable parts; caller should invoke server.tool() with concrete types
- * and wrap the callback with withToolLogging.
- */
 export function makeCatToolImplementation(
   auth: Authenticator,
   agentLoopContext: AgentLoopContextType | undefined
