@@ -265,9 +265,7 @@ function createServer(
             originalError.includes("locked") ||
             originalError.includes("being uploaded")
           ) {
-            errorMessage = `The document is currently locked (likely open in Word Online or being edited by another user).
-              To resolve this issue, close the document in your browser/Word and try again.
-              Original error: ${originalError}`;
+            errorMessage = "The document is currently locked (likely open in Word Online or being edited by another user). To resolve this issue, close the document in your browser/Word and try again.";
           }
 
           return new Err(new MCPError(errorMessage));
