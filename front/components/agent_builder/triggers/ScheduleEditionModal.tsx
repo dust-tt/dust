@@ -11,6 +11,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,6 +33,7 @@ import { assertNever } from "@app/types";
 
 const scheduleFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
+  enabled: z.boolean().default(true),
   customPrompt: z.string(),
   cron: z.string().min(1, "Cron expression is required"),
   timezone: z.string().min(1, "Timezone is required"),
@@ -93,6 +95,7 @@ export function ScheduleEditionModal({
 
   const defaultValues: ScheduleFormData = {
     name: "Schedule",
+    enabled: true,
     cron: "",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     customPrompt: "",
@@ -128,6 +131,7 @@ export function ScheduleEditionModal({
         : null;
     reset({
       name: trigger?.name ?? defaultValues.name,
+      enabled: trigger?.enabled ?? defaultValues.enabled,
       cron: scheduleConfig?.cron ?? defaultValues.cron,
       timezone: scheduleConfig?.timezone ?? defaultValues.timezone,
       customPrompt: trigger?.customPrompt ?? defaultValues.customPrompt,
@@ -139,6 +143,7 @@ export function ScheduleEditionModal({
     defaultValues.timezone,
     defaultValues.customPrompt,
     trigger,
+    defaultValues.enabled,
   ]);
 
   const cron = useWatch({
@@ -183,6 +188,7 @@ export function ScheduleEditionModal({
   const onSubmit = (data: ScheduleFormData) => {
     const triggerData: AgentBuilderTriggerType = {
       sId: trigger?.sId,
+      enabled: data.enabled,
       name: data.name.trim(),
       kind: "schedule",
       configuration: {
@@ -235,6 +241,29 @@ export function ScheduleEditionModal({
                   message={form.formState.errors.name?.message}
                   messageStatus="error"
                 />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Status</Label>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  When disabled, the trigger will not run.
+                </p>
+                <div className="flex flex-row items-center gap-2">
+                  <SliderToggle
+                    size="xs"
+                    disabled={!isEditor}
+                    selected={form.watch("enabled")}
+                    onClick={() => {
+                      if (!isEditor) {
+                        return;
+                      }
+                      form.setValue("enabled", !form.watch("enabled"));
+                    }}
+                  />
+                  {form.watch("enabled")
+                    ? "The trigger is currently enabled"
+                    : "The trigger is currently disabled"}
+                </div>
               </div>
 
               <div className="space-y-1">
