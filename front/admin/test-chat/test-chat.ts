@@ -1,13 +1,13 @@
 #!/usr/bin/env ts-node
 /**
  * Standalone LLM Chat Tester
- * 
+ *
  * A simple command-line tool to test LLM providers using the actual LLM abstraction layer.
  * This script uses the same LLM implementations as the rest of the codebase.
- * 
+ *
  * Usage:
  *   ts-node test-chat.ts
- * 
+ *
  * Commands:
  *   /help              - Show help message
  *   /list_models       - List all available models
@@ -17,7 +17,7 @@
  *   /stream_mode <mode> - Set stream mode (default|model)
  *   /save              - Save output to a log file
  *   /exit              - Exit the chat
- * 
+ *
  * Environment Variables:
  *   MISTRAL_API_KEY    - Your Mistral API key (required for Mistral models)
  *   OPENAI_API_KEY     - Your OpenAI API key (required for OpenAI models)
@@ -71,9 +71,7 @@ function getModelsByProvider(): Record<
   >;
 }
 
-function getModelConfig(
-  modelId: string
-): ModelConfigurationType | undefined {
+function getModelConfig(modelId: string): ModelConfigurationType | undefined {
   return getAvailableModels().find((m) => m.modelId === modelId);
 }
 
@@ -123,7 +121,7 @@ function showHelp() {
     "==========================",
     "",
   ];
-  
+
   outputLines.push(...lines);
   lines.forEach((line) => console.log(line));
 }
@@ -131,7 +129,7 @@ function showHelp() {
 function listModels() {
   const modelsByProvider = getModelsByProvider();
   const lines: string[] = ["", "=== Available Models ==="];
-  
+
   for (const [providerId, models] of Object.entries(modelsByProvider)) {
     lines.push(``, `Provider: ${providerId}`);
     for (const model of models) {
@@ -139,16 +137,21 @@ function listModels() {
       lines.push(`${marker}${model.modelId} - ${model.displayName}`);
     }
   }
-  
-  lines.push("", "Use: /select_model <modelId>", "========================", "");
-  
+
+  lines.push(
+    "",
+    "Use: /select_model <modelId>",
+    "========================",
+    ""
+  );
+
   outputLines.push(...lines);
   lines.forEach((line) => console.log(line));
 }
 
 function selectModel(modelId: string) {
   const model = getModelConfig(modelId);
-  
+
   if (!model) {
     const msg = `Model '${modelId}' not found. Use /list_models to see available models.`;
     outputLines.push(msg, "");
@@ -170,7 +173,7 @@ function showConversation() {
     "========================",
     "",
   ];
-  
+
   outputLines.push(...lines);
   lines.forEach((line) => console.log(line));
 }
@@ -234,13 +237,15 @@ function saveLog() {
 // Stream message to LLM
 async function streamMessage(message: string) {
   if (!selectedModel) {
-    console.error("\nNo model selected. Use /list_models and /select_model <modelId>\n");
+    console.error(
+      "\nNo model selected. Use /list_models and /select_model <modelId>\n"
+    );
     return;
   }
   // Add user message to conversation
   const userMessage: UserMessageTypeModel = {
     role: "user" as const,
-    content: [{type: "text", text: message}],
+    content: [{ type: "text", text: message }],
     name: "user",
   };
 
@@ -367,9 +372,13 @@ async function handleCommand(input: string): Promise<boolean> {
 async function main() {
   console.log("\n=== Test LLM Chat Interface ===\n");
 
-  console.log(`Model: ${selectedModel ? `${selectedModel.displayName} (${selectedModel.modelId})` : "None"}`);
+  console.log(
+    `Model: ${selectedModel ? `${selectedModel.displayName} (${selectedModel.modelId})` : "None"}`
+  );
   console.log(`Display Mode: ${displayMode} | Stream Mode: ${streamMode}`);
-  console.log("\nType /help for commands, /list_models to see available models\n");
+  console.log(
+    "\nType /help for commands, /list_models to see available models\n"
+  );
 
   const rl = readline.createInterface({
     input: process.stdin,
