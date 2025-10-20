@@ -156,7 +156,7 @@ export function MCPActionDetails({
               : "Browse data sources"
           }
           actionOutput={output}
-          params={params}
+          query="No query provided"
           visual={ActionDocumentTextIcon}
         />
       );

@@ -19,10 +19,7 @@ import type {
   FilesystemPathType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  makeQueryResource,
-  renderSearchResults,
-} from "@app/lib/actions/mcp_internal_actions/rendering";
+import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
 import { registerListTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
 import {
@@ -313,16 +310,6 @@ async function searchCallback(
   }
 
   return new Ok([
-    {
-      type: "resource" as const,
-      resource: makeQueryResource({
-        query,
-        timeFrame,
-        tagsIn,
-        tagsNot,
-        nodeIds,
-      }),
-    },
     ...(renderedNodes
       ? [{ type: "resource" as const, resource: renderedNodes }]
       : []),
