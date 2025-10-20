@@ -10,9 +10,12 @@ import type { DeleteWebhookSourceResponseBody } from "@app/pages/api/w/[wId]/web
 import type { GetWebhookSourceViewsResponseBody as GetSpecificWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/views";
 import type { GetWebhookSourceViewsListResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/views";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type {
-  WebhookSourceViewType} from "@app/types/triggers/webhooks";
-import type {PostWebhookSourcesBody, WebhookSourceType, WebhookSourceViewWithWebhookSourceType} from "@app/types/triggers/webhooks";
+  PostWebhookSourcesBody,
+  WebhookSourceType,
+  WebhookSourceViewWithWebhookSourceType,
+} from "@app/types/triggers/webhooks";
 
 export function useWebhookSourceViews({
   owner,
