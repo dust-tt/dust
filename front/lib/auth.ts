@@ -96,6 +96,7 @@ export class Authenticator {
   _groups: GroupResource[];
   _workspace: WorkspaceResource | null;
   _spaceIds: ModelId[];
+  _shouldUseRequestedSpaces: boolean = false;
 
   // Should only be called from the static methods below.
   constructor({
@@ -105,6 +106,7 @@ export class Authenticator {
     groups,
     subscription,
     key,
+    shouldUseRequestedSpaces,
   }: {
     workspace?: WorkspaceResource | null;
     user?: UserResource | null;
@@ -112,6 +114,7 @@ export class Authenticator {
     groups: GroupResource[];
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
+    shouldUseRequestedSpaces: boolean;
   }) {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._workspace = workspace || null;
@@ -124,6 +127,7 @@ export class Authenticator {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._subscription = subscription || null;
     this._key = key;
+    this._shouldUseRequestedSpaces = shouldUseRequestedSpaces;
     if (user) {
       tracer.setUser({
         id: user?.sId,
@@ -210,10 +214,12 @@ export class Authenticator {
         WorkspaceResource.fetchById(wId),
         this.userFromSession(session),
       ]);
-      const includeGroupSpaces = true;
       let role = "none" as RoleType;
       let groups: GroupResource[] = [];
       let subscription: SubscriptionResource | null = null;
+
+      const shouldUseRequestedSpaces =
+        await Authenticator.shouldUseRequestedSpaces(workspace);
 
       if (user && workspace) {
         [role, groups, subscription] = await Promise.all([
@@ -224,7 +230,7 @@ export class Authenticator {
           GroupResource.listUserGroupsInWorkspace({
             user,
             workspace: renderLightWorkspaceType({ workspace }),
-            includeGroupSpaces,
+            includeGroupSpaces: shouldUseRequestedSpaces,
           }),
           SubscriptionResource.fetchActiveByWorkspace(
             renderLightWorkspaceType({ workspace })
@@ -238,6 +244,7 @@ export class Authenticator {
         role,
         groups,
         subscription,
+        shouldUseRequestedSpaces,
       });
     });
   }
@@ -276,12 +283,15 @@ export class Authenticator {
     let groups: GroupResource[] = [];
     let subscription: SubscriptionResource | null = null;
 
+    const shouldUseRequestedSpaces =
+      await Authenticator.shouldUseRequestedSpaces(workspace);
+
     if (workspace) {
       [groups, subscription] = await Promise.all([
         user?.isDustSuperUser
           ? GroupResource.internalFetchAllWorkspaceGroups({
               workspaceId: workspace.id,
-              includeGroupSpaces: true,
+              includeGroupSpaces: shouldUseRequestedSpaces,
             })
           : [],
         SubscriptionResource.fetchActiveByWorkspace(
@@ -296,6 +306,7 @@ export class Authenticator {
       role: user?.isDustSuperUser ? "admin" : "none",
       groups,
       subscription,
+      shouldUseRequestedSpaces,
     });
   }
   /**
@@ -319,6 +330,9 @@ export class Authenticator {
     let groups: GroupResource[] = [];
     let subscription: SubscriptionResource | null = null;
 
+    const shouldUseRequestedSpaces =
+      await Authenticator.shouldUseRequestedSpaces(workspace);
+
     if (user && workspace) {
       [role, groups, subscription] = await Promise.all([
         MembershipResource.getActiveRoleForUserInWorkspace({
@@ -328,7 +342,7 @@ export class Authenticator {
         GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
-          includeGroupSpaces: true,
+          includeGroupSpaces: shouldUseRequestedSpaces,
         }),
         SubscriptionResource.fetchActiveByWorkspace(
           renderLightWorkspaceType({ workspace })
@@ -342,6 +356,7 @@ export class Authenticator {
       role,
       groups,
       subscription,
+      shouldUseRequestedSpaces,
     });
   }
 
@@ -367,6 +382,9 @@ export class Authenticator {
       return new Err({ code: "workspace_not_found" });
     }
 
+    const shouldUseRequestedSpaces =
+      await Authenticator.shouldUseRequestedSpaces(workspace);
+
     let role = "none" as RoleType;
     let groups: GroupResource[] = [];
     let subscription: SubscriptionResource | null = null;
@@ -379,7 +397,7 @@ export class Authenticator {
       GroupResource.listUserGroupsInWorkspace({
         user,
         workspace: renderLightWorkspaceType({ workspace }),
-        includeGroupSpaces: true,
+        includeGroupSpaces: shouldUseRequestedSpaces,
       }),
       SubscriptionResource.fetchActiveByWorkspace(
         renderLightWorkspaceType({ workspace })
@@ -393,6 +411,7 @@ export class Authenticator {
         user,
         role,
         subscription,
+        shouldUseRequestedSpaces,
       })
     );
   }
@@ -453,13 +472,19 @@ export class Authenticator {
     let workspaceSubscription: SubscriptionResource | null = null;
     let keySubscription: SubscriptionResource | null = null;
 
+    const shouldUseRequestedSpaces =
+      await Authenticator.shouldUseRequestedSpaces(workspace);
+
+    const shouldUseRequestedSpacesForKeyWorkspace =
+      await Authenticator.shouldUseRequestedSpaces(keyWorkspace);
+
     if (workspace) {
       if (requestedGroupIds && key.isSystem) {
         [requestedGroups, keySubscription, workspaceSubscription] =
           await Promise.all([
             // Key related attributes.
             GroupResource.listGroupsWithSystemKey(key, requestedGroupIds, {
-              includeGroupSpaces: true,
+              includeGroupSpaces: shouldUseRequestedSpacesForKeyWorkspace,
             }),
             getSubscriptionForWorkspace(keyWorkspace),
             // Workspace related attributes.
@@ -472,7 +497,7 @@ export class Authenticator {
               key,
               ["global", "regular", "system", "provisioned"],
               {
-                includeGroupSpaces: true,
+                includeGroupSpaces: shouldUseRequestedSpacesForKeyWorkspace,
               }
             ),
             getSubscriptionForWorkspace(keyWorkspace),
@@ -492,6 +517,7 @@ export class Authenticator {
         role,
         subscription: workspaceSubscription,
         workspace,
+        shouldUseRequestedSpaces,
       }),
       keyAuth: new Authenticator({
         groups: allGroups,
@@ -499,6 +525,7 @@ export class Authenticator {
         role: "builder",
         subscription: keySubscription,
         workspace: keyWorkspace,
+        shouldUseRequestedSpaces: shouldUseRequestedSpacesForKeyWorkspace,
       }),
     };
   }
@@ -541,11 +568,15 @@ export class Authenticator {
       { includeGroupSpaces: true }
     );
 
+    const shouldUseRequestedSpaces =
+      await Authenticator.shouldUseRequestedSpaces(workspace);
+
     return new Authenticator({
       groups,
       role: "builder",
       subscription: null,
       workspace,
+      shouldUseRequestedSpaces,
     });
   }
 
@@ -574,12 +605,15 @@ export class Authenticator {
         renderLightWorkspaceType({ workspace })
       ),
     ]);
+    const shouldUseRequestedSpaces =
+      await Authenticator.shouldUseRequestedSpaces(workspace);
 
     return new Authenticator({
       workspace,
       role: "builder",
       groups: globalGroup ? [globalGroup] : [],
       subscription,
+      shouldUseRequestedSpaces,
     });
   }
 
@@ -617,11 +651,15 @@ export class Authenticator {
       ),
     ]);
 
+    const shouldUseRequestedSpaces =
+      await Authenticator.shouldUseRequestedSpaces(workspace);
+
     return new Authenticator({
       workspace,
       role: "admin",
       groups,
       subscription,
+      shouldUseRequestedSpaces,
     });
   }
 
@@ -683,6 +721,8 @@ export class Authenticator {
       includeGroupSpaces: true,
     });
 
+    const shouldUseRequestedSpaces =
+      await Authenticator.shouldUseRequestedSpaces(auth._workspace);
     return new Authenticator({
       key: auth._key,
       // We limit scope to a user role.
@@ -691,6 +731,7 @@ export class Authenticator {
       user,
       subscription: auth._subscription,
       workspace: auth._workspace,
+      shouldUseRequestedSpaces,
     });
   }
 
@@ -975,6 +1016,9 @@ export class Authenticator {
         ? await SubscriptionResource.fetchActiveByWorkspace(lightWorkspace)
         : null;
 
+    const shouldUseRequestedSpaces =
+      await Authenticator.shouldUseRequestedSpaces(workspace);
+
     assert(
       !authType.subscriptionId ||
         !subscription ||
@@ -997,6 +1041,7 @@ export class Authenticator {
         groups: [],
         subscription,
         key: authType.key,
+        shouldUseRequestedSpaces,
       });
 
       const groupsResult = await GroupResource.fetchByIds(
@@ -1026,11 +1071,25 @@ export class Authenticator {
       groups,
       subscription,
       key: authType.key,
+      shouldUseRequestedSpaces: shouldUseRequestedSpaces,
     });
   }
 
   shouldUseRequestedSpaces(): boolean {
-    return true;
+    return this._shouldUseRequestedSpaces;
+  }
+
+  static async shouldUseRequestedSpaces(
+    workspace: WorkspaceResource | null
+  ): Promise<boolean> {
+    if (workspace) {
+      const featureFlags = await getFeatureFlags(
+        renderLightWorkspaceType({ workspace })
+      );
+      return featureFlags.includes("use_requested_spaces");
+    }
+
+    return false;
   }
 }
 
