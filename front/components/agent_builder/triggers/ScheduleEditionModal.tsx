@@ -113,6 +113,7 @@ export function ScheduleEditionModal({
     null
   );
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const textAsCronRule = useTextAsCronRule({
     workspace: owner,
   });
@@ -254,17 +255,31 @@ export function ScheduleEditionModal({
                       debounce(
                         debounceHandle,
                         async () => {
+                          // Cancel previous request
+                          if (abortControllerRef.current) {
+                            abortControllerRef.current.abort();
+                          }
+
+                          abortControllerRef.current = new AbortController();
+                          const signal = abortControllerRef.current.signal;
+
                           form.setValue("cron", "");
-                          try {
-                            const result = await textAsCronRule(txt);
-                            form.setValue("cron", result.cron);
-                            form.setValue("timezone", result.timezone);
-                            setGeneratedTimezone(result.timezone);
-                            setNaturalDescriptionToCronRuleStatus("idle");
-                          } catch (error) {
-                            setNaturalDescriptionToCronRuleStatus("error");
-                            setCronErrorMessage(extractErrorMessage(error));
-                            setGeneratedTimezone(null);
+                          const result = await textAsCronRule(txt, signal);
+
+                          // If the request was not aborted, we can update the form
+                          if (!signal.aborted) {
+                            if (result.isOk()) {
+                              form.setValue("cron", result.value.cron);
+                              form.setValue("timezone", result.value.timezone);
+                              setGeneratedTimezone(result.value.timezone);
+                              setNaturalDescriptionToCronRuleStatus("idle");
+                            } else {
+                              setNaturalDescriptionToCronRuleStatus("error");
+                              setCronErrorMessage(
+                                extractErrorMessage(result.error)
+                              );
+                              setGeneratedTimezone(null);
+                            }
                           }
                         },
                         500
@@ -273,6 +288,10 @@ export function ScheduleEditionModal({
                       if (debounceHandle.current) {
                         clearTimeout(debounceHandle.current);
                         debounceHandle.current = undefined;
+                      }
+                      if (abortControllerRef.current) {
+                        abortControllerRef.current.abort();
+                        abortControllerRef.current = null;
                       }
                     }
                   }}
