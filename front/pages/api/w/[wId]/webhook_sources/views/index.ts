@@ -11,8 +11,8 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 import type {
-  WebhookSourceViewInfoType,
   WebhookSourceViewType,
+  WebhookSourceViewWithWebhookSourceType,
 } from "@app/types/triggers/webhooks";
 
 const GetWebhookSourceViewsRequestSchema = z.object({
@@ -21,7 +21,7 @@ const GetWebhookSourceViewsRequestSchema = z.object({
 
 export type GetWebhookSourceViewsListResponseBody = {
   success: boolean;
-  webhookSourceViews: WebhookSourceViewInfoType[];
+  webhookSourceViews: WebhookSourceViewType[];
 };
 
 async function handler(
@@ -83,7 +83,7 @@ async function handler(
 
       const flattenedWebhookSourceViews = webhookSourceViews
         .flat()
-        .filter((v): v is WebhookSourceViewType => v !== null)
+        .filter((v): v is WebhookSourceViewWithWebhookSourceType => v !== null)
         // map to WebhookSourceViewInfoType: copy all fields but the webhookSource field
         .map(({ webhookSource, ...rest }) => rest);
 

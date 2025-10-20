@@ -59,7 +59,7 @@ export type WebhookSourceType = {
   subscribedEvents: string[];
 };
 
-export type WebhookSourceViewInfoType = {
+export type WebhookSourceViewType = {
   id: ModelId;
   sId: string;
   customName: string | null;
@@ -71,16 +71,16 @@ export type WebhookSourceViewInfoType = {
   editedByUser: EditedByUser | null;
 };
 
-export type WebhookSourceViewType = WebhookSourceViewInfoType & {
+export type WebhookSourceViewWithWebhookSourceType = WebhookSourceViewType & {
   webhookSource: WebhookSourceType;
 };
 
 export type WebhookSourceWithViewsType = WebhookSourceType & {
-  views: WebhookSourceViewType[];
+  views: WebhookSourceViewWithWebhookSourceType[];
 };
 
 export type WebhookSourceWithSystemViewType = WebhookSourceWithViewsType & {
-  systemView: WebhookSourceViewType | null;
+  systemView: WebhookSourceViewWithWebhookSourceType | null;
 };
 
 export type WebhookSourceWithViewsAndUsageType = WebhookSourceWithViewsType & {
