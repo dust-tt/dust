@@ -80,7 +80,7 @@ export interface SuccessCompletionEvent {
 
 export interface CompletionError {
   message: string;
-  code: string;
+  code: number;
 }
 
 export interface ErrorCompletionEvent {
