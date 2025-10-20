@@ -57,13 +57,14 @@ function ToolLatencyTooltip({
     .flatMap((p) => {
       const toolName = p.name || "";
       const toolData = versionData?.tools[toolName];
+      const colorClassName = getToolColor(toolName, topTools);
 
       if (!toolData) {
         return [
           {
             label: toolName,
             value: `${p.value}ms`,
-            colorClassName: getToolColor(toolName, topTools),
+            colorClassName,
           },
         ];
       }
@@ -72,17 +73,17 @@ function ToolLatencyTooltip({
         {
           label: `${toolName} (avg)`,
           value: `${toolData.avgLatencyMs}ms`,
-          colorClassName: getToolColor(toolName, topTools),
+          colorClassName,
         },
         {
           label: `${toolName} (p50)`,
           value: `${toolData.p50LatencyMs}ms`,
-          colorClassName: getToolColor(toolName, topTools),
+          colorClassName,
         },
         {
           label: `${toolName} (p95)`,
           value: `${toolData.p95LatencyMs}ms`,
-          colorClassName: getToolColor(toolName, topTools),
+          colorClassName,
         },
       ];
     });
