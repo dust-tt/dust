@@ -92,6 +92,8 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
     expect(firstView).toHaveProperty("customName");
     expect(firstView).toHaveProperty("description");
     expect(firstView).toHaveProperty("icon");
+    expect(firstView).toHaveProperty("kind");
+    expect(firstView).toHaveProperty("subscribedEvents");
     expect(firstView).toHaveProperty("spaceId");
     expect(firstView).toHaveProperty("createdAt");
     expect(firstView).toHaveProperty("updatedAt");

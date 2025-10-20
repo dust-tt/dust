@@ -527,16 +527,19 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
 
   // Serialization.
   toJSON(): WebhookSourceViewWithWebhookSourceType {
+    const webhookSource = this.getWebhookSourceResource();
     return {
       id: this.id,
       sId: this.sId,
       customName: this.customName,
       description: this.description,
       icon: normalizeWebhookIcon(this.icon),
+      kind: webhookSource.kind,
+      subscribedEvents: webhookSource.subscribedEvents,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,
-      webhookSource: this.getWebhookSourceResource().toJSON(),
+      webhookSource: webhookSource.toJSON(),
       editedByUser: this.makeEditedBy(
         this.editedByUser,
         this.webhookSource ? this.webhookSource.updatedAt : this.updatedAt
