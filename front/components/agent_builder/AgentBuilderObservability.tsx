@@ -1,4 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { ToolExecutionChart } from "@app/components/agent_builder/observability/ToolExecutionChart";
 import { UsageMetricsChart } from "@app/components/agent_builder/observability/UsageMetricsChart";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 
@@ -31,6 +32,10 @@ export function AgentBuilderObservability({
 
       <div className="grid grid-cols-1 gap-6">
         <UsageMetricsChart
+          workspaceId={owner.sId}
+          agentConfigurationId={agentConfiguration.sId}
+        />
+        <ToolExecutionChart
           workspaceId={owner.sId}
           agentConfigurationId={agentConfiguration.sId}
         />

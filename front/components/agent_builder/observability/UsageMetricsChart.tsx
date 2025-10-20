@@ -1,5 +1,5 @@
-import { cn, Spinner } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { cn } from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -13,6 +13,8 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
+import { ChartContainer } from "@app/components/agent_builder/observability/ChartContainer";
+import { ChartLegend } from "@app/components/agent_builder/observability/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
 import type {
   ObservabilityIntervalType,
@@ -22,7 +24,6 @@ import {
   CHART_HEIGHT,
   DEFAULT_PERIOD_DAYS,
   OBSERVABILITY_INTERVALS,
-  OBSERVABILITY_TIME_RANGE,
   USAGE_METRICS_LEGEND,
   USAGE_METRICS_PALETTE,
   VERSION_MARKER_STYLE,
@@ -31,6 +32,47 @@ import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
+
+function parseUTCDate(s: string): number {
+  const parts = s.split("-");
+  if (parts.length === 3) {
+    const yy = Number(parts[0]);
+    const mm = Number(parts[1]);
+    const dd = Number(parts[2]);
+    if (Number.isFinite(yy) && Number.isFinite(mm) && Number.isFinite(dd)) {
+      return Date.UTC(yy, mm - 1, dd);
+    }
+  }
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
+function snapVersionMarkersToLabels(
+  markers: Array<{ version: string; timestamp: string }>,
+  labels: string[]
+): Array<{ version: string; x: string }> {
+  if (!labels.length || !markers.length) {
+    return [];
+  }
+
+  const labelTimes = labels.map((s) => ({ s, t: parseUTCDate(s) }));
+
+  const snapToLabel = (ts: string): string => {
+    const markerT = parseUTCDate(ts);
+    let best: { s: string; t: number } | null = null;
+    for (const lt of labelTimes) {
+      if (lt.t <= markerT && (!best || lt.t > best.t)) {
+        best = lt;
+      }
+    }
+    return best ? best.s : labels[0];
+  };
+
+  return markers.map((m) => ({
+    version: m.version,
+    x: snapToLabel(m.timestamp),
+  }));
+}
 
 interface UsageMetricsData {
   messages: number;
@@ -113,67 +155,54 @@ export function UsageMetricsChart({
       disabled: !workspaceId || !agentConfigurationId,
     });
 
-  const data = usageMetrics?.points ?? [];
-  const markers = versionMarkers ?? [];
   const isLoading = isUsageMetricsLoading || isVersionMarkersLoading;
   const isError = isUsageMetricsError || isVersionMarkersError;
 
+  const legendItems = USAGE_METRICS_LEGEND.map(({ key, label }) => ({
+    key,
+    label,
+    colorClassName: USAGE_METRICS_PALETTE[key],
+  }));
+
+  const { data, snappedMarkers } = useMemo(() => {
+    const dataPoints = usageMetrics?.points ?? [];
+    const markers = versionMarkers ?? [];
+    const labels = dataPoints.map((d) => d.date);
+    return {
+      data: dataPoints,
+      snappedMarkers: snapVersionMarkersToLabels(markers, labels),
+    };
+  }, [usageMetrics?.points, versionMarkers]);
+
+  const intervalControls = (
+    <div className="flex items-center gap-2">
+      {OBSERVABILITY_INTERVALS.map((i) => (
+        <button
+          key={i}
+          onClick={() => setInterval(i)}
+          className={cn(
+            "rounded px-2 py-1 text-xs",
+            interval === i
+              ? "bg-foreground text-background"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {i}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="bg-card rounded-lg border border-border p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-medium text-foreground">Usage Metrics</h3>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            {OBSERVABILITY_TIME_RANGE.map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={cn(
-                  "rounded px-2 py-1 text-xs",
-                  period === p
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {p}d
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            {OBSERVABILITY_INTERVALS.map((i) => (
-              <button
-                key={i}
-                onClick={() => setInterval(i)}
-                className={cn(
-                  "rounded px-2 py-1 text-xs",
-                  interval === i
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {i}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-      {isLoading ? (
-        <div
-          className="flex items-center justify-center"
-          style={{ height: CHART_HEIGHT }}
-        >
-          <Spinner size="lg" />
-        </div>
-      ) : isError ? (
-        <div
-          className="flex items-center justify-center"
-          style={{ height: CHART_HEIGHT }}
-        >
-          <p className="text-sm text-muted-foreground">
-            Failed to load observability data.
-          </p>
-        </div>
-      ) : (
+    <ChartContainer
+      title="Usage Metrics"
+      period={period}
+      onPeriodChange={setPeriod}
+      isLoading={isLoading}
+      errorMessage={isError ? "Failed to load observability data." : undefined}
+      additionalControls={intervalControls}
+    >
+      <>
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
           <BarChart
             data={data}
@@ -195,17 +224,17 @@ export function UsageMetricsChart({
                 className={USAGE_METRICS_PALETTE[key]}
               />
             ))}
-            {markers.map((marker, index) => (
+            {snappedMarkers.map((m, index) => (
               <ReferenceLine
-                key={`${marker.version}-${marker.timestamp}`}
-                x={marker.timestamp}
+                key={`${m.version}-${m.x}`}
+                x={m.x}
                 stroke={VERSION_MARKER_STYLE.stroke}
                 strokeWidth={VERSION_MARKER_STYLE.strokeWidth}
                 strokeDasharray={VERSION_MARKER_STYLE.strokeDasharray}
                 ifOverflow="extendDomain"
               >
                 <Label
-                  value={`v${marker.version}`}
+                  value={`v${m.version}`}
                   position="top"
                   fill={VERSION_MARKER_STYLE.stroke}
                   fontSize={VERSION_MARKER_STYLE.labelFontSize}
@@ -218,20 +247,8 @@ export function UsageMetricsChart({
             ))}
           </BarChart>
         </ResponsiveContainer>
-      )}
-      <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
-        {USAGE_METRICS_LEGEND.map(({ key, label }) => (
-          <div key={key} className="flex items-center gap-2">
-            <span
-              className={cn(
-                "inline-block h-3 w-3 rounded-sm bg-current",
-                USAGE_METRICS_PALETTE[key]
-              )}
-            />
-            <span className="text-sm text-muted-foreground">{label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
+        <ChartLegend items={legendItems} />
+      </>
+    </ChartContainer>
   );
 }
