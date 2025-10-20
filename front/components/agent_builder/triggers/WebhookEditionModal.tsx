@@ -26,14 +26,14 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
 import { useWebhookFilterGeneration } from "@app/components/agent_builder/triggers/useWebhookFilterGeneration";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
+import { useSpaces } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
-import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
+import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
@@ -97,9 +97,9 @@ export function WebhookEditionModal({
   const selectedEvent = form.watch("event");
   const includePayload = form.watch("includePayload");
 
-  const { spaces } = useSpacesContext();
-  const { webhookSourcesWithViews, isWebhookSourcesWithViewsLoading } =
-    useWebhookSourcesWithViews({ owner });
+  const { spaces } = useSpaces({ workspaceId: owner.sId, disabled: !isOpen });
+  const { webhookSourceViews, isLoading: isWebhookSourceViewsLoading } =
+    useWebhookSourceViewsFromSpaces(owner, spaces, !isOpen);
 
   const isEditor = (trigger?.editor ?? user?.id) === user?.id;
 
@@ -114,52 +114,48 @@ export function WebhookEditionModal({
 
   const webhookOptions = useMemo((): WebhookOption[] => {
     const options: WebhookOption[] = [];
-    webhookSourcesWithViews.forEach((wsv) => {
-      wsv.views
-        .filter((view) => accessibleSpaceIds.has(view.spaceId))
-        .forEach((view) => {
-          options.push({
-            value: view.sId,
-            label: view.customName ?? wsv.name,
-            kind: view.webhookSource.kind,
-            icon: (props) => (
-              <WebhookSourceViewIcon webhookSourceView={view} {...props} />
-            ),
-          });
+    webhookSourceViews
+      .filter((view) => accessibleSpaceIds.has(view.spaceId))
+      .forEach((view) => {
+        options.push({
+          value: view.sId,
+          label: view.customName ?? "Untitled Webhook Source View",
+          kind: view.kind,
+          icon: (props) => (
+            <WebhookSourceViewIcon webhookSourceView={view} {...props} />
+          ),
         });
-    });
+      });
 
     return options;
-  }, [webhookSourcesWithViews, accessibleSpaceIds]);
+  }, [webhookSourceViews, accessibleSpaceIds]);
 
-  const selectedWebhookSource = useMemo(() => {
+  const selectedWebhookSourceView = useMemo(() => {
     if (!selectedViewSId) {
       return null;
     }
-    for (const wsv of webhookSourcesWithViews) {
-      const view = wsv.views.find((v) => v.sId === selectedViewSId);
-      if (view) {
-        return wsv;
-      }
-    }
-    return null;
-  }, [webhookSourcesWithViews, selectedViewSId]);
+    const view = webhookSourceViews.find((v) => v.sId === selectedViewSId);
+    return view;
+  }, [webhookSourceViews, selectedViewSId]);
 
   const selectedPreset = useMemo((): PresetWebhook | null => {
-    if (!selectedWebhookSource || selectedWebhookSource.kind === "custom") {
+    if (
+      !selectedWebhookSourceView ||
+      selectedWebhookSourceView.kind === "custom"
+    ) {
       return null;
     }
-    return WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[selectedWebhookSource.kind];
-  }, [selectedWebhookSource]);
+    return WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[selectedWebhookSourceView.kind];
+  }, [selectedWebhookSourceView]);
 
   const availableEvents = useMemo(() => {
-    if (!selectedPreset || !selectedWebhookSource) {
+    if (!selectedPreset || !selectedWebhookSourceView) {
       return [];
     }
     return selectedPreset.events.filter((event) =>
-      selectedWebhookSource.subscribedEvents.includes(event.value)
+      selectedWebhookSourceView.subscribedEvents.includes(event.value)
     );
-  }, [selectedPreset, selectedWebhookSource]);
+  }, [selectedPreset, selectedWebhookSourceView]);
 
   const selectedEventSchema = useMemo(() => {
     if (!selectedEvent || !selectedPreset) {
@@ -225,8 +221,8 @@ export function WebhookEditionModal({
 
     // Validate that event is selected for preset webhooks (not custom)
     if (
-      selectedWebhookSource &&
-      selectedWebhookSource.kind !== "custom" &&
+      selectedWebhookSourceView &&
+      selectedWebhookSourceView.kind !== "custom" &&
       selectedPreset &&
       availableEvents.length > 0 &&
       !data.event
@@ -340,7 +336,7 @@ export function WebhookEditionModal({
               {/* Webhook Configuration */}
               <div className="flex flex-col space-y-1">
                 <Label>Webhook Source</Label>
-                {isWebhookSourcesWithViewsLoading ? (
+                {isWebhookSourceViewsLoading ? (
                   <div className="flex items-center gap-2">
                     <Spinner size="sm" />
                     <span className="text-sm text-muted-foreground">
@@ -470,7 +466,7 @@ export function WebhookEditionModal({
                   </>
                 )}
 
-                {selectedWebhookSource?.kind === "custom" && (
+                {selectedWebhookSourceView?.kind === "custom" && (
                   <>
                     <Label htmlFor="trigger-filter-description">
                       Filter Expression (optional)
