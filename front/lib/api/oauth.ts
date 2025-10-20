@@ -290,7 +290,6 @@ export async function checkConnectionOwnership(
   ) {
     logger.error(
       {
-        connectionId,
         connectionWorkspaceId:
           connectionRes.value.connection.metadata.workspace_id,
         workspaceId: auth.workspace()?.sId,
