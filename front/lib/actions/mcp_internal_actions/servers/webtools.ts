@@ -10,15 +10,15 @@ import {
 import { MAXED_OUTPUT_FILE_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  WEBBROWSER_TOOL_NAME,
-  WEBSEARCH_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  WEBBROWSER_TOOL_NAME,
+  WEBSEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { summarizeWithAgent } from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";

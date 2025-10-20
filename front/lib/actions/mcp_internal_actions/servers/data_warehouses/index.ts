@@ -3,13 +3,13 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
   DATA_WAREHOUSES_LIST_TOOL_NAME,
   DATA_WAREHOUSES_QUERY_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import {
   getAvailableWarehouses,
   getWarehouseNodes,

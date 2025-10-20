@@ -30,7 +30,7 @@ import {
   isInternalMCPServerOfName,
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 

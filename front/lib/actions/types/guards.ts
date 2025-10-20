@@ -11,7 +11,7 @@ import type {
 import {
   AGENT_MEMORY_SERVER_NAME,
   isInternalMCPServerOfName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import type {
   AgentConfigurationType,

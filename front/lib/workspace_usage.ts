@@ -2,7 +2,7 @@ import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
-import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";

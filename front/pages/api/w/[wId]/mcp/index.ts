@@ -4,12 +4,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { isCustomResourceIconType } from "@app/components/resources/resources_icons";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
+import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   isInternalMCPServerName,
   isInternalMCPServerOfName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";

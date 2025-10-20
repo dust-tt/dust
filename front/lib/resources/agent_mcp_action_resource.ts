@@ -10,9 +10,9 @@ import { Op } from "sequelize";
 
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/server_constants";
+import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {

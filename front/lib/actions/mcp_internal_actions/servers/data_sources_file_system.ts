@@ -5,14 +5,6 @@ import assert from "assert";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  FILESYSTEM_CAT_TOOL_NAME,
-  FILESYSTEM_FIND_TOOL_NAME,
-  FILESYSTEM_LIST_TOOL_NAME,
-  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
-  FIND_TAGS_TOOL_NAME,
-  SEARCH_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
@@ -23,6 +15,14 @@ import {
   makeQueryResource,
   renderSearchResults,
 } from "@app/lib/actions/mcp_internal_actions/rendering";
+import {
+  FILESYSTEM_CAT_TOOL_NAME,
+  FILESYSTEM_FIND_TOOL_NAME,
+  FILESYSTEM_LIST_TOOL_NAME,
+  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+  FIND_TAGS_TOOL_NAME,
+  SEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
 import { registerListTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
 import {

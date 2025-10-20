@@ -1,7 +1,7 @@
 // import type { Logger } from "pino";
 //
 // import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-// import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+// import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/server_constants";
 // import { Authenticator } from "@app/lib/auth";
 // import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 // import { makeScript } from "@app/scripts/helpers";

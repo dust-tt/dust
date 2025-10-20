@@ -8,10 +8,6 @@ import {
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  EXECUTE_DATABASE_QUERY_TOOL_NAME,
-  GET_DATABASE_SCHEMA_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   SqlQueryOutputType,
@@ -23,6 +19,10 @@ import {
   EXECUTE_TABLES_QUERY_MARKER,
   GET_DATABASE_SCHEMA_MARKER,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  EXECUTE_DATABASE_QUERY_TOOL_NAME,
+  GET_DATABASE_SCHEMA_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import {
   getDatabaseExampleRowsContent,
   getQueryWritingInstructionsContent,

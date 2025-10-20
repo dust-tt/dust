@@ -8,10 +8,10 @@ import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
-import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
