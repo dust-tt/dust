@@ -20,7 +20,7 @@ import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
 
-type AddActionMenuProps = {
+type AddToolsMenuProps = {
   owner: WorkspaceType;
   enabledMCPServers: MCPServerType[];
   buttonVariant?: "primary" | "outline";
@@ -31,13 +31,13 @@ type AddActionMenuProps = {
   setIsLoading: (isLoading: boolean) => void;
 };
 
-export const AddActionMenu = ({
+export const AddToolsMenu = ({
   owner,
   enabledMCPServers,
   createInternalMCPServer,
   createRemoteMCPServer,
   buttonVariant = "primary",
-}: AddActionMenuProps) => {
+}: AddToolsMenuProps) => {
   const [searchText, setSearchText] = useState("");
   const { availableMCPServers, isAvailableMCPServersLoading } =
     useAvailableMCPServers({
@@ -109,7 +109,7 @@ export const AddActionMenu = ({
             <DropdownMenuItem
               key={mcpServer.sId}
               label={getMcpServerDisplayName(mcpServer)}
-              icon={() => getAvatar(mcpServer, "xs")}
+              icon={() => getAvatar(mcpServer, "sm")}
               onClick={withTracking(
                 TRACKING_AREAS.TOOLS,
                 "tool_select",
