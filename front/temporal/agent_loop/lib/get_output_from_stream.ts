@@ -11,6 +11,7 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import type { GetOutputFromStreamResponse } from "@app/temporal/agent_loop/lib/types";
 import type {
   AgentMessageType,
   ConversationType,
@@ -24,24 +25,6 @@ import type {
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-
-interface Output {
-  actions: Array<{
-    functionCallId: string;
-    name: string | null;
-    arguments: Record<string, string | boolean | number> | null;
-  }>;
-  generation: string | null;
-  contents: Array<
-    TextContentType | FunctionCallContentType | ReasoningContentType
-  >;
-}
-
-type GetOutputFromStreamResponse = {
-  output: Output | null;
-  nativeChainOfThought: string;
-  dustRunId: Promise<string>;
-};
 
 export async function getOutputFromStream(
   auth: Authenticator,
