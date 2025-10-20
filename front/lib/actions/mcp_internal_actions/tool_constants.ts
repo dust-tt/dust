@@ -14,7 +14,7 @@ export const INTERNAL_MCP_TOOLS_LABELS = {
     },
     comment_on_issue: {
       displayName: "Add Comment to Issue",
-      runningLabel: "Adding comment to issue...",
+      runningLabel: "Commenting on issue...",
     },
     add_issue_to_project: {
       displayName: "Add Issue to Project",
@@ -22,11 +22,11 @@ export const INTERNAL_MCP_TOOLS_LABELS = {
     },
     get_pull_request: {
       displayName: "Get Pull Request",
-      runningLabel: "Fetching pull request...",
+      runningLabel: "Retrieving pull request...",
     },
     create_pull_request_review: {
-      displayName: "Create Pull Request Review",
-      runningLabel: "Creating pull request review...",
+      displayName: "Review Pull Request",
+      runningLabel: "Reviewing pull request...",
     },
     list_organization_projects: {
       displayName: "List Organization Projects",
@@ -42,7 +42,7 @@ export const INTERNAL_MCP_TOOLS_LABELS = {
     },
     get_issue: {
       displayName: "Get Issue Details",
-      runningLabel: "Fetching issue details...",
+      runningLabel: "Retrieving issue details...",
     },
   },
   image_generation: {
@@ -58,7 +58,7 @@ export const INTERNAL_MCP_TOOLS_LABELS = {
     },
     get_supported_source_formats_for_output_format: {
       displayName: "Get Supported Formats",
-      runningLabel: "Fetching supported formats...",
+      runningLabel: "Retrieving supported formats...",
     },
     convert_file_format: {
       displayName: "Convert File Format",
