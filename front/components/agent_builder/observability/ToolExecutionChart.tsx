@@ -143,10 +143,14 @@ export function ToolExecutionChart({
       period={period}
       onPeriodChange={setPeriod}
       isLoading={isToolExecutionLoading}
-      isError={isToolExecutionError}
-      isEmpty={chartData.length === 0}
-      errorMessage="Failed to load tool execution data."
-      emptyMessage="No tool execution data available for this period."
+      errorMessage={
+        isToolExecutionError ? "Failed to load tool execution data." : undefined
+      }
+      emptyMessage={
+        chartData.length === 0
+          ? "No tool execution data available for this period."
+          : undefined
+      }
     >
       <>
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>

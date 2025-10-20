@@ -187,8 +187,7 @@ export function UsageMetricsChart({
       period={period}
       onPeriodChange={setPeriod}
       isLoading={isLoading}
-      isError={isError}
-      errorMessage="Failed to load observability data."
+      errorMessage={isError ? "Failed to load observability data." : undefined}
       additionalControls={intervalControls}
     >
       <>

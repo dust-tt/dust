@@ -12,8 +12,6 @@ interface ChartContainerProps {
   period: ObservabilityTimeRangeType;
   onPeriodChange: (period: ObservabilityTimeRangeType) => void;
   isLoading: boolean;
-  isError: boolean;
-  isEmpty?: boolean;
   errorMessage?: string;
   emptyMessage?: string;
   children: ReactNode;
@@ -25,10 +23,8 @@ export function ChartContainer({
   period,
   onPeriodChange,
   isLoading,
-  isError,
-  isEmpty = false,
-  errorMessage = "Failed to load chart data.",
-  emptyMessage = "No data available for this period.",
+  errorMessage,
+  emptyMessage,
   children,
   additionalControls,
 }: ChartContainerProps) {
@@ -63,19 +59,19 @@ export function ChartContainer({
         >
           <Spinner size="lg" />
         </div>
-      ) : isError ? (
+      ) : errorMessage ? (
         <div
           className="flex items-center justify-center"
           style={{ height: CHART_HEIGHT }}
         >
-          <p className="text-sm text-muted-foreground">{errorMessage}</p>
+          <span className="text-sm text-muted-foreground">{errorMessage}</span>
         </div>
-      ) : isEmpty ? (
+      ) : emptyMessage ? (
         <div
           className="flex items-center justify-center"
           style={{ height: CHART_HEIGHT }}
         >
-          <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+          <span className="text-sm text-muted-foreground">{emptyMessage}</span>
         </div>
       ) : (
         children
