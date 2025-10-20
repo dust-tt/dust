@@ -90,26 +90,27 @@ runs:
           build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$COMPONENT")
         fi
 
-# Generate cloudbuild.yaml with all build args
+        # Generate cloudbuild.yaml with all build args
         cat > /tmp/cloudbuild.yaml << 'EOF'
-steps:
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - 'build'
-      - '--platform=linux/amd64'
-      - '-f'
-EOF
+
+        steps:
+          - name: 'gcr.io/cloud-builders/docker'
+            args:
+              - 'build'
+              - '--platform=linux/amd64'
+              - '-f'
+        EOF
         echo "      - './dockerfiles/${BASE_COMPONENT}.Dockerfile'" >> /tmp/cloudbuild.yaml
         echo "      - '-t'" >> /tmp/cloudbuild.yaml
         echo "      - '${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}:${{ inputs.commit_sha }}'" >> /tmp/cloudbuild.yaml
         echo "      - '--build-arg'" >> /tmp/cloudbuild.yaml
         echo "      - 'COMMIT_HASH=${{ inputs.commit_sha }}'" >> /tmp/cloudbuild.yaml
-        
+
         if [[ -n "${{ inputs.commit_sha_long }}" ]]; then
           echo "      - '--build-arg'" >> /tmp/cloudbuild.yaml
           echo "      - 'COMMIT_HASH_LONG=${{ inputs.commit_sha_long }}'" >> /tmp/cloudbuild.yaml
         fi
-        
+
         # Add all the build args
         for ((i=0; i<${#build_args[@]}; i++)); do
           if [[ "${build_args[i]}" == "--build-arg" && $((i+1)) < ${#build_args[@]} ]]; then
@@ -118,15 +119,15 @@ EOF
             echo "      - '${build_args[i]}'" >> /tmp/cloudbuild.yaml
           fi
         done
-        
-        cat >> /tmp/cloudbuild.yaml << 'EOF'
-      - '--push'
-      - '.'
 
-options:
-  machineType: 'E2_HIGHCPU_8'
-  logging: CLOUD_LOGGING_ONLY
-EOF
+        cat >> /tmp/cloudbuild.yaml << 'EOF'
+        - '--push'
+        - '.'
+
+        options:
+          machineType: 'E2_HIGHCPU_8'
+          logging: CLOUD_LOGGING_ONLY
+        EOF
 
         gcloud builds submit --quiet \
           --config=/tmp/cloudbuild.yaml \
