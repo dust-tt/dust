@@ -59,6 +59,7 @@ import {
   timeFrameFromNow,
 } from "@app/types";
 
+// TODO
 const SearchToolInputSchema = z.object({
   nodeIds: z
     .array(z.string())
