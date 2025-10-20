@@ -286,7 +286,18 @@ function createServer(
           );
           if (!hasAnySuccess) {
             return new Err(
-              new MCPError("All web browsing and summarization attempts failed")
+              new MCPError(
+                "All web browsing and summarization attempts failed",
+                {
+                  cause: new Error(
+                    perUrlContents
+                      .flatMap((result) =>
+                        result.contentBlocks.map((block) => block.text)
+                      )
+                      .join("\n")
+                  ),
+                }
+              )
             );
           }
 
