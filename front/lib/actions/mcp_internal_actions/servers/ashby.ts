@@ -53,6 +53,50 @@ type AshbyCandidateListResponse = z.infer<
   typeof AshbyCandidateListResponseSchema
 >;
 
+async function getAshbyApiKey(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): Promise<Result<string, MCPError>> {
+  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
+  if (
+    !toolConfig ||
+    !isLightServerSideMCPToolConfiguration(toolConfig) ||
+    !toolConfig.secretName
+  ) {
+    return new Err(
+      new MCPError(
+        "Ashby API key not configured. Please configure a secret containing your Ashby API key in the agent settings.",
+        {
+          tracked: false,
+        }
+      )
+    );
+  }
+
+  const secret = await DustAppSecret.findOne({
+    where: {
+      name: toolConfig.secretName,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+  });
+
+  const apiKey = secret
+    ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
+    : null;
+  if (!apiKey) {
+    return new Err(
+      new MCPError(
+        "Ashby API key not found in workspace secrets. Please check the secret configuration.",
+        {
+          tracked: false,
+        }
+      )
+    );
+  }
+
+  return new Ok(apiKey);
+}
+
 class AshbyClient {
   private apiKey: string;
 
@@ -153,41 +197,12 @@ function createServer(
       auth,
       { toolNameForMonitoring: "ashby_list_candidates", agentLoopContext },
       async ({ cursor, limit }) => {
-        const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-        if (
-          !toolConfig ||
-          !isLightServerSideMCPToolConfiguration(toolConfig) ||
-          !toolConfig.secretName
-        ) {
-          return new Err(
-            new MCPError(
-              "Ashby API key not configured. Please configure a secret containing your Ashby API key in the agent settings.",
-              {
-                tracked: false,
-              }
-            )
-          );
+        const apiKeyResult = await getAshbyApiKey(auth, agentLoopContext);
+        if (apiKeyResult.isErr()) {
+          return new Err(apiKeyResult.error);
         }
 
-        const secret = await DustAppSecret.findOne({
-          where: {
-            name: toolConfig.secretName,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-        });
-
-        const apiKey = secret
-          ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
-          : null;
-        if (!apiKey) {
-          return new Err(
-            new MCPError(
-              "Ashby API key not found in workspace secrets. Please check the secret configuration."
-            )
-          );
-        }
-
-        const client = new AshbyClient(apiKey);
+        const client = new AshbyClient(apiKeyResult.value);
         const result = await client.listCandidates({ cursor, limit });
 
         if (result.isErr()) {
