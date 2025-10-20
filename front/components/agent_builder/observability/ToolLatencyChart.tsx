@@ -18,8 +18,11 @@ import {
   CHART_HEIGHT,
   DEFAULT_PERIOD_DAYS,
   MAX_TOOLS_DISPLAYED,
-  TOOL_COLORS,
 } from "@app/components/agent_builder/observability/constants";
+import {
+  calculateTopTools,
+  getToolColor,
+} from "@app/components/agent_builder/observability/utils";
 import type { ToolLatencyByVersion } from "@app/lib/api/assistant/observability/tool_latency";
 import { useAgentToolLatency } from "@app/lib/swr/assistants";
 
@@ -44,11 +47,6 @@ function ToolLatencyTooltip({
     return null;
   }
 
-  const getColorForTool = (toolName: string) => {
-    const idx = topTools.indexOf(toolName);
-    return TOOL_COLORS[(idx >= 0 ? idx : 0) % TOOL_COLORS.length];
-  };
-
   // Extract version from label (format: "v123")
   const version = String(label).replace(/^v/, "");
   const versionData = toolLatencyByVersion.find((v) => v.version === version);
@@ -65,7 +63,7 @@ function ToolLatencyTooltip({
           {
             label: toolName,
             value: `${p.value}ms`,
-            colorClassName: getColorForTool(toolName),
+            colorClassName: getToolColor(toolName, topTools),
           },
         ];
       }
@@ -74,17 +72,17 @@ function ToolLatencyTooltip({
         {
           label: `${toolName} (avg)`,
           value: `${toolData.avgLatencyMs}ms`,
-          colorClassName: getColorForTool(toolName),
+          colorClassName: getToolColor(toolName, topTools),
         },
         {
           label: `${toolName} (p50)`,
           value: `${toolData.p50LatencyMs}ms`,
-          colorClassName: getColorForTool(toolName),
+          colorClassName: getToolColor(toolName, topTools),
         },
         {
           label: `${toolName} (p95)`,
           value: `${toolData.p95LatencyMs}ms`,
-          colorClassName: getColorForTool(toolName),
+          colorClassName: getToolColor(toolName, topTools),
         },
       ];
     });
@@ -112,34 +110,12 @@ export function ToolLatencyChart({
       return { chartData: [], topTools: [] };
     }
 
-    // Aggregate weighted average latency per tool across all versions
-    const toolMetrics = new Map<
-      string,
-      { totalLatency: number; totalCount: number }
-    >();
-    for (const v of toolLatencyByVersion) {
-      for (const [toolName, toolData] of Object.entries(v.tools)) {
-        const existing = toolMetrics.get(toolName) ?? {
-          totalLatency: 0,
-          totalCount: 0,
-        };
-        toolMetrics.set(toolName, {
-          totalLatency:
-            existing.totalLatency + toolData.avgLatencyMs * toolData.count,
-          totalCount: existing.totalCount + toolData.count,
-        });
-      }
-    }
-
-    // Top tools by weighted average latency
-    const top = Array.from(toolMetrics.entries())
-      .map(([toolName, metrics]) => ({
-        toolName,
-        avgLatency: metrics.totalLatency / metrics.totalCount,
-      }))
-      .sort((a, b) => b.avgLatency - a.avgLatency)
-      .slice(0, MAX_TOOLS_DISPLAYED)
-      .map((t) => t.toolName);
+    // Calculate top tools by weighted average latency
+    const top = calculateTopTools(
+      toolLatencyByVersion,
+      (toolData) => toolData.avgLatencyMs * toolData.count,
+      MAX_TOOLS_DISPLAYED
+    );
 
     // Build rows with average latency values for each tool
     const rows: ChartRow[] = toolLatencyByVersion.map((v) => {
@@ -166,10 +142,10 @@ export function ToolLatencyChart({
     [topTools, toolLatencyByVersion]
   );
 
-  const legendItems = topTools.map((toolName, idx) => ({
+  const legendItems = topTools.map((toolName) => ({
     key: toolName,
     label: toolName,
-    colorClassName: TOOL_COLORS[idx % TOOL_COLORS.length],
+    colorClassName: getToolColor(toolName, topTools),
   }));
 
   return (
@@ -187,52 +163,47 @@ export function ToolLatencyChart({
           : undefined
       }
     >
-      <>
-        <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-          <BarChart
-            data={chartData}
-            margin={{ top: 10, right: 30, left: 20, bottom: 20 }}
-            barGap={2}
-            barCategoryGap="20%"
-          >
-            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-            <XAxis
-              dataKey="version"
-              className="text-xs text-muted-foreground"
+      <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+        <BarChart
+          data={chartData}
+          margin={{ top: 10, right: 30, left: 20, bottom: 20 }}
+          barGap={2}
+          barCategoryGap="20%"
+        >
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+          <XAxis dataKey="version" className="text-xs text-muted-foreground" />
+          <YAxis
+            className="text-xs text-muted-foreground"
+            label={{
+              value: "Latency (ms)",
+              angle: -90,
+              position: "insideLeft",
+              style: { textAnchor: "middle" },
+            }}
+          />
+          <Tooltip
+            cursor={{ fill: "hsl(var(--border) / 0.1)" }}
+            content={renderTooltip}
+          />
+          {topTools.map((toolName) => (
+            <Bar
+              key={toolName}
+              dataKey={(row: ChartRow) => row.values[toolName] ?? 0}
+              fill="currentColor"
+              className={getToolColor(toolName, topTools)}
+              name={toolName}
             />
-            <YAxis
-              className="text-xs text-muted-foreground"
-              label={{
-                value: "Latency (ms)",
-                angle: -90,
-                position: "insideLeft",
-                style: { textAnchor: "middle" },
-              }}
-            />
-            <Tooltip
-              cursor={{ fill: "hsl(var(--border) / 0.1)" }}
-              content={renderTooltip}
-            />
-            {topTools.map((toolName, idx) => (
-              <Bar
-                key={toolName}
-                dataKey={(row: ChartRow) => row.values[toolName] ?? 0}
-                fill="currentColor"
-                className={TOOL_COLORS[idx % TOOL_COLORS.length]}
-                name={toolName}
-              />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-        <ChartLegend items={legendItems} />
-        <div className="mt-4 text-xs text-muted-foreground">
-          <p>
-            Shows the average execution latency (ms) of the top{" "}
-            {MAX_TOOLS_DISPLAYED} slowest tools for each agent version. Hover
-            over bars to see avg, p50 (median), and p95 latency values.
-          </p>
-        </div>
-      </>
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+      <ChartLegend items={legendItems} />
+      <div className="mt-4 text-xs text-muted-foreground">
+        <p>
+          Shows the average execution latency (ms) of the top{" "}
+          {MAX_TOOLS_DISPLAYED} slowest tools for each agent version. Hover over
+          bars to see avg, p50 (median), and p95 latency values.
+        </p>
+      </div>
     </ChartContainer>
   );
 }
