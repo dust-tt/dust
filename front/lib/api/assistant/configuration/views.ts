@@ -391,14 +391,19 @@ export async function getAgentConfigurationsForView<
   // in the agent's groupIds
   const allowedAgentConfigurations = dangerouslySkipPermissionFiltering
     ? allAgentConfigurations
-    : allAgentConfigurations.flat().filter(
-        (a) =>
+    : allAgentConfigurations
+        .flat()
+        .filter((a) =>
           auth.canRead(
             auth.shouldUseRequestedSpaces()
-              ? Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
-              : Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
+              ? Authenticator.createResourcePermissionsFromSpaceIds(
+                  a.requestedSpaceIds
+                )
+              : Authenticator.createResourcePermissionsFromGroupIds(
+                  a.requestedGroupIds
+                )
           )
-      );
+        );
 
   return applySortAndLimit(allowedAgentConfigurations.flat());
 }
