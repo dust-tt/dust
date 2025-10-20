@@ -1,4 +1,6 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type { ConnectorsAPIError } from "@dust-tt/client";
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isConnectorsAPIError } from "@dust-tt/client";
 import * as t from "io-ts";
 

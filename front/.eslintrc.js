@@ -89,6 +89,7 @@ module.exports = {
   overrides: [
     {
       files: ["*.jsx", "*.js", "*.ts", "*.tsx", "**/*.jsx"],
+      excludedFiles: ["migrations/**/*.ts", "mailings/**/*.ts"],
     },
     {
       // Force the setting of a swagger description on each public api endpoint
