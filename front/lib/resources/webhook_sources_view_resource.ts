@@ -131,6 +131,8 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
         customName: systemView.customName,
         description: systemView.description,
         icon: normalizeWebhookIcon(systemView.icon),
+        kind: systemView.kind,
+        subscribedEvents: systemView.subscribedEvents,
       },
       space,
       auth.user() ?? undefined
@@ -533,6 +535,8 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       customName: this.customName,
       description: this.description,
       icon: normalizeWebhookIcon(this.icon),
+      kind: this.kind,
+      subscribedEvents: this.subscribedEvents,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,

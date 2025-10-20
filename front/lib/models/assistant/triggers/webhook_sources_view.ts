@@ -6,6 +6,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 
 export class WebhookSourcesViewModel extends SoftDeletableWorkspaceAwareModel<WebhookSourcesViewModel> {
   declare createdAt: CreationOptional<Date>;
@@ -20,6 +21,8 @@ export class WebhookSourcesViewModel extends SoftDeletableWorkspaceAwareModel<We
   declare customName: string | null;
   declare description: string;
   declare icon: string;
+  declare kind: WebhookSourceKind;
+  declare subscribedEvents: string[];
 
   declare vaultId: ForeignKey<SpaceModel["id"]>;
 
@@ -57,6 +60,14 @@ WebhookSourcesViewModel.init(
     },
     icon: {
       type: DataTypes.STRING,
+      allowNull: false,
+    },
+    kind: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    subscribedEvents: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: false,
     },
     webhookSourceId: {
