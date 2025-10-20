@@ -1079,6 +1079,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: {
       search_in_files: "never_ask",
       search_drive_items: "never_ask",
+      update_word_document: "high",
       get_file_content: "never_ask",
     },
     tools_retry_policies: undefined,
