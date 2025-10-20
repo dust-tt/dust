@@ -23,6 +23,16 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only admin can manage webhook sources.",
+      },
+    });
+  }
+
   const { webhookSourceId } = req.query;
   if (typeof webhookSourceId !== "string") {
     return apiError(req, res, {
