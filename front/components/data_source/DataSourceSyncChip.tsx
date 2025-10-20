@@ -2,48 +2,23 @@ import { Chip, Tooltip } from "@dust-tt/sparkle";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
-import { useConnector } from "@app/lib/swr/connectors";
 import { timeAgoFrom } from "@app/lib/utils";
-import type { ConnectorType, DataSourceType } from "@app/types";
+import type { ConnectorType } from "@app/types";
 import { assertNever, fileSizeToHumanReadable } from "@app/types";
 
 export default function ConnectorSyncingChip({
-  workspaceId,
-  dataSource,
-  initialState,
+  connector,
+  connectorError,
   activeSeats,
 }: {
-  workspaceId: string;
-  dataSource: DataSourceType;
-  initialState: ConnectorType;
+  connector: ConnectorType;
+  connectorError: string | null;
   activeSeats: number;
 }) {
-  const {
-    connector: refreshedConnector,
-    isConnectorLoading,
-    isConnectorError,
-  } = useConnector({
-    workspaceId,
-    dataSource,
-  });
-
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const connector = refreshedConnector || initialState;
-  if (!connector) {
-    if (isConnectorError) {
-      return (
-        <Chip color="warning">Error loading synchronization information</Chip>
-      );
-    } else if (isConnectorLoading) {
-      return (
-        <Chip color="info" isBusy>
-          Loading
-        </Chip>
-      );
-    } else {
-      // This should never happen, but is a typescript possible case
-      return <Chip color="warning">Connector not found</Chip>;
-    }
+  if (connectorError) {
+    return (
+      <Chip color="warning">Error loading synchronization information</Chip>
+    );
   }
 
   if (connector.errorType) {
