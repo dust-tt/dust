@@ -254,7 +254,7 @@ export class Authenticator {
       this._groups = await GroupResource.listUserGroupsInWorkspace({
         user: this._user,
         workspace: renderLightWorkspaceType({ workspace: this._workspace }),
-        includeGroupSpaces: true,
+        includeGroupSpaces: this.shouldUseRequestedSpaces(),
         transaction,
       });
     } else {
@@ -562,14 +562,14 @@ export class Authenticator {
       throw new Error(`Could not get system key for workspace ${workspaceId}`);
     }
 
+    const shouldUseRequestedSpaces =
+      await Authenticator.shouldUseRequestedSpaces(workspace);
+
     const groups = await GroupResource.listGroupsWithSystemKey(
       systemKeyForWorkspaceRes.value,
       groupIds,
-      { includeGroupSpaces: true }
+      { includeGroupSpaces: shouldUseRequestedSpaces }
     );
-
-    const shouldUseRequestedSpaces =
-      await Authenticator.shouldUseRequestedSpaces(workspace);
 
     return new Authenticator({
       groups,
@@ -596,17 +596,18 @@ export class Authenticator {
     let globalGroup: GroupResource | null = null;
     let subscription: SubscriptionResource | null = null;
 
+    const shouldUseRequestedSpaces =
+      await Authenticator.shouldUseRequestedSpaces(workspace);
+
     [globalGroup, subscription] = await Promise.all([
       GroupResource.internalFetchWorkspaceGlobalGroup({
         workspaceId: workspace.id,
-        includeGroupSpaces: true,
+        includeGroupSpaces: shouldUseRequestedSpaces,
       }),
       SubscriptionResource.fetchActiveByWorkspace(
         renderLightWorkspaceType({ workspace })
       ),
     ]);
-    const shouldUseRequestedSpaces =
-      await Authenticator.shouldUseRequestedSpaces(workspace);
 
     return new Authenticator({
       workspace,
@@ -630,18 +631,21 @@ export class Authenticator {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
 
+    const shouldUseRequestedSpaces =
+      await Authenticator.shouldUseRequestedSpaces(workspace);
+
     const [groups, subscription] = await Promise.all([
       (async () => {
         if (options?.dangerouslyRequestAllGroups) {
           return GroupResource.internalFetchAllWorkspaceGroups({
             workspaceId: workspace.id,
-            includeGroupSpaces: true,
+            includeGroupSpaces: shouldUseRequestedSpaces,
           });
         } else {
           const globalGroup =
             await GroupResource.internalFetchWorkspaceGlobalGroup({
               workspaceId: workspace.id,
-              includeGroupSpaces: true,
+              includeGroupSpaces: shouldUseRequestedSpaces,
             });
           return globalGroup ? [globalGroup] : [];
         }
@@ -650,9 +654,6 @@ export class Authenticator {
         renderLightWorkspaceType({ workspace })
       ),
     ]);
-
-    const shouldUseRequestedSpaces =
-      await Authenticator.shouldUseRequestedSpaces(workspace);
 
     return new Authenticator({
       workspace,
@@ -715,14 +716,15 @@ export class Authenticator {
       return null;
     }
 
+    const shouldUseRequestedSpaces =
+      await Authenticator.shouldUseRequestedSpaces(owner);
+
     const groups = await GroupResource.listUserGroupsInWorkspace({
       user,
       workspace: renderLightWorkspaceType({ workspace: owner }),
-      includeGroupSpaces: true,
+      includeGroupSpaces: shouldUseRequestedSpaces,
     });
 
-    const shouldUseRequestedSpaces =
-      await Authenticator.shouldUseRequestedSpaces(auth._workspace);
     return new Authenticator({
       key: auth._key,
       // We limit scope to a user role.
@@ -1047,7 +1049,7 @@ export class Authenticator {
       const groupsResult = await GroupResource.fetchByIds(
         tempAuth,
         authType.groupIds,
-        { includeGroupSpaces: true }
+        { includeGroupSpaces: shouldUseRequestedSpaces }
       );
 
       if (groupsResult.isOk()) {
@@ -1080,7 +1082,7 @@ export class Authenticator {
   }
 
   static async shouldUseRequestedSpaces(
-    workspace: WorkspaceResource | null
+    workspace: WorkspaceResource | WorkspaceType | null
   ): Promise<boolean> {
     if (workspace) {
       const featureFlags = await getFeatureFlags(

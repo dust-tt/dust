@@ -189,10 +189,13 @@ export class InternalMCPServerInMemoryResource {
 
     const server = await InternalMCPServerInMemoryResource.init(auth, sid);
 
+    console.log("======================== server", sid, server);
+
     if (!server) {
       throw new DustError(
         "internal_server_not_found",
-        "Failed to create internal MCP server, the id is probably invalid."
+        "Failed to create internal MCP server, the id is probably invalid." +
+          sid
       );
     }
 
