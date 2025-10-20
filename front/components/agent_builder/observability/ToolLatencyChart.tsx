@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -20,6 +20,7 @@ import {
   MAX_TOOLS_DISPLAYED,
   TOOL_COLORS,
 } from "@app/components/agent_builder/observability/constants";
+import type { ToolLatencyByVersion } from "@app/lib/api/assistant/observability/tool_latency";
 import { useAgentToolLatency } from "@app/lib/swr/assistants";
 
 type ChartRow = { version: string; values: Record<string, number> };
@@ -27,6 +28,68 @@ type ChartRow = { version: string; values: Record<string, number> };
 interface ToolLatencyChartProps {
   workspaceId: string;
   agentConfigurationId: string;
+}
+
+function ToolLatencyTooltip({
+  active,
+  payload,
+  label,
+  topTools,
+  toolLatencyByVersion,
+}: TooltipContentProps<number, string> & {
+  topTools: string[];
+  toolLatencyByVersion: ToolLatencyByVersion[];
+}) {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  const getColorForTool = (toolName: string) => {
+    const idx = topTools.indexOf(toolName);
+    return TOOL_COLORS[(idx >= 0 ? idx : 0) % TOOL_COLORS.length];
+  };
+
+  // Extract version from label (format: "v123")
+  const version = String(label).replace(/^v/, "");
+  const versionData = toolLatencyByVersion.find((v) => v.version === version);
+
+  const rows = payload
+    .filter((p) => typeof p.value === "number" && p.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .flatMap((p) => {
+      const toolName = p.name || "";
+      const toolData = versionData?.tools[toolName];
+
+      if (!toolData) {
+        return [
+          {
+            label: toolName,
+            value: `${p.value}ms`,
+            colorClassName: getColorForTool(toolName),
+          },
+        ];
+      }
+
+      return [
+        {
+          label: `${toolName} (avg)`,
+          value: `${toolData.avgLatencyMs}ms`,
+          colorClassName: getColorForTool(toolName),
+        },
+        {
+          label: `${toolName} (p50)`,
+          value: `${toolData.p50LatencyMs}ms`,
+          colorClassName: getColorForTool(toolName),
+        },
+        {
+          label: `${toolName} (p95)`,
+          value: `${toolData.p95LatencyMs}ms`,
+          colorClassName: getColorForTool(toolName),
+        },
+      ];
+    });
+
+  return <ChartTooltipCard title={String(label)} rows={rows} />;
 }
 
 export function ToolLatencyChart({
@@ -92,28 +155,16 @@ export function ToolLatencyChart({
     return { chartData: rows, topTools: top };
   }, [toolLatencyByVersion]);
 
-  function CustomTooltip(props: TooltipContentProps<number, string>) {
-    const { active, payload, label } = props;
-    if (!active || !payload || payload.length === 0) {
-      return null;
-    }
-
-    const getColorForTool = (toolName: string) => {
-      const idx = topTools.indexOf(toolName);
-      return TOOL_COLORS[(idx >= 0 ? idx : 0) % TOOL_COLORS.length];
-    };
-
-    const rows = payload
-      .filter((p) => typeof p.value === "number" && p.value > 0)
-      .sort((a, b) => b.value - a.value)
-      .map((p) => ({
-        label: p.name || "",
-        value: `${p.value}ms`,
-        colorClassName: getColorForTool(p.name || ""),
-      }));
-
-    return <ChartTooltipCard title={String(label)} rows={rows} />;
-  }
+  const renderTooltip = useCallback(
+    (props: TooltipContentProps<number, string>) => (
+      <ToolLatencyTooltip
+        {...props}
+        topTools={topTools}
+        toolLatencyByVersion={toolLatencyByVersion ?? []}
+      />
+    ),
+    [topTools, toolLatencyByVersion]
+  );
 
   const legendItems = topTools.map((toolName, idx) => ({
     key: toolName,
@@ -123,7 +174,7 @@ export function ToolLatencyChart({
 
   return (
     <ChartContainer
-      title="Tool Latency by Version"
+      title="Average Tool Latency by Version"
       period={period}
       onPeriodChange={setPeriod}
       isLoading={isToolLatencyLoading}
@@ -160,7 +211,7 @@ export function ToolLatencyChart({
             />
             <Tooltip
               cursor={{ fill: "hsl(var(--border) / 0.1)" }}
-              content={CustomTooltip}
+              content={renderTooltip}
             />
             {topTools.map((toolName, idx) => (
               <Bar
@@ -177,8 +228,8 @@ export function ToolLatencyChart({
         <div className="mt-4 text-xs text-muted-foreground">
           <p>
             Shows the average execution latency (ms) of the top{" "}
-            {MAX_TOOLS_DISPLAYED} slowest tools for each agent version. Higher
-            values indicate slower tool execution times.
+            {MAX_TOOLS_DISPLAYED} slowest tools for each agent version. Hover
+            over bars to see avg, p50 (median), and p95 latency values.
           </p>
         </div>
       </>
