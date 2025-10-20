@@ -311,11 +311,4 @@ async function handleAgentSelection(
     { selectedAgent, originalMessage },
     "Handling agent selection from adaptive card"
   );
-  return {
-    status: 200,
-    body: {
-      type: "message",
-      text: "This response is only visible to you",
-    },
-  };
 }

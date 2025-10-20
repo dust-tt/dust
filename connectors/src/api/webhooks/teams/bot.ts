@@ -604,7 +604,7 @@ export async function sendFeedback({
   const validatedUser = await validateTeamsUser(context, connector);
   if (!validatedUser) {
     logger.error("Failed to validate Teams user for feedback");
-    return false;
+    return;
   }
 
   const { email, displayName } = validatedUser;
@@ -614,7 +614,7 @@ export async function sendFeedback({
 
   if (!conversationId || !replyTo) {
     logger.error("No conversation ID or reply to ID found in activity");
-    return false;
+    return;
   }
 
   // Find the MicrosoftBotMessage to get the Dust conversation ID
@@ -634,7 +634,7 @@ export async function sendFeedback({
     logger.error(
       "No MicrosoftBotMessage found for conversation ID and reply to ID"
     );
-    return false;
+    return;
   }
 
   const dustAPI = new DustAPI(
@@ -669,6 +669,4 @@ export async function sendFeedback({
     },
     "Feedback submitted from Teams"
   );
-
-  return true;
 }
