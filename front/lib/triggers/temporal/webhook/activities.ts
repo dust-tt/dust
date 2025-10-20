@@ -7,6 +7,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { checkTriggerForExecutionPerDayLimit } from "@app/lib/triggers/common";
 import { launchAgentTriggerWorkflow } from "@app/lib/triggers/temporal/common/client";
 import {
   checkSignature,
@@ -192,7 +193,9 @@ export async function runTriggerWebhookActivity({
     .flat()
     .map((t) => t.toJSON())
     // Filter here to avoid a lot of type checking later.
-    .filter(isWebhookTrigger);
+    .filter(isWebhookTrigger)
+    // Filter out disabled triggers
+    .filter((t) => t.enabled);
 
   const filteredTriggers: WebhookTriggerType[] = [];
 
@@ -206,9 +209,27 @@ export async function runTriggerWebhookActivity({
         const parsedFilter = parseMatcherExpression(t.configuration.filter);
         const r = matchPayload(body, parsedFilter);
         if (r) {
-          // Filter matches, add the trigger
-          // TODO: check individually if the trigger is rate limited (next PR)
-          filteredTriggers.push(t);
+          // Filter matches, add the trigger if not rate limited
+          const rateLimiterRes = await checkTriggerForExecutionPerDayLimit(
+            auth,
+            {
+              trigger: t,
+            }
+          );
+          if (rateLimiterRes.isErr()) {
+            const errorMessage = rateLimiterRes.error.message;
+            await webhookRequest.markRelatedTrigger(
+              t,
+              "rate_limited",
+              errorMessage
+            );
+            logger.warn(
+              { workspaceId, webhookRequestId, triggerId: t.sId },
+              errorMessage
+            );
+          } else {
+            filteredTriggers.push(t);
+          }
         } else {
           // Filter doesn't match, skip the trigger but store in the mapping list.
           await webhookRequest.markRelatedTrigger(t, "not_matched");

@@ -13,6 +13,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
+import { checkTriggerForExecutionPerDayLimit } from "@app/lib/triggers/common";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
@@ -206,6 +207,18 @@ export async function runTriggeredAgentsActivity({
     throw new TriggerNonRetryableError(
       `Trigger with ID ${trigger.sId} not found.`
     );
+  }
+
+  if (!triggerResource.enabled) {
+    logger.info({ triggerId: trigger.sId }, "Trigger is disabled.");
+    return;
+  }
+
+  const rateLimiterRes = await checkTriggerForExecutionPerDayLimit(auth, {
+    trigger: triggerResource.toJSON(),
+  });
+  if (rateLimiterRes.isErr()) {
+    throw new TriggerNonRetryableError(rateLimiterRes.error.message);
   }
 
   const subscribers = await triggerResource.getSubscribers(auth);

@@ -13,12 +13,6 @@ class MyDocument extends Document {
             <script src="https://unpkg.com/react-scan/dist/auto.global.js" />
           )}
           <base href={process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL} />
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link
-            rel="preconnect"
-            href="https://fonts.gstatic.com"
-            crossOrigin="anonymous"
-          />
           {process.env.NEXT_PUBLIC_ENABLE_BOT_CRAWLING !== "true" && (
             <meta name="robots" content="noindex" />
           )}

@@ -1,4 +1,5 @@
 import type {
+  AgentActionPublicType,
   ConversationPublicType,
   PublicPostContentFragmentRequestBody,
   PublicPostMessagesRequestBody,
@@ -14,6 +15,8 @@ import { processFileAttachments } from "@connectors/api/webhooks/teams/content_f
 import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
 import { getMessagesFromConversation } from "@connectors/connectors/microsoft/lib/graph_api";
 import { apiConfig } from "@connectors/lib/api/config";
+import type { MessageFootnotes } from "@connectors/lib/bot/citations";
+import { annotateCitations } from "@connectors/lib/bot/citations";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import { processMessageForMention } from "@connectors/lib/bot/mentions";
 import { MicrosoftBotMessage } from "@connectors/lib/models/microsoft_bot";
@@ -103,6 +106,7 @@ export async function botAnswerMessage(
   }
 
   const mention = mentionResult.value.mention;
+
   message = mentionResult.value.processedMessage;
 
   const buildContentFragmentRes = await makeContentFragments(
@@ -246,7 +250,7 @@ export async function botAnswerMessage(
     );
   }
 
-  await MicrosoftBotMessage.create({
+  const m = await MicrosoftBotMessage.create({
     connectorId: connector.id,
     userAadObjectId: userAadObjectId,
     email: email,
@@ -272,16 +276,24 @@ export async function botAnswerMessage(
     return streamAgentResponseRes;
   }
 
-  const finalResponse = streamAgentResponseRes.value;
+  const { formattedContent, footnotes, agentMessageId } =
+    streamAgentResponseRes.value;
+
+  await m.update({
+    dustAgentMessageId: agentMessageId,
+  });
 
   const finalCard = createResponseAdaptiveCard({
-    response: finalResponse,
-    assistantName: mention.assistantName,
+    response: formattedContent,
+    assistant: mention,
     conversationUrl: makeConversationUrl(
       connector.workspaceId,
       conversation.sId
     ),
     workspaceId: connector.workspaceId,
+    agentConfigurations: activeAgentConfigurations,
+    originalMessage: message,
+    footnotes: footnotes,
   });
 
   await sendTeamsResponse(context, agentActivityId, finalCard);
@@ -306,7 +318,16 @@ async function streamAgentResponse({
   mention: { assistantName: string; assistantId: string };
   connector: ConnectorResource;
   agentActivityId: string;
-}): Promise<Result<string, Error>> {
+}): Promise<
+  Result<
+    {
+      agentMessageId: string;
+      formattedContent: string;
+      footnotes: MessageFootnotes;
+    },
+    Error
+  >
+> {
   // For Bot Framework approach with streaming updates
   const streamRes = await dustAPI.streamAgentAnswerEvents({
     conversation,
@@ -319,10 +340,13 @@ async function streamAgentResponse({
 
   // Collect the full response and stream updates
   let finalResponse = "";
+  let finalFormattedContent = "";
+  let finalFootnotes: MessageFootnotes = [];
   let agentMessageSuccess = undefined;
   let lastUpdateTime = Date.now();
   let chainOfThought = "";
   let agentState = "thinking";
+  const actions: AgentActionPublicType[] = [];
   const UPDATE_INTERVAL_MS = 100; // Update every 100 millisecond
 
   for await (const event of streamRes.value.eventStream) {
@@ -333,6 +357,12 @@ async function streamAgentResponse({
       case "agent_message_success": {
         agentMessageSuccess = event;
         finalResponse = event.message.content ?? "";
+        const { formattedContent, footnotes } = annotateCitations(
+          finalResponse,
+          actions
+        );
+        finalFormattedContent = formattedContent;
+        finalFootnotes = footnotes;
         break;
       }
       case "generation_tokens": {
@@ -355,8 +385,11 @@ async function streamAgentResponse({
           const text =
             agentState === "thinking" ? chainOfThought : finalResponse;
           if (text.trim()) {
+            // Process citations for streaming updates (only format content, no footnotes)
+            const { formattedContent } = annotateCitations(text, actions);
+
             const streamingCard = createStreamingAdaptiveCard({
-              response: text,
+              response: formattedContent,
               assistantName: mention.assistantName,
               conversationUrl: null,
               workspaceId: connector.workspaceId,
@@ -381,6 +414,9 @@ async function streamAgentResponse({
 
         break;
       }
+      case "agent_action_success":
+        actions.push(event.action);
+        break;
       default:
         // Ignore other events
         break;
@@ -388,7 +424,11 @@ async function streamAgentResponse({
   }
 
   if (agentMessageSuccess) {
-    return new Ok(finalResponse);
+    return new Ok({
+      agentMessageId: agentMessageSuccess.message.sId,
+      formattedContent: finalFormattedContent,
+      footnotes: finalFootnotes,
+    });
   } else {
     return new Err(new Error("No response generated"));
   }
@@ -578,5 +618,85 @@ async function makeContentFragments(
 
   return new Ok(
     allContentFragments.length > 0 ? allContentFragments : undefined
+  );
+}
+
+export async function sendFeedback({
+  context,
+  connector,
+  thumbDirection,
+}: {
+  context: TurnContext;
+  connector: ConnectorResource;
+  thumbDirection: "up" | "down";
+}) {
+  // Validate user first
+  const validatedUser = await validateTeamsUser(context, connector);
+  if (!validatedUser) {
+    logger.error("Failed to validate Teams user for feedback");
+    return;
+  }
+
+  const { email, displayName } = validatedUser;
+
+  const conversationId = context.activity.conversation?.id;
+  const replyTo = context.activity.replyToId;
+
+  if (!conversationId || !replyTo) {
+    logger.error("No conversation ID or reply to ID found in activity");
+    return;
+  }
+
+  // Find the MicrosoftBotMessage to get the Dust conversation ID
+  const microsoftBotMessage = await MicrosoftBotMessage.findOne({
+    where: {
+      connectorId: connector.id,
+      conversationId: conversationId,
+      agentActivityId: replyTo,
+    },
+    order: [["createdAt", "DESC"]],
+  });
+
+  if (
+    !microsoftBotMessage?.dustConversationId ||
+    !microsoftBotMessage?.dustAgentMessageId
+  ) {
+    logger.error(
+      "No MicrosoftBotMessage found for conversation ID and reply to ID"
+    );
+    return;
+  }
+
+  const dustAPI = new DustAPI(
+    { url: apiConfig.getDustFrontAPIUrl() },
+    {
+      workspaceId: connector.workspaceId,
+      apiKey: connector.workspaceAPIKey,
+      extraHeaders: {
+        ...getHeaderFromUserEmail(email),
+      },
+    },
+    logger
+  );
+
+  const feedbackRes = await dustAPI.postFeedback(
+    microsoftBotMessage.dustConversationId,
+    microsoftBotMessage.dustAgentMessageId,
+    {
+      thumbDirection,
+      feedbackContent: null,
+      isConversationShared: true, // Teams feedback is considered shared
+    }
+  );
+
+  logger.info(
+    {
+      dustConversationId: microsoftBotMessage.dustConversationId,
+      thumbDirection,
+      feedbackRes,
+      userEmail: email,
+      userDisplayName: displayName,
+    },
+    "Feedback submitted from Teams"
   );
 }

@@ -29,6 +29,7 @@ export class ConfluenceCastKnownErrorsInterceptor
               throw ApplicationFailure.create({
                 message: `${err.message}. Retry after ${err.retryAfterMs}ms`,
                 nextRetryDelay: err.retryAfterMs,
+                cause: err,
               });
             }
 
