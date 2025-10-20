@@ -121,9 +121,8 @@ async function handler(
       },
     });
   }
-  return res
-    .status(200)
-    .json({ success: true, emailTo: dataSource.editedByUser.email });
+
+  return res.status(200).json({ success: true });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
