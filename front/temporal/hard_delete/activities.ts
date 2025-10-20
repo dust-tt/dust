@@ -1,7 +1,8 @@
 import { Context } from "@temporalio/activity";
-import { QueryTypes, Sequelize } from "sequelize";
+import type { Sequelize } from "sequelize";
+import { QueryTypes } from "sequelize";
 
-import config from "@app/lib/production_checks/config";
+import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import logger from "@app/logger/logger";
 import type {
   RunExecutionRow,
@@ -15,10 +16,7 @@ import {
 const BATCH_SIZE = 100;
 
 export async function purgeExpiredRunExecutionsActivity() {
-  const primaryCoreDatabaseUri = config.getCoreDatabasePrimaryUri();
-  const coreSequelize = new Sequelize(primaryCoreDatabaseUri, {
-    logging: false,
-  });
+  const coreSequelize = getCorePrimaryDbConnection();
 
   const cutoffDate = getRunExecutionsDeletionCutoffDate();
 

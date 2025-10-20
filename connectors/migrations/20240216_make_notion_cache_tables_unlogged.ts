@@ -1,7 +1,7 @@
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 
 async function main() {
-  await sequelizeConnection.query(`
+  await connectorsSequelize.query(`
         ALTER TABLE notion_connector_page_cache_entries SET UNLOGGED;
         ALTER TABLE notion_connector_block_cache_entries SET UNLOGGED;
         ALTER TABLE notion_connector_resources_to_check_cache_entries SET UNLOGGED;

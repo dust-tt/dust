@@ -85,7 +85,7 @@ import {
   ZendeskTimestampCursorModel,
 } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import { sendInitDbMessage } from "@connectors/types";
 
@@ -155,16 +155,16 @@ async function main(): Promise<void> {
   await GongUserModel.sync({ alter: true });
 
   // enable the `unaccent` extension
-  await sequelizeConnection.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
+  await connectorsSequelize.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
 
   await addSearchVectorTrigger(
-    sequelizeConnection,
+    connectorsSequelize,
     "notion_pages",
     "notion_pages_vector_update",
     "notion_pages_trigger"
   );
   await addSearchVectorTrigger(
-    sequelizeConnection,
+    connectorsSequelize,
     "notion_databases",
     "notion_databases_vector_update",
     "notion_databases_trigger"

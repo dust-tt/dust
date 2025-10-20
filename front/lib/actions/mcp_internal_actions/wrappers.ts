@@ -74,7 +74,7 @@ export function withToolLogging<T>(
       };
     }
 
-    logger.info(loggerArgs, "Tool execution start");
+    logger.info.bind(logger)(loggerArgs, "Tool execution start");
 
     const tags = [
       `tool:${toolNameForMonitoring}`,
@@ -89,6 +89,8 @@ export function withToolLogging<T>(
 
     const result = await toolCallback(params, extra);
 
+    const elapsed = performance.now() - startTime;
+
     // When we get an Err, we monitor it if tracked and return it as a text content.
     if (result.isErr()) {
       if (enableAlerting && result.error.tracked) {
@@ -98,11 +100,15 @@ export function withToolLogging<T>(
         ]);
       }
 
-      const logContext = { ...loggerArgs, error: result.error };
+      const logContext = {
+        ...loggerArgs,
+        duration: elapsed,
+        error: result.error,
+      };
       if (result.error.tracked) {
-        logger.error(logContext, "Tool execution error");
+        logger.error.bind(logger)(logContext, "Tool execution error");
       } else {
-        logger.warn(logContext, "Tool execution error");
+        logger.warn.bind(logger)(logContext, "Tool execution error");
       }
 
       return {
@@ -116,7 +122,6 @@ export function withToolLogging<T>(
       };
     }
 
-    const elapsed = performance.now() - startTime;
     if (enableAlerting) {
       statsDClient.distribution(
         "run_tool.duration.distribution",
@@ -125,7 +130,7 @@ export function withToolLogging<T>(
       );
     }
 
-    logger.info(
+    logger.info.bind(logger)(
       {
         ...loggerArgs,
         duration: elapsed,

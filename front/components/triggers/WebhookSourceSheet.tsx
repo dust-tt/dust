@@ -576,7 +576,13 @@ function WebhookSourceSheetContent({
     if (deleted) {
       onClose();
     }
-  }, [confirm, webhookSource, deleteWebhookSource, onClose]);
+  }, [
+    confirm,
+    webhookSourcesWithViews,
+    webhookSource,
+    deleteWebhookSource,
+    onClose,
+  ]);
 
   const footerButtons = useMemo(() => {
     if (currentPageId === "create") {

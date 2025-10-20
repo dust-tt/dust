@@ -13,6 +13,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import { isGlobalAgentId } from "@app/types";
 
 interface ConversationUpdateStats {
   total: number;
@@ -29,7 +30,7 @@ async function updateConversationRequestedSpaceIds(
   const workspace = auth.getNonNullableWorkspace();
   // Skip if requestedSpaceIds is already populated
   if (conversation.requestedSpaceIds.length > 0) {
-    logger.debug(
+    logger.info(
       { conversationId: conversation.sId },
       "Conversation already has requestedSpaceIds, skipping"
     );
@@ -55,18 +56,16 @@ async function updateConversationRequestedSpaceIds(
   });
 
   const agentConfigPairs = _.uniqWith(
-    messages.map((m) => ({
-      sId: m.agentMessage!.agentConfigurationId,
-      version: m.agentMessage!.agentConfigurationVersion,
-    })),
+    messages
+      .map((m) => ({
+        sId: m.agentMessage!.agentConfigurationId,
+        version: m.agentMessage!.agentConfigurationVersion,
+      }))
+      .filter((pair) => !isGlobalAgentId(pair.sId)),
     _.isEqual
   );
 
   if (agentConfigPairs.length === 0) {
-    logger.debug(
-      { conversationId: conversation.sId },
-      "Conversation has no agent messages, skipping"
-    );
     return { updated: false };
   }
 
@@ -78,15 +77,14 @@ async function updateConversationRequestedSpaceIds(
         sId: pair.sId,
         version: pair.version,
       })),
-      status: "active",
     },
     attributes: ["id", "sId", "version", "requestedSpaceIds"],
   });
 
   if (agentConfigurations.length === 0) {
-    logger.debug(
-      { conversationId: conversation.sId },
-      "No active agents found for conversation, skipping"
+    logger.info(
+      { conversationId: conversation.sId, agentConfigPairs },
+      "No agents found for conversation, skipping"
     );
     return { updated: false };
   }
@@ -103,8 +101,8 @@ async function updateConversationRequestedSpaceIds(
 
   // Skip if no space IDs are required
   if (uniqueSpaceIds.length === 0) {
-    logger.debug(
-      { conversationId: conversation.sId },
+    logger.info(
+      { conversationId: conversation.sId, agentConfigPairs },
       "Involved agents have no space requirements, skipping"
     );
     return { updated: false };
@@ -167,7 +165,7 @@ async function updateConversationsForWorkspace(
 
   // Process conversations in paginated batches to handle large datasets
   const batchSize = 1000;
-  let offset = 0;
+  let lastId = 0;
   let hasMore = true;
 
   while (hasMore) {
@@ -175,10 +173,10 @@ async function updateConversationsForWorkspace(
       where: {
         workspaceId: workspace.id,
         requestedSpaceIds: [],
+        id: { [Op.gt]: lastId },
       },
       attributes: ["id", "sId", "requestedSpaceIds"],
       limit: batchSize,
-      offset: offset,
       order: [["id", "ASC"]], // Ensure consistent ordering for pagination
     });
 
@@ -188,7 +186,7 @@ async function updateConversationsForWorkspace(
     }
 
     logger.info(
-      { workspaceId, batchSize: conversations.length, offset },
+      { workspaceId, batchSize: conversations.length, lastId },
       "Processing conversation batch"
     );
 
@@ -219,7 +217,10 @@ async function updateConversationsForWorkspace(
       }
     }
 
-    offset += batchSize;
+    // Update lastId to the last processed conversation's id
+    if (conversations.length > 0) {
+      lastId = conversations[conversations.length - 1].id;
+    }
 
     // If we got fewer results than the batch size, we're done
     if (conversations.length < batchSize) {

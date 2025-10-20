@@ -1,4 +1,5 @@
 import type {
+  AgentActionPublicType,
   ConversationPublicType,
   PublicPostContentFragmentRequestBody,
   PublicPostMessagesRequestBody,
@@ -14,6 +15,8 @@ import { processFileAttachments } from "@connectors/api/webhooks/teams/content_f
 import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
 import { getMessagesFromConversation } from "@connectors/connectors/microsoft/lib/graph_api";
 import { apiConfig } from "@connectors/lib/api/config";
+import type { MessageFootnotes } from "@connectors/lib/bot/citations";
+import { annotateCitations } from "@connectors/lib/bot/citations";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import { processMessageForMention } from "@connectors/lib/bot/mentions";
 import { MicrosoftBotMessage } from "@connectors/lib/models/microsoft_bot";
@@ -272,16 +275,17 @@ export async function botAnswerMessage(
     return streamAgentResponseRes;
   }
 
-  const finalResponse = streamAgentResponseRes.value;
+  const { formattedContent, footnotes } = streamAgentResponseRes.value;
 
   const finalCard = createResponseAdaptiveCard({
-    response: finalResponse,
+    response: formattedContent,
     assistantName: mention.assistantName,
     conversationUrl: makeConversationUrl(
       connector.workspaceId,
       conversation.sId
     ),
     workspaceId: connector.workspaceId,
+    footnotes: footnotes,
   });
 
   await sendTeamsResponse(context, agentActivityId, finalCard);
@@ -306,7 +310,9 @@ async function streamAgentResponse({
   mention: { assistantName: string; assistantId: string };
   connector: ConnectorResource;
   agentActivityId: string;
-}): Promise<Result<string, Error>> {
+}): Promise<
+  Result<{ formattedContent: string; footnotes: MessageFootnotes }, Error>
+> {
   // For Bot Framework approach with streaming updates
   const streamRes = await dustAPI.streamAgentAnswerEvents({
     conversation,
@@ -319,10 +325,13 @@ async function streamAgentResponse({
 
   // Collect the full response and stream updates
   let finalResponse = "";
+  let finalFormattedContent = "";
+  let finalFootnotes: MessageFootnotes = [];
   let agentMessageSuccess = undefined;
   let lastUpdateTime = Date.now();
   let chainOfThought = "";
   let agentState = "thinking";
+  const actions: AgentActionPublicType[] = [];
   const UPDATE_INTERVAL_MS = 100; // Update every 100 millisecond
 
   for await (const event of streamRes.value.eventStream) {
@@ -333,6 +342,12 @@ async function streamAgentResponse({
       case "agent_message_success": {
         agentMessageSuccess = event;
         finalResponse = event.message.content ?? "";
+        const { formattedContent, footnotes } = annotateCitations(
+          finalResponse,
+          actions
+        );
+        finalFormattedContent = formattedContent;
+        finalFootnotes = footnotes;
         break;
       }
       case "generation_tokens": {
@@ -355,8 +370,11 @@ async function streamAgentResponse({
           const text =
             agentState === "thinking" ? chainOfThought : finalResponse;
           if (text.trim()) {
+            // Process citations for streaming updates (only format content, no footnotes)
+            const { formattedContent } = annotateCitations(text, actions);
+
             const streamingCard = createStreamingAdaptiveCard({
-              response: text,
+              response: formattedContent,
               assistantName: mention.assistantName,
               conversationUrl: null,
               workspaceId: connector.workspaceId,
@@ -381,6 +399,9 @@ async function streamAgentResponse({
 
         break;
       }
+      case "agent_action_success":
+        actions.push(event.action);
+        break;
       default:
         // Ignore other events
         break;
@@ -388,7 +409,10 @@ async function streamAgentResponse({
   }
 
   if (agentMessageSuccess) {
-    return new Ok(finalResponse);
+    return new Ok({
+      formattedContent: finalFormattedContent,
+      footnotes: finalFootnotes,
+    });
   } else {
     return new Err(new Error("No response generated"));
   }

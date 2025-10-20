@@ -18,6 +18,8 @@ import {
 } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
+const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -157,11 +159,23 @@ function createServer(
         .describe(
           "The ID of the SharePoint site containing the file. Used if driveId is not provided."
         ),
+      offset: z
+        .number()
+        .default(0)
+        .describe(
+          "Character offset to start reading from (for pagination). Defaults to 0."
+        ),
+      limit: z
+        .number()
+        .default(MAX_CONTENT_SIZE)
+        .describe(
+          `Maximum number of characters to return. Defaults to ${MAX_CONTENT_SIZE}.`
+        ),
     },
     withToolLogging(
       auth,
       { toolNameForMonitoring: "microsoft_drive", agentLoopContext },
-      async ({ itemId, driveId, siteId }, { authInfo }) => {
+      async ({ itemId, driveId, siteId, offset, limit }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
           return new Err(
@@ -229,10 +243,36 @@ function createServer(
           } else {
             return new Err(new MCPError(`Unsupported mime type: ${mimeType}`));
           }
+
+          // Apply offset and limit
+          const totalContentLength = content.length;
+          const startIndex = Math.max(0, offset);
+          const endIndex = Math.min(content.length, startIndex + limit);
+          const truncatedContent = content.slice(startIndex, endIndex);
+
+          const hasMore = endIndex < content.length;
+          const nextOffset = hasMore ? endIndex : undefined;
+
           return new Ok([
             {
               type: "text" as const,
-              text: content,
+              text: JSON.stringify(
+                {
+                  itemId,
+                  driveId,
+                  siteId,
+                  fileName: response.name,
+                  mimeType: mimeType,
+                  content: truncatedContent,
+                  returnedContentLength: truncatedContent.length,
+                  totalContentLength,
+                  offset: startIndex,
+                  nextOffset,
+                  hasMore,
+                },
+                null,
+                2
+              ),
             },
           ]);
         } catch (err) {

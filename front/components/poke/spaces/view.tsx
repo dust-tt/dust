@@ -54,6 +54,21 @@ export function ViewSpaceViewTable({ space }: ViewSpaceTableProps) {
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
+                <PokeTableHead>Management Mode</PokeTableHead>
+                <PokeTableCell>{space.managementMode}</PokeTableCell>
+              </PokeTableRow>
+              {space.managementMode === "group" && (
+                <PokeTableRow>
+                  <PokeTableHead>Groups</PokeTableHead>
+                  <PokeTableCell>
+                    {space.groups
+                      .filter((g) => g.kind === "provisioned")
+                      .map((g) => g.name)
+                      .join(", ")}
+                  </PokeTableCell>
+                </PokeTableRow>
+              )}
+              <PokeTableRow>
                 <PokeTableHead>Created At</PokeTableHead>
                 <PokeTableCell>
                   {formatTimestampToFriendlyDate(space.createdAt)}
