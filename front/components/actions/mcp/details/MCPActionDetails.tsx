@@ -28,14 +28,6 @@ import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
-import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  getOutputText,
-  isResourceContentWithText,
-  isTextContent,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import {
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
@@ -55,8 +47,14 @@ import {
   TABLE_QUERY_V2_SERVER_NAME,
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/server_constants";
-import { getToolRunningLabel } from "@app/lib/actions/mcp_internal_actions/tool_constants";
+} from "@app/lib/actions/mcp_internal_actions/constants";
+import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  getOutputText,
+  isResourceContentWithText,
+  isTextContent,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
@@ -74,19 +72,6 @@ export interface MCPActionDetailsProps {
   lastNotification: ProgressNotificationContentType | null;
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
   viewType: "conversation" | "sidebar";
-}
-
-/**
- * Helper to get action name from running labels or fallback
- */
-function getActionName(
-  serverName: InternalMCPServerNameType,
-  toolName: string,
-  fallback: string
-): string {
-  const label = getToolRunningLabel(serverName, toolName);
-  // Remove trailing "..." for cleaner display
-  return label ? label.replace(/\.\.\.$/, "") : fallback;
 }
 
 export function MCPActionDetails({
@@ -154,7 +139,9 @@ export function MCPActionDetails({
         <SearchResultDetails
           viewType={viewType}
           defaultQuery={queryResource.text}
-          actionName={getToolRunningLabel("search", SEARCH_TOOL_NAME)}
+          actionName={
+            viewType === "conversation" ? "Searching data" : "Search data"
+          }
           actionOutput={output}
           visual={MagnifyingGlassIcon}
         />
@@ -168,13 +155,11 @@ export function MCPActionDetails({
       return (
         <SearchResultDetails
           viewType={viewType}
-          actionName={getActionName(
-            "data_sources_file_system",
-            toolName,
+          actionName={
             viewType === "conversation"
               ? "Browsing data sources"
               : "Browse data sources"
-          )}
+          }
           actionOutput={output}
           visual={ActionDocumentTextIcon}
         />
@@ -195,11 +180,9 @@ export function MCPActionDetails({
       return (
         <SearchResultDetails
           viewType={viewType}
-          actionName={getActionName(
-            "include_data",
-            INCLUDE_TOOL_NAME,
+          actionName={
             viewType === "conversation" ? "Including data" : "Include data"
-          )}
+          }
           actionOutput={output}
           visual={ClockIcon}
         />
@@ -213,11 +196,9 @@ export function MCPActionDetails({
         <SearchResultDetails
           viewType={viewType}
           defaultQuery={params.query as string}
-          actionName={getActionName(
-            "web_search_&_browse",
-            WEBSEARCH_TOOL_NAME,
+          actionName={
             viewType === "conversation" ? "Searching the web" : "Web search"
-          )}
+          }
           actionOutput={output}
           visual={GlobeAltIcon}
         />
@@ -300,28 +281,11 @@ export function GenericActionDetails({
       ? JSON.stringify(action.params, undefined, 2)
       : null;
 
-  // Get running label from our defined constants, or fall back to displaying the function name
-  let actionName = "";
-  if (action.internalMCPServerName && action.functionCallName) {
-    const parts = action.functionCallName.split("__");
-    const toolName = parts[parts.length - 1];
-    const runningLabel = getToolRunningLabel(
-      action.internalMCPServerName,
-      toolName
-    );
-    if (runningLabel) {
-      // Remove trailing "..." for cleaner display
-      actionName = runningLabel.replace(/\.\.\.$/, "");
-    }
-  }
-
-  if (!actionName) {
-    actionName =
-      (viewType === "conversation" ? "Running a tool" : "Run a tool") +
-      (action.functionCallName
-        ? `: ${asDisplayName(action.functionCallName)}`
-        : "");
-  }
+  const actionName =
+    (viewType === "conversation" ? "Running a tool" : "Run a tool") +
+    (action.functionCallName
+      ? `: ${asDisplayName(action.functionCallName)}`
+      : "");
 
   const actionIcon =
     action.internalMCPServerName &&
