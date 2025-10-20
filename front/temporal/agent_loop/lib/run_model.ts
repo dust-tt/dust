@@ -29,6 +29,7 @@ import config from "@app/lib/api/config";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { getLLM } from "@app/lib/llm";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -36,9 +37,11 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { getOutputFromStream } from "@app/temporal/agent_loop/lib/get_output_from_stream";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
-import type { AgentActionsEvent, ModelId } from "@app/types";
+import type { GetOutputFromStreamResponse } from "@app/temporal/agent_loop/lib/types";
+import type { AgentActionsEvent, ModelId, Result } from "@app/types";
 import { removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
@@ -409,19 +412,38 @@ export async function runModelActivity(
     getDelimitersConfiguration({ agentConfiguration })
   );
 
-  const res = await getOutputFromStream(auth, {
-    runConfig,
-    modelConversation: modelConversationRes.value.modelConversation,
-    specifications,
-    conversation,
-    runAgentData,
-    agentMessage,
-    contentParser,
-    flushParserTokens,
-    step,
-    publishAgentError,
-    prompt,
-  });
+  let res: Result<GetOutputFromStreamResponse | null, Error>;
+
+  const llm = await getLLM({ auth, model });
+
+  if (llm === null) {
+    res = await getOutputFromStream(auth, {
+      runConfig,
+      modelConversation: modelConversationRes.value.modelConversation,
+      specifications,
+      conversation,
+      runAgentData,
+      agentMessage,
+      contentParser,
+      flushParserTokens,
+      step,
+      publishAgentError,
+      prompt,
+    });
+  } else {
+    res = await getOutputFromLLMStream(auth, {
+      llm,
+      modelConversation: modelConversationRes.value.modelConversation,
+      prompt,
+      specifications,
+      conversation,
+      runAgentData,
+      agentMessage,
+      contentParser,
+      flushParserTokens,
+      step,
+    });
+  }
 
   if (res.isErr()) {
     return handlePossiblyRetryableError(res.error.message);
