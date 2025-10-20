@@ -280,7 +280,9 @@ export async function checkConnectionOwnership(
   });
   if (
     connectionRes.isErr() ||
-    connectionRes.value.connection.metadata.user_id !== auth.user()?.sId
+    connectionRes.value.connection.metadata.user_id !== auth.user()?.sId ||
+    connectionRes.value.connection.metadata.workspace_id !==
+      auth.workspace()?.sId
   ) {
     return new Err(new Error("Invalid connection"));
   }
