@@ -1,5 +1,6 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { ToolExecutionChart } from "@app/components/agent_builder/observability/ToolExecutionChart";
+import { ToolLatencyChart } from "@app/components/agent_builder/observability/ToolLatencyChart";
 import { UsageMetricsChart } from "@app/components/agent_builder/observability/UsageMetricsChart";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 
@@ -36,6 +37,10 @@ export function AgentBuilderObservability({
           agentConfigurationId={agentConfiguration.sId}
         />
         <ToolExecutionChart
+          workspaceId={owner.sId}
+          agentConfigurationId={agentConfiguration.sId}
+        />
+        <ToolLatencyChart
           workspaceId={owner.sId}
           agentConfigurationId={agentConfiguration.sId}
         />
