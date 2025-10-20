@@ -142,7 +142,6 @@ jobs:
           region: ${{ matrix.region }}
           component: ${{ inputs.component }}
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
-          depot_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           dd_api_key: ${{ secrets.DD_API_KEY }}
           dd_client_token: ${{ secrets.DD_CLIENT_TOKEN }}
           virtuoso_license_key: ${{ secrets.VIRTUOSO_LICENSE_KEY }}

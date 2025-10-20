@@ -14,9 +14,6 @@ inputs:
   workload_identity_provider:
     description: "Workload Identity Provider"
     required: true
-  depot_token:
-    description: "Depot project token"
-    required: true
   dd_api_key:
     description: "Datadog api key"
     required: false
@@ -53,13 +50,8 @@ runs:
       shell: bash
       run: gcloud auth configure-docker ${{ inputs.region }}-docker.pkg.dev --quiet
 
-    - name: "Setup Depot"
-      uses: "depot/setup-action@v1"
-
-    - name: "Build and Push"
+    - name: "Build and Push with Cloud Build"
       shell: bash
-      env:
-        DEPOT_TOKEN: ${{ inputs.depot_token }}
       run: |
         COMPONENT="${{ inputs.component }}"
 
@@ -98,16 +90,11 @@ runs:
           build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$COMPONENT")
         fi
 
-        depot build \
-          --project 3vz0lnf16v \
-          --platform linux/amd64 \
-          --provenance=false \
-          --cache-from type=gha,scope=${{ inputs.component }} \
-          --cache-to type=gha,mode=max,scope=${{ inputs.component }} \
-          -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
-          -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}:${{ inputs.commit_sha }} \
-          --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
-          --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
-          ${build_args[@]} \
-          --push \
+        gcloud builds submit --quiet \
+          --machine-type=e2-highcpu-8 \
+          --tag=${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}:${{ inputs.commit_sha }} \
+          --file=./dockerfiles/${BASE_COMPONENT}.Dockerfile \
+          --build-arg=COMMIT_HASH=${{ inputs.commit_sha }} \
+          $([ -n "${{ inputs.commit_sha_long }}" ] && echo "--build-arg=COMMIT_HASH_LONG=${{ inputs.commit_sha_long }}") \
+          ${build_args[@]/#/} \
           .
