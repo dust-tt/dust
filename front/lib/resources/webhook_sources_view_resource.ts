@@ -239,12 +239,18 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     spaces: SpaceResource[],
     options?: ResourceFindOptions<WebhookSourcesViewModel>
   ): Promise<WebhookSourcesViewResource[]> {
+    const allowedSpaces = spaces.filter((space) =>
+      space.canReadOrAdministrate(auth)
+    );
+    if (allowedSpaces.length === 0) {
+      return [];
+    }
     return this.baseFetch(auth, {
       ...options,
       where: {
         ...options?.where,
         workspaceId: auth.getNonNullableWorkspace().id,
-        vaultId: spaces.map((s) => s.id),
+        vaultId: allowedSpaces.map((s) => s.id),
       },
     });
   }
@@ -254,6 +260,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     space: SpaceResource,
     options?: ResourceFindOptions<WebhookSourcesViewModel>
   ): Promise<WebhookSourcesViewResource[]> {
+    if (!space.canReadOrAdministrate(auth)) {
+      return [];
+    }
     return this.listBySpaces(auth, [space], options);
   }
 
@@ -262,7 +271,6 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     options?: ResourceFindOptions<WebhookSourcesViewModel>
   ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-
     return this.listBySpace(auth, systemSpace, options);
   }
 
