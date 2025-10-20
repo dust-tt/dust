@@ -5,6 +5,8 @@ import {
   _getClaude3GlobalAgent,
   _getClaude3HaikuGlobalAgent,
   _getClaude3OpusGlobalAgent,
+  _getClaude4_5HaikuGlobalAgent,
+  _getClaude4_5SonnetGlobalAgent,
   _getClaude4SonnetGlobalAgent,
   _getClaudeInstantGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
@@ -215,6 +217,22 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = _getClaudeInstantGlobalAgent({
         settings,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
+      agentConfiguration = _getClaude4_5SonnetGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU:
+      agentConfiguration = _getClaude4_5HaikuGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_4_SONNET:
