@@ -33,22 +33,6 @@ type BarShapeProps = {
   payload: ChartRow;
 };
 
-function isBarShapeProps(p: unknown): p is BarShapeProps {
-  if (typeof p !== "object" || p === null) {
-    return false;
-  }
-  const o = p as Record<string, unknown>;
-  return (
-    typeof o.x === "number" &&
-    typeof o.y === "number" &&
-    typeof o.width === "number" &&
-    typeof o.height === "number" &&
-    "payload" in o &&
-    typeof o.payload === "object" &&
-    o.payload !== null
-  );
-}
-
 function isTopForPayloadFactory(topTools: string[]) {
   return (payload: ChartRow, seriesIdx: number) => {
     for (let k = seriesIdx + 1; k < topTools.length; k++) {
@@ -61,25 +45,35 @@ function isTopForPayloadFactory(topTools: string[]) {
   };
 }
 
-function createRoundedTopBar(topTools: string[], seriesIdx: number) {
-  const isTopForPayload = isTopForPayloadFactory(topTools);
-  return function Shape(props: unknown): JSX.Element {
-    if (!isBarShapeProps(props)) {
-      return <g />;
-    }
-    const { x, y, width, height, fill, payload } = props;
-    if (!width || !height) {
-      return <g />;
-    }
-    const r = 4;
-    if (!isTopForPayload(payload, seriesIdx)) {
-      return <rect x={x} y={y} width={width} height={height} fill={fill} />;
-    }
-    const right = x + width;
-    const bottom = y + height;
-    const d = `M ${x} ${bottom} L ${x} ${y + r} A ${r} ${r} 0 0 1 ${x + r} ${y} L ${right - r} ${y} A ${r} ${r} 0 0 1 ${right} ${y + r} L ${right} ${bottom} Z`;
-    return <path d={d} fill={fill} />;
-  };
+type IsTopForPayload = (payload: ChartRow, seriesIdx: number) => boolean;
+
+type RoundedTopBarShapeProps = Partial<BarShapeProps> & {
+  isTopForPayload: IsTopForPayload;
+  seriesIdx: number;
+};
+
+function RoundedTopBarShape(props: RoundedTopBarShapeProps): JSX.Element {
+  const { x, y, width, height, fill, payload, isTopForPayload, seriesIdx } =
+    props;
+
+  if (
+    typeof x !== "number" ||
+    typeof y !== "number" ||
+    typeof width !== "number" ||
+    typeof height !== "number" ||
+    !payload
+  ) {
+    return <g />;
+  }
+
+  const r = 4;
+  if (!isTopForPayload(payload, seriesIdx)) {
+    return <rect x={x} y={y} width={width} height={height} fill={fill} />;
+  }
+  const right = x + width;
+  const bottom = y + height;
+  const d = `M ${x} ${bottom} L ${x} ${y + r} A ${r} ${r} 0 0 1 ${x + r} ${y} L ${right - r} ${y} A ${r} ${r} 0 0 1 ${right} ${y + r} L ${right} ${bottom} Z`;
+  return <path d={d} fill={fill} />;
 }
 
 interface ToolExecutionChartProps {
@@ -183,9 +177,11 @@ export function ToolExecutionChart({
     colorClassName: getToolColor(toolName, topTools),
   }));
 
-  // Use a per-series shape that rounds only when the segment is top-most
-  const RoundedTopBar = (seriesIdx: number) =>
-    createRoundedTopBar(topTools, seriesIdx);
+  // Factory used by the shape to decide when to round
+  const isTopForPayload = useMemo(
+    () => isTopForPayloadFactory(topTools),
+    [topTools]
+  );
 
   return (
     <ChartContainer
@@ -244,7 +240,12 @@ export function ToolExecutionChart({
               fill="currentColor"
               className={getToolColor(toolName, topTools)}
               name={toolName}
-              shape={RoundedTopBar(idx)}
+              shape={
+                <RoundedTopBarShape
+                  seriesIdx={idx}
+                  isTopForPayload={isTopForPayload}
+                />
+              }
             />
           ))}
         </BarChart>
