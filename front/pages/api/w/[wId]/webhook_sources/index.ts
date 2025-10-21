@@ -12,7 +12,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type {
-  WebhookSourceType,
+  WebhookSourceForAdminType,
   WebhookSourceWithViewsAndUsageType,
 } from "@app/types/triggers/webhooks";
 import { postWebhookSourcesSchema } from "@app/types/triggers/webhooks";
@@ -24,7 +24,7 @@ export type GetWebhookSourcesResponseBody = {
 
 export type PostWebhookSourcesResponseBody = {
   success: true;
-  webhookSource: WebhookSourceType;
+  webhookSource: WebhookSourceForAdminType;
 };
 
 async function handler(
@@ -58,14 +58,14 @@ async function handler(
         const webhookSourcesWithViews = await concurrentExecutor(
           webhookSourceResources,
           async (webhookSourceResource) => {
-            const webhookSource = webhookSourceResource.toJSON();
+            const webhookSource = webhookSourceResource.toJSONForAdmin();
             const webhookSourceViewResources =
               await WebhookSourcesViewResource.listByWebhookSource(
                 auth,
                 webhookSource.id
               );
             const views = webhookSourceViewResources.map((view) =>
-              view.toJSON()
+              view.toJSONForAdmin()
             );
 
             return { ...webhookSource, views };
@@ -143,7 +143,7 @@ async function handler(
           throw new Error(webhookSourceRes.error.message);
         }
 
-        const webhookSource = webhookSourceRes.value.toJSON();
+        const webhookSource = webhookSourceRes.value.toJSONForAdmin();
 
         if (includeGlobal) {
           const systemView =
