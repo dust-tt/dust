@@ -87,6 +87,11 @@ function getDesiredCommands(): DiscordSlashCommand[] {
         },
       ],
     },
+    {
+      name: "connect-user-to-dust",
+      description: "Connect your Discord account to use Dust agents",
+      type: 1,
+    },
   ];
 }
 
@@ -181,7 +186,7 @@ export function initializeDiscordCommands(): void {
       await bulkOverwriteCommands(desiredCommands);
       logger.info("Discord commands registered successfully");
     } catch (error) {
-      logger.error(
+      logger.warn(
         { error: normalizeError(error) },
         "Failed to initialize Discord commands"
       );

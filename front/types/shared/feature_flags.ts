@@ -215,7 +215,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   discord_bot: {
     description:
       "Discord bot integration for workspace-level Discord integration",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   dust_default_haiku_feature: {
     description:

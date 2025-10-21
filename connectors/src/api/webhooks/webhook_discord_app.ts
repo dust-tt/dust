@@ -2,7 +2,10 @@ import type { Request, Response } from "express";
 import nacl from "tweetnacl";
 import z from "zod";
 
-import { sendMessageToAgent } from "@connectors/api/webhooks/discord/bot";
+import {
+  sendDiscordMessages,
+  sendMessageToAgent,
+} from "@connectors/api/webhooks/discord/bot";
 import {
   DISCORD_API_BASE_URL,
   formatAgentsList,
@@ -14,9 +17,11 @@ import {
   findBestAgentMatch,
   processMessageForMention,
 } from "@connectors/lib/bot/mentions";
+import { DiscordUserOAuthConnectionModel } from "@connectors/lib/models/discord_user_oauth_connection";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import { OAuthAPI } from "@connectors/types/oauth/oauth_api";
 
 /**
  * Discord Interaction Types (incoming requests)
@@ -186,7 +191,7 @@ async function handleListAgentsCommand(
   }
 
   const responseContent = formatAgentsList(agentsResult.value);
-  await sendDiscordFollowUp(interactionBody, responseContent);
+  await sendDiscordMessages(interactionBody.token, responseContent, logger);
 }
 
 async function handleAskAgentCommand(
@@ -257,11 +262,13 @@ async function handleAskAgentCommand(
 
   const username =
     interactionBody.member?.user?.username || interactionBody.user?.username;
+  const userId = interactionBody.user?.id || interactionBody.member?.user?.id;
   const result = await sendMessageToAgent({
     agentConfiguration: agent,
     connector,
     channelId,
     discordUsername: username || "Unknown User",
+    discordUserId: userId || "Unknown User",
     message: mentionResult.value.processedMessage,
     interactionToken: interactionBody.token,
     logger,
@@ -275,6 +282,84 @@ async function handleAskAgentCommand(
     await sendDiscordFollowUp(
       interactionBody,
       "An error occurred while processing your message. Please try again later."
+    );
+  }
+}
+
+async function handleConnectUserCommand(
+  interactionBody: DiscordWebhookReqBody,
+  guildId: string,
+  userId: string | undefined
+): Promise<void> {
+  const connectorResult = await getConnectorFromGuildId(guildId, logger);
+  if (connectorResult.isErr()) {
+    await sendDiscordFollowUp(interactionBody, connectorResult.error.message);
+    return;
+  }
+
+  const connector = connectorResult.value;
+
+  if (!userId) {
+    await sendDiscordFollowUp(
+      interactionBody,
+      "Unable to identify your Discord user. Please try again."
+    );
+    return;
+  }
+
+  const oauthConfig = apiConfig.getOAuthAPIConfig();
+  const oauthAPI = new OAuthAPI(oauthConfig, logger);
+
+  const connectionRes = await oauthAPI.createConnection({
+    provider: "discord",
+    metadata: {
+      use_case: "personal_actions",
+      workspace_id: connector.workspaceId,
+    },
+  });
+
+  if (connectionRes.isOk()) {
+    const connection = connectionRes.value.connection;
+    const connectionId = connection.connection_id;
+
+    await DiscordUserOAuthConnectionModel.upsert({
+      discordUserId: userId,
+      connectionId: connectionId,
+      workspaceId: connector.workspaceId,
+    });
+
+    const discordClientId = apiConfig.getDiscordApplicationId();
+    const personal_scopes = ["identify", "email"];
+    const finalizeUri = `${apiConfig.getDustFrontAPIUrl()}/oauth/discord/finalize`;
+
+    const discordOAuthUrl =
+      `https://discord.com/api/oauth2/authorize?` +
+      `client_id=${discordClientId}` +
+      `&scope=${encodeURIComponent(personal_scopes.join(" "))}` +
+      `&redirect_uri=${encodeURIComponent(finalizeUri)}` +
+      `&response_type=code` +
+      `&state=${connectionId}`;
+
+    const setupMessage = {
+      content:
+        `🔐 **Connect Your Discord Account**\n\n` +
+        `To use Dust agents, please connect your Discord account:\n\n` +
+        `[**Connect Discord User**](${discordOAuthUrl})`,
+    };
+
+    await sendDiscordMessages(
+      interactionBody.token,
+      setupMessage.content,
+      logger
+    );
+  } else {
+    logger.error(
+      { userId, error: connectionRes.error },
+      "Failed to create OAuth connection for Discord user"
+    );
+    await sendDiscordFollowUp(
+      interactionBody,
+      "Failed to create OAuth connection. Please try again later."
     );
   }
 }
@@ -403,6 +488,18 @@ const _webhookDiscordAppHandler = async (
 
       setImmediate(async () => {
         await handleAskAgentCommand(interactionBody, guildId, channelId);
+      });
+
+      return deferredResponse;
+    }
+
+    if (commandName === "connect-user-to-dust") {
+      const deferredResponse = res.status(200).json({
+        type: DiscordInteractionResponse.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+      });
+
+      setImmediate(async () => {
+        await handleConnectUserCommand(interactionBody, guildId, userId);
       });
 
       return deferredResponse;

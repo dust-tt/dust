@@ -13,10 +13,12 @@ import { apiConfig } from "@connectors/lib/api/config";
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { annotateCitations } from "@connectors/lib/bot/citations";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
+import { DiscordUserOAuthConnectionModel } from "@connectors/lib/models/discord_user_oauth_connection";
 import { getActionName } from "@connectors/lib/tools_utils";
 import type { Logger } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { normalizeError } from "@connectors/types";
+import { OAuthAPI } from "@connectors/types/oauth/oauth_api";
 
 const UPDATE_INTERVAL_MS = 2000;
 
@@ -25,6 +27,7 @@ interface DiscordConversationParams {
   connector: ConnectorResource;
   channelId: string;
   discordUsername: string;
+  discordUserId: string;
   message: string;
   interactionToken: string;
   logger: Logger;
@@ -38,6 +41,7 @@ export async function sendMessageToAgent(
     connector,
     channelId,
     discordUsername,
+    discordUserId,
     message,
     interactionToken,
     logger,
@@ -54,6 +58,14 @@ export async function sendMessageToAgent(
 
   const messageWithMention = `:mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}} ${message}`;
 
+  const userEmail = await getUserEmail(discordUserId, logger);
+
+  if (!userEmail) {
+    // No OAuth connection exists, tell user to run /connect-user-to-dust command
+    await sendConnectUserMessage(discordUserId, interactionToken, logger);
+    return new Ok(undefined);
+  }
+
   const messageReqBody = {
     content: messageWithMention,
     mentions: [{ configurationId: agentConfiguration.sId }],
@@ -61,7 +73,7 @@ export async function sendMessageToAgent(
       timezone: "UTC",
       username: discordUsername,
       fullName: discordUsername,
-      email: null, // This is always null since we do not yet have a way to get the user's email.
+      email: userEmail,
       profilePictureUrl: null,
     },
   };
@@ -333,7 +345,7 @@ function splitContentForDiscord(content: string): string[] {
   return chunks;
 }
 
-async function sendDiscordMessages(
+export async function sendDiscordMessages(
   interactionToken: string,
   content: string,
   logger: Logger
@@ -456,4 +468,82 @@ function isPersonalAuthenticationActionError(
     outputText.includes("Personal tools require") ||
     outputText.includes("require the user to be authenticated")
   );
+}
+
+async function getUserEmail(
+  discordUserId: string,
+  logger: Logger
+): Promise<string | null> {
+  const userConnection = await DiscordUserOAuthConnectionModel.findOne({
+    where: { discordUserId },
+  });
+  if (!userConnection) {
+    return null;
+  }
+
+  const oauthConfig = apiConfig.getOAuthAPIConfig();
+  const oauthAPI = new OAuthAPI(oauthConfig, logger);
+
+  const tokenResult = await oauthAPI.getAccessToken({
+    provider: "discord",
+    connectionId: userConnection.connectionId,
+  });
+
+  if (tokenResult.isErr()) {
+    logger.error(
+      {
+        discordUserId,
+        connectionId: userConnection.connectionId,
+        error: tokenResult.error,
+      },
+      "Failed to get OAuth access token for Discord user"
+    );
+    throw normalizeError(tokenResult.error);
+  }
+
+  const userResponse = await fetch(`${DISCORD_API_BASE_URL}/users/@me`, {
+    headers: {
+      Authorization: `Bearer ${tokenResult.value.access_token}`,
+    },
+  });
+
+  if (!userResponse.ok) {
+    logger.error(
+      {
+        discordUserId,
+        connectionId: userConnection.connectionId,
+        status: userResponse.status,
+      },
+      "Failed to fetch Discord user data with OAuth token"
+    );
+    throw normalizeError(
+      `Failed to fetch Discord user data: ${userResponse.status}`
+    );
+  }
+
+  const userData = await userResponse.json();
+  const userEmail = userData.email;
+
+  if (!userEmail) {
+    logger.error(
+      { discordUserId, connectionId: userConnection.connectionId },
+      "No email found in Discord user data"
+    );
+    throw normalizeError("No email found in Discord user data");
+  }
+
+  return userEmail;
+}
+
+async function sendConnectUserMessage(
+  discordUserId: string,
+  interactionToken: string,
+  logger: Logger
+): Promise<void> {
+  const message =
+    `🔐 **Connect Your Discord Account**\n\n` +
+    `To use this agent, please run the \`/connect-user-to-dust\` command to connect your Discord account.\n\n` +
+    `After connecting, you'll be able to use the \`/ask-dust-agent\` command.`;
+
+  await sendDiscordMessages(interactionToken, message, logger);
 }
