@@ -58,7 +58,11 @@ export async function sendMessageToAgent(
 
   const messageWithMention = `:mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}} ${message}`;
 
-  const userEmail = await getUserEmail(discordUserId, logger);
+  const userEmail = await getUserEmail(
+    discordUserId,
+    connector.workspaceId,
+    logger
+  );
 
   if (!userEmail) {
     // No OAuth connection exists, tell user to run /connect-user-to-dust command
@@ -472,10 +476,11 @@ function isPersonalAuthenticationActionError(
 
 async function getUserEmail(
   discordUserId: string,
+  workspaceId: string,
   logger: Logger
 ): Promise<string | null> {
   const userConnection = await DiscordUserOAuthConnectionModel.findOne({
-    where: { discordUserId },
+    where: { discordUserId, workspaceId },
   });
   if (!userConnection) {
     return null;
