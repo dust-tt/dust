@@ -27,7 +27,6 @@ import {
   makeMessageUpdateBlocksAndText,
 } from "@connectors/connectors/slack/chat/blocks";
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
-import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import {
   getBotUserIdMemoized,
   getUserName,
@@ -54,6 +53,7 @@ import {
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { sectionFullText } from "@connectors/lib/data_sources";
 import { ProviderRateLimitError } from "@connectors/lib/error";
