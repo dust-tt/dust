@@ -40,7 +40,7 @@ export type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
   dataSourceView: DataSourceViewResource;
 };
 
-export function makeDataSourceViewFilter(
+export function makeCoreSearchNodesFilters(
   agentDataSourceConfigurations: ResolvedDataSourceConfiguration[]
 ): CoreAPIDatasourceViewFilter[] {
   return agentDataSourceConfigurations.map(

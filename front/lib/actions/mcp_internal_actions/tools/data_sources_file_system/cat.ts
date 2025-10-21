@@ -8,7 +8,7 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import { renderNode } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   getAgentDataSourceConfigurations,
-  makeDataSourceViewFilter,
+  makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -91,7 +91,7 @@ export function registerCatTool(
         const searchResult = await coreAPI.searchNodes({
           filter: {
             node_ids: [nodeId],
-            data_source_views: makeDataSourceViewFilter(
+            data_source_views: makeCoreSearchNodesFilters(
               agentDataSourceConfigurations
             ),
           },

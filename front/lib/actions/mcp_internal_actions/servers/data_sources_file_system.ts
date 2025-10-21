@@ -38,7 +38,7 @@ import {
 import {
   getAgentDataSourceConfigurations,
   getCoreSearchArgs,
-  makeDataSourceViewFilter,
+  makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -291,7 +291,9 @@ async function searchCallback(
     const searchResult = await coreAPI.searchNodes({
       filter: {
         node_ids: searchNodeIds,
-        data_source_views: makeDataSourceViewFilter(agentDataSourceConfigurations),
+        data_source_views: makeCoreSearchNodesFilters(
+          agentDataSourceConfigurations
+        ),
       },
       options: {
         limit: searchNodeIds.length,
@@ -428,7 +430,9 @@ function createServer(
         // are searched. It is not straightforward to guess which data source it
         // belongs to, this is why irrelevant data sources are not directly
         // filtered out.
-        let viewFilter = makeDataSourceViewFilter(agentDataSourceConfigurations);
+        let viewFilter = makeCoreSearchNodesFilters(
+          agentDataSourceConfigurations
+        );
 
         if (dataSourceNodeId) {
           viewFilter = viewFilter.filter(
@@ -634,7 +638,7 @@ function createServer(
         const searchResult = await coreAPI.searchNodes({
           filter: {
             node_ids: [nodeId],
-            data_source_views: makeDataSourceViewFilter(
+            data_source_views: makeCoreSearchNodesFilters(
               agentDataSourceConfigurations
             ),
           },
@@ -661,7 +665,7 @@ function createServer(
           const pathSearchResult = await coreAPI.searchNodes({
             filter: {
               node_ids: parentNodeIds,
-              data_source_views: makeDataSourceViewFilter(
+              data_source_views: makeCoreSearchNodesFilters(
                 agentDataSourceConfigurations
               ),
             },
