@@ -1,18 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
+import type { GroupResource } from "@app/lib/resources/group_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type {
-  GroupType,
-  ResourcePermission,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
+import type { ResourcePermission, WorkspaceType } from "@app/types";
 
 import { setupWorkOSMocks } from "../tests/utils/mocks/workos";
 
@@ -23,23 +20,36 @@ describe("Authenticator.hasResourcePermission", () => {
   let workspace: WorkspaceType;
   let otherWorkspace: WorkspaceType;
   let user: UserResource;
-  let globalGroup: GroupType;
-  let regularSpace: SpaceType;
+  let globalGroup: GroupResource;
+  let globalSpace: SpaceResource;
+  let regularSpace: SpaceResource;
   let authenticator: Authenticator;
 
   beforeEach(async () => {
     workspace = await WorkspaceFactory.basic();
     otherWorkspace = await WorkspaceFactory.basic();
 
-    user = await UserFactory.basic();
-    const { globalGroup: gg } = await GroupFactory.defaults(workspace);
-    globalGroup = gg.toJSON();
+    await FeatureFlagFactory.basic("use_requested_spaces", workspace);
 
-    const rs = await SpaceFactory.regular(workspace);
-    regularSpace = rs.toJSON();
+    user = await UserFactory.basic();
+
+    const adminAuthenticator = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
 
     // Create membership for user in workspace
     await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    const { globalGroup: gg, globalSpace: gs } =
+      await SpaceFactory.defaults(adminAuthenticator);
+    globalSpace = gs;
+    globalGroup = gg;
+
+    const rs = await SpaceFactory.regular(workspace);
+    regularSpace = rs;
+
+    // Add user to regular space group
+    await rs.groups[0].addMembers(adminAuthenticator, [user.toJSON()]);
 
     authenticator = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -155,18 +165,10 @@ describe("Authenticator.hasResourcePermission", () => {
   });
 
   describe("Space-based permissions", () => {
-    it("should grant access when user belongs to space with permission", () => {
-      // Skip if no spaceIds available
-      if (!globalGroup.spaceIds || globalGroup.spaceIds.length === 0) {
-        expect(true).toBe(true); // Skip this test
-        return;
-      }
-
-      const spaceId = globalGroup.spaceIds[0];
-
+    it("should grant access for global space with permission", () => {
       const resourcePermission: ResourcePermission = {
         space: {
-          id: spaceId,
+          id: globalSpace.id,
           permissions: ["read", "write"],
         },
       };
@@ -189,24 +191,16 @@ describe("Authenticator.hasResourcePermission", () => {
       expect(authenticator.canAdministrate([resourcePermission])).toBe(false);
     });
 
-    it("should deny access when space lacks required permission", () => {
-      // Skip if no spaceIds available
-      if (!globalGroup.spaceIds || globalGroup.spaceIds.length === 0) {
-        expect(true).toBe(true); // Skip this test
-        return;
-      }
-
-      const spaceId = globalGroup.spaceIds[0];
-
+    it("should grant access when user belongs to regular space with permission", () => {
       const resourcePermission: ResourcePermission = {
         space: {
-          id: spaceId,
-          permissions: ["read"], // Only read permission
+          id: regularSpace.id,
+          permissions: ["read", "write"],
         },
       };
 
       expect(authenticator.canRead([resourcePermission])).toBe(true);
-      expect(authenticator.canWrite([resourcePermission])).toBe(false);
+      expect(authenticator.canWrite([resourcePermission])).toBe(true);
       expect(authenticator.canAdministrate([resourcePermission])).toBe(false);
     });
   });
