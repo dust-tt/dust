@@ -427,6 +427,7 @@ export async function runModelActivity(
     >;
   } | null = null;
   let nativeChainOfThought = "";
+  let dustRunId: Promise<string>;
 
   const res = await runActionStreamed(
     auth,
@@ -450,7 +451,9 @@ export async function runModelActivity(
     return handlePossiblyRetryableError(res.error.message);
   }
 
-  const { eventStream, dustRunId } = res.value;
+  const { eventStream, dustRunId: dustRunIdValue } = res.value;
+  // eslint-disable-next-line prefer-const
+  dustRunId = dustRunIdValue;
 
   let isGeneration = true;
 
