@@ -1,6 +1,6 @@
 import { GithubLogo } from "@dust-tt/sparkle";
-import { GitHubWebhookService } from "@app/lib/triggers/services/github_webhook_service";
 
+import { GitHubWebhookService } from "@app/lib/triggers/services/github_webhook_service";
 import type {
   EventField,
   PresetWebhook,

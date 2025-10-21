@@ -142,8 +142,6 @@ async function handler(
             trimmedSignatureHeader.length > 0 ? trimmedSignatureHeader : null,
           signatureAlgorithm,
           subscribedEvents,
-          remoteMetadata: remoteMetadata ?? null,
-          oauthConnectionId: connectionId ?? null,
         });
 
         if (webhookSourceRes.isErr()) {
@@ -214,6 +212,7 @@ async function handler(
               ...remoteMetadata,
               webhookId,
             },
+            oauthConnectionId: connectionId,
           });
         }
 

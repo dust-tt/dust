@@ -1,12 +1,13 @@
 import { RocketIcon } from "@dust-tt/sparkle";
 
+import type { RemoteWebhookService } from "@app/lib/triggers/services/remote_webhook_service";
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { Ok } from "@app/types";
 import type {
   PresetWebhook,
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
-import { RemoteWebhookService } from "@app/lib/triggers/services/remote_webhook_service";
-import { Ok, Result } from "@dust-tt/client";
-import logger from "@app/logger/logger";
 
 const TEST_EVENT: WebhookEvent = {
   name: "Test event",
