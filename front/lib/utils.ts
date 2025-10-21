@@ -1,8 +1,11 @@
 import isEqual from "lodash/isEqual";
 
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
-import type { LightAgentConfigurationType } from "@app/types";
-import { isDevelopment } from "@app/types";
+import type {
+  AgentConfigurationForSort,
+  LightAgentConfigurationType,
+} from "@app/types";
+import { compareAgentsForSort, isDevelopment } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export const MODELS_STRING_MAX_LENGTH = 255;
@@ -284,7 +287,7 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
 }
 
 export function filterAndSortAgents(
-  agents: LightAgentConfigurationType[],
+  agents: AgentConfigurationForSort[],
   searchText: string
 ) {
   const lowerCaseSearchText = searchText.toLowerCase();
@@ -294,8 +297,10 @@ export function filterAndSortAgents(
   );
 
   if (searchText.length > 0) {
-    filtered.sort((a, b) =>
-      compareForFuzzySort(lowerCaseSearchText, a.name, b.name)
+    filtered.sort(
+      (a, b) =>
+        compareForFuzzySort(lowerCaseSearchText, a.name, b.name) ||
+        compareAgentsForSort(a, b)
     );
   }
 
