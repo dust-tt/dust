@@ -18,9 +18,9 @@ export async function launchAgentMessageAnalyticsActivity(
   if (result.isErr()) {
     logger.warn(
       {
-        workspaceId: authType.workspaceId,
         agentMessageId: agentLoopArgs.agentMessageId,
         error: result.error,
+        workspaceId: authType.workspaceId,
       },
       "Failed to launch agent message analytics workflow"
     );

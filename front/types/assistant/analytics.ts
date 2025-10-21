@@ -5,8 +5,6 @@ import type { AgentMessageType } from "@app/types";
  * Types for agent analytics data stored in Elasticsearch
  */
 
-export type AgentMessageAnalyticsStatus = "completed" | "failed";
-
 export interface AgentMessageAnalyticsTokens {
   prompt: number;
   completion: number;

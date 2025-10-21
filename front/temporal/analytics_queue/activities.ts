@@ -55,7 +55,7 @@ export async function storeAgentAnalyticsActivity(
   // Collect tool usage data from the agent message actions.
   const toolsUsed = await collectToolUsageFromMessage(auth, agentMessage);
 
-  // Build the complete analytics document
+  // Build the complete analytics document.
   const document: AgentMessageAnalyticsData = {
     agent_id: agentConfiguration.sId,
     agent_version: agentConfiguration.version.toString(),
@@ -92,7 +92,7 @@ async function checkForBlockedActions(
 }
 
 /**
- * Collect token usage from runs associated with this agent message
+ * Collect token usage from runs associated with this agent message.
  */
 async function collectTokenUsage(
   auth: Authenticator,
@@ -134,7 +134,7 @@ async function collectTokenUsage(
 }
 
 /**
- * Collect tool usage data from agent message actions
+ * Collect tool usage data from agent message actions.
  */
 async function collectToolUsageFromMessage(
   auth: Authenticator,
@@ -172,7 +172,7 @@ async function collectToolUsageFromMessage(
 }
 
 /**
- * Store document directly to Elasticsearch
+ * Store document directly to Elasticsearch.
  */
 // TODO(observability 2025-10-20): Fix logic of index and document id.
 async function storeToElasticsearch(
