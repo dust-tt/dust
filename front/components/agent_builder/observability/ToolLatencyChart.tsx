@@ -93,7 +93,6 @@ export function ToolLatencyChart({
       MAX_TOOLS_DISPLAYED
     );
 
-    const versions = toolLatencyByVersion.map((v) => v.version);
     const toolToUse = selectedTool ?? top[0];
     const areaData = toolLatencyByVersion.map((v) => ({
       version: `v${v.version}`,
@@ -102,7 +101,7 @@ export function ToolLatencyChart({
       p95: v.tools[toolToUse]?.p95LatencyMs ?? 0,
     }));
 
-    return { versions, topTools: top, areaData };
+    return { topTools: top, areaData };
   }, [toolLatencyByVersion, selectedTool]);
 
   const renderTooltip = useCallback(

@@ -77,7 +77,7 @@ function HeaderPeriodDropdown() {
       <Label>Period:</Label>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button label={`${period}d`} size="xs" variant="outline" />
+          <Button label={`${period}d`} size="xs" variant="outline" isSelect />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {OBSERVABILITY_TIME_RANGE.map((p) => (
