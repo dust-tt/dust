@@ -51,6 +51,7 @@ import {
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
+  checkDataSourceUpsertQueueStatus,
   deleteDataSourceDocument,
   deleteDataSourceTable,
   deleteDataSourceTableRow,
@@ -411,8 +412,8 @@ export async function getPagesAndDatabasesToSync({
 
   localLogger.info(
     {
-      initial_count: existingPages.length,
-      filtered_count: existingPages.length - filteredPageIds.length,
+      initial_count: pages.length,
+      filtered_count: pages.length - filteredPageIds.length,
     },
     "Filtered out pages already up to date."
   );
@@ -442,8 +443,8 @@ export async function getPagesAndDatabasesToSync({
 
   localLogger.info(
     {
-      initial_count: existingDatabases.length,
-      filtered_count: existingDatabases.length - filteredDatabaseIds.length,
+      initial_count: dbs.length,
+      filtered_count: dbs.length - filteredDatabaseIds.length,
     },
     "Filtered out databases already up to date."
   );
@@ -1310,13 +1311,73 @@ export async function updateParentsFields({
  * This activity polls up to 5 times with 1 second intervals (max 5 seconds total).
  */
 export async function drainDocumentUpsertQueue({
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   connectorId,
 }: {
   connectorId: ModelId;
 }): Promise<boolean> {
-  // Temporarily disable the queue draining until we can optimize it to make fewer front calls
-  return true;
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const notionConnectorState = await NotionConnectorState.findOne({
+    where: { connectorId: connector.id },
+  });
+  if (!notionConnectorState) {
+    throw new Error("Could not find notionConnectorState");
+  }
+
+  const parentsLastUpdatedAt =
+    notionConnectorState.parentsLastUpdatedAt?.getTime() || 0;
+
+  const whereClause = {
+    connectorId: connector.id,
+    lastCreatedOrMovedRunTs: {
+      [Op.gt]: new Date(parentsLastUpdatedAt),
+    },
+  };
+
+  const pageNeedingUpdating = await NotionPage.findOne({
+    where: whereClause,
+    attributes: ["id"],
+  });
+
+  if (!pageNeedingUpdating) {
+    const dbNeedingUpdating = await NotionDatabase.findOne({
+      where: whereClause,
+      attributes: ["id"],
+    });
+
+    // If no changes, we consider the queue drained without needing to poll front
+    if (!dbNeedingUpdating) {
+      return true;
+    }
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const maxAttempts = 5;
+  const pollIntervalMs = 1000;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const runningCount = await checkDataSourceUpsertQueueStatus({
+      dataSourceConfig,
+      loggerArgs: {
+        connectorId,
+      },
+    });
+
+    if (runningCount === 0) {
+      return true; // Queue is drained
+    }
+
+    // Wait before next check (but not after the last attempt)
+    if (attempt < maxAttempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+  }
+
+  return false; // Queue is not yet drained
 }
 
 export async function markParentsAsUpdated({
