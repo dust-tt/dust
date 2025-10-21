@@ -7,7 +7,6 @@ import type {
   UserMessageType,
 } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
-import type { ChatMessage } from "@microsoft/microsoft-graph-types";
 import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
 
@@ -486,7 +485,7 @@ async function makeContentFragments(
   lastMicrosoftBotMessage: MicrosoftBotMessage | null,
   localLogger: Logger
 ): Promise<Result<PublicPostContentFragmentRequestBody[] | undefined, Error>> {
-  // Get Microsoft Graph client for authenticated file downloads
+  // Get Microsoft Graph client only for file downloads
   const client = await getMicrosoftClient(connector.connectionId);
   const teamsConversationId = context.activity.conversation.id;
 
@@ -536,14 +535,14 @@ async function makeContentFragments(
     );
   }
 
-  // Get conversation history using the most reliable API approach
+  // Get conversation history using Microsoft Graph API
   const conversationHistory = await getMessagesFromConversation(
     localLogger,
     client,
     teamsConversationId
   );
 
-  const messages: ChatMessage[] = conversationHistory.results || [];
+  const messages = conversationHistory.results || [];
 
   const startIndex =
     messages.findIndex((msg) => msg.id === context.activity.id) + 1;
@@ -578,7 +577,7 @@ async function makeContentFragments(
   ];
 
   const allAttachments = allMessagesToCheckForFiles.flatMap(
-    (m: ChatMessage) => m.attachments || []
+    (message) => message.attachments || []
   );
 
   // Upload file attachments
@@ -595,12 +594,7 @@ async function makeContentFragments(
   const conversationText = newMessages
     .slice()
     .reverse()
-    .map((msg: unknown) => {
-      const message = msg as {
-        from?: { user?: { displayName?: string } };
-        createdDateTime?: string;
-        body?: { content?: string };
-      };
+    .map((message) => {
       const sender = message.from?.user?.displayName || "Unknown User";
       const timestamp = message.createdDateTime
         ? new Date(message.createdDateTime).toISOString()
