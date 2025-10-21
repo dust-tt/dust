@@ -260,9 +260,9 @@ export function AgentBuilderTriggersBlock({
                 <DropdownMenuTrigger asChild>
                   <Button
                     label="Add Trigger"
-                    variant="outline"
                     isSelect
                     type="button"
+                    icon={BoltIcon}
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
