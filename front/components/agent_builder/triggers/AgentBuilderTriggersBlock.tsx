@@ -116,21 +116,11 @@ export function AgentBuilderTriggersBlock({
     kind: TriggerKind,
     webhookSourceView?: WebhookSourceViewType
   ) => {
-    if (kind === "schedule") {
-      setDialogMode({
-        type: "add",
-        kind: "schedule",
-      });
-    } else {
-      if (!webhookSourceView) {
-        throw new Error("webhookSourceView is required for webhook triggers");
-      }
-      setDialogMode({
-        type: "add",
-        kind: "webhook",
-        webhookSourceView,
-      });
-    }
+    setDialogMode({
+      type: "add",
+      kind,
+      webhookSourceView,
+    });
   };
 
   const handleTriggerEdit = (
