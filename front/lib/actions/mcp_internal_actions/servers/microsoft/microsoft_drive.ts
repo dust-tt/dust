@@ -11,7 +11,10 @@ import {
   validateZipFile,
 } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import {
+  getFileFromConversationAttachment,
+  sanitizeFilename,
+} from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -590,7 +593,15 @@ function createServer(
           }
 
           // Build the upload path
-          const uploadFileName = fileName ?? filename;
+          const uploadFileName = sanitizeFilename(fileName ?? filename);
+          // Reject if the original path contained traversal attempts
+          if (folderPath?.includes("..")) {
+            return new Err(
+              new MCPError(
+                "Invalid folder path: path traversal sequences are not allowed"
+              )
+            );
+          }
           const uploadPath = folderPath
             ? `${folderPath}/${uploadFileName}`
             : uploadFileName;
