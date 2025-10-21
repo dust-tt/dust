@@ -15,8 +15,6 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import { GitHubWebhookService } from "@app/lib/triggers/services/github_webhook_service";
-import type { RemoteWebhookService } from "@app/lib/triggers/services/remote_webhook_service";
 import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
@@ -25,13 +23,9 @@ import type {
   WebhookSourceForAdminType as WebhookSourceForAdminType,
   WebhookSourceType,
 } from "@app/types/triggers/webhooks";
+import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
-
-// Service registry: map webhook source kind to its service implementation
-const WEBHOOK_SERVICES: Record<string, RemoteWebhookService> = {
-  github: new GitHubWebhookService(),
-};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -185,8 +179,13 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
 
     const owner = auth.getNonNullableWorkspace();
 
-    const service = WEBHOOK_SERVICES[this.kind];
-    if (service && this.remoteMetadata && this.oauthConnectionId) {
+    if (
+      this.kind !== "custom" &&
+      this.remoteMetadata &&
+      this.oauthConnectionId
+    ) {
+      const service =
+        WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[this.kind].webhookService;
       try {
         const result = await service.deleteWebhooks({
           auth,
