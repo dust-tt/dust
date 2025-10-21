@@ -36,6 +36,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -498,11 +499,73 @@ export async function createAgentConfiguration(
           await auth.refresh({ transaction: t });
           await group.setMembers(auth, editors, { transaction: t });
         } else {
+          // Diagnostic logging: measure group linkage before resolving
+          try {
+            const existingAgentStatusOnly = await AgentConfiguration.findOne({
+              where: { id: existingAgent.id },
+              attributes: ["status"],
+              transaction: t,
+            });
+
+            const rawLinks = await GroupAgentModel.findAll({
+              where: {
+                agentConfigurationId: existingAgent.id,
+                workspaceId: owner.id,
+              },
+              attributes: ["groupId"],
+              transaction: t,
+            });
+            const rawGroupIds = Array.from(
+              new Set(rawLinks.map((l) => l.groupId))
+            );
+            const editorGroups = rawGroupIds.length
+              ? await GroupModel.findAll({
+                  where: {
+                    id: { [Op.in]: rawGroupIds },
+                    workspaceId: owner.id,
+                    kind: "agent_editors",
+                  },
+                  attributes: ["id", "kind"],
+                  transaction: t,
+                })
+              : [];
+
+            logger.info(
+              {
+                workspaceId: owner.sId,
+                existingAgent: {
+                  sId: existingAgent.sId,
+                  id: existingAgent.id,
+                  version: existingAgent.version,
+                  scope: existingAgent.scope,
+                  status: existingAgentStatusOnly?.get("status"),
+                },
+                groupLinkCounts: {
+                  total: rawGroupIds.length,
+                  editor: editorGroups.length,
+                },
+              },
+              "Agent creation: diagnosing editor group resolution for existing version"
+            );
+          } catch (diagErr) {
+            logger.warn(
+              { error: diagErr, agentConfigurationId: existingAgent.sId },
+              "Agent creation: failed to run diagnostic group queries"
+            );
+          }
+
           const group = await GroupResource.fetchByAgentConfiguration({
             auth,
             agentConfiguration: existingAgent,
           });
           if (!group) {
+            logger.error(
+              {
+                workspaceId: owner.sId,
+                agentConfigurationId: existingAgent.sId,
+              },
+              "Agent creation: no editor group resolved for existing version"
+            );
             throw new Error(
               "Unexpected: agent should have exactly one editor group."
             );
