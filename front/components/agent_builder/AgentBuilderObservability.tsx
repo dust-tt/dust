@@ -4,6 +4,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Label,
 } from "@dust-tt/sparkle";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -43,9 +44,9 @@ export function AgentBuilderObservability({
             <h2 className="text-lg font-semibold text-foreground">
               Observability
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground">
               Monitor key metrics and performance indicators for your agent.
-            </p>
+            </span>
           </div>
           <HeaderPeriodDropdown />
         </div>
@@ -72,12 +73,13 @@ export function AgentBuilderObservability({
 function HeaderPeriodDropdown() {
   const { period, setPeriod } = useObservability();
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 pr-2">
+      <Label>Period:</Label>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button label={`${period}d`} size="xs" variant="outline" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
+        <DropdownMenuContent align="end">
           {OBSERVABILITY_TIME_RANGE.map((p) => (
             <DropdownMenuItem
               key={p}
