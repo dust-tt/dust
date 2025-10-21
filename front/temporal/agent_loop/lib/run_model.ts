@@ -431,6 +431,15 @@ export async function runModelActivity(
   let nativeChainOfThought = "";
   let dustRunId: Promise<string>;
 
+  let _fakeResponse:
+    | { shouldRetryMessage: string }
+    | {
+        output: Output;
+        dustRunId: Promise<string>;
+        nativeChainOfThought: string;
+      }
+    | { shouldReturnNull: true };
+
   {
     const res = await runActionStreamed(
       auth,
