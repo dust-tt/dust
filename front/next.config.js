@@ -1,6 +1,10 @@
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require("path");
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const bundleAnalyzer = require("@next/bundle-analyzer");
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const StatoscopeWebpackPlugin = require("@statoscope/webpack-plugin").default;
 
 const isDev = process.env.NODE_ENV === "development";
@@ -253,6 +257,27 @@ const config = {
       });
     }
     return config;
+  },
+  eslint: {
+    // By default, `next lint` only runs on pages/, app/, components/, lib/, and src/
+    // directories. We want to run it in all directories
+    dirs: [
+      "admin",
+      "components",
+      "config",
+      "hooks",
+      "lib",
+      "logger",
+      // "mailing", Not putting migrations as it generates a lot of noise in linter, especially raw SQL
+      // "migrations", Not putting migrations as it generates a lot of noise in linter, especially raw SQL
+      "pages",
+      "poke",
+      "prompt",
+      "scripts",
+      "temporal",
+      "tests",
+      "types",
+    ],
   },
 };
 

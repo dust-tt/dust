@@ -17,9 +17,18 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare updatedAt: CreationOptional<Date>;
 
   declare name: string;
-  declare kind: TriggerKind;
   declare customPrompt: string | null;
   declare enabled: CreationOptional<boolean>;
+
+  declare kind: TriggerKind;
+  declare configuration: TriggerConfigurationType;
+  declare naturalLanguageDescription: string | null;
+
+  /**
+   * Webhooks specifics
+   */
+  declare webhookSourceViewId: ForeignKey<WebhookSourcesViewModel["id"]> | null;
+  declare executionPerDayLimitOverride: number | null;
 
   /**
    * We use the sId, because it's static between an agent versions,
@@ -27,10 +36,6 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
    */
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]>;
   declare editor: ForeignKey<UserModel["id"]>;
-  declare webhookSourceViewId: ForeignKey<WebhookSourcesViewModel["id"]> | null;
-
-  declare configuration: TriggerConfigurationType;
-  declare executionPerDayLimitOverride: number | null;
 }
 
 TriggerModel.init(
@@ -56,6 +61,11 @@ TriggerModel.init(
     kind: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    naturalLanguageDescription: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: null,
     },
     customPrompt: {
       type: DataTypes.TEXT,

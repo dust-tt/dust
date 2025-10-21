@@ -1,10 +1,7 @@
 import type { Fetcher } from "swr";
 
-import { fetcher, emptyArray, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokeSearchItemsResponseBody } from "@app/pages/api/poke/search";
-import { PokeItemBase } from "@app/types";
-
-const EMPTY_ARRAY: PokeItemBase[] = [];
 
 export function usePokeSearch({
   disabled,
@@ -16,6 +13,7 @@ export function usePokeSearch({
   const workspacesFetcher: Fetcher<GetPokeSearchItemsResponseBody> = fetcher;
 
   const queryParams = new URLSearchParams({
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     search: search || "",
   });
 

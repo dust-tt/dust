@@ -25,7 +25,7 @@ import type {
 import { assertNever, Ok } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
-import { makeScheduleId } from "../schedule/client";
+import { makeTriggerScheduleId } from "../schedule/client";
 
 /**
  * We want to create individual conversations if the agent outcome will vary from user to user.
@@ -230,7 +230,7 @@ export async function runTriggeredAgentsActivity({
   switch (trigger.kind) {
     case "schedule": {
       const client = await getTemporalClientForAgentNamespace();
-      const scheduleId = makeScheduleId(
+      const scheduleId = makeTriggerScheduleId(
         auth.getNonNullableWorkspace().sId,
         trigger.sId
       );

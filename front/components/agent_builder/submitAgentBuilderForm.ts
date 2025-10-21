@@ -279,21 +279,26 @@ async function processTriggers({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          triggers: formData.triggersToUpdate.map(
-            (trigger) =>
-              ({
-                sId: trigger.sId,
-                name: trigger.name,
-                enabled: trigger.enabled,
-                customPrompt: trigger.customPrompt,
-                configuration: trigger.configuration,
-                kind: trigger.kind,
-                webhookSourceViewSId:
-                  trigger.kind === "webhook"
-                    ? trigger.webhookSourceViewSId
-                    : undefined,
-              }) as PatchTriggersRequestBody["triggers"][number]
-          ),
+          triggers: formData.triggersToUpdate.map((trigger) => {
+            const baseData = {
+              sId: trigger.sId,
+              name: trigger.name,
+              enabled: trigger.enabled,
+              customPrompt: trigger.customPrompt,
+              naturalLanguageDescription: trigger.naturalLanguageDescription,
+              configuration: trigger.configuration,
+              kind: trigger.kind,
+            };
+
+            if (trigger.kind === "webhook") {
+              return {
+                ...baseData,
+                webhookSourceViewSId: trigger.webhookSourceViewSId,
+              } as PatchTriggersRequestBody["triggers"][number];
+            }
+
+            return baseData as PatchTriggersRequestBody["triggers"][number];
+          }),
         }),
       }
     );
@@ -323,20 +328,25 @@ async function processTriggers({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          triggers: formData.triggersToCreate.map(
-            (trigger) =>
-              ({
-                name: trigger.name,
-                enabled: trigger.enabled,
-                customPrompt: trigger.customPrompt,
-                configuration: trigger.configuration,
-                kind: trigger.kind,
-                webhookSourceViewSId:
-                  trigger.kind === "webhook"
-                    ? trigger.webhookSourceViewSId
-                    : undefined,
-              }) as PostTriggersRequestBody["triggers"][number]
-          ),
+          triggers: formData.triggersToCreate.map((trigger) => {
+            const baseData = {
+              name: trigger.name,
+              enabled: trigger.enabled,
+              customPrompt: trigger.customPrompt,
+              naturalLanguageDescription: trigger.naturalLanguageDescription,
+              configuration: trigger.configuration,
+              kind: trigger.kind,
+            };
+
+            if (trigger.kind === "webhook") {
+              return {
+                ...baseData,
+                webhookSourceViewSId: trigger.webhookSourceViewSId,
+              } as PostTriggersRequestBody["triggers"][number];
+            }
+
+            return baseData as PostTriggersRequestBody["triggers"][number];
+          }),
         }),
       }
     );
