@@ -1,5 +1,8 @@
 import { GLOBAL_AGENTS_SID } from "@app/shared/lib/global_agents";
-import { compareForFuzzySort, subFilter } from "@app/shared/lib/utils";
+import {
+  AgentConfigurationForSort,
+  filterAndSortAgents,
+} from "@app/shared/lib/utils";
 
 export interface EditorSuggestion {
   id: string;
@@ -26,21 +29,16 @@ function filterAndSortSuggestions(
   lowerCaseQuery: string,
   suggestions: EditorSuggestion[]
 ) {
-  return suggestions
-    .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
-    .sort((a, b) =>
-      compareForFuzzySort(
-        lowerCaseQuery,
-        a.label.toLocaleLowerCase(),
-        b.label.toLocaleLowerCase()
-      )
+  return toEditorSuggestions(
+    filterAndSortAgents(
+      toAgentConfigurationForSorts(suggestions),
+      lowerCaseQuery
     )
-    .sort((a, b) => {
-      // If within SUGGESTION_DISPLAY_LIMIT there's one from AGENT_PRIORITY, we move it to the top.
-      const aPriority = SUGGESTION_PRIORITY[a.id] ?? Number.MAX_SAFE_INTEGER;
-      const bPriority = SUGGESTION_PRIORITY[b.id] ?? Number.MAX_SAFE_INTEGER;
-      return aPriority - bPriority;
-    });
+  ).sort((a, b) => {
+    const aPriority = SUGGESTION_PRIORITY[a.id] ?? Number.MAX_SAFE_INTEGER;
+    const bPriority = SUGGESTION_PRIORITY[b.id] ?? Number.MAX_SAFE_INTEGER;
+    return aPriority - bPriority;
+  });
 }
 export function filterSuggestions(
   query: string,
@@ -79,4 +77,29 @@ export function filterSuggestions(
   ].slice(0, SUGGESTION_DISPLAY_LIMIT);
 
   return combinedSuggestions;
+}
+
+function toAgentConfigurationForSorts(
+  suggestions: EditorSuggestion[]
+): AgentConfigurationForSort[] {
+  return suggestions.map((suggestion) => ({
+    name: suggestion.label,
+    sId: suggestion.id,
+    userFavorite: suggestion.userFavorite,
+    scope: "hidden",
+    pictureUrl: suggestion.pictureUrl,
+    description: suggestion.description,
+  }));
+}
+
+function toEditorSuggestions(
+  agentConfigurationForSort: AgentConfigurationForSort[]
+): EditorSuggestion[] {
+  return agentConfigurationForSort.map((a) => ({
+    id: a.sId,
+    label: a.name,
+    pictureUrl: a.pictureUrl,
+    userFavorite: a.userFavorite,
+    description: a.description,
+  }));
 }
