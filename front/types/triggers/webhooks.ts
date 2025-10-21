@@ -51,7 +51,6 @@ export type WebhookSourceType = {
   secret: string | null;
   signatureHeader: string | null;
   signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
-  customHeaders: Record<string, string> | null;
   remoteMetadata: Record<string, any> | null;
   oauthConnectionId: string | null;
   createdAt: number;
@@ -62,22 +61,27 @@ export type WebhookSourceType = {
 export type WebhookSourceViewType = {
   id: ModelId;
   sId: string;
-  customName: string | null;
+  customName: string;
   description: string;
   icon: InternalAllowedIconType | CustomResourceIconType;
+  kind: WebhookSourceKind;
+  subscribedEvents: string[];
   createdAt: number;
   updatedAt: number;
   spaceId: string;
-  webhookSource: WebhookSourceType;
   editedByUser: EditedByUser | null;
 };
 
+export type WebhookSourceViewWithWebhookSourceType = WebhookSourceViewType & {
+  webhookSource: WebhookSourceType;
+};
+
 export type WebhookSourceWithViewsType = WebhookSourceType & {
-  views: WebhookSourceViewType[];
+  views: WebhookSourceViewWithWebhookSourceType[];
 };
 
 export type WebhookSourceWithSystemViewType = WebhookSourceWithViewsType & {
-  systemView: WebhookSourceViewType | null;
+  systemView: WebhookSourceViewWithWebhookSourceType | null;
 };
 
 export type WebhookSourceWithViewsAndUsageType = WebhookSourceWithViewsType & {
@@ -95,7 +99,6 @@ export const basePostWebhookSourcesSchema = z.object({
   secret: z.string().nullable(),
   signatureHeader: z.string(),
   signatureAlgorithm: z.enum(WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS),
-  customHeaders: z.record(z.string(), z.string()).nullable(),
   includeGlobal: z.boolean().optional(),
   subscribedEvents: z.array(z.string()).default([]),
   kind: z.enum(WEBHOOK_SOURCE_KIND),

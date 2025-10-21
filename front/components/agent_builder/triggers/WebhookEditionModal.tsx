@@ -17,6 +17,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  SliderToggle,
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
@@ -33,7 +34,7 @@ import { useWebhookFilterGeneration } from "@app/components/agent_builder/trigge
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useUser } from "@app/lib/swr/user";
-import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
+import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
@@ -41,6 +42,7 @@ import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
 
 const webhookFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
+  enabled: z.boolean().default(true),
   customPrompt: z.string(),
   webhookSourceViewSId: z.string().min(1, "Select a webhook source"),
   event: z.string().optional(),
@@ -79,6 +81,7 @@ export function WebhookEditionModal({
   const defaultValues = useMemo(
     (): WebhookFormData => ({
       name: "Webhook Trigger",
+      enabled: true,
       customPrompt: "",
       webhookSourceViewSId: "",
       event: undefined,
@@ -98,8 +101,8 @@ export function WebhookEditionModal({
   const includePayload = form.watch("includePayload");
 
   const { spaces } = useSpacesContext();
-  const { webhookSourcesWithViews, isWebhookSourcesWithViewsLoading } =
-    useWebhookSourcesWithViews({ owner });
+  const { webhookSourceViews, isLoading: isWebhookSourceViewsLoading } =
+    useWebhookSourceViewsFromSpaces(owner, spaces, !isOpen);
 
   const isEditor = (trigger?.editor ?? user?.id) === user?.id;
 
@@ -114,52 +117,48 @@ export function WebhookEditionModal({
 
   const webhookOptions = useMemo((): WebhookOption[] => {
     const options: WebhookOption[] = [];
-    webhookSourcesWithViews.forEach((wsv) => {
-      wsv.views
-        .filter((view) => accessibleSpaceIds.has(view.spaceId))
-        .forEach((view) => {
-          options.push({
-            value: view.sId,
-            label: view.customName ?? wsv.name,
-            kind: view.webhookSource.kind,
-            icon: (props) => (
-              <WebhookSourceViewIcon webhookSourceView={view} {...props} />
-            ),
-          });
+    webhookSourceViews
+      .filter((view) => accessibleSpaceIds.has(view.spaceId))
+      .forEach((view) => {
+        options.push({
+          value: view.sId,
+          label: view.customName,
+          kind: view.kind,
+          icon: (props) => (
+            <WebhookSourceViewIcon webhookSourceView={view} {...props} />
+          ),
         });
-    });
+      });
 
     return options;
-  }, [webhookSourcesWithViews, accessibleSpaceIds]);
+  }, [webhookSourceViews, accessibleSpaceIds]);
 
-  const selectedWebhookSource = useMemo(() => {
+  const selectedWebhookSourceView = useMemo(() => {
     if (!selectedViewSId) {
       return null;
     }
-    for (const wsv of webhookSourcesWithViews) {
-      const view = wsv.views.find((v) => v.sId === selectedViewSId);
-      if (view) {
-        return wsv;
-      }
-    }
-    return null;
-  }, [webhookSourcesWithViews, selectedViewSId]);
+    const view = webhookSourceViews.find((v) => v.sId === selectedViewSId);
+    return view;
+  }, [webhookSourceViews, selectedViewSId]);
 
   const selectedPreset = useMemo((): PresetWebhook | null => {
-    if (!selectedWebhookSource || selectedWebhookSource.kind === "custom") {
+    if (
+      !selectedWebhookSourceView ||
+      selectedWebhookSourceView.kind === "custom"
+    ) {
       return null;
     }
-    return WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[selectedWebhookSource.kind];
-  }, [selectedWebhookSource]);
+    return WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[selectedWebhookSourceView.kind];
+  }, [selectedWebhookSourceView]);
 
   const availableEvents = useMemo(() => {
-    if (!selectedPreset || !selectedWebhookSource) {
+    if (!selectedPreset || !selectedWebhookSourceView) {
       return [];
     }
     return selectedPreset.events.filter((event) =>
-      selectedWebhookSource.subscribedEvents.includes(event.value)
+      selectedWebhookSourceView.subscribedEvents.includes(event.value)
     );
-  }, [selectedPreset, selectedWebhookSource]);
+  }, [selectedPreset, selectedWebhookSourceView]);
 
   const selectedEventSchema = useMemo(() => {
     if (!selectedEvent || !selectedPreset) {
@@ -203,6 +202,7 @@ export function WebhookEditionModal({
 
     form.reset({
       name: trigger.name,
+      enabled: trigger.enabled,
       customPrompt: trigger.customPrompt ?? "",
       webhookSourceViewSId: trigger.webhookSourceViewSId ?? "",
       event,
@@ -225,8 +225,8 @@ export function WebhookEditionModal({
 
     // Validate that event is selected for preset webhooks (not custom)
     if (
-      selectedWebhookSource &&
-      selectedWebhookSource.kind !== "custom" &&
+      selectedWebhookSourceView &&
+      selectedWebhookSourceView.kind !== "custom" &&
       selectedPreset &&
       availableEvents.length > 0 &&
       !data.event
@@ -243,6 +243,7 @@ export function WebhookEditionModal({
 
     const triggerData: AgentBuilderWebhookTriggerType = {
       sId: trigger?.sId,
+      enabled: data.enabled,
       name: data.name.trim(),
       customPrompt: data.customPrompt.trim(),
       kind: "webhook",
@@ -337,10 +338,33 @@ export function WebhookEditionModal({
                 />
               </div>
 
+              <div className="space-y-1">
+                <Label>Status</Label>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  When disabled, the trigger will not run.
+                </p>
+                <div className="flex flex-row items-center gap-2">
+                  <SliderToggle
+                    size="xs"
+                    disabled={!isEditor}
+                    selected={form.watch("enabled")}
+                    onClick={() => {
+                      if (!isEditor) {
+                        return;
+                      }
+                      form.setValue("enabled", !form.watch("enabled"));
+                    }}
+                  />
+                  {form.watch("enabled")
+                    ? "The trigger is currently enabled"
+                    : "The trigger is currently disabled"}
+                </div>
+              </div>
+
               {/* Webhook Configuration */}
               <div className="flex flex-col space-y-1">
                 <Label>Webhook Source</Label>
-                {isWebhookSourcesWithViewsLoading ? (
+                {isWebhookSourceViewsLoading ? (
                   <div className="flex items-center gap-2">
                     <Spinner size="sm" />
                     <span className="text-sm text-muted-foreground">
@@ -470,7 +494,7 @@ export function WebhookEditionModal({
                   </>
                 )}
 
-                {selectedWebhookSource?.kind === "custom" && (
+                {selectedWebhookSourceView?.kind === "custom" && (
                   <>
                     <Label htmlFor="trigger-filter-description">
                       Filter Expression (optional)

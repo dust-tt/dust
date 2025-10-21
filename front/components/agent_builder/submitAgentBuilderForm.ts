@@ -18,6 +18,10 @@ import {
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
+  PatchTriggersRequestBody,
+  PostTriggersRequestBody,
+} from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers";
+import type {
   GetContentNodesOrChildrenRequestBodyType,
   GetDataSourceViewContentNodes,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
@@ -275,17 +279,21 @@ async function processTriggers({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          triggers: formData.triggersToUpdate.map((trigger) => ({
-            sId: trigger.sId,
-            name: trigger.name,
-            customPrompt: trigger.customPrompt,
-            configuration: trigger.configuration,
-            kind: trigger.kind,
-            webhookSourceViewSId:
-              trigger.kind === "webhook"
-                ? trigger.webhookSourceViewSId
-                : undefined,
-          })),
+          triggers: formData.triggersToUpdate.map(
+            (trigger) =>
+              ({
+                sId: trigger.sId,
+                name: trigger.name,
+                enabled: trigger.enabled,
+                customPrompt: trigger.customPrompt,
+                configuration: trigger.configuration,
+                kind: trigger.kind,
+                webhookSourceViewSId:
+                  trigger.kind === "webhook"
+                    ? trigger.webhookSourceViewSId
+                    : undefined,
+              }) as PatchTriggersRequestBody["triggers"][number]
+          ),
         }),
       }
     );
@@ -315,16 +323,20 @@ async function processTriggers({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          triggers: formData.triggersToCreate.map((trigger) => ({
-            name: trigger.name,
-            customPrompt: trigger.customPrompt,
-            configuration: trigger.configuration,
-            kind: trigger.kind,
-            webhookSourceViewSId:
-              trigger.kind === "webhook"
-                ? trigger.webhookSourceViewSId
-                : undefined,
-          })),
+          triggers: formData.triggersToCreate.map(
+            (trigger) =>
+              ({
+                name: trigger.name,
+                enabled: trigger.enabled,
+                customPrompt: trigger.customPrompt,
+                configuration: trigger.configuration,
+                kind: trigger.kind,
+                webhookSourceViewSId:
+                  trigger.kind === "webhook"
+                    ? trigger.webhookSourceViewSId
+                    : undefined,
+              }) as PostTriggersRequestBody["triggers"][number]
+          ),
         }),
       }
     );
@@ -446,9 +458,6 @@ export async function submitAgentBuilderForm({
         responseFormat: formData.generationSettings.responseFormat,
       },
       actions: processedActions,
-      visualizationEnabled: formData.actions.some(
-        (action) => action.type === "DATA_VISUALIZATION"
-      ),
       templateId: null,
       tags: formData.agentSettings.tags,
       editors: formData.agentSettings.editors.map((editor) => ({

@@ -106,6 +106,7 @@ export async function botAnswerMessage(
   }
 
   const mention = mentionResult.value.mention;
+
   message = mentionResult.value.processedMessage;
 
   const buildContentFragmentRes = await makeContentFragments(
@@ -249,7 +250,7 @@ export async function botAnswerMessage(
     );
   }
 
-  await MicrosoftBotMessage.create({
+  const m = await MicrosoftBotMessage.create({
     connectorId: connector.id,
     userAadObjectId: userAadObjectId,
     email: email,
@@ -275,16 +276,23 @@ export async function botAnswerMessage(
     return streamAgentResponseRes;
   }
 
-  const { formattedContent, footnotes } = streamAgentResponseRes.value;
+  const { formattedContent, footnotes, agentMessageId } =
+    streamAgentResponseRes.value;
+
+  await m.update({
+    dustAgentMessageId: agentMessageId,
+  });
 
   const finalCard = createResponseAdaptiveCard({
     response: formattedContent,
-    assistantName: mention.assistantName,
+    assistant: mention,
     conversationUrl: makeConversationUrl(
       connector.workspaceId,
       conversation.sId
     ),
     workspaceId: connector.workspaceId,
+    agentConfigurations: activeAgentConfigurations,
+    originalMessage: message,
     footnotes: footnotes,
   });
 
@@ -311,7 +319,14 @@ async function streamAgentResponse({
   connector: ConnectorResource;
   agentActivityId: string;
 }): Promise<
-  Result<{ formattedContent: string; footnotes: MessageFootnotes }, Error>
+  Result<
+    {
+      agentMessageId: string;
+      formattedContent: string;
+      footnotes: MessageFootnotes;
+    },
+    Error
+  >
 > {
   // For Bot Framework approach with streaming updates
   const streamRes = await dustAPI.streamAgentAnswerEvents({
@@ -410,6 +425,7 @@ async function streamAgentResponse({
 
   if (agentMessageSuccess) {
     return new Ok({
+      agentMessageId: agentMessageSuccess.message.sId,
       formattedContent: finalFormattedContent,
       footnotes: finalFootnotes,
     });
@@ -602,5 +618,85 @@ async function makeContentFragments(
 
   return new Ok(
     allContentFragments.length > 0 ? allContentFragments : undefined
+  );
+}
+
+export async function sendFeedback({
+  context,
+  connector,
+  thumbDirection,
+}: {
+  context: TurnContext;
+  connector: ConnectorResource;
+  thumbDirection: "up" | "down";
+}) {
+  // Validate user first
+  const validatedUser = await validateTeamsUser(context, connector);
+  if (!validatedUser) {
+    logger.error("Failed to validate Teams user for feedback");
+    return;
+  }
+
+  const { email, displayName } = validatedUser;
+
+  const conversationId = context.activity.conversation?.id;
+  const replyTo = context.activity.replyToId;
+
+  if (!conversationId || !replyTo) {
+    logger.error("No conversation ID or reply to ID found in activity");
+    return;
+  }
+
+  // Find the MicrosoftBotMessage to get the Dust conversation ID
+  const microsoftBotMessage = await MicrosoftBotMessage.findOne({
+    where: {
+      connectorId: connector.id,
+      conversationId: conversationId,
+      agentActivityId: replyTo,
+    },
+    order: [["createdAt", "DESC"]],
+  });
+
+  if (
+    !microsoftBotMessage?.dustConversationId ||
+    !microsoftBotMessage?.dustAgentMessageId
+  ) {
+    logger.error(
+      "No MicrosoftBotMessage found for conversation ID and reply to ID"
+    );
+    return;
+  }
+
+  const dustAPI = new DustAPI(
+    { url: apiConfig.getDustFrontAPIUrl() },
+    {
+      workspaceId: connector.workspaceId,
+      apiKey: connector.workspaceAPIKey,
+      extraHeaders: {
+        ...getHeaderFromUserEmail(email),
+      },
+    },
+    logger
+  );
+
+  const feedbackRes = await dustAPI.postFeedback(
+    microsoftBotMessage.dustConversationId,
+    microsoftBotMessage.dustAgentMessageId,
+    {
+      thumbDirection,
+      feedbackContent: null,
+      isConversationShared: true, // Teams feedback is considered shared
+    }
+  );
+
+  logger.info(
+    {
+      dustConversationId: microsoftBotMessage.dustConversationId,
+      thumbDirection,
+      feedbackRes,
+      userEmail: email,
+      userDisplayName: displayName,
+    },
+    "Feedback submitted from Teams"
   );
 }

@@ -135,10 +135,12 @@ export type LightAgentConfigurationType = {
   feedbacks?: { up: number; down: number };
 
   maxStepsPerRun: number;
-  visualizationEnabled: boolean;
   tags: TagType[];
 
   templateId: string | null;
+
+  // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
+  visualizationEnabled?: boolean;
 
   // TODO(2025-10-17 thomas): Remove this.
   // Group restrictions for accessing the agent/conversation. Deprecated
@@ -178,7 +180,6 @@ export interface TemplateAgentConfigurationType {
   instructions: string | null;
   isTemplate: true;
   maxStepsPerRun?: number;
-  visualizationEnabled: boolean;
   tags: TagType[];
 }
 

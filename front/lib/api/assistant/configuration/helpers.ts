@@ -168,10 +168,11 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       actions,
       versionAuthorId: agent.authorId,
       maxStepsPerRun: agent.maxStepsPerRun,
-      visualizationEnabled: agent.visualizationEnabled ?? false,
       templateId: agent.templateId
         ? TemplateResource.modelIdToSId({ id: agent.templateId })
         : null,
+      // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
+      visualizationEnabled: false,
       // TODO(2025-10-17 thomas): Remove requestedGroupIds.
       requestedGroupIds: agent.requestedGroupIds.map((groups) =>
         groups.map((id) =>

@@ -54,6 +54,7 @@ export class MicrosoftBotMessage extends ConnectorBaseModel<MicrosoftBotMessage>
   declare agentActivityId: string;
   declare replyToId?: string;
   declare dustConversationId?: string;
+  declare dustAgentMessageId?: string;
 }
 
 MicrosoftBotMessage.init(
@@ -93,6 +94,10 @@ MicrosoftBotMessage.init(
       allowNull: true,
     },
     dustConversationId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    dustAgentMessageId: {
       type: DataTypes.STRING,
       allowNull: true,
     },
