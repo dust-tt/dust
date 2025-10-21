@@ -34,8 +34,6 @@ const RELOCATION_STEPS = [
 ] as const;
 type RelocationStep = (typeof RELOCATION_STEPS)[number];
 
-const AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD = 3;
-
 function assertCorrectRegion(region: RegionType) {
   if (config.getCurrentRegion() !== region) {
     throw new Error(
@@ -160,7 +158,6 @@ makeScript(
             await updateAllWorkspaceUsersRegionMetadata(auth, logger, {
               execute,
               newRegion: destinationRegion,
-              rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
               forceUsersWithMultipleMemberships,
             });
           if (updateUsersRegionToDestRes.isErr()) {
@@ -230,7 +227,6 @@ makeScript(
             await updateAllWorkspaceUsersRegionMetadata(auth, logger, {
               execute,
               newRegion: sourceRegion,
-              rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
               forceUsersWithMultipleMemberships: false,
             });
           if (updateUsersRegionToSrcRes.isErr()) {
