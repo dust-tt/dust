@@ -26,12 +26,15 @@ import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import { useEventSource } from "@app/ui/hooks/useEventSource";
 import type {
   AgentMessagePublicType,
+  LightAgentConfigurationType,
   LightWorkspaceType,
   SearchResultResourceType,
+  UserMessageType,
   WebsearchResultResourceType,
 } from "@dust-tt/client";
 import {
   assertNever,
+  isAgentMessage,
   isRunAgentResultResourceType,
   isSearchResultResourceType,
   isWebsearchResultResourceType,
@@ -173,6 +176,7 @@ interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
   message: AgentMessagePublicType;
+  userAndAgentMessages: (UserMessageType | AgentMessagePublicType)[];
   messageFeedback: FeedbackSelectorProps;
   owner: LightWorkspaceType;
   user: StoredUser;
@@ -210,6 +214,7 @@ export function AgentMessage({
   conversationId,
   isLastMessage,
   message,
+  userAndAgentMessages,
   messageFeedback,
   owner,
   user,
@@ -508,46 +513,137 @@ export function AgentMessage({
     );
   }
 
-  const buttons =
-    message.status === "failed" || messageStreamState.agentState === "thinking"
-      ? []
-      : [
-          <Button
-            key="copy-msg-button"
-            tooltip="Copy to clipboard"
-            variant="ghost"
-            size="xs"
-            onClick={handleCopyToClipboard}
-            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-            className="text-muted-foreground dark:text-muted-foreground-night"
-          />,
+  // Hacky logic for handoff looping through messages, we need to find out:
+  // - If the agent message is handing over (to not display the retry button)
+  // - If the agent message is taking over (to display the parent agent name in a chip).
+  const { isHandingOver, parentAgent } = useMemo(() => {
+    // Check if the agent message is handing over.
+    const handoverOrigins = new Set(
+      userAndAgentMessages
+        .filter(
+          (msg): msg is UserMessageType =>
+            msg.type === "user_message" &&
+            msg.context.origin === "agent_handover"
+        )
+        .map((msg) => msg.context.originMessageId)
+    );
+    const handingOver = handoverOrigins.has(message.sId);
+
+    // Check if the agent message is taking over to save the parent agent configuration.
+    let parent: LightAgentConfigurationType | null = null;
+    if (isAgentMessage(message) && message.parentAgentMessageId) {
+      const agentMessagesMap = new Map(
+        userAndAgentMessages.filter(isAgentMessage).map((msg) => [msg.sId, msg])
+      );
+      const parentMsg = agentMessagesMap.get(message.parentAgentMessageId);
+      if (parentMsg) {
+        parent = parentMsg.configuration;
+      }
+    }
+
+    return { isHandingOver: handingOver, parentAgent: parent };
+  }, [message, userAndAgentMessages]);
+
+  const showButtons = useMemo(
+    () =>
+      message.status !== "failed" &&
+      messageStreamState.agentState !== "thinking",
+    [message.status, messageStreamState.agentState]
+  );
+
+  const showRetryButton = useMemo(
+    () => showButtons && !isHandingOver,
+    [showButtons, isHandingOver]
+  );
+
+  const showFeedbackSection = useMemo(
+    () =>
+      showButtons &&
+      !isGlobalAgent &&
+      agentMessageToRender.configuration.status !== "draft",
+    [showButtons, isGlobalAgent, agentMessageToRender.configuration.status]
+  );
+
+  const handleRetry = useCallback(() => {
+    void retryHandler(agentMessageToRender);
+  }, [agentMessageToRender]);
+
+  const buttons = useMemo(() => {
+    const buttonList = [];
+
+    if (showButtons) {
+      buttonList.push(
+        <Button
+          key="copy-msg-button"
+          tooltip="Copy to clipboard"
+          variant="ghost"
+          size="xs"
+          onClick={handleCopyToClipboard}
+          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+          className="text-muted-foreground dark:text-muted-foreground-night"
+        />
+      );
+
+      if (showRetryButton) {
+        buttonList.push(
           <Button
             key="retry-msg-button"
             tooltip="Retry"
             variant="ghost"
             size="xs"
-            onClick={() => {
-              void retryHandler(agentMessageToRender);
-            }}
+            onClick={handleRetry}
             icon={ArrowPathIcon}
             className="text-muted-foreground dark:text-muted-foreground-night"
             disabled={isRetryHandlerProcessing || shouldStream}
-          />,
-          // One cannot leave feedback on global agents.
-          ...(isGlobalAgent ||
-          agentMessageToRender.configuration.status === "draft"
-            ? []
-            : [
-                <div key="separator" className="flex items-center">
-                  <div className="h-5 w-px bg-border dark:bg-border-night" />
-                </div>,
-                <FeedbackSelector
-                  key="feedback-selector"
-                  {...messageFeedback}
-                  getPopoverInfo={PopoverContent}
-                />,
-              ]),
-        ];
+          />
+        );
+      }
+
+      if (showFeedbackSection) {
+        buttonList.push(
+          <div key="separator" className="flex items-center">
+            <div className="h-5 w-px bg-border dark:bg-border-night" />
+          </div>,
+          <FeedbackSelector
+            key="feedback-selector"
+            {...messageFeedback}
+            getPopoverInfo={PopoverContent}
+          />
+        );
+      }
+    }
+
+    return buttonList;
+  }, [
+    showButtons,
+    showRetryButton,
+    showFeedbackSection,
+    handleCopyToClipboard,
+    handleRetry,
+    isCopied,
+    isRetryHandlerProcessing,
+    shouldStream,
+    messageFeedback,
+    PopoverContent,
+  ]);
+
+  const renderName = useCallback(
+    () => (
+      <span className="inline-flex items-center">
+        <span>{agentConfiguration.name}</span>
+        {parentAgent && (
+          <Chip
+            label={`Handoff from @${parentAgent.name}`}
+            size="xs"
+            className="ml-1"
+            color="primary"
+            isBusy={agentMessageToRender.status === "created"}
+          />
+        )}
+      </span>
+    ),
+    [agentConfiguration.name, parentAgent, agentMessageToRender.status]
+  );
 
   return (
     <ConversationMessage
@@ -555,16 +651,11 @@ export function AgentMessage({
       name={agentConfiguration.name}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
-      renderName={() => {
-        return (
-          <span>
-            {/* TODO(Ext) Any CTA here ? */}
-            {agentConfiguration.name}
-          </span>
-        );
-      }}
+      renderName={renderName}
       type="agent"
-      timestamp={formatTimestring(agentMessageToRender.created)}
+      timestamp={
+        parentAgent ? undefined : formatTimestring(agentMessageToRender.created)
+      }
       citations={citations}
     >
       <div>
