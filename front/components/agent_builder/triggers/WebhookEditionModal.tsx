@@ -22,7 +22,7 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -80,17 +80,20 @@ export function WebhookEditionModal({
 }: WebhookEditionModalProps) {
   const { user } = useUser();
 
-  const getDefaultValues = (): WebhookFormData => ({
-    name: "Webhook Trigger",
-    enabled: true,
-    customPrompt: "",
-    webhookSourceViewSId: preSelectedWebhookSourceViewSId ?? "",
-    event: undefined,
-    filter: "",
-    includePayload: true,
-  });
+  const getDefaultValues = useCallback(
+    (): WebhookFormData => ({
+      name: "Webhook Trigger",
+      enabled: true,
+      customPrompt: "",
+      webhookSourceViewSId: preSelectedWebhookSourceViewSId ?? "",
+      event: undefined,
+      filter: "",
+      includePayload: true,
+    }),
+    [preSelectedWebhookSourceViewSId]
+  );
 
-  const defaultValues = useMemo(getDefaultValues, [preSelectedWebhookSourceViewSId]);
+  const defaultValues = useMemo(getDefaultValues, [getDefaultValues]);
 
   const form = useForm<WebhookFormData>({
     resolver: zodResolver(webhookFormSchema),
@@ -126,7 +129,10 @@ export function WebhookEditionModal({
           label: view.customName,
           kind: view.kind,
           icon: (props) => (
-            <WebhookSourceViewIcon webhookSourceView={view} size={props.className ? undefined : "sm"} />
+            <WebhookSourceViewIcon
+              webhookSourceView={view}
+              size={props.className ? undefined : "sm"}
+            />
           ),
         });
       });
@@ -138,8 +144,8 @@ export function WebhookEditionModal({
     if (!selectedViewSId) {
       return null;
     }
-    const view = webhookSourceViews.find((v) => v.sId === selectedViewSId);
-    return view;
+
+    return webhookSourceViews.find((v) => v.sId === selectedViewSId);
   }, [webhookSourceViews, selectedViewSId]);
 
   const selectedPreset = useMemo((): PresetWebhook | null => {
