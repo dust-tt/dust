@@ -6,7 +6,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import uniqueId from "lodash/uniqueId";
 import React, {
   useCallback,
   useEffect,
@@ -59,7 +58,6 @@ import { TimeFrameSection } from "@app/components/agent_builder/capabilities/sha
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type {
-  ActionSpecification,
   AgentBuilderAction,
   ConfigurationPagePageId,
 } from "@app/components/agent_builder/types";
@@ -70,10 +68,6 @@ import {
 import { ConfirmContext } from "@app/components/Confirm";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
-import {
-  DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-  DEFAULT_DATA_VISUALIZATION_NAME,
-} from "@app/lib/actions/constants";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -93,13 +87,11 @@ const TOP_MCP_SERVER_VIEWS = [
   "google_calendar",
 ];
 
-export type SelectedTool =
-  | {
-      type: "MCP";
-      view: MCPServerViewTypeWithLabel;
-      configuredAction?: AgentBuilderAction;
-    }
-  | { type: "DATA_VISUALIZATION" };
+export type SelectedTool = {
+  type: "MCP";
+  view: MCPServerViewTypeWithLabel;
+  configuredAction?: AgentBuilderAction;
+};
 
 export type SheetMode =
   | { type: "add" }
@@ -134,7 +126,6 @@ function isMCPActionWithConfiguration(
 
 interface MCPServerViewsSheetProps {
   addTools: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
-  dataVisualization: ActionSpecification | null;
   mode: SheetMode | null;
   onModeChange: (mode: SheetMode | null) => void;
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
@@ -144,7 +135,6 @@ interface MCPServerViewsSheetProps {
 
 export function MCPServerViewsSheet({
   addTools,
-  dataVisualization,
   mode,
   onModeChange,
   onActionUpdate,
@@ -265,22 +255,6 @@ export function MCPServerViewsSheet({
     };
   }, [searchTerm, selectableTopMCPServerViews, selectableNonTopMCPServerViews]);
 
-  const showDataVisualization = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return true;
-    }
-    if (!dataVisualization) {
-      return false;
-    }
-
-    const searchTermLower = searchTerm.toLowerCase();
-    return (
-      dataVisualization.label.toLowerCase().includes(searchTermLower) ||
-      dataVisualization.description?.toLowerCase().includes(searchTermLower) ||
-      false
-    );
-  }, [searchTerm, dataVisualization]);
-
   useEffect(() => {
     if (mode?.type === "edit") {
       setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
@@ -350,12 +324,6 @@ export function MCPServerViewsSheet({
   const toggleToolSelection = useCallback((tool: SelectedTool) => {
     setSelectedToolsInSheet((prev) => {
       const isAlreadySelected = prev.some((selected) => {
-        if (
-          tool.type === "DATA_VISUALIZATION" &&
-          selected.type === "DATA_VISUALIZATION"
-        ) {
-          return true;
-        }
         if (tool.type === "MCP" && selected.type === "MCP") {
           return tool.view.sId === selected.view.sId;
         }
@@ -364,12 +332,6 @@ export function MCPServerViewsSheet({
 
       if (isAlreadySelected) {
         return prev.filter((selected) => {
-          if (
-            tool.type === "DATA_VISUALIZATION" &&
-            selected.type === "DATA_VISUALIZATION"
-          ) {
-            return false;
-          }
           if (tool.type === "MCP" && selected.type === "MCP") {
             return tool.view.sId !== selected.view.sId;
           }
@@ -380,15 +342,6 @@ export function MCPServerViewsSheet({
       return [...prev, tool];
     });
   }, []);
-
-  // Data Visualization is not an action but we show like an action in UI.
-  const onClickDataVisualization = useCallback(() => {
-    if (dataVisualization) {
-      toggleToolSelection({
-        type: "DATA_VISUALIZATION",
-      });
-    }
-  }, [dataVisualization, toggleToolSelection]);
 
   function onClickMCPServer(mcpServerView: MCPServerViewTypeWithLabel) {
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
@@ -486,19 +439,8 @@ export function MCPServerViewsSheet({
     // All validations passed, add the tools
     addTools(
       selectedToolsInSheet.map((tool) => {
-        if (tool.type === "DATA_VISUALIZATION") {
-          return {
-            id: uniqueId(),
-            type: "DATA_VISUALIZATION",
-            configuration: null,
-            name: DEFAULT_DATA_VISUALIZATION_NAME,
-            description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-            configurationRequired: false,
-          };
-        } else {
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          return tool.configuredAction || getDefaultMCPAction(tool.view);
-        }
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        return tool.configuredAction || getDefaultMCPAction(tool.view);
       })
     );
 
@@ -590,8 +532,6 @@ export function MCPServerViewsSheet({
             topMCPServerViews={filteredViews.topViews}
             nonTopMCPServerViews={filteredViews.nonTopViews}
             onItemClick={onClickMCPServer}
-            dataVisualization={showDataVisualization ? dataVisualization : null}
-            onDataVisualizationClick={onClickDataVisualization}
             selectedToolsInSheet={selectedToolsInSheet}
             onToolDetailsClick={(tool) => {
               if (tool.type === "MCP") {
@@ -606,7 +546,6 @@ export function MCPServerViewsSheet({
         selectedToolsInSheet.length > 0 ? (
           <MCPServerViewsFooter
             selectedToolsInSheet={selectedToolsInSheet}
-            dataVisualization={dataVisualization}
             onRemoveSelectedTool={toggleToolSelection}
           />
         ) : undefined,
@@ -673,32 +612,16 @@ export function MCPServerViewsSheet({
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.INFO,
-      title: getInfoPageTitle(
-        infoMCPServerView,
-        mode?.type === "info" ? mode.action : null
+      title: getInfoPageTitle(infoMCPServerView),
+      description: getInfoPageDescription(infoMCPServerView),
+      icon: getInfoPageIcon(infoMCPServerView),
+      content: infoMCPServerView ? (
+        <MCPServerInfoPage infoMCPServerView={infoMCPServerView} />
+      ) : (
+        <div className="flex h-40 w-full items-center justify-center">
+          <Spinner />
+        </div>
       ),
-      description: getInfoPageDescription(
-        infoMCPServerView,
-        mode?.type === "info" ? mode.action : null
-      ),
-      icon: getInfoPageIcon(
-        infoMCPServerView,
-        mode?.type === "info" ? mode.action : null
-      ),
-      content:
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        infoMCPServerView ||
-        (mode?.type === "info" &&
-          mode.action?.type === "DATA_VISUALIZATION") ? (
-          <MCPServerInfoPage
-            infoMCPServerView={infoMCPServerView}
-            infoAction={mode?.type === "info" ? mode.action : null}
-          />
-        ) : (
-          <div className="flex h-40 w-full items-center justify-center">
-            <Spinner />
-          </div>
-        ),
     },
   ];
 

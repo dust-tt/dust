@@ -1,8 +1,7 @@
-import { BarChartIcon, ToolsIcon } from "@dust-tt/sparkle";
+import { ToolsIcon } from "@dust-tt/sparkle";
 
 import type { ActionSpecification } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { DEFAULT_DATA_VISUALIZATION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import {
@@ -30,14 +29,6 @@ export const MCP_SPECIFICATION: ActionSpecification = {
   description: "Add additional sets of tools",
   cardIcon: ToolsIcon,
   dropDownIcon: ToolsIcon,
-  flag: null,
-};
-
-export const DATA_VISUALIZATION_SPECIFICATION: ActionSpecification = {
-  label: "Data Visualization",
-  description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-  cardIcon: BarChartIcon,
-  dropDownIcon: BarChartIcon,
   flag: null,
 };
 
