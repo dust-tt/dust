@@ -20,17 +20,33 @@ const SUGGESTION_DISPLAY_LIMIT = 7;
 const SUGGESTION_PRIORITY: Record<string, number> = {
   [GLOBAL_AGENTS_SID.DUST]: 1,
   [GLOBAL_AGENTS_SID.DEEP_DIVE]: 2,
-  // Ensure GPT-5 appears before GPT-4 in mentions dropdown when sorting
-  // by fuzzy match results. Lower numbers mean higher priority.
-  [GLOBAL_AGENTS_SID.GPT5]: 3,
-  [GLOBAL_AGENTS_SID.GPT4]: 4,
 };
+
+function gentlyPreferGpt5WhenNearGpt4(
+  items: EditorSuggestion[]
+): EditorSuggestion[] {
+  const cloned = items.slice();
+  const idx4 = cloned.findIndex((i) => i.id === GLOBAL_AGENTS_SID.GPT4);
+  const idx5 = cloned.findIndex((i) => i.id === GLOBAL_AGENTS_SID.GPT5);
+
+  if (idx4 === -1 || idx5 === -1) {
+    return cloned;
+  }
+
+  // Only adjust when results are very close (adjacent) and GPT-4 is listed above GPT-5.
+  if (idx4 < idx5 && Math.abs(idx5 - idx4) === 1) {
+    const [gpt5Item] = cloned.splice(idx5, 1);
+    cloned.splice(idx4, 0, gpt5Item);
+  }
+
+  return cloned;
+}
 
 function filterAndSortSuggestions(
   lowerCaseQuery: string,
   suggestions: EditorSuggestion[]
 ) {
-  return suggestions
+  const filtered = suggestions
     .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
     .sort((a, b) =>
       compareForFuzzySort(
@@ -38,13 +54,18 @@ function filterAndSortSuggestions(
         a.label.toLocaleLowerCase(),
         b.label.toLocaleLowerCase()
       )
-    )
-    .sort((a, b) => {
-      // If within SUGGESTION_DISPLAY_LIMIT there's one from SUGGESTION_PRIORITY, we move it to the top.
-      const aPriority = SUGGESTION_PRIORITY[a.id] ?? Number.MAX_SAFE_INTEGER;
-      const bPriority = SUGGESTION_PRIORITY[b.id] ?? Number.MAX_SAFE_INTEGER;
-      return aPriority - bPriority;
-    });
+    );
+
+  // Move high-priority global agents (e.g., Dust, Deep Dive) to the front while leaving
+  // the fuzzy ranking of other items unchanged.
+  const prioritized = filtered.sort((a, b) => {
+    const aPriority = SUGGESTION_PRIORITY[a.id] ?? Number.MAX_SAFE_INTEGER;
+    const bPriority = SUGGESTION_PRIORITY[b.id] ?? Number.MAX_SAFE_INTEGER;
+    return aPriority - bPriority;
+  });
+
+  // Keep fuzzy ranking intact; apply only a gentle tie-breaker when GPT-4 and GPT-5 are adjacent.
+  return gentlyPreferGpt5WhenNearGpt4(prioritized);
 }
 
 export function filterSuggestions(
