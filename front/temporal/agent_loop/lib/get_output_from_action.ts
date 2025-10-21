@@ -26,7 +26,7 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
-export async function getOutputFromStream(
+export async function getOutputFromAction(
   auth: Authenticator,
   {
     runConfig,

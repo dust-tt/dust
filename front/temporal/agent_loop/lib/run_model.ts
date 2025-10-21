@@ -37,8 +37,8 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { getOutputFromAction } from "@app/temporal/agent_loop/lib/get_output_from_action";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
-import { getOutputFromStream } from "@app/temporal/agent_loop/lib/get_output_from_stream";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { GetOutputFromStreamResponse } from "@app/temporal/agent_loop/lib/types";
 import type { AgentActionsEvent, ModelId, Result } from "@app/types";
@@ -413,7 +413,7 @@ export async function runModelActivity(
   const llm = await getLLM(auth, { model });
 
   if (llm === null) {
-    res = await getOutputFromStream(auth, {
+    res = await getOutputFromAction(auth, {
       runConfig,
       modelConversation: modelConversationRes.value.modelConversation,
       specifications,
