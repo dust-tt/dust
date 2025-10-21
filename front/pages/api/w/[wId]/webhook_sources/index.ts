@@ -181,7 +181,8 @@ async function handler(
         }
 
         if (kind !== "custom" && connectionId && remoteMetadata) {
-          const webhookUrl = `${process.env.DUST_CLIENT_FACING_URL}/api/v1/w/${workspace.sId}/triggers/hooks/${webhookSourceJSON.sId}/${webhookSourceJSON.urlSecret}`;
+          const { DUST_CLIENT_FACING_URL = "" } = process.env;
+          const webhookUrl = `${DUST_CLIENT_FACING_URL}/api/v1/w/${workspace.sId}/triggers/hooks/${webhookSourceJSON.sId}/${webhookSourceJSON.urlSecret}`;
 
           const service =
             WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].webhookService;

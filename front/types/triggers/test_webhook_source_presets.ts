@@ -6,6 +6,7 @@ import type {
 } from "@app/types/triggers/webhooks_source_preset";
 import { RemoteWebhookService } from "@app/lib/triggers/services/remote_webhook_service";
 import { Ok, Result } from "@dust-tt/client";
+import logger from "@app/logger/logger";
 
 const TEST_EVENT: WebhookEvent = {
   name: "Test event",
@@ -42,7 +43,7 @@ class TestWebhookService implements RemoteWebhookService {
       Error
     >
   > {
-    console.log("Creating webhooks with params:", params);
+    logger.info("Creating webhooks with params:", params);
     return new Ok({
       webhookIds: { test_event: `test-webhook-id-${Date.now()}` },
     });
@@ -53,7 +54,7 @@ class TestWebhookService implements RemoteWebhookService {
     connectionId: string;
     remoteMetadata: Record<string, any>;
   }): Promise<Result<void, Error>> {
-    console.log("Deleting webhooks with params:", params);
+    logger.info("Deleting webhooks with params:", params);
     return new Ok(undefined);
   }
 }
