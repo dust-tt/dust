@@ -22,7 +22,44 @@ const SUGGESTION_PRIORITY: Record<string, number> = {
   [GLOBAL_AGENTS_SID.DEEP_DIVE]: 2,
 };
 
-function gentlyPreferGpt5WhenNearGpt4(
+// Local helpers mirroring fuzzy scoring steps from compareForFuzzySort to detect
+// true ties (same spread, same last index, same length) without relying on
+// lexicographic fallback.
+function _subFilterLastIndex(a: string, b: string) {
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      i++;
+    }
+    j++;
+  }
+  return i === a.length ? j : -1;
+}
+
+function _subFilterFirstIndex(a: string, b: string) {
+  let i = a.length - 1;
+  let j = b.length - 1;
+  while (i >= 0 && j >= 0) {
+    if (a[i] === b[j]) {
+      i--;
+    }
+    j--;
+  }
+  return i === -1 ? j + 1 : -1;
+}
+
+function _spreadLength(a: string, b: string) {
+  const lastIndex = _subFilterLastIndex(a, b);
+  if (lastIndex === -1) {
+    return -1;
+  }
+  const firstIndex = _subFilterFirstIndex(a, b.substring(0, lastIndex));
+  return lastIndex - firstIndex;
+}
+
+function preferGpt5WhenSameScore(
+  lowerCaseQuery: string,
   items: EditorSuggestion[]
 ): EditorSuggestion[] {
   const cloned = items.slice();
@@ -33,8 +70,22 @@ function gentlyPreferGpt5WhenNearGpt4(
     return cloned;
   }
 
-  // Only adjust when results are very close (adjacent) and GPT-4 is listed above GPT-5.
-  if (idx4 < idx5 && Math.abs(idx5 - idx4) === 1) {
+  const l4 = cloned[idx4].label.toLowerCase();
+  const l5 = cloned[idx5].label.toLowerCase();
+
+  const spread4 = _spreadLength(lowerCaseQuery, l4);
+  const spread5 = _spreadLength(lowerCaseQuery, l5);
+  if (spread4 === -1 || spread5 === -1) {
+    return cloned;
+  }
+
+  const last4 = _subFilterLastIndex(lowerCaseQuery, l4);
+  const last5 = _subFilterLastIndex(lowerCaseQuery, l5);
+
+  const sameScore =
+    spread4 === spread5 && last4 === last5 && l4.length === l5.length;
+
+  if (sameScore && idx4 < idx5) {
     const [gpt5Item] = cloned.splice(idx5, 1);
     cloned.splice(idx4, 0, gpt5Item);
   }
@@ -64,8 +115,9 @@ function filterAndSortSuggestions(
     return aPriority - bPriority;
   });
 
-  // Keep fuzzy ranking intact; apply only a gentle tie-breaker when GPT-4 and GPT-5 are adjacent.
-  return gentlyPreferGpt5WhenNearGpt4(prioritized);
+  // Keep fuzzy ranking intact; only tie-break when GPT-4 and GPT-5 have the exact same
+  // fuzzy score for this query (same spread, same last index, same length).
+  return preferGpt5WhenSameScore(lowerCaseQuery, prioritized);
 }
 
 export function filterSuggestions(
