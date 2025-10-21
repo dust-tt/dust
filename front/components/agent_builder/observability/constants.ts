@@ -8,10 +8,13 @@ export const OBSERVABILITY_INTERVALS = ["day", "week"] as const;
 export type ObservabilityIntervalType =
   (typeof OBSERVABILITY_INTERVALS)[number];
 
+// Use shadcn UI chart color tokens to align with design system.
+// We apply them via text-[color] so components using fill="currentColor"
+// and LegendDot with bg-current pick up the same series color.
 export const USAGE_METRICS_PALETTE = {
-  messages: "text-blue-500",
-  conversations: "text-amber-500",
-  activeUsers: "text-emerald-500",
+  messages: "text-[hsl(var(--chart-1))]",
+  conversations: "text-[hsl(var(--chart-2))]",
+  activeUsers: "text-[hsl(var(--chart-3))]",
 } as const;
 
 export const USAGE_METRICS_LEGEND = [
@@ -23,7 +26,7 @@ export const USAGE_METRICS_LEGEND = [
 export const CHART_HEIGHT = 260;
 
 export const VERSION_MARKER_STYLE = {
-  stroke: "#f59e0b",
+  stroke: "hsl(var(--primary))",
   strokeWidth: 2,
   strokeDasharray: "5 5",
   labelFontSize: 12,
@@ -31,17 +34,19 @@ export const VERSION_MARKER_STYLE = {
   labelOffsetIncrement: 15,
 } as const;
 
+// Map tool series to shadcn chart tokens. We cycle 1..5 to keep
+// parity with the default shadcn palette depth.
 export const TOOL_COLORS = [
-  "text-blue-500",
-  "text-emerald-500",
-  "text-amber-500",
-  "text-purple-500",
-  "text-pink-500",
-  "text-cyan-500",
-  "text-orange-500",
-  "text-teal-500",
-  "text-indigo-500",
-  "text-rose-500",
+  "text-[hsl(var(--chart-1))]",
+  "text-[hsl(var(--chart-2))]",
+  "text-[hsl(var(--chart-3))]",
+  "text-[hsl(var(--chart-4))]",
+  "text-[hsl(var(--chart-5))]",
+  "text-[hsl(var(--chart-1))]",
+  "text-[hsl(var(--chart-2))]",
+  "text-[hsl(var(--chart-3))]",
+  "text-[hsl(var(--chart-4))]",
+  "text-[hsl(var(--chart-5))]",
 ] as const;
 
 export const MAX_TOOLS_DISPLAYED = 10;

@@ -148,10 +148,19 @@ export function ToolExecutionChart({
           data={chartData}
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
-          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-          <XAxis dataKey="version" className="text-xs text-muted-foreground" />
+          <CartesianGrid vertical={false} className="stroke-border" />
+          <XAxis
+            dataKey="version"
+            className="text-xs text-muted-foreground"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+          />
           <YAxis
             className="text-xs text-muted-foreground"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
             label={{
               value: "Usage %",
               angle: -90,
@@ -160,10 +169,12 @@ export function ToolExecutionChart({
             }}
           />
           <Tooltip
-            cursor={{ fill: "hsl(var(--border) / 0.1)" }}
+            cursor={false}
             content={renderTooltip}
+            wrapperStyle={{ outline: "none" }}
+            contentStyle={{ background: "transparent", border: "none", padding: 0, boxShadow: "none" }}
           />
-          {topTools.map((toolName) => (
+          {topTools.map((toolName, idx) => (
             <Bar
               key={toolName}
               dataKey={(row: ChartRow) => row.values[toolName] ?? 0}
@@ -171,6 +182,11 @@ export function ToolExecutionChart({
               fill="currentColor"
               className={getToolColor(toolName, topTools)}
               name={toolName}
+              radius={
+                idx === topTools.length - 1
+                  ? ([4, 4, 0, 0] as [number, number, number, number])
+                  : ([0, 0, 0, 0] as [number, number, number, number])
+              }
             />
           ))}
         </BarChart>

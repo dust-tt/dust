@@ -207,12 +207,26 @@ export function UsageMetricsChart({
           data={data}
           margin={{ top: 10, right: 30, left: 10, bottom: 0 }}
         >
-          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-          <XAxis dataKey="date" className="text-xs text-muted-foreground" />
-          <YAxis className="text-xs text-muted-foreground" />
+          <CartesianGrid vertical={false} className="stroke-border" />
+          <XAxis
+            dataKey="date"
+            className="text-xs text-muted-foreground"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            minTickGap={16}
+          />
+          <YAxis
+            className="text-xs text-muted-foreground"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+          />
           <Tooltip
-            cursor={{ fill: "hsl(var(--border) / 0.1)" }}
+            cursor={false}
             content={UsageMetricsTooltip}
+            wrapperStyle={{ outline: "none" }}
+            contentStyle={{ background: "transparent", border: "none", padding: 0, boxShadow: "none" }}
           />
           {USAGE_METRICS_LEGEND.map(({ key, label }) => (
             <Bar
@@ -221,6 +235,7 @@ export function UsageMetricsChart({
               name={label}
               fill="currentColor"
               className={USAGE_METRICS_PALETTE[key]}
+              radius={[4, 4, 0, 0]}
             />
           ))}
           {snappedMarkers.map((m, index) => (
