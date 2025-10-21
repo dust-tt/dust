@@ -9,10 +9,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceKind, WithAPIErrorResponse } from "@app/types";
-import type {
-  WebhookSourceViewType,
-  WebhookSourceViewWithWebhookSourceType,
-} from "@app/types/triggers/webhooks";
+import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 export type GetWebhookSourceViewsResponseBody = {
   success: boolean;
@@ -27,13 +24,6 @@ export type PostWebhookSourceViewResponseBody = {
 const postWebhookSourceViewBodySchema = z.object({
   webhookSourceId: z.string(),
 });
-
-function removeWebhookSourceFromView(
-  view: WebhookSourceViewWithWebhookSourceType
-): WebhookSourceViewType {
-  const { webhookSource: _, ...rest } = view;
-  return rest;
-}
 
 async function handler(
   req: NextApiRequest,
@@ -54,11 +44,9 @@ async function handler(
 
       return res.status(200).json({
         success: true,
-        webhookSourceViews: webhookSourceViewResources
-          .map((webhookSourceViewResource) =>
-            webhookSourceViewResource.toJSON()
-          )
-          .map(removeWebhookSourceFromView),
+        webhookSourceViews: webhookSourceViewResources.map(
+          (webhookSourceViewResource) => webhookSourceViewResource.toJSON()
+        ),
       });
     }
     case "POST": {
@@ -123,9 +111,7 @@ async function handler(
 
       return res.status(200).json({
         success: true,
-        webhookSourceView: removeWebhookSourceFromView(
-          webhookSourceView.toJSON()
-        ),
+        webhookSourceView: webhookSourceView.toJSON(),
       });
     }
     default: {
