@@ -1,4 +1,3 @@
-import { cn } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 import {
   Bar,
@@ -16,14 +15,10 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import { ChartContainer } from "@app/components/agent_builder/observability/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
-import type {
-  ObservabilityIntervalType,
-  ObservabilityTimeRangeType,
-} from "@app/components/agent_builder/observability/constants";
+import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import {
   CHART_HEIGHT,
   DEFAULT_PERIOD_DAYS,
-  OBSERVABILITY_INTERVALS,
   USAGE_METRICS_LEGEND,
   USAGE_METRICS_PALETTE,
   VERSION_MARKER_STYLE,
@@ -130,20 +125,20 @@ function UsageMetricsTooltip(
 export function UsageMetricsChart({
   workspaceId,
   agentConfigurationId,
+  period,
+  onPeriodChange,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
+  period: ObservabilityTimeRangeType;
+  onPeriodChange: (p: ObservabilityTimeRangeType) => void;
 }) {
-  const [period, setPeriod] =
-    useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
-  const [interval, setInterval] = useState<ObservabilityIntervalType>("day");
-
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useAgentUsageMetrics({
       workspaceId,
       agentConfigurationId,
       days: period,
-      interval,
+      interval: "day",
       disabled: !workspaceId || !agentConfigurationId,
     });
 
@@ -174,33 +169,14 @@ export function UsageMetricsChart({
     };
   }, [usageMetrics?.points, versionMarkers]);
 
-  const intervalControls = (
-    <div className="flex items-center gap-2">
-      {OBSERVABILITY_INTERVALS.map((i) => (
-        <button
-          key={i}
-          onClick={() => setInterval(i)}
-          className={cn(
-            "rounded px-2 py-1 text-xs",
-            interval === i
-              ? "bg-foreground text-background"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          {i}
-        </button>
-      ))}
-    </div>
-  );
-
   return (
     <ChartContainer
       title="Usage Metrics"
       period={period}
-      onPeriodChange={setPeriod}
+      onPeriodChange={onPeriodChange}
       isLoading={isLoading}
+      showPeriodSelector={false}
       errorMessage={isError ? "Failed to load observability data." : undefined}
-      additionalControls={intervalControls}
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <BarChart
@@ -226,7 +202,12 @@ export function UsageMetricsChart({
             cursor={false}
             content={UsageMetricsTooltip}
             wrapperStyle={{ outline: "none" }}
-            contentStyle={{ background: "transparent", border: "none", padding: 0, boxShadow: "none" }}
+            contentStyle={{
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              boxShadow: "none",
+            }}
           />
           {USAGE_METRICS_LEGEND.map(({ key, label }) => (
             <Bar

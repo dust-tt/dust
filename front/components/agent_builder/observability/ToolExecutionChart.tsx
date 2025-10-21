@@ -28,6 +28,8 @@ type ChartRow = { version: string; values: Record<string, number> };
 interface ToolExecutionChartProps {
   workspaceId: string;
   agentConfigurationId: string;
+  period: ObservabilityTimeRangeType;
+  onPeriodChange: (p: ObservabilityTimeRangeType) => void;
 }
 
 function ToolExecutionTooltip({
@@ -55,10 +57,9 @@ function ToolExecutionTooltip({
 export function ToolExecutionChart({
   workspaceId,
   agentConfigurationId,
+  period,
+  onPeriodChange,
 }: ToolExecutionChartProps) {
-  const [period, setPeriod] =
-    useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
-
   const {
     toolExecutionByVersion,
     isToolExecutionLoading,
@@ -132,8 +133,9 @@ export function ToolExecutionChart({
     <ChartContainer
       title="Tool Usage by Version"
       period={period}
-      onPeriodChange={setPeriod}
+      onPeriodChange={onPeriodChange}
       isLoading={isToolExecutionLoading}
+      showPeriodSelector={false}
       errorMessage={
         isToolExecutionError ? "Failed to load tool execution data." : undefined
       }
@@ -172,7 +174,12 @@ export function ToolExecutionChart({
             cursor={false}
             content={renderTooltip}
             wrapperStyle={{ outline: "none" }}
-            contentStyle={{ background: "transparent", border: "none", padding: 0, boxShadow: "none" }}
+            contentStyle={{
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              boxShadow: "none",
+            }}
           />
           {topTools.map((toolName, idx) => (
             <Bar

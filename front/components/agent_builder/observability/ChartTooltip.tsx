@@ -31,7 +31,7 @@ interface ChartTooltipProps {
 export function ChartTooltipCard({ title, rows, footer }: ChartTooltipProps) {
   return (
     <div
-      className="border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl"
+      className="grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl"
       style={{ opacity: 1 }}
     >
       {title && <div className="font-medium text-foreground">{title}</div>}

@@ -27,6 +27,8 @@ type ChartRow = { version: string; values: Record<string, number> };
 interface ToolLatencyChartProps {
   workspaceId: string;
   agentConfigurationId: string;
+  period: ObservabilityTimeRangeType;
+  onPeriodChange: (p: ObservabilityTimeRangeType) => void;
 }
 
 function AreaLatencyTooltip({
@@ -59,9 +61,9 @@ function AreaLatencyTooltip({
 export function ToolLatencyChart({
   workspaceId,
   agentConfigurationId,
+  period,
+  onPeriodChange,
 }: ToolLatencyChartProps) {
-  const [period, setPeriod] =
-    useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
 
   const { toolLatencyByVersion, isToolLatencyLoading, isToolLatencyError } =
@@ -122,8 +124,9 @@ export function ToolLatencyChart({
     <ChartContainer
       title="Average Tool Latency by Version"
       period={period}
-      onPeriodChange={setPeriod}
+      onPeriodChange={onPeriodChange}
       isLoading={isToolLatencyLoading}
+      showPeriodSelector={false}
       additionalControls={
         <select
           className="bg-card rounded border border-border px-2 py-1 text-xs"
@@ -213,7 +216,12 @@ export function ToolLatencyChart({
             cursor={false}
             content={renderTooltip}
             wrapperStyle={{ outline: "none" }}
-            contentStyle={{ background: "transparent", border: "none", padding: 0, boxShadow: "none" }}
+            contentStyle={{
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              boxShadow: "none",
+            }}
           />
           <Area
             type="natural"

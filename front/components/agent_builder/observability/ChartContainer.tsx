@@ -16,6 +16,7 @@ interface ChartContainerProps {
   emptyMessage?: string;
   children: ReactNode;
   additionalControls?: ReactNode;
+  showPeriodSelector?: boolean;
 }
 
 export function ChartContainer({
@@ -27,6 +28,7 @@ export function ChartContainer({
   emptyMessage,
   children,
   additionalControls,
+  showPeriodSelector = true,
 }: ChartContainerProps) {
   const message = isLoading ? null : errorMessage ?? emptyMessage;
 
@@ -35,20 +37,24 @@ export function ChartContainer({
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-medium text-foreground">{title}</h3>
         <div className="flex items-center gap-3">
-          {OBSERVABILITY_TIME_RANGE.map((p) => (
-            <button
-              key={p}
-              onClick={() => onPeriodChange(p)}
-              className={cn(
-                "rounded px-2 py-1 text-xs",
-                period === p
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {p}d
-            </button>
-          ))}
+          {showPeriodSelector && (
+            <div className="flex items-center gap-2">
+              {OBSERVABILITY_TIME_RANGE.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => onPeriodChange(p)}
+                  className={cn(
+                    "rounded px-2 py-1 text-xs",
+                    period === p
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {p}d
+                </button>
+              ))}
+            </div>
+          )}
           {additionalControls}
         </div>
       </div>
