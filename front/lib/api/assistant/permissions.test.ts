@@ -2,64 +2,33 @@ import { describe, expect, it } from "vitest";
 
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
-import { Authenticator } from "@app/lib/auth";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
-import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { UserFactory } from "@app/tests/utils/UserFactory";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
 describe("getAgentConfigurationRequirementsFromActions", () => {
-  async function setupTest() {
-    const user = await UserFactory.basic();
-    const workspace = await WorkspaceFactory.basic();
-    await MembershipFactory.associate(workspace, user, { role: "admin" });
-
-    // Create groups first (like in the existing test pattern)
-    const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
-
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-
-    // Create default spaces manually (like in existing tests)
-    const { globalSpace, systemSpace, conversationsSpace } =
-      await SpaceResource.makeDefaultsForWorkspace(auth, {
-        globalGroup,
-        systemGroup,
-      });
-
-    return {
-      auth,
-      workspace,
-      globalGroup,
-      systemGroup,
-      globalSpace,
-      systemSpace,
-      conversationsSpace,
-    };
-  }
-
   it("should return empty arrays when no actions are provided", async () => {
-    const { auth } = await setupTest();
+    const { authenticator } = await createResourceTest({ role: "admin" });
 
-    const result = await getAgentConfigurationRequirementsFromActions(auth, {
-      actions: [],
-    });
+    const result = await getAgentConfigurationRequirementsFromActions(
+      authenticator,
+      {
+        actions: [],
+      }
+    );
 
     expect(result.requestedGroupIds).toEqual([]);
     expect(result.requestedSpaceIds).toEqual([]);
   });
 
   it("should handle actions with data sources from different space types", async () => {
-    const { auth, workspace, globalGroup } = await setupTest();
+    const { authenticator, workspace, globalGroup } = await createResourceTest({
+      role: "admin",
+    });
 
     // Create a regular space with specific group permissions
     const regularSpace = await SpaceFactory.regular(workspace);
@@ -130,9 +99,12 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
       },
     ];
 
-    const result = await getAgentConfigurationRequirementsFromActions(auth, {
-      actions,
-    });
+    const result = await getAgentConfigurationRequirementsFromActions(
+      authenticator,
+      {
+        actions,
+      }
+    );
 
     // Should include space IDs from both spaces
     expect(result.requestedSpaceIds).toHaveLength(2);
@@ -148,7 +120,8 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
   });
 
   it("should handle actions with MCP server views from different spaces", async () => {
-    const { auth, workspace, globalGroup, globalSpace } = await setupTest();
+    const { authenticator, workspace, globalGroup, globalSpace } =
+      await createResourceTest({ role: "admin" });
 
     // Create a restricted space using SpaceFactory
     const restrictedSpace = await SpaceFactory.regular(workspace);
@@ -208,9 +181,12 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
       },
     ];
 
-    const result = await getAgentConfigurationRequirementsFromActions(auth, {
-      actions,
-    });
+    const result = await getAgentConfigurationRequirementsFromActions(
+      authenticator,
+      {
+        actions,
+      }
+    );
 
     // Should include space IDs from both spaces
     expect(result.requestedSpaceIds).toHaveLength(2);
@@ -223,7 +199,9 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
   });
 
   it("should handle ignoreSpaces parameter correctly", async () => {
-    const { auth, workspace, globalGroup } = await setupTest();
+    const { authenticator, workspace, globalGroup } = await createResourceTest({
+      role: "admin",
+    });
 
     // Create two spaces using SpaceFactory
     const space1 = await SpaceFactory.regular(workspace);
@@ -288,9 +266,12 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
     ];
 
     // Without ignoreSpaces - should include both spaces
-    const resultAll = await getAgentConfigurationRequirementsFromActions(auth, {
-      actions,
-    });
+    const resultAll = await getAgentConfigurationRequirementsFromActions(
+      authenticator,
+      {
+        actions,
+      }
+    );
 
     expect(resultAll.requestedSpaceIds).toHaveLength(2);
     expect(resultAll.requestedSpaceIds).toContain(space1.id);
@@ -298,7 +279,7 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
 
     // With ignoreSpaces - should exclude space1
     const resultIgnore = await getAgentConfigurationRequirementsFromActions(
-      auth,
+      authenticator,
       {
         actions,
         ignoreSpaces: [space1],
@@ -311,7 +292,9 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
   });
 
   it("should handle mixed action types correctly", async () => {
-    const { auth, workspace, globalGroup } = await setupTest();
+    const { authenticator, workspace, globalGroup } = await createResourceTest({
+      role: "admin",
+    });
 
     // Create different spaces for different resource types
     const dsSpace = await SpaceFactory.regular(workspace);
@@ -357,9 +340,12 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
       },
     ];
 
-    const result = await getAgentConfigurationRequirementsFromActions(auth, {
-      actions,
-    });
+    const result = await getAgentConfigurationRequirementsFromActions(
+      authenticator,
+      {
+        actions,
+      }
+    );
 
     // Should include both space IDs
     expect(result.requestedSpaceIds).toHaveLength(2);
@@ -372,11 +358,13 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
   });
 
   it("should handle internal MCP servers with auto availability correctly", async () => {
-    const { auth, workspace, globalSpace } = await setupTest();
+    const { authenticator, workspace, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
 
     // Create an internal MCP server with "auto" availability (like search)
     const internalAutoServer = await InternalMCPServerInMemoryResource.makeNew(
-      auth,
+      authenticator,
       {
         name: "search", // This has "auto" availability according to constants test
         useCase: null,
@@ -423,7 +411,7 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
     ];
 
     const autoOnlyResult = await getAgentConfigurationRequirementsFromActions(
-      auth,
+      authenticator,
       {
         actions: autoOnlyActions,
       }
@@ -474,7 +462,7 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
     ];
 
     const mixedResult = await getAgentConfigurationRequirementsFromActions(
-      auth,
+      authenticator,
       {
         actions: mixedActions,
       }
