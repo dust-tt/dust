@@ -1,1 +1,7 @@
-PUT /front.agent_message_analytics_1/_alias/front.agent_message_analytics
+POST /_aliases
+{
+  "actions": [
+    { "remove": { "index": "*", "alias": "front.agent_message_analytics" } },
+    { "add":    { "index": "front.agent_message_analytics_1", "alias": "front.agent_message_analytics" } }
+  ]
+}
