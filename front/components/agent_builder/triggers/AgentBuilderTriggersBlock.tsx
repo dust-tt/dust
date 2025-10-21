@@ -198,7 +198,7 @@ export function AgentBuilderTriggersBlock({
             <DropdownMenuTrigger asChild>
               <Button
                 label="Add Trigger"
-                variant="outline"
+                variant="primary"
                 isSelect
                 type="button"
               />
