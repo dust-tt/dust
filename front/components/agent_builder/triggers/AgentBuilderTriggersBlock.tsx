@@ -23,6 +23,7 @@ import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { ScheduleEditionModal } from "@app/components/agent_builder/triggers/ScheduleEditionModal";
 import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
 import { WebhookEditionModal } from "@app/components/agent_builder/triggers/WebhookEditionModal";
+import { getIcon } from "@app/components/resources/resources_icons";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -238,7 +239,7 @@ export function AgentBuilderTriggersBlock({
                   <DropdownMenuItem
                     key={view.sId}
                     label={view.customName}
-                    icon={view.icon}
+                    icon={getIcon(view.icon)}
                     onClick={() => handleCreateTrigger("webhook", view)}
                   />
                 ))}
@@ -276,7 +277,7 @@ export function AgentBuilderTriggersBlock({
                       <DropdownMenuItem
                         key={view.sId}
                         label={view.customName}
-                        icon={view.icon}
+                        icon={getIcon(view.icon)}
                         onClick={() => handleCreateTrigger("webhook", view)}
                       />
                     ))}
