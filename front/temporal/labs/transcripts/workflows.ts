@@ -20,9 +20,11 @@ const { retrieveNewTranscriptsActivity, processTranscriptActivity } =
   });
 
 export async function retrieveNewTranscriptsWorkflow({
+  workspaceId,
   transcriptsConfigurationId,
   startIndex = 0,
 }: {
+  workspaceId: string;
   transcriptsConfigurationId: string;
   startIndex?: number;
 }) {
@@ -46,6 +48,7 @@ export async function retrieveNewTranscriptsWorkflow({
     if (hasReachedWorkflowLimits) {
       // Continue from where we left off to avoid OOM when processing many files
       await continueAsNew<typeof retrieveNewTranscriptsWorkflow>({
+        workspaceId,
         transcriptsConfigurationId,
         startIndex: i,
       });
@@ -54,6 +57,7 @@ export async function retrieveNewTranscriptsWorkflow({
 
     const fileId = filesToProcess[i];
     const workflowId = makeProcessTranscriptWorkflowId({
+      workspaceId,
       transcriptsConfigurationId,
       fileId,
     });
