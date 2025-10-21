@@ -257,17 +257,17 @@ function createServer(
             },
           ]);
         } catch (err) {
-          const originalError =
+          const internalError =
             normalizeError(err).message || "Failed to update document";
-          let errorMessage = originalError;
+          logger.error(`update_word_document error: ${internalError}`);
+          let errorMessage = "Failed to update document";
 
           if (
-            originalError.includes("locked") ||
-            originalError.includes("being uploaded")
+            internalError.includes("locked") ||
+            internalError.includes("being uploaded")
           ) {
             errorMessage = `The document is currently locked (likely open in Word Online or being edited by another user).
-              To resolve this issue, close the document in your browser/Word and try again.
-              Original error: ${originalError}`;
+              To resolve this issue, close the document in your browser/Word and try again.`;
           }
 
           return new Err(new MCPError(errorMessage));
