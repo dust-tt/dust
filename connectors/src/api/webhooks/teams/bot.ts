@@ -21,7 +21,7 @@ import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import { processMessageForMention } from "@connectors/lib/bot/mentions";
 import { MicrosoftBotMessage } from "@connectors/lib/models/microsoft_bot";
 import { getActionName } from "@connectors/lib/tools_utils";
-import logger, { Logger } from "@connectors/logger/logger";
+import type { Logger } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { getHeaderFromUserEmail } from "@connectors/types";
 
@@ -36,7 +36,8 @@ export async function botAnswerMessage(
   context: TurnContext,
   message: string,
   connector: ConnectorResource,
-  agentActivityId: string
+  agentActivityId: string,
+  localLogger: Logger
 ): Promise<Result<undefined, Error>> {
   const {
     conversation: { id: conversationId },
@@ -49,7 +50,11 @@ export async function botAnswerMessage(
   }
 
   // Validate user first - this will handle all user validation and error messaging
-  const validatedUser = await validateTeamsUser(context, connector);
+  const validatedUser = await validateTeamsUser(
+    context,
+    connector,
+    localLogger
+  );
   if (!validatedUser) {
     // Error message already sent by validateTeamsUser
     return new Ok(undefined);
@@ -79,7 +84,7 @@ export async function botAnswerMessage(
         ...getHeaderFromUserEmail(email),
       },
     },
-    logger
+    localLogger
   );
 
   const agentConfigurationsRes = await dustAPI.getAgentConfigurations({});
@@ -113,11 +118,12 @@ export async function botAnswerMessage(
     context,
     dustAPI,
     connector,
-    lastMicrosoftBotMessage
+    lastMicrosoftBotMessage,
+    localLogger
   );
 
   if (buildContentFragmentRes.isErr()) {
-    logger.error(
+    localLogger.error(
       {
         error: buildContentFragmentRes.error,
         connectorId: connector.id,
@@ -145,7 +151,7 @@ export async function botAnswerMessage(
   let userMessage: UserMessageType | undefined = undefined;
 
   if (lastMicrosoftBotMessage?.dustConversationId) {
-    logger.info(
+    localLogger.info(
       {
         connectorId: connector.id,
         teamsConversationId: conversationId,
@@ -169,7 +175,7 @@ export async function botAnswerMessage(
             contentFragment: cf,
           });
           if (contentFragmentRes.isErr()) {
-            logger.error(
+            localLogger.error(
               {
                 error: contentFragmentRes.error,
                 connectorId: connector.id,
@@ -200,7 +206,7 @@ export async function botAnswerMessage(
       }
       conversation = newConversationRes.value;
     } else {
-      logger.warn(
+      localLogger.warn(
         {
           connectorId: connector.id,
           teamsConversationId: conversationId,
@@ -213,7 +219,7 @@ export async function botAnswerMessage(
 
   // If the conversation does not exist, we create a new one.
   if (!conversation || !userMessage) {
-    logger.info(
+    localLogger.info(
       {
         connectorId: connector.id,
         teamsConversationId: conversationId,
@@ -240,7 +246,7 @@ export async function botAnswerMessage(
       return new Err(new Error("Failed to retrieve the created message."));
     }
 
-    logger.info(
+    localLogger.info(
       {
         connectorId: connector.id,
         teamsConversationId: conversationId,
@@ -270,6 +276,7 @@ export async function botAnswerMessage(
     mention,
     connector,
     agentActivityId,
+    localLogger,
   });
 
   if (streamAgentResponseRes.isErr()) {
@@ -296,7 +303,7 @@ export async function botAnswerMessage(
     footnotes: footnotes,
   });
 
-  await sendTeamsResponse(context, agentActivityId, finalCard);
+  await sendTeamsResponse(context, agentActivityId, finalCard, localLogger);
 
   // Return the result with streaming info
   return new Ok(undefined);
@@ -310,6 +317,7 @@ async function streamAgentResponse({
   mention,
   connector,
   agentActivityId,
+  localLogger,
 }: {
   context: TurnContext;
   dustAPI: DustAPI;
@@ -318,6 +326,7 @@ async function streamAgentResponse({
   mention: { assistantName: string; assistantId: string };
   connector: ConnectorResource;
   agentActivityId: string;
+  localLogger: Logger;
 }): Promise<
   Result<
     {
@@ -396,7 +405,12 @@ async function streamAgentResponse({
             });
 
             // Send streaming update to Teams app webhook endpoint
-            await sendTeamsResponse(context, agentActivityId, streamingCard);
+            await sendTeamsResponse(
+              context,
+              agentActivityId,
+              streamingCard,
+              localLogger
+            );
           }
         }
         break;
@@ -410,7 +424,12 @@ async function streamAgentResponse({
           workspaceId: connector.workspaceId,
         });
         agentState = "acting";
-        await sendTeamsResponse(context, agentActivityId, streamingCard);
+        await sendTeamsResponse(
+          context,
+          agentActivityId,
+          streamingCard,
+          localLogger
+        );
 
         break;
       }
@@ -437,7 +456,8 @@ async function streamAgentResponse({
 const sendTeamsResponse = async (
   context: TurnContext,
   agentActivityId: string | undefined,
-  adaptiveCard: Partial<Activity>
+  adaptiveCard: Partial<Activity>,
+  localLogger: Logger
 ): Promise<Result<string, Error>> => {
   // Update existing message for streaming
   if (agentActivityId) {
@@ -448,7 +468,7 @@ const sendTeamsResponse = async (
       });
       return new Ok(agentActivityId);
     } catch (updateError) {
-      logger.warn(
+      localLogger.warn(
         { error: updateError },
         "Failed to update streaming message, sending new one"
       );
@@ -463,7 +483,8 @@ async function makeContentFragments(
   context: TurnContext,
   dustAPI: DustAPI,
   connector: ConnectorResource,
-  lastMicrosoftBotMessage: MicrosoftBotMessage | null
+  lastMicrosoftBotMessage: MicrosoftBotMessage | null,
+  localLogger: Logger
 ): Promise<Result<PublicPostContentFragmentRequestBody[] | undefined, Error>> {
   // Get Microsoft Graph client for authenticated file downloads
   const client = await getMicrosoftClient(connector.connectionId);
@@ -480,7 +501,7 @@ async function makeContentFragments(
   // For regular chats (non-channel), we don't need message history
   // but we still want to process file attachments from the current message
   if (!isChannelConversation) {
-    logger.info(
+    localLogger.info(
       {
         connectorId: connector.id,
         teamsConversationId,
@@ -498,10 +519,11 @@ async function makeContentFragments(
     const allContentFragments = await processFileAttachments(
       currentMessageAttachments,
       dustAPI,
-      client
+      client,
+      localLogger
     );
 
-    logger.info(
+    localLogger.info(
       {
         connectorId: connector.id,
         attachments: allContentFragments.length,
@@ -516,7 +538,7 @@ async function makeContentFragments(
 
   // Get conversation history using the most reliable API approach
   const conversationHistory = await getMessagesFromConversation(
-    logger,
+    localLogger,
     client,
     teamsConversationId
   );
@@ -563,7 +585,8 @@ async function makeContentFragments(
   const fileContentFragments = await processFileAttachments(
     allAttachments,
     dustAPI,
-    client
+    client,
+    localLogger
   );
 
   allContentFragments.push(...fileContentFragments);
@@ -633,9 +656,12 @@ export async function sendFeedback({
   localLogger: Logger;
 }) {
   // Validate user first
-  const validatedUser = await validateTeamsUser(context, connector);
+  const validatedUser = await validateTeamsUser(
+    context,
+    connector,
+    localLogger
+  );
   if (!validatedUser) {
-    localLogger.error("Failed to validate Teams user for feedback");
     return;
   }
 

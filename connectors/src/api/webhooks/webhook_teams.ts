@@ -22,7 +22,8 @@ import {
   validateBotFrameworkToken,
 } from "@connectors/api/webhooks/teams/jwt_validation";
 import { getConnector } from "@connectors/api/webhooks/teams/utils";
-import logger, { Logger } from "@connectors/logger/logger";
+import type { Logger } from "@connectors/logger/logger";
+import logger from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -277,7 +278,8 @@ async function handleMessage(
     context,
     message,
     connector,
-    thinkingActivity.value
+    thinkingActivity.value,
+    localLogger
   );
 
   if (result.isErr()) {

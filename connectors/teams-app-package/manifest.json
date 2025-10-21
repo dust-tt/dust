@@ -25,11 +25,7 @@
   "bots": [
     {
       "botId": "<MICROSOFT_BOT_ID>",
-      "scopes": [
-        "personal",
-        "team",
-        "groupChat"
-      ],
+      "scopes": ["personal", "team", "groupChat"],
       "isNotificationOnly": false,
       "supportsCalling": false,
       "supportsVideo": false,
