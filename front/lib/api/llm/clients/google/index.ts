@@ -1,9 +1,10 @@
 import type { GenerateContentResponse } from "@google/genai";
 import { GoogleGenAI } from "@google/genai";
 
-import { LLM } from "@app/lib/llm/llm";
-import { toEvents } from "@app/lib/llm/providers/google/utils/google_to_events";
-import type { LLMEvent, ProviderMetadata } from "@app/lib/llm/types";
+import { toEvents } from "@app/lib/api/llm/clients/google/utils/google_to_events";
+import { LLM } from "@app/lib/api/llm/llm";
+import type { LLMEvent, ProviderMetadata } from "@app/lib/api/llm/types/events";
+import type { LLMOptions } from "@app/lib/api/llm/types/options";
 import type {
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
@@ -13,22 +14,20 @@ import { toHistory } from "./utils/conversation_to_google";
 
 export class GoogleLLM extends LLM {
   private client: GoogleGenAI;
-  protected temperature: number;
   private textAccumulator: string = "";
   private reasoningAccumulator: string = "";
   private metadata: ProviderMetadata;
   constructor({
-    temperature,
     model,
+    options,
   }: {
-    temperature: number;
     model: ModelConfigurationType;
+    options?: LLMOptions;
   }) {
-    super(model);
+    super({ model, options });
     this.client = new GoogleGenAI({
       apiKey: process.env.GOOGLE_API_KEY ?? "",
     });
-    this.temperature = temperature;
     this.metadata = {
       providerId: "google_ai_studio",
       modelId: model.modelId,
@@ -103,7 +102,7 @@ export class GoogleLLM extends LLM {
       history: history,
       config: {
         systemInstruction: prompt,
-        temperature: this.temperature,
+        temperature: this.options?.temperature ?? 0.7,
       },
     });
     yield* await chat.sendMessageStream({
