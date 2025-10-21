@@ -370,6 +370,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       unselected: "write",
     },
     isDeletable: false,
+    isHiddenAsDataSource: true,
   },
   webcrawler: {
     name: "Web Crawler",

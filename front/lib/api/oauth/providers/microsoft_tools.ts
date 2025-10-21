@@ -13,6 +13,7 @@ import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 export class MicrosoftToolsOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
     connection,
+    useCase,
     clientId,
     extraConfig,
   }: {
@@ -21,6 +22,13 @@ export class MicrosoftToolsOAuthProvider implements BaseOAuthStrategyProvider {
     clientId?: string;
     extraConfig?: ExtraConfigType;
   }) {
+    if (useCase === "bot") {
+      extraConfig = {
+        scope:
+          "Sites.Read.All Files.Read.All User.Read Chat.Read Team.ReadBasic.All Channel.ReadBasic.All Organization.Read.All",
+      };
+    }
+
     if (!extraConfig || !extraConfig.scope) {
       throw new Error("Missing authorization scope");
     }
@@ -45,7 +53,11 @@ export class MicrosoftToolsOAuthProvider implements BaseOAuthStrategyProvider {
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
-    if (useCase === "personal_actions" || useCase === "platform_actions") {
+    if (
+      useCase === "personal_actions" ||
+      useCase === "platform_actions" ||
+      useCase === "bot"
+    ) {
       // Require scope to be specified for Microsoft Tools
       return !!extraConfig.scope;
     }
