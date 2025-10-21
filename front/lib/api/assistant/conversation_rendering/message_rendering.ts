@@ -117,7 +117,12 @@ export function renderAgentSteps(
     messages.push({
       role: "assistant",
       name: message.configuration.name,
-      content: message.content,
+      contents: [
+        {
+          type: "text_content",
+          value: message.content,
+        },
+      ],
     });
   }
 
