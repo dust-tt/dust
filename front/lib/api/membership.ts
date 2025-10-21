@@ -22,31 +22,21 @@ export async function revokeAndTrackMembership(
 
   if (revokeResult.isOk()) {
     // Delete all triggers created by the user
-    try {
-      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        user.sId,
-        workspace.sId
-      );
-      const deleteTriggerResult =
-        await TriggerResource.deleteAllForUser(userAuth);
-      if (deleteTriggerResult.isErr()) {
-        logger.error(
-          {
-            workspaceId: workspace.sId,
-            userId: user.sId,
-            error: deleteTriggerResult.error,
-          },
-          "Failed to delete triggers for revoked user"
-        );
-      }
-    } catch (error) {
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const deleteTriggerResult =
+      await TriggerResource.deleteAllForUser(userAuth);
+    if (deleteTriggerResult.isErr()) {
       logger.error(
         {
           workspaceId: workspace.sId,
           userId: user.sId,
-          error,
+          error: deleteTriggerResult.error,
         },
-        "Failed to create authenticator or delete triggers for revoked user"
+        "Failed to delete triggers for revoked user"
       );
     }
 
