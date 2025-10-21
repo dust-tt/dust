@@ -24,6 +24,7 @@ import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import type {
   ConversationMCPServerViewType,
   ConversationType,
@@ -326,9 +327,33 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           ? conversation.getRequestedSpaceIdsFromModel(auth)
           : conversation.requestedSpaceIds;
 
-      return auth.canRead(
+      const spacePermission = auth.canRead(
         Authenticator.createResourcePermissionsFromSpaceIds(requestedSpaceIds)
       );
+
+      const requestedGroupIds =
+        conversation instanceof ConversationResource
+          ? conversation.getRequestedGroupIdsFromModel(auth)
+          : conversation.requestedGroupIds;
+
+      const groupsPermission = auth.canRead(
+        Authenticator.createResourcePermissionsFromGroupIds(requestedGroupIds)
+      );
+
+      if (groupsPermission !== spacePermission) {
+        logger.error(
+          {
+            groupsPermission,
+            spacePermission,
+            conversationId: conversation.id,
+            requestedSpaceIds,
+            requestedGroupIds,
+          },
+          "[requestedSpaceIds] Groups and spaces permissions do not match"
+        );
+      }
+
+      return spacePermission;
     } else {
       const requestedGroupIds =
         conversation instanceof ConversationResource

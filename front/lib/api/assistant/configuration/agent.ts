@@ -101,15 +101,7 @@ async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
   });
 
   const allowedAgents = agents.filter((a) =>
-    auth.canRead(
-      auth.shouldUseRequestedSpaces()
-        ? Authenticator.createResourcePermissionsFromSpaceIds(
-            a.requestedSpaceIds
-          )
-        : Authenticator.createResourcePermissionsFromGroupIds(
-            a.requestedGroupIds
-          )
-    )
+    canReadAgentConfiguration(auth, a)
   );
 
   return (
@@ -117,6 +109,49 @@ async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
       ? LightAgentConfigurationType
       : AgentConfigurationType) || null
   );
+}
+
+export function canReadAgentConfiguration(
+  auth: Authenticator,
+  agentConfiguration: {
+    requestedSpaceIds: string[];
+    requestedGroupIds: string[][];
+    sId: string;
+  }
+) {
+  if (auth.shouldUseRequestedSpaces()) {
+    const spacePermission = auth.canRead(
+      Authenticator.createResourcePermissionsFromSpaceIds(
+        agentConfiguration.requestedSpaceIds
+      )
+    );
+    const groupsPermission = auth.canRead(
+      Authenticator.createResourcePermissionsFromGroupIds(
+        agentConfiguration.requestedGroupIds
+      )
+    );
+
+    if (groupsPermission !== spacePermission) {
+      logger.error(
+        {
+          groupsPermission,
+          spacePermission,
+          agentConfigurationId: agentConfiguration.sId,
+          requestedSpaceIds: agentConfiguration.requestedSpaceIds,
+          requestedGroupIds: agentConfiguration.requestedGroupIds,
+        },
+        "[requestedSpaceIds] Groups and spaces permissions do not match"
+      );
+    }
+
+    return spacePermission;
+  } else {
+    return auth.canRead(
+      Authenticator.createResourcePermissionsFromGroupIds(
+        agentConfiguration.requestedGroupIds
+      )
+    );
+  }
 }
 
 // Main entry points for fetching agents.
@@ -155,15 +190,7 @@ export async function listsAgentConfigurationVersions<
 
   // Filter by permissions
   const allowedAgents = allAgents.filter((a) =>
-    auth.canRead(
-      auth.shouldUseRequestedSpaces()
-        ? Authenticator.createResourcePermissionsFromSpaceIds(
-            a.requestedSpaceIds
-          )
-        : Authenticator.createResourcePermissionsFromGroupIds(
-            a.requestedGroupIds
-          )
-    )
+    canReadAgentConfiguration(auth, a)
   );
 
   return allowedAgents as V extends "full"
@@ -240,15 +267,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 
     // Filter by permissions
     const allowedAgents = allAgents.filter((a) =>
-      auth.canRead(
-        auth.shouldUseRequestedSpaces()
-          ? Authenticator.createResourcePermissionsFromSpaceIds(
-              a.requestedSpaceIds
-            )
-          : Authenticator.createResourcePermissionsFromGroupIds(
-              a.requestedGroupIds
-            )
-      )
+      canReadAgentConfiguration(auth, a)
     );
 
     return allowedAgents as V extends "full"

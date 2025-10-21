@@ -1,5 +1,6 @@
 import { Op, Sequelize } from "sequelize";
 
+import { canReadAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
 import type {
   SortStrategy,
@@ -7,7 +8,7 @@ import type {
 } from "@app/lib/api/assistant/configuration/types";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import {
   AgentConfiguration,
   AgentUserRelation,
@@ -393,17 +394,7 @@ export async function getAgentConfigurationsForView<
     ? allAgentConfigurations
     : allAgentConfigurations
         .flat()
-        .filter((a) =>
-          auth.canRead(
-            auth.shouldUseRequestedSpaces()
-              ? Authenticator.createResourcePermissionsFromSpaceIds(
-                  a.requestedSpaceIds
-                )
-              : Authenticator.createResourcePermissionsFromGroupIds(
-                  a.requestedGroupIds
-                )
-          )
-        );
+        .filter((a) => canReadAgentConfiguration(auth, a));
 
   return applySortAndLimit(allowedAgentConfigurations.flat());
 }
