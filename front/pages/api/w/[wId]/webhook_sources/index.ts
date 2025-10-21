@@ -6,8 +6,12 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateSecureSecret } from "@app/lib/resources/string_ids";
-import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import {
+  WEBHOOK_SERVICES,
+  WebhookSourceResource,
+} from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { GitHubWebhookService } from "@app/lib/triggers/services/github_webhook_service";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -115,6 +119,8 @@ async function handler(
         includeGlobal,
         subscribedEvents,
         kind,
+        connectionId,
+        remoteMetadata,
       } = bodyValidation.data;
 
       const workspace = auth.getNonNullableWorkspace();
@@ -137,19 +143,22 @@ async function handler(
             trimmedSignatureHeader.length > 0 ? trimmedSignatureHeader : null,
           signatureAlgorithm,
           subscribedEvents,
+          remoteMetadata: remoteMetadata ?? null,
+          oauthConnectionId: connectionId ?? null,
         });
 
         if (webhookSourceRes.isErr()) {
           throw new Error(webhookSourceRes.error.message);
         }
 
-        const webhookSource = webhookSourceRes.value.toJSONForAdmin();
+        const webhookSource = webhookSourceRes.value;
+        const webhookSourceJSON = webhookSource.toJSONForAdmin();
 
         if (includeGlobal) {
           const systemView =
             await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
               auth,
-              webhookSource.sId
+              webhookSourceJSON.sId
             );
 
           if (systemView === null) {
@@ -172,9 +181,44 @@ async function handler(
           });
         }
 
+        if (connectionId && remoteMetadata) {
+          const webhookUrl = `${process.env.DUST_CLIENT_FACING_URL}/api/v1/w/${workspace.sId}/triggers/hooks/${webhookSourceJSON.sId}/${webhookSourceJSON.urlSecret}`;
+
+          const service = WEBHOOK_SERVICES[kind];
+          const result = await service.createWebhooks({
+            auth,
+            connectionId,
+            remoteMetadata,
+            webhookUrl,
+            events: subscribedEvents,
+            secret: webhookSourceJSON.secret ?? undefined,
+          });
+
+          if (result.isErr()) {
+            // If remote webhook creation fails, we still keep the webhook source
+            // but return an error message so the user knows
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: `Webhook source created but failed to create remote webhook: ${result.error.message}`,
+              },
+            });
+          }
+
+          // Update the webhook source with the id of the webhook
+          const webhookId = Object.values(result.value.webhookIds)[0];
+          await webhookSource.updateRemoteMetadata({
+            remoteMetadata: {
+              ...remoteMetadata,
+              webhookId,
+            },
+          });
+        }
+
         return res.status(201).json({
           success: true,
-          webhookSource,
+          webhookSource: webhookSourceJSON,
         });
       } catch (error) {
         return apiError(req, res, {

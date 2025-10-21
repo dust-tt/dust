@@ -29,7 +29,7 @@ import type {
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
 // Service registry: map webhook source kind to its service implementation
-const WEBHOOK_SERVICES: Record<string, RemoteWebhookService> = {
+export const WEBHOOK_SERVICES: Record<string, RemoteWebhookService> = {
   github: new GitHubWebhookService(),
 };
 
