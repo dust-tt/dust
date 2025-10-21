@@ -361,24 +361,6 @@ export async function runModelActivity(
     runConfig.MODEL.prompt_caching = agentConfiguration.model.promptCaching;
   }
 
-  const res = await runActionStreamed(
-    auth,
-    "assistant-v2-multi-actions-agent",
-    runConfig,
-    [
-      {
-        conversation: modelConversationRes.value.modelConversation,
-        specifications,
-        prompt,
-      },
-    ],
-    {
-      conversationId: conversation.sId,
-      workspaceId: conversation.owner.sId,
-      userMessageId: userMessage.sId,
-    }
-  );
-
   // Errors occurring during the multi-actions-agent dust app may be retryable.
   // Their implicit code should be "multi_actions_error".
   async function handlePossiblyRetryableError(message: string) {
@@ -427,11 +409,12 @@ export async function runModelActivity(
     return null;
   }
 
-  if (res.isErr()) {
-    return handlePossiblyRetryableError(res.error.message);
-  }
+  const contentParser = new AgentMessageContentParser(
+    agentConfiguration,
+    agentMessage.sId,
+    getDelimitersConfiguration({ agentConfiguration })
+  );
 
-  const { eventStream, dustRunId } = res.value;
   let output: {
     actions: Array<{
       functionCallId: string;
@@ -443,19 +426,33 @@ export async function runModelActivity(
       TextContentType | FunctionCallContentType | ReasoningContentType
     >;
   } | null = null;
-
-  let isGeneration = true;
-
-  const contentParser = new AgentMessageContentParser(
-    agentConfiguration,
-    agentMessage.sId,
-    getDelimitersConfiguration({ agentConfiguration })
-  );
-
   let nativeChainOfThought = "";
 
-  // Create a new object to avoid mutation
-  const updatedFunctionCallStepContentIds = { ...functionCallStepContentIds };
+  const res = await runActionStreamed(
+    auth,
+    "assistant-v2-multi-actions-agent",
+    runConfig,
+    [
+      {
+        conversation: modelConversationRes.value.modelConversation,
+        specifications,
+        prompt,
+      },
+    ],
+    {
+      conversationId: conversation.sId,
+      workspaceId: conversation.owner.sId,
+      userMessageId: userMessage.sId,
+    }
+  );
+
+  if (res.isErr()) {
+    return handlePossiblyRetryableError(res.error.message);
+  }
+
+  const { eventStream, dustRunId } = res.value;
+
+  let isGeneration = true;
 
   for await (const event of eventStream) {
     if (event.type === "function_call") {
@@ -637,6 +634,9 @@ export async function runModelActivity(
   if (!output) {
     return handlePossiblyRetryableError("Agent execution didn't complete.");
   }
+
+  // Create a new object to avoid mutation
+  const updatedFunctionCallStepContentIds = { ...functionCallStepContentIds };
 
   // It is possible that temporal requested activity cancellation but the
   // activity has not yet received the signal. In that case, the agent message
