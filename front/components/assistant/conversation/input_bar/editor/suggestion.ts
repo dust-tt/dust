@@ -20,6 +20,10 @@ const SUGGESTION_DISPLAY_LIMIT = 7;
 const SUGGESTION_PRIORITY: Record<string, number> = {
   [GLOBAL_AGENTS_SID.DUST]: 1,
   [GLOBAL_AGENTS_SID.DEEP_DIVE]: 2,
+  // Ensure GPT-5 appears before GPT-4 in mentions dropdown when sorting
+  // by fuzzy match results. Lower numbers mean higher priority.
+  [GLOBAL_AGENTS_SID.GPT5]: 3,
+  [GLOBAL_AGENTS_SID.GPT4]: 4,
 };
 
 function filterAndSortSuggestions(
