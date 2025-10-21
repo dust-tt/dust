@@ -103,6 +103,10 @@ async function handler(
   const { configurations: mcpConfigurations, skipped: skippedActions } =
     mcpConfigurationsResult.value;
 
+  const hasVisualizationAction = yamlConfig.toolset.some(
+    (action) => action.type === "DATA_VISUALIZATION"
+  );
+
   const agent = {
     name: yamlConfig.agent.handle,
     description: yamlConfig.agent.description,
@@ -121,6 +125,7 @@ async function handler(
         yamlConfig.generation_settings.response_format || undefined,
     },
     maxStepsPerRun: yamlConfig.agent.max_steps_per_run,
+    visualizationEnabled: hasVisualizationAction,
     actions: mcpConfigurations,
     templateId: null,
     tags: yamlConfig.tags.map((tag) => ({

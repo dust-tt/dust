@@ -7,6 +7,7 @@ import {
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
+  isMCPConfigurationForInternalInteractiveContent,
   isMCPConfigurationForInternalNotion,
   isMCPConfigurationForInternalSlack,
   isMCPConfigurationForInternalWebsearch,
@@ -14,6 +15,7 @@ import {
   isMCPConfigurationWithDataSource,
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
+import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
@@ -172,6 +174,15 @@ export async function constructPromptMultiActions(
 
   if (canRetrieveDocuments) {
     guidelinesSection += `\n${citationMetaPrompt(isUsingRunAgent)}\n`;
+  }
+
+  const hasInteractiveContentServer = agentConfiguration.actions.some(
+    (action) => isMCPConfigurationForInternalInteractiveContent(action)
+  );
+
+  // Only inject the visualization system prompt if the Interactive Content server is not enabled.
+  if (agentConfiguration.visualizationEnabled && !hasInteractiveContentServer) {
+    guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
   }
 
   guidelinesSection +=

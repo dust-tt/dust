@@ -36,6 +36,7 @@ export class AgentConfigurationFactory {
       name,
       description,
       instructions: "Test Instructions",
+      visualizationEnabled: false,
       pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
       status: "active",
       scope,

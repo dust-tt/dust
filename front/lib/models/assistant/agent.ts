@@ -43,7 +43,7 @@ export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> 
   declare authorId: ForeignKey<UserModel["id"]>;
 
   declare maxStepsPerRun: number;
-  // declare visualizationEnabled: boolean;
+  declare visualizationEnabled: boolean;
 
   declare templateId: ForeignKey<TemplateModel["id"]> | null;
 

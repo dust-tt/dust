@@ -57,6 +57,9 @@ export class AgentYAMLConverter {
           scope: formData.agentSettings.scope,
           avatar_url: formData.agentSettings.pictureUrl,
           max_steps_per_run: formData.maxStepsPerRun,
+          visualization_enabled: formData.actions.some(
+            (action) => action.type === "DATA_VISUALIZATION"
+          ),
         },
         instructions: formData.instructions,
         generation_settings: {
@@ -110,7 +113,7 @@ export class AgentYAMLConverter {
 
   /**
    * Converts form data actions to YAML format
-   * All actions are now MCP type
+   * All actions (except DATA_VISUALIZATION) are now MCP type
    */
   private static async convertActions(
     auth: Authenticator,
@@ -124,52 +127,62 @@ export class AgentYAMLConverter {
           description: action.description,
         };
 
-        // MCP actions are already in the correct format
-        // We need to extract the server name from the configuration
-        const mcpServerName = await this.getMCPServerNameFromConfig(
-          auth,
-          action.configuration
-        );
-        if (!mcpServerName) {
-          return new Err(
-            new Error("Could not determine MCP server name from configuration")
+        if (action.type === "DATA_VISUALIZATION") {
+          convertedActions.push({
+            ...baseAction,
+            type: "DATA_VISUALIZATION",
+            configuration: {},
+          });
+        } else if (action.type === "MCP") {
+          // MCP actions are already in the correct format
+          // We need to extract the server name from the configuration
+          const mcpServerName = await this.getMCPServerNameFromConfig(
+            auth,
+            action.configuration
           );
-        }
+          if (!mcpServerName) {
+            return new Err(
+              new Error(
+                "Could not determine MCP server name from configuration"
+              )
+            );
+          }
 
-        convertedActions.push({
-          ...baseAction,
-          type: "MCP",
-          configuration: {
-            mcp_server_name: mcpServerName,
-            data_sources: action.configuration.dataSourceConfigurations
-              ? this.convertDataSourceConfigurations(
-                  action.configuration
-                    .dataSourceConfigurations as DataSourceViewSelectionConfigurations
-                )
-              : undefined,
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            time_frame: action.configuration.timeFrame || undefined,
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            json_schema: action.configuration.jsonSchema || undefined,
-            reasoning_model: action.configuration.reasoningModel
-              ? {
-                  model_id: action.configuration.reasoningModel.modelId,
-                  provider_id: action.configuration.reasoningModel.providerId,
-                  temperature:
-                    action.configuration.reasoningModel.temperature ??
-                    undefined,
-                  reasoning_effort:
-                    action.configuration.reasoningModel.reasoningEffort ??
-                    undefined,
-                }
-              : undefined,
-            additional_configuration:
-              Object.keys(action.configuration.additionalConfiguration || {})
-                .length > 0
-                ? action.configuration.additionalConfiguration
+          convertedActions.push({
+            ...baseAction,
+            type: "MCP",
+            configuration: {
+              mcp_server_name: mcpServerName,
+              data_sources: action.configuration.dataSourceConfigurations
+                ? this.convertDataSourceConfigurations(
+                    action.configuration
+                      .dataSourceConfigurations as DataSourceViewSelectionConfigurations
+                  )
                 : undefined,
-          },
-        });
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              time_frame: action.configuration.timeFrame || undefined,
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              json_schema: action.configuration.jsonSchema || undefined,
+              reasoning_model: action.configuration.reasoningModel
+                ? {
+                    model_id: action.configuration.reasoningModel.modelId,
+                    provider_id: action.configuration.reasoningModel.providerId,
+                    temperature:
+                      action.configuration.reasoningModel.temperature ??
+                      undefined,
+                    reasoning_effort:
+                      action.configuration.reasoningModel.reasoningEffort ??
+                      undefined,
+                  }
+                : undefined,
+              additional_configuration:
+                Object.keys(action.configuration.additionalConfiguration || {})
+                  .length > 0
+                  ? action.configuration.additionalConfiguration
+                  : undefined,
+            },
+          });
+        }
       }
 
       return new Ok(convertedActions);
@@ -306,6 +319,12 @@ export class AgentYAMLConverter {
       Error
     >
   > {
+    if (action.type === "DATA_VISUALIZATION") {
+      return new Ok(null);
+    }
+
+    // At this point, action.type must be "MCP" due to discriminated union
+
     const mcpServerName = action.configuration.mcp_server_name;
     if (!mcpServerName) {
       return new Err(new Error("MCP server name is required"));
@@ -394,6 +413,7 @@ export class AgentYAMLConverter {
 
   /**
    * Converts an array of YAML actions to MCP server configurations.
+   * Filters out DATA_VISUALIZATION actions which are handled differently.
    * Uses concurrent execution for better performance with bounds checking.
    * Returns both successful configurations and skipped actions with reasons.
    */

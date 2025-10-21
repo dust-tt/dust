@@ -458,6 +458,9 @@ export async function submitAgentBuilderForm({
         responseFormat: formData.generationSettings.responseFormat,
       },
       actions: processedActions,
+      visualizationEnabled: formData.actions.some(
+        (action) => action.type === "DATA_VISUALIZATION"
+      ),
       templateId: null,
       tags: formData.agentSettings.tags,
       editors: formData.agentSettings.editors.map((editor) => ({

@@ -1,8 +1,13 @@
 import type { Icon } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import uniqueId from "lodash/uniqueId";
 import type React from "react";
 
 import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import {
+  DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
+  DEFAULT_DATA_VISUALIZATION_NAME,
+} from "@app/lib/actions/constants";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -48,6 +53,24 @@ export type AssistantBuilderMCPConfigurationWithId =
     id: string;
   };
 
+export interface AssistantBuilderDataVisualizationConfiguration {
+  type: "DATA_VISUALIZATION";
+  configuration: null;
+  name: string;
+  description: string;
+  configurationRequired: false;
+}
+
+// DATA_VISUALIZATION is not an action, but we need to show it in the UI like an action.
+export type AssistantBuilderDataVisualizationConfigurationWithId =
+  AssistantBuilderDataVisualizationConfiguration & {
+    id: string;
+  };
+
+export type AssistantBuilderMCPOrVizState =
+  | AssistantBuilderMCPConfigurationWithId
+  | AssistantBuilderDataVisualizationConfigurationWithId;
+
 export type AssistantBuilderState = {
   handle: string | null;
   description: string | null;
@@ -60,8 +83,9 @@ export type AssistantBuilderState = {
     reasoningEffort: AgentReasoningEffort;
     responseFormat?: string;
   };
-  actions: AssistantBuilderMCPConfigurationWithId[];
+  actions: AssistantBuilderMCPOrVizState[];
   triggers: AgentBuilderTriggerType[];
+  visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
   editors: UserType[];
@@ -73,6 +97,16 @@ export interface ActionSpecification {
   dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
   cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
   flag: WhitelistableFeature | null;
+}
+
+export function getDataVisualizationConfiguration(): AssistantBuilderDataVisualizationConfiguration {
+  return {
+    type: "DATA_VISUALIZATION",
+    configuration: null,
+    name: DEFAULT_DATA_VISUALIZATION_NAME,
+    description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
+    configurationRequired: false,
+  } satisfies AssistantBuilderDataVisualizationConfiguration;
 }
 
 export function getDefaultMCPServerActionConfiguration(
@@ -105,5 +139,12 @@ export function getDefaultMCPServerActionConfiguration(
           ? getMcpServerViewDescription(mcpServerView)
           : "",
     configurationRequired: !requirements.noRequirement,
+  };
+}
+
+export function getDataVisualizationActionConfiguration() {
+  return {
+    id: uniqueId(),
+    ...getDataVisualizationConfiguration(),
   };
 }

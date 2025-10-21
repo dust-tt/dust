@@ -8,6 +8,7 @@ import React, { useMemo } from "react";
 
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
+import type { ActionSpecification } from "@app/components/agent_builder/types";
 import {
   InternalActionIcons,
   isCustomResourceIconType,
@@ -88,6 +89,8 @@ interface MCPServerSelectionPageProps {
   topMCPServerViews: MCPServerViewTypeWithLabel[];
   nonTopMCPServerViews: MCPServerViewTypeWithLabel[];
   onItemClick: (mcpServerView: MCPServerViewTypeWithLabel) => void;
+  dataVisualization?: ActionSpecification | null;
+  onDataVisualizationClick?: () => void;
   selectedToolsInSheet?: SelectedTool[];
   onToolDetailsClick?: (tool: SelectedTool) => void;
   featureFlags?: WhitelistableFeature[];
@@ -97,6 +100,8 @@ export function MCPServerSelectionPage({
   topMCPServerViews,
   nonTopMCPServerViews,
   onItemClick,
+  dataVisualization,
+  onDataVisualizationClick,
   selectedToolsInSheet = [],
   onToolDetailsClick,
   featureFlags,
@@ -112,11 +117,12 @@ export function MCPServerSelectionPage({
     return mcpIds;
   }, [selectedToolsInSheet]);
 
+  const hasDataVisualization = dataVisualization && onDataVisualizationClick;
   const hasTopViews = topMCPServerViews.length > 0;
   const hasNonTopViews = nonTopMCPServerViews.length > 0;
   const hasAnyResults =
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    hasTopViews || hasNonTopViews;
+    hasDataVisualization || hasTopViews || hasNonTopViews;
 
   if (!hasAnyResults) {
     return (
@@ -136,6 +142,11 @@ export function MCPServerSelectionPage({
   return (
     <>
       <div className="flex flex-col gap-4 py-2">
+        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
+        {((dataVisualization && onDataVisualizationClick) ||
+          topMCPServerViews) && (
+          <span className="text-lg font-semibold">Top tools</span>
+        )}
         <div className="grid grid-cols-2 gap-3">
           {topMCPServerViews.map((view) => (
             <MCPServerCard

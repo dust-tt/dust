@@ -168,6 +168,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       actions,
       versionAuthorId: agent.authorId,
       maxStepsPerRun: agent.maxStepsPerRun,
+      visualizationEnabled: agent.visualizationEnabled ?? false,
       templateId: agent.templateId
         ? TemplateResource.modelIdToSId({ id: agent.templateId })
         : null,

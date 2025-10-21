@@ -38,6 +38,10 @@ export const DEFAULT_CONVERSATION_SEARCH_ACTION_NAME =
 export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
   "__dust_conversation_history";
 
+export const DEFAULT_DATA_VISUALIZATION_NAME = "data_visualization";
+export const DEFAULT_DATA_VISUALIZATION_DESCRIPTION =
+  "Generate a data visualization.";
+
 export const DEFAULT_MCP_ACTION_NAME = "mcp";
 export const DEFAULT_MCP_ACTION_VERSION = "1.0.0";
 export const DEFAULT_MCP_ACTION_DESCRIPTION =

@@ -1,12 +1,12 @@
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
-import type { AssistantBuilderMCPConfigurationWithId } from "@app/components/assistant_builder/types";
+import type { AssistantBuilderMCPOrVizState } from "@app/components/assistant_builder/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { assertNever } from "@app/types";
 
 export const DISABLED_REASON =
   "Disabled as you cannot use more than one Space + the Company Space.";
 
-type ActionType = AssistantBuilderMCPConfigurationWithId | AgentBuilderAction;
+type ActionType = AssistantBuilderMCPOrVizState | AgentBuilderAction;
 
 export const getSpaceIdToActionsMap = (
   actions: ActionType[],
@@ -53,6 +53,9 @@ export const getSpaceIdToActionsMap = (
             addActionToSpace(mcpServerView.spaceId);
           }
         }
+        break;
+
+      case "DATA_VISUALIZATION": // Data visualization is not an action but we show it in the UI like an action.
         break;
 
       default:

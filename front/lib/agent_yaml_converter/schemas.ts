@@ -74,7 +74,11 @@ export const timeFrameActionConfigurationSchema =
 /**
  * YAML Action Schemas
  */
-export const agentYAMLDataVisualizationActionSchema = baseAgentYAMLActionSchema;
+export const agentYAMLDataVisualizationActionSchema =
+  baseAgentYAMLActionSchema.extend({
+    type: z.literal("DATA_VISUALIZATION"),
+    configuration: z.object({}), // Empty configuration
+  });
 
 export const agentYAMLReasoningModelSchema = z
   .object({
@@ -100,6 +104,7 @@ export const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
 });
 
 export const agentYAMLActionSchema = z.discriminatedUnion("type", [
+  agentYAMLDataVisualizationActionSchema,
   agentYAMLMCPActionSchema,
 ]);
 

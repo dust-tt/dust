@@ -32,6 +32,7 @@ import {
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AssistantBuilderMCPConfigurationWithId } from "@app/components/assistant_builder/types";
+import { getDataVisualizationActionConfiguration } from "@app/components/assistant_builder/types";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
@@ -47,9 +48,14 @@ import type { LightAgentConfigurationType } from "@app/types";
 import { isBuilder, normalizeError, removeNulls } from "@app/types";
 
 function processActionsFromStorage(
-  actions: AssistantBuilderMCPConfigurationWithId[]
+  actions: AssistantBuilderMCPConfigurationWithId[],
+  visualizationEnabled: boolean
 ): AgentBuilderAction[] {
+  const visualizationAction = visualizationEnabled
+    ? [getDataVisualizationActionConfiguration()]
+    : [];
   return [
+    ...visualizationAction,
     ...actions.map((action) => {
       if (action.type === "MCP") {
         return {
@@ -132,8 +138,11 @@ export default function AgentBuilder({
   }, [supportedDataSourceViews]);
 
   const processedActions = useMemo(() => {
-    return processActionsFromStorage(actions ?? emptyArray());
-  }, [actions]);
+    return processActionsFromStorage(
+      actions ?? emptyArray(),
+      agentConfiguration?.visualizationEnabled ?? false
+    );
+  }, [actions, agentConfiguration?.visualizationEnabled]);
 
   const agentSlackChannels = useMemo(() => {
     if (!agentConfiguration || !slackChannelsLinkedWithAgent.length) {

@@ -69,6 +69,7 @@ function _getManagedDataSourceAgent(
     scope: "global" as const,
     userFavorite: false,
     model,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     requestedSpaceIds: [],

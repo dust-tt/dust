@@ -1,4 +1,4 @@
-import { Avatar, CommandIcon, Spinner } from "@dust-tt/sparkle";
+import { Avatar, BarChartIcon, CommandIcon, Spinner } from "@dust-tt/sparkle";
 import _ from "lodash";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
@@ -56,7 +56,13 @@ export function AssistantToolsSection({
   const actions = removeNulls(
     nonHiddenActions.map((action) => renderOtherAction(action, mcpServers))
   );
-
+  if (agentConfiguration.visualizationEnabled) {
+    actions.push({
+      title: "Visualize",
+      avatar: <Avatar icon={BarChartIcon} size="xs" />,
+      order: 0,
+    });
+  }
   const sortedActions = _.uniqBy(_.sortBy(actions, "order", "title"), "title");
 
   const models = [

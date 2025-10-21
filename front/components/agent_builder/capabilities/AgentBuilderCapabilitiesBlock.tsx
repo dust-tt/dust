@@ -1,4 +1,5 @@
 import {
+  Avatar,
   BookOpenIcon,
   Button,
   Card,
@@ -14,7 +15,10 @@ import {
 import React, { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AgentBuilderDataVizAction,
+  AgentBuilderFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import type { SheetMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
@@ -30,10 +34,18 @@ import {
 } from "@app/components/agent_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
+import {
+  DATA_VISUALIZATION_SPECIFICATION,
+  MCP_SPECIFICATION,
+} from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
-import { pluralize } from "@app/types";
+import { asDisplayName, pluralize } from "@app/types";
+
+const dataVisualizationAction = {
+  type: "DATA_VISUALIZATION",
+  ...DATA_VISUALIZATION_SPECIFICATION,
+};
 
 const BACKGROUND_IMAGE_PATH = "/static/IconBar.svg";
 const BACKGROUND_IMAGE_STYLE_PROPS = {
@@ -45,20 +57,30 @@ const BACKGROUND_IMAGE_STYLE_PROPS = {
 };
 
 function actionIcon(
-  action: AgentBuilderAction,
+  action: AgentBuilderAction | AgentBuilderDataVizAction,
   mcpServerView: MCPServerViewType | null
 ) {
   if (mcpServerView?.server) {
     return getAvatar(mcpServerView.server, "xs");
   }
+
+  if (action.type === "DATA_VISUALIZATION") {
+    return (
+      <Avatar icon={DATA_VISUALIZATION_SPECIFICATION.cardIcon} size="xs" />
+    );
+  }
 }
 
 function actionDisplayName(
-  action: AgentBuilderAction,
+  action: AgentBuilderAction | AgentBuilderDataVizAction,
   mcpServerView: MCPServerViewType | null
 ) {
   if (mcpServerView && action.type === "MCP") {
     return getMcpServerViewDisplayName(mcpServerView, action);
+  }
+
+  if (action.type === "DATA_VISUALIZATION") {
+    return asDisplayName(action.name);
   }
 
   return `${MCP_SPECIFICATION.label}${
@@ -67,7 +89,7 @@ function actionDisplayName(
 }
 
 interface ActionCardProps {
-  action: AgentBuilderAction;
+  action: AgentBuilderAction | AgentBuilderDataVizAction;
   onRemove: () => void;
   onEdit?: () => void;
 }
@@ -146,6 +168,12 @@ export function AgentBuilderCapabilitiesBlock({
     index: number | null;
     presetData?: TemplateActionPreset;
   } | null>(null);
+
+  const dataVisualization = fields.some(
+    (field) => field.type === "DATA_VISUALIZATION"
+  )
+    ? null
+    : dataVisualizationAction;
 
   usePresetActionHandler({
     fields,
@@ -322,6 +350,7 @@ export function AgentBuilderCapabilitiesBlock({
       />
       <MCPServerViewsSheet
         addTools={append}
+        dataVisualization={dataVisualization}
         mode={dialogMode}
         onModeChange={setDialogMode}
         onActionUpdate={handleMcpActionUpdate}
