@@ -516,7 +516,7 @@ export async function runModelActivity(
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         message: agentMessage,
-        runIds: [...runIds, await dustRunId],
+        runIds: [...runIds, dustRunId],
       },
       agentMessageRow,
       conversation,
@@ -690,7 +690,7 @@ export async function runModelActivity(
 
   return {
     actions,
-    runId: await dustRunId,
+    runId: dustRunId,
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
     stepContexts,
   };

@@ -85,7 +85,7 @@ export async function getOutputFromAction(
   Result<
     {
       output: Output;
-      dustRunId: Promise<string>;
+      dustRunId: string;
       nativeChainOfThought: string;
     },
     | { type: "shouldRetryMessage"; message: string }
@@ -311,7 +311,7 @@ export async function getOutputFromAction(
 
   return new Ok({
     output: blockExecutionOutput,
-    dustRunId: blockExecutionDustRunId,
+    dustRunId: await blockExecutionDustRunId,
     nativeChainOfThought: blockExecutionNativeChainOfThought,
   });
 }
