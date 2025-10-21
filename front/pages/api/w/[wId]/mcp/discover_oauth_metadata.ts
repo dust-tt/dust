@@ -77,8 +77,9 @@ async function handler(
           const defaultServerConfig = getDefaultRemoteMCPServerByURL(url);
           const connectionMetadata = r2.error.connectionMetadata;
 
-          // If the default server has a static OAuth scope, add it to the connection metadata
-          if (defaultServerConfig?.oauthScope) {
+          // If the server didn't provide a scope and the default server has a static OAuth scope,
+          // use it as a fallback
+          if (!connectionMetadata.scope && defaultServerConfig?.oauthScope) {
             connectionMetadata.scope = defaultServerConfig.oauthScope;
           }
 
