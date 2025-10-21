@@ -203,7 +203,7 @@ export function ScheduleEditionModal({
       editor: trigger?.editor ?? user?.id ?? null,
       naturalLanguageDescription: data.naturalLanguageDescription ?? null,
       customPrompt: data.customPrompt.trim() ?? null,
-      editorEmail: trigger?.editorEmail ?? user?.email,
+      editorName: trigger?.editorName ?? user?.email,
     };
 
     onSave(triggerData);
@@ -229,7 +229,7 @@ export function ScheduleEditionModal({
               You cannot edit this schedule. It is managed by{" "}
               <span className="font-semibold">
                 {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-                {trigger.editorEmail || "another user"}
+                {trigger.editorName || "another user"}
               </span>
               .
             </ContentMessage>

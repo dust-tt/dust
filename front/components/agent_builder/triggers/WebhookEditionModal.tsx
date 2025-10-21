@@ -248,7 +248,7 @@ export function WebhookEditionModal({
     }
 
     const editor = trigger?.editor ?? user.id ?? null;
-    const editorEmail = trigger?.editorEmail ?? user.email ?? undefined;
+    const editorName = trigger?.editorName ?? user.email ?? undefined;
 
     const triggerData: AgentBuilderWebhookTriggerType = {
       sId: trigger?.sId,
@@ -267,7 +267,7 @@ export function WebhookEditionModal({
       },
       webhookSourceViewSId: data.webhookSourceViewSId ?? undefined,
       editor,
-      editorEmail,
+      editorName,
     };
 
     onSave(triggerData);
@@ -330,7 +330,7 @@ export function WebhookEditionModal({
             <ContentMessage variant="info">
               You cannot edit this trigger. It is managed by{" "}
               <span className="font-semibold">
-                {trigger.editorEmail ?? "another user"}
+                {trigger.editorName ?? "another user"}
               </span>
               .
             </ContentMessage>
