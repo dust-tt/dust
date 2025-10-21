@@ -1,5 +1,4 @@
-import { GLOBAL_AGENTS_SID } from "@app/shared/lib/global_agents";
-import { compareForFuzzySort, subFilter } from "@app/shared/lib/utils";
+import { filterAndSortAgents } from "@app/shared/lib/utils";
 
 export interface EditorSuggestion {
   id: string;
@@ -17,30 +16,10 @@ export interface EditorSuggestions {
 
 const SUGGESTION_DISPLAY_LIMIT = 7;
 
-const SUGGESTION_PRIORITY: Record<string, number> = {
-  [GLOBAL_AGENTS_SID.DUST]: 1,
-  [GLOBAL_AGENTS_SID.DEEP_DIVE]: 2,
-};
+// No local priority or special-casing; reuse shared filterAndSortAgents.
 
-function filterAndSortSuggestions(
-  lowerCaseQuery: string,
-  suggestions: EditorSuggestion[]
-) {
-  return suggestions
-    .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
-    .sort((a, b) =>
-      compareForFuzzySort(
-        lowerCaseQuery,
-        a.label.toLocaleLowerCase(),
-        b.label.toLocaleLowerCase()
-      )
-    )
-    .sort((a, b) => {
-      // If within SUGGESTION_DISPLAY_LIMIT there's one from AGENT_PRIORITY, we move it to the top.
-      const aPriority = SUGGESTION_PRIORITY[a.id] ?? Number.MAX_SAFE_INTEGER;
-      const bPriority = SUGGESTION_PRIORITY[b.id] ?? Number.MAX_SAFE_INTEGER;
-      return aPriority - bPriority;
-    });
+function filterAndSortSuggestions(query: string, suggestions: EditorSuggestion[]) {
+  return filterAndSortAgents(suggestions, query) as EditorSuggestion[];
 }
 export function filterSuggestions(
   query: string,
@@ -52,12 +31,10 @@ export function filterSuggestions(
     return suggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
   }
 
-  const lowerCaseQuery = query.toLowerCase();
-
-  const inListSuggestions = filterAndSortSuggestions(
-    lowerCaseQuery,
-    suggestions
-  ).slice(0, SUGGESTION_DISPLAY_LIMIT);
+  const inListSuggestions = filterAndSortSuggestions(query, suggestions).slice(
+    0,
+    SUGGESTION_DISPLAY_LIMIT
+  );
 
   // If there is enough suggestions from the user's list use them.
   if (inListSuggestions.length >= SUGGESTION_DISPLAY_LIMIT) {
@@ -66,7 +43,7 @@ export function filterSuggestions(
 
   // Otherwise, fallback to all the suggestions.
   const allSuggestionsNoDuplicates = filterAndSortSuggestions(
-    lowerCaseQuery,
+    query,
     fallbackSuggestions
   ).filter((item) => !inListSuggestions.find((i) => i.id === item.id));
 
