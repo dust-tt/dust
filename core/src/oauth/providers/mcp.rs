@@ -126,26 +126,29 @@ impl Provider for MCPConnectionProvider {
 
         let expires_in = match raw_json.get("expires_in") {
             Some(serde_json::Value::Number(n)) => match n.as_u64() {
-                Some(n) => n,
+                Some(n) => Some(n),
                 None => Err(anyhow!("Invalid `expires_in` in response from MCP"))?,
             },
             _ => {
-                info!("Missing `expires_in` in response from MCP, using default value of 3600 seconds");
-                3600
+                info!("Missing `expires_in` in response from MCP. It's valid to not return one.");
+                None
             }
         };
 
         // Some MCP servers do not return a refresh token when finalizing an access token.
         let refresh_token = raw_json["refresh_token"].as_str().map(ToString::to_string);
 
+        let access_token_expiry = match expires_in {
+            Some(expires_in) => Some(utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000),
+            None => None,
+        };
+
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             code: code.to_string(),
             access_token: access_token.to_string(),
-            access_token_expiry: Some(
-                utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
-            ),
-            refresh_token: refresh_token,
+            access_token_expiry,
+            refresh_token,
             raw_json,
             extra_metadata: None,
         })
