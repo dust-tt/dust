@@ -17,7 +17,7 @@ import type {
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/text_as_cron_rule";
 import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
 import type { LightWorkspaceType } from "@app/types";
-import { normalizeError } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 export function useAgentTriggers({
   workspaceId,
@@ -77,19 +77,25 @@ export function useTextAsCronRule({
   workspace: LightWorkspaceType;
 }) {
   const textAsCronRule = useCallback(
-    async (naturalDescription: string) => {
-      const r: PostTextAsCronRuleResponseBody = await fetcher(
-        `/api/w/${workspace.sId}/assistant/agent_configurations/text_as_cron_rule`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            naturalDescription,
-            defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          } as PostTextAsCronRuleRequestBody),
-        }
-      );
+    async (naturalDescription: string, signal?: AbortSignal) => {
+      let r: PostTextAsCronRuleResponseBody;
+      try {
+        r = await fetcher(
+          `/api/w/${workspace.sId}/assistant/agent_configurations/text_as_cron_rule`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              naturalDescription,
+              defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            } as PostTextAsCronRuleRequestBody),
+            signal,
+          }
+        );
+      } catch (e: unknown) {
+        return new Err(normalizeError(e));
+      }
 
-      return { cron: r.cronRule, timezone: r.timezone };
+      return new Ok({ cron: r.cronRule, timezone: r.timezone });
     },
     [workspace]
   );

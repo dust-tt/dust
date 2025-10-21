@@ -21,7 +21,10 @@ import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resourc
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { ModelId, Result } from "@app/types";
 import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type {
+  WebhookSourceViewForAdminType,
+  WebhookSourceViewType,
+} from "@app/types/triggers/webhooks";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -181,8 +184,10 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     options?: ResourceFindOptions<WebhookSourcesViewModel>
   ): Promise<WebhookSourcesViewResource | null> {
     const [view] = await this.fetchByIds(auth, [id], options);
-
-    return view ?? null;
+    if (!view || !view.canReadOrAdministrate(auth)) {
+      return null;
+    }
+    return view;
   }
 
   static async fetchByIds(
@@ -200,7 +205,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
           [Op.in]: viewModelIds,
         },
       },
-    });
+    }).then((views) =>
+      views.filter((view) => view.canReadOrAdministrate(auth))
+    );
 
     return views ?? [];
   }
@@ -222,7 +229,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
           [Op.in]: ids,
         },
       },
-    });
+    }).then((views) =>
+      views.filter((view) => view.canReadOrAdministrate(auth))
+    );
 
     return views ?? [];
   }
@@ -239,12 +248,18 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     spaces: SpaceResource[],
     options?: ResourceFindOptions<WebhookSourcesViewModel>
   ): Promise<WebhookSourcesViewResource[]> {
+    const allowedSpaces = spaces.filter((space) =>
+      space.canReadOrAdministrate(auth)
+    );
+    if (allowedSpaces.length === 0) {
+      return [];
+    }
     return this.baseFetch(auth, {
       ...options,
       where: {
         ...options?.where,
         workspaceId: auth.getNonNullableWorkspace().id,
-        vaultId: spaces.map((s) => s.id),
+        vaultId: allowedSpaces.map((s) => s.id),
       },
     });
   }
@@ -254,6 +269,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     space: SpaceResource,
     options?: ResourceFindOptions<WebhookSourcesViewModel>
   ): Promise<WebhookSourcesViewResource[]> {
+    if (!space.canReadOrAdministrate(auth)) {
+      return [];
+    }
     return this.listBySpaces(auth, [space], options);
   }
 
@@ -262,7 +280,6 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     options?: ResourceFindOptions<WebhookSourcesViewModel>
   ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-
     return this.listBySpace(auth, systemSpace, options);
   }
 
@@ -270,7 +287,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     auth: Authenticator,
     space: SpaceResource
   ): Promise<number> {
-    if (space.canRead(auth)) {
+    if (space.canReadOrAdministrate(auth)) {
       return this.model.count({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -287,7 +304,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
   ): Promise<WebhookSourcesViewResource[]> {
     return this.baseFetch(auth, {
       where: { webhookSourceId },
-    });
+    }).then((views) =>
+      views.filter((view) => view.canReadOrAdministrate(auth))
+    );
   }
 
   static async getWebhookSourceViewForSystemSpace(
@@ -313,7 +332,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
 
   public async updateName(
     auth: Authenticator,
-    name?: string
+    name: string
   ): Promise<Result<number, DustError<"unauthorized">>> {
     if (!this.canAdministrate(auth)) {
       return new Err(
@@ -322,7 +341,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     }
 
     const [affectedCount] = await this.update({
-      customName: name ?? null,
+      customName: name,
       editedAt: new Date(),
       editedByUserId: auth.getNonNullableUser().id,
     });
@@ -332,7 +351,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
   public static async bulkUpdateName(
     auth: Authenticator,
     viewIds: ModelId[],
-    name?: string
+    name: string
   ): Promise<void> {
     if (viewIds.length === 0) {
       return;
@@ -340,7 +359,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
 
     await this.model.update(
       {
-        customName: name ?? null,
+        customName: name,
         editedAt: new Date(),
         editedByUserId: auth.getNonNullableUser().id,
       },
@@ -517,18 +536,42 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     };
   }
 
-  // Serialization.
   toJSON(): WebhookSourceViewType {
+    const webhookSource = this.getWebhookSourceResource();
     return {
       id: this.id,
       sId: this.sId,
-      customName: this.customName,
+      customName: this.customName ?? webhookSource.name,
       description: this.description,
       icon: normalizeWebhookIcon(this.icon),
+      kind: webhookSource.kind,
+      subscribedEvents: webhookSource.subscribedEvents,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,
-      webhookSource: this.getWebhookSourceResource().toJSON(),
+      webhookSource: webhookSource.toJSON(),
+      editedByUser: this.makeEditedBy(
+        this.editedByUser,
+        this.webhookSource ? this.webhookSource.updatedAt : this.updatedAt
+      ),
+    };
+  }
+
+  // Serialization.
+  toJSONForAdmin(): WebhookSourceViewForAdminType {
+    const webhookSource = this.getWebhookSourceResource();
+    return {
+      id: this.id,
+      sId: this.sId,
+      customName: this.customName ?? webhookSource.name,
+      description: this.description,
+      icon: normalizeWebhookIcon(this.icon),
+      kind: webhookSource.kind,
+      subscribedEvents: webhookSource.subscribedEvents,
+      createdAt: this.createdAt.getTime(),
+      updatedAt: this.updatedAt.getTime(),
+      spaceId: this.space.sId,
+      webhookSource: webhookSource.toJSONForAdmin(),
       editedByUser: this.makeEditedBy(
         this.editedByUser,
         this.webhookSource ? this.webhookSource.updatedAt : this.updatedAt

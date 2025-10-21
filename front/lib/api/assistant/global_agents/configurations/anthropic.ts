@@ -17,6 +17,8 @@ import {
   CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GLOBAL_AGENTS_SID,
@@ -59,7 +61,6 @@ export function _getClaudeInstantGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
     requestedSpaceIds: [],
@@ -104,7 +105,6 @@ export function _getClaude2GlobalAgent({
 
     actions: [],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
     requestedSpaceIds: [],
@@ -159,7 +159,6 @@ export function _getClaude3HaikuGlobalAgent({
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     requestedSpaceIds: [],
@@ -219,7 +218,6 @@ export function _getClaude3OpusGlobalAgent({
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     requestedSpaceIds: [],
@@ -279,7 +277,6 @@ export function _getClaude3GlobalAgent({
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     requestedSpaceIds: [],
@@ -339,7 +336,6 @@ export function _getClaude4SonnetGlobalAgent({
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     requestedSpaceIds: [],
@@ -387,6 +383,125 @@ export function _getClaude3_7GlobalAgent({
       temperature: 0.7,
       reasoningEffort:
         CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    },
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
+    ],
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    templateId: null,
+    requestedGroupIds: [],
+    requestedSpaceIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+}
+
+export function _getClaude4_5SonnetGlobalAgent({
+  auth,
+  settings,
+  webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET;
+  const metadata = getGlobalAgentMetadata(sId);
+
+  return {
+    id: -1,
+    sId,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    },
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
+    ],
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    visualizationEnabled: false,
+    templateId: null,
+    requestedGroupIds: [],
+    requestedSpaceIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+}
+
+export function _getClaude4_5HaikuGlobalAgent({
+  auth,
+  settings,
+  webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU;
+  const metadata = getGlobalAgentMetadata(sId);
+
+  return {
+    id: -1,
+    sId,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({

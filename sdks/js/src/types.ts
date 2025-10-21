@@ -842,7 +842,8 @@ const LightAgentConfigurationSchema = z.object({
   lastAuthors: AgentRecentAuthorsSchema.optional(),
   usage: AgentUsageTypeSchema.optional(),
   maxStepsPerRun: z.number(),
-  visualizationEnabled: z.boolean(),
+  // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
+  visualizationEnabled: z.boolean().optional(),
   templateId: z.string().nullable(),
   groupIds: z.array(z.string()).optional(),
   requestedGroupIds: z.array(z.array(z.string())),
@@ -984,6 +985,7 @@ const AgentMessageTypeSchema = z.object({
   visibility: VisibilitySchema,
   version: z.number(),
   parentMessageId: z.string().nullable(),
+  parentAgentMessageId: z.string().nullable(),
   configuration: LightAgentConfigurationSchema,
   status: AgentMessageStatusSchema,
   actions: z.array(AgentActionTypeSchema),
@@ -2811,6 +2813,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "DriveLogo"
   | "GcalLogo"
   | "GithubLogo"
+  | "GitlabLogo"
   | "GmailLogo"
   | "GoogleSpreadsheetLogo"
   | "FreshserviceLogo"

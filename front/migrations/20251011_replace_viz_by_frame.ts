@@ -27,6 +27,7 @@ async function updateLegacyVizByFrame(
 
   const agentWithVisualization = await AgentConfiguration.findAll({
     where: {
+      // @ts-expect-error visualizationEnabled is not exposed in the types.
       visualizationEnabled: true,
       workspaceId: workspace.id,
     },
@@ -141,6 +142,7 @@ async function updateLegacyVizByFrame(
   // Finally, disable visualization on all agents that had it enabled.
   if (execute) {
     await AgentConfiguration.update(
+      // @ts-expect-error visualizationEnabled is not exposed in the types.
       { visualizationEnabled: false },
       {
         where: {

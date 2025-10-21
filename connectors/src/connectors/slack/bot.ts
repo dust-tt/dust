@@ -1054,7 +1054,7 @@ async function answerMessage(
   let conversation: ConversationPublicType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
 
-  if (lastSlackChatBotMessage?.conversationId) {
+  if (lastSlackChatBotMessage && lastSlackChatBotMessage.conversationId) {
     // Check conversation existence (it might have been deleted between two messages).
     const existsRes = await dustAPI.getConversation({
       conversationId: lastSlackChatBotMessage.conversationId,
@@ -1274,7 +1274,6 @@ async function makeContentFragments(
           },
           "Failed to upload slack file to conversation"
         );
-        continue;
       } else {
         allContentFragments.push({
           title: fileName,
@@ -1383,7 +1382,7 @@ async function makeContentFragments(
   // Prepend $url to the content to make it available to the model.
   const section = document
     ? `$url: ${url}\n${sectionFullText(document)}`
-    : `$url: ${url}\nNo messages previously sent in this thread.`;
+    : `$url: ${url}\n`;
 
   const contentType = "text/vnd.dust.attachment.slack.thread";
   const fileName = `slack_thread-${channelName}-${threadTs}.txt`;

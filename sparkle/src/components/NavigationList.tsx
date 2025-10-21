@@ -3,6 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import {
+  Icon,
   LinkWrapper,
   LinkWrapperProps,
   ScrollArea,
@@ -80,6 +81,7 @@ const NavigationListItem = React.forwardRef<
       className,
       selected,
       label,
+      icon,
       href,
       target,
       rel,
@@ -152,6 +154,7 @@ const NavigationListItem = React.forwardRef<
                 )}
               />
             )}
+            {icon && <Icon visual={icon} size="sm" />}
             {label && (
               <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8">
                 {label}

@@ -81,12 +81,15 @@ export interface FunctionMessageTypeModel {
   content: string | Content[];
 }
 
-export type ModelMessageTypeMultiActions =
-  | ContentFragmentMessageTypeModel
+export type ModelMessageTypeMultiActionsWithoutContentFragment =
   | UserMessageTypeModel
   | AssistantFunctionCallMessageTypeModel
   | AssistantContentMessageTypeModel
   | FunctionMessageTypeModel;
+
+export type ModelMessageTypeMultiActions =
+  | ModelMessageTypeMultiActionsWithoutContentFragment
+  | ContentFragmentMessageTypeModel;
 
 export function isContentFragmentMessageTypeModel(
   contentFragment: ModelMessageTypeMultiActions
@@ -95,7 +98,7 @@ export function isContentFragmentMessageTypeModel(
 }
 
 export type ModelConversationTypeMultiActions = {
-  messages: ModelMessageTypeMultiActions[];
+  messages: ModelMessageTypeMultiActionsWithoutContentFragment[];
 };
 
 /**

@@ -229,6 +229,7 @@ export const CoreAPIDatasourceViewFilterSchema = t.intersection([
   }),
   t.partial({
     search_scope: CoreAPISearchScopeSchema,
+    filter: t.array(t.string),
   }),
 ]);
 

@@ -37,6 +37,7 @@ export async function updateSpacePermissionsWorkflow({
   lastSignalTime = Date.now();
 
   // Keep waiting until we've had no signals for `debounceMs`.
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const elapsed = Date.now() - lastSignalTime;
     const remainingDebounceTime = currentDebounceMs - elapsed;

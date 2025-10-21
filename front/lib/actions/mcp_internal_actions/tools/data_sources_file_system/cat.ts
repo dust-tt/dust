@@ -8,8 +8,9 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import { renderNode } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   getAgentDataSourceConfigurations,
-  makeDataSourceViewFilter,
+  makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -87,11 +88,19 @@ export function registerCatTool(
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
+        const authRes = await ensureAuthorizedDataSourceViews(
+          auth,
+          agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
+        );
+        if (authRes.isErr()) {
+          return new Err(authRes.error);
+        }
+
         // Search the node using our search api.
         const searchResult = await coreAPI.searchNodes({
           filter: {
             node_ids: [nodeId],
-            data_source_views: makeDataSourceViewFilter(
+            data_source_views: makeCoreSearchNodesFilters(
               agentDataSourceConfigurations
             ),
           },

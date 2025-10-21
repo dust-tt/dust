@@ -21,8 +21,8 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import {
-  createOrUpdateAgentScheduleWorkflow,
-  deleteAgentScheduleWorkflow,
+  createOrUpdateAgentSchedule,
+  deleteTriggerSchedule,
 } from "@app/lib/triggers/temporal/schedule/client";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ModelId, Result } from "@app/types";
@@ -432,7 +432,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   async upsertTemporalWorkflow(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
-        return createOrUpdateAgentScheduleWorkflow({
+        return createOrUpdateAgentSchedule({
           auth,
           trigger: this,
         });
@@ -448,7 +448,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   ): Promise<Result<void, Error>> {
     switch (this.kind) {
       case "schedule":
-        return deleteAgentScheduleWorkflow({
+        return deleteTriggerSchedule({
           workspaceId: auth.getNonNullableWorkspace().sId,
           trigger: this,
         });
@@ -643,6 +643,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       editor: this.editor,
       customPrompt: this.customPrompt,
       enabled: this.enabled,
+      executionPerDayLimitOverride: this.executionPerDayLimitOverride,
+      naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
     };
 

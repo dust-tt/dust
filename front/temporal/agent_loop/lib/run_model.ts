@@ -1,4 +1,3 @@
-import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
 import assert from "assert";
 
 import { buildToolSpecification } from "@app/lib/actions/mcp";
@@ -7,10 +6,6 @@ import {
   tryListMCPTools,
 } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  isDustAppChatBlockType,
-  runActionStreamed,
-} from "@app/lib/actions/server";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { computeStepContexts } from "@app/lib/actions/utils";
@@ -32,7 +27,6 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
-import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -42,14 +36,10 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { getOutputFromAction } from "@app/temporal/agent_loop/lib/get_output_from_action";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent, ModelId } from "@app/types";
-import { removeNulls } from "@app/types";
-import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
-} from "@app/types/assistant/agent_message_content";
+import { assertNever, removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
 const MAX_AUTO_RETRY = 3;
@@ -227,11 +217,7 @@ export async function runModelActivity(
   const availableActions = isLastStep ? [] : mcpActions.flatMap((s) => s.tools);
 
   let fallbackPrompt = "You are a conversational agent";
-  if (
-    agentConfiguration.actions.length ||
-    agentConfiguration.visualizationEnabled ||
-    availableActions.length > 0
-  ) {
+  if (agentConfiguration.actions.length || availableActions.length > 0) {
     fallbackPrompt += " with access to tool use.";
   } else {
     fallbackPrompt += ".";
@@ -308,6 +294,22 @@ export async function runModelActivity(
     return null;
   }
 
+  // Temporarily adding this to check if we can consider contents property only in llms
+  const unexpectedMessage =
+    modelConversationRes.value.modelConversation.messages.find(
+      (m) => m.role === "assistant" && !m.contents && m.content
+    );
+  if (unexpectedMessage) {
+    logger.error(
+      {
+        conversationId: conversation.sId,
+        agentMessageId: agentMessage.sId,
+        step,
+      },
+      "Found assistant message with legacy content field instead of contents array"
+    );
+  }
+
   // Check that specifications[].name are unique. This can happen if the user overrides two actions
   // names with the same name (advanced settings). We return an actionable error if that's the case
   // as we want to keep that as an invariant when interacting with models.
@@ -365,24 +367,6 @@ export async function runModelActivity(
     runConfig.MODEL.prompt_caching = agentConfiguration.model.promptCaching;
   }
 
-  const res = await runActionStreamed(
-    auth,
-    "assistant-v2-multi-actions-agent",
-    runConfig,
-    [
-      {
-        conversation: modelConversationRes.value.modelConversation,
-        specifications,
-        prompt,
-      },
-    ],
-    {
-      conversationId: conversation.sId,
-      workspaceId: conversation.owner.sId,
-      userMessageId: userMessage.sId,
-    }
-  );
-
   // Errors occurring during the multi-actions-agent dust app may be retryable.
   // Their implicit code should be "multi_actions_error".
   async function handlePossiblyRetryableError(message: string) {
@@ -431,216 +415,47 @@ export async function runModelActivity(
     return null;
   }
 
-  if (res.isErr()) {
-    return handlePossiblyRetryableError(res.error.message);
-  }
-
-  const { eventStream, dustRunId } = res.value;
-  let output: {
-    actions: Array<{
-      functionCallId: string;
-      name: string | null;
-      arguments: Record<string, string | boolean | number> | null;
-    }>;
-    generation: string | null;
-    contents: Array<
-      TextContentType | FunctionCallContentType | ReasoningContentType
-    >;
-  } | null = null;
-
-  let isGeneration = true;
-
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
     getDelimitersConfiguration({ agentConfiguration })
   );
 
-  let nativeChainOfThought = "";
+  const getOutputFromActionResponse = await getOutputFromAction(auth, {
+    modelConversationRes,
+    conversation,
+    userMessage,
+    runConfig,
+    specifications,
+    flushParserTokens,
+    contentParser,
+    agentMessageRow,
+    step,
+    agentConfiguration,
+    agentMessage,
+    model,
+    publishAgentError,
+    prompt,
+  });
+
+  if (getOutputFromActionResponse.isErr()) {
+    const error = getOutputFromActionResponse.error;
+
+    switch (error.type) {
+      case "shouldRetryMessage":
+        return handlePossiblyRetryableError(error.message);
+      case "shouldReturnNull":
+        return null;
+      default:
+        assertNever(error);
+    }
+  }
+
+  const { dustRunId, nativeChainOfThought, output } =
+    getOutputFromActionResponse.value;
 
   // Create a new object to avoid mutation
   const updatedFunctionCallStepContentIds = { ...functionCallStepContentIds };
-
-  for await (const event of eventStream) {
-    if (event.type === "function_call") {
-      isGeneration = false;
-    }
-
-    if (event.type === "error") {
-      await flushParserTokens();
-      return handlePossiblyRetryableError(event.content.message);
-    }
-
-    // Heartbeat & sleep allow the activity to be cancelled, e.g. on a "Stop
-    // agent" request. Upon experimentation, both are needed to ensure the
-    // activity receives the cancellation signal. The delay until which is the
-    // signal is received is governed by heartbeat
-    // [throttling](https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling).
-    heartbeat();
-    try {
-      await sleep(1);
-    } catch (err) {
-      if (err instanceof CancelledFailure) {
-        logger.info("Activity cancelled, stopping");
-        return null;
-      }
-      throw err;
-    }
-
-    if (event.type === "tokens" && isGeneration) {
-      for await (const tokenEvent of contentParser.emitTokens(
-        event.content.tokens.text
-      )) {
-        await updateResourceAndPublishEvent(auth, {
-          event: tokenEvent,
-          agentMessageRow,
-          conversation,
-          step,
-        });
-      }
-    }
-
-    if (event.type === "reasoning_tokens") {
-      await updateResourceAndPublishEvent(auth, {
-        event: {
-          type: "generation_tokens",
-          classification: "chain_of_thought",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          text: event.content.tokens.text,
-        },
-        agentMessageRow,
-        conversation,
-        step,
-      });
-
-      nativeChainOfThought += event.content.tokens.text;
-    }
-
-    if (event.type === "reasoning_item") {
-      await updateResourceAndPublishEvent(auth, {
-        event: {
-          type: "generation_tokens",
-          classification: "chain_of_thought",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          text: "\n\n",
-        },
-        agentMessageRow,
-        conversation,
-        step,
-      });
-
-      nativeChainOfThought += "\n\n";
-    }
-
-    if (event.type === "block_execution") {
-      const e = event.content.execution[0][0];
-      if (e.error) {
-        await flushParserTokens();
-        return handlePossiblyRetryableError(e.error);
-      }
-
-      if (event.content.block_name === "MODEL" && e.value) {
-        // Flush early as we know the generation is terminated here.
-        await flushParserTokens();
-
-        const block = e.value;
-        if (!isDustAppChatBlockType(block)) {
-          return handlePossiblyRetryableError(
-            "Received unparsable MODEL block."
-          );
-        }
-
-        // Extract token usage from block execution metadata
-        const meta = e.meta as {
-          token_usage?: {
-            prompt_tokens: number;
-            completion_tokens: number;
-            reasoning_tokens?: number;
-            cached_tokens?: number;
-          };
-        } | null;
-        const reasoningTokens = meta?.token_usage?.reasoning_tokens ?? 0;
-
-        // Pass the current region, which helps decide whether encrypted blocks are usable
-        const currentRegion = regionsConfig.getCurrentRegion();
-        let region: "us" | "eu";
-        switch (currentRegion) {
-          case "europe-west1":
-            region = "eu";
-            break;
-          case "us-central1":
-            region = "us";
-            break;
-          default:
-            throw new Error(`Unexpected region: ${currentRegion}`);
-        }
-
-        const contents = (block.message.contents ?? []).map((content) => {
-          if (content.type === "reasoning") {
-            return {
-              ...content,
-              value: {
-                ...content.value,
-                tokens: 0, // Will be updated for the last reasoning item
-                provider: model.providerId,
-                region,
-              },
-            } satisfies ReasoningContentType;
-          }
-          return content;
-        });
-
-        // We unfortunately don't currently have a proper breakdown of reasoning tokens per item,
-        // so we set the reasoning token count on the last reasoning item.
-        for (let i = contents.length - 1; i >= 0; i--) {
-          const content = contents[i];
-          if (content.type === "reasoning") {
-            content.value.tokens = reasoningTokens;
-            contents[i] = content;
-            break;
-          }
-        }
-
-        output = {
-          actions: [],
-          generation: null,
-          contents,
-        };
-
-        if (block.message.function_calls?.length) {
-          for (const fc of block.message.function_calls) {
-            try {
-              const args = JSON.parse(fc.arguments);
-              output.actions.push({
-                name: fc.name,
-                functionCallId: fc.id,
-                arguments: args,
-              });
-            } catch (error) {
-              await publishAgentError({
-                code: "function_call_error",
-                message: `Error parsing function call arguments: ${error}`,
-                metadata: null,
-              });
-              return null;
-            }
-          }
-        } else {
-          output.generation = block.message.content ?? null;
-        }
-      }
-    }
-  }
-
-  await flushParserTokens();
-
-  if (!output) {
-    return handlePossiblyRetryableError("Agent execution didn't complete.");
-  }
 
   // It is possible that temporal requested activity cancellation but the
   // activity has not yet received the signal. In that case, the agent message
@@ -717,7 +532,7 @@ export async function runModelActivity(
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         message: agentMessage,
-        runIds: [...runIds, await dustRunId],
+        runIds: [...runIds, dustRunId],
       },
       agentMessageRow,
       conversation,
@@ -891,7 +706,7 @@ export async function runModelActivity(
 
   return {
     actions,
-    runId: await dustRunId,
+    runId: dustRunId,
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
     stepContexts,
   };

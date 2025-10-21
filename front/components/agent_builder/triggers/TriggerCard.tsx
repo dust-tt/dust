@@ -3,6 +3,7 @@ import {
   BellIcon,
   Card,
   CardActionButton,
+  Chip,
   TimeIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -62,6 +63,7 @@ export const TriggerCard = ({
       variant="primary"
       className={"min-h-28 select-none"}
       onClick={onEdit}
+      disabled={!trigger.enabled}
       action={
         isEditor && (
           <CardActionButton
@@ -79,15 +81,18 @@ export const TriggerCard = ({
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
           <Avatar visual={getIcon(trigger.kind)} size="xs" />
           <span className="truncate">{trigger.name}</span>
+          {!trigger.enabled && (
+            <Chip size="mini" color="rose" label="Disabled" />
+          )}
         </div>
         <span className="text-muted-foreground dark:text-muted-foreground-night">
           <span className="line-clamp-2 break-words">{description}</span>
         </span>
-        {trigger.editorEmail && (
+        {trigger.editorName && (
           <span className="mt-auto text-xs text-muted-foreground dark:text-muted-foreground-night">
             Managed by{" "}
             <span className="font-semibold">
-              {trigger.editorEmail ?? "another user"}
+              {trigger.editorName ?? "another user"}
             </span>
             .
           </span>

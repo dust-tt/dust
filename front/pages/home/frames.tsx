@@ -168,6 +168,17 @@ function ContentInAction() {
                   </div>
                 </div>
               </div>
+              <div className="mt-6">
+                <Button
+                  variant="primary"
+                  size="md"
+                  label="See example"
+                  href="https://dust.tt/share/frame/4ce02864-6181-451b-812d-b862f0370736"
+                  className="w-full sm:w-auto"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
+              </div>
             </div>
           </div>
 
@@ -214,6 +225,17 @@ function ContentInAction() {
                     </P>
                   </div>
                 </div>
+              </div>
+              <div className="mt-6">
+                <Button
+                  variant="primary"
+                  size="md"
+                  label="See example"
+                  href="https://dust.tt/share/frame/1d641570-96d0-4491-a0ec-9c9426ab1009"
+                  className="w-full sm:w-auto"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
               </div>
             </div>
             <div className="order-1 flex items-center justify-center lg:order-2">
@@ -274,6 +296,17 @@ function ContentInAction() {
                   </div>
                 </div>
               </div>
+              <div className="mt-6">
+                <Button
+                  variant="primary"
+                  size="md"
+                  label="See example"
+                  href="https://dust.tt/share/frame/a8ac6c1e-93e9-473b-92af-dd1e55216ec6"
+                  className="w-full sm:w-auto"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
+              </div>
             </div>
           </div>
 
@@ -319,6 +352,17 @@ function ContentInAction() {
                     </P>
                   </div>
                 </div>
+              </div>
+              <div className="mt-6">
+                <Button
+                  variant="primary"
+                  size="md"
+                  label="See example"
+                  href="https://dust.tt/share/frame/a3819cae-2716-472d-b71d-aa6f960a7079"
+                  className="w-full sm:w-auto"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
               </div>
             </div>
             <div className="order-1 flex items-center justify-center lg:order-2">

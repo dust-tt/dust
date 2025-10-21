@@ -21,7 +21,10 @@ import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok, redactString } from "@app/types";
-import type { WebhookSourceType } from "@app/types/triggers/webhooks";
+import type {
+  WebhookSourceForAdminType as WebhookSourceForAdminType,
+  WebhookSourceType,
+} from "@app/types/triggers/webhooks";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
@@ -71,6 +74,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
           editedAt: new Date(),
           editedByUserId: auth.user()?.id,
           webhookSourceId: webhookSource.id,
+          // on creation there is no custom icon or description
           description: "",
           icon: DEFAULT_WEBHOOK_ICON,
         },
@@ -272,6 +276,18 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
   }
 
   toJSON(): WebhookSourceType {
+    return {
+      id: this.id,
+      sId: this.sId(),
+      name: this.name,
+      kind: this.kind,
+      createdAt: this.createdAt.getTime(),
+      updatedAt: this.updatedAt.getTime(),
+      subscribedEvents: this.subscribedEvents,
+    };
+  }
+
+  toJSONForAdmin(): WebhookSourceForAdminType {
     // Redact secret when outside of the 10-minute window after creation.
     const currentTime = new Date();
     const createdAt = new Date(this.createdAt);
@@ -286,20 +302,13 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
       : null;
 
     return {
-      id: this.id,
-      sId: this.sId(),
-      name: this.name,
+      ...this.toJSON(),
       secret,
       urlSecret: this.urlSecret,
-      kind: this.kind,
-      subscribedEvents: this.subscribedEvents,
       signatureHeader: this.signatureHeader,
       signatureAlgorithm: this.signatureAlgorithm,
-      customHeaders: this.customHeaders,
       remoteMetadata: this.remoteMetadata,
       oauthConnectionId: this.oauthConnectionId,
-      createdAt: this.createdAt.getTime(),
-      updatedAt: this.updatedAt.getTime(),
     };
   }
 }

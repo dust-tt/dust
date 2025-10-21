@@ -15,7 +15,7 @@ export function getWebhookSourceFormDefaults(
   webhookSourceWithViews?: { views: Array<{ spaceId: string }> },
   spaces?: Array<{ sId: string; kind: string }>
 ): WebhookSourceFormValues {
-  const name = view.customName ?? view.webhookSource.name;
+  const name = view.customName;
 
   const sharingSettings: Record<string, boolean> = {};
 

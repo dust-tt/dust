@@ -8,7 +8,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { WAREHOUSES_BROWSE_MIME_TYPE } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import { makeDataSourceViewFilter } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { makeCoreSearchNodesFilters } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -27,7 +27,7 @@ export async function getAvailableWarehouses(
   >
 > {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const dataSourceViewFilter = makeDataSourceViewFilter(
+  const dataSourceViewFilter = makeCoreSearchNodesFilters(
     dataSourceConfigurations
   ).map((view) => ({
     ...view,
@@ -153,7 +153,7 @@ export async function getWarehouseNodes(
   const result = await coreAPI.searchNodes({
     query,
     filter: {
-      data_source_views: makeDataSourceViewFilter(configsToUse),
+      data_source_views: makeCoreSearchNodesFilters(configsToUse),
       parent_id: parentIdToUse ?? undefined,
       node_ids: nodeIdsToUse,
     },
@@ -302,7 +302,7 @@ export async function validateTables(
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const searchResult = await coreAPI.searchNodes({
     filter: {
-      data_source_views: makeDataSourceViewFilter([relevantConfig]),
+      data_source_views: makeCoreSearchNodesFilters([relevantConfig]),
       node_ids: parsedTables.map((t) => t.nodeId),
     },
   });

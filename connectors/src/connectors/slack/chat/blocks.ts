@@ -21,9 +21,6 @@ import { truncate } from "@connectors/types";
  */
 export const MAX_SLACK_MESSAGE_LENGTH = 2500;
 
-export const DUST_URL = "https://dust.tt/home";
-export const SLACK_HELP_URL = "https://docs.dust.tt/docs/slack";
-
 function makeDividerBlock() {
   return {
     type: "divider",
@@ -93,57 +90,7 @@ function makeContextSectionBlocks({
     })
   );
 
-  const resultBlocks = blocks.length ? [makeDividerBlock(), ...blocks] : [];
-
-  return resultBlocks;
-}
-
-export function makeFeedbackButtonBlock({
-  conversationId,
-  messageId,
-  workspaceId,
-}: {
-  conversationId: string;
-  messageId: string;
-  workspaceId: string;
-}) {
-  return [
-    {
-      type: "actions",
-      elements: [
-        {
-          type: "button",
-          text: {
-            type: "plain_text",
-            text: "👍",
-            emoji: true,
-          },
-          action_id: LEAVE_FEEDBACK_UP,
-          value: JSON.stringify({
-            conversationId,
-            messageId,
-            workspaceId,
-            preselectedThumb: "up",
-          }),
-        },
-        {
-          type: "button",
-          text: {
-            type: "plain_text",
-            text: "👎",
-            emoji: true,
-          },
-          action_id: LEAVE_FEEDBACK_DOWN,
-          value: JSON.stringify({
-            conversationId,
-            messageId,
-            workspaceId,
-            preselectedThumb: "down",
-          }),
-        },
-      ],
-    },
-  ];
+  return blocks.length ? [makeDividerBlock(), ...blocks] : [];
 }
 
 export function makeFeedbackSubmittedBlock() {
@@ -173,7 +120,8 @@ function makeThinkingBlock({
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `_${thinkingText}_`,
+            // -2 because we add two underscores for italic
+            text: `_${truncate(thinkingText, MAX_SLACK_MESSAGE_LENGTH - 2)}_`,
           },
         },
       ]
@@ -377,7 +325,7 @@ export function makeErrorBlock(
     ],
     mrkdwn: true,
     unfurl_links: false,
-    text: errorMessage,
+    text: truncate(errorMessage, MAX_SLACK_MESSAGE_LENGTH),
   };
 }
 

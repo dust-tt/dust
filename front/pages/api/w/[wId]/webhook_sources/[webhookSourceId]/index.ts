@@ -2,9 +2,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 export type DeleteWebhookSourceResponseBody = {
   success: true;
@@ -23,8 +25,19 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
+  const isAdmin = await SpaceResource.canAdministrateSystemSpace(auth);
+  if (!isAdmin) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only admin can manage webhook sources.",
+      },
+    });
+  }
+
   const { webhookSourceId } = req.query;
-  if (typeof webhookSourceId !== "string") {
+  if (!isString(webhookSourceId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

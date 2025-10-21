@@ -13,6 +13,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
+import { checkTriggerForExecutionPerDayLimit } from "@app/lib/triggers/common";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
@@ -24,7 +25,7 @@ import type {
 import { assertNever, Ok } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
-import { makeScheduleId } from "../schedule/client";
+import { makeTriggerScheduleId } from "../schedule/client";
 
 /**
  * We want to create individual conversations if the agent outcome will vary from user to user.
@@ -208,6 +209,18 @@ export async function runTriggeredAgentsActivity({
     );
   }
 
+  if (!triggerResource.enabled) {
+    logger.info({ triggerId: trigger.sId }, "Trigger is disabled.");
+    return;
+  }
+
+  const rateLimiterRes = await checkTriggerForExecutionPerDayLimit(auth, {
+    trigger: triggerResource.toJSON(),
+  });
+  if (rateLimiterRes.isErr()) {
+    throw new TriggerNonRetryableError(rateLimiterRes.error.message);
+  }
+
   const subscribers = await triggerResource.getSubscribers(auth);
   if (subscribers.isErr()) {
     throw new TriggerNonRetryableError("Error getting trigger subscribers.");
@@ -217,7 +230,7 @@ export async function runTriggeredAgentsActivity({
   switch (trigger.kind) {
     case "schedule": {
       const client = await getTemporalClientForAgentNamespace();
-      const scheduleId = makeScheduleId(
+      const scheduleId = makeTriggerScheduleId(
         auth.getNonNullableWorkspace().sId,
         trigger.sId
       );
