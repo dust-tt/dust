@@ -5,7 +5,7 @@ import type {
   ModelConversationTypeMultiActions,
 } from "@app/types";
 
-// NoopLLM is a dummy LLM that simply returns "Soupinou!"
+// NoopLLM is a dummy LLM that simply returns "Soupinou!".
 export class NoopLLM extends LLM {
   constructor({ model }: { model: ModelConfigurationType }) {
     super(model);
