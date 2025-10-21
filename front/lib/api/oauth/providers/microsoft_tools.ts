@@ -53,11 +53,7 @@ export class MicrosoftToolsOAuthProvider implements BaseOAuthStrategyProvider {
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
-    if (
-      useCase === "personal_actions" ||
-      useCase === "platform_actions" ||
-      useCase === "bot"
-    ) {
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
       // Require scope to be specified for Microsoft Tools
       return !!extraConfig.scope;
     }
