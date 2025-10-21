@@ -296,6 +296,38 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
+  static async deleteAllForUser(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
+    const triggers = await this.listByUserEditor(auth);
+    if (triggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const r = await concurrentExecutor(
+      triggers,
+      async (trigger) => {
+        try {
+          return await trigger.delete(auth);
+        } catch (error) {
+          return new Err(normalizeError(error));
+        }
+      },
+      {
+        concurrency: 10,
+      }
+    );
+
+    if (r.find((res) => res.isErr())) {
+      return new Err(
+        new Error(
+          `Failed to delete ${r.filter((res) => res.isErr()).length} triggers`
+        )
+      );
+    }
+    return new Ok(undefined);
+  }
+
   static async disableAllForWorkspace(
     auth: Authenticator
   ): Promise<Result<undefined, Error>> {
