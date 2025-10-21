@@ -137,7 +137,12 @@ UserMetadataModel.init(
   {
     modelName: "user_metadata",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["userId", "key"], unique: true }],
+    indexes: [
+      {
+        fields: ["userId", "key"],
+        unique: true,
+      },
+    ],
   }
 );
 UserModel.hasMany(UserMetadataModel, {
