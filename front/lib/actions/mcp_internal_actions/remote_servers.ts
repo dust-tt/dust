@@ -147,7 +147,8 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       "GitLab tools for repository management, issue tracking, and CI/CD operations.",
     url: "https://gitlab.com/api/v4/mcp",
     icon: "GitlabLogo",
-    documentationUrl: "https://docs.gitlab.com/ee/development/mcp/",
+    documentationUrl:
+      "https://docs.gitlab.com/user/gitlab_duo/model_context_protocol/mcp_server/",
     connectionInstructions:
       "GitLab uses OAuth authentication with the 'mcp' scope. For GitLab Self-Managed instances, you can configure a custom URL during setup. The default URL connects to GitLab.com.",
     authMethod: "oauth-dynamic",
