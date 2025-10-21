@@ -84,7 +84,11 @@ impl Provider for DiscordConnectionProvider {
         let _use_case = match connection.metadata()["use_case"].as_str() {
             Some(use_case) => match use_case {
                 "bot" | "personal_actions" => DiscordUseCase::Bot,
-                _ => return Err(ProviderError::from(anyhow!("Discord use_case format invalid"))),
+                _ => {
+                    return Err(ProviderError::from(anyhow!(
+                        "Discord use_case format invalid"
+                    )))
+                }
             },
             None => return Err(ProviderError::from(anyhow!("Discord use_case missing"))),
         };
