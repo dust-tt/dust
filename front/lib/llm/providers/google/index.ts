@@ -35,7 +35,7 @@ export class GoogleLLM extends LLM {
     };
   }
 
-  private updateMetadata(key: string, value: any): void {
+  private updateMetadata(key: string, value: unknown): void {
     this.metadata[key] = value;
   }
 
