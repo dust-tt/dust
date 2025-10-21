@@ -40,6 +40,12 @@ import {
   getCoreSearchArgs,
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import type { SearchWithNodesInputType } from "@app/lib/actions/mcp_internal_actions/types";
+import {
+  DataSourceFilesystemFindInputSchema,
+  SearchWithNodesInputSchema,
+  TagsInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -62,43 +68,10 @@ import {
   timeFrameFromNow,
 } from "@app/types";
 
-const SearchToolInputSchema = z.object({
-  nodeIds: z
-    .array(z.string())
-    .describe(
-      "Array of exact content node IDs to search within. These are the 'nodeId' values from " +
-        "previous search results, which can be folders or files. All children of the designated " +
-        "nodes will be searched. If not provided, all available files and folders will be searched."
-    )
-    .optional(),
-  dataSources:
-    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
-  query: z
-    .string()
-    .describe(
-      "The query to search for. This is a natural language query. It doesn't support any " +
-        "specific filter syntax."
-    ),
-  relativeTimeFrame: z
-    .string()
-    .regex(/^(all|\d+[hdwmy])$/)
-    .describe(
-      "The time frame (relative to LOCAL_TIME) to restrict the search based on the file updated " +
-        "time." +
-        " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
-        " where {k} is a number. Be strict, do not invent invalid values."
-    ),
-});
-
 async function searchCallback(
   auth: Authenticator,
   agentLoopContext: AgentLoopContextType | undefined,
-  {
-    nodeIds,
-    dataSources,
-    query,
-    relativeTimeFrame,
-  }: z.infer<typeof SearchToolInputSchema>,
+  { nodeIds, dataSources, query, relativeTimeFrame }: SearchWithNodesInputType,
   { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] } = {}
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -347,52 +320,7 @@ function createServer(
     "Find content based on their title starting from a specific node. Can be used to find specific " +
       "nodes by searching for their titles. The query title can be omitted to list all nodes " +
       "starting from a specific node. This is like using 'find' in Unix.",
-    {
-      query: z
-        .string()
-        .optional()
-        .describe(
-          "The title to search for. This supports partial matching and does not require the " +
-            "exact title. For example, searching for 'budget' will find 'Budget 2024.xlsx', " +
-            "'Q1 Budget Report', etc..."
-        ),
-      rootNodeId: z
-        .string()
-        .optional()
-        .describe(
-          "The node ID of the node to start the search from. If not provided, the search will " +
-            "start from the root of the filesystem. This ID can be found from previous search " +
-            "results in the 'nodeId' field. This parameter restricts the search to the children " +
-            "and descendant of a specific node. If a node output by this tool or the list tool" +
-            "has children (hasChildren: true), it means that it can be passed as a rootNodeId."
-        ),
-      mimeTypes: z
-        .array(z.string())
-        .optional()
-        .describe(
-          "The mime types to search for. If provided, only nodes with one of these mime types " +
-            "will be returned. If not provided, no filter will be applied. The mime types passed " +
-            "here must be one of the mime types found in the 'mimeType' field."
-        ),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
-      limit: z
-        .number()
-        .optional()
-        .describe(
-          "Maximum number of results to return. Initial searches should use 10-20."
-        ),
-      nextPageCursor: z
-        .string()
-        .optional()
-        .describe(
-          "Cursor for fetching the next page of results. This parameter should only be used to fetch " +
-            "the next page of a previous search. The value should be exactly the 'nextPageCursor' from " +
-            "the previous search result."
-        ),
-    },
+    DataSourceFilesystemFindInputSchema.shape,
     withToolLogging(
       auth,
       {
@@ -501,7 +429,7 @@ function createServer(
       SEARCH_TOOL_NAME,
       "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
         "children of the designated nodes will be searched.",
-      SearchToolInputSchema.shape,
+      SearchWithNodesInputSchema.shape,
       withToolLogging(
         auth,
         {
@@ -525,25 +453,8 @@ function createServer(
       "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
         "children of the designated nodes will be searched.",
       {
-        ...SearchToolInputSchema.shape,
-        tagsIn: z
-          .array(z.string())
-          .optional()
-          .describe(
-            "A list of labels (also called tags) to restrict the search based on the user " +
-              "request and past conversation context. If multiple labels are provided, the " +
-              "search will return documents that have at least one of the labels. You can't " +
-              "check that all labels are present, only that at least one is present. If no labels " +
-              "are provided, the search will  return all documents regardless of their labels."
-          ),
-        tagsNot: z
-          .array(z.string())
-          .optional()
-          .describe(
-            "A list of labels (also called tags) to exclude from the search based on the user " +
-              "request and past conversation context. Any document having one of these labels " +
-              "will be excluded from the search."
-          ),
+        ...SearchWithNodesInputSchema.shape,
+        ...TagsInputSchema.shape,
       },
       withToolLogging(
         auth,
