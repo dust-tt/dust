@@ -294,7 +294,7 @@ const config = {
       username: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_USERNAME"),
       password: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_PASSWORD"),
       analyticsIndex: EnvironmentConfig.getEnvVariable(
-        "ELASTICSEARCH_ANALYTICS_INDEX"
+        "ELASTICSEARCH_ANALYTICS_ALIAS"
       ),
     };
   },
