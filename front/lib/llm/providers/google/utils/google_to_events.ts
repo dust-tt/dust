@@ -165,7 +165,7 @@ export function toEvents({
     appendReasoningAccumulator: (text: string) => void;
     getTextAccumulator: () => string;
     getReasoningAccumulator: () => string;
-    updateMetadata: (key: string, value: any) => void;
+    updateMetadata: (key: string, value: unknown) => void;
   };
 }): LLMEvent[] {
   const events: LLMEvent[] = [];
