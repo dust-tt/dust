@@ -1,55 +1,68 @@
 {
-  "dynamic": "strict",
   "properties": {
-    "timestamp": {
-      "type": "date"
-    },
-    "workspace_id": {
+    "message_id": {
       "type": "keyword"
     },
-    "agent_configuration_id": {
+    "workspace_id": {
       "type": "keyword"
     },
     "conversation_id": {
       "type": "keyword"
     },
-    "message_id": {
+    "agent_id": {
       "type": "keyword"
     },
-    "event": {
+    "agent_version": {
       "type": "keyword"
+    },
+    "user_id": {
+      "type": "keyword"
+    },
+    "timestamp": {
+      "type": "date"
     },
     "status": {
       "type": "keyword"
     },
-    "user_id": {
-      "type": "keyword",
-      "index": false
-    },
     "latency_ms": {
-      "type": "long",
-      "index": false
+      "type": "integer"
     },
-    "input_tokens": {
-      "type": "long",
-      "index": false
-    },
-    "output_tokens": {
-      "type": "long",
-      "index": false
-    },
-    "total_tokens": {
-      "type": "long",
-      "index": false
-    },
-    "cost_cents": {
-      "type": "scaled_float",
-      "scaling_factor": 100,
-      "index": false
-    },
-    "metadata": {
+    "tokens": {
       "type": "object",
-      "enabled": false
+      "properties": {
+        "prompt": {
+          "type": "integer"
+        },
+        "completion": {
+          "type": "integer"
+        },
+        "reasoning": {
+          "type": "integer"
+        },
+        "cached": {
+          "type": "integer"
+        }
+      }
+    },
+    "tools_used": {
+      "type": "nested",
+      "properties": {
+        "step_index": {
+          "type": "short"
+        },
+        "server_name": {
+          "type": "keyword"
+        },
+        "tool_name": {
+          "type": "keyword"
+        },
+        "execution_time_ms": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "keyword"
+        }
+      }
     }
   }
 }
