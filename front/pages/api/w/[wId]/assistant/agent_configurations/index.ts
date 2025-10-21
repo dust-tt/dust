@@ -315,7 +315,6 @@ export async function createOrUpgradeAgentConfiguration({
     name: assistant.name,
     description: assistant.description,
     instructions: assistant.instructions ?? null,
-    visualizationEnabled: assistant.visualizationEnabled,
     pictureUrl: assistant.pictureUrl,
     status: assistant.status,
     scope: assistant.scope,

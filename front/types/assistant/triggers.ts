@@ -37,6 +37,7 @@ export type TriggerType = {
   enabled: boolean;
   webhookSourceViewSId?: string | null;
   createdAt: number;
+  executionPerDayLimitOverride: number | null;
 } & TriggerConfiguration;
 
 export type TriggerKind = TriggerType["kind"];
@@ -84,6 +85,7 @@ const WebhookConfigSchema = t.intersection([
 
 export const TriggerSchema = t.union([
   t.type({
+    enabled: t.boolean,
     name: t.string,
     kind: t.literal("schedule"),
     customPrompt: t.string,
@@ -91,6 +93,7 @@ export const TriggerSchema = t.union([
     editor: t.union([t.number, t.undefined]),
   }),
   t.type({
+    enabled: t.boolean,
     name: t.string,
     kind: t.literal("webhook"),
     customPrompt: t.string,

@@ -27,6 +27,7 @@ export class WebhookRequestTriggerModel extends WorkspaceAwareModel<WebhookReque
   declare updatedAt: CreationOptional<Date>;
 
   declare status: WebhookRequestTriggerStatus;
+  declare errorMessage: string | null;
   declare webhookRequestId: ForeignKey<WebhookRequestModel["id"]>;
   declare triggerId: ForeignKey<TriggerModel["id"]>;
 
@@ -51,6 +52,11 @@ WebhookRequestTriggerModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "not_matched",
+    },
+    errorMessage: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: null,
     },
     webhookRequestId: {
       type: DataTypes.BIGINT,

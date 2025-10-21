@@ -85,7 +85,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "deepseek-ai/DeepSeek-R1" // togetherai
   | "deepseek-chat" // deepseek api
   | "deepseek-reasoner" // deepseek api
-  | "accounts/fireworks/models/deepseek-r1" // fireworks
+  | "accounts/fireworks/models/deepseek-r1-0528" // fireworks
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
@@ -842,7 +842,8 @@ const LightAgentConfigurationSchema = z.object({
   lastAuthors: AgentRecentAuthorsSchema.optional(),
   usage: AgentUsageTypeSchema.optional(),
   maxStepsPerRun: z.number(),
-  visualizationEnabled: z.boolean(),
+  // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
+  visualizationEnabled: z.boolean().optional(),
   templateId: z.string().nullable(),
   groupIds: z.array(z.string()).optional(),
   requestedGroupIds: z.array(z.array(z.string())),

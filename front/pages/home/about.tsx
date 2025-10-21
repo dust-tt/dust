@@ -535,7 +535,7 @@ export default function About() {
             )}
           >
             <div className="flex w-full flex-row xl:max-w-lg">
-              <H2>We're crafting the AI operating system for enterprises</H2>
+              <H2>We're crafting the AI operating system for the enterprise</H2>
             </div>
             <div className="flex w-full flex-col gap-2 xl:max-w-xl">
               <P>

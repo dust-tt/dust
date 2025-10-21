@@ -331,6 +331,7 @@ async function handler(
           agentConfigurationId,
           name: validatedTrigger.name,
           kind: validatedTrigger.kind,
+          enabled: validatedTrigger.enabled,
           configuration: validatedTrigger.configuration,
           customPrompt: validatedTrigger.customPrompt,
           editor: auth.getNonNullableUser().id,

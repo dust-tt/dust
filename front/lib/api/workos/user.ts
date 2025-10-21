@@ -163,7 +163,8 @@ export async function getWorkOSSessionFromCookie(
         };
       } else {
         return {
-          cookie: "",
+          // Return the previous cookie in case it fails.
+          cookie: workOSSessionCookie,
           session: undefined,
         };
       }

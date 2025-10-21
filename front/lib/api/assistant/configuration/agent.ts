@@ -318,7 +318,6 @@ export async function createAgentConfiguration(
     name,
     description,
     instructions,
-    visualizationEnabled,
     pictureUrl,
     status,
     scope,
@@ -333,7 +332,6 @@ export async function createAgentConfiguration(
     name: string;
     description: string;
     instructions: string | null;
-    visualizationEnabled: boolean;
     pictureUrl: string;
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
@@ -436,7 +434,6 @@ export async function createAgentConfiguration(
           temperature: model.temperature,
           reasoningEffort: model.reasoningEffort,
           maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-          visualizationEnabled,
           pictureUrl,
           workspaceId: owner.id,
           authorId: user.id,
@@ -569,7 +566,6 @@ export async function createAgentConfiguration(
       pictureUrl: agent.pictureUrl,
       status: agent.status,
       maxStepsPerRun: agent.maxStepsPerRun,
-      visualizationEnabled: agent.visualizationEnabled ?? false,
       templateId: template?.sId ?? null,
       // TODO(2025-10-17 thomas): Remove requestedGroupIds.
       requestedGroupIds: agent.requestedGroupIds.map((groups) =>
@@ -674,7 +670,6 @@ export async function createGenericAgentConfiguration(
     name,
     description,
     instructions,
-    visualizationEnabled: false,
     pictureUrl,
     status: "active",
     scope: "hidden", // Unpublished

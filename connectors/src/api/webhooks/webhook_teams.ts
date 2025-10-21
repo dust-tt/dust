@@ -9,7 +9,10 @@ import {
   createErrorAdaptiveCard,
   createThinkingAdaptiveCard,
 } from "@connectors/api/webhooks/teams/adaptive_cards";
-import { botAnswerMessage } from "@connectors/api/webhooks/teams/bot";
+import {
+  botAnswerMessage,
+  sendFeedback,
+} from "@connectors/api/webhooks/teams/bot";
 import {
   sendActivity,
   sendTextMessage,
@@ -178,7 +181,11 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
       // Handle different activity types
       switch (context.activity.type) {
         case "message":
-          await handleMessage(context, connector);
+          if (context.activity.value?.verb) {
+            await handleInteraction(context, connector);
+          } else {
+            await handleMessage(context, connector);
+          }
           break;
 
         default:
@@ -197,13 +204,15 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
 
 async function handleMessage(
   context: TurnContext,
-  connector: ConnectorResource
+  connector: ConnectorResource,
+  message?: string
 ) {
-  if (!context.activity.text?.trim()) {
+  message = message || context.activity.text;
+  if (!message?.trim()) {
     return;
   }
 
-  logger.info({ text: context.activity.text }, "Handling regular text message");
+  logger.info({ text: message }, "Handling regular text message");
 
   // Send thinking message
   const thinkingCard = createThinkingAdaptiveCard();
@@ -245,7 +254,7 @@ async function handleMessage(
 
   const result = await botAnswerMessage(
     context,
-    context.activity.text,
+    message,
     connector,
     thinkingActivity.value
   );
@@ -260,4 +269,46 @@ async function handleMessage(
       })
     );
   }
+}
+
+async function handleInteraction(
+  context: TurnContext,
+  connector: ConnectorResource
+) {
+  const { verb } = context.activity.value;
+
+  logger.info({ verb }, "Handling interaction from adaptive card");
+
+  switch (verb) {
+    case "ask_agent":
+      await handleAgentSelection(context, connector);
+      break;
+    case "like":
+      await sendFeedback({ context, connector, thumbDirection: "up" });
+      break;
+    case "dislike":
+      await sendFeedback({ context, connector, thumbDirection: "down" });
+      break;
+    default:
+      logger.info({ verb }, "Unhandled interaction verb");
+      break;
+  }
+}
+
+async function handleAgentSelection(
+  context: TurnContext,
+  connector: ConnectorResource
+) {
+  const { selectedAgent, originalMessage } = context.activity.value;
+  // Clean the message and add agent mention
+  const cleanMessage = originalMessage
+    .replace(/^[@+~][a-zA-Z0-9_-]+\s*/, "")
+    .replace(/:mention\[([^\]]+)\]\{sId=([^}]+)\}/g, "")
+    .trim();
+  const agentMessage = `@${selectedAgent} ${cleanMessage}`;
+  await handleMessage(context, connector, agentMessage);
+  logger.info(
+    { selectedAgent, originalMessage },
+    "Handling agent selection from adaptive card"
+  );
 }

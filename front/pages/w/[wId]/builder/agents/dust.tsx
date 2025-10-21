@@ -59,7 +59,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const owner = auth.workspace();
   const subscription = auth.subscription();
 
-  if (!owner || !auth.isBuilder() || !subscription) {
+  if (!owner || !auth.isAdmin() || !subscription) {
     return {
       notFound: true,
     };

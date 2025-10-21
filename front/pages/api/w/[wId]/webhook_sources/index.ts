@@ -102,7 +102,6 @@ async function handler(
         secret,
         signatureHeader,
         signatureAlgorithm,
-        customHeaders,
         includeGlobal,
         subscribedEvents,
         kind,
@@ -127,7 +126,6 @@ async function handler(
           signatureHeader:
             trimmedSignatureHeader.length > 0 ? trimmedSignatureHeader : null,
           signatureAlgorithm,
-          customHeaders,
           subscribedEvents,
         });
 

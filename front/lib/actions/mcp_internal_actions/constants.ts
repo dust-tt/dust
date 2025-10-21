@@ -1079,6 +1079,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: {
       search_in_files: "never_ask",
       search_drive_items: "never_ask",
+      update_word_document: "high",
       get_file_content: "never_ask",
     },
     tools_retry_policies: undefined,
@@ -1091,7 +1092,7 @@ The directive should be used to display a clickable version of the agent name in
         provider: "microsoft_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
         scope:
-          "User.Read Files.Read.All Sites.Read.All ExternalItem.Read.All" as const,
+          "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All" as const,
       },
       icon: "MicrosoftLogo",
       documentationUrl: "https://docs.dust.tt/docs/microsoft-drive-tool-setup",

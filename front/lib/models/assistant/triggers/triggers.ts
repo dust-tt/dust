@@ -30,6 +30,7 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare webhookSourceViewId: ForeignKey<WebhookSourcesViewModel["id"]> | null;
 
   declare configuration: TriggerConfigurationType;
+  declare executionPerDayLimitOverride: number | null;
 }
 
 TriggerModel.init(
@@ -73,6 +74,11 @@ TriggerModel.init(
     webhookSourceViewId: {
       type: DataTypes.BIGINT,
       allowNull: true,
+    },
+    executionPerDayLimitOverride: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

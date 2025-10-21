@@ -161,6 +161,26 @@ export async function validateAction(
       : false;
   }, getMessageChannelId(messageId));
 
+  // We only launch the agent loop if there are no remaining blocked actions.
+  const blockedActions =
+    await AgentMCPActionResource.listBlockedActionsForConversation(
+      auth,
+      conversationId
+    );
+
+  // Harmless very rare race condition here where 2 validations get
+  // blockedActions.length === 0. launchAgentLoopWorkflow will be called twice,
+  // but only one will succeed.
+  if (blockedActions.length > 0) {
+    logger.info(
+      {
+        blockedActions,
+      },
+      "Skipping agent loop launch because there are remaining blocked actions"
+    );
+    return new Ok(undefined);
+  }
+
   await launchAgentLoopWorkflow({
     auth,
     agentLoopArgs: {
@@ -173,6 +193,11 @@ export async function validateAction(
     },
     // Resume from the step where the action was created.
     startStep: agentStepContent.step,
+    // Wait for completion of the agent loop workflow that triggered the
+    // validation. This avoids race conditions where validation re-triggers the
+    // agent loop before it completes, and thus throws a workflow already
+    // started error.
+    waitForCompletion: true,
   });
 
   logger.info(

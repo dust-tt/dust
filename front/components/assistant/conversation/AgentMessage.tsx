@@ -445,7 +445,7 @@ export function AgentMessage({
 
   const renderName = useCallback(
     () => (
-      <span className="inline-flex items-center text-muted-foreground dark:text-muted-foreground-night">
+      <span className="inline-flex items-center">
         <AgentHandle
           assistant={{
             sId: agentConfiguration.sId,
