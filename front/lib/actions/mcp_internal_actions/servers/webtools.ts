@@ -14,7 +14,6 @@ import {
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
@@ -116,33 +115,7 @@ function createServer(
   server.tool(
     WEBBROWSER_TOOL_NAME,
     "A tool to browse websites, you can provide a list of urls to browse all at once.",
-    {
-      urls: z.string().array().describe("List of urls to browse"),
-      format: z
-        .enum(["markdown", "html"])
-        .optional()
-        .describe("Format to return content: 'markdown' (default) or 'html'."),
-      screenshotMode: z
-        .enum(["none", "viewport", "fullPage"])
-        .optional()
-        .describe(
-          "Screenshot mode: 'none' (default), 'viewport', or 'fullPage'."
-        ),
-      links: z
-        .boolean()
-        .optional()
-        .describe("If true, also retrieve outgoing links from the page."),
-      useSummary: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN
-      ]
-        .describe(
-          "Summarize web pages using an AI agent before returning content. When enabled, provides concise summaries instead of full page content."
-        )
-        .default({
-          value: false,
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
-        }),
-    },
+    WebbrowseInputSchema.shape,
     withToolLogging(
       auth,
       {
