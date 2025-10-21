@@ -18,6 +18,7 @@ export { default as GcalLogo } from "./Gcal";
 export { default as GeminiLogo } from "./Gemini";
 export { default as GithubLogo } from "./Github";
 export { default as GithubWhiteLogo } from "./GithubWhite";
+export { default as GitlabLogo } from "./Gitlab";
 export { default as GmailLogo } from "./Gmail";
 export { default as GongLogo } from "./Gong";
 export { default as GoogleLogo } from "./Google";
