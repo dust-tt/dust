@@ -137,6 +137,7 @@ hyper = { version = "1.3.1", features = ["full"] }
 init-tracing-opentelemetry =  { version = "0.29.0", features = ["tracing_subscriber_ext"] }
 itertools = "0.10"
 jsonwebtoken = "9.3.0"
+openssl = { version = "0.10", features = ["vendored"] }
 lazy_static = "1.4"
 once_cell = "1.18"
 opentelemetry = "0.30.0"

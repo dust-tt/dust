@@ -44,6 +44,7 @@ function handleTestConnectionError(
 ): "INVALID_CONFIGURATION" {
   switch (e.code) {
     case "INVALID_CREDENTIALS":
+    case "INVALID_ACCOUNT":
     case "NOT_READONLY":
     case "NO_TABLES":
       return "INVALID_CONFIGURATION";

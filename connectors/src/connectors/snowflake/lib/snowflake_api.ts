@@ -1,6 +1,7 @@
+import { createHash, createPrivateKey, createPublicKey } from "node:crypto";
+
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-import crypto from "crypto";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -58,6 +59,7 @@ type SnowflakeFutureGrant = t.TypeOf<typeof snowflakeFutureGrantCodec>;
 
 type TestConnectionErrorCode =
   | "INVALID_CREDENTIALS"
+  | "INVALID_ACCOUNT"
   | "NOT_READONLY"
   | "NO_TABLES"
   | "UNKNOWN";
@@ -90,21 +92,70 @@ export const testConnection = async ({
   // Connect to snowflake, fetch tables and grants, and close the connection.
   const connectionRes = await connectToSnowflake(credentials);
   if (connectionRes.isErr()) {
+    const err = connectionRes.error;
+
+    const msg = err.message ?? "Unknown error";
+
     if (
-      connectionRes.error.name === "OperationFailedError" ||
-      connectionRes.error.name === "InvalidPrivateKeyError"
+      msg.includes("Hostname/IP does not match certificate's altnames") ||
+      msg.includes("ERR_TLS_CERT_ALTNAME_INVALID") ||
+      msg.includes("Connection attempt timed out while contacting Snowflake") ||
+      err.name === "NetworkError"
     ) {
+      const acc = credentials.account.replace(/_/g, "-");
+      const hostAttempt = acc.includes(".")
+        ? `${acc.split(".")[0]}.${acc.split(".")[1]}.snowflakecomputing.com`
+        : `${acc}.snowflakecomputing.com`;
+      const hint = `The account string appears incorrect. Attempted host: ${hostAttempt}. Use the org-account prefix from your Snowflake login URL (e.g., ORG-ACCOUNT), or use locator+region (e.g., account=ACCOUNT_LOCATOR, region=CLOUD_REGION).`;
       return new Err(
-        new TestConnectionError(
-          "INVALID_CREDENTIALS",
-          connectionRes.error.message
-        )
+        new TestConnectionError("INVALID_ACCOUNT", `${msg} ${hint}`)
       );
     }
 
-    return new Err(
-      new TestConnectionError("UNKNOWN", connectionRes.error.message)
-    );
+    if (err.name === "InvalidPrivateKeyError") {
+      return new Err(
+        new TestConnectionError("INVALID_CREDENTIALS", err.message)
+      );
+    }
+
+    if (
+      err.name === "OperationFailedError" ||
+      msg.includes("JWT token is invalid")
+    ) {
+      let fingerprint: string | undefined = undefined;
+      try {
+        if ("private_key" in credentials) {
+          const keyObj = createPublicKey({
+            key: createPrivateKey({
+              key: credentials.private_key.trim(),
+              format: "pem",
+              passphrase: credentials.private_key_passphrase ?? "",
+            }).export({ format: "pem", type: "pkcs8" }),
+            format: "pem",
+          });
+          const der = keyObj.export({ format: "der", type: "spki" }) as Buffer;
+          fingerprint =
+            "SHA256:" +
+            createHash("sha256").update(new Uint8Array(der)).digest("base64");
+        }
+      } catch (e) {
+        logger.warn(
+          {
+            provider: "snowflake",
+            error: e instanceof Error ? e.message : String(e),
+          },
+          "Failed to compute public key fingerprint for error context"
+        );
+      }
+      const extra = fingerprint
+        ? ` Verify the Snowflake user ${credentials.username} has RSA_PUBLIC_KEY_FP = ${fingerprint} (DESC USER ${credentials.username};). If not, set RSA_PUBLIC_KEY to the base64 DER public key.`
+        : ` Verify the Snowflake user ${credentials.username} has the correct RSA public key for the provided private key.`;
+      return new Err(
+        new TestConnectionError("INVALID_CREDENTIALS", `${msg}.${extra}`)
+      );
+    }
+
+    return new Err(new TestConnectionError("UNKNOWN", msg));
   }
 
   const connection = connectionRes.value;
@@ -158,6 +209,10 @@ export async function connectToSnowflake(
         : undefined,
       proxyUser: process.env.PROXY_USER_NAME,
       proxyPassword: process.env.PROXY_USER_PASSWORD,
+
+      retryTimeout: process.env.SNOWFLAKE_RETRY_TIMEOUT
+        ? parseInt(process.env.SNOWFLAKE_RETRY_TIMEOUT)
+        : 15,
     };
 
     if ("password" in credentials) {
@@ -178,7 +233,7 @@ export async function connectToSnowflake(
             ? credentials.private_key_passphrase
             : "";
 
-        const privateKeyObject = crypto.createPrivateKey({
+        const privateKeyObject = createPrivateKey({
           key: credentials.private_key.trim(),
           format: "pem",
           passphrase: passphraseToUse,
@@ -217,15 +272,50 @@ export async function connectToSnowflake(
     }
 
     const connection = await new Promise<Connection>((resolve, reject) => {
-      snowflake
-        .createConnection(connectionOptions)
-        .connect((err: SnowflakeError | undefined, conn: Connection) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(conn);
+      const connectTimeoutMs = process.env.SNOWFLAKE_CONNECT_TIMEOUT_MS
+        ? parseInt(process.env.SNOWFLAKE_CONNECT_TIMEOUT_MS)
+        : 15000;
+
+      const conn = snowflake.createConnection(connectionOptions);
+      let settled = false;
+
+      const timeout = setTimeout(
+        () => {
+          if (settled) {
+            return;
           }
-        });
+          settled = true;
+          try {
+            conn.destroy((err: SnowflakeError | undefined) => {
+              if (err) {
+                reject(err as unknown as Error);
+                return;
+              }
+              reject(
+                new Error(
+                  "Connection attempt timed out while contacting Snowflake. This often indicates an invalid account or region hostname."
+                )
+              );
+            });
+          } catch (e) {
+            reject(e instanceof Error ? e : new Error(String(e)));
+          }
+        },
+        isNaN(connectTimeoutMs) ? 15000 : connectTimeoutMs
+      );
+
+      conn.connect((err: SnowflakeError | undefined, c: Connection) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeout);
+        if (err) {
+          reject(err);
+        } else {
+          resolve(c);
+        }
+      });
     });
 
     return new Ok(connection);
@@ -524,14 +614,19 @@ async function _checkRoleGrants(
         "TASK",
       ].includes(grantOn)
     ) {
-      if (g.privilege !== "MONITOR") {
-        return new Err(
-          new TestConnectionError(
-            "NOT_READONLY",
-            `Non-monitor grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
-          )
-        );
+      if (
+        ["MODIFY PROGRAMMATIC AUTHENTICATION METHODS", "MONITOR"].includes(
+          g.privilege
+        )
+      ) {
+        continue;
       }
+      return new Err(
+        new TestConnectionError(
+          "NOT_READONLY",
+          `Non-monitor grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+        )
+      );
     } else if (["ROLE", "DATABASE_ROLE"].includes(grantOn)) {
       // For roles, allow USAGE (role inheritance) but recursively check the parent role
       if (g.privilege !== "USAGE") {

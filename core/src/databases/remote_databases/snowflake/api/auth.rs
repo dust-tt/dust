@@ -20,12 +20,10 @@ pub async fn login(
     auth: &SnowflakeAuthMethod,
     config: &SnowflakeClientConfig,
 ) -> Result<String> {
-    debug!("login() called");
     let url = format!(
         "https://{account}.snowflakecomputing.com/session/v1/login-request",
         account = config.account
     );
-    debug!("Login URL: {}", url);
 
     let mut queries = vec![];
     if let Some(warehouse) = &config.warehouse {
@@ -42,8 +40,6 @@ pub async fn login(
     }
 
     let login_data = login_request_data(username, auth, config)?;
-    debug!("Sending login request...");
-    debug!("Query params: {:?}", queries);
 
     let start_time = std::time::Instant::now();
     let response = match http
@@ -55,18 +51,13 @@ pub async fn login(
         .send()
         .await
     {
-        Ok(resp) => {
-            debug!("Got response after {:?}", start_time.elapsed());
-            resp
-        }
+        Ok(resp) => resp,
         Err(e) => {
-            debug!("Request failed after {:?}: {:?}", start_time.elapsed(), e);
             return Err(e.into());
         }
     };
 
     let status = response.status();
-    debug!("Response status: {}", status);
     let body = response.text().await?;
     if !status.is_success() {
         debug!("Login failed with status {}: {}", status, body);
@@ -148,30 +139,130 @@ fn generate_jwt_from_key_pair(
         &payload,
         &key,
     )?;
+
     Ok(jwt)
 }
 
 fn try_parse_private_key(pem: &str, password: Option<&[u8]>) -> Result<RsaPrivateKey> {
-    if let Some(password) = password {
-        if !password.is_empty() {
-            if let Ok(private) = RsaPrivateKey::from_pkcs8_encrypted_pem(pem, password) {
-                return Ok(private);
+    let trimmed = pem.trim();
+
+    // Detect the PEM label, if any, to provide targeted guidance.
+    let pem_label = trimmed
+        .lines()
+        .find_map(|l| l.strip_prefix("-----BEGIN "))
+        .and_then(|rest| rest.strip_suffix("-----"))
+        .map(|s| s.trim().to_string());
+
+    if let Some(label) = pem_label.as_deref() {
+        // Common misconfigurations: PUBLIC KEY and ENCRYPTED PRIVATE KEY
+        if label.eq_ignore_ascii_case("PUBLIC KEY") {
+            return Err(Error::Decode(
+                "A public key was provided. Please supply a private key PEM (-----BEGIN PRIVATE KEY----- or -----BEGIN RSA PRIVATE KEY-----). \
+If you copied the Snowflake RSA_PUBLIC_KEY into this field, replace it with the corresponding private key.".to_string(),
+            ));
+        }
+
+        if label.eq_ignore_ascii_case("ENCRYPTED PRIVATE KEY") {
+            // If password is missing or empty, fail fast with a clear hint.
+            let needs_pass = match password {
+                Some(p) => p.is_empty(),
+                None => true,
+            };
+            if needs_pass {
+                return Err(Error::Decode(
+                    "An encrypted private key was provided but no passphrase is set. Provide 'private_key_passphrase' or use an unencrypted PKCS#8 private key.".to_string(),
+                ));
+            }
+
+            // Try native PKCS#8 decrypt first; if it fails, we will fallback to OpenSSL below
+            match RsaPrivateKey::from_pkcs8_encrypted_pem(trimmed, password.unwrap()) {
+                Ok(k) => return Ok(k),
+                Err(_) => {
+                    // continue to OpenSSL fallback
+                }
             }
         }
     }
 
-    if let Ok(private) = RsaPrivateKey::from_pkcs8_encrypted_pem(pem, b"") {
+    // Try the encrypted (empty passphrase) case (some keys are intentionally empty-passphrase).
+    if let Ok(private) = RsaPrivateKey::from_pkcs8_encrypted_pem(trimmed, b"") {
         return Ok(private);
     }
 
-    RsaPrivateKey::from_pkcs8_pem(pem).or_else(|pkcs8_err| {
-        RsaPrivateKey::from_pkcs1_pem(pem).map_err(|pkcs1_err| {
-            Error::Decode(format!(
-                "Failed to parse private key. PKCS8 error: {}, PKCS1 error: {}",
-                pkcs8_err, pkcs1_err
-            ))
-        })
-    })
+    // Try unencrypted PKCS#8, then PKCS#1
+    match RsaPrivateKey::from_pkcs8_pem(trimmed) {
+        Ok(k) => return Ok(k),
+        Err(pkcs8_err) => match RsaPrivateKey::from_pkcs1_pem(trimmed) {
+            Ok(k) => return Ok(k),
+            Err(pkcs1_err) => {
+                // OpenSSL fallback: handle legacy encrypted formats and broader algs.
+                use openssl::pkey::PKey;
+                let maybe_pkey = if let Some(pass) = password {
+                    let mut pw = pass.to_vec();
+                    PKey::private_key_from_pem_passphrase(trimmed.as_bytes(), &mut pw)
+                } else {
+                    PKey::private_key_from_pem(trimmed.as_bytes())
+                };
+
+                // If OpenSSL successfully parsed, convert to a form rsa crate understands.
+                {
+                    use openssl::pkey::Id;
+                    if let Ok(pkey) = maybe_pkey {
+                        if pkey.id() != Id::RSA {
+                            return Err(Error::UnsupportedFormat(format!(
+                                "Unsupported private key algorithm: {:?}",
+                                pkey.id()
+                            )));
+                        }
+                        // Export to unencrypted PKCS#8 PEM and parse with rsa.
+                        match pkey.private_key_to_pem_pkcs8() {
+                            Ok(pkcs8_pem) => {
+                                if let Ok(rsa_key) = RsaPrivateKey::from_pkcs8_pem(
+                                    std::str::from_utf8(&pkcs8_pem).unwrap_or_default(),
+                                ) {
+                                    return Ok(rsa_key);
+                                }
+                            }
+                            Err(_) => {
+                                // Continue to the next fallback.
+                            }
+                        }
+                        // Fallback: export PKCS#1 DER and parse
+                        match pkey.rsa() {
+                            Ok(r) => match r.private_key_to_der() {
+                                Ok(der) => match RsaPrivateKey::from_pkcs1_der(&der) {
+                                    Ok(rsa_key) => return Ok(rsa_key),
+                                    Err(e) => {
+                                        return Err(Error::Decode(format!(
+                                            "Failed to parse OpenSSL-exported RSA DER: {}",
+                                            e
+                                        )))
+                                    }
+                                },
+                                Err(e) => {
+                                    return Err(Error::Decode(format!(
+                                        "OpenSSL failed exporting PKCS#1 DER: {}",
+                                        e
+                                    )))
+                                }
+                            },
+                            Err(e) => {
+                                return Err(Error::Decode(format!(
+                                    "OpenSSL failed extracting RSA key: {}",
+                                    e
+                                )))
+                            }
+                        }
+                    }
+                }
+
+                Err(Error::Decode(format!(
+                    "Failed to parse private key. PKCS8 error: {}, PKCS1 error: {}",
+                    pkcs8_err, pkcs1_err
+                )))
+            }
+        },
+    }
 }
 
 #[derive(serde::Deserialize)]
