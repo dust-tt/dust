@@ -38,12 +38,19 @@ function AreaLatencyTooltip({
     return null;
   }
 
+  const colorMap: Record<string, string> = {
+    avg: "text-[hsl(var(--chart-1))]",
+    p50: "text-[hsl(var(--chart-2))]",
+    p95: "text-[hsl(var(--chart-3))]",
+  };
+
   const rows = payload
     .filter((p) => typeof p.value === "number")
     .sort((a, b) => (b.name || "").localeCompare(a.name || ""))
     .map((p) => ({
       label: String(p.name),
       value: `${p.value}ms`,
+      colorClassName: colorMap[String(p.name)] ?? undefined,
     }));
 
   return <ChartTooltipCard title={String(label)} rows={rows} />;
