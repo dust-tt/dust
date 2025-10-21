@@ -34,6 +34,7 @@ import { assertNever } from "@app/types";
 const scheduleFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
   enabled: z.boolean().default(true),
+  naturalLanguageDescription: z.string().optional(),
   customPrompt: z.string(),
   cron: z.string().min(1, "Cron expression is required"),
   timezone: z.string().min(1, "Timezone is required"),
@@ -97,6 +98,7 @@ export function ScheduleEditionModal({
     name: "Schedule",
     enabled: true,
     cron: "",
+    naturalLanguageDescription: "",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     customPrompt: "",
   };
@@ -135,6 +137,9 @@ export function ScheduleEditionModal({
       cron: scheduleConfig?.cron ?? defaultValues.cron,
       timezone: scheduleConfig?.timezone ?? defaultValues.timezone,
       customPrompt: trigger?.customPrompt ?? defaultValues.customPrompt,
+      naturalLanguageDescription:
+        trigger?.naturalLanguageDescription ??
+        defaultValues.naturalLanguageDescription,
     });
   }, [
     reset,
@@ -196,6 +201,7 @@ export function ScheduleEditionModal({
         timezone: data.timezone.trim(),
       },
       editor: trigger?.editor ?? user?.id ?? null,
+      naturalLanguageDescription: data.naturalLanguageDescription ?? null,
       customPrompt: data.customPrompt.trim() ?? null,
       editorEmail: trigger?.editorEmail ?? user?.email,
     };

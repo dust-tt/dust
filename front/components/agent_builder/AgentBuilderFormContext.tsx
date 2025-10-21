@@ -206,6 +206,7 @@ const scheduleTriggerSchema = z.object({
   name: z.string(),
   kind: z.enum(["schedule"]),
   customPrompt: z.string().nullable(),
+  naturalLanguageDescription: z.string().nullable(),
   configuration: scheduleConfigSchema,
   editor: z.number().nullable(),
   editorEmail: z.string().optional(),

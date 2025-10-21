@@ -333,6 +333,8 @@ async function handler(
           kind: validatedTrigger.kind,
           enabled: validatedTrigger.enabled,
           configuration: validatedTrigger.configuration,
+          naturalLanguageDescription:
+            validatedTrigger.naturalLanguageDescription,
           customPrompt: validatedTrigger.customPrompt,
           editor: auth.getNonNullableUser().id,
           webhookSourceViewId,
