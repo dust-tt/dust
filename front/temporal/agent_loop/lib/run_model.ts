@@ -427,9 +427,9 @@ export async function runModelActivity(
     >;
   };
 
-  let output: Output | null = null;
-  let nativeChainOfThought = "";
-  let dustRunId: Promise<string>;
+  let blockExecutionOutput: Output | null = null;
+  let blockExecutionNativeChainOfThought = "";
+  let blockExecutionDustRunId: Promise<string>;
 
   let fakeResponse:
     | { shouldRetryMessage: string }
@@ -466,7 +466,7 @@ export async function runModelActivity(
 
     const { eventStream, dustRunId: dustRunIdValue } = res.value;
     // eslint-disable-next-line prefer-const
-    dustRunId = dustRunIdValue;
+    blockExecutionDustRunId = dustRunIdValue;
 
     let isGeneration = true;
 
@@ -526,7 +526,7 @@ export async function runModelActivity(
           step,
         });
 
-        nativeChainOfThought += event.content.tokens.text;
+        blockExecutionNativeChainOfThought += event.content.tokens.text;
       }
 
       if (event.type === "reasoning_item") {
@@ -544,7 +544,7 @@ export async function runModelActivity(
           step,
         });
 
-        nativeChainOfThought += "\n\n";
+        blockExecutionNativeChainOfThought += "\n\n";
       }
 
       if (event.type === "block_execution") {
@@ -618,7 +618,7 @@ export async function runModelActivity(
             }
           }
 
-          output = {
+          blockExecutionOutput = {
             actions: [],
             generation: null,
             contents,
@@ -628,7 +628,7 @@ export async function runModelActivity(
             for (const fc of block.message.function_calls) {
               try {
                 const args = JSON.parse(fc.arguments);
-                output.actions.push({
+                blockExecutionOutput.actions.push({
                   name: fc.name,
                   functionCallId: fc.id,
                   arguments: args,
@@ -644,7 +644,7 @@ export async function runModelActivity(
               }
             }
           } else {
-            output.generation = block.message.content ?? null;
+            blockExecutionOutput.generation = block.message.content ?? null;
           }
         }
       }
@@ -652,12 +652,18 @@ export async function runModelActivity(
 
     await flushParserTokens();
 
-    if (!output) {
+    if (!blockExecutionOutput) {
       fakeResponse = {
         shouldRetryMessage: "Agent execution didn't complete.",
       };
       break getOutputFromAction;
     }
+
+    fakeResponse = {
+      output: blockExecutionOutput,
+      dustRunId: blockExecutionDustRunId,
+      nativeChainOfThought: blockExecutionNativeChainOfThought,
+    };
   }
 
   if ("shouldRetryMessage" in fakeResponse) {
@@ -667,6 +673,8 @@ export async function runModelActivity(
   if ("shouldReturnNull" in fakeResponse) {
     return null;
   }
+
+  const { dustRunId, nativeChainOfThought, output } = fakeResponse;
 
   // Create a new object to avoid mutation
   const updatedFunctionCallStepContentIds = { ...functionCallStepContentIds };
