@@ -173,7 +173,7 @@ export function MCPRunAgentActionDetails({
         citation.href
       );
       mcpReferenceCitations[key] = {
-        contentType: citation.mimeType as AllSupportedFileContentType,
+        contentType: citation.contentType as AllSupportedFileContentType,
         title: citation.title,
         href: citation.href,
         description: citation.description,
