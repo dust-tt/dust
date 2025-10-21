@@ -1,45 +1,37 @@
-import { Octokit } from "@octokit/core";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { OAuthAPI } from "@app/types";
+import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
-const ORGS_PER_PAGE = 100; // GitHub max is 100
-
-export type GetGithubOrganizationsResponseType = {
-  organizations: Array<{
-    id: number;
-    login: string;
-    avatar_url: string;
-    description: string | null;
-  }>;
+export type GetServiceDataResponseType = {
+  serviceData: Record<string, any>;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetGithubOrganizationsResponseType>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<GetServiceDataResponseType>>,
   auth: Authenticator
 ): Promise<void> {
+  const isAdmin = await SpaceResource.canAdministrateSystemSpace(auth);
+  // Only admins can access service data
+  if (!isAdmin) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only admins can access service data",
+      },
+    });
+  }
   switch (req.method) {
     case "GET":
-      // Only builders can access GitHub organizations
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "Only builders can access GitHub organizations",
-          },
-        });
-      }
-
-      const { connectionId } = req.query;
+      const { connectionId, kind } = req.query;
 
       if (!connectionId || typeof connectionId !== "string") {
         return apiError(req, res, {
@@ -47,6 +39,42 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: "connectionId is required",
+          },
+        });
+      }
+
+      if (!kind || typeof kind !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "kind is required",
+          },
+        });
+      }
+
+      // Validate that kind is a valid webhook source kind (excluding "custom")
+      const preset =
+        WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[
+          kind as keyof typeof WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP
+        ];
+      if (!preset || kind === "custom") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid kind: ${kind}. Must be a valid webhook preset kind.`,
+          },
+        });
+      }
+
+      // Check if the preset has a webhookService
+      if (!("webhookService" in preset)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Kind ${kind} does not support service data retrieval.`,
           },
         });
       }
@@ -65,7 +93,7 @@ async function handler(
             status_code: 404,
             api_error: {
               type: "invalid_request_error",
-              message: "GitHub connection not found",
+              message: "OAuth connection not found",
             },
           });
         }
@@ -92,6 +120,16 @@ async function handler(
           });
         }
 
+        if (metadataRes.value.connection.provider !== kind) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: "Connection is not made for this provider",
+            },
+          });
+        }
+
         const tokenRes = await oauthAPI.getAccessToken({ connectionId });
 
         if (tokenRes.isErr()) {
@@ -99,28 +137,30 @@ async function handler(
             status_code: 500,
             api_error: {
               type: "internal_server_error",
-              message: "Failed to get GitHub access token",
+              message: "Failed to get access token",
             },
           });
         }
 
         const accessToken = tokenRes.value.access_token;
 
-        // Fetch organizations using Octokit
-        const octokit = new Octokit({ auth: accessToken });
+        // Call getServiceData on the webhook service
+        const serviceDataResult =
+          await preset.webhookService.getServiceData(accessToken);
 
-        const { data: orgs } = await octokit.request("GET /user/orgs", {
-          per_page: ORGS_PER_PAGE,
+        if (serviceDataResult.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: serviceDataResult.error.message,
+            },
+          });
+        }
+
+        return res.status(200).json({
+          serviceData: serviceDataResult.value,
         });
-
-        const organizations = orgs.map((org: any) => ({
-          id: org.id,
-          login: org.login,
-          avatar_url: org.avatar_url,
-          description: org.description,
-        }));
-
-        return res.status(200).json({ organizations });
       } catch (error) {
         return apiError(req, res, {
           status_code: 500,
@@ -129,7 +169,7 @@ async function handler(
             message:
               error instanceof Error
                 ? error.message
-                : "Failed to fetch organizations",
+                : "Failed to fetch service data",
           },
         });
       }

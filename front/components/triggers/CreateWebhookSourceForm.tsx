@@ -16,6 +16,7 @@ import { Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { CreateWebhookGithubConnection } from "@app/components/triggers/CreateWebhookGithubConnection";
+import { useWebhookServiceData } from "@app/lib/swr/useWebhookServiceData";
 import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
@@ -73,6 +74,9 @@ export function CreateWebhookSourceFormContent({
     control: form.control,
     name: "subscribedEvents",
   });
+
+  const { serviceData, isFetchingServiceData, fetchServiceData } =
+    useWebhookServiceData(owner ?? null, kind);
 
   const isGithub = kind === "github";
   const isCustom = (() => {
@@ -169,6 +173,9 @@ export function CreateWebhookSourceFormContent({
       {isGithub && owner && (
         <CreateWebhookGithubConnection
           owner={owner}
+          serviceData={serviceData}
+          isFetchingServiceData={isFetchingServiceData}
+          onFetchServiceData={fetchServiceData}
           onGithubDataChange={onRemoteProviderDataChange}
           onReadyToSubmitChange={onPresetReadyToSubmitChange}
         />

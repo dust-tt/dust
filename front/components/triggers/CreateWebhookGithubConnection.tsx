@@ -15,15 +15,19 @@ import {
 import { useEffect, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import {
-  useGithubOrganizations,
-  useGithubRepositories,
-} from "@app/lib/swr/useGithubRepositories";
+import type {
+  GithubAdditionalData,
+  GithubOrganization,
+  GithubRepository,
+} from "@app/lib/triggers/services/github_webhook_service";
 import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
 
 type CreateWebhookGithubConnectionProps = {
   owner: LightWorkspaceType;
+  serviceData: Record<string, any> | null;
+  isFetchingServiceData: boolean;
+  onFetchServiceData: (connectionId: string) => Promise<void>;
   onGithubDataChange?: (
     data: {
       connectionId: string;
@@ -34,8 +38,54 @@ type CreateWebhookGithubConnectionProps = {
   onReadyToSubmitChange?: (isReady: boolean) => void;
 };
 
+function isGithubOrganization(obj: unknown): obj is GithubOrganization {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "login" in obj &&
+    "id" in obj &&
+    typeof obj.login === "string" &&
+    typeof obj.id === "number"
+  );
+}
+
+function isGithubRepository(obj: unknown): obj is GithubRepository {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "full_name" in obj &&
+    "id" in obj &&
+    typeof obj.full_name === "string" &&
+    typeof obj.id === "number"
+  );
+}
+
+function toGithubData(
+  data: Record<string, any> | null
+): GithubAdditionalData | null {
+  if (!data) {
+    return null;
+  }
+  if (
+    "repositories" in data &&
+    Array.isArray(data.repositories) &&
+    "organizations" in data &&
+    Array.isArray(data.organizations) &&
+    data.repositories.every(isGithubRepository) &&
+    data.organizations.every(isGithubOrganization)
+  ) {
+    const repositories = data.repositories;
+    const organizations = data.organizations;
+    return { repositories, organizations };
+  }
+  return null;
+}
+
 export function CreateWebhookGithubConnection({
   owner,
+  serviceData,
+  isFetchingServiceData,
+  onFetchServiceData,
   onGithubDataChange,
   onReadyToSubmitChange,
 }: CreateWebhookGithubConnectionProps) {
@@ -43,10 +93,6 @@ export function CreateWebhookGithubConnection({
   const [githubConnection, setGithubConnection] =
     useState<OAuthConnectionType | null>(null);
   const [isConnectingGithub, setIsConnectingGithub] = useState(false);
-  const { githubRepositories, isFetchingRepos, fetchGithubRepositories } =
-    useGithubRepositories(owner);
-  const { githubOrganizations, isFetchingOrgs, fetchGithubOrganizations } =
-    useGithubOrganizations(owner);
   const [selectedRepositories, setSelectedRepositories] = useState<string[]>(
     []
   );
@@ -54,6 +100,9 @@ export function CreateWebhookGithubConnection({
     []
   );
   const [repoSearchQuery, setRepoSearchQuery] = useState("");
+  const githubAdditionalData = toGithubData(serviceData);
+  const githubRepositories = githubAdditionalData?.repositories ?? [];
+  const githubOrganizations = githubAdditionalData?.organizations ?? [];
   const [orgSearchQuery, setOrgSearchQuery] = useState("");
   const [showRepoDropdown, setShowRepoDropdown] = useState(false);
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
@@ -123,11 +172,8 @@ export function CreateWebhookGithubConnection({
           title: "Connected to GitHub",
           description: "Fetching your repositories and organizations...",
         });
-        // Fetch both repositories and organizations after successful connection
-        await Promise.all([
-          fetchGithubRepositories(connectionRes.value.connection_id),
-          fetchGithubOrganizations(connectionRes.value.connection_id),
-        ]);
+        // Fetch repositories after successful connection
+        await onFetchServiceData(connectionRes.value.connection_id);
       }
     } catch (error) {
       sendNotification({
@@ -214,7 +260,7 @@ export function CreateWebhookGithubConnection({
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Select repositories to monitor for events
             </p>
-            {isFetchingRepos ? (
+            {isFetchingServiceData ? (
               <div className="mt-2 flex items-center gap-2 py-2">
                 <Spinner size="sm" />
                 <span className="text-sm text-muted-foreground">
@@ -300,7 +346,7 @@ export function CreateWebhookGithubConnection({
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Select organizations to monitor all their repositories
             </p>
-            {isFetchingOrgs ? (
+            {isFetchingServiceData ? (
               <div className="mt-2 flex items-center gap-2 py-2">
                 <Spinner size="sm" />
                 <span className="text-sm text-muted-foreground">

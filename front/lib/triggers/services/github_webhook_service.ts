@@ -4,11 +4,47 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, isString, OAuthAPI, Ok } from "@app/types";
+import { Err, isString, normalizeError, OAuthAPI, Ok } from "@app/types";
+import { getGithubOrganizations } from "@app/types/triggers/github/orgs";
+import { getGithubRepositories } from "@app/types/triggers/github/repos";
 
 import type { RemoteWebhookService } from "./remote_webhook_service";
 
+export type GithubAdditionalData = {
+  repositories: GithubRepository[];
+  organizations: GithubOrganization[];
+};
+
+export type GithubOrganization = {
+  id: number;
+  login: string;
+};
+
+export type GithubRepository = {
+  id: number;
+  full_name: string;
+};
+
 export class GitHubWebhookService implements RemoteWebhookService {
+  async getServiceData(
+    oauthToken: string
+  ): Promise<Result<GithubAdditionalData, Error>> {
+    try {
+      const [repositories, organizations] = await Promise.all([
+        getGithubRepositories(oauthToken),
+        getGithubOrganizations(oauthToken),
+      ]);
+
+      return new Ok({ repositories, organizations });
+    } catch (error) {
+      return new Err(
+        new Error(
+          `Failed to fetch GitHub data: ${normalizeError(error).message}`
+        )
+      );
+    }
+  }
+
   async createWebhooks({
     auth,
     connectionId,
