@@ -1,48 +1,33 @@
 import { OpenAI } from "openai";
 import type { ResponseStreamEvent } from "openai/resources/responses/responses";
 
-import { LLM } from "@app/lib/llm/llm";
-import { toOpenAIReasoningEffort } from "@app/lib/llm/providers/openai/utils/conversation_to_openai";
-import type { LLMEvent, ProviderMetadata } from "@app/lib/llm/types";
-import type { AgentReasoningEffort, ModelConfigurationType, ModelConversationTypeMultiActions } from "@app/types";
+import { LLM } from "@app/lib/api/llm/llm";
+import type { LLMEvent, ProviderMetadata } from "@app/lib/api/llm/types/events";
+import type { LLMOptions } from "@app/lib/api/llm/types/options";
+import { toInput, toOpenAIReasoningEffort } from "@app/lib/llm/providers/openai/utils/conversation_to_openai";
+import { toEvents } from "@app/lib/llm/providers/openai/utils/openai_to_events";
+import type { ModelConfigurationType, ModelConversationTypeMultiActions } from "@app/types";
 
 export class OpenAILLM extends LLM {
     private client: OpenAI;
-    private textAccumulator: string = "";
-    private reasoningAccumulator: string = "";
-    protected reasoningEffort: AgentReasoningEffort;
-    protected temperature: number;
     protected metadata: ProviderMetadata;
 
     constructor({
-        temperature,
-        reasoningEffort,
+        options,
         model,
     }: {
-        temperature: number;
-        reasoningEffort: AgentReasoningEffort;
+        options: LLMOptions;
         model: ModelConfigurationType;
     }) {
-        super(model);
+        super({ model, options });
         this.client = new OpenAI({
             apiKey: process.env.OPENAI_API_KEY ?? "",
         });
-        this.temperature = temperature;
         this.metadata = {
             providerId: "openai",
             modelId: model.modelId,
         };
-        this.reasoningEffort = reasoningEffort;
     }
-
-    private resetAccumulators = () => {
-        this.textAccumulator = "";
-        this.reasoningAccumulator = "";
-    }
-    private appendTextAccumulator = (text: string) => this.textAccumulator += text;
-    private appendReasoningAccumulator = (text: string) => this.reasoningAccumulator += text;
-    private getTextAccumulator = () => this.textAccumulator;
-    private getReasoningAccumulator = () => this.reasoningAccumulator;
 
     async *stream({
         conversation,
@@ -55,16 +40,10 @@ export class OpenAILLM extends LLM {
             conversation,
             prompt,
         });
-        this.resetAccumulators();
         for await (const event of events) {
             yield* toEvents({
                 event,
                 metadata: this.metadata,
-                accumulatorUtils: {
-                    resetAccumulators: this.resetAccumulators,
-                    appendTextAccumulator: this.appendTextAccumulator,
-                    appendReasoningAccumulator: this.appendReasoningAccumulator,
-                },
             });
         }
     }
@@ -80,8 +59,9 @@ export class OpenAILLM extends LLM {
             model: this.model.modelId,
             input: toInput(prompt, conversation),
             stream: true,
+            temperature: this.options?.temperature,
             reasoning: {
-                effort: toOpenAIReasoningEffort(this.reasoningEffort),
+                effort: toOpenAIReasoningEffort(this.options?.reasoningEffort ?? "none"),
             }
         });
         yield* response;
