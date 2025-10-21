@@ -39,7 +39,7 @@ import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activiti
 import { getOutputFromAction } from "@app/temporal/agent_loop/lib/get_output_from_action";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent, ModelId } from "@app/types";
-import { removeNulls } from "@app/types";
+import { assertNever, removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
 const MAX_AUTO_RETRY = 3;
@@ -422,18 +422,21 @@ export async function runModelActivity(
     prompt,
   });
 
-  if ("shouldRetryMessage" in getOutputFromActionResponse) {
-    return handlePossiblyRetryableError(
-      getOutputFromActionResponse.shouldRetryMessage
-    );
-  }
+  if (getOutputFromActionResponse.isErr()) {
+    const error = getOutputFromActionResponse.error;
 
-  if ("shouldReturnNull" in getOutputFromActionResponse) {
-    return null;
+    switch (error.type) {
+      case "shouldRetryMessage":
+        return handlePossiblyRetryableError(error.message);
+      case "shouldReturnNull":
+        return null;
+      default:
+        assertNever(error);
+    }
   }
 
   const { dustRunId, nativeChainOfThought, output } =
-    getOutputFromActionResponse;
+    getOutputFromActionResponse.value;
 
   // Create a new object to avoid mutation
   const updatedFunctionCallStepContentIds = { ...functionCallStepContentIds };

@@ -17,9 +17,10 @@ import type {
   ConversationType,
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
-  Ok,
+  Result,
   UserMessageType,
 } from "@app/types";
+import { Err, Ok } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
@@ -37,15 +38,6 @@ type Output = {
     TextContentType | FunctionCallContentType | ReasoningContentType
   >;
 };
-
-type GetOutputFromActionResponse =
-  | { shouldRetryMessage: string }
-  | {
-      output: Output;
-      dustRunId: Promise<string>;
-      nativeChainOfThought: string;
-    }
-  | { shouldReturnNull: true };
 
 type GetOutputFromActionInput = {
   modelConversationRes: Ok<{
@@ -89,7 +81,17 @@ export async function getOutputFromAction(
     publishAgentError,
     prompt,
   }: GetOutputFromActionInput
-): Promise<GetOutputFromActionResponse> {
+): Promise<
+  Result<
+    {
+      output: Output;
+      dustRunId: Promise<string>;
+      nativeChainOfThought: string;
+    },
+    | { type: "shouldRetryMessage"; message: string }
+    | { type: "shouldReturnNull" }
+  >
+> {
   let blockExecutionOutput: Output | null = null;
   let blockExecutionNativeChainOfThought = "";
   let blockExecutionDustRunId: Promise<string>;
@@ -113,7 +115,7 @@ export async function getOutputFromAction(
   );
 
   if (res.isErr()) {
-    return { shouldRetryMessage: res.error.message };
+    return new Err({ type: "shouldRetryMessage", message: res.error.message });
   }
 
   const { eventStream, dustRunId: dustRunIdValue } = res.value;
@@ -129,7 +131,10 @@ export async function getOutputFromAction(
 
     if (event.type === "error") {
       await flushParserTokens();
-      return { shouldRetryMessage: event.content.message };
+      return new Err({
+        type: "shouldRetryMessage",
+        message: event.content.message,
+      });
     }
 
     // Heartbeat & sleep allow the activity to be cancelled, e.g. on a "Stop
@@ -143,7 +148,7 @@ export async function getOutputFromAction(
     } catch (err) {
       if (err instanceof CancelledFailure) {
         logger.info("Activity cancelled, stopping");
-        return { shouldReturnNull: true };
+        return new Err({ type: "shouldReturnNull" });
       }
       throw err;
     }
@@ -201,7 +206,7 @@ export async function getOutputFromAction(
       const e = event.content.execution[0][0];
       if (e.error) {
         await flushParserTokens();
-        return { shouldRetryMessage: e.error };
+        return new Err({ type: "shouldRetryMessage", message: e.error });
       }
 
       if (event.content.block_name === "MODEL" && e.value) {
@@ -210,9 +215,10 @@ export async function getOutputFromAction(
 
         const block = e.value;
         if (!isDustAppChatBlockType(block)) {
-          return {
-            shouldRetryMessage: "Received unparsable MODEL block.",
-          };
+          return new Err({
+            type: "shouldRetryMessage",
+            message: "Received unparsable MODEL block.",
+          });
         }
 
         // Extract token usage from block execution metadata
@@ -287,7 +293,7 @@ export async function getOutputFromAction(
                 message: `Error parsing function call arguments: ${error}`,
                 metadata: null,
               });
-              return { shouldReturnNull: true };
+              return new Err({ type: "shouldReturnNull" });
             }
           }
         } else {
@@ -300,14 +306,15 @@ export async function getOutputFromAction(
   await flushParserTokens();
 
   if (!blockExecutionOutput) {
-    return {
-      shouldRetryMessage: "Agent execution didn't complete.",
-    };
+    return new Err({
+      type: "shouldRetryMessage",
+      message: "Agent execution didn't complete.",
+    });
   }
 
-  return {
+  return new Ok({
     output: blockExecutionOutput,
     dustRunId: blockExecutionDustRunId,
     nativeChainOfThought: blockExecutionNativeChainOfThought,
-  };
+  });
 }
