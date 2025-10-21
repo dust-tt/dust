@@ -8,8 +8,8 @@ import {
   REJECT_TOOL_EXECUTION,
   STATIC_AGENT_CONFIG,
 } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
-import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
+import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 import { truncate } from "@connectors/types";
 
 /*
