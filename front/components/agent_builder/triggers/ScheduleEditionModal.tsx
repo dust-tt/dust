@@ -108,7 +108,6 @@ export function ScheduleEditionModal({
     defaultValues,
     disabled: !isEditor,
   });
-  const [naturalDescription, setNaturalDescription] = useState("");
   const [
     naturalDescriptionToCronRuleStatus,
     setNaturalDescriptionToCronRuleStatus,
@@ -147,6 +146,7 @@ export function ScheduleEditionModal({
     defaultValues.cron,
     defaultValues.timezone,
     defaultValues.customPrompt,
+    defaultValues.naturalLanguageDescription,
     trigger,
     defaultValues.enabled,
   ]);
@@ -278,11 +278,14 @@ export function ScheduleEditionModal({
                   id="schedule-description"
                   placeholder='Describe when you want the agent to run in natural language. e.g. "run every day at 9 AM", or "Late afternoon on business days"...'
                   rows={3}
-                  value={naturalDescription}
+                  {...form.register("naturalLanguageDescription")}
                   disabled={!isEditor}
                   onChange={async (e) => {
+                    await form
+                      .register("naturalLanguageDescription")
+                      .onChange(e);
+
                     const txt = e.target.value;
-                    setNaturalDescription(txt);
                     setNaturalDescriptionToCronRuleStatus(
                       txt ? "loading" : "idle"
                     );

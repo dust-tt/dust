@@ -188,11 +188,13 @@ export function WebhookEditionModal({
   useEffect(() => {
     if (!isOpen) {
       form.reset(defaultValues);
+      setNaturalDescription("");
       return;
     }
 
     if (!trigger) {
       form.reset(defaultValues);
+      setNaturalDescription("");
       return;
     }
 
@@ -209,7 +211,14 @@ export function WebhookEditionModal({
       filter,
       includePayload,
     });
-  }, [defaultValues, form, isOpen, trigger]);
+
+    // Restore natural description if it exists
+    if (trigger.naturalLanguageDescription) {
+      setNaturalDescription(trigger.naturalLanguageDescription);
+    } else {
+      setNaturalDescription("");
+    }
+  }, [defaultValues, form, isOpen, trigger, setNaturalDescription]);
 
   const handleClose = () => {
     // Reset natural description to clear the filter generation status
@@ -246,6 +255,10 @@ export function WebhookEditionModal({
       enabled: data.enabled,
       name: data.name.trim(),
       customPrompt: data.customPrompt.trim(),
+      naturalLanguageDescription:
+        selectedWebhookSourceView?.kind !== "custom"
+          ? naturalDescription || null
+          : null,
       kind: "webhook",
       configuration: {
         includePayload: data.includePayload,

@@ -194,6 +194,7 @@ const webhookTriggerSchema = z.object({
   name: z.string(),
   kind: z.enum(["webhook"]),
   customPrompt: z.string().nullable(),
+  naturalLanguageDescription: z.string().nullable(),
   configuration: webhookConfigSchema,
   editor: z.number().nullable(),
   webhookSourceViewSId: z.string().nullable().optional(),
