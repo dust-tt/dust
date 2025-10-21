@@ -245,7 +245,7 @@ function WebhookSourceSheetContent({
       data: CreateWebhookSourceFormData,
       providerData?: RemoteProviderData
     ) => {
-      const { connectionId, ...remoteMetadata } = providerData || {};
+      const { connectionId, ...remoteMetadata } = providerData ?? {};
 
       const apiData = {
         ...data,

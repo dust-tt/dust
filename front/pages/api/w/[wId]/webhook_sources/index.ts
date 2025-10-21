@@ -6,12 +6,8 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateSecureSecret } from "@app/lib/resources/string_ids";
-import {
-  WEBHOOK_SERVICES,
-  WebhookSourceResource,
-} from "@app/lib/resources/webhook_source_resource";
+import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import { GitHubWebhookService } from "@app/lib/triggers/services/github_webhook_service";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -19,7 +15,10 @@ import type {
   WebhookSourceForAdminType,
   WebhookSourceWithViewsAndUsageType,
 } from "@app/types/triggers/webhooks";
-import { postWebhookSourcesSchema } from "@app/types/triggers/webhooks";
+import {
+  postWebhookSourcesSchema,
+  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
+} from "@app/types/triggers/webhooks";
 
 export type GetWebhookSourcesResponseBody = {
   success: true;
@@ -181,10 +180,11 @@ async function handler(
           });
         }
 
-        if (connectionId && remoteMetadata) {
+        if (kind !== "custom" && connectionId && remoteMetadata) {
           const webhookUrl = `${process.env.DUST_CLIENT_FACING_URL}/api/v1/w/${workspace.sId}/triggers/hooks/${webhookSourceJSON.sId}/${webhookSourceJSON.urlSecret}`;
 
-          const service = WEBHOOK_SERVICES[kind];
+          const service =
+            WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].webhookService;
           const result = await service.createWebhooks({
             auth,
             connectionId,

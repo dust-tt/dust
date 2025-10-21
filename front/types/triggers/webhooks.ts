@@ -108,7 +108,7 @@ export const basePostWebhookSourcesSchema = z.object({
   includeGlobal: z.boolean().optional(),
   subscribedEvents: z.array(z.string()).default([]),
   kind: z.enum(WEBHOOK_SOURCE_KIND),
-  // Optional fields for creating remote webhooks (e.g., on GitHub)
+  // Optional fields for creating remote webhooks
   connectionId: z.string().optional(),
   remoteMetadata: z.record(z.any()).optional(),
 });

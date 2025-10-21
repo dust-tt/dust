@@ -2,6 +2,7 @@ import type { Icon } from "@dust-tt/sparkle";
 import { GithubLogo, JiraLogo } from "@dust-tt/sparkle";
 
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { RemoteWebhookService } from "@app/lib/triggers/services/remote_webhook_service";
 
 type EventFieldBase = {
   name: string;
@@ -51,4 +52,5 @@ export type PresetWebhook = {
   icon: typeof Icon;
   description: string;
   featureFlag?: WhitelistableFeature;
+  webhookService: RemoteWebhookService;
 };

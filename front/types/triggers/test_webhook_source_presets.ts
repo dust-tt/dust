@@ -4,6 +4,8 @@ import type {
   PresetWebhook,
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
+import { RemoteWebhookService } from "@app/lib/triggers/services/remote_webhook_service";
+import { Ok, Result } from "@dust-tt/client";
 
 const TEST_EVENT: WebhookEvent = {
   name: "Test event",
@@ -23,6 +25,39 @@ const TEST_EVENT: WebhookEvent = {
   ],
 };
 
+class TestWebhookService implements RemoteWebhookService {
+  async createWebhooks(params: {
+    auth: any;
+    connectionId: string;
+    remoteMetadata: Record<string, any>;
+    webhookUrl: string;
+    events: string[];
+    secret?: string;
+  }): Promise<
+    Result<
+      {
+        webhookIds: Record<string, string>;
+        errors?: string[];
+      },
+      Error
+    >
+  > {
+    console.log("Creating webhooks with params:", params);
+    return new Ok({
+      webhookIds: { test_event: `test-webhook-id-${Date.now()}` },
+    });
+  }
+
+  async deleteWebhooks(params: {
+    auth: any;
+    connectionId: string;
+    remoteMetadata: Record<string, any>;
+  }): Promise<Result<void, Error>> {
+    console.log("Deleting webhooks with params:", params);
+    return new Ok(undefined);
+  }
+}
+
 export const TEST_WEBHOOK_PRESET: PresetWebhook = {
   name: "Test",
   eventCheck: {
@@ -34,4 +69,6 @@ export const TEST_WEBHOOK_PRESET: PresetWebhook = {
   description: "A test webhook preset with a simple event structure.",
   // Used for dev tests only, it should always be hidden behind the flag
   featureFlag: "hootl_dev_webhooks",
+  // inline dummy service for test purposes
+  webhookService: new TestWebhookService(),
 };
