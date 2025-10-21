@@ -336,9 +336,9 @@ export async function getClientExecutableFileContent(
   try {
     // Sometimes the model makes up a random file id that doesn't exist,
     // so we check if this is actually a valid id or not.
-    const isValidFileId = getResourceIdFromSId(fileId);
+    const resourceId = getResourceIdFromSId(fileId);
 
-    if (!isValidFileId) {
+    if (resourceId === null) {
       return new Err(new Error(`The file id ${fileId} doesn't exist`));
     }
 
