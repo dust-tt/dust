@@ -1,13 +1,16 @@
 import {
-  BoltIcon,
   Button,
   CardGrid,
   ClockIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyCTA,
   Hoverable,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type {
@@ -15,10 +18,13 @@ import type {
   AgentBuilderTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { ScheduleEditionModal } from "@app/components/agent_builder/triggers/ScheduleEditionModal";
 import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
 import { WebhookEditionModal } from "@app/components/agent_builder/triggers/WebhookEditionModal";
+import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 import type { TriggerKind } from "@app/types/assistant/triggers";
@@ -27,6 +33,7 @@ type DialogMode =
   | {
       type: "add";
       kind: TriggerKind;
+      webhookSourceViewSId?: string;
     }
   | {
       type: "edit";
@@ -70,6 +77,24 @@ export function AgentBuilderTriggersBlock({
   const sendNotification = useSendNotification();
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
 
+  const { spaces } = useSpacesContext();
+  const { webhookSourceViews } = useWebhookSourceViewsFromSpaces(
+    owner,
+    spaces,
+    !hasFeature("hootl_webhooks")
+  );
+
+  const accessibleSpaceIds = useMemo(
+    () => new Set(spaces.map((space) => space.sId)),
+    [spaces]
+  );
+
+  const accessibleWebhookSourceViews = useMemo(
+    () =>
+      webhookSourceViews.filter((view) => accessibleSpaceIds.has(view.spaceId)),
+    [webhookSourceViews, accessibleSpaceIds]
+  );
+
   // Combine triggers for display, excluding those marked for deletion
   const allTriggers = [
     ...triggersToCreate.map((t, index) => ({
@@ -84,10 +109,14 @@ export function AgentBuilderTriggersBlock({
     })),
   ];
 
-  const handleCreateTrigger = (kind: TriggerKind) => {
+  const handleCreateTrigger = (
+    kind: TriggerKind,
+    webhookSourceViewSId?: string
+  ) => {
     setDialogMode({
       type: "add",
       kind,
+      webhookSourceViewSId,
     });
   };
 
@@ -165,24 +194,37 @@ export function AgentBuilderTriggersBlock({
       }
       headerActions={
         allTriggers.length > 0 && (
-          <>
-            <Button
-              label="Add Schedule"
-              variant="outline"
-              icon={ClockIcon}
-              onClick={() => handleCreateTrigger("schedule")}
-              type="button"
-            />
-            {hasFeature("hootl_webhooks") && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
-                label="Add Webhook"
+                label="Add Trigger"
                 variant="outline"
-                icon={BoltIcon}
-                onClick={() => handleCreateTrigger("webhook")}
+                isSelect
                 type="button"
               />
-            )}
-          </>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                label="Schedule"
+                icon={ClockIcon}
+                onClick={() => handleCreateTrigger("schedule")}
+              />
+              {hasFeature("hootl_webhooks") &&
+                accessibleWebhookSourceViews.map((view) => (
+                  <DropdownMenuItem
+                    key={view.sId}
+                    label={view.customName}
+                    icon={(props) => (
+                      <WebhookSourceViewIcon
+                        webhookSourceView={view}
+                        size="sm"
+                      />
+                    )}
+                    onClick={() => handleCreateTrigger("webhook", view.sId)}
+                  />
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )
       }
       isBeta
@@ -195,24 +237,37 @@ export function AgentBuilderTriggersBlock({
         ) : allTriggers.length === 0 ? (
           <EmptyCTA
             action={
-              <div className="flex space-x-2">
-                <Button
-                  label="Add Schedule"
-                  variant="outline"
-                  icon={ClockIcon}
-                  onClick={() => handleCreateTrigger("schedule")}
-                  type="button"
-                />
-                {hasFeature("hootl_webhooks") && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
-                    label="Add Webhook"
+                    label="Add Trigger"
                     variant="outline"
-                    icon={BoltIcon}
-                    onClick={() => handleCreateTrigger("webhook")}
+                    isSelect
                     type="button"
                   />
-                )}
-              </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    label="Schedule"
+                    icon={ClockIcon}
+                    onClick={() => handleCreateTrigger("schedule")}
+                  />
+                  {hasFeature("hootl_webhooks") &&
+                    accessibleWebhookSourceViews.map((view) => (
+                      <DropdownMenuItem
+                        key={view.sId}
+                        label={view.customName}
+                        icon={(props) => (
+                          <WebhookSourceViewIcon
+                            webhookSourceView={view}
+                            size="sm"
+                          />
+                        )}
+                        onClick={() => handleCreateTrigger("webhook", view.sId)}
+                      />
+                    ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             }
             className="py-4"
           />
@@ -262,6 +317,11 @@ export function AgentBuilderTriggersBlock({
         onClose={handleCloseModal}
         onSave={handleTriggerSave}
         agentConfigurationId={agentConfigurationId}
+        preSelectedWebhookSourceViewSId={
+          dialogMode?.type === "add"
+            ? dialogMode.webhookSourceViewSId
+            : undefined
+        }
       />
     </AgentBuilderSectionContainer>
   );

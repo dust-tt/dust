@@ -59,6 +59,7 @@ interface WebhookEditionModalProps {
   onClose: () => void;
   onSave: (trigger: AgentBuilderWebhookTriggerType) => void;
   agentConfigurationId: string | null;
+  preSelectedWebhookSourceViewSId?: string;
 }
 
 type WebhookOption = {
@@ -75,6 +76,7 @@ export function WebhookEditionModal({
   onClose,
   onSave,
   agentConfigurationId,
+  preSelectedWebhookSourceViewSId,
 }: WebhookEditionModalProps) {
   const { user } = useUser();
 
@@ -83,12 +85,12 @@ export function WebhookEditionModal({
       name: "Webhook Trigger",
       enabled: true,
       customPrompt: "",
-      webhookSourceViewSId: "",
+      webhookSourceViewSId: preSelectedWebhookSourceViewSId ?? "",
       event: undefined,
       filter: "",
       includePayload: true,
     }),
-    []
+    [preSelectedWebhookSourceViewSId]
   );
 
   const form = useForm<WebhookFormData>({
@@ -125,7 +127,7 @@ export function WebhookEditionModal({
           label: view.customName,
           kind: view.kind,
           icon: (props) => (
-            <WebhookSourceViewIcon webhookSourceView={view} {...props} />
+            <WebhookSourceViewIcon webhookSourceView={view} size={props.className ? undefined : "sm"} />
           ),
         });
       });
@@ -312,17 +314,21 @@ export function WebhookEditionModal({
     }
   }, [filterGenerationStatus, filterErrorMessage, formFilter]);
 
+  const modalTitle = useMemo(() => {
+    if (trigger) {
+      return isEditor ? "Edit Webhook" : "View Webhook";
+    }
+    if (selectedWebhookSourceView) {
+      return `Create ${selectedWebhookSourceView.customName} Trigger`;
+    }
+    return "Create Webhook";
+  }, [trigger, isEditor, selectedWebhookSourceView]);
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <SheetContent size="xl">
         <SheetHeader>
-          <SheetTitle>
-            {trigger
-              ? isEditor
-                ? "Edit Webhook"
-                : "View Webhook"
-              : "Create Webhook"}
-          </SheetTitle>
+          <SheetTitle>{modalTitle}</SheetTitle>
         </SheetHeader>
 
         <SheetContainer>
@@ -374,57 +380,59 @@ export function WebhookEditionModal({
                 </div>
               </div>
 
-              {/* Webhook Configuration */}
-              <div className="flex flex-col space-y-1">
-                <Label>Webhook Source</Label>
-                {isWebhookSourceViewsLoading ? (
-                  <div className="flex items-center gap-2">
-                    <Spinner size="sm" />
-                    <span className="text-sm text-muted-foreground">
-                      Loading webhook sources...
-                    </span>
-                  </div>
-                ) : (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        id="webhook-source"
-                        variant="outline"
-                        isSelect
-                        className="w-fit"
-                        disabled={!isEditor}
-                        label={
-                          selectedViewSId
-                            ? webhookOptions.find(
-                                (opt) => opt.value === selectedViewSId
-                              )?.label
-                            : "Select webhook source"
-                        }
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuLabel label="Select webhook source" />
-                      {webhookOptions.map((option) => (
-                        <DropdownMenuItem
-                          key={option.value}
-                          label={option.label}
+              {/* Webhook Configuration - Only show selector when editing or no pre-selection */}
+              {(!preSelectedWebhookSourceViewSId || trigger) && (
+                <div className="flex flex-col space-y-1">
+                  <Label>Webhook Source</Label>
+                  {isWebhookSourceViewsLoading ? (
+                    <div className="flex items-center gap-2">
+                      <Spinner size="sm" />
+                      <span className="text-sm text-muted-foreground">
+                        Loading webhook sources...
+                      </span>
+                    </div>
+                  ) : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          id="webhook-source"
+                          variant="outline"
+                          isSelect
+                          className="w-fit"
                           disabled={!isEditor}
-                          icon={option.icon}
-                          onClick={() => {
-                            form.setValue(
-                              "webhookSourceViewSId",
-                              option.value,
-                              {
-                                shouldValidate: true,
-                              }
-                            );
-                          }}
+                          label={
+                            selectedViewSId
+                              ? webhookOptions.find(
+                                  (opt) => opt.value === selectedViewSId
+                                )?.label
+                              : "Select webhook source"
+                          }
                         />
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuLabel label="Select webhook source" />
+                        {webhookOptions.map((option) => (
+                          <DropdownMenuItem
+                            key={option.value}
+                            label={option.label}
+                            disabled={!isEditor}
+                            icon={option.icon}
+                            onClick={() => {
+                              form.setValue(
+                                "webhookSourceViewSId",
+                                option.value,
+                                {
+                                  shouldValidate: true,
+                                }
+                              );
+                            }}
+                          />
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              )}
 
               {/* Event selector for non-custom webhooks */}
               {selectedPreset && availableEvents.length > 0 && (
@@ -605,7 +613,9 @@ export function WebhookEditionModal({
               ? isEditor
                 ? "Update Webhook"
                 : "Close"
-              : "Add Webhook",
+              : selectedWebhookSourceView
+                ? `Add ${selectedWebhookSourceView.customName} Trigger`
+                : "Add Webhook",
             variant: "primary",
             onClick: isEditor ? form.handleSubmit(onSubmit) : handleClose,
             disabled: form.formState.isSubmitting,
