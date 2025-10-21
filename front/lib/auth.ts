@@ -62,7 +62,7 @@ export const getAuthType = (token: string): PublicAPIAuthMethod => {
 };
 
 export interface AuthenticatorType {
-  workspaceId: string | null;
+  workspaceId: string;
   userId: string | null;
   role: RoleType;
   groupIds: string[];
@@ -899,8 +899,10 @@ export class Authenticator {
   }
 
   toJSON(): AuthenticatorType {
+    assert(this._workspace, "Workspace is required to serialize Authenticator");
+
     return {
-      workspaceId: this._workspace?.sId ?? null,
+      workspaceId: this._workspace.sId,
       userId: this._user?.sId ?? null,
       role: this._role,
       groupIds: this._groups.map((g) => g.sId),

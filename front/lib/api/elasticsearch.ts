@@ -8,6 +8,11 @@ import { Err, Ok } from "@app/types/shared/result";
 
 let esClient: Client | null = null;
 
+export interface ElasticsearchBaseDocument {
+  workspace_id: string;
+  [key: string]: unknown;
+}
+
 export type ElasticsearchError = {
   type: "connection_error" | "query_error" | "unknown_error";
   message: string;
@@ -34,25 +39,34 @@ function extractErrorReason(err: esErrors.ResponseError): string {
   return err.message;
 }
 
-function getClient(): Client {
+export async function getClient(): Promise<Client> {
   if (esClient) {
     return esClient;
   }
+
   const { url, username, password } = config.getElasticsearchConfig();
   esClient = new Client({
     node: url,
     auth: { username, password },
     tls: { rejectUnauthorized: false },
   });
+
+  // Wait for the client to be ready.
+  await esClient.ping();
+
   return esClient;
 }
 
-async function esSearch<TDocument = unknown, TAggregations = unknown>(
+async function esSearch<
+  TDocument extends ElasticsearchBaseDocument,
+  TAggregations = unknown,
+>(
   params: SearchParams
 ): Promise<
   Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
 > {
-  const client = getClient();
+  const client = await getClient();
+
   try {
     const result = await client.search<TDocument, TAggregations>({
       ...params,
@@ -104,7 +118,7 @@ export function formatUTCDateFromMillis(ms: number): string {
  * query other Elasticsearch indexes from the front service.
  */
 export async function searchAnalytics<
-  TDocument = unknown,
+  TDocument extends ElasticsearchBaseDocument,
   TAggregations = unknown,
 >(
   query: estypes.QueryDslQueryContainer,

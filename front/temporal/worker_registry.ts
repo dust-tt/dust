@@ -2,6 +2,7 @@ import { runAgentTriggerWorker } from "@app/lib/triggers/temporal/common/worker"
 import { runAgentTriggerWebhookWorker } from "@app/lib/triggers/temporal/webhook/worker";
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runAgentLoopWorker } from "@app/temporal/agent_loop/worker";
+import { runAnalyticsWorker } from "@app/temporal/analytics_queue/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker";
@@ -24,6 +25,7 @@ export type WorkerName =
   | "agent_loop"
   | "agent_schedule"
   | "agent_trigger_webhook"
+  | "analytics_queue"
   | "data_retention"
   | "document_tracker"
   | "hard_delete"
@@ -45,6 +47,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   agent_loop: runAgentLoopWorker,
   agent_schedule: runAgentTriggerWorker,
   agent_trigger_webhook: runAgentTriggerWebhookWorker,
+  analytics_queue: runAnalyticsWorker,
   data_retention: runDataRetentionWorker,
   document_tracker: runTrackerWorker,
   hard_delete: runHardDeleteWorker,

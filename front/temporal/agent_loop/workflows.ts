@@ -13,6 +13,7 @@ import {
   RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
 } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
+import type * as analyticsActivities from "@app/temporal/agent_loop/activities/analytics";
 import type * as commonActivities from "@app/temporal/agent_loop/activities/common";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as instrumentationActivities from "@app/temporal/agent_loop/activities/instrumentation";
@@ -67,6 +68,12 @@ const {
   logAgentLoopPhaseCompletionActivity,
   logAgentLoopStepCompletionActivity,
 } = proxyActivities<typeof instrumentationActivities>({
+  startToCloseTimeout: "30 seconds",
+});
+
+const { launchAgentMessageAnalyticsActivity } = proxyActivities<
+  typeof analyticsActivities
+>({
   startToCloseTimeout: "30 seconds",
 });
 
@@ -213,6 +220,8 @@ export async function agentLoopWorkflow({
           syncStartTime,
         },
       });
+
+      await launchAgentMessageAnalyticsActivity(authType, agentLoopArgs);
     });
 
     if (childWorkflowHandle) {
