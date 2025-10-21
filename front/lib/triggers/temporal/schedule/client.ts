@@ -7,6 +7,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
+import { webhookCleanupWorkflow } from "@app/lib/triggers/temporal/webhook/workflows";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -16,7 +17,9 @@ import { isScheduleTrigger } from "@app/types/assistant/triggers";
 import { QUEUE_NAME } from "../common/config";
 import { agentTriggerWorkflow } from "../common/workflows";
 
-function getScheduleOptions(
+export const WEBHOOK_CLEANUP_SCHEDULE_ID = "webhook-cleanup-schedule";
+
+function getTriggerScheduleOptions(
   auth: Authenticator,
   triggerData: ScheduleTriggerType,
   scheduleId: string
@@ -43,11 +46,14 @@ function getScheduleOptions(
   };
 }
 
-export function makeScheduleId(workspaceId: string, triggerId: string): string {
+export function makeTriggerScheduleId(
+  workspaceId: string,
+  triggerId: string
+): string {
   return `agent-schedule-${workspaceId}-${triggerId}`;
 }
 
-export async function createOrUpdateAgentScheduleWorkflow({
+export async function createOrUpdateAgentSchedule({
   auth,
   trigger,
 }: {
@@ -77,7 +83,7 @@ export async function createOrUpdateAgentScheduleWorkflow({
     return new Ok("");
   }
 
-  const scheduleId = makeScheduleId(workspace.sId, trigger.sId());
+  const scheduleId = makeTriggerScheduleId(workspace.sId, trigger.sId());
 
   const childLogger = logger.child({
     workspaceId: workspace.sId,
@@ -93,7 +99,11 @@ export async function createOrUpdateAgentScheduleWorkflow({
     return new Err(new Error("Trigger is not a schedule"));
   }
 
-  const scheduleOptions = getScheduleOptions(auth, scheduleTrigger, scheduleId);
+  const scheduleOptions = getTriggerScheduleOptions(
+    auth,
+    scheduleTrigger,
+    scheduleId
+  );
 
   /**
    * First, we try to get and update the existing schedule
@@ -130,7 +140,7 @@ export async function createOrUpdateAgentScheduleWorkflow({
   }
 }
 
-export async function deleteAgentScheduleWorkflow({
+export async function deleteTriggerSchedule({
   workspaceId,
   trigger,
 }: {
@@ -138,7 +148,7 @@ export async function deleteAgentScheduleWorkflow({
   trigger: TriggerResource;
 }): Promise<Result<void, Error>> {
   const client = await getTemporalClientForAgentNamespace();
-  const scheduleId = makeScheduleId(workspaceId, trigger.sId());
+  const scheduleId = makeTriggerScheduleId(workspaceId, trigger.sId());
 
   const childLogger = logger.child({
     workspaceId,
@@ -159,5 +169,65 @@ export async function deleteAgentScheduleWorkflow({
 
     childLogger.error({ err }, "Failed to delete scheduled workflow.");
     return new Err(normalizeError(err));
+  }
+}
+
+export async function createOrUpdateWebhookCleanupSchedule(): Promise<
+  Result<void, Error>
+> {
+  const client = await getTemporalClientForAgentNamespace();
+  const scheduleId = WEBHOOK_CLEANUP_SCHEDULE_ID;
+  const scheduleOptions = {
+    action: {
+      type: "startWorkflow" as const,
+      workflowType: webhookCleanupWorkflow,
+      args: [],
+      taskQueue: QUEUE_NAME,
+    },
+    scheduleId,
+    policies: {
+      overlap: ScheduleOverlapPolicy.SKIP,
+    },
+    spec: {
+      // Every hour at minute 0
+      cronExpressions: ["0 * * * *"] as string[],
+      timezone: "UTC",
+    },
+  } as const;
+  /**
+   * First, we try to get and update the existing schedule
+   */
+  const existingSchedule = client.schedule.getHandle(scheduleId);
+  try {
+    await existingSchedule.update((previous) => {
+      return {
+        ...scheduleOptions,
+        state: previous.state,
+      };
+    });
+
+    logger.info("Updated existing webhook cleanup schedule.");
+    return new Ok(undefined);
+  } catch (err) {
+    if (!(err instanceof ScheduleNotFoundError)) {
+      logger.error(
+        { err },
+        "Failed to update existing webhook cleanup schedule."
+      );
+      return new Err(normalizeError(err));
+    }
+  }
+
+  /**
+   * If we reach that point, it means the schedule does not exist,
+   * so we create a new one.
+   */
+  try {
+    await client.schedule.create(scheduleOptions);
+    logger.info("Created new webhook cleanup schedule.");
+    return new Ok(undefined);
+  } catch (error) {
+    logger.error({ error }, "Failed to create new webhook cleanup schedule.");
+    return new Err(normalizeError(error));
   }
 }
