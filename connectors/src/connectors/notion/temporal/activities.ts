@@ -443,8 +443,8 @@ export async function getPagesAndDatabasesToSync({
 
   localLogger.info(
     {
-      initial_count: existingDatabases.length,
-      filtered_count: existingDatabases.length - filteredDatabaseIds.length,
+      initial_count: dbs.length,
+      filtered_count: dbs.length - filteredDatabaseIds.length,
     },
     "Filtered out databases already up to date."
   );
