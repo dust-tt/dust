@@ -125,6 +125,8 @@ export enum GLOBAL_AGENTS_SID {
   O1_HIGH_REASONING = "o1_high",
   O3_MINI = "o3-mini",
   O3 = "o3",
+  CLAUDE_4_5_HAIKU = "claude-4.5-haiku",
+  CLAUDE_4_5_SONNET = "claude-4.5-sonnet",
   CLAUDE_4_SONNET = "claude-4-sonnet",
   CLAUDE_3_OPUS = "claude-3-opus",
   CLAUDE_3_SONNET = "claude-3-sonnet",

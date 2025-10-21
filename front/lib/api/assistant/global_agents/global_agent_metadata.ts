@@ -9,6 +9,8 @@ import {
   CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GEMINI_2_5_PRO_MODEL_CONFIG,
@@ -165,6 +167,22 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
         name: "claude-4-sonnet",
         description: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.description,
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
+      return {
+        sId: GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
+        name: "claude-4.5-sonnet",
+        description: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.description,
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU:
+      return {
+        sId: GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU,
+        name: "claude-4.5-haiku",
+        description: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.description,
         pictureUrl:
           "https://dust.tt/static/systemavatar/claude_avatar_full.png",
       };

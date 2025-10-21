@@ -13,8 +13,9 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
 import {
   getAgentDataSourceConfigurations,
-  makeDataSourceViewFilter,
+  makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -117,6 +118,14 @@ export function registerListTool(
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
+        const authRes = await ensureAuthorizedDataSourceViews(
+          auth,
+          agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
+        );
+        if (authRes.isErr()) {
+          return new Err(authRes.error);
+        }
+
         const options = {
           cursor: nextPageCursor,
           limit,
@@ -134,7 +143,7 @@ export function registerListTool(
 
         if (!nodeId) {
           // When nodeId is null, search for data sources only.
-          const dataSourceViewFilter = makeDataSourceViewFilter(
+          const dataSourceViewFilter = makeCoreSearchNodesFilters(
             agentDataSourceConfigurations
           ).map((view) => ({
             ...view,
@@ -171,7 +180,7 @@ export function registerListTool(
 
           searchResult = await coreAPI.searchNodes({
             filter: {
-              data_source_views: makeDataSourceViewFilter([dataSourceConfig]),
+              data_source_views: makeCoreSearchNodesFilters([dataSourceConfig]),
               node_ids: dataSourceConfig.filter.parents?.in ?? undefined,
               parent_id: dataSourceConfig.filter.parents?.in
                 ? undefined
@@ -182,7 +191,7 @@ export function registerListTool(
           });
         } else {
           // Regular node listing.
-          const dataSourceViewFilter = makeDataSourceViewFilter(
+          const dataSourceViewFilter = makeCoreSearchNodesFilters(
             agentDataSourceConfigurations
           );
 

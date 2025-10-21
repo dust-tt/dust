@@ -181,8 +181,10 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     options?: ResourceFindOptions<WebhookSourcesViewModel>
   ): Promise<WebhookSourcesViewResource | null> {
     const [view] = await this.fetchByIds(auth, [id], options);
-
-    return view ?? null;
+    if (!view || !view.canReadOrAdministrate(auth)) {
+      return null;
+    }
+    return view;
   }
 
   static async fetchByIds(
@@ -200,7 +202,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
           [Op.in]: viewModelIds,
         },
       },
-    });
+    }).then((views) =>
+      views.filter((view) => view.canReadOrAdministrate(auth))
+    );
 
     return views ?? [];
   }
@@ -222,7 +226,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
           [Op.in]: ids,
         },
       },
-    });
+    }).then((views) =>
+      views.filter((view) => view.canReadOrAdministrate(auth))
+    );
 
     return views ?? [];
   }
@@ -278,7 +284,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     auth: Authenticator,
     space: SpaceResource
   ): Promise<number> {
-    if (space.canRead(auth)) {
+    if (space.canReadOrAdministrate(auth)) {
       return this.model.count({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -295,7 +301,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
   ): Promise<WebhookSourcesViewResource[]> {
     return this.baseFetch(auth, {
       where: { webhookSourceId },
-    });
+    }).then((views) =>
+      views.filter((view) => view.canReadOrAdministrate(auth))
+    );
   }
 
   static async getWebhookSourceViewForSystemSpace(
@@ -321,7 +329,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
 
   public async updateName(
     auth: Authenticator,
-    name?: string
+    name: string
   ): Promise<Result<number, DustError<"unauthorized">>> {
     if (!this.canAdministrate(auth)) {
       return new Err(
@@ -330,7 +338,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     }
 
     const [affectedCount] = await this.update({
-      customName: name ?? null,
+      customName: name,
       editedAt: new Date(),
       editedByUserId: auth.getNonNullableUser().id,
     });
@@ -340,7 +348,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
   public static async bulkUpdateName(
     auth: Authenticator,
     viewIds: ModelId[],
-    name?: string
+    name: string
   ): Promise<void> {
     if (viewIds.length === 0) {
       return;
@@ -348,7 +356,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
 
     await this.model.update(
       {
-        customName: name ?? null,
+        customName: name,
         editedAt: new Date(),
         editedByUserId: auth.getNonNullableUser().id,
       },
@@ -531,7 +539,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return {
       id: this.id,
       sId: this.sId,
-      customName: this.customName,
+      customName: this.customName ?? webhookSource.name,
       description: this.description,
       icon: normalizeWebhookIcon(this.icon),
       kind: webhookSource.kind,

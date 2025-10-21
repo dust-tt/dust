@@ -22,7 +22,6 @@ export class WebhookSourceFactory {
       urlSecret?: string;
       signatureHeader?: string;
       signatureAlgorithm?: WebhookSourceSignatureAlgorithm;
-      customHeaders?: Record<string, string>;
       kind?: WebhookSourceKind;
       subscribedEvents?: string[];
     } = {}
@@ -41,7 +40,6 @@ export class WebhookSourceFactory {
       secret: options.secret ?? null,
       signatureHeader: options.signatureHeader ?? null,
       signatureAlgorithm: options.signatureAlgorithm ?? null,
-      customHeaders: options.customHeaders ?? null,
       kind: options.kind ?? "custom",
       subscribedEvents: options.subscribedEvents ?? [],
     });

@@ -19,8 +19,8 @@ import {
   DEFAULT_PERIOD_DAYS,
   MAX_TOOLS_DISPLAYED,
   PERCENTAGE_MULTIPLIER,
-  TOOL_COLORS,
 } from "@app/components/agent_builder/observability/constants";
+import { getToolColor } from "@app/components/agent_builder/observability/utils";
 import { useAgentToolExecution } from "@app/lib/swr/assistants";
 
 type ChartRow = { version: string; values: Record<string, number> };
@@ -40,18 +40,13 @@ function ToolExecutionTooltip({
     return null;
   }
 
-  const getColorForTool = (toolName: string) => {
-    const idx = topTools.indexOf(toolName);
-    return TOOL_COLORS[(idx >= 0 ? idx : 0) % TOOL_COLORS.length];
-  };
-
   const rows = payload
     .filter((p) => typeof p.value === "number" && p.value > 0)
     .sort((a, b) => b.value - a.value)
     .map((p) => ({
       label: p.name || "",
       value: `${p.value}%`,
-      colorClassName: getColorForTool(p.name || ""),
+      colorClassName: getToolColor(p.name || "", topTools),
     }));
 
   return <ChartTooltipCard title={String(label)} rows={rows} />;
@@ -127,10 +122,10 @@ export function ToolExecutionChart({
     [topTools]
   );
 
-  const legendItems = topTools.map((toolName, idx) => ({
+  const legendItems = topTools.map((toolName) => ({
     key: toolName,
     label: toolName,
-    colorClassName: TOOL_COLORS[idx % TOOL_COLORS.length],
+    colorClassName: getToolColor(toolName, topTools),
   }));
 
   return (
@@ -168,13 +163,13 @@ export function ToolExecutionChart({
             cursor={{ fill: "hsl(var(--border) / 0.1)" }}
             content={renderTooltip}
           />
-          {topTools.map((toolName, idx) => (
+          {topTools.map((toolName) => (
             <Bar
               key={toolName}
               dataKey={(row: ChartRow) => row.values[toolName] ?? 0}
               stackId="a"
               fill="currentColor"
-              className={TOOL_COLORS[idx % TOOL_COLORS.length]}
+              className={getToolColor(toolName, topTools)}
               name={toolName}
             />
           ))}

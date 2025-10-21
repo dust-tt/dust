@@ -37,10 +37,8 @@ export const filterWebhookSource = (
   {
     return (
       webhookSource.name.toLowerCase().includes(filterValue.toLowerCase()) ||
-      webhookSource.views.some(
-        (view) =>
-          view?.customName !== null &&
-          view?.customName.toLowerCase().includes(filterValue.toLowerCase())
+      webhookSource.views.some((view) =>
+        view?.customName.toLowerCase().includes(filterValue.toLowerCase())
       )
     );
   }

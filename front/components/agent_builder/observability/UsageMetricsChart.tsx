@@ -202,53 +202,51 @@ export function UsageMetricsChart({
       errorMessage={isError ? "Failed to load observability data." : undefined}
       additionalControls={intervalControls}
     >
-      <>
-        <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-          <BarChart
-            data={data}
-            margin={{ top: 10, right: 30, left: 10, bottom: 0 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-            <XAxis dataKey="date" className="text-xs text-muted-foreground" />
-            <YAxis className="text-xs text-muted-foreground" />
-            <Tooltip
-              cursor={{ fill: "hsl(var(--border) / 0.1)" }}
-              content={UsageMetricsTooltip}
+      <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+        <BarChart
+          data={data}
+          margin={{ top: 10, right: 30, left: 10, bottom: 0 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+          <XAxis dataKey="date" className="text-xs text-muted-foreground" />
+          <YAxis className="text-xs text-muted-foreground" />
+          <Tooltip
+            cursor={{ fill: "hsl(var(--border) / 0.1)" }}
+            content={UsageMetricsTooltip}
+          />
+          {USAGE_METRICS_LEGEND.map(({ key, label }) => (
+            <Bar
+              key={key}
+              dataKey={key}
+              name={label}
+              fill="currentColor"
+              className={USAGE_METRICS_PALETTE[key]}
             />
-            {USAGE_METRICS_LEGEND.map(({ key, label }) => (
-              <Bar
-                key={key}
-                dataKey={key}
-                name={label}
-                fill="currentColor"
-                className={USAGE_METRICS_PALETTE[key]}
+          ))}
+          {snappedMarkers.map((m, index) => (
+            <ReferenceLine
+              key={`${m.version}-${m.x}`}
+              x={m.x}
+              stroke={VERSION_MARKER_STYLE.stroke}
+              strokeWidth={VERSION_MARKER_STYLE.strokeWidth}
+              strokeDasharray={VERSION_MARKER_STYLE.strokeDasharray}
+              ifOverflow="extendDomain"
+            >
+              <Label
+                value={`v${m.version}`}
+                position="top"
+                fill={VERSION_MARKER_STYLE.stroke}
+                fontSize={VERSION_MARKER_STYLE.labelFontSize}
+                offset={
+                  VERSION_MARKER_STYLE.labelOffsetBase +
+                  index * VERSION_MARKER_STYLE.labelOffsetIncrement
+                }
               />
-            ))}
-            {snappedMarkers.map((m, index) => (
-              <ReferenceLine
-                key={`${m.version}-${m.x}`}
-                x={m.x}
-                stroke={VERSION_MARKER_STYLE.stroke}
-                strokeWidth={VERSION_MARKER_STYLE.strokeWidth}
-                strokeDasharray={VERSION_MARKER_STYLE.strokeDasharray}
-                ifOverflow="extendDomain"
-              >
-                <Label
-                  value={`v${m.version}`}
-                  position="top"
-                  fill={VERSION_MARKER_STYLE.stroke}
-                  fontSize={VERSION_MARKER_STYLE.labelFontSize}
-                  offset={
-                    VERSION_MARKER_STYLE.labelOffsetBase +
-                    index * VERSION_MARKER_STYLE.labelOffsetIncrement
-                  }
-                />
-              </ReferenceLine>
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-        <ChartLegend items={legendItems} />
-      </>
+            </ReferenceLine>
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+      <ChartLegend items={legendItems} />
     </ChartContainer>
   );
 }

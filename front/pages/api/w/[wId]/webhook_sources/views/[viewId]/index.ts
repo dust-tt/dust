@@ -7,6 +7,7 @@ import type {
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import { apiError } from "@app/logger/withlogging";
@@ -49,24 +50,52 @@ async function handler(
     viewId
   );
 
-  if (webhookSourceView === null) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "webhook_source_view_not_found",
-        message: "Webhook source view not found",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET": {
+      if (webhookSourceView === null) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "webhook_source_view_not_found",
+            message: "Webhook source view not found",
+          },
+        });
+      }
+      if (!webhookSourceView.canRead(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: `Cannot read view with id ${viewId}.`,
+          },
+        });
+      }
       return res.status(200).json({
         webhookSourceView: webhookSourceView.toJSON(),
       });
     }
 
     case "PATCH": {
+      const isAdmin = await SpaceResource.canAdministrateSystemSpace(auth);
+      if (!isAdmin) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "webhook_source_view_auth_error",
+            message:
+              "User is not authorized to update webhook source views in a space.",
+          },
+        });
+      }
+      if (webhookSourceView === null) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "webhook_source_view_not_found",
+            message: "Webhook source view not found",
+          },
+        });
+      }
       const bodyValidation = patchWebhookSourceViewBodySchema.safeParse(
         req.body
       );

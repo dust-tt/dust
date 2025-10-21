@@ -71,6 +71,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
           editedAt: new Date(),
           editedByUserId: auth.user()?.id,
           webhookSourceId: webhookSource.id,
+          // on creation there is no custom icon or description
           description: "",
           icon: DEFAULT_WEBHOOK_ICON,
         },
@@ -295,7 +296,6 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
       subscribedEvents: this.subscribedEvents,
       signatureHeader: this.signatureHeader,
       signatureAlgorithm: this.signatureAlgorithm,
-      customHeaders: this.customHeaders,
       remoteMetadata: this.remoteMetadata,
       oauthConnectionId: this.oauthConnectionId,
       createdAt: this.createdAt.getTime(),
