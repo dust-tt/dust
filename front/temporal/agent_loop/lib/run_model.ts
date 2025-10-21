@@ -415,7 +415,7 @@ export async function runModelActivity(
     getDelimitersConfiguration({ agentConfiguration })
   );
 
-  let output: {
+  type Output = {
     actions: Array<{
       functionCallId: string;
       name: string | null;
@@ -425,7 +425,9 @@ export async function runModelActivity(
     contents: Array<
       TextContentType | FunctionCallContentType | ReasoningContentType
     >;
-  } | null = null;
+  };
+
+  let output: Output | null = null;
   let nativeChainOfThought = "";
   let dustRunId: Promise<string>;
 
