@@ -19,11 +19,10 @@ import {
 } from "@connectors/api/webhooks/teams/bot_messaging_utils";
 import {
   extractBearerToken,
-  generateTeamsRateLimitKey,
   validateBotFrameworkToken,
 } from "@connectors/api/webhooks/teams/jwt_validation";
 import { getConnector } from "@connectors/api/webhooks/teams/utils";
-import logger from "@connectors/logger/logger";
+import logger, { Logger } from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -41,6 +40,7 @@ const adapter = new CloudAdapter(botFrameworkAuthentication);
 adapter.onTurnError = async (context, error) => {
   logger.error(
     {
+      connectorProvider: "microsoft_bot",
       error: error.message,
       stack: error.stack,
       botId: process.env.MICROSOFT_BOT_ID,
@@ -67,6 +67,7 @@ adapter.onTurnError = async (context, error) => {
 export async function webhookTeamsAPIHandler(req: Request, res: Response) {
   logger.info(
     {
+      connectorProvider: "microsoft_bot",
       headers: {
         authorization: req.headers.authorization ? "Bearer [TOKEN]" : "MISSING",
         contentType: req.headers["content-type"],
@@ -85,7 +86,10 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
   const token = extractBearerToken(authHeader);
 
   if (!token) {
-    logger.warn("Missing or invalid Authorization header in Teams webhook");
+    logger.warn(
+      { connectorProvider: "microsoft_bot" },
+      "Missing or invalid Authorization header in Teams webhook"
+    );
     return apiError(req, res, {
       api_error: {
         type: "invalid_request_error",
@@ -97,7 +101,10 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
 
   const microsoftAppId = process.env.MICROSOFT_BOT_ID;
   if (!microsoftAppId) {
-    logger.error("MICROSOFT_BOT_ID environment variable not set");
+    logger.error(
+      { connectorProvider: "microsoft_bot" },
+      "MICROSOFT_BOT_ID environment variable not set"
+    );
     return apiError(req, res, {
       api_error: {
         type: "internal_server_error",
@@ -110,7 +117,10 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
   // Validate JWT token
   const claims = await validateBotFrameworkToken(token, microsoftAppId);
   if (!claims) {
-    logger.warn({ microsoftAppId }, "Invalid Bot Framework JWT token");
+    logger.warn(
+      { microsoftAppId, connectorProvider: "microsoft_bot" },
+      "Invalid Bot Framework JWT token"
+    );
     return apiError(req, res, {
       api_error: {
         type: "invalid_request_error",
@@ -136,7 +146,7 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
 
   if (!isValidOrigin) {
     logger.warn(
-      { serviceUrl, expectedOrigins },
+      { serviceUrl, expectedOrigins, connectorProvider: "microsoft_bot" },
       "Invalid service URL in Teams webhook"
     );
     return apiError(req, res, {
@@ -150,13 +160,9 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
 
   logger.info(
     {
+      connectorProvider: "microsoft_bot",
       appId: claims.aud,
       serviceUrl: claims.serviceUrl,
-      rateLimitKey: generateTeamsRateLimitKey(
-        microsoftAppId,
-        claims.serviceurl,
-        req.ip
-      ),
     },
     "Teams webhook validation passed"
   );
@@ -165,6 +171,7 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
     await adapter.process(req, res, async (context) => {
       logger.info(
         {
+          connectorProvider: "microsoft_bot",
           activityType: context.activity.type,
           activityName: context.activity.name,
           conversationId: context.activity.conversation?.id,
@@ -178,26 +185,39 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
         return;
       }
 
+      const localLogger = logger.child({
+        connectorProvider: "microsoft_bot",
+        connectorId: connector.id,
+        workspaceId: connector.workspaceId,
+      });
+
       // Handle different activity types
       switch (context.activity.type) {
         case "message":
           if (context.activity.value?.verb) {
-            await handleInteraction(context, connector);
+            await handleInteraction(context, connector, localLogger);
           } else {
-            await handleMessage(context, connector);
+            await handleMessage(context, connector, localLogger);
           }
           break;
 
         default:
-          logger.info(
-            { activityType: context.activity.type },
+          localLogger.info(
+            {
+              connectorProvider: connector.type,
+              activityType: context.activity.type,
+              connectorId: connector.id,
+            },
             "Unhandled activity type"
           );
           break;
       }
     });
   } catch (error) {
-    logger.error({ error }, "Error in Teams messages webhook");
+    logger.error(
+      { error, connectorProvider: "microsoft_bot" },
+      "Error in Teams messages webhook"
+    );
     res.status(500).json({ error: "Internal server error" });
   }
 }
@@ -205,6 +225,7 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
 async function handleMessage(
   context: TurnContext,
   connector: ConnectorResource,
+  localLogger: Logger,
   message?: string
 ) {
   message = message || context.activity.text;
@@ -212,12 +233,12 @@ async function handleMessage(
     return;
   }
 
-  logger.info({ text: message }, "Handling regular text message");
+  localLogger.info({ text: message }, "Handling regular text message");
 
   // Send thinking message
   const thinkingCard = createThinkingAdaptiveCard();
 
-  logger.info(
+  localLogger.info(
     {
       serviceUrl: context.activity.serviceUrl,
       conversationId: context.activity.conversation?.id,
@@ -233,7 +254,7 @@ async function handleMessage(
   // Use utility function for reliable messaging
   const thinkingActivity = await sendActivity(context, thinkingCard);
   if (thinkingActivity.isErr()) {
-    logger.error(
+    localLogger.error(
       { error: thinkingActivity.error },
       "Error processing Teams message"
     );
@@ -247,7 +268,7 @@ async function handleMessage(
     return;
   }
 
-  logger.info(
+  localLogger.info(
     { activityId: thinkingActivity.value },
     "Successfully sent thinking card"
   );
@@ -260,7 +281,10 @@ async function handleMessage(
   );
 
   if (result.isErr()) {
-    logger.error({ error: result.error }, "Error processing Teams message");
+    localLogger.error(
+      { error: result.error },
+      "Error processing Teams message"
+    );
     await sendActivity(
       context,
       createErrorAdaptiveCard({
@@ -273,31 +297,43 @@ async function handleMessage(
 
 async function handleInteraction(
   context: TurnContext,
-  connector: ConnectorResource
+  connector: ConnectorResource,
+  localLogger: Logger
 ) {
   const { verb } = context.activity.value;
 
-  logger.info({ verb }, "Handling interaction from adaptive card");
+  localLogger.info({ verb }, "Handling interaction from adaptive card");
 
   switch (verb) {
     case "ask_agent":
-      await handleAgentSelection(context, connector);
+      await handleAgentSelection(context, connector, localLogger);
       break;
     case "like":
-      await sendFeedback({ context, connector, thumbDirection: "up" });
+      await sendFeedback({
+        context,
+        connector,
+        thumbDirection: "up",
+        localLogger,
+      });
       break;
     case "dislike":
-      await sendFeedback({ context, connector, thumbDirection: "down" });
+      await sendFeedback({
+        context,
+        connector,
+        thumbDirection: "down",
+        localLogger,
+      });
       break;
     default:
-      logger.info({ verb }, "Unhandled interaction verb");
+      localLogger.info({ verb }, "Unhandled interaction verb");
       break;
   }
 }
 
 async function handleAgentSelection(
   context: TurnContext,
-  connector: ConnectorResource
+  connector: ConnectorResource,
+  localLogger: Logger
 ) {
   const { selectedAgent, originalMessage } = context.activity.value;
   // Clean the message and add agent mention
@@ -306,8 +342,8 @@ async function handleAgentSelection(
     .replace(/:mention\[([^\]]+)\]\{sId=([^}]+)\}/g, "")
     .trim();
   const agentMessage = `@${selectedAgent} ${cleanMessage}`;
-  await handleMessage(context, connector, agentMessage);
-  logger.info(
+  await handleMessage(context, connector, localLogger, agentMessage);
+  localLogger.info(
     { selectedAgent, originalMessage },
     "Handling agent selection from adaptive card"
   );

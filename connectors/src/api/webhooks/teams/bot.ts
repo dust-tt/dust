@@ -21,7 +21,7 @@ import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import { processMessageForMention } from "@connectors/lib/bot/mentions";
 import { MicrosoftBotMessage } from "@connectors/lib/models/microsoft_bot";
 import { getActionName } from "@connectors/lib/tools_utils";
-import logger from "@connectors/logger/logger";
+import logger, { Logger } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { getHeaderFromUserEmail } from "@connectors/types";
 
@@ -625,15 +625,17 @@ export async function sendFeedback({
   context,
   connector,
   thumbDirection,
+  localLogger,
 }: {
   context: TurnContext;
   connector: ConnectorResource;
   thumbDirection: "up" | "down";
+  localLogger: Logger;
 }) {
   // Validate user first
   const validatedUser = await validateTeamsUser(context, connector);
   if (!validatedUser) {
-    logger.error("Failed to validate Teams user for feedback");
+    localLogger.error("Failed to validate Teams user for feedback");
     return;
   }
 
@@ -643,7 +645,7 @@ export async function sendFeedback({
   const replyTo = context.activity.replyToId;
 
   if (!conversationId || !replyTo) {
-    logger.error("No conversation ID or reply to ID found in activity");
+    localLogger.error("No conversation ID or reply to ID found in activity");
     return;
   }
 
@@ -661,7 +663,7 @@ export async function sendFeedback({
     !microsoftBotMessage?.dustConversationId ||
     !microsoftBotMessage?.dustAgentMessageId
   ) {
-    logger.error(
+    localLogger.error(
       "No MicrosoftBotMessage found for conversation ID and reply to ID"
     );
     return;
@@ -676,7 +678,7 @@ export async function sendFeedback({
         ...getHeaderFromUserEmail(email),
       },
     },
-    logger
+    localLogger
   );
 
   const feedbackRes = await dustAPI.postFeedback(
@@ -689,7 +691,7 @@ export async function sendFeedback({
     }
   );
 
-  logger.info(
+  localLogger.info(
     {
       dustConversationId: microsoftBotMessage.dustConversationId,
       thumbDirection,
