@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";

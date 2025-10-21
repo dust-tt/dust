@@ -38,6 +38,7 @@ export type TriggerType = {
   webhookSourceViewSId?: string | null;
   createdAt: number;
   executionPerDayLimitOverride: number | null;
+  naturalLanguageDescription: string | null;
 } & TriggerConfiguration;
 
 export type TriggerKind = TriggerType["kind"];
@@ -89,6 +90,7 @@ export const TriggerSchema = t.union([
     name: t.string,
     kind: t.literal("schedule"),
     customPrompt: t.string,
+    naturalLanguageDescription: t.union([t.string, t.null]),
     configuration: ScheduleConfigSchema,
     editor: t.union([t.number, t.undefined]),
   }),
@@ -97,6 +99,7 @@ export const TriggerSchema = t.union([
     name: t.string,
     kind: t.literal("webhook"),
     customPrompt: t.string,
+    naturalLanguageDescription: t.union([t.string, t.null]),
     configuration: WebhookConfigSchema,
     webhookSourceViewSId: t.string,
     editor: t.union([t.number, t.undefined]),

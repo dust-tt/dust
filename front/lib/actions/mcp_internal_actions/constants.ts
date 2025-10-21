@@ -1081,6 +1081,7 @@ The directive should be used to display a clickable version of the agent name in
       search_drive_items: "never_ask",
       update_word_document: "high",
       get_file_content: "never_ask",
+      upload_file: "high",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,

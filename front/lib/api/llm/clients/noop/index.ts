@@ -1,5 +1,6 @@
-import { LLM } from "@app/lib/llm/llm";
-import type { LLMEvent } from "@app/lib/llm/types";
+import { LLM } from "@app/lib/api/llm/llm";
+import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import type { LLMOptions } from "@app/lib/api/llm/types/options";
 import type {
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
@@ -7,8 +8,14 @@ import type {
 
 // NoopLLM is a dummy LLM that simply returns "Soupinou!".
 export class NoopLLM extends LLM {
-  constructor({ model }: { model: ModelConfigurationType }) {
-    super(model);
+  constructor({
+    model,
+    options,
+  }: {
+    model: ModelConfigurationType;
+    options?: LLMOptions;
+  }) {
+    super({ model, options });
   }
 
   async *stream({

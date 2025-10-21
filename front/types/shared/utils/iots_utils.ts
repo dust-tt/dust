@@ -14,6 +14,7 @@ export function ioTsEnum<EnumType>(
     enumValues.includes(input as string);
 
   return new t.Type<EnumType>(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     enumName || uuidv4(),
     isEnumValue,
     (input, context) =>

@@ -121,12 +121,10 @@ export async function updateAllWorkspaceUsersRegionMetadata(
   {
     execute,
     newRegion,
-    rateLimitThreshold,
     forceUsersWithMultipleMemberships,
   }: {
     execute: boolean;
     newRegion: RegionType;
-    rateLimitThreshold: number;
     forceUsersWithMultipleMemberships: boolean;
   }
 ): Promise<Result<void, Error>> {
@@ -280,7 +278,6 @@ if (require.main === module) {
       {
         destinationRegion,
         workspaceId,
-        rateLimitThreshold,
         forceUsersWithMultipleMemberships,
         execute,
       },
@@ -291,7 +288,6 @@ if (require.main === module) {
       const res = await updateAllWorkspaceUsersRegionMetadata(auth, logger, {
         execute,
         newRegion: destinationRegion as RegionType,
-        rateLimitThreshold,
         forceUsersWithMultipleMemberships,
       });
 

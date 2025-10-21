@@ -325,7 +325,7 @@ export function makeErrorBlock(
     ],
     mrkdwn: true,
     unfurl_links: false,
-    text: errorMessage,
+    text: truncate(errorMessage, MAX_SLACK_MESSAGE_LENGTH),
   };
 }
 

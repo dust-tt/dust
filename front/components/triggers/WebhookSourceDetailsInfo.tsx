@@ -32,17 +32,15 @@ import {
   normalizeWebhookIcon,
 } from "@app/lib/webhookSource";
 import type { LightWorkspaceType } from "@app/types";
-import type { WebhookSourceViewWithWebhookSourceType } from "@app/types/triggers/webhooks";
+import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsInfoProps = {
-  webhookSourceView: WebhookSourceViewWithWebhookSourceType;
+  webhookSourceView: WebhookSourceViewForAdminType;
   owner: LightWorkspaceType;
 };
 
-const getEditedLabel = (
-  webhookSourceView: WebhookSourceViewWithWebhookSourceType
-) => {
+const getEditedLabel = (webhookSourceView: WebhookSourceViewForAdminType) => {
   if (
     webhookSourceView.editedByUser === null ||
     (webhookSourceView.editedByUser.editedAt === null &&

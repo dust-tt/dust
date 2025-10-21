@@ -10,10 +10,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
-import type {
-  WebhookSourceViewType,
-  WebhookSourceViewWithWebhookSourceType,
-} from "@app/types/triggers/webhooks";
+import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 const GetWebhookSourceViewsRequestSchema = z.object({
   spaceIds: z.array(z.string()),
@@ -83,9 +80,7 @@ async function handler(
 
       const flattenedWebhookSourceViews = webhookSourceViews
         .flat()
-        .filter((v): v is WebhookSourceViewWithWebhookSourceType => v !== null)
-        // map to WebhookSourceViewType: copy all fields but the webhookSource field
-        .map(({ webhookSource: _, ...rest }) => rest);
+        .filter((v): v is WebhookSourceViewType => v !== null);
 
       return res.status(200).json({
         success: true,
