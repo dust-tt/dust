@@ -11,7 +11,7 @@ import type {
 
 import { toHistory } from "./utils/conversation_to_google";
 
-class GoogleLLM extends LLM {
+export class GoogleLLM extends LLM {
   private client: GoogleGenAI;
   protected temperature: number;
   private textAccumulator: string = "";
