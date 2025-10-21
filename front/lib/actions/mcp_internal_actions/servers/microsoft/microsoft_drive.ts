@@ -11,6 +11,7 @@ import {
   validateZipFile,
 } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -441,6 +442,192 @@ function createServer(
               normalizeError(err).message || "Failed to retrieve file content"
             )
           );
+        }
+      }
+    )
+  );
+
+  server.tool(
+    "upload_file",
+    "Upload a file from Dust conversation to SharePoint or OneDrive. Supports files up to 250MB using the simple upload API. Uses driveId if provided, otherwise falls back to siteId. Automatically creates folders if they don't exist.",
+    {
+      fileId: z
+        .string()
+        .describe(
+          "The Dust fileId from the conversation attachments to upload."
+        ),
+      driveId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the drive to upload to. Takes priority over siteId if provided."
+        ),
+      siteId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the SharePoint site to upload to. Used if driveId is not provided."
+        ),
+      folderPath: z
+        .string()
+        .optional()
+        .describe(
+          "Optional path to folder where the file should be uploaded (e.g., 'Documents/Projects'). Folders will be created automatically if they don't exist. If not provided, uploads to the root of the drive."
+        ),
+      fileName: z
+        .string()
+        .optional()
+        .describe(
+          "Optional custom filename for the uploaded file. If not provided, uses the original filename from the attachment."
+        ),
+    },
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "microsoft_drive", agentLoopContext },
+      async (
+        { fileId, driveId, siteId, folderPath, fileName },
+        { authInfo }
+      ) => {
+        const client = await getGraphClient(authInfo);
+        if (!client) {
+          return new Err(
+            new MCPError("Failed to authenticate with Microsoft Graph")
+          );
+        }
+
+        if (!agentLoopContext) {
+          return new Err(
+            new MCPError("No conversation context available for file access")
+          );
+        }
+
+        try {
+          // Get the file from conversation attachment
+          const fileResult = await getFileFromConversationAttachment(
+            auth,
+            fileId,
+            agentLoopContext
+          );
+
+          if (fileResult.isErr()) {
+            return new Err(new MCPError(fileResult.error));
+          }
+
+          const { buffer, filename, contentType } = fileResult.value;
+
+          // Check file size limit (250MB for simple upload)
+          const MAX_SIMPLE_UPLOAD_SIZE = 250 * 1024 * 1024; // 250MB
+          if (buffer.length > MAX_SIMPLE_UPLOAD_SIZE) {
+            return new Err(
+              new MCPError(
+                `File size (${(buffer.length / (1024 * 1024)).toFixed(2)}MB) exceeds the maximum limit of 250MB for simple upload. For larger files, use the resumable upload API.`
+              )
+            );
+          }
+
+          // Determine the upload endpoint
+          let endpoint: string;
+          if (driveId) {
+            endpoint = `/drives/${driveId}`;
+          } else if (siteId) {
+            endpoint = `/sites/${siteId}/drive`;
+          } else {
+            return new Err(
+              new MCPError("Either driveId or siteId must be provided")
+            );
+          }
+
+          // If folderPath is provided, ensure the folder exists (create if needed)
+          if (folderPath) {
+            const folders = folderPath.split("/").filter((f) => f.length > 0);
+            let currentPath = "";
+            let parentItemId = "root";
+
+            for (const folder of folders) {
+              currentPath = currentPath ? `${currentPath}/${folder}` : folder;
+
+              try {
+                // Try to get the folder
+                const folderItem = await client
+                  .api(`${endpoint}/root:/${currentPath}`)
+                  .get();
+                // Update parent item ID for next iteration
+                parentItemId = folderItem.id;
+              } catch (err) {
+                const error = normalizeError(err);
+                const isNotFound =
+                  error.message.toLowerCase().includes("could not be found") ||
+                  error.message.toLowerCase().includes("not found");
+
+                if (isNotFound) {
+                  // Folder doesn't exist, create it
+                  try {
+                    const createdFolder = await client
+                      .api(`${endpoint}/items/${parentItemId}/children`)
+                      .post({
+                        name: folder,
+                        folder: {},
+                        "@microsoft.graph.conflictBehavior": "fail",
+                      });
+                    // Update parent item ID for next iteration
+                    parentItemId = createdFolder.id;
+                  } catch (createErr) {
+                    return new Err(
+                      new MCPError(
+                        `Failed to create folder '${folder}': ${normalizeError(createErr).message}`
+                      )
+                    );
+                  }
+                } else {
+                  return new Err(
+                    new MCPError(
+                      `Failed to check folder '${currentPath}': ${normalizeError(err).message}`
+                    )
+                  );
+                }
+              }
+            }
+          }
+
+          // Build the upload path
+          const uploadFileName = fileName ?? filename;
+          const uploadPath = folderPath
+            ? `${folderPath}/${uploadFileName}`
+            : uploadFileName;
+
+          // Upload using PUT /drive/root:/{path}:/content
+          const uploadEndpoint = `${endpoint}/root:/${encodeURIComponent(uploadPath)}:/content`;
+
+          const response = await client
+            .api(uploadEndpoint)
+            .header("Content-Type", contentType)
+            .put(buffer);
+
+          return new Ok([
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  success: true,
+                  message: "File uploaded successfully",
+                  file: {
+                    id: response.id,
+                    name: response.name,
+                    size: response.size,
+                    webUrl: response.webUrl,
+                    createdDateTime: response.createdDateTime,
+                    lastModifiedDateTime: response.lastModifiedDateTime,
+                  },
+                },
+                null,
+                2
+              ),
+            },
+          ]);
+        } catch (err) {
+          const error = normalizeError(err);
+          const errorMessage = error.message || "Failed to upload file";
+          return new Err(new MCPError(errorMessage));
         }
       }
     )
