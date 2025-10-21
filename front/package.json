@@ -39,7 +39,7 @@
     "@mendable/firecrawl-js": "^1.29.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@modelcontextprotocol/sdk": "git://github.com:dust-tt/typescript-sdk.git#628ebe48388549faae7e35504611af9ac2c6f5e4",
-    "@notionhq/client": "^2.3.0",
+    "@notionhq/client": "^5.3.0",
     "@octokit/core": "^6.1.5",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-label": "^2.0.2",

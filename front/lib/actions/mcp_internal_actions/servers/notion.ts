@@ -3,11 +3,16 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
+import {
+  Client,
+  isFullDatabase,
+  isFullDataSource,
+  isFullPage,
+} from "@notionhq/client";
 import type {
   BlockObjectRequest,
   CreateCommentParameters,
-  QueryDatabaseParameters,
+  QueryDataSourceParameters,
   RichTextItemResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 import { APIResponseError } from "@notionhq/client/build/src/errors";
@@ -349,7 +354,7 @@ function createServer(
           query,
           filter: {
             property: "object",
-            value: type,
+            value: type === "database" ? "data_source" : type,
           },
           page_size: NOTION_SEARCH_ACTION_NUM_RESULTS,
         });
@@ -364,7 +369,11 @@ function createServer(
           const timestampInMs = timeFrameFromNow(timeFrame);
           const date = new Date(timestampInMs);
           results = rawResults.results.filter((result) => {
-            if (isFullPage(result) || isFullDatabase(result)) {
+            if (
+              isFullPage(result) ||
+              isFullDatabase(result) ||
+              isFullDataSource(result)
+            ) {
               const lastEditedTime = parseISO(result.last_edited_time);
               return lastEditedTime > date;
             }
@@ -433,7 +442,7 @@ function createServer(
                   provider: "notion",
                 },
               } satisfies SearchResultResourceType;
-            } else if (isFullDatabase(result)) {
+            } else if (isFullDatabase(result) || isFullDataSource(result)) {
               const title = result.title[0]?.plain_text ?? "Untitled Database";
               const description = result.description
                 ?.map((d) => d?.plain_text)
@@ -547,17 +556,24 @@ function createServer(
         { databaseId, filter, sorts, start_cursor, page_size },
         { authInfo }
       ) => {
-        return withNotionClient(
-          (notion) =>
-            notion.databases.query({
-              database_id: databaseId,
-              filter: filter as QueryDatabaseParameters["filter"],
-              sorts,
-              start_cursor,
-              page_size,
-            }),
-          authInfo
-        );
+        return withNotionClient(async (notion) => {
+          // First, get the database to retrieve its data sources
+          const database = await notion.databases.retrieve({
+            database_id: databaseId,
+          });
+          if (!isFullDatabase(database)) {
+            throw new Error("Database not found or not accessible");
+          }
+          // Use the first data source (most common case)
+          const dataSourceId = database.data_sources[0]?.id || database.id;
+          return notion.dataSources.query({
+            data_source_id: dataSourceId,
+            filter: filter as QueryDataSourceParameters["filter"],
+            sorts,
+            start_cursor,
+            page_size,
+          });
+        }, authInfo);
       }
     )
   );
@@ -585,17 +601,24 @@ function createServer(
         { databaseId, filter, sorts, start_cursor, page_size },
         { authInfo }
       ) => {
-        return withNotionClient(
-          (notion) =>
-            notion.databases.query({
-              database_id: databaseId,
-              filter: filter as QueryDatabaseParameters["filter"],
-              sorts,
-              start_cursor,
-              page_size,
-            }),
-          authInfo
-        );
+        return withNotionClient(async (notion) => {
+          // First, get the database to retrieve its data sources
+          const database = await notion.databases.retrieve({
+            database_id: databaseId,
+          });
+          if (!isFullDatabase(database)) {
+            throw new Error("Database not found or not accessible");
+          }
+          // Use the first data source (most common case)
+          const dataSourceId = database.data_sources[0]?.id || database.id;
+          return notion.dataSources.query({
+            data_source_id: dataSourceId,
+            filter: filter as QueryDataSourceParameters["filter"],
+            sorts,
+            start_cursor,
+            page_size,
+          });
+        }, authInfo);
       }
     )
   );
@@ -681,7 +704,13 @@ function createServer(
       async ({ parent, title, properties, icon, cover }, { authInfo }) => {
         return withNotionClient(
           (notion) =>
-            notion.databases.create({ parent, title, properties, icon, cover }),
+            notion.databases.create({
+              parent,
+              title,
+              initial_data_source: { properties },
+              icon,
+              cover,
+            }),
           authInfo
         );
       }
@@ -925,11 +954,21 @@ function createServer(
         agentLoopContext,
       },
       async ({ databaseId, properties }, { authInfo }) => {
-        return withNotionClient(
-          (notion) =>
-            notion.databases.update({ database_id: databaseId, properties }),
-          authInfo
-        );
+        return withNotionClient(async (notion) => {
+          // First, get the database to retrieve its data sources
+          const database = await notion.databases.retrieve({
+            database_id: databaseId,
+          });
+          if (!isFullDatabase(database)) {
+            throw new Error("Database not found or not accessible");
+          }
+          // Use the first data source (most common case)
+          const dataSourceId = database.data_sources[0]?.id || database.id;
+          return notion.dataSources.update({
+            data_source_id: dataSourceId,
+            properties,
+          });
+        }, authInfo);
       }
     )
   );
