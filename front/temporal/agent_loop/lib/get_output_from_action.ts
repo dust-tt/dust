@@ -94,7 +94,6 @@ export async function getOutputFromAction(
 > {
   let blockExecutionOutput: Output | null = null;
   let blockExecutionNativeChainOfThought = "";
-  let blockExecutionDustRunId: Promise<string>;
 
   const res = await runActionStreamed(
     auth,
@@ -118,9 +117,7 @@ export async function getOutputFromAction(
     return new Err({ type: "shouldRetryMessage", message: res.error.message });
   }
 
-  const { eventStream, dustRunId: dustRunIdValue } = res.value;
-  // eslint-disable-next-line prefer-const
-  blockExecutionDustRunId = dustRunIdValue;
+  const { eventStream, dustRunId: blockExecutionDustRunId } = res.value;
 
   let isGeneration = true;
 
