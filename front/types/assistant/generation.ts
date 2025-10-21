@@ -62,7 +62,7 @@ export interface FunctionCallType {
 export interface AssistantFunctionCallMessageTypeModel {
   role: "assistant";
   content?: string; // Deprecated, use contents instead.
-  function_calls: FunctionCallType[]; // Deprecated, use contents instead
+  function_calls: FunctionCallType[]; // Deprecated, use contents instead.
   contents: Array<Exclude<AgentContentItemType, ErrorContentType>>;
 }
 
