@@ -80,18 +80,17 @@ export function WebhookEditionModal({
 }: WebhookEditionModalProps) {
   const { user } = useUser();
 
-  const defaultValues = useMemo(
-    (): WebhookFormData => ({
-      name: "Webhook Trigger",
-      enabled: true,
-      customPrompt: "",
-      webhookSourceViewSId: preSelectedWebhookSourceViewSId ?? "",
-      event: undefined,
-      filter: "",
-      includePayload: true,
-    }),
-    [preSelectedWebhookSourceViewSId]
-  );
+  const getDefaultValues = (): WebhookFormData => ({
+    name: "Webhook Trigger",
+    enabled: true,
+    customPrompt: "",
+    webhookSourceViewSId: preSelectedWebhookSourceViewSId ?? "",
+    event: undefined,
+    filter: "",
+    includePayload: true,
+  });
+
+  const defaultValues = useMemo(getDefaultValues, [preSelectedWebhookSourceViewSId]);
 
   const form = useForm<WebhookFormData>({
     resolver: zodResolver(webhookFormSchema),
@@ -187,6 +186,7 @@ export function WebhookEditionModal({
     }
   }, [generatedFilter, form]);
 
+  // Reset natural description when modal closes
   useEffect(() => {
     if (!isOpen) {
       form.reset(defaultValues);
