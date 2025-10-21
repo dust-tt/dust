@@ -43,7 +43,14 @@ import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
-import type { AgentActionsEvent, ModelId } from "@app/types";
+import type {
+  AgentActionsEvent,
+  ConversationType,
+  ModelConversationTypeMultiActions,
+  ModelId,
+  Ok,
+  UserMessageType,
+} from "@app/types";
 import { removeNulls } from "@app/types";
 import type {
   FunctionCallContentType,
@@ -427,20 +434,33 @@ export async function runModelActivity(
     >;
   };
 
-  let blockExecutionOutput: Output | null = null;
-  let blockExecutionNativeChainOfThought = "";
-  let blockExecutionDustRunId: Promise<string>;
-
-  let fakeResponse:
+  type GetOutputFromActionResponse =
     | { shouldRetryMessage: string }
     | {
         output: Output;
         dustRunId: Promise<string>;
         nativeChainOfThought: string;
       }
-    | { shouldReturnNull: true } = { shouldReturnNull: true };
+    | { shouldReturnNull: true };
 
-  getOutputFromAction: {
+  type GetOutputFromActionInput = {
+    modelConversationRes: Ok<{
+      modelConversation: ModelConversationTypeMultiActions;
+      tokensUsed: number;
+    }>;
+    conversation: ConversationType;
+    userMessage: UserMessageType;
+  };
+
+  async function getOutputFromAction({
+    modelConversationRes,
+    conversation,
+    userMessage,
+  }: GetOutputFromActionInput): Promise<GetOutputFromActionResponse> {
+    let blockExecutionOutput: Output | null = null;
+    let blockExecutionNativeChainOfThought = "";
+    let blockExecutionDustRunId: Promise<string>;
+
     const res = await runActionStreamed(
       auth,
       "assistant-v2-multi-actions-agent",
@@ -460,8 +480,7 @@ export async function runModelActivity(
     );
 
     if (res.isErr()) {
-      fakeResponse = { shouldRetryMessage: res.error.message };
-      break getOutputFromAction;
+      return { shouldRetryMessage: res.error.message };
     }
 
     const { eventStream, dustRunId: dustRunIdValue } = res.value;
@@ -477,8 +496,7 @@ export async function runModelActivity(
 
       if (event.type === "error") {
         await flushParserTokens();
-        fakeResponse = { shouldRetryMessage: event.content.message };
-        break getOutputFromAction;
+        return { shouldRetryMessage: event.content.message };
       }
 
       // Heartbeat & sleep allow the activity to be cancelled, e.g. on a "Stop
@@ -492,8 +510,7 @@ export async function runModelActivity(
       } catch (err) {
         if (err instanceof CancelledFailure) {
           logger.info("Activity cancelled, stopping");
-          fakeResponse = { shouldReturnNull: true };
-          break getOutputFromAction;
+          return { shouldReturnNull: true };
         }
         throw err;
       }
@@ -551,8 +568,7 @@ export async function runModelActivity(
         const e = event.content.execution[0][0];
         if (e.error) {
           await flushParserTokens();
-          fakeResponse = { shouldRetryMessage: e.error };
-          break getOutputFromAction;
+          return { shouldRetryMessage: e.error };
         }
 
         if (event.content.block_name === "MODEL" && e.value) {
@@ -561,10 +577,9 @@ export async function runModelActivity(
 
           const block = e.value;
           if (!isDustAppChatBlockType(block)) {
-            fakeResponse = {
+            return {
               shouldRetryMessage: "Received unparsable MODEL block.",
             };
-            break getOutputFromAction;
           }
 
           // Extract token usage from block execution metadata
@@ -639,8 +654,7 @@ export async function runModelActivity(
                   message: `Error parsing function call arguments: ${error}`,
                   metadata: null,
                 });
-                fakeResponse = { shouldReturnNull: true };
-                break getOutputFromAction;
+                return { shouldReturnNull: true };
               }
             }
           } else {
@@ -653,18 +667,23 @@ export async function runModelActivity(
     await flushParserTokens();
 
     if (!blockExecutionOutput) {
-      fakeResponse = {
+      return {
         shouldRetryMessage: "Agent execution didn't complete.",
       };
-      break getOutputFromAction;
     }
 
-    fakeResponse = {
+    return {
       output: blockExecutionOutput,
       dustRunId: blockExecutionDustRunId,
       nativeChainOfThought: blockExecutionNativeChainOfThought,
     };
   }
+
+  const fakeResponse = await getOutputFromAction({
+    modelConversationRes,
+    conversation,
+    userMessage,
+  });
 
   if ("shouldRetryMessage" in fakeResponse) {
     return handlePossiblyRetryableError(fakeResponse.shouldRetryMessage);
