@@ -202,7 +202,7 @@ export const ConversationHandoffExample = () => {
           </ConversationMessage>
           <ConversationMessage
             type="agent"
-            name="@soupinou"
+            name="soupinou"
             timestamp="17:10"
             pictureUrl="https://avatars.githubusercontent.com/u/138893015?&v=4"
             buttons={[
@@ -227,7 +227,7 @@ export const ConversationHandoffExample = () => {
             />
           </ConversationMessage>
           <ConversationMessage
-            name="@deep-dive"
+            name="deep-dive"
             type="agent"
             completionStatus={
               <span className="s-flex s-cursor-pointer s-items-center s-gap-1 s-text-xs">

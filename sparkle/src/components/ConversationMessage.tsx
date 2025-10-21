@@ -198,20 +198,11 @@ export const ConversationMessageHeader = React.forwardRef<
         {...props}
       >
         <Avatar
-          className="@sm:s-hidden"
           name={name}
           visual={avatarUrl}
           busy={isBusy}
           disabled={isDisabled}
           size="xs"
-        />
-        <Avatar
-          className="s-hidden @sm:s-flex"
-          name={name}
-          visual={avatarUrl}
-          busy={isBusy}
-          disabled={isDisabled}
-          size="sm"
         />
         <div className="s-inline-flex s-w-full s-justify-between s-gap-0.5">
           <div className="s-inline-flex s-items-baseline s-gap-2 s-text-foreground dark:s-text-foreground-night">
