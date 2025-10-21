@@ -65,7 +65,7 @@ export class DefaultRemoteMCPServerInMemoryResource {
               provider: "mcp",
               // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               supported_use_cases: this.config.supportedOAuthUseCases || [],
-              scope: this.config.oauthScope,
+              scope: this.config.scope,
             }
           : null,
       tools: [], // There are no predefined tools for default remote servers

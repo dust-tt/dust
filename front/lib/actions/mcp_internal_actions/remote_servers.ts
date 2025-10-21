@@ -11,7 +11,7 @@ export type DefaultRemoteMCPServerConfig = {
   connectionInstructions?: string;
   authMethod: "bearer" | "oauth-dynamic" | null;
   supportedOAuthUseCases?: MCPOAuthUseCase[];
-  oauthScope?: string;
+  scope?: string;
   toolStakes?: Record<string, "high" | "low" | "never_ask">;
 };
 
@@ -150,9 +150,9 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     documentationUrl:
       "https://docs.gitlab.com/user/gitlab_duo/model_context_protocol/mcp_server/",
     connectionInstructions:
-      "GitLab uses OAuth authentication with the 'mcp' scope. For GitLab Self-Managed instances, you can configure a custom URL during setup. The default URL connects to GitLab.com.",
+      "GitLab uses OAuth authentication with the 'mcp' scope. The default URL connects to gitlab.com.",
     authMethod: "oauth-dynamic",
-    oauthScope: "mcp",
+    scope: "mcp",
     toolStakes: {
       get_mcp_server_version: "never_ask",
       create_issue: "low",

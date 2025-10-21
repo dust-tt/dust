@@ -77,10 +77,19 @@ async function handler(
           const defaultServerConfig = getDefaultRemoteMCPServerByURL(url);
           const connectionMetadata = r2.error.connectionMetadata;
 
-          // If the server didn't provide a scope and the default server has a static OAuth scope,
-          // use it as a fallback
-          if (!connectionMetadata.scope && defaultServerConfig?.oauthScope) {
-            connectionMetadata.scope = defaultServerConfig.oauthScope;
+          // Merge scopes: combine server-provided scopes with default scopes
+          if (defaultServerConfig?.scope) {
+            const serverScopes =
+              connectionMetadata.scope?.split(/\s+/).filter(Boolean) ?? [];
+            const defaultScopes = defaultServerConfig.scope
+              .split(/\s+/)
+              .filter(Boolean);
+
+            // Merge and deduplicate scopes
+            const mergedScopes = Array.from(
+              new Set([...serverScopes, ...defaultScopes])
+            );
+            connectionMetadata.scope = mergedScopes.join(" ");
           }
 
           return res.status(200).json({
