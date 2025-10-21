@@ -1,6 +1,7 @@
 import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it, vi } from "vitest";
 
+import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -38,7 +39,7 @@ describe("GET /api/w/[wId]/webhook_sources/views/[viewId]", () => {
       await webhookSourceViewFactory.create(globalSpace);
 
     // Get the webhook source name from the toJSON() output since customName can be null
-    const webhookSourceName = webhookSourceView.toJSON().customName;
+    const webhookSourceName = webhookSourceView.toJSONForAdmin().customName;
 
     expect(webhookSourceView).not.toBeNull();
     req.query.viewId = webhookSourceView.sId;
@@ -86,7 +87,11 @@ describe("GET /api/w/[wId]/webhook_sources/views/[viewId]", () => {
   it("should work for user role when accessing valid webhook source view", async () => {
     const { req, res, workspace } = await setupTest("user", "GET");
 
-    const globalSpace = await SpaceFactory.global(workspace);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const { globalSpace } = await SpaceFactory.defaults(adminAuth);
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     const webhookSourceView =
       await webhookSourceViewFactory.create(globalSpace);
@@ -100,6 +105,21 @@ describe("GET /api/w/[wId]/webhook_sources/views/[viewId]", () => {
     const responseData = res._getJSONData();
     expect(responseData.webhookSourceView).toBeDefined();
     expect(responseData.webhookSourceView.sId).toBe(webhookSourceView.sId);
+  });
+
+  it("should return nothing if user does not have access to webhook source view", async () => {
+    const { req, res, workspace } = await setupTest("user", "GET");
+
+    const space = await SpaceFactory.regular(workspace);
+    const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
+    const webhookSourceView = await webhookSourceViewFactory.create(space);
+
+    expect(webhookSourceView).not.toBeNull();
+    req.query.viewId = webhookSourceView.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(404);
   });
 });
 
@@ -208,7 +228,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
     req.body = { name: "Updated Name" };
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(401);
+    expect(res._getStatusCode()).toBe(403);
     const responseData = res._getJSONData();
     expect(responseData.error.type).toBe("webhook_source_view_auth_error");
   });
@@ -253,7 +273,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
         .mockResolvedValue(
           new Err(new DustError("internal_error", "Test error"))
         ),
-      toJSON: vi.fn().mockReturnValue(webhookSourceView.toJSON()),
+      toJSON: vi.fn().mockReturnValue(webhookSourceView.toJSONForAdmin()),
     };
 
     const fetchByIdSpy = vi

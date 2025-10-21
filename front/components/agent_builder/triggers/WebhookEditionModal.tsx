@@ -188,11 +188,13 @@ export function WebhookEditionModal({
   useEffect(() => {
     if (!isOpen) {
       form.reset(defaultValues);
+      setNaturalDescription("");
       return;
     }
 
     if (!trigger) {
       form.reset(defaultValues);
+      setNaturalDescription("");
       return;
     }
 
@@ -209,7 +211,14 @@ export function WebhookEditionModal({
       filter,
       includePayload,
     });
-  }, [defaultValues, form, isOpen, trigger]);
+
+    // Restore natural description if it exists
+    if (trigger.naturalLanguageDescription) {
+      setNaturalDescription(trigger.naturalLanguageDescription);
+    } else {
+      setNaturalDescription("");
+    }
+  }, [defaultValues, form, isOpen, trigger, setNaturalDescription]);
 
   const handleClose = () => {
     // Reset natural description to clear the filter generation status
@@ -239,13 +248,17 @@ export function WebhookEditionModal({
     }
 
     const editor = trigger?.editor ?? user.id ?? null;
-    const editorEmail = trigger?.editorEmail ?? user.email ?? undefined;
+    const editorName = trigger?.editorName ?? user.fullName ?? undefined;
 
     const triggerData: AgentBuilderWebhookTriggerType = {
       sId: trigger?.sId,
       enabled: data.enabled,
       name: data.name.trim(),
       customPrompt: data.customPrompt.trim(),
+      naturalLanguageDescription:
+        selectedWebhookSourceView?.kind !== "custom"
+          ? naturalDescription || null
+          : null,
       kind: "webhook",
       configuration: {
         includePayload: data.includePayload,
@@ -254,7 +267,7 @@ export function WebhookEditionModal({
       },
       webhookSourceViewSId: data.webhookSourceViewSId ?? undefined,
       editor,
-      editorEmail,
+      editorName,
     };
 
     onSave(triggerData);
@@ -317,7 +330,7 @@ export function WebhookEditionModal({
             <ContentMessage variant="info">
               You cannot edit this trigger. It is managed by{" "}
               <span className="font-semibold">
-                {trigger.editorEmail ?? "another user"}
+                {trigger.editorName ?? "another user"}
               </span>
               .
             </ContentMessage>

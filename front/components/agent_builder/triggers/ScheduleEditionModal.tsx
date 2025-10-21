@@ -34,6 +34,7 @@ import { assertNever } from "@app/types";
 const scheduleFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
   enabled: z.boolean().default(true),
+  naturalLanguageDescription: z.string().optional(),
   customPrompt: z.string(),
   cron: z.string().min(1, "Cron expression is required"),
   timezone: z.string().min(1, "Timezone is required"),
@@ -97,6 +98,7 @@ export function ScheduleEditionModal({
     name: "Schedule",
     enabled: true,
     cron: "",
+    naturalLanguageDescription: "",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     customPrompt: "",
   };
@@ -106,7 +108,6 @@ export function ScheduleEditionModal({
     defaultValues,
     disabled: !isEditor,
   });
-  const [naturalDescription, setNaturalDescription] = useState("");
   const [
     naturalDescriptionToCronRuleStatus,
     setNaturalDescriptionToCronRuleStatus,
@@ -135,6 +136,9 @@ export function ScheduleEditionModal({
       cron: scheduleConfig?.cron ?? defaultValues.cron,
       timezone: scheduleConfig?.timezone ?? defaultValues.timezone,
       customPrompt: trigger?.customPrompt ?? defaultValues.customPrompt,
+      naturalLanguageDescription:
+        trigger?.naturalLanguageDescription ??
+        defaultValues.naturalLanguageDescription,
     });
   }, [
     reset,
@@ -142,6 +146,7 @@ export function ScheduleEditionModal({
     defaultValues.cron,
     defaultValues.timezone,
     defaultValues.customPrompt,
+    defaultValues.naturalLanguageDescription,
     trigger,
     defaultValues.enabled,
   ]);
@@ -196,8 +201,9 @@ export function ScheduleEditionModal({
         timezone: data.timezone.trim(),
       },
       editor: trigger?.editor ?? user?.id ?? null,
+      naturalLanguageDescription: data.naturalLanguageDescription ?? null,
       customPrompt: data.customPrompt.trim() ?? null,
-      editorEmail: trigger?.editorEmail ?? user?.email,
+      editorName: trigger?.editorName ?? user?.fullName,
     };
 
     onSave(triggerData);
@@ -223,7 +229,7 @@ export function ScheduleEditionModal({
               You cannot edit this schedule. It is managed by{" "}
               <span className="font-semibold">
                 {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-                {trigger.editorEmail || "another user"}
+                {trigger.editorName || "another user"}
               </span>
               .
             </ContentMessage>
@@ -272,11 +278,14 @@ export function ScheduleEditionModal({
                   id="schedule-description"
                   placeholder='Describe when you want the agent to run in natural language. e.g. "run every day at 9 AM", or "Late afternoon on business days"...'
                   rows={3}
-                  value={naturalDescription}
+                  {...form.register("naturalLanguageDescription")}
                   disabled={!isEditor}
                   onChange={async (e) => {
+                    await form
+                      .register("naturalLanguageDescription")
+                      .onChange(e);
+
                     const txt = e.target.value;
-                    setNaturalDescription(txt);
                     setNaturalDescriptionToCronRuleStatus(
                       txt ? "loading" : "idle"
                     );

@@ -194,10 +194,11 @@ const webhookTriggerSchema = z.object({
   name: z.string(),
   kind: z.enum(["webhook"]),
   customPrompt: z.string().nullable(),
+  naturalLanguageDescription: z.string().nullable(),
   configuration: webhookConfigSchema,
   editor: z.number().nullable(),
   webhookSourceViewSId: z.string().nullable().optional(),
-  editorEmail: z.string().optional(),
+  editorName: z.string().optional(),
 });
 
 const scheduleTriggerSchema = z.object({
@@ -206,9 +207,10 @@ const scheduleTriggerSchema = z.object({
   name: z.string(),
   kind: z.enum(["schedule"]),
   customPrompt: z.string().nullable(),
+  naturalLanguageDescription: z.string().nullable(),
   configuration: scheduleConfigSchema,
   editor: z.number().nullable(),
-  editorEmail: z.string().optional(),
+  editorName: z.string().optional(),
 });
 
 const triggerSchema = z.discriminatedUnion("kind", [

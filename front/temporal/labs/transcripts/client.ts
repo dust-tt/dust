@@ -27,7 +27,12 @@ function getScheduleOptions(
     action: {
       type: "startWorkflow",
       workflowType: retrieveNewTranscriptsWorkflow,
-      args: [{ transcriptsConfigurationId: transcriptsConfiguration.sId }],
+      args: [
+        {
+          workspaceId: transcriptsConfiguration.workspaceId,
+          transcriptsConfigurationId: transcriptsConfiguration.sId,
+        },
+      ],
       taskQueue: TRANSCRIPTS_QUEUE_NAME,
       workflowId: makeRetrieveTranscriptWorkflowId(transcriptsConfiguration),
     },

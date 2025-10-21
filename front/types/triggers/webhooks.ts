@@ -46,19 +46,22 @@ export type WebhookSourceType = {
   id: ModelId;
   sId: string;
   name: string;
-  urlSecret: string;
   kind: WebhookSourceKind;
-  secret: string | null;
-  signatureHeader: string | null;
-  signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
-  remoteMetadata: Record<string, any> | null;
-  oauthConnectionId: string | null;
   createdAt: number;
   updatedAt: number;
   subscribedEvents: string[];
 };
 
-export type WebhookSourceViewType = {
+export type WebhookSourceForAdminType = WebhookSourceType & {
+  urlSecret: string;
+  secret: string | null;
+  signatureHeader: string | null;
+  signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
+  remoteMetadata: Record<string, any> | null;
+  oauthConnectionId: string | null;
+};
+
+type BaseWebhookSourceViewType = {
   id: ModelId;
   sId: string;
   customName: string;
@@ -71,17 +74,20 @@ export type WebhookSourceViewType = {
   spaceId: string;
   editedByUser: EditedByUser | null;
 };
-
-export type WebhookSourceViewWithWebhookSourceType = WebhookSourceViewType & {
+export type WebhookSourceViewType = BaseWebhookSourceViewType & {
   webhookSource: WebhookSourceType;
 };
 
-export type WebhookSourceWithViewsType = WebhookSourceType & {
-  views: WebhookSourceViewWithWebhookSourceType[];
+export type WebhookSourceViewForAdminType = BaseWebhookSourceViewType & {
+  webhookSource: WebhookSourceForAdminType;
+};
+
+export type WebhookSourceWithViewsType = WebhookSourceForAdminType & {
+  views: WebhookSourceViewForAdminType[];
 };
 
 export type WebhookSourceWithSystemViewType = WebhookSourceWithViewsType & {
-  systemView: WebhookSourceViewWithWebhookSourceType | null;
+  systemView: WebhookSourceViewForAdminType | null;
 };
 
 export type WebhookSourceWithViewsAndUsageType = WebhookSourceWithViewsType & {
