@@ -130,7 +130,7 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
       currentRegion === "europe-west1"
         ? "eu-dust-front-prod.gmnlm"
         : "dust-front-prod.gmnlm";
-    const temporalLink = `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows?query=%60WorkflowId%60+STARTS_WITH+%22labs-transcripts-retrieve-${configuration.id}%22`;
+    const temporalLink = `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows?query=%60WorkflowId%60+STARTS_WITH+%22labs-transcripts-retrieve-${workspace.id}-${configuration.id}%22`;
 
     // Stop the existing workflow if it's running (don't change isActive status)
     const stopResult = await stopRetrieveTranscriptsWorkflow(
