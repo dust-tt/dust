@@ -24,6 +24,64 @@ import { useAgentToolExecution } from "@app/lib/swr/assistants";
 
 type ChartRow = { version: string; values: Record<string, number> };
 
+type BarShapeProps = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fill?: string;
+  payload: ChartRow;
+};
+
+function isBarShapeProps(p: unknown): p is BarShapeProps {
+  if (typeof p !== "object" || p === null) {
+    return false;
+  }
+  const o = p as Record<string, unknown>;
+  return (
+    typeof o.x === "number" &&
+    typeof o.y === "number" &&
+    typeof o.width === "number" &&
+    typeof o.height === "number" &&
+    "payload" in o &&
+    typeof o.payload === "object" &&
+    o.payload !== null
+  );
+}
+
+function isTopForPayloadFactory(topTools: string[]) {
+  return (payload: ChartRow, seriesIdx: number) => {
+    for (let k = seriesIdx + 1; k < topTools.length; k++) {
+      const nextTool = topTools[k];
+      if ((payload.values[nextTool] ?? 0) > 0) {
+        return false;
+      }
+    }
+    return true;
+  };
+}
+
+function createRoundedTopBar(topTools: string[], seriesIdx: number) {
+  const isTopForPayload = isTopForPayloadFactory(topTools);
+  return function Shape(props: unknown): JSX.Element {
+    if (!isBarShapeProps(props)) {
+      return <g />;
+    }
+    const { x, y, width, height, fill, payload } = props;
+    if (!width || !height) {
+      return <g />;
+    }
+    const r = 4;
+    if (!isTopForPayload(payload, seriesIdx)) {
+      return <rect x={x} y={y} width={width} height={height} fill={fill} />;
+    }
+    const right = x + width;
+    const bottom = y + height;
+    const d = `M ${x} ${bottom} L ${x} ${y + r} A ${r} ${r} 0 0 1 ${x + r} ${y} L ${right - r} ${y} A ${r} ${r} 0 0 1 ${right} ${y + r} L ${right} ${bottom} Z`;
+    return <path d={d} fill={fill} />;
+  };
+}
+
 interface ToolExecutionChartProps {
   workspaceId: string;
   agentConfigurationId: string;
@@ -55,7 +113,7 @@ export function ToolExecutionChart({
   workspaceId,
   agentConfigurationId,
 }: ToolExecutionChartProps) {
-  const { period, setPeriod } = useObservability();
+  const { period } = useObservability();
   const {
     toolExecutionByVersion,
     isToolExecutionLoading,
@@ -125,6 +183,10 @@ export function ToolExecutionChart({
     colorClassName: getToolColor(toolName, topTools),
   }));
 
+  // Use a per-series shape that rounds only when the segment is top-most
+  const RoundedTopBar = (seriesIdx: number) =>
+    createRoundedTopBar(topTools, seriesIdx);
+
   return (
     <ChartContainer
       title="Tool Usage by Version"
@@ -182,11 +244,7 @@ export function ToolExecutionChart({
               fill="currentColor"
               className={getToolColor(toolName, topTools)}
               name={toolName}
-              radius={
-                idx === topTools.length - 1
-                  ? ([4, 4, 0, 0] as [number, number, number, number])
-                  : ([0, 0, 0, 0] as [number, number, number, number])
-              }
+              shape={RoundedTopBar(idx)}
             />
           ))}
         </BarChart>
