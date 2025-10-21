@@ -4,11 +4,11 @@ import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type {
   AutoInternalMCPServerNameType,
   InternalMCPServerNameType,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import {
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+} from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type {
   MCPServerType,
   MCPServerViewType,

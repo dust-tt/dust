@@ -11,7 +11,7 @@ import {
   getMcpServerDisplayName,
   mcpServersSortingFn,
 } from "@app/lib/actions/mcp_helper";
-import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import type {

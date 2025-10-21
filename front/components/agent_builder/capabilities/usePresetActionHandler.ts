@@ -15,7 +15,7 @@ import {
   isDirectAddTemplateAction,
   isKnowledgeTemplateAction,
 } from "@app/lib/actions/mcp_helper";
-import { allowsMultipleInstancesOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
+import { allowsMultipleInstancesOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/server_constants";
 import type { TemplateActionPreset } from "@app/types";
 
 interface UsePresetActionHandlerProps {
