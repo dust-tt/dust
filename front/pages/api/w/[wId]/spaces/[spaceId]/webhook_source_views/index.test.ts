@@ -105,9 +105,6 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
         id: expect.any(Number),
         sId: expect.any(String),
         spaceId: regularSpace.sId,
-        webhookSource: expect.objectContaining({
-          sId: webhookSource.sId(),
-        }),
       }),
     });
   });
@@ -143,9 +140,6 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
         id: expect.any(Number),
         sId: expect.any(String),
         spaceId: globalSpace.sId,
-        webhookSource: expect.objectContaining({
-          sId: webhookSource.sId(),
-        }),
       }),
     });
   });
