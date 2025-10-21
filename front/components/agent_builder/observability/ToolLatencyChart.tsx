@@ -21,7 +21,12 @@ import { useObservability } from "@app/components/agent_builder/observability/Ob
 import { calculateTopTools } from "@app/components/agent_builder/observability/utils";
 import { useAgentToolLatency } from "@app/lib/swr/assistants";
 
-type ChartRow = { version: string; values: Record<string, number> };
+const TOOL_LATENCY_METRIC_KEYS = ["avg", "p50", "p95"] as const;
+type ToolLatencyMetricKeyType = (typeof TOOL_LATENCY_METRIC_KEYS)[number];
+
+function isMetricKey(s: string): s is ToolLatencyMetricKeyType {
+  return TOOL_LATENCY_METRIC_KEYS.includes(s as ToolLatencyMetricKeyType);
+}
 
 interface ToolLatencyChartProps {
   workspaceId: string;
@@ -32,12 +37,12 @@ function AreaLatencyTooltip({
   active,
   payload,
   label,
-}: TooltipContentProps<number, string> & {}) {
+}: TooltipContentProps<number, string>) {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
 
-  const colorMap: Record<string, string> = {
+  const colorMap: Record<ToolLatencyMetricKeyType, string> = {
     avg: "text-[hsl(var(--chart-1))]",
     p50: "text-[hsl(var(--chart-2))]",
     p95: "text-[hsl(var(--chart-3))]",
@@ -46,11 +51,14 @@ function AreaLatencyTooltip({
   const rows = payload
     .filter((p) => typeof p.value === "number")
     .sort((a, b) => (b.name || "").localeCompare(a.name || ""))
-    .map((p) => ({
-      label: String(p.name),
-      value: `${p.value}ms`,
-      colorClassName: colorMap[String(p.name)] ?? undefined,
-    }));
+    .map((p) => {
+      const key = String(p.name);
+      return {
+        label: key,
+        value: `${p.value}ms`,
+        colorClassName: isMetricKey(key) ? colorMap[key] : undefined,
+      };
+    });
 
   return <ChartTooltipCard title={String(label)} rows={rows} />;
 }
@@ -59,7 +67,7 @@ export function ToolLatencyChart({
   workspaceId,
   agentConfigurationId,
 }: ToolLatencyChartProps) {
-  const { period, setPeriod } = useObservability();
+  const { period } = useObservability();
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
 
   const { toolLatencyByVersion, isToolLatencyLoading, isToolLatencyError } =
@@ -70,17 +78,11 @@ export function ToolLatencyChart({
       disabled: !workspaceId || !agentConfigurationId,
     });
 
-  const { versions, topTools, areaData } = useMemo(() => {
+  const { topTools, areaData } = useMemo(() => {
     if (!toolLatencyByVersion || toolLatencyByVersion.length === 0) {
       return {
-        versions: [],
         topTools: [],
-        areaData: [] as Array<{
-          tool: string;
-          avg: number;
-          p50: number;
-          p95: number;
-        }>,
+        areaData: [],
       };
     }
 
@@ -244,10 +246,10 @@ export function ToolLatencyChart({
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />
       <div className="mt-4 text-xs text-muted-foreground">
-        <p>
+        <span>
           Shows avg, p50 (median), and p95 latency (ms) of the top{" "}
           {MAX_TOOLS_DISPLAYED} slowest tools for the selected version.
-        </p>
+        </span>
       </div>
     </ChartContainer>
   );
