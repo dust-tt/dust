@@ -12,11 +12,13 @@ import type {
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   executeGetUser,
-  executeListPublicChannels,
+  executeListChannels,
+  executeListDMs,
+  executeListJoinedChannels,
   executeListUsers,
   executePostMessage,
   getSlackClient,
-} from "@app/lib/actions/mcp_internal_actions/servers/slack_bot/slack_api_helper";
+} from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import {
   makeInternalMCPServer,
   makePersonalAuthenticationError,
@@ -53,52 +55,37 @@ export const slackSearch = async (
   query: string,
   accessToken: string
 ): Promise<SlackSearchMatch[]> => {
-  // The slack client library does not support the assistant.search.context endpoint,
-  // so we use the raw fetch API to call it (GET with query params).
-  const params = new URLSearchParams({
+  // Use standard search.messages API instead of assistant.search.context
+  // This works better with user tokens and standard OAuth scopes
+  const slackClient = await getSlackClient(accessToken);
+
+  const response = await slackClient.search.messages({
     query,
     sort: "score",
     sort_dir: "desc",
-    limit: SLACK_SEARCH_ACTION_NUM_RESULTS.toString(),
+    count: SLACK_SEARCH_ACTION_NUM_RESULTS,
   });
 
-  const resp = await fetch(
-    `https://slack.com/api/assistant.search.context?${params.toString()}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  );
-
-  if (!resp.ok) {
-    throw new Error(`HTTP ${resp.status}`);
+  if (!response.ok) {
+    throw new Error(response.error || "unknown_error");
   }
 
-  type SlackSearchResponse = {
-    ok: boolean;
-    error?: string;
-    results: {
-      messages: SlackSearchMatch[];
-    };
-  };
+  const rawMatches = response.messages?.matches ?? [];
 
-  const data: SlackSearchResponse = (await resp.json()) as SlackSearchResponse;
-  if (!data.ok) {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    throw new Error(data.error || "unknown_error");
-  }
+  // Transform to match expected format
+  const matches: SlackSearchMatch[] = rawMatches.map((match) => ({
+    author_name: match.username,
+    channel_name: match.channel?.name,
+    message_ts: match.ts,
+    content: match.text,
+    permalink: match.permalink,
+  }));
 
-  const rawMatches: SlackSearchMatch[] = data.results.messages;
+  // Filter out matches that don't have text
+  const matchesWithText = matches.filter((match) => !!match.content);
 
-  // Filter out matches that don't have a text.
-  const matchesWithText = rawMatches.filter((match) => !!match.content);
-
-  // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
-  const matches = matchesWithText.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
-
-  return matches;
+  // Keep only the top results
+  return matchesWithText.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
 };
 
 function makeQueryResource(
@@ -141,27 +128,34 @@ const buildCommonSearchParams = () => ({
     .string()
     .array()
     .optional()
-    .describe("Narrow the search to specific channels (optional)"),
+    .describe(
+      "Narrow the search to specific channels or DMs by name or ID (optional). " +
+        "For regular channels: use channel name (e.g., 'general') or ID (e.g., C123456). " +
+        "For DMs: use the DM channel ID from list_dms (e.g., D123456). " +
+        "Channel names are for regular channels only - DM channel IDs start with D."
+    ),
   usersFrom: z
     .string()
     .array()
     .optional()
     .describe(
-      "Narrow the search to messages wrote by specific users ids (optional)"
+      "Narrow the search to messages written by specific user IDs (optional)"
     ),
   usersTo: z
     .string()
     .array()
     .optional()
     .describe(
-      "Narrow the search to direct messages sent to specific user IDs (optional)"
+      "DO NOT USE for general DM searches. " +
+        "Only use this if you specifically need to find messages the current user sent TO another user (one-directional). " +
+        "For searching in DMs, use the channels parameter with a DM channel ID from list_dms, or omit all filters."
     ),
   usersMentioned: z
     .string()
     .array()
     .optional()
     .describe(
-      "Narrow the search to messages mentioning specific users ids (optional)"
+      "Narrow the search to messages mentioning specific user IDs (optional)"
     ),
   relativeTimeFrame: z
     .string()
@@ -199,10 +193,16 @@ function buildSlackSearchQuery(
   }
   if (channels && channels.length > 0) {
     query = `${query} ${channels
-      .map((channel) =>
-        // Because we use channel names and not IDs, we need to use the #CHANNEL format instead of <#CHANNEL_ID>.
-        channel.charAt(0) === "#" ? `in:${channel}` : `in:#${channel}`
-      )
+      .map((channel) => {
+        // DM channel IDs start with D and should not have # prefix
+        // Multi-party DMs (mpim) that are returned from conversations.list also shouldn't have #
+        // Channel IDs that start with C, D, or G are Slack IDs and should be used directly
+        if (channel.match(/^[CDG][A-Z0-9]+$/)) {
+          return `in:${channel}`;
+        }
+        // Regular channel names: if it already has #, use as-is, otherwise add #
+        return channel.charAt(0) === "#" ? `in:${channel}` : `in:#${channel}`;
+      })
       .join(" ")}`;
   }
   if (usersFrom && usersFrom.length > 0) {
@@ -303,7 +303,10 @@ async function createServer(
   if (slackAIStatus === "disabled" || slackAIStatus === "disconnected") {
     server.tool(
       "search_messages",
-      "Search messages across all channels and dms for the current user",
+      "Search messages across all channels and DMs for the current user. " +
+        "For searching in DMs: ONLY provide keywords, do NOT use usersTo or usersFrom filters. " +
+        "If you need to search in a specific DM with someone, first use list_dms to get the DM channel ID (starts with D), " +
+        "then use the channels parameter with that ID.",
       {
         keywords: z
           .string()
@@ -865,8 +868,8 @@ async function createServer(
   );
 
   server.tool(
-    "list_public_channels",
-    "List all public channels in the workspace",
+    "list_channels",
+    "List all public channels and private channels you are a member of in the workspace",
     {
       nameFilter: z
         .string()
@@ -886,16 +889,88 @@ async function createServer(
         }
 
         try {
-          return await executeListPublicChannels(
+          return await executeListChannels(
             nameFilter,
             accessToken,
             mcpServerId
           );
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
-            return new Err(new MCPError("slack"));
+            return new Ok(makePersonalAuthenticationError("slack").content);
           }
           return new Err(new MCPError(`Error listing channels: ${error}`));
+        }
+      }
+    )
+  );
+
+  server.tool(
+    "list_joined_channels",
+    "List only channels you are a member of (both public and private)",
+    {
+      nameFilter: z
+        .string()
+        .optional()
+        .describe("The name of the channel to filter by (optional)"),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+      },
+      async ({ nameFilter }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Access token not found"));
+        }
+
+        try {
+          return await executeListJoinedChannels(
+            nameFilter,
+            accessToken,
+            mcpServerId
+          );
+        } catch (error) {
+          if (isSlackTokenRevoked(error)) {
+            return new Ok(makePersonalAuthenticationError("slack").content);
+          }
+          return new Err(new MCPError(`Error listing channels: ${error}`));
+        }
+      }
+    )
+  );
+
+  server.tool(
+    "list_dms",
+    "List direct messages (1-on-1 and multi-party conversations) with other users",
+    {
+      nameFilter: z
+        .string()
+        .optional()
+        .describe("Filter by user name (optional)"),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+      },
+      async ({ nameFilter }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Access token not found"));
+        }
+
+        try {
+          return await executeListDMs(nameFilter, accessToken, mcpServerId);
+        } catch (error) {
+          if (isSlackTokenRevoked(error)) {
+            return new Ok(makePersonalAuthenticationError("slack").content);
+          }
+          return new Err(
+            new MCPError(`Error listing direct messages: ${error}`)
+          );
         }
       }
     )

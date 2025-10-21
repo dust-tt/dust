@@ -1,6 +1,9 @@
 export const SLACK_ADD_REACTION = "add_reaction";
 export const SLACK_REMOVE_REACTION = "remove_reaction";
 export const SLACK_GET_USER = "get_user";
+export const SLACK_LIST_CHANNELS = "list_channels";
+export const SLACK_LIST_DMS = "list_dms";
+export const SLACK_LIST_JOINED_CHANNELS = "list_joined_channels";
 export const SLACK_LIST_PUBLIC_CHANNELS = "list_public_channels";
 export const SLACK_LIST_THREADS = "list_threads";
 export const SLACK_LIST_USERS = "list_users";
