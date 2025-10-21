@@ -104,7 +104,7 @@ async function handler(
       ];
       const editorUsers = await UserResource.fetchByModelIds(editorIds);
       const editorNamesMap = new Map(
-        editorUsers.map((user) => [user.id, user.username])
+        editorUsers.map((user) => [user.id, user.fullName()])
       );
 
       const triggersWithIsSubscriber = await Promise.all(

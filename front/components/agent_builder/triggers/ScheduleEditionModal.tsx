@@ -203,7 +203,7 @@ export function ScheduleEditionModal({
       editor: trigger?.editor ?? user?.id ?? null,
       naturalLanguageDescription: data.naturalLanguageDescription ?? null,
       customPrompt: data.customPrompt.trim() ?? null,
-      editorName: trigger?.editorName ?? user?.email,
+      editorName: trigger?.editorName ?? user?.fullName,
     };
 
     onSave(triggerData);

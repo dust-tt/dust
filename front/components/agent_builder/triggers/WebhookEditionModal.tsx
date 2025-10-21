@@ -248,7 +248,7 @@ export function WebhookEditionModal({
     }
 
     const editor = trigger?.editor ?? user.id ?? null;
-    const editorName = trigger?.editorName ?? user.email ?? undefined;
+    const editorName = trigger?.editorName ?? user.fullName ?? undefined;
 
     const triggerData: AgentBuilderWebhookTriggerType = {
       sId: trigger?.sId,
