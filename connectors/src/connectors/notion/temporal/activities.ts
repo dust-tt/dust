@@ -412,8 +412,8 @@ export async function getPagesAndDatabasesToSync({
 
   localLogger.info(
     {
-      initial_count: existingPages.length,
-      filtered_count: existingPages.length - filteredPageIds.length,
+      initial_count: pages.length,
+      filtered_count: pages.length - filteredPageIds.length,
     },
     "Filtered out pages already up to date."
   );
