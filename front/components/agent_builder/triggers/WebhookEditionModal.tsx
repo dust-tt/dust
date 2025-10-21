@@ -1,4 +1,3 @@
-import type { Icon } from "@dust-tt/sparkle";
 import {
   Button,
   Checkbox,
@@ -22,21 +21,18 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
 import { useWebhookFilterGeneration } from "@app/components/agent_builder/triggers/useWebhookFilterGeneration";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
-import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useUser } from "@app/lib/swr/user";
-import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import type { LightWorkspaceType } from "@app/types";
-import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
+import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
 
@@ -59,15 +55,8 @@ interface WebhookEditionModalProps {
   onClose: () => void;
   onSave: (trigger: AgentBuilderWebhookTriggerType) => void;
   agentConfigurationId: string | null;
-  preSelectedWebhookSourceViewSId?: string;
+  webhookSourceView: WebhookSourceViewType | null;
 }
-
-type WebhookOption = {
-  value: string;
-  label: string;
-  kind: WebhookSourceKind;
-  icon: React.ComponentType<React.ComponentProps<typeof Icon>>;
-};
 
 export function WebhookEditionModal({
   owner,
@@ -76,96 +65,48 @@ export function WebhookEditionModal({
   onClose,
   onSave,
   agentConfigurationId,
-  preSelectedWebhookSourceViewSId,
+  webhookSourceView,
 }: WebhookEditionModalProps) {
   const { user } = useUser();
 
-  const getDefaultValues = useCallback(
+  const defaultValues = useMemo(
     (): WebhookFormData => ({
       name: "Webhook Trigger",
       enabled: true,
       customPrompt: "",
-      webhookSourceViewSId: preSelectedWebhookSourceViewSId ?? "",
+      webhookSourceViewSId: webhookSourceView?.sId ?? "",
       event: undefined,
       filter: "",
       includePayload: true,
     }),
-    [preSelectedWebhookSourceViewSId]
+    [webhookSourceView?.sId]
   );
-
-  const defaultValues = useMemo(getDefaultValues, [getDefaultValues]);
 
   const form = useForm<WebhookFormData>({
     resolver: zodResolver(webhookFormSchema),
     defaultValues,
   });
 
-  const selectedViewSId = form.watch("webhookSourceViewSId") ?? "";
   const selectedEvent = form.watch("event");
   const includePayload = form.watch("includePayload");
 
-  const { spaces } = useSpacesContext();
-  const { webhookSourceViews, isLoading: isWebhookSourceViewsLoading } =
-    useWebhookSourceViewsFromSpaces(owner, spaces, !isOpen);
-
   const isEditor = (trigger?.editor ?? user?.id) === user?.id;
 
-  const spaceById = useMemo(() => {
-    return new Map(spaces.map((space) => [space.sId, space.name]));
-  }, [spaces]);
-
-  const accessibleSpaceIds = useMemo(
-    () => new Set(spaceById.keys()),
-    [spaceById]
-  );
-
-  const webhookOptions = useMemo((): WebhookOption[] => {
-    const options: WebhookOption[] = [];
-    webhookSourceViews
-      .filter((view) => accessibleSpaceIds.has(view.spaceId))
-      .forEach((view) => {
-        options.push({
-          value: view.sId,
-          label: view.customName,
-          kind: view.kind,
-          icon: (props) => (
-            <WebhookSourceViewIcon
-              webhookSourceView={view}
-              size={props.className ? undefined : "sm"}
-            />
-          ),
-        });
-      });
-
-    return options;
-  }, [webhookSourceViews, accessibleSpaceIds]);
-
-  const selectedWebhookSourceView = useMemo(() => {
-    if (!selectedViewSId) {
-      return null;
-    }
-
-    return webhookSourceViews.find((v) => v.sId === selectedViewSId);
-  }, [webhookSourceViews, selectedViewSId]);
-
   const selectedPreset = useMemo((): PresetWebhook | null => {
-    if (
-      !selectedWebhookSourceView ||
-      selectedWebhookSourceView.kind === "custom"
-    ) {
+    if (!webhookSourceView || webhookSourceView.kind === "custom") {
       return null;
     }
-    return WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[selectedWebhookSourceView.kind];
-  }, [selectedWebhookSourceView]);
+    return WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[webhookSourceView.kind];
+  }, [webhookSourceView]);
 
   const availableEvents = useMemo(() => {
-    if (!selectedPreset || !selectedWebhookSourceView) {
+    if (!selectedPreset || !webhookSourceView) {
       return [];
     }
     return selectedPreset.events.filter((event) =>
-      selectedWebhookSourceView.subscribedEvents.includes(event.value)
+      webhookSourceView.subscribedEvents.includes(event.value)
     );
-  }, [selectedPreset, selectedWebhookSourceView]);
+  }, [selectedPreset, webhookSourceView]);
 
   const selectedEventSchema = useMemo(() => {
     if (!selectedEvent || !selectedPreset) {
@@ -242,8 +183,8 @@ export function WebhookEditionModal({
 
     // Validate that event is selected for preset webhooks (not custom)
     if (
-      selectedWebhookSourceView &&
-      selectedWebhookSourceView.kind !== "custom" &&
+      webhookSourceView &&
+      webhookSourceView.kind !== "custom" &&
       selectedPreset &&
       availableEvents.length > 0 &&
       !data.event
@@ -264,7 +205,7 @@ export function WebhookEditionModal({
       name: data.name.trim(),
       customPrompt: data.customPrompt.trim(),
       naturalLanguageDescription:
-        selectedWebhookSourceView?.kind !== "custom"
+        webhookSourceView?.kind !== "custom"
           ? naturalDescription || null
           : null,
       kind: "webhook",
@@ -324,11 +265,11 @@ export function WebhookEditionModal({
     if (trigger) {
       return isEditor ? "Edit Webhook" : "View Webhook";
     }
-    if (selectedWebhookSourceView) {
-      return `Create ${selectedWebhookSourceView.customName} Trigger`;
+    if (webhookSourceView) {
+      return `Create ${webhookSourceView.customName} Trigger`;
     }
     return "Create Webhook";
-  }, [trigger, isEditor, selectedWebhookSourceView]);
+  }, [trigger, isEditor, webhookSourceView]);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -385,60 +326,6 @@ export function WebhookEditionModal({
                     : "The trigger is currently disabled"}
                 </div>
               </div>
-
-              {/* Webhook Configuration - Only show selector when editing or no pre-selection */}
-              {(!preSelectedWebhookSourceViewSId || trigger) && (
-                <div className="flex flex-col space-y-1">
-                  <Label>Webhook Source</Label>
-                  {isWebhookSourceViewsLoading ? (
-                    <div className="flex items-center gap-2">
-                      <Spinner size="sm" />
-                      <span className="text-sm text-muted-foreground">
-                        Loading webhook sources...
-                      </span>
-                    </div>
-                  ) : (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          id="webhook-source"
-                          variant="outline"
-                          isSelect
-                          className="w-fit"
-                          disabled={!isEditor}
-                          label={
-                            selectedViewSId
-                              ? webhookOptions.find(
-                                  (opt) => opt.value === selectedViewSId
-                                )?.label
-                              : "Select webhook source"
-                          }
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuLabel label="Select webhook source" />
-                        {webhookOptions.map((option) => (
-                          <DropdownMenuItem
-                            key={option.value}
-                            label={option.label}
-                            disabled={!isEditor}
-                            icon={option.icon}
-                            onClick={() => {
-                              form.setValue(
-                                "webhookSourceViewSId",
-                                option.value,
-                                {
-                                  shouldValidate: true,
-                                }
-                              );
-                            }}
-                          />
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
-              )}
 
               {/* Event selector for non-custom webhooks */}
               {selectedPreset && availableEvents.length > 0 && (
@@ -521,7 +408,7 @@ export function WebhookEditionModal({
                   </>
                 )}
 
-                {selectedWebhookSourceView?.kind === "custom" && (
+                {webhookSourceView?.kind === "custom" && (
                   <>
                     <Label htmlFor="trigger-filter-description">
                       Filter Expression (optional)
@@ -619,8 +506,8 @@ export function WebhookEditionModal({
               ? isEditor
                 ? "Update Webhook"
                 : "Close"
-              : selectedWebhookSourceView
-                ? `Add ${selectedWebhookSourceView.customName} Trigger`
+              : webhookSourceView
+                ? `Add ${webhookSourceView.customName} Trigger`
                 : "Add Webhook",
             variant: "primary",
             onClick: isEditor ? form.handleSubmit(onSubmit) : handleClose,

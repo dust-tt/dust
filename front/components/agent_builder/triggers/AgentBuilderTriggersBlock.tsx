@@ -1,4 +1,5 @@
 import {
+  BoltIcon,
   Button,
   CardGrid,
   ClockIcon,
@@ -22,23 +23,24 @@ import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { ScheduleEditionModal } from "@app/components/agent_builder/triggers/ScheduleEditionModal";
 import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
 import { WebhookEditionModal } from "@app/components/agent_builder/triggers/WebhookEditionModal";
-import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 import type { TriggerKind } from "@app/types/assistant/triggers";
+import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 type DialogMode =
   | {
       type: "add";
       kind: TriggerKind;
-      webhookSourceViewSId?: string;
+      webhookSourceView?: WebhookSourceViewType;
     }
   | {
       type: "edit";
       trigger: AgentBuilderTriggerType;
       index: number;
+      webhookSourceView?: WebhookSourceViewType;
     };
 
 interface AgentBuilderTriggersBlockProps {
@@ -111,19 +113,41 @@ export function AgentBuilderTriggersBlock({
 
   const handleCreateTrigger = (
     kind: TriggerKind,
-    webhookSourceViewSId?: string
+    webhookSourceView?: WebhookSourceViewType
   ) => {
-    setDialogMode({
-      type: "add",
-      kind,
-      webhookSourceViewSId,
-    });
+    if (kind === "schedule") {
+      setDialogMode({
+        type: "add",
+        kind: "schedule",
+      });
+    } else {
+      if (!webhookSourceView) {
+        throw new Error("webhookSourceView is required for webhook triggers");
+      }
+      setDialogMode({
+        type: "add",
+        kind: "webhook",
+        webhookSourceView,
+      });
+    }
   };
 
   const handleTriggerEdit = (
     trigger: AgentBuilderTriggerType,
     displayIndex: number
   ) => {
+    if (trigger.kind === "webhook") {
+      const webhookSourceView = accessibleWebhookSourceViews.find(
+        (view) => view.sId === trigger.webhookSourceViewSId
+      );
+      setDialogMode({
+        type: "edit",
+        trigger,
+        index: displayIndex,
+        webhookSourceView,
+      });
+      return;
+    }
     setDialogMode({ type: "edit", trigger, index: displayIndex });
   };
 
@@ -214,13 +238,8 @@ export function AgentBuilderTriggersBlock({
                   <DropdownMenuItem
                     key={view.sId}
                     label={view.customName}
-                    icon={
-                      <WebhookSourceViewIcon
-                        webhookSourceView={view}
-                        size="sm"
-                      />
-                    }
-                    onClick={() => handleCreateTrigger("webhook", view.sId)}
+                    icon={view.icon}
+                    onClick={() => handleCreateTrigger("webhook", view)}
                   />
                 ))}
             </DropdownMenuContent>
@@ -257,13 +276,8 @@ export function AgentBuilderTriggersBlock({
                       <DropdownMenuItem
                         key={view.sId}
                         label={view.customName}
-                        icon={
-                          <WebhookSourceViewIcon
-                            webhookSourceView={view}
-                            size="sm"
-                          />
-                        }
-                        onClick={() => handleCreateTrigger("webhook", view.sId)}
+                        icon={view.icon}
+                        onClick={() => handleCreateTrigger("webhook", view)}
                       />
                     ))}
                 </DropdownMenuContent>
@@ -317,11 +331,7 @@ export function AgentBuilderTriggersBlock({
         onClose={handleCloseModal}
         onSave={handleTriggerSave}
         agentConfigurationId={agentConfigurationId}
-        preSelectedWebhookSourceViewSId={
-          dialogMode?.type === "add"
-            ? dialogMode.webhookSourceViewSId
-            : undefined
-        }
+        webhookSourceView={dialogMode?.webhookSourceView ?? null}
       />
     </AgentBuilderSectionContainer>
   );
