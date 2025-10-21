@@ -181,8 +181,10 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     options?: ResourceFindOptions<WebhookSourcesViewModel>
   ): Promise<WebhookSourcesViewResource | null> {
     const [view] = await this.fetchByIds(auth, [id], options);
-
-    return view ?? null;
+    if (!view || !view.canReadOrAdministrate(auth)) {
+      return null;
+    }
+    return view;
   }
 
   static async fetchByIds(
@@ -200,7 +202,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
           [Op.in]: viewModelIds,
         },
       },
-    });
+    }).then((views) =>
+      views.filter((view) => view.canReadOrAdministrate(auth))
+    );
 
     return views ?? [];
   }
@@ -222,7 +226,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
           [Op.in]: ids,
         },
       },
-    });
+    }).then((views) =>
+      views.filter((view) => view.canReadOrAdministrate(auth))
+    );
 
     return views ?? [];
   }
@@ -278,7 +284,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     auth: Authenticator,
     space: SpaceResource
   ): Promise<number> {
-    if (space.canRead(auth)) {
+    if (space.canReadOrAdministrate(auth)) {
       return this.model.count({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -295,7 +301,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
   ): Promise<WebhookSourcesViewResource[]> {
     return this.baseFetch(auth, {
       where: { webhookSourceId },
-    });
+    }).then((views) =>
+      views.filter((view) => view.canReadOrAdministrate(auth))
+    );
   }
 
   static async getWebhookSourceViewForSystemSpace(

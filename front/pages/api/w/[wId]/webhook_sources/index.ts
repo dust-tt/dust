@@ -37,6 +37,16 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const { method } = req;
+  const isAdmin = await SpaceResource.canAdministrateSystemSpace(auth);
+  if (!isAdmin) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only admin can manage webhook sources.",
+      },
+    });
+  }
 
   switch (method) {
     case "GET": {
