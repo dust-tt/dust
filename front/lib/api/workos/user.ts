@@ -184,7 +184,6 @@ export async function getWorkOSSessionFromCookie(
           family_name: r.user.lastName ?? "",
           given_name: r.user.firstName ?? "",
           nickname: getUserNicknameFromEmail(r.user.email) ?? "",
-          auth0Sub: null,
           workOSUserId: r.user.id,
         },
         organizationId,
