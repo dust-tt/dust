@@ -386,6 +386,11 @@ function getGlobalAgent({
       return null;
   }
 
+  // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
+  if (agentConfiguration) {
+    agentConfiguration.visualizationEnabled = false;
+  }
+
   return agentConfiguration;
 }
 
