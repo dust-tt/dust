@@ -56,6 +56,7 @@ export function AgentBuilderTriggersBlock({
   agentConfigurationId,
 }: AgentBuilderTriggersBlockProps) {
   const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const {
     fields: triggersToCreate,
@@ -116,6 +117,7 @@ export function AgentBuilderTriggersBlock({
     kind: TriggerKind,
     webhookSourceView?: WebhookSourceViewType
   ) => {
+    setIsDropdownOpen(false);
     setDialogMode({
       type: "add",
       kind,
@@ -209,7 +211,7 @@ export function AgentBuilderTriggersBlock({
       }
       headerActions={
         allTriggers.length > 0 && (
-          <DropdownMenu>
+          <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
             <DropdownMenuTrigger asChild>
               <Button
                 label="Add Trigger"
@@ -247,7 +249,10 @@ export function AgentBuilderTriggersBlock({
         ) : allTriggers.length === 0 ? (
           <EmptyCTA
             action={
-              <DropdownMenu>
+              <DropdownMenu
+                open={isDropdownOpen}
+                onOpenChange={setIsDropdownOpen}
+              >
                 <DropdownMenuTrigger asChild>
                   <Button
                     label="Add Trigger"
