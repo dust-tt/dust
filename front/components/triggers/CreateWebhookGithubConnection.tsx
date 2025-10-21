@@ -123,7 +123,7 @@ export function CreateWebhookGithubConnection({
       </p>
       <div className="flex items-center gap-2">
         <Button
-          variant={githubConnection ? "outline" : "primary"}
+          variant={"outline"}
           label={githubConnection ? "Connected to GitHub" : "Connect to GitHub"}
           icon={GithubLogo}
           onClick={handleConnectGithub}
