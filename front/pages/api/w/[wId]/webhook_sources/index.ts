@@ -37,7 +37,8 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const { method } = req;
-  if (!auth.isAdmin()) {
+  const isAdmin = await SpaceResource.canAdministrateSystemSpace(auth);
+  if (!isAdmin) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {

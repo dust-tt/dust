@@ -7,6 +7,7 @@ import type {
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import { apiError } from "@app/logger/withlogging";
@@ -75,7 +76,8 @@ async function handler(
     }
 
     case "PATCH": {
-      if (!auth.isAdmin()) {
+      const isAdmin = await SpaceResource.canAdministrateSystemSpace(auth);
+      if (!isAdmin) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
