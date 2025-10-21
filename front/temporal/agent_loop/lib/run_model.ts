@@ -492,7 +492,8 @@ export async function runModelActivity(
       } catch (err) {
         if (err instanceof CancelledFailure) {
           logger.info("Activity cancelled, stopping");
-          return null;
+          fakeResponse = { shouldReturnNull: true };
+          break getOutputFromAction;
         }
         throw err;
       }
@@ -638,7 +639,8 @@ export async function runModelActivity(
                   message: `Error parsing function call arguments: ${error}`,
                   metadata: null,
                 });
-                return null;
+                fakeResponse = { shouldReturnNull: true };
+                break getOutputFromAction;
               }
             }
           } else {
@@ -660,6 +662,10 @@ export async function runModelActivity(
 
   if ("shouldRetryMessage" in fakeResponse) {
     return handlePossiblyRetryableError(fakeResponse.shouldRetryMessage);
+  }
+
+  if ("shouldReturnNull" in fakeResponse) {
+    return null;
   }
 
   // Create a new object to avoid mutation
