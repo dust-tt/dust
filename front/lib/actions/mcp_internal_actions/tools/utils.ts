@@ -339,7 +339,7 @@ export async function getAgentDataSourceConfigurations(
                     }
                   : null,
               tags:
-                agentConfig.tagsIn !== null || agentConfig.tagsNotIn != null
+                agentConfig.tagsIn !== null || agentConfig.tagsNotIn !== null
                   ? {
                       in: agentConfig.tagsIn ?? [],
                       not: agentConfig.tagsNotIn ?? [],
