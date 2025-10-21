@@ -11,6 +11,7 @@ export type DefaultRemoteMCPServerConfig = {
   connectionInstructions?: string;
   authMethod: "bearer" | "oauth-dynamic" | null;
   supportedOAuthUseCases?: MCPOAuthUseCase[];
+  oauthScope?: string;
   toolStakes?: Record<string, "high" | "low" | "never_ask">;
 };
 
@@ -137,6 +138,32 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       asana_get_team_users: "never_ask",
       asana_get_workspace_users: "never_ask",
       asana_list_workspaces: "never_ask",
+    },
+  },
+  {
+    id: 10003,
+    name: "gitlab",
+    description:
+      "GitLab tools for repository management, issue tracking, and CI/CD operations.",
+    url: "https://gitlab.com/api/v4/mcp",
+    icon: "GitlabLogo",
+    documentationUrl: "https://docs.gitlab.com/ee/development/mcp/",
+    connectionInstructions:
+      "GitLab uses OAuth authentication with the 'mcp' scope. For GitLab Self-Managed instances, you can configure a custom URL during setup. The default URL connects to GitLab.com.",
+    authMethod: "oauth-dynamic",
+    oauthScope: "mcp",
+    toolStakes: {
+      get_mcp_server_version: "never_ask",
+      create_issue: "low",
+      get_issue: "never_ask",
+      create_merge_request: "low",
+      get_merge_request: "never_ask",
+      get_merge_request_commits: "never_ask",
+      get_merge_request_diffs: "never_ask",
+      get_merge_request_pipelines: "never_ask",
+      get_pipeline_jobs: "never_ask",
+      gitlab_search: "never_ask",
+      semantic_code_search: "never_ask",
     },
   },
   //Removed temporaly see https://dust4ai.slack.com/archives/C050SM8NSPK/p1754397289272209

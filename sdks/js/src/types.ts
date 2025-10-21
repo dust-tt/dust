@@ -2812,6 +2812,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "DriveLogo"
   | "GcalLogo"
   | "GithubLogo"
+  | "GitlabLogo"
   | "GmailLogo"
   | "GoogleSpreadsheetLogo"
   | "FreshserviceLogo"
