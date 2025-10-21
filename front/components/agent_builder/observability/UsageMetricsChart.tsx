@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -15,14 +15,13 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import { ChartContainer } from "@app/components/agent_builder/observability/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
-import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import {
   CHART_HEIGHT,
-  DEFAULT_PERIOD_DAYS,
   USAGE_METRICS_LEGEND,
   USAGE_METRICS_PALETTE,
   VERSION_MARKER_STYLE,
 } from "@app/components/agent_builder/observability/constants";
+import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
 import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
@@ -125,14 +124,11 @@ function UsageMetricsTooltip(
 export function UsageMetricsChart({
   workspaceId,
   agentConfigurationId,
-  period,
-  onPeriodChange,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
-  period: ObservabilityTimeRangeType;
-  onPeriodChange: (p: ObservabilityTimeRangeType) => void;
 }) {
+  const { period, setPeriod } = useObservability();
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useAgentUsageMetrics({
       workspaceId,
@@ -172,10 +168,7 @@ export function UsageMetricsChart({
   return (
     <ChartContainer
       title="Usage Metrics"
-      period={period}
-      onPeriodChange={onPeriodChange}
       isLoading={isLoading}
-      showPeriodSelector={false}
       errorMessage={isError ? "Failed to load observability data." : undefined}
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>

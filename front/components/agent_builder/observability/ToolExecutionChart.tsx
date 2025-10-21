@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -13,13 +13,12 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import { ChartContainer } from "@app/components/agent_builder/observability/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
-import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import {
   CHART_HEIGHT,
-  DEFAULT_PERIOD_DAYS,
   MAX_TOOLS_DISPLAYED,
   PERCENTAGE_MULTIPLIER,
 } from "@app/components/agent_builder/observability/constants";
+import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { getToolColor } from "@app/components/agent_builder/observability/utils";
 import { useAgentToolExecution } from "@app/lib/swr/assistants";
 
@@ -28,8 +27,6 @@ type ChartRow = { version: string; values: Record<string, number> };
 interface ToolExecutionChartProps {
   workspaceId: string;
   agentConfigurationId: string;
-  period: ObservabilityTimeRangeType;
-  onPeriodChange: (p: ObservabilityTimeRangeType) => void;
 }
 
 function ToolExecutionTooltip({
@@ -57,9 +54,8 @@ function ToolExecutionTooltip({
 export function ToolExecutionChart({
   workspaceId,
   agentConfigurationId,
-  period,
-  onPeriodChange,
 }: ToolExecutionChartProps) {
+  const { period, setPeriod } = useObservability();
   const {
     toolExecutionByVersion,
     isToolExecutionLoading,
@@ -132,10 +128,7 @@ export function ToolExecutionChart({
   return (
     <ChartContainer
       title="Tool Usage by Version"
-      period={period}
-      onPeriodChange={onPeriodChange}
       isLoading={isToolExecutionLoading}
-      showPeriodSelector={false}
       errorMessage={
         isToolExecutionError ? "Failed to load tool execution data." : undefined
       }

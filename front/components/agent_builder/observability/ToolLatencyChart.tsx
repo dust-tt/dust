@@ -13,12 +13,11 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import { ChartContainer } from "@app/components/agent_builder/observability/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
-import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import {
   CHART_HEIGHT,
-  DEFAULT_PERIOD_DAYS,
   MAX_TOOLS_DISPLAYED,
 } from "@app/components/agent_builder/observability/constants";
+import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { calculateTopTools } from "@app/components/agent_builder/observability/utils";
 import { useAgentToolLatency } from "@app/lib/swr/assistants";
 
@@ -27,8 +26,6 @@ type ChartRow = { version: string; values: Record<string, number> };
 interface ToolLatencyChartProps {
   workspaceId: string;
   agentConfigurationId: string;
-  period: ObservabilityTimeRangeType;
-  onPeriodChange: (p: ObservabilityTimeRangeType) => void;
 }
 
 function AreaLatencyTooltip({
@@ -61,9 +58,8 @@ function AreaLatencyTooltip({
 export function ToolLatencyChart({
   workspaceId,
   agentConfigurationId,
-  period,
-  onPeriodChange,
 }: ToolLatencyChartProps) {
+  const { period, setPeriod } = useObservability();
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
 
   const { toolLatencyByVersion, isToolLatencyLoading, isToolLatencyError } =
@@ -123,10 +119,7 @@ export function ToolLatencyChart({
   return (
     <ChartContainer
       title="Average Tool Latency by Version"
-      period={period}
-      onPeriodChange={onPeriodChange}
       isLoading={isToolLatencyLoading}
-      showPeriodSelector={false}
       additionalControls={
         <select
           className="bg-card rounded border border-border px-2 py-1 text-xs"
