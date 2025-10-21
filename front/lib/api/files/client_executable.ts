@@ -339,7 +339,7 @@ export async function getClientExecutableFileContent(
     const resourceId = getResourceIdFromSId(fileId);
 
     if (resourceId === null) {
-      return new Err(new Error(`The file id ${fileId} doesn't exist`));
+      return new Err(new Error(`The id ${fileId} is not a valid file id`));
     }
 
     const fileResource = await FileResource.fetchById(auth, fileId);
