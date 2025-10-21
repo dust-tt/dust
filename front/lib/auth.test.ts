@@ -291,6 +291,7 @@ describe("Authenticator.hasResourcePermission", () => {
           { role: "builder", permissions: ["read", "write"] },
           { role: "admin", permissions: ["read", "write", "admin"] },
         ],
+        groups: [],
       };
 
       expect(builderAuth.canRead([resourcePermission])).toBe(true);
@@ -314,6 +315,7 @@ describe("Authenticator.hasResourcePermission", () => {
           { role: "builder", permissions: ["read", "write"] },
           { role: "admin", permissions: ["read", "write", "admin"] },
         ],
+        groups: [],
       };
 
       expect(adminAuth.canRead([resourcePermission])).toBe(true);
@@ -336,6 +338,7 @@ describe("Authenticator.hasResourcePermission", () => {
       const resourcePermission: ResourcePermission = {
         workspaceId: workspace.id,
         roles: [],
+        groups: [],
       };
 
       expect(authenticator.canRead([resourcePermission])).toBe(false);
