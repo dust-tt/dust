@@ -214,12 +214,12 @@ export function AgentBuilderTriggersBlock({
                   <DropdownMenuItem
                     key={view.sId}
                     label={view.customName}
-                    icon={(props) => (
+                    icon={
                       <WebhookSourceViewIcon
                         webhookSourceView={view}
                         size="sm"
                       />
-                    )}
+                    }
                     onClick={() => handleCreateTrigger("webhook", view.sId)}
                   />
                 ))}
@@ -257,12 +257,12 @@ export function AgentBuilderTriggersBlock({
                       <DropdownMenuItem
                         key={view.sId}
                         label={view.customName}
-                        icon={(props) => (
+                        icon={
                           <WebhookSourceViewIcon
                             webhookSourceView={view}
                             size="sm"
                           />
-                        )}
+                        }
                         onClick={() => handleCreateTrigger("webhook", view.sId)}
                       />
                     ))}
