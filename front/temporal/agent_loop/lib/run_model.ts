@@ -294,6 +294,22 @@ export async function runModelActivity(
     return null;
   }
 
+  // Temporarily adding this to check if we can consider contents property only in llms
+  const unexpectedMessage =
+    modelConversationRes.value.modelConversation.messages.find(
+      (m) => m.role === "assistant" && !m.contents && m.content
+    );
+  if (unexpectedMessage) {
+    logger.error(
+      {
+        conversationId: conversation.sId,
+        agentMessageId: agentMessage.sId,
+        step,
+      },
+      "Found assistant message with legacy content field instead of contents array"
+    );
+  }
+
   // Check that specifications[].name are unique. This can happen if the user overrides two actions
   // names with the same name (advanced settings). We return an actionable error if that's the case
   // as we want to keep that as an invariant when interacting with models.
