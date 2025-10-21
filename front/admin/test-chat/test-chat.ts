@@ -10,11 +10,10 @@
  *
  * Commands:
  *   /help              - Show help message
- *   /list_models       - List all available models
- *   /select_model <id> - Select a model to use
+ *   /list-models       - List all available models
+ *   /select-model      - Interactively select a model (fuzzy search)
  *   /conversation      - Show conversation as JSON
- *   /mode <mode>       - Set display mode (default|verbose)
- *   /stream_mode <mode> - Set stream mode (default|model)
+ *   /mode <mode>       - Set output mode (text|event|model-event)
  *   /save              - Save output to a log file
  *   /exit              - Exit the chat
  *
@@ -28,7 +27,7 @@ import * as fs from "fs";
 import * as readline from "readline";
 
 import type { LLM } from "@app/lib/llm/llm";
-import { MistralLLM } from "@app/lib/llm/providers/mistral";
+import { NoopLLM } from "@app/lib/llm/providers/noop";
 import type {
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
@@ -37,7 +36,7 @@ import type {
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 
 // Providers that have LLM implementations
-const IMPLEMENTED_PROVIDERS = ["mistral"] as const;
+const IMPLEMENTED_PROVIDERS = ["noop"] as const;
 type ImplementedProviderId = (typeof IMPLEMENTED_PROVIDERS)[number];
 
 function isProviderImplemented(
@@ -71,23 +70,16 @@ function getModelsByProvider(): Record<
   >;
 }
 
-function getModelConfig(modelId: string): ModelConfigurationType | undefined {
-  return getAvailableModels().find((m) => m.modelId === modelId);
-}
-
 function createLLM({
   model,
-  temperature = 0.7,
 }: {
   model: ModelConfigurationType;
-  temperature?: number;
 }): LLM {
   const providerId = model.providerId as ImplementedProviderId;
 
   switch (providerId) {
-    case "mistral":
-      return new MistralLLM({
-        temperature,
+    case "noop":
+      return new NoopLLM({
         model,
       });
     default:
@@ -95,12 +87,130 @@ function createLLM({
   }
 }
 
+// ANSI color codes
+const GRAY = "\x1b[90m";
+const RESET = "\x1b[0m";
+const CLEAR_LINE = "\x1b[2K";
+const CURSOR_UP = "\x1b[1A";
+
+// Output modes
+type OutputMode = "text" | "event" | "model-event";
+
 // State
 let selectedModel: ModelConfigurationType | null = null;
 let conversation: ModelConversationTypeMultiActions = { messages: [] };
-let displayMode: "default" | "verbose" = "default";
-let streamMode: "default" | "model" = "default";
+let outputMode: OutputMode = "text";
 const outputLines: string[] = [];
+
+// Interactive model selector
+async function interactiveModelSelector(): Promise<void> {
+  const models = getAvailableModels();
+  let searchQuery = "";
+  let cursor = 0;
+
+  const filterModels = (query: string) => {
+    return models.filter(
+      (model) =>
+        model.modelId.toLowerCase().includes(query.toLowerCase()) ||
+        model.displayName.toLowerCase().includes(query.toLowerCase())
+    );
+  };
+
+  const redraw = () => {
+    const filtered = filterModels(searchQuery);
+    const maxVisible = 10;
+
+    // Clear screen
+    process.stdout.write(CLEAR_LINE + "\r");
+    process.stdout.write(`Search: ${searchQuery}\n`);
+    process.stdout.write("─".repeat(process.stdout.columns || 80) + "\n");
+
+    // Show filtered models
+    const startIdx = Math.max(0, cursor - maxVisible + 1);
+    const endIdx = Math.min(filtered.length, startIdx + maxVisible);
+
+    for (let i = startIdx; i < endIdx; i++) {
+      const model = filtered[i];
+      const marker = i === cursor ? "> " : "  ";
+      const selected = selectedModel?.modelId === model.modelId ? "* " : "";
+      process.stdout.write(
+        `${marker}${selected}${model.displayName} (${model.modelId})\n`
+      );
+    }
+
+    process.stdout.write("─".repeat(process.stdout.columns || 80) + "\n");
+    process.stdout.write(
+      "↑/↓: Navigate | Enter: Select | Esc: Cancel | Type to filter\n"
+    );
+  };
+
+  return new Promise((resolve) => {
+    readline.emitKeypressEvents(process.stdin);
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true);
+    }
+
+    redraw();
+
+    const onKeypress = (_str: string, key: readline.Key) => {
+      if (key.name === "escape" || (key.ctrl && key.name === "c")) {
+        cleanup();
+        console.log("\nSelection cancelled\n");
+        resolve();
+        return;
+      }
+
+      const filtered = filterModels(searchQuery);
+
+      if (key.name === "return") {
+        if (filtered[cursor]) {
+          selectedModel = filtered[cursor];
+          conversation = { messages: [] };
+          cleanup();
+          console.log(
+            `\nSelected: ${selectedModel.displayName} (${selectedModel.modelId})\n`
+          );
+          resolve();
+        }
+        return;
+      }
+
+      if (key.name === "up") {
+        cursor = cursor > 0 ? cursor - 1 : filtered.length - 1;
+      } else if (key.name === "down") {
+        cursor = cursor < filtered.length - 1 ? cursor + 1 : 0;
+      } else if (key.name === "backspace") {
+        searchQuery = searchQuery.slice(0, -1);
+        cursor = 0;
+      } else if (
+        key.sequence &&
+        key.sequence.length === 1 &&
+        !key.ctrl &&
+        !key.meta
+      ) {
+        searchQuery += key.sequence;
+        cursor = 0;
+      }
+
+      // Clear previous output
+      const linesToClear = Math.min(10, filterModels(searchQuery).length) + 4;
+      for (let i = 0; i < linesToClear; i++) {
+        process.stdout.write(CURSOR_UP + CLEAR_LINE);
+      }
+
+      redraw();
+    };
+
+    const cleanup = () => {
+      process.stdin.removeListener("keypress", onKeypress);
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(false);
+      }
+    };
+
+    process.stdin.on("keypress", onKeypress);
+  });
+}
 
 // Command handlers
 function showHelp() {
@@ -108,14 +218,13 @@ function showHelp() {
     "",
     "=== Available Commands ===",
     "/help              - Show this help message",
-    "/list_models       - List all available models",
-    "/select_model <id> - Select a model to use",
+    "/list-models       - List all available models",
+    "/select-model      - Interactively select a model (fuzzy search)",
     "/conversation      - Show conversation as JSON",
-    "/mode <mode>       - Set display mode (default|verbose)",
-    "                     Applies only when stream_mode=default",
-    "/stream_mode <mode> - Set stream mode (default|model)",
-    "                      default: uses stream() method",
-    "                      model: uses modelStream() method",
+    "/mode <mode>       - Set output mode:",
+    "                     text (default): Clean text output with thinking in gray",
+    "                     event: Show normalized LLM events as JSON",
+    "                     model-event: Show raw provider events as JSON",
     "/save              - Save all output to a log file",
     "/exit              - Exit test-chat mode",
     "==========================",
@@ -140,29 +249,13 @@ function listModels() {
 
   lines.push(
     "",
-    "Use: /select_model <modelId>",
+    "Use: /select-model to interactively select",
     "========================",
     ""
   );
 
   outputLines.push(...lines);
   lines.forEach((line) => console.log(line));
-}
-
-function selectModel(modelId: string) {
-  const model = getModelConfig(modelId);
-
-  if (!model) {
-    const msg = `Model '${modelId}' not found. Use /list_models to see available models.`;
-    outputLines.push(msg, "");
-    console.log(msg);
-  } else {
-    selectedModel = model;
-    conversation = { messages: [] }; // Reset conversation
-    const msg = `Selected model: ${model.displayName} (${model.modelId})`;
-    outputLines.push(msg, "");
-    console.log(msg);
-  }
 }
 
 function showConversation() {
@@ -179,26 +272,18 @@ function showConversation() {
 }
 
 function setMode(mode: string) {
-  if (mode === "verbose" || mode === "default") {
-    displayMode = mode as "default" | "verbose";
-    const msg = `Display mode set to: ${mode}`;
+  if (mode === "text" || mode === "event" || mode === "model-event") {
+    outputMode = mode as OutputMode;
+    const descriptions = {
+      text: "Clean text output with thinking in gray",
+      event: "Normalized LLM events as JSON",
+      "model-event": "Raw provider events as JSON",
+    };
+    const msg = `Output mode set to: ${mode} (${descriptions[mode]})`;
     outputLines.push(msg, "");
     console.log(msg);
   } else {
-    const msg = `Invalid mode. Use 'verbose' or 'default'`;
-    outputLines.push(msg, "");
-    console.log(msg);
-  }
-}
-
-function setStreamModeCommand(mode: string) {
-  if (mode === "default" || mode === "model") {
-    streamMode = mode as "default" | "model";
-    const msg = `Stream mode set to: ${mode}`;
-    outputLines.push(msg, "");
-    console.log(msg);
-  } else {
-    const msg = `Invalid stream_mode. Use 'default' or 'model'`;
+    const msg = `Invalid mode. Use 'text', 'event', or 'model-event'`;
     outputLines.push(msg, "");
     console.log(msg);
   }
@@ -211,8 +296,7 @@ function saveLog() {
     "=== Test LLM Chat Log ===",
     `Date: ${new Date().toISOString()}`,
     `Model: ${selectedModel ? `${selectedModel.displayName} (${selectedModel.modelId})` : "None"}`,
-    `Display Mode: ${displayMode}`,
-    `Stream Mode: ${streamMode}`,
+    `Output Mode: ${outputMode}`,
     "",
     "=== Output ===",
     ...outputLines,
@@ -237,9 +321,7 @@ function saveLog() {
 // Stream message to LLM
 async function streamMessage(message: string) {
   if (!selectedModel) {
-    console.error(
-      "\nNo model selected. Use /list_models and /select_model <modelId>\n"
-    );
+    console.error("\nNo model selected. Use /select-model to choose a model\n");
     return;
   }
   // Add user message to conversation
@@ -252,7 +334,6 @@ async function streamMessage(message: string) {
   conversation.messages.push(userMessage);
   outputLines.push(`> ${message}`, "", "Assistant:");
 
-  console.log(`\n> ${message}\n`);
   console.log("Assistant: ");
 
   // Create LLM instance
@@ -261,25 +342,41 @@ async function streamMessage(message: string) {
   });
 
   let fullText = "";
+  let _fullThinking = "";
 
-  if (streamMode === "default") {
-    // Use the stream() method
+  if (outputMode === "model-event") {
+    // Use modelStream() method - show raw provider events as JSON
+    const modelEvents = (llm as any).modelStream({
+      conversation,
+      prompt: "You are a helpful assistant.",
+    });
+
+    for await (const event of modelEvents) {
+      const eventStr = JSON.stringify(event, null, 2);
+      outputLines.push(eventStr);
+      console.log(eventStr);
+    }
+  } else {
+    // Use the stream() method for normalized events
     const events = llm.stream({
       conversation,
       prompt: "You are a helpful assistant.",
     });
 
     for await (const event of events) {
-      if (displayMode === "verbose") {
-        // In verbose mode, show full event objects as JSON
+      if (outputMode === "event") {
+        // Show normalized events as JSON
         const eventStr = JSON.stringify(event, null, 2);
         outputLines.push(eventStr);
         console.log(eventStr);
       } else {
-        // In default mode, parse events and display text
-        if (event.type === "text_delta") {
+        // Text mode: show clean text with thinking in gray
+        if (event.type === "reasoning_delta") {
+          _fullThinking += event.content.delta;
+          console.log(GRAY + event.content.delta + RESET);
+        } else if (event.type === "text_delta") {
           fullText += event.content.delta;
-          process.stdout.write(event.content.delta);
+          console.log(event.content.delta);
         } else if (event.type === "success") {
           // Stream complete
           outputLines.push(fullText, "");
@@ -292,29 +389,16 @@ async function streamMessage(message: string) {
         }
       }
     }
-  } else {
-    // Use modelStream() method - always show as JSON
-    const modelEvents = (llm as any).modelStream({
-      conversation,
-      prompt: "You are a helpful assistant.",
-    });
 
-    for await (const event of modelEvents) {
-      // Always stringify model events
-      const eventStr = JSON.stringify(event, null, 2);
-      outputLines.push(eventStr);
-      console.log(eventStr);
+    // Add assistant response to conversation (only in text/event mode)
+    if (fullText) {
+      const assistantMessage = {
+        role: "assistant" as const,
+        name: "assistant",
+        content: fullText,
+      };
+      conversation.messages.push(assistantMessage);
     }
-  }
-
-  // Add assistant response to conversation
-  if (streamMode === "default" && fullText) {
-    const assistantMessage = {
-      role: "assistant" as const,
-      name: "assistant",
-      content: fullText,
-    };
-    conversation.messages.push(assistantMessage);
   }
 }
 
@@ -337,14 +421,13 @@ async function handleCommand(input: string): Promise<boolean> {
     return true;
   }
 
-  if (trimmed === "/list_models") {
+  if (trimmed === "/list-models") {
     listModels();
     return true;
   }
 
-  if (trimmed.startsWith("/select_model ")) {
-    const modelId = trimmed.substring(14).trim();
-    selectModel(modelId);
+  if (trimmed === "/select-model") {
+    await interactiveModelSelector();
     return true;
   }
 
@@ -359,12 +442,6 @@ async function handleCommand(input: string): Promise<boolean> {
     return true;
   }
 
-  if (trimmed.startsWith("/stream_mode ")) {
-    const mode = trimmed.substring(13).trim();
-    setStreamModeCommand(mode);
-    return true;
-  }
-
   return false;
 }
 
@@ -375,10 +452,8 @@ async function main() {
   console.log(
     `Model: ${selectedModel ? `${selectedModel.displayName} (${selectedModel.modelId})` : "None"}`
   );
-  console.log(`Display Mode: ${displayMode} | Stream Mode: ${streamMode}`);
-  console.log(
-    "\nType /help for commands, /list_models to see available models\n"
-  );
+  console.log(`Output Mode: ${outputMode}`);
+  console.log("\nType /help for commands, /select-model to choose a model\n");
 
   const rl = readline.createInterface({
     input: process.stdin,
