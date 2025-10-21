@@ -153,27 +153,29 @@ export async function validateAction(
     return new Ok(undefined);
   }
 
-  // Remove the tool approval request event from the message channel.
-  await getRedisHybridManager().removeEvent((event) => {
-    const payload = JSON.parse(event.message["payload"]);
-    return isMCPApproveExecutionEvent(payload)
-      ? payload.actionId === actionId
-      : false;
-  }, getMessageChannelId(messageId));
+  if (approvalState === "approved" || approvalState === "always_approved") {
+    // Remove the tool approval request event from the message channel.
+    await getRedisHybridManager().removeEvent((event) => {
+      const payload = JSON.parse(event.message["payload"]);
+      return isMCPApproveExecutionEvent(payload)
+        ? payload.actionId === actionId
+        : false;
+    }, getMessageChannelId(messageId));
 
-  await launchAgentLoopWorkflow({
-    auth,
-    agentLoopArgs: {
-      agentMessageId,
-      agentMessageVersion,
-      conversationId,
-      conversationTitle,
-      userMessageId,
-      userMessageVersion,
-    },
-    // Resume from the step where the action was created.
-    startStep: agentStepContent.step,
-  });
+    await launchAgentLoopWorkflow({
+      auth,
+      agentLoopArgs: {
+        agentMessageId,
+        agentMessageVersion,
+        conversationId,
+        conversationTitle,
+        userMessageId,
+        userMessageVersion,
+      },
+      // Resume from the step where the action was created.
+      startStep: agentStepContent.step,
+    });
+  }
 
   logger.info(
     {

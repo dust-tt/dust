@@ -81,12 +81,11 @@ export async function launchAgentLoopWorkflow({
       "Attempting to launch an agent loop workflow when there's already one running."
     );
 
-    return new Err(
-      new DustError(
-        "agent_loop_already_running",
-        "Agent loop already running for this message."
-      )
-    );
+    // Wait for existing workflow to complete to avoid duplicates
+    const handle = client.workflow.getHandle(workflowId);
+    await handle.result();
+
+    return new Ok(undefined);
   }
 
   return new Ok(undefined);
