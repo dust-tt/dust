@@ -431,16 +431,16 @@ export async function runModelActivity(
   let nativeChainOfThought = "";
   let dustRunId: Promise<string>;
 
-  let _fakeResponse:
+  let fakeResponse:
     | { shouldRetryMessage: string }
     | {
         output: Output;
         dustRunId: Promise<string>;
         nativeChainOfThought: string;
       }
-    | { shouldReturnNull: true };
+    | { shouldReturnNull: true } = { shouldReturnNull: true };
 
-  {
+  getOutputFromAction: {
     const res = await runActionStreamed(
       auth,
       "assistant-v2-multi-actions-agent",
@@ -460,7 +460,8 @@ export async function runModelActivity(
     );
 
     if (res.isErr()) {
-      return handlePossiblyRetryableError(res.error.message);
+      fakeResponse = { shouldRetryMessage: res.error.message };
+      break getOutputFromAction;
     }
 
     const { eventStream, dustRunId: dustRunIdValue } = res.value;
@@ -476,7 +477,8 @@ export async function runModelActivity(
 
       if (event.type === "error") {
         await flushParserTokens();
-        return handlePossiblyRetryableError(event.content.message);
+        fakeResponse = { shouldRetryMessage: event.content.message };
+        break getOutputFromAction;
       }
 
       // Heartbeat & sleep allow the activity to be cancelled, e.g. on a "Stop
@@ -548,7 +550,8 @@ export async function runModelActivity(
         const e = event.content.execution[0][0];
         if (e.error) {
           await flushParserTokens();
-          return handlePossiblyRetryableError(e.error);
+          fakeResponse = { shouldRetryMessage: e.error };
+          break getOutputFromAction;
         }
 
         if (event.content.block_name === "MODEL" && e.value) {
@@ -557,9 +560,10 @@ export async function runModelActivity(
 
           const block = e.value;
           if (!isDustAppChatBlockType(block)) {
-            return handlePossiblyRetryableError(
-              "Received unparsable MODEL block."
-            );
+            fakeResponse = {
+              shouldRetryMessage: "Received unparsable MODEL block.",
+            };
+            break getOutputFromAction;
           }
 
           // Extract token usage from block execution metadata
@@ -647,8 +651,15 @@ export async function runModelActivity(
     await flushParserTokens();
 
     if (!output) {
-      return handlePossiblyRetryableError("Agent execution didn't complete.");
+      fakeResponse = {
+        shouldRetryMessage: "Agent execution didn't complete.",
+      };
+      break getOutputFromAction;
     }
+  }
+
+  if ("shouldRetryMessage" in fakeResponse) {
+    return handlePossiblyRetryableError(fakeResponse.shouldRetryMessage);
   }
 
   // Create a new object to avoid mutation
