@@ -70,11 +70,7 @@ function getModelsByProvider(): Record<
   >;
 }
 
-function createLLM({
-  model,
-}: {
-  model: ModelConfigurationType;
-}): LLM {
+function createLLM({ model }: { model: ModelConfigurationType }): LLM {
   const providerId = model.providerId as ImplementedProviderId;
 
   switch (providerId) {
