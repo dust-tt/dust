@@ -198,7 +198,6 @@ interface WebhookEditionFiltersProps {
   webhookSourceView: WebhookSourceViewType | null;
   selectedPreset: PresetWebhook | null;
   availableEvents: WebhookEvent[];
-  selectedEventSchema: WebhookEvent | null;
   workspace: LightWorkspaceType;
 }
 
@@ -207,11 +206,21 @@ function WebhookEditionFilters({
   webhookSourceView,
   selectedPreset,
   availableEvents,
-  selectedEventSchema,
   workspace,
 }: WebhookEditionFiltersProps) {
   const { setError, control } = useFormContext<WebhookFormValues>();
   const selectedEvent = useWatch({ control, name: "event" });
+
+  const selectedEventSchema = useMemo<WebhookEvent | null>(() => {
+    if (!selectedEvent || !selectedPreset) {
+      return null;
+    }
+
+    return (
+      selectedPreset.events.find((event) => event.name === selectedEvent) ??
+      null
+    );
+  }, [selectedEvent, selectedPreset]);
   const {
     field: filterField,
     fieldState: { error: filterError },
@@ -428,14 +437,8 @@ export function WebhookEditionSheet({
   isEditor,
 }: WebhookEditionSheetProps) {
   const {
-    control,
     formState: { isSubmitting },
   } = useFormContext<WebhookFormValues>();
-
-  const selectedEvent = useWatch({
-    control,
-    name: "event",
-  });
 
   const selectedPreset = useMemo((): PresetWebhook | null => {
     if (!webhookSourceView || webhookSourceView.kind === "custom") {
@@ -453,17 +456,6 @@ export function WebhookEditionSheet({
       webhookSourceView.subscribedEvents.includes(event.value)
     );
   }, [selectedPreset, webhookSourceView]);
-
-  const selectedEventSchema = useMemo<WebhookEvent | null>(() => {
-    if (!selectedEvent || !selectedPreset) {
-      return null;
-    }
-
-    return (
-      selectedPreset.events.find((event) => event.name === selectedEvent) ??
-      null
-    );
-  }, [selectedEvent, selectedPreset]);
 
   const handleClose = () => {
     onCancel();
@@ -520,7 +512,6 @@ export function WebhookEditionSheet({
                 webhookSourceView={webhookSourceView}
                 selectedPreset={selectedPreset}
                 availableEvents={availableEvents}
-                selectedEventSchema={selectedEventSchema}
                 workspace={owner}
               />
             </div>
@@ -556,6 +547,7 @@ export function WebhookEditionSheet({
                 }
               : undefined
           }
+          // TODO(2025-10-22 aubin): fix these labels (Close feels weird).
           rightButtonProps={{
             label: trigger
               ? isEditor
