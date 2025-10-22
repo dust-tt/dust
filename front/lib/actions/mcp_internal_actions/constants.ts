@@ -1378,7 +1378,7 @@ The directive should be used to display a clickable version of the agent name in
       version: "1.0.0",
       description: "Create and execute vals in Val Town.",
       authorization: null,
-      icon: "CommandLineIcon",
+      icon: "ValTownLogo",
       documentationUrl: "https://docs.dust.tt/docs/valtown",
       instructions: null,
       requiresSecret: true,
