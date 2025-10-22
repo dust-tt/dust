@@ -4,10 +4,11 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { useWebhookFilterGenerator } from "@app/lib/swr/agent_triggers";
 import type { LightWorkspaceType } from "@app/types";
 import { normalizeError } from "@app/types";
+import type { WebhookEvent } from "@app/types/triggers/webhooks_source_preset";
 
 interface UseWebhookFilterGenerationProps {
   workspace: LightWorkspaceType;
-  eventSchema: any;
+  eventSchema: WebhookEvent | null;
 }
 
 type FilterGenerationStatus = "idle" | "loading" | "error";
