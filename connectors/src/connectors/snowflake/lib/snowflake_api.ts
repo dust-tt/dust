@@ -590,11 +590,7 @@ async function _checkRoleGrants(
         "TASK",
       ].includes(grantOn)
     ) {
-      if (
-        ["MODIFY PROGRAMMATIC AUTHENTICATION METHODS", "MONITOR"].includes(
-          g.privilege
-        )
-      ) {
+      if (["MONITOR"].includes(g.privilege)) {
         continue;
       }
       return new Err(
