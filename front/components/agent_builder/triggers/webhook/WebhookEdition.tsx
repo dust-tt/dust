@@ -82,10 +82,10 @@ export function WebhookEdition({
         sId: trigger?.sId,
         enabled: values.enabled,
         name: values.name.trim(),
-        customPrompt: values.customPrompt?.trim() || null,
+        customPrompt: values.customPrompt?.trim() ?? null,
         naturalLanguageDescription:
           webhookSourceView?.kind !== "custom"
-            ? values.naturalDescription?.trim() || null
+            ? values.naturalDescription?.trim() ?? null
             : null,
         kind: "webhook",
         configuration: {
