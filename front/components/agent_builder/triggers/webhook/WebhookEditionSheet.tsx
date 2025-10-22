@@ -43,9 +43,11 @@ interface WebhookEditionNameInputProps {
 }
 
 function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
-  const { register, getFieldState, formState } =
-    useFormContext<WebhookFormValues>();
-  const { error } = getFieldState("name", formState);
+  const { control } = useFormContext<WebhookFormValues>();
+  const {
+    field,
+    fieldState: { error },
+  } = useController({ control, name: "name" });
 
   return (
     <>
@@ -54,7 +56,7 @@ function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
         id="trigger-name"
         placeholder="Enter trigger name"
         disabled={!isEditor}
-        {...register("name")}
+        {...field}
         isError={!!error}
         message={error?.message}
         messageStatus="error"
