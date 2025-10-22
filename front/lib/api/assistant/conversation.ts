@@ -7,6 +7,7 @@ import {
   getAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
+import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { createAgentMessages } from "@app/lib/api/assistant/conversation/mentions";
 import { canReadMessage } from "@app/lib/api/assistant/messages";
@@ -44,7 +45,6 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid, normalizeArrays } from "@app/lib/utils";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
@@ -85,9 +85,6 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-
-// Soft assumption that we will not have more than 10 mentions in the same user message.
-const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
 
 /**
  * Conversation Creation, update and deletion
@@ -624,43 +621,13 @@ export async function postUserMessage(
     agentMessages
   );
 
-  await concurrentExecutor(
+  await runAgentLoopWorkflow({
+    auth,
     agentMessages,
-    async (agentMessage) => {
-      // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
-      const agentMessageRow = agentMessageRowById.get(
-        agentMessage.agentMessageId
-      );
-      assert(
-        agentMessageRow,
-        `Agent message row not found for agent message ${agentMessage.agentMessageId}`
-      );
-
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId: agentMessage.configuration.sId,
-        variant: "full",
-      });
-
-      assert(
-        agentConfiguration,
-        "Unreachable: could not find detailed configuration for agent"
-      );
-
-      void launchAgentLoopWorkflow({
-        auth,
-        agentLoopArgs: {
-          agentMessageId: agentMessage.sId,
-          agentMessageVersion: agentMessage.version,
-          conversationId: conversation.sId,
-          conversationTitle: conversation.title,
-          userMessageId: userMessage.sId,
-          userMessageVersion: userMessage.version,
-        },
-        startStep: 0,
-      });
-    },
-    { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
-  );
+    agentMessageRowById,
+    conversation,
+    userMessage,
+  });
 
   return new Ok({
     userMessage,
@@ -1010,43 +977,13 @@ export async function editUserMessage(
     agentMessageRowById.set(agentMessageRow.id, agentMessageRow);
   }
 
-  await concurrentExecutor(
+  await runAgentLoopWorkflow({
+    auth,
     agentMessages,
-    async (agentMessage) => {
-      // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
-      const agentMessageRow = agentMessageRowById.get(
-        agentMessage.agentMessageId
-      );
-      assert(
-        agentMessageRow,
-        `Agent message row not found for agent message ${agentMessage.agentMessageId}`
-      );
-
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId: agentMessage.configuration.sId,
-        variant: "full",
-      });
-
-      assert(
-        agentConfiguration,
-        "Unreachable: could not find detailed configuration for agent"
-      );
-
-      void launchAgentLoopWorkflow({
-        auth,
-        agentLoopArgs: {
-          agentMessageId: agentMessage.sId,
-          agentMessageVersion: agentMessage.version,
-          conversationId: conversation.sId,
-          conversationTitle: conversation.title,
-          userMessageId: userMessage.sId,
-          userMessageVersion: userMessage.version,
-        },
-        startStep: 0,
-      });
-    },
-    { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
-  );
+    agentMessageRowById,
+    conversation,
+    userMessage,
+  });
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
