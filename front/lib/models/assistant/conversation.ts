@@ -724,7 +724,10 @@ export class Mention extends WorkspaceAwareModel<Mention> {
   declare updatedAt: CreationOptional<Date>;
 
   declare messageId: ForeignKey<Message["id"]>;
+
+  // a Mention is either an agent mention xor a user mention
   declare agentConfigurationId: string | null; // Not a relation as global agents are not in the DB
+  declare userId: ForeignKey<UserModel["id"]> | null;
 
   declare message: NonAttribute<Message>;
 }
@@ -744,6 +747,14 @@ Mention.init(
     agentConfigurationId: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    userId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      references: {
+        model: UserModel,
+        key: "id",
+      },
     },
   },
   {
@@ -765,6 +776,18 @@ Mention.init(
         fields: ["workspaceId", "agentConfigurationId", "createdAt"],
       },
     ],
+    hooks: {
+      beforeValidate: (mention) => {
+        if (
+          Number(!!mention.userId) + Number(!!mention.agentConfigurationId) !==
+          1
+        ) {
+          throw new Error(
+            "Exactly one of userId, agentConfigurationId must be non-null"
+          );
+        }
+      },
+    },
   }
 );
 
@@ -774,4 +797,7 @@ Message.hasMany(Mention, {
 });
 Mention.belongsTo(Message, {
   foreignKey: { name: "messageId", allowNull: false },
+});
+Mention.belongsTo(UserModel, {
+  foreignKey: { name: "userId", allowNull: true },
 });
