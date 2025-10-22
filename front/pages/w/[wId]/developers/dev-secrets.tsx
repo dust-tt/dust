@@ -176,7 +176,7 @@ export default function SecretsPage({
         <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle>
-              {isInputNameDisabled ? "Update" : "New"} Dust App Secret
+              {isInputNameDisabled ? "Update" : "New"} Developer Secret
             </DialogTitle>
           </DialogHeader>
           <DialogContainer>
@@ -231,7 +231,7 @@ export default function SecretsPage({
           <Page.Header
             title="Developer Secrets"
             icon={BracesIcon}
-            description="Secrets usable in Dust apps to avoid showing sensitive data in blocks definitions."
+            description="Secrets usable in Dust apps or MCP servers to safely store sensitive data."
           />{" "}
           <Page.Vertical align="stretch" gap="md">
             <Page.Horizontal align="stretch">
