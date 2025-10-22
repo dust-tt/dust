@@ -33,7 +33,9 @@ export async function* streamLLMEvents({
 
   function* yieldEvents(events: LLMEvent[]) {
     for (const event of events) {
-      event.type === "text_delta" && (textDelta += event.content.delta);
+      if (event.type === "text_delta") {
+        textDelta += event.content.delta;
+      }
       yield event;
     }
   }
