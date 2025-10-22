@@ -1291,16 +1291,7 @@ export class DustAPI {
       return res;
     }
 
-    const { response } = res.value;
-
-    if (!response.ok) {
-      return new Err({
-        type: "unexpected_network_error",
-        message: `Failed to download file: HTTP ${response.status}`,
-      });
-    }
-
-    const { body } = response;
+    const { body } = res.value.response;
 
     // when action is view, the body is always a readable stream
     if (typeof body === "string") {
