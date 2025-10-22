@@ -210,9 +210,8 @@ function WebhookEditionFilters({
   selectedEventSchema,
   workspace,
 }: WebhookEditionFiltersProps) {
-  const { setError, control, setValue } = useFormContext<WebhookFormValues>();
+  const { setError, control } = useFormContext<WebhookFormValues>();
   const selectedEvent = useWatch({ control, name: "event" });
-  const formFilter = useWatch({ control, name: "filter" });
   const {
     field: filterField,
     fieldState: { error: filterError },
@@ -268,7 +267,7 @@ function WebhookEditionFilters({
           naturalDescription: debouncedDescription,
           eventSchema: selectedEventSchema.fields,
         });
-        setValue("filter", result.filter);
+        filterField.onChange(result.filter);
         setFilterGenerationStatus("idle");
         setFilterErrorMessage(null);
       } catch (error) {
@@ -280,19 +279,21 @@ function WebhookEditionFilters({
     };
 
     void generateFilterAsync();
-  }, [debouncedDescription, selectedEventSchema, generateFilter, setValue]);
+  }, [debouncedDescription, selectedEventSchema, generateFilter, filterField]);
 
   const filterGenerationResult = useMemo(() => {
     switch (filterGenerationStatus) {
       case "idle":
-        if (formFilter) {
+        if (filterField.value) {
           return (
             <CollapsibleComponent
               rootProps={{ defaultOpen: true }}
               triggerChildren={
                 <Label className="cursor-pointer">Current filter</Label>
               }
-              contentChildren={<TriggerFilterRenderer data={formFilter} />}
+              contentChildren={
+                <TriggerFilterRenderer data={filterField.value} />
+              }
             />
           );
         }
@@ -316,7 +317,7 @@ function WebhookEditionFilters({
       default:
         return null;
     }
-  }, [filterGenerationStatus, filterErrorMessage, formFilter]);
+  }, [filterGenerationStatus, filterErrorMessage, filterField.value]);
 
   return (
     <>
