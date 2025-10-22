@@ -257,6 +257,7 @@ export function WebhookEditionSheet({
   }, [selectedPreset, webhookSourceView]);
 
   const handleClose = () => {
+    // TODO(2025-10-23 aubin): see if we want to add a confirmation if unsaved changes here.
     onCancel();
     onClose();
   };
