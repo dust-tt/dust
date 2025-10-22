@@ -1380,9 +1380,10 @@ async function makeContentFragments(
   }
 
   // Prepend $url to the content to make it available to the model.
+  const sectionHeader = `This only shows user-generated messages since ${startingAtTs} in #${channelName}. Look at the conversation history for the full thread.\n`;
   const section = document
-    ? `$url: ${url}\n${sectionFullText(document)}`
-    : `$url: ${url}\n`;
+    ? `$url: ${url}\n${sectionHeader}${sectionFullText(document)}`
+    : `$url: ${url}\n${sectionHeader}`;
 
   const contentType = "text/vnd.dust.attachment.slack.thread";
   const fileName = `slack_thread-${channelName}-${threadTs}.txt`;
