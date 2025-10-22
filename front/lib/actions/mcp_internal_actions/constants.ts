@@ -1109,19 +1109,25 @@ The directive should be used to display a clickable version of the agent name in
     },
     isPreview: false,
     tools_stakes: {
-      search_messages: "never_ask",
+      search_messages_content: "never_ask",
+      list_teams: "never_ask",
+      list_users: "never_ask",
+      list_channels: "never_ask",
+      list_chats: "never_ask",
+      list_messages: "never_ask",
+      post_message: "low",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "microsoft_teams",
       version: "1.0.0",
-      description: "Search messages in Microsoft Teams.",
+      description: "Microsoft Teams for searching and posting messages.",
       authorization: {
         provider: "microsoft_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
         scope:
-          "User.Read Chat.Read ChatMessage.Read ChannelMessage.Read.All" as const,
+          "User.Read User.ReadBasic.All Team.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send" as const,
       },
       icon: "MicrosoftTeamsLogo",
       documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
