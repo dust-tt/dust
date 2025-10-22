@@ -19,7 +19,7 @@ export class GitHubWebhookService implements RemoteWebhookService {
   }): Promise<
     Result<
       {
-        webhookIds: Record<string, string>;
+        updatedRemoteMetadata: Record<string, any>;
         errors?: string[];
       },
       Error
@@ -180,7 +180,10 @@ export class GitHubWebhookService implements RemoteWebhookService {
       }
 
       return new Ok({
-        webhookIds,
+        updatedRemoteMetadata: {
+          ...remoteMetadata,
+          webhookIds,
+        },
         errors: errors.length > 0 ? errors : undefined,
       });
     } catch (error: any) {

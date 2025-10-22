@@ -15,7 +15,7 @@ export interface RemoteWebhookService {
   }): Promise<
     Result<
       {
-        webhookIds: Record<string, string>;
+        updatedRemoteMetadata: Record<string, any>;
         errors?: string[];
       },
       Error
