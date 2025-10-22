@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -12,7 +13,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { PlanType, WhitelistableFeature } from "@app/types";
+import type { PlanType, WhitelistableFeature, WorkspaceType } from "@app/types";
 
 describe("MCPServerViewResource", () => {
   describe("listByWorkspace", () => {
@@ -358,6 +359,47 @@ describe("MCPServerViewResource", () => {
       const resultIds = results.map((v) => v.id).sort();
       const expectedIds = [view1.id, view2.id].sort();
       expect(resultIds).toEqual(expectedIds);
+    });
+  });
+
+  describe("ensureAllAutoToolsAreCreated", () => {
+    let adminAuth: Authenticator;
+    let mcpServerId: string;
+    let workspace: WorkspaceType;
+
+    beforeEach(async () => {
+      // Create a workspace and admin auth.
+      workspace = await WorkspaceFactory.basic();
+      adminAuth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      // Ensure default spaces (system and global) exist.
+      await SpaceFactory.defaults(adminAuth);
+
+      // Call the function under test.
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(adminAuth);
+
+      // Build the internal MCP server sId for this workspace.
+      mcpServerId = autoInternalMCPServerNameToSId({
+        name: "common_utilities", // not an auto one
+        workspaceId: workspace.id,
+      });
+    });
+
+    it("creates system and global views for enabled auto internal servers", async () => {
+      // Expect one view in system space and one in global space.
+      const systemView =
+        await MCPServerViewResource.getMCPServerViewForSystemSpace(
+          adminAuth,
+          mcpServerId
+        );
+      const globalView =
+        await MCPServerViewResource.getMCPServerViewForGlobalSpace(
+          adminAuth,
+          mcpServerId
+        );
+
+      expect(systemView).not.toBeNull();
+      expect(globalView).not.toBeNull();
     });
   });
 });
