@@ -17,6 +17,7 @@ import {
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
   InteractiveContentFileContentType,
@@ -333,7 +334,14 @@ export async function getClientExecutableFileContent(
   fileId: string
 ): Promise<Result<{ fileResource: FileResource; content: string }, Error>> {
   try {
-    // Fetch the existing file.
+    // Sometimes the model makes up a random file id that doesn't exist,
+    // so we check if this is actually a valid id or not.
+    const resourceId = getResourceIdFromSId(fileId);
+
+    if (resourceId === null) {
+      return new Err(new Error(`The id ${fileId} is not a valid file id`));
+    }
+
     const fileResource = await FileResource.fetchById(auth, fileId);
     if (!fileResource) {
       return new Err(new Error(`File not found: ${fileId}`));
