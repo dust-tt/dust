@@ -180,7 +180,7 @@ async function handler(
         }
 
         if (kind !== "custom" && connectionId && remoteMetadata) {
-          // Allow redirection to public URL in local dev for webhook registrations
+          // Allow redirection to public URL in local dev for webhook registrations.
           const baseUrl =
             process.env.DUST_WEBHOOKS_PUBLIC_URL ?? config.getClientFacingUrl();
           const webhookUrl = buildWebhookUrl({
