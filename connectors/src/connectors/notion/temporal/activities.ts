@@ -3076,7 +3076,13 @@ export async function getParentPageOrDb({
   if (page) {
     switch (page.parent.type) {
       case "database_id":
-        return { parentId: page.parent.database_id, parentType: "database" };
+        // Should never happen. Only data_sources can have databases as parents.
+        throw new Error("Unexpected database parent for page.");
+      case "data_source_id":
+        return {
+          parentId: page.parent.data_source_id,
+          parentType: "database",
+        };
       case "page_id":
         return { parentId: page.parent.page_id, parentType: "page" };
       case "workspace":

@@ -25,7 +25,7 @@
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@microsoft/microsoft-graph-types": "^2.40.0",
     "@microsoft/teams-ai": "^1.7.4",
-    "@notionhq/client": "^2.2.15",
+    "@notionhq/client": "^5.3.0",
     "@slack/web-api": "^7.10.0",
     "@temporalio/activity": "^1.12.1",
     "@temporalio/client": "^1.12.1",

@@ -4,14 +4,14 @@ import {
   APIResponseError,
   Client,
   isFullBlock,
-  isFullDatabase,
+  isFullDataSource,
   isFullPage,
   isNotionClientError,
   UnknownHTTPResponseError,
 } from "@notionhq/client";
 import type {
   BlockObjectResponse,
-  GetDatabaseResponse,
+  GetDataSourceResponse,
   GetPageResponse,
   ListBlockChildrenResponse,
   PageObjectResponse,
@@ -200,7 +200,12 @@ export async function getPagesAndDatabasesEditedSince({
             : undefined,
           start_cursor: lastCursor || undefined,
           page_size: pageSize,
-          filter: filter ? { property: "object", value: filter } : undefined,
+          filter: filter
+            ? {
+                property: "object",
+                value: filter === "database" ? "data_source" : filter,
+              }
+            : undefined,
         });
       });
     } catch (e) {
@@ -278,7 +283,7 @@ export async function getPagesAndDatabasesEditedSince({
         // We're still more recent than the sinceTs, add the page to the list of edited pages.
         editedPages[pageOrDb.id] = lastEditedTime;
       }
-    } else if (pageOrDb.object === "database") {
+    } else if (pageOrDb.object === "data_source") {
       if (skippedDatabaseIds.has(pageOrDb.id)) {
         localLogger.info(
           { databaseId: pageOrDb.id },
@@ -286,7 +291,7 @@ export async function getPagesAndDatabasesEditedSince({
         );
         continue;
       }
-      if (isFullDatabase(pageOrDb)) {
+      if (isFullDataSource(pageOrDb)) {
         if (pageOrDb.archived) {
           continue;
         }
@@ -451,8 +456,8 @@ export async function isAccessibleAndUnarchived(
       const db = await retryWithBackoff(
         () =>
           wrapNotionAPITokenErrors(async () =>
-            notionClient.databases.retrieve({
-              database_id: objectId,
+            notionClient.dataSources.retrieve({
+              data_source_id: objectId,
             })
           ),
         {
@@ -460,7 +465,7 @@ export async function isAccessibleAndUnarchived(
           operationName: "retrieve_database",
         }
       );
-      if (!isFullDatabase(db)) {
+      if (!isFullDataSource(db)) {
         return false;
       }
       return !db.archived;
@@ -593,12 +598,12 @@ export async function getParsedDatabase(
     logger: notionClientLogger,
   });
 
-  let database: GetDatabaseResponse | null = null;
+  let database: GetDataSourceResponse | null = null;
 
   try {
     database = await wrapNotionAPITokenErrors(async () =>
-      notionClient.databases.retrieve({
-        database_id: databaseId,
+      notionClient.dataSources.retrieve({
+        data_source_id: databaseId,
       })
     );
   } catch (e) {
@@ -623,7 +628,7 @@ export async function getParsedDatabase(
     throw e;
   }
 
-  if (!isFullDatabase(database)) {
+  if (!isFullDataSource(database)) {
     localLogger.info("Database is not a full database.");
     return null;
   }
@@ -632,7 +637,7 @@ export async function getParsedDatabase(
 
   dbLogger.info("Parsing database.");
 
-  const dbParent = database.parent;
+  const dbParent = database.database_parent;
   let parentId: string;
   let parentType: string;
 
@@ -845,9 +850,12 @@ export function getPageOrBlockParent(
   const type = pageOrBlock.parent.type;
   switch (type) {
     case "database_id":
+      // Should never happen. Only data_sources can have databases as parents.
+      throw new Error("Unexpected database parent for page.");
+    case "data_source_id":
       return {
         type: "database",
-        id: pageOrBlock.parent.database_id,
+        id: pageOrBlock.parent.data_source_id,
       };
     case "page_id":
       return {
@@ -1042,8 +1050,8 @@ export async function retrieveDatabaseChildrenResultPage({
   localLogger.info("Fetching database children result page from Notion API.");
   try {
     const resultPage = await wrapNotionAPITokenErrors(async () =>
-      notionClient.databases.query({
-        database_id: databaseId,
+      notionClient.dataSources.query({
+        data_source_id: databaseId,
         start_cursor: cursor || undefined,
       })
     );
