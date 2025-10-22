@@ -94,8 +94,10 @@ interface WebhookEditionStatusToggleProps {
 function WebhookEditionStatusToggle({
   isEditor,
 }: WebhookEditionStatusToggleProps) {
-  const { watch, setValue } = useFormContext<WebhookFormValues>();
-  const enabled = watch("enabled");
+  const { control } = useFormContext<WebhookFormValues>();
+  const {
+    field: { value, onChange },
+  } = useController({ control, name: "enabled" });
 
   return (
     <>
@@ -107,10 +109,10 @@ function WebhookEditionStatusToggle({
         <SliderToggle
           size="xs"
           disabled={!isEditor}
-          selected={enabled}
-          onClick={() => setValue("enabled", !enabled)}
+          selected={value}
+          onClick={() => onChange(!value)}
         />
-        {enabled
+        {value
           ? "The trigger is currently enabled"
           : "The trigger is currently disabled"}
       </div>
