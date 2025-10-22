@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { toCsv } from "@app/lib/api/csv";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -51,6 +52,49 @@ const AshbyCandidateListResponseSchema = z.object({
 
 type AshbyCandidateListResponse = z.infer<
   typeof AshbyCandidateListResponseSchema
+>;
+
+const AshbyFeedbackSubmitRequestSchema = z.object({
+  applicationId: z.string().uuid(),
+  feedbackFormDefinitionId: z.string().uuid(),
+  values: z.record(z.unknown()),
+  userId: z.string().uuid().optional(),
+  interviewEventId: z.string().uuid().optional(),
+  authorId: z.string().uuid().optional(),
+});
+
+type AshbyFeedbackSubmitRequest = z.infer<
+  typeof AshbyFeedbackSubmitRequestSchema
+>;
+
+const AshbyFeedbackSubmitResponseSchema = z.object({
+  submittedValues: z.record(z.unknown()),
+});
+
+type AshbyFeedbackSubmitResponse = z.infer<
+  typeof AshbyFeedbackSubmitResponseSchema
+>;
+
+const AshbyReportSynchronousRequestSchema = z.object({
+  reportId: z.string().uuid(),
+});
+
+type AshbyReportSynchronousRequest = z.infer<
+  typeof AshbyReportSynchronousRequestSchema
+>;
+
+const AshbyReportSynchronousResponseSchema = z.object({
+  data: z.array(z.record(z.unknown())),
+  fields: z.array(
+    z.object({
+      name: z.string(),
+      type: z.string(),
+    })
+  ),
+});
+
+type AshbyReportSynchronousResponse = z.infer<
+  typeof AshbyReportSynchronousResponseSchema
 >;
 
 async function getAshbyApiKey(
@@ -166,6 +210,114 @@ class AshbyClient {
 
     return new Ok(parseResult.data);
   }
+
+  async submitFeedback(
+    request: AshbyFeedbackSubmitRequest
+  ): Promise<Result<AshbyFeedbackSubmitResponse, Error>> {
+    const response = await fetch(
+      `${ASHBY_API_BASE_URL}/applicationFeedback.submit`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: this.getAuthHeader(),
+        },
+        body: JSON.stringify(request),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return new Err(
+        new Error(
+          `Ashby API error (${response.status}): ${errorText || response.statusText}`
+        )
+      );
+    }
+
+    const responseText = await response.text();
+    if (!responseText) {
+      return new Err(new Error("Ashby API returned empty response"));
+    }
+
+    let rawData: unknown;
+    try {
+      rawData = JSON.parse(responseText);
+    } catch (e) {
+      const error = normalizeError(e);
+      return new Err(new Error(`Invalid JSON response: ${error.message}`));
+    }
+
+    const parseResult = AshbyFeedbackSubmitResponseSchema.safeParse(rawData);
+
+    if (!parseResult.success) {
+      logger.error("[Ashby MCP Server] Invalid API response format", {
+        error: parseResult.error.message,
+        rawData,
+      });
+      return new Err(
+        new Error(
+          `Invalid Ashby API response format: ${parseResult.error.message}`
+        )
+      );
+    }
+
+    return new Ok(parseResult.data);
+  }
+
+  async getReportData(
+    request: AshbyReportSynchronousRequest
+  ): Promise<Result<AshbyReportSynchronousResponse, Error>> {
+    const response = await fetch(
+      `${ASHBY_API_BASE_URL}/report.synchronous`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: this.getAuthHeader(),
+        },
+        body: JSON.stringify(request),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return new Err(
+        new Error(
+          `Ashby API error (${response.status}): ${errorText || response.statusText}`
+        )
+      );
+    }
+
+    const responseText = await response.text();
+    if (!responseText) {
+      return new Err(new Error("Ashby API returned empty response"));
+    }
+
+    let rawData: unknown;
+    try {
+      rawData = JSON.parse(responseText);
+    } catch (e) {
+      const error = normalizeError(e);
+      return new Err(new Error(`Invalid JSON response: ${error.message}`));
+    }
+
+    const parseResult = AshbyReportSynchronousResponseSchema.safeParse(rawData);
+
+    if (!parseResult.success) {
+      logger.error("[Ashby MCP Server] Invalid API response format", {
+        error: parseResult.error.message,
+        rawData,
+      });
+      return new Err(
+        new Error(
+          `Invalid Ashby API response format: ${parseResult.error.message}`
+        )
+      );
+    }
+
+    return new Ok(parseResult.data);
+  }
 }
 
 function createServer(
@@ -241,6 +393,169 @@ function createServer(
         if (response.nextCursor) {
           resultText += `\n\nMore results available. Use cursor: ${response.nextCursor}`;
         }
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: resultText,
+          },
+        ]);
+      }
+    )
+  );
+
+  server.tool(
+    "get_report_data",
+    "Retrieve report data from Ashby ATS synchronously and save as a CSV file. Maximum 30 second timeout. For longer-running reports, consider using smaller date ranges or filters.",
+    {
+      reportId: z
+        .string()
+        .uuid()
+        .describe("UUID of the report to retrieve data from."),
+    },
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "ashby_get_report_data", agentLoopContext },
+      async ({ reportId }) => {
+        const apiKeyResult = await getAshbyApiKey(auth, agentLoopContext);
+        if (apiKeyResult.isErr()) {
+          return new Err(apiKeyResult.error);
+        }
+
+        const client = new AshbyClient(apiKeyResult.value);
+        const result = await client.getReportData({ reportId });
+
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(
+              `Failed to retrieve report data: ${result.error.message}`
+            )
+          );
+        }
+
+        const response = result.value;
+
+        if (response.data.length === 0) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Report ${reportId} returned no data.`,
+            },
+          ]);
+        }
+
+        const fieldNames = response.fields.map((f) => f.name);
+        const csvRows = response.data.map((row) => {
+          const csvRow: Record<string, string> = {};
+          for (const fieldName of fieldNames) {
+            const value = row[fieldName];
+            csvRow[fieldName] =
+              value === null || value === undefined
+                ? ""
+                : String(value);
+          }
+          return csvRow;
+        });
+
+        const csvContent = await toCsv(csvRows);
+        const base64Content = Buffer.from(csvContent).toString("base64");
+
+        const resultText = `Report data retrieved successfully!\n\nReport ID: ${reportId}\nRows: ${response.data.length}\nFields: ${fieldNames.join(", ")}\n\nThe data has been saved as a CSV file.`;
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: resultText,
+          },
+          {
+            type: "resource" as const,
+            resource: {
+              uri: `ashby-report-${reportId}.csv`,
+              mimeType: "text/csv",
+              blob: base64Content,
+              text: `Ashby report data (${response.data.length} rows)`,
+            },
+          },
+        ]);
+      }
+    )
+  );
+
+  server.tool(
+    "create_feedback",
+    "Submit feedback for a candidate application in Ashby ATS. Requires applicationId, feedbackFormDefinitionId, and values object containing feedback data.",
+    {
+      applicationId: z
+        .string()
+        .uuid()
+        .describe("UUID of the application to submit feedback for."),
+      feedbackFormDefinitionId: z
+        .string()
+        .uuid()
+        .describe("UUID of the feedback form definition to use."),
+      values: z
+        .record(z.unknown())
+        .describe(
+          "Object mapping feedback field paths to their values. Value formats depend on field types: Boolean (boolean), Date (YYYY-MM-DD string), Email (email string), Number (integer), RichText ({type: 'PlainText', value: string}), Score ({score: 1-4}), Phone/String (string), ValueSelect (string option), MultiValueSelect (array of strings)."
+        ),
+      userId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe("UUID of the user submitting the feedback (optional)."),
+      interviewEventId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "UUID of the interview event this feedback is associated with (optional)."
+        ),
+      authorId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe("UUID of the author submitting the feedback (optional)."),
+    },
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "ashby_create_feedback", agentLoopContext },
+      async ({
+        applicationId,
+        feedbackFormDefinitionId,
+        values,
+        userId,
+        interviewEventId,
+        authorId,
+      }) => {
+        const apiKeyResult = await getAshbyApiKey(auth, agentLoopContext);
+        if (apiKeyResult.isErr()) {
+          return new Err(apiKeyResult.error);
+        }
+
+        const client = new AshbyClient(apiKeyResult.value);
+        const result = await client.submitFeedback({
+          applicationId,
+          feedbackFormDefinitionId,
+          values,
+          userId,
+          interviewEventId,
+          authorId,
+        });
+
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(`Failed to submit feedback: ${result.error.message}`)
+          );
+        }
+
+        const response = result.value;
+        const submittedFields = Object.entries(response.submittedValues)
+          .map(([field, value]) => {
+            return `  ${field}: ${JSON.stringify(value)}`;
+          })
+          .join("\n");
+
+        const resultText = `Feedback submitted successfully!\n\nApplication ID: ${applicationId}\nFeedback Form: ${feedbackFormDefinitionId}\n\nSubmitted values:\n${submittedFields}`;
 
         return new Ok([
           {
