@@ -31,6 +31,13 @@ export async function* streamLLMEvents({
   // So we have to aggregate it ourselves as we receive text chunks
   let textDelta = "";
 
+  function* yieldEvents(events: LLMEvent[]) {
+    for (const event of events) {
+      event.type === "text_delta" && (textDelta += event.content.delta);
+      yield event;
+    }
+  }
+
   for await (const completionEvent of completionEvents) {
     // Ensure we have at least 1 choice
     if (!isCorrectCompletionEvent(completionEvent)) {
@@ -48,35 +55,26 @@ export async function* streamLLMEvents({
       metadata,
     });
 
-    if (
-      choice.finishReason ===
-      CompletionResponseStreamChoiceFinishReason.ToolCalls
-    ) {
-      const textGeneratedEvent = {
-        type: "text_generated" as const,
-        content: { text: textDelta },
-        metadata,
-      };
-      textDelta = "";
-      // Yield text generated event before tool call event
-      yield textGeneratedEvent;
-    }
-
-    for (const event of events) {
-      event.type === "text_delta" && (textDelta += event.content.delta);
-      yield event;
-    }
-
-    if (
-      !choice.finishReason ||
-      choice.finishReason ===
-        CompletionResponseStreamChoiceFinishReason.ToolCalls
-    ) {
-      continue;
-    }
-
     switch (choice.finishReason) {
+      case null: {
+        yield* yieldEvents(events);
+        break;
+      }
+      case CompletionResponseStreamChoiceFinishReason.ToolCalls: {
+        const textGeneratedEvent = {
+          type: "text_generated" as const,
+          content: { text: textDelta },
+          metadata,
+        };
+        // Yield aggregated text before tool calls
+        yield textGeneratedEvent;
+        yield* yieldEvents(events);
+        textDelta = "";
+        break;
+      }
       case CompletionResponseStreamChoiceFinishReason.Length: {
+        // yield error event after all received events
+        yield* yieldEvents(events);
         textDelta = "";
         yield {
           type: "error" as const,
@@ -86,6 +84,8 @@ export async function* streamLLMEvents({
         break;
       }
       case CompletionResponseStreamChoiceFinishReason.Error: {
+        // yield error event after all received events
+        yield* yieldEvents(events);
         textDelta = "";
         yield {
           type: "error" as const,
@@ -98,6 +98,7 @@ export async function* streamLLMEvents({
         break;
       }
       case CompletionResponseStreamChoiceFinishReason.Stop: {
+        yield* yieldEvents(events);
         const textGeneratedEvent = {
           type: "text_generated" as const,
           content: { text: textDelta },
@@ -109,7 +110,7 @@ export async function* streamLLMEvents({
       }
       default: {
         logger.error(`Unknown finish reason: ${choice.finishReason as string}`);
-        continue;
+        break;
       }
     }
   }
