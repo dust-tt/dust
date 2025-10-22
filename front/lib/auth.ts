@@ -1171,7 +1171,7 @@ export const getFeatureFlags = memoizer.sync({
     }
   },
 
-  hash: function (workspace: WorkspaceType) {
+  hash: function (workspace: LightWorkspaceType) {
     return `feature_flags_${workspace.id}`;
   },
 
