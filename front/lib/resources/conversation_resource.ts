@@ -526,11 +526,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     conversationId: string
   ) {
-    const conversation = await ConversationModel.findOne({
-      where: {
-        sId: conversationId,
-      },
-    });
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
     if (conversation === null) {
       return new Err(new ConversationError("conversation_not_found"));
     }

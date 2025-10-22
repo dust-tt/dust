@@ -85,15 +85,6 @@ ConversationModel.init(
   {
     modelName: "conversation",
     indexes: [
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
-      {
-        unique: true,
-        fields: ["sId"],
-      },
-      {
-        fields: ["workspaceId"],
-        name: "conversations_wId_idx",
-      },
       {
         unique: true,
         fields: ["workspaceId", "sId"],
@@ -149,25 +140,12 @@ ConversationParticipantModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["userId"],
-      },
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
-      {
-        fields: ["userId", "conversationId"],
-        unique: true,
-      },
-      {
         fields: ["workspaceId", "userId", "conversationId"],
         unique: true,
       },
       {
-        fields: ["conversationId"],
-        concurrently: true,
-      },
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
-      {
-        fields: ["userId", "action"],
-        concurrently: true,
+        fields: ["workspaceId", "conversationId"],
+        unique: true,
       },
       {
         fields: ["workspaceId", "userId", "action"],
