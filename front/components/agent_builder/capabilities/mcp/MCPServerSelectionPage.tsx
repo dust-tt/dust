@@ -59,7 +59,7 @@ function MCPServerCard({
       </>
     );
   } else {
-    description = <>{getMcpServerViewDescription(view)}</>;
+    description = getMcpServerViewDescription(view);
   }
 
   return (
@@ -134,47 +134,45 @@ export function MCPServerSelectionPage({
   }
 
   return (
-    <>
-      <div className="flex flex-col gap-4 py-2">
-        <div className="grid grid-cols-2 gap-3">
-          {topMCPServerViews.length ? (
-            <span className="text-lg font-semibold">Top tools</span>
-          ) : null}
-          {topMCPServerViews.map((view) => (
-            <MCPServerCard
-              key={view.id}
-              view={view}
-              isSelected={selectedMCPIds.has(view.sId)}
-              onClick={() => onItemClick(view)}
-              onToolInfoClick={() => {
-                if (onToolDetailsClick) {
-                  onToolDetailsClick({ type: "MCP", view });
-                }
-              }}
-              featureFlags={featureFlags}
-            />
-          ))}
-        </div>
-        {nonTopMCPServerViews.length ? (
-          <span className="text-lg font-semibold">Other tools</span>
+    <div className="flex flex-col gap-4 py-2">
+      <div className="grid grid-cols-2 gap-3">
+        {topMCPServerViews.length ? (
+          <span className="text-lg font-semibold">Top tools</span>
         ) : null}
-        <div className="grid grid-cols-2 gap-3">
-          {nonTopMCPServerViews.map((view) => (
-            <MCPServerCard
-              key={view.id}
-              view={view}
-              isSelected={selectedMCPIds.has(view.sId)}
-              onClick={() => onItemClick(view)}
-              onToolInfoClick={() => {
-                if (onToolDetailsClick) {
-                  onToolDetailsClick({ type: "MCP", view });
-                }
-              }}
-              featureFlags={featureFlags}
-            />
-          ))}
-        </div>
+        {topMCPServerViews.map((view) => (
+          <MCPServerCard
+            key={view.id}
+            view={view}
+            isSelected={selectedMCPIds.has(view.sId)}
+            onClick={() => onItemClick(view)}
+            onToolInfoClick={() => {
+              if (onToolDetailsClick) {
+                onToolDetailsClick({ type: "MCP", view });
+              }
+            }}
+            featureFlags={featureFlags}
+          />
+        ))}
       </div>
-    </>
+      {nonTopMCPServerViews.length ? (
+        <span className="text-lg font-semibold">Other tools</span>
+      ) : null}
+      <div className="grid grid-cols-2 gap-3">
+        {nonTopMCPServerViews.map((view) => (
+          <MCPServerCard
+            key={view.id}
+            view={view}
+            isSelected={selectedMCPIds.has(view.sId)}
+            onClick={() => onItemClick(view)}
+            onToolInfoClick={() => {
+              if (onToolDetailsClick) {
+                onToolDetailsClick({ type: "MCP", view });
+              }
+            }}
+            featureFlags={featureFlags}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
