@@ -10,7 +10,12 @@ export const MessageBaseSchema = t.type({
     (s): s is string => s.length > 0,
     "NonEmptyString"
   ),
-  mentions: t.array(t.type({ configurationId: t.string })),
+  mentions: t.array(
+    t.union([
+      t.type({ configurationId: t.string }),
+      t.type({ userId: t.string }),
+    ])
+  ),
   context: t.intersection([
     t.type({
       timezone: t.string,
