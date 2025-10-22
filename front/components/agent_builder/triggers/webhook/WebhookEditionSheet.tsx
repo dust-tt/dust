@@ -45,7 +45,7 @@ function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
   } = useController({ control, name: "name" });
 
   return (
-    <>
+    <div className="space-y-1">
       <Label htmlFor="trigger-name">Name</Label>
       <Input
         id="trigger-name"
@@ -56,7 +56,7 @@ function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
         message={error?.message}
         messageStatus="error"
       />
-    </>
+    </div>
   );
 }
 
@@ -73,7 +73,7 @@ function WebhookEditionStatusToggle({
   } = useController({ control, name: "enabled" });
 
   return (
-    <>
+    <div className="space-y-1">
       <Label>Status</Label>
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         When disabled, the trigger will not run.
@@ -89,7 +89,7 @@ function WebhookEditionStatusToggle({
           ? "The trigger is currently enabled"
           : "The trigger is currently disabled"}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -115,7 +115,7 @@ function WebhookEditionEventSelector({
   }
 
   return (
-    <>
+    <div className="flex flex-col space-y-1">
       <Label htmlFor="webhook-event">Event</Label>
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         Select the event that will trigger this webhook.
@@ -151,7 +151,7 @@ function WebhookEditionEventSelector({
         </DropdownMenuContent>
       </DropdownMenu>
       {error && <p className="text-sm text-warning">{error.message}</p>}
-    </>
+    </div>
   );
 }
 
@@ -168,7 +168,7 @@ function WebhookEditionIncludePayload({
   } = useController({ control, name: "includePayload" });
 
   return (
-    <>
+    <div className="flex items-center justify-between">
       <div className="flex flex-col space-y-1">
         <Label>Include payload</Label>
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -182,7 +182,7 @@ function WebhookEditionIncludePayload({
         onClick={() => setIncludePayload(!includePayload)}
         disabled={!isEditor}
       />
-    </>
+    </div>
   );
 }
 
@@ -197,7 +197,7 @@ function WebhookEditionMessageInput({
   const { field } = useController({ control, name: "customPrompt" });
 
   return (
-    <>
+    <div className="space-y-1">
       <Label htmlFor="trigger-prompt">Message (Optional)</Label>
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         Add context or instructions for the agent when the trigger runs.
@@ -208,7 +208,7 @@ function WebhookEditionMessageInput({
         disabled={!isEditor}
         {...field}
       />
-    </>
+    </div>
   );
 }
 
@@ -289,49 +289,34 @@ export function WebhookEditionSheet({
             </ContentMessage>
           )}
           <div className="space-y-5">
-            <div className="space-y-1">
-              <WebhookEditionNameInput isEditor={isEditor} />
-            </div>
+            <WebhookEditionNameInput isEditor={isEditor} />
 
-            <div className="space-y-1">
-              <WebhookEditionStatusToggle isEditor={isEditor} />
-            </div>
+            <WebhookEditionStatusToggle isEditor={isEditor} />
 
-            <div className="flex flex-col space-y-1">
-              <WebhookEditionEventSelector
-                isEditor={isEditor}
-                selectedPreset={selectedPreset}
-                availableEvents={availableEvents}
-              />
-            </div>
+            <WebhookEditionEventSelector
+              isEditor={isEditor}
+              selectedPreset={selectedPreset}
+              availableEvents={availableEvents}
+            />
 
-            <div className="space-y-1">
-              <WebhookEditionFilters
-                isEditor={isEditor}
-                webhookSourceView={webhookSourceView}
-                selectedPreset={selectedPreset}
-                availableEvents={availableEvents}
-                workspace={owner}
-              />
-            </div>
+            <WebhookEditionFilters
+              isEditor={isEditor}
+              webhookSourceView={webhookSourceView}
+              selectedPreset={selectedPreset}
+              availableEvents={availableEvents}
+              workspace={owner}
+            />
 
-            <div className="flex items-center justify-between">
-              <WebhookEditionIncludePayload isEditor={isEditor} />
-            </div>
+            <WebhookEditionIncludePayload isEditor={isEditor} />
 
-            <div className="space-y-1">
-              <WebhookEditionMessageInput isEditor={isEditor} />
-            </div>
+            <WebhookEditionMessageInput isEditor={isEditor} />
 
-            {/* Recent Webhook Requests */}
             {trigger && (
-              <div className="space-y-1">
-                <RecentWebhookRequests
-                  owner={owner}
-                  agentConfigurationId={agentConfigurationId}
-                  trigger={trigger}
-                />
-              </div>
+              <RecentWebhookRequests
+                owner={owner}
+                agentConfigurationId={agentConfigurationId}
+                trigger={trigger}
+              />
             )}
           </div>
         </SheetContainer>
