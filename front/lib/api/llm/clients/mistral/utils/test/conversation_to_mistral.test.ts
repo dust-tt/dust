@@ -4,7 +4,7 @@ import { toMessage } from "@app/lib/api/llm/clients/mistral/utils/conversation_t
 import {
   conversationMessages,
   inputMessages,
-} from "@app/lib/api/llm/clients/mistral/utils/test/fixtures";
+} from "@app/lib/api/llm/clients/mistral/utils/test/fixtures.test";
 
 describe("toMessage", () => {
   describe("user messages", () => {

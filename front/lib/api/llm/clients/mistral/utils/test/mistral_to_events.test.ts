@@ -6,7 +6,7 @@ import {
   metadata,
   modelOutputFinishStopEvents,
   modelOutputFinishToolCallEvents,
-} from "@app/lib/api/llm/clients/mistral/utils/test/fixtures";
+} from "@app/lib/api/llm/clients/mistral/utils/test/fixtures.test";
 
 import { streamLLMEvents } from "../mistral_to_events";
 
