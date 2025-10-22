@@ -8,7 +8,7 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
-import { handleMentions } from "@app/lib/api/assistant/conversation/mentions";
+import { createAgentMessages } from "@app/lib/api/assistant/conversation/mentions";
 import { canReadMessage } from "@app/lib/api/assistant/messages";
 import {
   getContentFragmentGroupIds,
@@ -564,12 +564,12 @@ export async function postUserMessage(
         excludedUser: user?.toJSON(),
       });
 
-      const nonNullResults = await handleMentions({
+      const agentMessagesResult = await createAgentMessages({
         mentions,
         agentConfigurations,
-        m,
+        message: m,
         owner,
-        t,
+        transaction: t,
         skipToolsValidation,
         nextMessageRank,
         conversation,
@@ -577,15 +577,15 @@ export async function postUserMessage(
       });
 
       await updateConversationRequestedGroupIds(auth, {
-        agents: nonNullResults.map(({ m }) => m.configuration),
+        agents: agentMessagesResult.map(({ m }) => m.configuration),
         conversation,
         t,
       });
 
       return {
         userMessage,
-        agentMessages: nonNullResults.map(({ m }) => m),
-        agentMessageRows: nonNullResults.map(({ row }) => row),
+        agentMessages: agentMessagesResult.map(({ m }) => m),
+        agentMessageRows: agentMessagesResult.map(({ row }) => row),
       };
     });
 
@@ -947,12 +947,12 @@ export async function editUserMessage(
           transaction: t,
         })) ?? -1) + 1;
 
-      const nonNullResults = await handleMentions({
+      const agentMessagesResult = await createAgentMessages({
         mentions,
         agentConfigurations,
-        m,
+        message: m,
         owner,
-        t,
+        transaction: t,
         skipToolsValidation,
         nextMessageRank,
         conversation,
@@ -960,15 +960,15 @@ export async function editUserMessage(
       });
 
       await updateConversationRequestedGroupIds(auth, {
-        agents: nonNullResults.map(({ m }) => m.configuration),
+        agents: agentMessagesResult.map(({ m }) => m.configuration),
         conversation,
         t,
       });
 
       return {
         userMessage,
-        agentMessages: nonNullResults.map(({ m }) => m),
-        agentMessageRows: nonNullResults.map(({ row }) => row),
+        agentMessages: agentMessagesResult.map(({ m }) => m),
+        agentMessageRows: agentMessagesResult.map(({ row }) => row),
       };
     });
     userMessage = result.userMessage;
