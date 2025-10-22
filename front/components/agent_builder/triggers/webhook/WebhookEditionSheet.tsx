@@ -38,32 +38,6 @@ import type {
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
 
-interface WebhookEditionMessageInputProps {
-  isEditor: boolean;
-}
-
-function WebhookEditionMessageInput({
-  isEditor,
-}: WebhookEditionMessageInputProps) {
-  const { control } = useFormContext<WebhookFormValues>();
-  const { field } = useController({ control, name: "customPrompt" });
-
-  return (
-    <>
-      <Label htmlFor="trigger-prompt">Message (Optional)</Label>
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Add context or instructions for the agent when the trigger runs.
-      </p>
-      <TextArea
-        id="trigger-prompt"
-        minRows={4}
-        disabled={!isEditor}
-        {...field}
-      />
-    </>
-  );
-}
-
 interface WebhookEditionNameInputProps {
   isEditor: boolean;
 }
@@ -404,6 +378,32 @@ function WebhookEditionFilters({
       )}
 
       <div className="pt-2">{filterGenerationResult}</div>
+    </>
+  );
+}
+
+interface WebhookEditionMessageInputProps {
+  isEditor: boolean;
+}
+
+function WebhookEditionMessageInput({
+  isEditor,
+}: WebhookEditionMessageInputProps) {
+  const { control } = useFormContext<WebhookFormValues>();
+  const { field } = useController({ control, name: "customPrompt" });
+
+  return (
+    <>
+      <Label htmlFor="trigger-prompt">Message (Optional)</Label>
+      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        Add context or instructions for the agent when the trigger runs.
+      </p>
+      <TextArea
+        id="trigger-prompt"
+        minRows={4}
+        disabled={!isEditor}
+        {...field}
+      />
     </>
   );
 }
