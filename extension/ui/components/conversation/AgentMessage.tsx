@@ -1,5 +1,6 @@
 import { usePlatform } from "@app/shared/context/PlatformContext";
 import { retryMessage } from "@app/shared/lib/conversation";
+import { useDustAPI } from "@app/shared/lib/dust_api";
 import { formatTimestring } from "@app/shared/lib/utils";
 import type { StoredUser } from "@app/shared/services/auth";
 import type {
@@ -221,6 +222,7 @@ export function AgentMessage({
   user,
 }: AgentMessageProps) {
   const platform = usePlatform();
+  const dustAPI = useDustAPI();
   const sendNotification = useSendNotification();
 
   const [messageStreamState, dispatch] = useReducer(
