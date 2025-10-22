@@ -3,9 +3,6 @@ import type { AssistantBuilderMCPConfigurationWithId } from "@app/components/ass
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { assertNever } from "@app/types";
 
-export const DISABLED_REASON =
-  "Disabled as you cannot use more than one Space + the Company Space.";
-
 type ActionType = AssistantBuilderMCPConfigurationWithId | AgentBuilderAction;
 
 export const getSpaceIdToActionsMap = (
