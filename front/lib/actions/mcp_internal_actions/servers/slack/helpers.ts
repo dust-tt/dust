@@ -100,7 +100,8 @@ export async function executePostMessage(
     message: string;
     threadTs: string | undefined;
     fileId: string | undefined;
-  }
+  },
+  mcpServerId: string
 ) {
   const slackClient = await getSlackClient(accessToken);
   const originalMessage = message;
@@ -125,16 +126,12 @@ export async function executePostMessage(
     }
 
     // Resolve channel id
-    const conversationsList = await slackClient.conversations.list({
-      exclude_archived: true,
+    const conversationsList = await getCachedPublicChannels({
+      mcpServerId,
+      slackClient,
     });
-    if (!conversationsList.ok) {
-      return new Err(
-        new MCPError(conversationsList.error ?? "Failed to list conversations")
-      );
-    }
     const searchString = to.trim().replace(/^#/, "").toLowerCase();
-    const channel = conversationsList.channels?.find(
+    const channel = conversationsList.find(
       (c) =>
         c.name?.toLowerCase() === searchString ||
         c.id?.toLowerCase() === searchString

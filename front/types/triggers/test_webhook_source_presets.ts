@@ -1,5 +1,6 @@
 import { RocketIcon } from "@dust-tt/sparkle";
 
+import type { Authenticator } from "@app/lib/auth";
 import type { RemoteWebhookService } from "@app/lib/triggers/services/remote_webhook_service";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
@@ -28,8 +29,15 @@ const TEST_EVENT: WebhookEvent = {
 };
 
 class TestWebhookService implements RemoteWebhookService {
-  async createWebhooks(params: {
-    auth: any;
+  async createWebhooks({
+    auth,
+    connectionId: _connectionId,
+    remoteMetadata,
+    webhookUrl: _webhookUrl,
+    events: _events,
+    secret: _secret,
+  }: {
+    auth: Authenticator;
     connectionId: string;
     remoteMetadata: Record<string, any>;
     webhookUrl: string;
@@ -44,21 +52,31 @@ class TestWebhookService implements RemoteWebhookService {
       Error
     >
   > {
-    logger.info("Creating webhooks with params:", params);
+    logger.info(
+      { workspaceId: auth.getNonNullableWorkspace().sId },
+      `Creating webhooks for test preset`
+    );
     return new Ok({
       updatedRemoteMetadata: {
-        ...params.remoteMetadata,
+        ...remoteMetadata,
         webhookIds: { test_event: `test-webhook-id-${Date.now()}` },
       },
     });
   }
 
-  async deleteWebhooks(params: {
-    auth: any;
+  async deleteWebhooks({
+    auth,
+    connectionId: _connectionId,
+    remoteMetadata: _remoteMetadata,
+  }: {
+    auth: Authenticator;
     connectionId: string;
     remoteMetadata: Record<string, any>;
   }): Promise<Result<void, Error>> {
-    logger.info("Deleting webhooks with params:", params);
+    logger.info(
+      { workspaceId: auth.getNonNullableWorkspace().sId },
+      `Deleting webhooks for test preset`
+    );
     return new Ok(undefined);
   }
 }

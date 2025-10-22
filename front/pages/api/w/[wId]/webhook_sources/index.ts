@@ -3,12 +3,14 @@ import { fromError } from "zod-validation-error";
 
 import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateSecureSecret } from "@app/lib/resources/string_ids";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { buildWebhookUrl } from "@app/lib/webhookSource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type {
@@ -149,13 +151,12 @@ async function handler(
         }
 
         const webhookSource = webhookSourceRes.value;
-        const webhookSourceJSON = webhookSource.toJSONForAdmin();
 
         if (includeGlobal) {
           const systemView =
             await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
               auth,
-              webhookSourceJSON.sId
+              webhookSource.sId()
             );
 
           if (systemView === null) {
@@ -179,8 +180,11 @@ async function handler(
         }
 
         if (kind !== "custom" && connectionId && remoteMetadata) {
-          const { DUST_CLIENT_FACING_URL = "" } = process.env;
-          const webhookUrl = `${DUST_CLIENT_FACING_URL}/api/v1/w/${workspace.sId}/triggers/hooks/${webhookSourceJSON.sId}/${webhookSourceJSON.urlSecret}`;
+          const webhookUrl = buildWebhookUrl({
+            apiBaseUrl: config.getClientFacingUrl(),
+            workspaceId: workspace.sId,
+            webhookSource: webhookSource,
+          });
 
           const service =
             WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].webhookService;
@@ -190,7 +194,7 @@ async function handler(
             remoteMetadata,
             webhookUrl,
             events: subscribedEvents,
-            secret: webhookSourceJSON.secret ?? undefined,
+            secret: webhookSource.getSecretPotentiallyRedacted() ?? undefined,
           });
 
           if (result.isErr()) {
@@ -215,7 +219,7 @@ async function handler(
 
         return res.status(201).json({
           success: true,
-          webhookSource: webhookSourceJSON,
+          webhookSource: webhookSource.toJSONForAdmin(),
         });
       } catch (error) {
         return apiError(req, res, {

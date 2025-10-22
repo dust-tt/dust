@@ -58,7 +58,7 @@ interface WebhookEditionModalProps {
   webhookSourceView: WebhookSourceViewType | null;
 }
 
-export function WebhookEditionModal({
+export function WebhookEditionSheet({
   owner,
   trigger,
   isOpen,

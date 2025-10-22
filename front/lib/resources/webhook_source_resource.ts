@@ -274,6 +274,22 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     });
   }
 
+  getSecretPotentiallyRedacted(): string | null {
+    if (!this.secret) {
+      return null;
+    }
+    // Redact secret when outside of the 10-minute window after creation.
+    const currentTime = new Date();
+    const createdAt = new Date(this.createdAt);
+    const timeDifference = Math.abs(
+      currentTime.getTime() - createdAt.getTime()
+    );
+    const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
+    return differenceInMinutes > SECRET_REDACTION_COOLDOWN_IN_MINUTES
+      ? redactString(this.secret, 4)
+      : this.secret;
+  }
+
   toJSON(): WebhookSourceType {
     return {
       id: this.id,
@@ -287,22 +303,9 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
   }
 
   toJSONForAdmin(): WebhookSourceForAdminType {
-    // Redact secret when outside of the 10-minute window after creation.
-    const currentTime = new Date();
-    const createdAt = new Date(this.createdAt);
-    const timeDifference = Math.abs(
-      currentTime.getTime() - createdAt.getTime()
-    );
-    const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
-    const secret = this.secret
-      ? differenceInMinutes > SECRET_REDACTION_COOLDOWN_IN_MINUTES
-        ? redactString(this.secret, 4)
-        : this.secret
-      : null;
-
     return {
       ...this.toJSON(),
-      secret,
+      secret: this.getSecretPotentiallyRedacted(),
       urlSecret: this.urlSecret,
       signatureHeader: this.signatureHeader,
       signatureAlgorithm: this.signatureAlgorithm,

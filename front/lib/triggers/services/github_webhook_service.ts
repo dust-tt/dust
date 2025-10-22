@@ -9,7 +9,14 @@ import { Err, isString, OAuthAPI, Ok } from "@app/types";
 import type { RemoteWebhookService } from "./remote_webhook_service";
 
 export class GitHubWebhookService implements RemoteWebhookService {
-  async createWebhooks(params: {
+  async createWebhooks({
+    auth,
+    connectionId,
+    remoteMetadata,
+    webhookUrl,
+    events,
+    secret,
+  }: {
     auth: Authenticator;
     connectionId: string;
     remoteMetadata: Record<string, any>;
@@ -25,9 +32,6 @@ export class GitHubWebhookService implements RemoteWebhookService {
       Error
     >
   > {
-    const { auth, connectionId, remoteMetadata, webhookUrl, events, secret } =
-      params;
-
     try {
       const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), console);
 
@@ -193,13 +197,15 @@ export class GitHubWebhookService implements RemoteWebhookService {
     }
   }
 
-  async deleteWebhooks(params: {
+  async deleteWebhooks({
+    auth,
+    connectionId,
+    remoteMetadata,
+  }: {
     auth: Authenticator;
     connectionId: string;
     remoteMetadata: Record<string, any>;
   }): Promise<Result<void, Error>> {
-    const { auth, connectionId, remoteMetadata } = params;
-
     try {
       const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), console);
 
