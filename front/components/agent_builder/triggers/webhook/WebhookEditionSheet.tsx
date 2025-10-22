@@ -164,7 +164,7 @@ function WebhookEditionIncludePayload({
 }: WebhookEditionIncludePayloadProps) {
   const { control } = useFormContext<WebhookFormValues>();
   const {
-    field: { value, onChange },
+    field: { value: includePayload, onChange: setIncludePayload },
   } = useController({ control, name: "includePayload" });
 
   return (
@@ -178,8 +178,8 @@ function WebhookEditionIncludePayload({
       </div>
       <Checkbox
         size="sm"
-        checked={value}
-        onClick={() => onChange(!value)}
+        checked={includePayload}
+        onClick={() => setIncludePayload(!includePayload)}
         disabled={!isEditor}
       />
     </>
