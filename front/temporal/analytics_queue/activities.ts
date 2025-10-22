@@ -186,7 +186,6 @@ async function collectToolUsageFromMessage(
 /**
  * Store document directly to Elasticsearch.
  */
-// TODO(observability 2025-10-20): Fix logic of index and document id.
 async function storeToElasticsearch(
   document: AgentMessageAnalyticsData
 ): Promise<void> {
