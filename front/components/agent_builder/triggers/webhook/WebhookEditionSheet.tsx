@@ -210,18 +210,14 @@ function WebhookEditionFilters({
   selectedEventSchema,
   workspace,
 }: WebhookEditionFiltersProps) {
-  const {
-    register,
-    formState,
-    setError,
-    control,
-    setValue,
-    getValues,
-    getFieldState,
-  } = useFormContext<WebhookFormValues>();
+  const { setError, control, setValue, getValues } =
+    useFormContext<WebhookFormValues>();
   const selectedEvent = useWatch({ control, name: "event" });
   const formFilter = useWatch({ control, name: "filter" });
-  const { error: filterError } = getFieldState("filter", formState);
+  const {
+    field: filterField,
+    fieldState: { error: filterError },
+  } = useController({ control, name: "filter" });
 
   const [filterGenerationStatus, setFilterGenerationStatus] = useState<
     "idle" | "loading" | "error"
@@ -372,9 +368,9 @@ function WebhookEditionFilters({
               'example:\n\n(and\n  (eq "action" "opened")\n  (exists "pull_request")\n)'
             }
             rows={6}
-            {...register("filter")}
+            {...filterField}
             disabled={!isEditor}
-            error={formState.errors.filter?.message}
+            error={filterError?.message}
           />
         </>
       )}
