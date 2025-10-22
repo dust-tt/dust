@@ -69,7 +69,9 @@ interface WebhookEditionNameInputProps {
 }
 
 function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
-  const { register, formState } = useFormContext<WebhookFormValues>();
+  const { register, getFieldState, formState } =
+    useFormContext<WebhookFormValues>();
+  const { error } = getFieldState("name", formState);
 
   return (
     <>
@@ -79,8 +81,8 @@ function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
         placeholder="Enter trigger name"
         disabled={!isEditor}
         {...register("name")}
-        isError={!!formState.errors.name}
-        message={formState.errors.name?.message}
+        isError={!!error}
+        message={error?.message}
         messageStatus="error"
       />
     </>
@@ -131,8 +133,11 @@ function WebhookEditionEventSelector({
   selectedPreset,
   availableEvents,
 }: WebhookEditionEventSelectorProps) {
-  const { setValue, formState, control } = useFormContext<WebhookFormValues>();
+  const { setValue, control, getFieldState, formState } =
+    useFormContext<WebhookFormValues>();
+  // Using useWatch + setValue instead of useController to validate with shouldValidate.
   const selectedEvent = useWatch({ control, name: "event" });
+  const { error } = getFieldState("event", formState);
 
   if (!selectedPreset || availableEvents.length === 0) {
     return null;
@@ -176,9 +181,7 @@ function WebhookEditionEventSelector({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      {formState.errors.event && (
-        <p className="text-sm text-warning">{formState.errors.event.message}</p>
-      )}
+      {error && <p className="text-sm text-warning">{error.message}</p>}
     </>
   );
 }
@@ -231,10 +234,18 @@ function WebhookEditionFilters({
   selectedEventSchema,
   workspace,
 }: WebhookEditionFiltersProps) {
-  const { register, formState, setError, control, setValue, getValues } =
-    useFormContext<WebhookFormValues>();
+  const {
+    register,
+    formState,
+    setError,
+    control,
+    setValue,
+    getValues,
+    getFieldState,
+  } = useFormContext<WebhookFormValues>();
   const selectedEvent = useWatch({ control, name: "event" });
   const formFilter = useWatch({ control, name: "filter" });
+  const { error: filterError } = getFieldState("filter", formState);
 
   const [filterGenerationStatus, setFilterGenerationStatus] = useState<
     "idle" | "loading" | "error"
