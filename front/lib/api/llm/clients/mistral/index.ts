@@ -1,6 +1,7 @@
 import { Mistral } from "@mistralai/mistralai";
 import compact from "lodash/compact";
 
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import {
   toMessage,
@@ -22,6 +23,7 @@ export class MistralLLM extends LLM {
     providerId: "mistral",
     modelId: this.model.modelId,
   };
+  private temperature: number;
   constructor({
     model,
     options,
@@ -30,6 +32,8 @@ export class MistralLLM extends LLM {
     options?: LLMOptions;
   }) {
     super({ model, options });
+    this.temperature =
+      options?.temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced;
     const { MISTRAL_API_KEY } = dustManagedCredentials();
     if (!MISTRAL_API_KEY) {
       throw new Error("MISTRAL_API_KEY environment variable is required");
@@ -59,7 +63,7 @@ export class MistralLLM extends LLM {
     const events = await this.client.chat.stream({
       model: this.model.modelId,
       messages,
-      temperature: this.options?.temperature ?? 0.7,
+      temperature: this.temperature,
       stream: true,
       toolChoice: "auto" as const,
       tools: specifications.map(toTool),
