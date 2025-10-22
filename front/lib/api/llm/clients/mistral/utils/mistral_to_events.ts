@@ -55,11 +55,13 @@ export async function* streamLLMEvents({
       metadata,
     });
 
+    // Passthrough, keep streaming
+    if (choice.finishReason === null) {
+      yield* yieldEvents(events);
+      continue;
+    }
+
     switch (choice.finishReason) {
-      case null: {
-        yield* yieldEvents(events);
-        break;
-      }
       case CompletionResponseStreamChoiceFinishReason.ToolCalls: {
         const textGeneratedEvent = {
           type: "text_generated" as const,
@@ -97,6 +99,7 @@ export async function* streamLLMEvents({
         };
         break;
       }
+      // Streaming ends with a text response
       case CompletionResponseStreamChoiceFinishReason.Stop: {
         yield* yieldEvents(events);
         const textGeneratedEvent = {

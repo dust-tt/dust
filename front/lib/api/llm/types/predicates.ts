@@ -36,6 +36,7 @@ export function isCorrectDelta(
     "Mistral completion event has both content and toolCalls"
   );
 
+  // Using isNil because models can return empty strings
   assert(
     !(isNil(content) && !toolCalls),
     "Mistral completion event has neither content nor toolCalls"
