@@ -17,23 +17,9 @@ import { useEffect, useState } from "react";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { GithubAdditionalData } from "@app/lib/triggers/services/github_service_types";
 import { GithubAdditionalDataSchema } from "@app/lib/triggers/services/github_service_types";
-import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
+import type { OAuthConnectionType } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
-
-type CreateWebhookGithubConnectionProps = {
-  owner: LightWorkspaceType;
-  serviceData: Record<string, unknown> | null;
-  isFetchingServiceData: boolean;
-  onFetchServiceData: (connectionId: string) => Promise<void>;
-  onGithubDataChange?: (
-    data: {
-      connectionId: string;
-      repositories: string[];
-      organizations: string[];
-    } | null
-  ) => void;
-  onReadyToSubmitChange?: (isReady: boolean) => void;
-};
+import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
 
 function isGithubAdditionalData(
   data: Record<string, unknown> | null
@@ -51,9 +37,9 @@ export function CreateWebhookGithubConnection({
   serviceData,
   isFetchingServiceData,
   onFetchServiceData,
-  onGithubDataChange,
+  onDataToCreateWebhookChange,
   onReadyToSubmitChange,
-}: CreateWebhookGithubConnectionProps) {
+}: WebhookCreateFormComponentProps) {
   const sendNotification = useSendNotification();
   const [githubConnection, setGithubConnection] =
     useState<OAuthConnectionType | null>(null);
@@ -80,21 +66,21 @@ export function CreateWebhookGithubConnection({
     org.login.toLowerCase().includes(orgSearchQuery.toLowerCase())
   );
 
-  // Notify parent component when GitHub data changes
+  // Notify parent component when data changes
   useEffect(() => {
     const isReady = !!(
       githubConnection &&
       (selectedRepositories.length > 0 || selectedOrganizations.length > 0)
     );
 
-    if (isReady && onGithubDataChange) {
-      onGithubDataChange({
+    if (isReady && onDataToCreateWebhookChange) {
+      onDataToCreateWebhookChange({
         connectionId: githubConnection.connection_id,
         repositories: selectedRepositories,
         organizations: selectedOrganizations,
       });
-    } else if (onGithubDataChange) {
-      onGithubDataChange(null);
+    } else if (onDataToCreateWebhookChange) {
+      onDataToCreateWebhookChange(null);
     }
 
     // Notify parent about ready state
@@ -105,7 +91,7 @@ export function CreateWebhookGithubConnection({
     githubConnection,
     selectedRepositories,
     selectedOrganizations,
-    onGithubDataChange,
+    onDataToCreateWebhookChange,
     onReadyToSubmitChange,
   ]);
 

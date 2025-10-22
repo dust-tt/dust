@@ -15,13 +15,13 @@ import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 
-import { CreateWebhookGithubConnection } from "@app/components/triggers/CreateWebhookGithubConnection";
 import { useWebhookServiceData } from "@app/lib/swr/useWebhookServiceData";
 import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 import {
   basePostWebhookSourcesSchema,
+  isWebhookSourceKind,
   refineSubscribedEvents,
   WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
@@ -44,16 +44,10 @@ export type CreateWebhookSourceFormData = z.infer<
   typeof CreateWebhookSourceSchema
 >;
 
-export type BaseRemoteData = {
+export type RemoteProviderData = {
   connectionId: string;
+  [key: string]: unknown;
 };
-
-export type RemoteGithubData = BaseRemoteData & {
-  repositories: string[];
-  organizations: string[];
-};
-
-export type RemoteProviderData = RemoteGithubData;
 
 type CreateWebhookSourceFormContentProps = {
   form: ReturnType<typeof useForm<CreateWebhookSourceFormData>>;
@@ -78,7 +72,6 @@ export function CreateWebhookSourceFormContent({
   const { serviceData, isFetchingServiceData, fetchServiceData } =
     useWebhookServiceData(owner ?? null, kind);
 
-  const isGithub = kind === "github";
   const isCustom = (() => {
     switch (kind) {
       case "custom":
@@ -170,16 +163,24 @@ export function CreateWebhookSourceFormContent({
           />
         )}
 
-      {isGithub && owner && (
-        <CreateWebhookGithubConnection
-          owner={owner}
-          serviceData={serviceData}
-          isFetchingServiceData={isFetchingServiceData}
-          onFetchServiceData={fetchServiceData}
-          onGithubDataChange={onRemoteProviderDataChange}
-          onReadyToSubmitChange={onPresetReadyToSubmitChange}
-        />
-      )}
+      {owner &&
+        kind !== "custom" &&
+        isWebhookSourceKind(kind) &&
+        (() => {
+          const CreateFormComponent =
+            WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].components
+              .createFormComponent;
+          return (
+            <CreateFormComponent
+              owner={owner}
+              serviceData={serviceData}
+              isFetchingServiceData={isFetchingServiceData}
+              onFetchServiceData={fetchServiceData}
+              onDataToCreateWebhookChange={onRemoteProviderDataChange}
+              onReadyToSubmitChange={onPresetReadyToSubmitChange}
+            />
+          );
+        })()}
 
       {isCustom && (
         <div>

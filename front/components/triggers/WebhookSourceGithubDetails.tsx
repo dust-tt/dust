@@ -1,14 +1,10 @@
 import { ExternalLinkIcon, Page } from "@dust-tt/sparkle";
 
-import type { WebhookSourceForAdminType } from "@app/types/triggers/webhooks";
-
-type WebhookSourceGithubDetailsProps = {
-  webhookSource: WebhookSourceForAdminType;
-};
+import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
 
 export function WebhookSourceGithubDetails({
   webhookSource,
-}: WebhookSourceGithubDetailsProps) {
+}: WebhookDetailsComponentProps) {
   if (webhookSource.kind !== "github" || !webhookSource.remoteMetadata) {
     return null;
   }
