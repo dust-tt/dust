@@ -20,9 +20,9 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import { ScheduleEditionModal } from "@app/components/agent_builder/triggers/ScheduleEditionModal";
+import { ScheduleEditionSheet } from "@app/components/agent_builder/triggers/ScheduleEditionSheet";
 import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
-import { WebhookEditionModal } from "@app/components/agent_builder/triggers/WebhookEditionModal";
+import { WebhookEditionSheet } from "@app/components/agent_builder/triggers/WebhookEditionSheet";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
@@ -296,7 +296,7 @@ export function AgentBuilderTriggersBlock({
       </div>
 
       {/* Create/Edit Schedule Modal */}
-      <ScheduleEditionModal
+      <ScheduleEditionSheet
         owner={owner}
         trigger={
           dialogMode?.type === "edit" && dialogMode.trigger.kind === "schedule"
@@ -313,7 +313,7 @@ export function AgentBuilderTriggersBlock({
       />
 
       {/* Create/Edit Webhook Modal */}
-      <WebhookEditionModal
+      <WebhookEditionSheet
         owner={owner}
         trigger={
           dialogMode?.type === "edit" && dialogMode.trigger.kind === "webhook"
