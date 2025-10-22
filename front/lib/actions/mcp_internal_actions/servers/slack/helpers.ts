@@ -75,9 +75,13 @@ const _getChannels = async ({
   // For im (1-on-1 DMs), they don't have a name property, only a user property.
   // So we need to handle both cases.
   let filteredChannels = channels.filter((c) => {
-    if (!c.id) return false;
+    if (!c.id) {
+      return false;
+    }
     // For im (1-on-1 DMs), they have user but no name
-    if (c.is_im) return !!c.user;
+    if (c.is_im) {
+      return !!c.user;
+    }
     // For other types (channels, mpim), they must have a name
     return !!c.name;
   });
@@ -126,7 +130,8 @@ const _getUsersList = async (slackClient: WebClient): Promise<Member[]> => {
 export const getCachedUsersList = cacheWithRedis(
   async ({ slackClient }: { mcpServerId: string; slackClient: WebClient }) =>
     _getUsersList(slackClient),
-  ({ mcpServerId }: { mcpServerId: string; slackClient: WebClient }) => `users-${mcpServerId}`,
+  ({ mcpServerId }: { mcpServerId: string; slackClient: WebClient }) =>
+    `users-${mcpServerId}`,
   {
     ttlMs: 60 * 10 * 1000, // 10 minutes
   }
@@ -545,7 +550,7 @@ export async function executeListDMs(
           ...conv,
           user_real_name: userInfo.real_name,
           user_name: userInfo.name,
-          display_name: userInfo.real_name || userInfo.name || conv.name,
+          display_name: userInfo.real_name ?? userInfo.name ?? conv.name,
         };
       }
     }
@@ -560,20 +565,26 @@ export async function executeListDMs(
 
   // Format the conversations in a clean, readable way for the agent
   const formattedConversations = conversationsWithUserInfo.map((conv) => {
-    const type = conv.is_im ? "1-on-1 DM" : conv.is_mpim ? "Group DM" : "Unknown";
+    const type = conv.is_im
+      ? "1-on-1 DM"
+      : conv.is_mpim
+        ? "Group DM"
+        : "Unknown";
     return {
       channel_id: conv.id,
       type,
       display_name: conv.display_name,
-      user_id: conv.user || null,
-      num_members: conv.num_members || (conv.is_im ? 2 : null),
+      user_id: conv.user ?? null,
+      num_members: conv.num_members ?? (conv.is_im ? 2 : null),
     };
   });
 
   if (nameFilter) {
     const normalizedNameFilter = removeDiacritics(nameFilter.toLowerCase());
     const filteredConversations = formattedConversations.filter((conv) => {
-      const displayName = removeDiacritics((conv.display_name ?? "").toLowerCase());
+      const displayName = removeDiacritics(
+        (conv.display_name ?? "").toLowerCase()
+      );
       return displayName.includes(normalizedNameFilter);
     });
 
@@ -581,7 +592,8 @@ export async function executeListDMs(
       return new Ok([
         {
           type: "text" as const,
-          text: `Found ${filteredConversations.length} direct messages matching "${nameFilter}":\n\n` +
+          text:
+            `Found ${filteredConversations.length} direct messages matching "${nameFilter}":\n\n` +
             filteredConversations
               .map(
                 (conv) =>

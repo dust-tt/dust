@@ -67,7 +67,7 @@ export const slackSearch = async (
   });
 
   if (!response.ok) {
-    throw new Error(response.error || "unknown_error");
+    throw new Error(response.error ?? "unknown_error");
   }
 
   const rawMatches = response.messages?.matches ?? [];
