@@ -193,8 +193,10 @@ interface WebhookEditionIncludePayloadProps {
 function WebhookEditionIncludePayload({
   isEditor,
 }: WebhookEditionIncludePayloadProps) {
-  const { setValue, control } = useFormContext<WebhookFormValues>();
-  const includePayload = useWatch({ control, name: "includePayload" });
+  const { control } = useFormContext<WebhookFormValues>();
+  const {
+    field: { value, onChange },
+  } = useController({ control, name: "includePayload" });
 
   return (
     <>
@@ -207,12 +209,12 @@ function WebhookEditionIncludePayload({
       </div>
       <Checkbox
         size="sm"
-        checked={includePayload}
+        checked={value}
         onClick={() => {
           if (!isEditor) {
             return;
           }
-          setValue("includePayload", !includePayload);
+          onChange(!value);
         }}
         disabled={!isEditor}
       />
