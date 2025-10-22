@@ -427,10 +427,13 @@ export function WebhookEditionSheet({
   webhookSourceView,
   isEditor,
 }: WebhookEditionSheetProps) {
-  const form = useFormContext<WebhookFormValues>();
+  const {
+    control,
+    formState: { isSubmitting },
+  } = useFormContext<WebhookFormValues>();
 
   const selectedEvent = useWatch({
-    control: form.control,
+    control,
     name: "event",
   });
 
@@ -563,7 +566,7 @@ export function WebhookEditionSheet({
                 : "Add Webhook",
             variant: "primary",
             onClick: isEditor ? onSave : handleClose,
-            disabled: form.formState.isSubmitting,
+            disabled: isSubmitting,
           }}
         />
       </SheetContent>
