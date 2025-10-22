@@ -27,7 +27,9 @@ export async function getStaticProps() {
 
 const ASSET_BASE_PATH = "/static/landing/logos/dust";
 
-export default function BrandResources() {
+interface BrandResourcesProps {}
+
+export default function BrandResources({}: BrandResourcesProps) {
   return (
     <>
       <Head>
