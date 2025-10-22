@@ -17,6 +17,7 @@ import type {
   ModelConfigurationType,
   ModelMessageTypeMultiActions,
   UserMessageType,
+  UserMessageTypeModel,
 } from "@app/types";
 import { removeNulls } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -212,9 +213,7 @@ export async function getSteps(
 /**
  * Renders a user message with metadata
  */
-export function renderUserMessage(
-  m: UserMessageType
-): ModelMessageTypeMultiActions {
+export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
   // Replace all `:mention[{name}]{.*}` with `@name`.
   const content = m.content.replaceAll(
     /:mention\[([^\]]+)\]\{[^}]+\}/g,
