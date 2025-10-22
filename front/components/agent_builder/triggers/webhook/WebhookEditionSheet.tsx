@@ -210,14 +210,19 @@ function WebhookEditionFilters({
   selectedEventSchema,
   workspace,
 }: WebhookEditionFiltersProps) {
-  const { setError, control, setValue, getValues } =
-    useFormContext<WebhookFormValues>();
+  const { setError, control, setValue } = useFormContext<WebhookFormValues>();
   const selectedEvent = useWatch({ control, name: "event" });
   const formFilter = useWatch({ control, name: "filter" });
   const {
     field: filterField,
     fieldState: { error: filterError },
   } = useController({ control, name: "filter" });
+  const {
+    field: {
+      value: naturalDescriptionValue,
+      onChange: onNaturalDescriptionChange,
+    },
+  } = useController({ control, name: "naturalDescription" });
 
   const [filterGenerationStatus, setFilterGenerationStatus] = useState<
     "idle" | "loading" | "error"
@@ -233,20 +238,12 @@ function WebhookEditionFilters({
     debouncedValue: debouncedDescription,
     isDebouncing,
     setValue: setNaturalDescription,
-  } = useDebounce("", { delay: 500, minLength: 10 });
-
-  // Initialize naturalDescription from form on mount
-  useEffect(() => {
-    const initialValue = getValues("naturalDescription");
-    if (initialValue) {
-      setNaturalDescription(initialValue);
-    }
-  }, [getValues, setNaturalDescription]);
+  } = useDebounce(naturalDescriptionValue ?? "", { delay: 500, minLength: 10 });
 
   // Update form field when naturalDescription changes
   const handleNaturalDescriptionChange = (value: string) => {
     setNaturalDescription(value);
-    setValue("naturalDescription", value);
+    onNaturalDescriptionChange(value);
   };
 
   useEffect(() => {
