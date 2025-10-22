@@ -27,7 +27,6 @@ function toContentChunk(
   switch (content.type) {
     case "text":
       return content;
-    // Should never happen, Dust does not support Mistral vision model yet
     case "image_url":
       return {
         type: "image_url",
