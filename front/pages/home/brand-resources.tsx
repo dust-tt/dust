@@ -64,7 +64,7 @@ export default function BrandResources({}: BrandResourcesProps) {
               <div className="flex flex-col gap-2">
                 <H2>Media assets</H2>
                 <P className="text-muted-foreground">
-                  The Dust wordmark is available in two shapes: primary and
+                  The Dust wordmark is available in two shapes: standard and
                   square.
                 </P>
               </div>
