@@ -1109,13 +1109,22 @@ export const getContact = async (
 
 export const getCompany = async (
   accessToken: string,
-  companyId: string
+  companyId: string,
+  extraProperties?: string[]
 ): Promise<SimplePublicObject | null> => {
   const hubspotClient = new Client({ accessToken });
   try {
+    const defaultProperties = [
+      "createdate",
+      "domain",
+      "name",
+      "hubspot_owner_id",
+    ];
     const company = await hubspotClient.crm.companies.basicApi.getById(
       companyId,
-      ["createdate", "domain", "name", "hubspot_owner_id"]
+      extraProperties
+        ? [...defaultProperties, ...extraProperties]
+        : defaultProperties
     );
     return company;
   } catch (error: any) {
@@ -1132,11 +1141,12 @@ export const getCompany = async (
 
 export const getDeal = async (
   accessToken: string,
-  dealId: string
+  dealId: string,
+  extraProperties?: string[]
 ): Promise<SimplePublicObject | null> => {
   const hubspotClient = new Client({ accessToken });
   try {
-    const deal = await hubspotClient.crm.deals.basicApi.getById(dealId, [
+    const defaultProperties = [
       "amount",
       "hubspot_owner_id",
       "closedate",
@@ -1146,7 +1156,13 @@ export const getDeal = async (
       "hs_lastmodifieddate",
       "hs_object_id",
       "pipeline",
-    ]);
+    ];
+    const deal = await hubspotClient.crm.deals.basicApi.getById(
+      dealId,
+      extraProperties
+        ? [...defaultProperties, ...extraProperties]
+        : defaultProperties
+    );
     return deal;
   } catch (error: any) {
     if (error.code === 404) {
