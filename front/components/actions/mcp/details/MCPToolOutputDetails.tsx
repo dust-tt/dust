@@ -28,12 +28,9 @@ import type {
 import {
   isDataSourceNodeContentType,
   isDataSourceNodeListType,
-  isIncludeQueryResourceType,
   isIncludeResultResourceType,
-  isSearchQueryResourceType,
   isSearchResultResourceType,
   isWarningResourceType,
-  isWebsearchQueryResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getDocumentIcon } from "@app/lib/content_nodes";
@@ -178,37 +175,20 @@ export function ToolGeneratedFileDetails({
 
 interface SearchResultProps {
   actionName: string;
-  defaultQuery?: string;
   visual: React.ComponentType<{ className?: string }>;
   actionOutput: CallToolResult["content"] | null;
   viewType: "conversation" | "sidebar";
+  query: string | null;
 }
 
 export function SearchResultDetails({
   actionName,
-  defaultQuery,
   visual,
   viewType,
   actionOutput,
+  query,
 }: SearchResultProps) {
-  const query =
-    actionOutput
-      ?.map((r) => {
-        if (
-          isSearchQueryResourceType(r) ||
-          isWebsearchQueryResourceType(r) ||
-          isIncludeQueryResourceType(r)
-        ) {
-          return r.resource.text.trim();
-        }
-        return null;
-      })
-      .filter(Boolean)
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      .join("\n") ||
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    defaultQuery ||
-    "No query provided";
+  const displayQuery = query ?? "No query provided";
 
   const warning = actionOutput
     ?.filter(isWarningResourceType)
@@ -288,7 +268,7 @@ export function SearchResultDetails({
     >
       {viewType === "conversation" ? (
         <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-          {query}
+          {displayQuery}
         </div>
       ) : (
         <div className="flex flex-col gap-4 pl-6 pt-4">
@@ -297,7 +277,7 @@ export function SearchResultDetails({
               Query
             </span>
             <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              {query}
+              {displayQuery}
             </div>
             {warning && (
               <Tooltip

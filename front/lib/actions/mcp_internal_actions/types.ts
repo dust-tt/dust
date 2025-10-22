@@ -59,6 +59,20 @@ export const TagsInputSchema = z.object({
     ),
 });
 
+type TagsInputType = z.infer<typeof TagsInputSchema>;
+
+export type SearchInputTypeWithTags = SearchWithNodesInputType & TagsInputType;
+
+export function isSearchInputType(
+  input: Record<string, unknown>
+): input is SearchInputTypeWithTags {
+  return (
+    SearchWithNodesInputSchema.safeParse(input).success ||
+    SearchWithNodesInputSchema.extend(TagsInputSchema.shape).safeParse(input)
+      .success
+  );
+}
+
 export const IncludeInputSchema = z.object({
   timeFrame:
     ConfigurableToolInputSchemas[
@@ -67,6 +81,17 @@ export const IncludeInputSchema = z.object({
   dataSources:
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
 });
+
+export type IncludeInputType = z.infer<typeof IncludeInputSchema>;
+
+export function isIncludeInputType(
+  input: Record<string, unknown>
+): input is IncludeInputType {
+  return (
+    IncludeInputSchema.safeParse(input).success ||
+    IncludeInputSchema.extend(TagsInputSchema.shape).safeParse(input).success
+  );
+}
 
 export const WebsearchInputSchema = z.object({
   query: z
@@ -85,6 +110,14 @@ export const WebsearchInputSchema = z.object({
         " to go deeper into the search results for a specific query."
     ),
 });
+
+export type WebsearchInputType = z.infer<typeof WebsearchInputSchema>;
+
+export function isWebsearchInputType(
+  input: Record<string, unknown>
+): input is WebsearchInputType {
+  return WebsearchInputSchema.safeParse(input).success;
+}
 
 export const DataSourceFilesystemFindInputSchema = z.object({
   query: z
@@ -131,6 +164,16 @@ export const DataSourceFilesystemFindInputSchema = z.object({
     ),
 });
 
+export type DataSourceFilesystemFindInputType = z.infer<
+  typeof DataSourceFilesystemFindInputSchema
+>;
+
+export function isDataSourceFilesystemFindInputType(
+  input: Record<string, unknown>
+): input is DataSourceFilesystemFindInputType {
+  return DataSourceFilesystemFindInputSchema.safeParse(input).success;
+}
+
 export const DataSourceFilesystemListInputSchema = z.object({
   nodeId: z
     .string()
@@ -173,3 +216,13 @@ export const DataSourceFilesystemListInputSchema = z.object({
         "the previous search result."
     ),
 });
+
+export type DataSourceFilesystemListInputType = z.infer<
+  typeof DataSourceFilesystemListInputSchema
+>;
+
+export function isDataSourceFilesystemListInputType(
+  input: Record<string, unknown>
+): input is DataSourceFilesystemListInputType {
+  return DataSourceFilesystemListInputSchema.safeParse(input).success;
+}
