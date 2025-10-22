@@ -9,7 +9,6 @@ import type * as activities from "@connectors/connectors/intercom/temporal/activ
 import type { IntercomUpdateSignal } from "@connectors/connectors/intercom/temporal/signals";
 import type { ModelId } from "@connectors/types";
 
-import { getTeamIdsToSyncActivity } from "./activities";
 import { intercomUpdatesSignal } from "./signals";
 
 const {
@@ -24,6 +23,7 @@ const {
 
 const {
   syncTeamOnlyActivity,
+  getTeamIdsToSyncActivity,
   getNextConversationBatchToSyncActivity,
   syncConversationBatchActivity,
   getNextOldConversationsBatchToDeleteActivity,
