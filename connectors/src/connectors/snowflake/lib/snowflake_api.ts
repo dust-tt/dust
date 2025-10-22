@@ -1,4 +1,4 @@
-import { createHash, createPrivateKey, createPublicKey } from "node:crypto";
+import { createPrivateKey } from "node:crypto";
 
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
@@ -102,19 +102,20 @@ export const testConnection = async ({
       msg.includes("Connection attempt timed out while contacting Snowflake") ||
       err.name === "NetworkError"
     ) {
-      const acc = credentials.account.replace(/_/g, "-");
-      const hostAttempt = acc.includes(".")
-        ? `${acc.split(".")[0]}.${acc.split(".")[1]}.snowflakecomputing.com`
-        : `${acc}.snowflakecomputing.com`;
-      const hint = `The account string appears incorrect. Attempted host: ${hostAttempt}. Use the org-account prefix from your Snowflake login URL (e.g., ORG-ACCOUNT), or use locator+region (e.g., account=ACCOUNT_LOCATOR, region=CLOUD_REGION).`;
       return new Err(
-        new TestConnectionError("INVALID_ACCOUNT", `${msg} ${hint}`)
+        new TestConnectionError(
+          "INVALID_ACCOUNT",
+          "Invalid account or region. Verify your Snowflake account and region settings."
+        )
       );
     }
 
     if (err.name === "InvalidPrivateKeyError") {
       return new Err(
-        new TestConnectionError("INVALID_CREDENTIALS", err.message)
+        new TestConnectionError(
+          "INVALID_CREDENTIALS",
+          "Invalid private key or passphrase. Provide a valid PEM private key and, if encrypted, the correct passphrase."
+        )
       );
     }
 
@@ -122,36 +123,11 @@ export const testConnection = async ({
       err.name === "OperationFailedError" ||
       msg.includes("JWT token is invalid")
     ) {
-      let fingerprint: string | undefined = undefined;
-      try {
-        if ("private_key" in credentials) {
-          const keyObj = createPublicKey({
-            key: createPrivateKey({
-              key: credentials.private_key.trim(),
-              format: "pem",
-              passphrase: credentials.private_key_passphrase ?? "",
-            }).export({ format: "pem", type: "pkcs8" }),
-            format: "pem",
-          });
-          const der = keyObj.export({ format: "der", type: "spki" }) as Buffer;
-          fingerprint =
-            "SHA256:" +
-            createHash("sha256").update(new Uint8Array(der)).digest("base64");
-        }
-      } catch (e) {
-        logger.warn(
-          {
-            provider: "snowflake",
-            error: e instanceof Error ? e.message : String(e),
-          },
-          "Failed to compute public key fingerprint for error context"
-        );
-      }
-      const extra = fingerprint
-        ? ` Verify the Snowflake user ${credentials.username} has RSA_PUBLIC_KEY_FP = ${fingerprint} (DESC USER ${credentials.username};). If not, set RSA_PUBLIC_KEY to the base64 DER public key.`
-        : ` Verify the Snowflake user ${credentials.username} has the correct RSA public key for the provided private key.`;
       return new Err(
-        new TestConnectionError("INVALID_CREDENTIALS", `${msg}.${extra}`)
+        new TestConnectionError(
+          "INVALID_CREDENTIALS",
+          "Invalid credentials. Verify your Snowflake username and RSA public key configuration."
+        )
       );
     }
 
