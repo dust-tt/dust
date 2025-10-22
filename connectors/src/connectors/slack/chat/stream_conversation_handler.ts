@@ -293,8 +293,9 @@ async function streamAgentAnswerToSlack(
           finalAnswer,
           actions
         );
-        const files = actions.flatMap((action) => action.generatedFiles);
-        const filesUploaded = await getFilesFromDust(files, dustAPI);
+        const filesUploaded: { file: Buffer; filename: string }[] = []; // TODO(2025-10-22 chris): remove this once Slack enables file:write scope
+        // const files = actions.flatMap((action) => action.generatedFiles);
+        // const filesUploaded = await getFilesFromDust(files, dustAPI);
 
         const slackContent = slackifyMarkdown(
           normalizeContentForSlack(formattedContent)
@@ -748,44 +749,44 @@ async function getMessageSplittingFromFeatureFlag(
   }
 }
 
-async function getFilesFromDust(
-  files: Array<{
-    fileId: string;
-    title: string;
-    contentType: string;
-    snippet: string | null;
-    hidden?: boolean;
-  }>,
-  dustAPI: DustAPI
-): Promise<{ file: Buffer; filename: string }[]> {
-  const uploadPromises = files
-    .filter((file) => !file.hidden) // Skip hidden files
-    .map(async (file) => {
-      try {
-        const fileBuffer = await dustAPI.downloadFile({ fileID: file.fileId });
-        if (!fileBuffer || fileBuffer.isErr()) {
-          return null;
-        }
-        return {
-          file: fileBuffer.value,
-          filename: file.title,
-        };
-      } catch (error) {
-        logger.error(
-          {
-            fileId: file.fileId,
-            title: file.title,
-            error: error instanceof Error ? error.message : String(error),
-          },
-          "Error downloading file from Dust"
-        );
-        return null;
-      }
-    });
+// async function getFilesFromDust(
+//   files: Array<{
+//     fileId: string;
+//     title: string;
+//     contentType: string;
+//     snippet: string | null;
+//     hidden?: boolean;
+//   }>,
+//   dustAPI: DustAPI
+// ): Promise<{ file: Buffer; filename: string }[]> {
+//   const uploadPromises = files
+//     .filter((file) => !file.hidden) // Skip hidden files
+//     .map(async (file) => {
+//       try {
+//         const fileBuffer = await dustAPI.downloadFile({ fileID: file.fileId });
+//         if (!fileBuffer || fileBuffer.isErr()) {
+//           return null;
+//         }
+//         return {
+//           file: fileBuffer.value,
+//           filename: file.title,
+//         };
+//       } catch (error) {
+//         logger.error(
+//           {
+//             fileId: file.fileId,
+//             title: file.title,
+//             error: error instanceof Error ? error.message : String(error),
+//           },
+//           "Error downloading file from Dust"
+//         );
+//         return null;
+//       }
+//     });
 
-  const uploadResults = await Promise.all(uploadPromises);
-  return uploadResults.filter((result) => result !== null) as {
-    file: Buffer;
-    filename: string;
-  }[];
-}
+//   const uploadResults = await Promise.all(uploadPromises);
+//   return uploadResults.filter((result) => result !== null) as {
+//     file: Buffer;
+//     filename: string;
+//   }[];
+// }
