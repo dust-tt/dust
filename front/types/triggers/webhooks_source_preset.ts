@@ -50,16 +50,27 @@ const WebhookPresetIcons = {
 export type WebhookPresetIcon =
   (typeof WebhookPresetIcons)[keyof typeof WebhookPresetIcons];
 
-export type PresetWebhook = {
+export type PresetWebhook<TServiceData = Record<string, unknown>> = {
   name: string;
   eventCheck: EventCheck;
   events: WebhookEvent[];
   icon: typeof Icon;
   description: string;
   featureFlag?: WhitelistableFeature;
-  webhookService: RemoteWebhookService;
+  webhookService: RemoteWebhookService<TServiceData>;
   components: {
     detailsComponent: React.ComponentType<WebhookDetailsComponentProps>;
-    createFormComponent: React.ComponentType<WebhookCreateFormComponentProps>;
+    createFormComponent: React.ComponentType<
+      WebhookCreateFormComponentProps<TServiceData>
+    >;
   };
 };
+
+// Helper type to extract the service data type from a PresetWebhook
+export type ExtractServiceData<T> =
+  T extends PresetWebhook<infer TServiceData> ? TServiceData : never;
+
+// Helper type to extract union of all PresetWebhook instances from a map
+export type ExtractAllPresets<TMap> = {
+  [K in keyof TMap]: TMap[K] extends PresetWebhook<any> ? TMap[K] : never;
+}[keyof TMap];

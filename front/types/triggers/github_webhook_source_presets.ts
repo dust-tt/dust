@@ -2,6 +2,7 @@ import { GithubLogo } from "@dust-tt/sparkle";
 
 import { CreateWebhookGithubConnection } from "@app/components/triggers/CreateWebhookGithubConnection";
 import { WebhookSourceGithubDetails } from "@app/components/triggers/WebhookSourceGithubDetails";
+import type { GithubAdditionalData } from "@app/lib/triggers/services/github_service_types";
 import { GitHubWebhookService } from "@app/lib/triggers/services/github_webhook_service";
 import type {
   EventField,
@@ -515,7 +516,7 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
   ],
 };
 
-export const GITHUB_WEBHOOK_PRESET: PresetWebhook = {
+export const GITHUB_WEBHOOK_PRESET: PresetWebhook<GithubAdditionalData> = {
   name: "GitHub",
   eventCheck: {
     type: "headers",

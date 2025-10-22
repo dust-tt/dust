@@ -1,59 +1,47 @@
-import { useCallback, useState } from "react";
+import { useMemo } from "react";
+import type { Fetcher } from "swr";
 
-import { useSendNotification } from "@app/hooks/useNotification";
+import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetServiceDataResponseType } from "@app/pages/api/w/[wId]/webhook_sources/service-data";
 import type { LightWorkspaceType } from "@app/types";
-import { normalizeError } from "@app/types";
-import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
+import type { WebhookSourceWithPresetKind } from "@app/types/triggers/webhooks";
 
-export function useWebhookServiceData(
-  owner: LightWorkspaceType | null,
-  kind: WebhookSourceKind
-) {
-  const sendNotification = useSendNotification();
-  const [serviceData, setServiceData] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
-  const [isFetchingServiceData, setIsFetchingServiceData] = useState(false);
+export function useWebhookServiceData<K extends WebhookSourceWithPresetKind>({
+  owner,
+  kind,
+  connectionId,
+  disabled,
+}: {
+  owner: LightWorkspaceType | null;
+  kind: K;
+  connectionId: string | null;
+  disabled?: boolean;
+}): {
+  serviceData: GetServiceDataResponseType<K>["serviceData"] | null;
+  isServiceDataLoading: boolean;
+  isServiceDataError: any;
+  mutateServiceData: () => Promise<GetServiceDataResponseType<K> | undefined>;
+} {
+  const configFetcher: Fetcher<GetServiceDataResponseType<K>> = fetcher;
 
-  const fetchServiceData = useCallback(
-    async (connectionId: string) => {
-      if (!owner) {
-        return;
-      }
+  const url =
+    owner && connectionId
+      ? `/api/w/${owner.sId}/webhook_sources/service-data?connectionId=${connectionId}&kind=${kind}`
+      : null;
 
-      setIsFetchingServiceData(true);
-      try {
-        const response = await fetch(
-          `/api/w/${owner.sId}/webhook_sources/service-data?connectionId=${connectionId}&kind=${kind}`
-        );
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
+    disabled,
+  });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            errorData.error?.message || "Failed to fetch service data"
-          );
-        }
-
-        const data = await response.json();
-        setServiceData(data.serviceData || null);
-      } catch (error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to fetch service data",
-          description: normalizeError(error).message,
-        });
-        setServiceData(null);
-      } finally {
-        setIsFetchingServiceData(false);
-      }
-    },
-    [owner, kind, sendNotification]
-  );
+  const serviceData = useMemo(
+    () => data?.serviceData ?? null,
+    [data?.serviceData]
+  ) as GetServiceDataResponseType<K>["serviceData"] | null;
 
   return {
     serviceData,
-    isFetchingServiceData,
-    fetchServiceData,
+    isServiceDataLoading: !error && !data && !disabled && !!url,
+    isServiceDataError: error,
+    mutateServiceData: mutate,
   };
 }
