@@ -13,6 +13,9 @@ export const apiConfig = {
   getDustFrontAPIUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_FRONT_API");
   },
+  getDustClientFacingUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_CLIENT_FACING_URL");
+  },
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
   },
@@ -37,7 +40,13 @@ export const apiConfig = {
   getConnectorsPublicURL: (): string => {
     return EnvironmentConfig.getEnvVariable("CONNECTORS_PUBLIC_URL");
   },
-  getDiscordAppPublicKey: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable("DISCORD_APP_PUBLIC_KEY");
+  getDiscordAppPublicKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("DISCORD_APP_PUBLIC_KEY");
+  },
+  getDiscordBotToken: (): string => {
+    return EnvironmentConfig.getEnvVariable("DISCORD_BOT_TOKEN");
+  },
+  getDiscordApplicationId: (): string => {
+    return EnvironmentConfig.getEnvVariable("DISCORD_APP_ID");
   },
 };

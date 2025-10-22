@@ -1,17 +1,25 @@
 import {
+  DEEP_DIVE_DESC,
+  DEEP_DIVE_NAME,
+} from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import {
   assertNever,
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GEMINI_2_5_PRO_MODEL_CONFIG,
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
+  GPT_5_MINI_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
+  GPT_5_NANO_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
@@ -56,6 +64,27 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.GPT5,
         name: "gpt5",
         description: GPT_5_MODEL_CONFIG.description,
+        pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.GPT5_THINKING:
+      return {
+        sId: GLOBAL_AGENTS_SID.GPT5_THINKING,
+        name: "gpt5-thinking",
+        description: GPT_5_MINI_MODEL_CONFIG.description,
+        pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.GPT5_NANO:
+      return {
+        sId: GLOBAL_AGENTS_SID.GPT5_NANO,
+        name: "gpt5-nano",
+        description: GPT_5_NANO_MODEL_CONFIG.description,
+        pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.GPT5_MINI:
+      return {
+        sId: GLOBAL_AGENTS_SID.GPT5_MINI,
+        name: "gpt5-mini",
+        description: GPT_5_MINI_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.O1:
@@ -138,6 +167,22 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
         name: "claude-4-sonnet",
         description: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.description,
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
+      return {
+        sId: GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
+        name: "claude-4.5-sonnet",
+        description: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.description,
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU:
+      return {
+        sId: GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU,
+        name: "claude-4.5-haiku",
+        description: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.description,
         pictureUrl:
           "https://dust.tt/static/systemavatar/claude_avatar_full.png",
       };
@@ -236,14 +281,12 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "An agent with context on your company data.",
         pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
       };
-    case GLOBAL_AGENTS_SID.DUST_DEEP:
+    case GLOBAL_AGENTS_SID.DEEP_DIVE:
       return {
-        sId: GLOBAL_AGENTS_SID.DUST_DEEP,
-        name: "dust-deep",
-        description:
-          "Deep research agent with company data, web search, browsing, Content Creation, and data warehouses.",
-        pictureUrl:
-          "https://dust.tt/static/systemavatar/dust-deep_avatar_full.png",
+        sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
+        name: DEEP_DIVE_NAME,
+        description: DEEP_DIVE_DESC,
+        pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.DUST_TASK:
       return {
@@ -267,6 +310,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.DUST_PLANNING,
         name: "dust-planning",
         description: "A agent that plans research tasks.",
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.NOOP:
+      return {
+        sId: GLOBAL_AGENTS_SID.NOOP,
+        name: "noop",
+        description: "A no-op agent that does nothing.",
         pictureUrl:
           "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
       };

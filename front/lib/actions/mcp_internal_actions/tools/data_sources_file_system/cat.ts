@@ -8,8 +8,9 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import { renderNode } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   getAgentDataSourceConfigurations,
-  makeDataSourceViewFilter,
+  makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -20,7 +21,11 @@ import { CoreAPI, Err, Ok } from "@app/types";
 const catToolInputSchema = {
   dataSources:
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
-  nodeId: z.string().describe("The ID of the node to read."),
+  nodeId: z
+    .string()
+    .describe(
+      "The ID of the node to read. This is not the human-readable node title."
+    ),
   offset: z
     .number()
     .optional()
@@ -64,7 +69,11 @@ export function registerCatTool(
     catToolInputSchema,
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_CAT_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: FILESYSTEM_CAT_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
       async ({ dataSources, nodeId, offset, limit, grep }) => {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
@@ -79,11 +88,19 @@ export function registerCatTool(
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
+        const authRes = await ensureAuthorizedDataSourceViews(
+          auth,
+          agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
+        );
+        if (authRes.isErr()) {
+          return new Err(authRes.error);
+        }
+
         // Search the node using our search api.
         const searchResult = await coreAPI.searchNodes({
           filter: {
             node_ids: [nodeId],
-            data_source_views: makeDataSourceViewFilter(
+            data_source_views: makeCoreSearchNodesFilters(
               agentDataSourceConfigurations
             ),
           },
@@ -143,7 +160,10 @@ export function registerCatTool(
         if (readResult.isErr()) {
           return new Err(
             new MCPError(
-              `Could not read node: ${nodeId} (error: ${readResult.error.message})`
+              `Could not read node: ${nodeId} (error: ${readResult.error.message})`,
+              {
+                tracked: readResult.error.code !== "invalid_regex",
+              }
             )
           );
         }

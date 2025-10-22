@@ -1,25 +1,31 @@
 import {
+  Avatar,
+  BracesIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
   Checkbox,
+  ContactsRobotIcon,
   DocumentIcon,
-  DotIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuSearchbar,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  ExclamationCircleIcon,
-  FolderOpenIcon,
-  Icon,
   Label,
   ListCheckIcon,
   MagicIcon,
   MoreIcon,
   NavigationList,
   NavigationListItem,
+  NavigationListItemAction,
   NavigationListLabel,
-  RobotIcon,
+  PencilSquareIcon,
+  PlusIcon,
   SearchInput,
   Spinner,
   TrashIcon,
@@ -28,29 +34,39 @@ import {
 import moment from "moment";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
-import React, {
+import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { useInView } from "react-intersection-observer";
 
-import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
+import {
+  ConversationMenu,
+  useConversationMenu,
+} from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
+import { InAppBanner } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useConversations,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+} from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
 
@@ -69,6 +85,26 @@ type GroupLabel =
 export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   const router = useRouter();
   const { conversationsNavigationRef } = useConversationsNavigation();
+
+  const agentsSearchInputRef = useRef<HTMLInputElement>(null);
+  const [searchText, setSearchText] = useState("");
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "list",
+  });
+  const editableAgents = useMemo(
+    () => agentConfigurations.filter((agent) => agent.canEdit),
+    [agentConfigurations]
+  );
+  const filteredAgents = useMemo(
+    () =>
+      editableAgents
+        .filter((agent) =>
+          agent.name.toLowerCase().includes(searchText.toLowerCase().trim())
+        )
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [editableAgents, searchText]
+  );
 
   const { setSidebarOpen } = useContext(SidebarContext);
   const { conversations, isConversationsError } = useConversations({
@@ -284,12 +320,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     setSidebarOpen(false);
     const { cId } = router.query;
     const isNewConversation =
-      router.pathname === "/w/[wId]/assistant/[cId]" &&
+      router.pathname === "/w/[wId]/conversation/[cId]" &&
       typeof cId === "string" &&
       cId === "new";
     if (isNewConversation) {
       setAnimate(true);
-      document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
     }
   }, [setSidebarOpen, router, setAnimate]);
 
@@ -333,7 +368,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 />
                 <Button
                   label="New"
-                  href={`/w/${owner.sId}/assistant/new`}
+                  href={getConversationRoute(owner.sId)}
                   icon={ChatBubbleBottomCenterTextIcon}
                   className="shrink"
                   tooltip="Create a new conversation"
@@ -346,50 +381,108 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   <DropdownMenuContent>
                     {!isRestrictedFromAgentCreation && (
                       <>
-                        <DropdownMenuLabel>Agent</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          href={getAgentBuilderRoute(owner.sId, "new")}
-                          icon={DocumentIcon}
-                          label="New agent from scratch"
-                          data-gtm-label="assistantCreationButton"
-                          data-gtm-location="sidebarMenu"
-                        />
-                        <DropdownMenuItem
-                          href={getAgentBuilderRoute(owner.sId, "create")}
-                          icon={MagicIcon}
-                          label="New agent from template"
-                          data-gtm-label="assistantCreationButton"
-                          data-gtm-location="sidebarMenu"
-                        />
-                        {hasFeature("agent_to_yaml") && (
-                          <DropdownMenuItem
-                            icon={
-                              isUploadingYAML ? (
-                                <Spinner size="xs" />
-                              ) : (
-                                FolderOpenIcon
-                              )
-                            }
-                            label={
-                              isUploadingYAML
-                                ? "Uploading..."
-                                : "New agent from YAML"
-                            }
-                            disabled={isUploadingYAML}
-                            onClick={triggerYAMLUpload}
-                            data-gtm-label="yamlUploadButton"
-                            data-gtm-location="sidebarMenu"
+                        <DropdownMenuLabel>Agents</DropdownMenuLabel>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger
+                            icon={PlusIcon}
+                            label="New agent"
                           />
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent className="pointer-events-auto">
+                              <DropdownMenuItem
+                                href={getAgentBuilderRoute(owner.sId, "new")}
+                                icon={DocumentIcon}
+                                label="From scratch"
+                                data-gtm-label="assistantCreationButton"
+                                data-gtm-location="sidebarMenu"
+                                onClick={withTracking(
+                                  TRACKING_AREAS.BUILDER,
+                                  "create_from_scratch"
+                                )}
+                              />
+                              <DropdownMenuItem
+                                href={getAgentBuilderRoute(owner.sId, "create")}
+                                icon={MagicIcon}
+                                label="From template"
+                                data-gtm-label="assistantCreationButton"
+                                data-gtm-location="sidebarMenu"
+                                onClick={withTracking(
+                                  TRACKING_AREAS.BUILDER,
+                                  "create_from_template"
+                                )}
+                              />
+                              {hasFeature("agent_to_yaml") && (
+                                <DropdownMenuItem
+                                  icon={
+                                    isUploadingYAML ? (
+                                      <Spinner size="xs" />
+                                    ) : (
+                                      BracesIcon
+                                    )
+                                  }
+                                  label={
+                                    isUploadingYAML
+                                      ? "Uploading..."
+                                      : "From YAML"
+                                  }
+                                  disabled={isUploadingYAML}
+                                  onClick={triggerYAMLUpload}
+                                  data-gtm-label="yamlUploadButton"
+                                  data-gtm-location="sidebarMenu"
+                                />
+                              )}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
+                        {editableAgents.length > 0 && (
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger
+                              icon={PencilSquareIcon}
+                              label="Edit agent"
+                            />
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent className="pointer-events-auto">
+                                <DropdownMenuSearchbar
+                                  ref={agentsSearchInputRef}
+                                  name="search"
+                                  value={searchText}
+                                  onChange={setSearchText}
+                                  placeholder="Search"
+                                />
+                                {filteredAgents.map((agent) => (
+                                  <DropdownMenuItem
+                                    key={agent.sId}
+                                    href={getAgentBuilderRoute(
+                                      owner.sId,
+                                      agent.sId
+                                    )}
+                                    truncateText
+                                    label={agent.name}
+                                    icon={() => (
+                                      <Avatar
+                                        size="sm"
+                                        visual={agent.pictureUrl}
+                                      />
+                                    )}
+                                  />
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
                         )}
                       </>
                     )}
                     {isBuilder(owner) && (
                       <DropdownMenuItem
                         href={getAgentBuilderRoute(owner.sId, "manage")}
-                        icon={RobotIcon}
+                        icon={ContactsRobotIcon}
                         label="Manage agents"
                         data-gtm-label="assistantManagementButton"
                         data-gtm-location="sidebarMenu"
+                        onClick={withTracking(
+                          TRACKING_AREAS.BUILDER,
+                          "manage_agents"
+                        )}
                       />
                     )}
                     <DropdownMenuLabel>Conversations</DropdownMenuLabel>
@@ -446,6 +539,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 </>
               )}
             </NavigationList>
+            <InAppBanner />
           </div>
         </div>
       </div>
@@ -488,6 +582,21 @@ const RenderConversations = ({
   );
 };
 
+function getConversationDotStatus(
+  conversation: ConversationWithoutContentType
+): "blocked" | "unread" | "idle" {
+  if (conversation.actionRequired) {
+    return "blocked";
+  }
+  if (conversation.hasError) {
+    return "blocked";
+  }
+  if (conversation.unread) {
+    return "unread";
+  }
+  return "idle";
+}
+
 const RenderConversation = ({
   conversation,
   isMultiSelect,
@@ -504,16 +613,19 @@ const RenderConversation = ({
   owner: WorkspaceType;
 }) => {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
+  const {
+    isMenuOpen,
+    menuTriggerPosition,
+    handleRightClick,
+    handleMenuOpenChange,
+  } = useConversationMenu();
+
   const conversationLabel =
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     conversation.title ||
     (moment(conversation.created).isSame(moment(), "day")
       ? "New Conversation"
       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
-
-  const UnreadIcon = () => (
-    <Icon visual={DotIcon} className="-ml-1 -mr-2 text-highlight" />
-  );
 
   return (
     <>
@@ -535,15 +647,21 @@ const RenderConversation = ({
       ) : (
         <NavigationListItem
           selected={router.query.cId === conversation.sId}
-          icon={
-            conversation.actionRequired
-              ? ExclamationCircleIcon
-              : conversation.unread
-                ? UnreadIcon
-                : undefined
-          }
+          status={getConversationDotStatus(conversation)}
           label={conversationLabel}
-          className={conversation.unread ? "font-medium" : undefined}
+          moreMenu={
+            <ConversationMenu
+              activeConversationId={conversation.sId}
+              conversation={conversation}
+              owner={owner}
+              trigger={<NavigationListItemAction />}
+              isConversationDisplayed={router.query.cId === conversation.sId}
+              isOpen={isMenuOpen}
+              onOpenChange={handleMenuOpenChange}
+              triggerPosition={menuTriggerPosition}
+            />
+          }
+          onContextMenu={handleRightClick}
           onClick={async () => {
             // Side bar is the floating sidebar that appears when the screen is small.
             if (sidebarOpen) {
@@ -552,7 +670,7 @@ const RenderConversation = ({
               await new Promise((resolve) => setTimeout(resolve, 600));
             }
             await router.push(
-              `/w/${owner.sId}/assistant/${conversation.sId}`,
+              getConversationRoute(owner.sId, conversation.sId),
               undefined,
               {
                 shallow: true,

@@ -36,10 +36,14 @@ interface ConversationMessageProps
   isDisabled?: boolean;
   name?: string;
   timestamp?: string;
+  completionStatus?: React.ReactNode;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
   infoChip?: React.ReactNode;
+  type: ConversationMessageType;
 }
+
+export type ConversationMessageType = "user" | "agent";
 
 const messageVariants = cva("s-flex s-w-full s-flex-col s-rounded-2xl", {
   variants: {
@@ -81,6 +85,7 @@ export const ConversationMessage = React.forwardRef<
       isDisabled = false,
       name,
       timestamp,
+      completionStatus,
       pictureUrl,
       renderName = (name) => <span>{name}</span>,
       infoChip,
@@ -97,13 +102,14 @@ export const ConversationMessage = React.forwardRef<
             avatarUrl={pictureUrl}
             name={name}
             timestamp={timestamp}
+            completionStatus={completionStatus}
             isBusy={avatarBusy}
             isDisabled={isDisabled}
             renderName={renderName}
             infoChip={infoChip}
           />
 
-          <ConversationMessageContent citations={citations}>
+          <ConversationMessageContent citations={citations} type={type}>
             {children}
           </ConversationMessageContent>
         </div>
@@ -123,6 +129,7 @@ interface ConversationMessageContentProps
   extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   citations?: React.ReactElement[];
+  type: ConversationMessageType;
 }
 
 export const ConversationMessageContent = React.forwardRef<
@@ -138,12 +145,7 @@ export const ConversationMessageContent = React.forwardRef<
       )}
       {...props}
     >
-      <div
-        className={cn(
-          "s-text-sm @sm:s-text-base @md:s-px-4",
-          "s-text-foreground dark:s-text-foreground-night"
-        )}
-      >
+      <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
         {children}
       </div>
       {citations && citations.length > 0 && (
@@ -162,6 +164,7 @@ interface ConversationMessageHeaderProps
   isDisabled?: boolean;
   name?: string;
   timestamp?: string;
+  completionStatus?: React.ReactNode;
   infoChip?: React.ReactNode;
   renderName: (name: string | null) => React.ReactNode;
 }
@@ -178,6 +181,7 @@ export const ConversationMessageHeader = React.forwardRef<
       name = "",
       timestamp,
       infoChip,
+      completionStatus,
       renderName,
       className,
       ...props
@@ -209,20 +213,15 @@ export const ConversationMessageHeader = React.forwardRef<
           disabled={isDisabled}
           size="sm"
         />
-        <div className="s-flex s-w-full s-flex-row s-justify-between s-gap-0.5">
-          <div
-            className={cn(
-              "s-text-sm s-font-semibold @sm:s-text-base",
-              "s-text-foreground dark:s-text-foreground-night",
-              "s-flex s-flex-row s-items-center s-gap-2"
-            )}
-          >
-            {renderName(name)}
-            {infoChip}
-            <span className="s-text-xs s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="s-inline-flex s-w-full s-justify-between s-gap-0.5">
+          <div className="s-inline-flex s-items-baseline s-gap-2 s-text-foreground dark:s-text-foreground-night">
+            <span className="s-heading-sm">{renderName(name)}</span>
+            <span className="s-heading-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
               {timestamp}
             </span>
+            {infoChip && infoChip}
           </div>
+          {completionStatus ?? null}
         </div>
       </div>
     );

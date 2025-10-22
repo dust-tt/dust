@@ -25,8 +25,10 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare visibility: CreationOptional<ConversationVisibility>;
   declare depth: CreationOptional<number>;
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
+  declare hasError: CreationOptional<boolean>;
 
   declare requestedGroupIds: number[][];
+  declare requestedSpaceIds: number[];
 }
 
 ConversationModel.init(
@@ -64,10 +66,20 @@ ConversationModel.init(
       allowNull: false,
       defaultValue: [],
     },
+    requestedSpaceIds: {
+      type: DataTypes.ARRAY(DataTypes.BIGINT),
+      allowNull: false,
+      defaultValue: [],
+    },
     triggerId: {
       type: DataTypes.BIGINT,
       allowNull: true,
       defaultValue: null,
+    },
+    hasError: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {
@@ -194,6 +206,8 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
   declare userContextEmail: string | null;
   declare userContextProfilePictureUrl: string | null;
   declare userContextOrigin: UserMessageOrigin | null;
+  declare userContextOriginMessageId: string | null;
+
   declare userContextLastTriggerRunAt: Date | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
@@ -250,6 +264,10 @@ UserMessage.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    userContextOriginMessageId: {
+      type: DataTypes.STRING(32),
+      allowNull: true,
+    },
     userContextLastTriggerRunAt: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -304,6 +322,8 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
   declare agentStepContents?: NonAttribute<AgentStepContentModel[]>;
   declare message?: NonAttribute<Message>;
   declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
+
+  declare completedAt: Date | null;
 }
 
 AgentMessage.init(
@@ -373,6 +393,11 @@ AgentMessage.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
+    },
+    completedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
@@ -622,7 +647,6 @@ Message.belongsTo(ContentFragmentModel, {
   as: "contentFragment",
   foreignKey: { name: "contentFragmentId", allowNull: true },
 });
-
 export class MessageReaction extends WorkspaceAwareModel<MessageReaction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;

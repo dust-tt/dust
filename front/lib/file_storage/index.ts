@@ -7,7 +7,7 @@ import { pipeline } from "stream/promises";
 import config from "@app/lib/file_storage/config";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import type { AllSupportedFileContentType } from "@app/types";
-import { clientExecutableContentType, stripNullBytes } from "@app/types";
+import { frameContentType, stripNullBytes } from "@app/types";
 
 const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
 
@@ -53,16 +53,13 @@ export class FileStorage {
     contentType,
     filePath,
   }: {
-    content: string | Buffer;
+    content: string;
     contentType: AllSupportedFileContentType;
     filePath: string;
   }) {
     const gcsFile = this.file(filePath);
 
-    const contentToSave =
-      typeof content === "string"
-        ? Buffer.from(stripNullBytes(content), "utf8")
-        : content;
+    const contentToSave = Buffer.from(stripNullBytes(content), "utf8");
 
     await gcsFile.save(contentToSave, {
       contentType,
@@ -93,7 +90,7 @@ export class FileStorage {
     }
 
     const textTypes = [
-      clientExecutableContentType,
+      frameContentType,
       "text/",
       "application/json",
       "application/xml",
@@ -195,3 +192,6 @@ export const getUpsertQueueBucket = (options?: FileStorageOptions) =>
 
 export const getDustDataSourcesBucket = (options?: FileStorageOptions) =>
   getBucketInstance(config.getDustDataSourcesBucket(), options);
+
+export const getWebhookRequestsBucket = (options?: FileStorageOptions) =>
+  getBucketInstance(config.getWebhookRequestsBucket(), options);

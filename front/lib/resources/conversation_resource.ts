@@ -17,10 +17,12 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   ConversationMCPServerViewType,
@@ -320,12 +322,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ): boolean {
     const requestedGroupIds =
       conversation instanceof ConversationResource
-        ? conversation.getConversationRequestedGroupIdsFromModel(auth)
+        ? conversation.getRequestedGroupIdsFromModel(auth)
         : conversation.requestedGroupIds;
 
     return auth.canRead(
       Authenticator.createResourcePermissionsFromGroupIds(requestedGroupIds)
     );
+
+    // TODO(2025-10-17 thomas): Update permission to use space requirements.
+    // const requestedSpaceIds =
+    //   conversation instanceof ConversationResource
+    //     ? conversation.getRequestedSpaceIdsFromModel(auth)
+    //     : conversation.requestedGroupIds;
   }
 
   static async fetchConversationWithoutContent(
@@ -369,8 +377,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       triggerId: conversation.triggerSId(),
       actionRequired,
       unread,
-      requestedGroupIds:
-        conversation.getConversationRequestedGroupIdsFromModel(auth),
+      hasError: conversation.hasError,
+      requestedGroupIds: conversation.getRequestedGroupIdsFromModel(auth),
+      requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
     });
   }
 
@@ -435,22 +444,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       const c = p.conversation;
 
       if (c) {
+        const resource = new this(this.model, c.get());
         acc.push({
           id: c.id,
           created: c.createdAt.getTime(),
           updated: p.updatedAt.getTime(),
           unread: p.unread,
           actionRequired: p.actionRequired,
+          hasError: c.hasError,
           sId: c.sId,
           owner,
           title: c.title,
           visibility: c.visibility,
           depth: c.depth,
           triggerId: ConversationResource.triggerIdToSId(c.triggerId, owner.id),
-          requestedGroupIds: new this(
-            this.model,
-            c.get()
-          ).getConversationRequestedGroupIdsFromModel(auth),
+          requestedGroupIds: resource.getRequestedGroupIdsFromModel(auth),
+          requestedSpaceIds: resource.getRequestedSpaceIdsFromModel(auth),
         });
       }
 
@@ -497,10 +506,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           triggerId: triggerId,
           actionRequired,
           unread,
-          requestedGroupIds: new this(
-            this.model,
-            c
-          ).getConversationRequestedGroupIdsFromModel(auth),
+          hasError: c.hasError,
+          requestedGroupIds: c.getRequestedGroupIdsFromModel(auth),
+          requestedSpaceIds: c.getRequestedSpaceIdsFromModel(auth),
         };
       })
     );
@@ -687,21 +695,21 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }[]
   > {
     const query = `
-        SELECT 
+        SELECT
         rank,
         "agentMessageId",
         version
       FROM (
-        SELECT 
+        SELECT
           rank,
           "agentMessageId",
           version,
           ROW_NUMBER() OVER (
-            PARTITION BY rank 
+            PARTITION BY rank
             ORDER BY version DESC
           ) as rn
         FROM messages
-        WHERE 
+        WHERE
           "workspaceId" = :workspaceId
           AND "conversationId" = :conversationId
           AND "agentMessageId" IS NOT NULL
@@ -725,10 +733,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return results;
   }
 
+  // TODO(2025-10-17 thomas): Rename and remove requestedGroupIds
   static async updateRequestedGroupIds(
     auth: Authenticator,
     sId: string,
     requestedGroupIds: number[][],
+    requestedSpaceIds: number[],
     transaction?: Transaction
   ) {
     const conversation = await ConversationResource.fetchById(auth, sId);
@@ -736,7 +746,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new ConversationError("conversation_not_found"));
     }
 
-    await conversation.updateRequestedGroupIds(requestedGroupIds, transaction);
+    await conversation.updateRequestedGroupIds(
+      requestedGroupIds,
+      requestedSpaceIds,
+      transaction
+    );
     return new Ok(undefined);
   }
 
@@ -861,15 +875,56 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return this.update({ visibility: "unlisted" });
   }
 
+  // TODO(2025-10-17 thomas): Rename and remove requestedGroupIds
   async updateRequestedGroupIds(
     requestedGroupIds: number[][],
+    requestedSpaceIds: number[],
     transaction?: Transaction
   ) {
     return this.update(
       {
         requestedGroupIds,
+        requestedSpaceIds,
       },
       transaction
+    );
+  }
+
+  static async markHasError(
+    auth: Authenticator,
+    { conversation }: { conversation: ConversationWithoutContentType },
+    transaction?: Transaction
+  ) {
+    return ConversationResource.model.update(
+      {
+        hasError: true,
+      },
+      {
+        where: {
+          id: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      }
+    );
+  }
+
+  static async clearHasError(
+    auth: Authenticator,
+    { conversation }: { conversation: ConversationWithoutContentType },
+    transaction?: Transaction
+  ) {
+    return ConversationResource.model.update(
+      {
+        hasError: false,
+      },
+      {
+        where: {
+          id: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      }
     );
   }
 
@@ -901,6 +956,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok({ wasLastMember: remaining <= 1, affectedCount });
   }
 
+  async isConversationParticipant(user: UserResource): Promise<boolean> {
+    const count = await ConversationParticipantModel.count({
+      where: {
+        conversationId: this.id,
+        userId: user.id,
+        workspaceId: this.workspaceId,
+      },
+    });
+
+    return count > 0;
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}
@@ -929,7 +996,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
   }
 
-  getConversationRequestedGroupIdsFromModel(auth: Authenticator) {
+  getRequestedGroupIdsFromModel(auth: Authenticator) {
     const workspace = auth.getNonNullableWorkspace();
     return this.requestedGroupIds.map((groups) =>
       groups.map((g) =>
@@ -938,6 +1005,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           workspaceId: workspace.id,
         })
       )
+    );
+  }
+
+  getRequestedSpaceIdsFromModel(auth: Authenticator) {
+    const workspace = auth.getNonNullableWorkspace();
+    return this.requestedSpaceIds.map((id) =>
+      SpaceResource.modelIdToSId({
+        id,
+        workspaceId: workspace.id,
+      })
     );
   }
 }

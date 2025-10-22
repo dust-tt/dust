@@ -7,6 +7,7 @@ import {
   ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
+import { DiscordConfigurationModel } from "@connectors/lib/models/discord";
 import {
   GithubCodeDirectory,
   GithubCodeFile,
@@ -40,6 +41,10 @@ import {
   MicrosoftNodeModel,
   MicrosoftRootModel,
 } from "@connectors/lib/models/microsoft";
+import {
+  MicrosoftBotConfigurationModel,
+  MicrosoftBotMessage,
+} from "@connectors/lib/models/microsoft_bot";
 import {
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
@@ -80,7 +85,7 @@ import {
   ZendeskTimestampCursorModel,
 } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import { sendInitDbMessage } from "@connectors/types";
 
@@ -94,6 +99,7 @@ async function main(): Promise<void> {
   await ConfluenceFolder.sync({ alter: true });
   await ConfluencePage.sync({ alter: true });
   await ConfluenceSpace.sync({ alter: true });
+  await DiscordConfigurationModel.sync({ alter: true });
   await SlackConfigurationModel.sync({ alter: true });
   await SlackMessages.sync({ alter: true });
   await SlackChannel.sync({ alter: true });
@@ -115,6 +121,8 @@ async function main(): Promise<void> {
   await MicrosoftConfigurationModel.sync({ alter: true });
   await MicrosoftRootModel.sync({ alter: true });
   await MicrosoftNodeModel.sync({ alter: true });
+  await MicrosoftBotConfigurationModel.sync({ alter: true });
+  await MicrosoftBotMessage.sync({ alter: true });
   await NotionConnectorBlockCacheEntry.sync({ alter: true });
   await NotionConnectorPageCacheEntry.sync({ alter: true });
   await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });
@@ -147,16 +155,16 @@ async function main(): Promise<void> {
   await GongUserModel.sync({ alter: true });
 
   // enable the `unaccent` extension
-  await sequelizeConnection.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
+  await connectorsSequelize.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
 
   await addSearchVectorTrigger(
-    sequelizeConnection,
+    connectorsSequelize,
     "notion_pages",
     "notion_pages_vector_update",
     "notion_pages_trigger"
   );
   await addSearchVectorTrigger(
-    sequelizeConnection,
+    connectorsSequelize,
     "notion_databases",
     "notion_databases_vector_update",
     "notion_databases_trigger"

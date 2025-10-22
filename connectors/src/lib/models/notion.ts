@@ -1,7 +1,7 @@
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type { NotionBlockType, PageObjectProperties } from "@connectors/types";
 
@@ -51,7 +51,7 @@ NotionConnectorState.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "notion_connector_states",
     indexes: [{ fields: ["connectorId"], unique: true }],
     relationship: "hasOne",
@@ -129,7 +129,7 @@ NotionPage.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["connectorId"], concurrently: true },
       { fields: ["notionPageId", "connectorId"], unique: true },
@@ -246,7 +246,7 @@ NotionDatabase.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["connectorId"], concurrently: true },
       { fields: ["notionDatabaseId", "connectorId"], unique: true },
@@ -345,7 +345,7 @@ NotionConnectorPageCacheEntry.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "notion_connector_page_cache_entries",
     indexes: [
       {
@@ -426,7 +426,7 @@ NotionConnectorBlockCacheEntry.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "notion_connector_block_cache_entries",
     indexes: [
       {
@@ -435,9 +435,11 @@ NotionConnectorBlockCacheEntry.init(
         name: "uq_notion_block_id_conn_id_page_id_wf_id",
       },
       { fields: ["connectorId"] },
-      { fields: ["parentBlockId"] },
-      { fields: ["notionPageId"] },
-      { fields: ["workflowId"] },
+      { fields: ["connectorId", "workflowId"] },
+      {
+        fields: ["connectorId", "notionPageId", "workflowId"],
+        name: "notion_connector_block_cache_entries_connector_page_workflow",
+      },
     ],
   }
 );
@@ -481,7 +483,7 @@ NotionConnectorResourcesToCheckCacheEntry.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "notion_connector_resources_to_check_cache_entries",
     indexes: [
       {

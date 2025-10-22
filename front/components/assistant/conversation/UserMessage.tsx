@@ -1,12 +1,11 @@
 import {
-  Avatar,
-  ClockIcon,
+  BoltIcon,
   ConversationMessage,
+  Icon,
   Markdown,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { BellIcon } from "lucide-react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -23,6 +22,10 @@ import {
   getMentionPlugin,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
+import {
+  PastedAttachmentBlock,
+  pastedAttachmentDirective,
+} from "@app/components/markdown/PastedAttachmentBlock";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
 
@@ -46,14 +49,24 @@ export function UserMessage({
       sup: CiteBlock,
       mention: getMentionPlugin(owner),
       content_node_mention: ContentNodeMentionBlock,
+      pasted_attachment: PastedAttachmentBlock,
     }),
     [owner]
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective(), mentionDirective, contentNodeMentionDirective],
+    () => [
+      getCiteDirective(),
+      mentionDirective,
+      contentNodeMentionDirective,
+      pastedAttachmentDirective,
+    ],
     []
   );
+
+  const renderName = useCallback((name: string | null) => {
+    return <div>{name}</div>;
+  }, []);
 
   return (
     <div className="flex flex-grow flex-col">
@@ -62,11 +75,13 @@ export function UserMessage({
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           pictureUrl={message.context.profilePictureUrl || message.user?.image}
           name={message.context.fullName ?? undefined}
-          renderName={(name) => <div className="heading-base">{name}</div>}
+          renderName={renderName}
           timestamp={formatTimestring(message.created)}
           infoChip={
             message.context.origin === "triggered" && (
-              <TriggerChip message={message} />
+              <span className="translate-y-1 text-muted-foreground dark:text-muted-foreground-night">
+                <TriggerChip message={message} />
+              </span>
             )
           }
           type="user"
@@ -128,16 +143,10 @@ function Label({ message }: { message?: UserMessageType }) {
 }
 
 function TriggerChip({ message }: { message?: UserMessageType }) {
-  const icon = message?.context.lastTriggerRunAt ? (
-    <ClockIcon className="h-4 w-4" />
-  ) : (
-    <BellIcon className="h-4 w-4" />
-  );
-
   return (
     <Tooltip
       label={<Label message={message} />}
-      trigger={<Avatar size="xs" visual={icon} />}
+      trigger={<Icon size="xs" visual={BoltIcon} />}
     />
   );
 }

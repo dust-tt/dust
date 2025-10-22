@@ -9,8 +9,15 @@ import {
 import { normalizeError } from "@connectors/types/api";
 
 export class WithRetriesError extends Error {
+  // Additional context to each error that will appear in the logs, unlike the whole error.
+  readonly additionalContext: Record<string, unknown>[];
+
   constructor(
-    readonly errors: Array<{ attempt: number; error: unknown }>,
+    readonly errors: {
+      attempt: number;
+      error: unknown;
+      additionalContext: Record<string, unknown>;
+    }[],
     readonly retries: number,
     readonly delayBetweenRetriesMs: number
   ) {
@@ -22,6 +29,7 @@ export class WithRetriesError extends Error {
 
     super(message);
     this.name = "WithRetriesError";
+    this.additionalContext = errors.map((e) => e.additionalContext);
     this.retries = retries;
     this.delayBetweenRetriesMs = delayBetweenRetriesMs;
   }
@@ -44,28 +52,42 @@ export function withRetries<Args extends unknown[], Return>(
   }
 
   return async (...args) => {
-    const errors: Array<{ attempt: number; error: unknown }> = [];
+    const errors: {
+      attempt: number;
+      error: unknown;
+      additionalContext: Record<string, unknown>;
+    }[] = [];
 
     for (let i = 0; i < retries; i++) {
       const attempt = i + 1;
       try {
         return await fn(...args);
       } catch (e) {
+        let additionalContext = {};
+        if (e instanceof AxiosError) {
+          additionalContext = {
+            url: e.config?.url,
+            code: e.code,
+            status: e.status,
+          };
+        }
         if (
           e instanceof AxiosError &&
           e.code === "ERR_BAD_REQUEST" &&
-          e.status === 403
+          (e.status === 403 || e.status === 413)
         ) {
           const errorType = e.response?.data?.error?.type;
 
           if (errorType === "workspace_quota_error") {
             // This error will pause the connector.
-            throw new WorkspaceQuotaExceededError(e);
+            throw new WorkspaceQuotaExceededError();
           }
 
-          if (errorType === "data_source_quota_error") {
+          // The bodyParser limit is higher than any plan limit, so a 413
+          // means that it would have exceeded the plan limit.
+          if (errorType === "data_source_quota_error" || e.status === 413) {
             // This error is per file and will NOT pause the connector (important!).
-            throw new DataSourceQuotaExceededError(e);
+            throw new DataSourceQuotaExceededError();
           }
         }
         // If a predicate is provided and returns false, do not retry.
@@ -85,7 +107,7 @@ export function withRetries<Args extends unknown[], Return>(
 
         await setTimeoutAsync(sleepTime);
 
-        errors.push({ attempt: attempt, error: e });
+        errors.push({ attempt: attempt, error: e, additionalContext });
       }
     }
 

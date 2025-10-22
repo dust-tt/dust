@@ -86,7 +86,9 @@ export abstract class BaseResource<M extends Model & ResourceWithId> {
     });
 
     // Update the current instance with the new values to avoid stale data.
-    Object.assign(this, affectedRows[0].get());
+    if (affectedRows[0]) {
+      Object.assign(this, affectedRows[0].get());
+    }
 
     return [affectedCount];
   }

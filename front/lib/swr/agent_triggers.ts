@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { parseMatcherExpression } from "@app/lib/matcher";
 import {
   emptyArray,
   fetcher,
@@ -16,6 +17,7 @@ import type {
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/text_as_cron_rule";
 import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
 import type { LightWorkspaceType } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 export function useAgentTriggers({
   workspaceId,
@@ -75,24 +77,70 @@ export function useTextAsCronRule({
   workspace: LightWorkspaceType;
 }) {
   const textAsCronRule = useCallback(
-    async (naturalDescription: string) => {
-      const r: PostTextAsCronRuleResponseBody = await fetcher(
-        `/api/w/${workspace.sId}/assistant/agent_configurations/text_as_cron_rule`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            naturalDescription,
-            defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          } as PostTextAsCronRuleRequestBody),
-        }
-      );
+    async (naturalDescription: string, signal?: AbortSignal) => {
+      let r: PostTextAsCronRuleResponseBody;
+      try {
+        r = await fetcher(
+          `/api/w/${workspace.sId}/assistant/agent_configurations/text_as_cron_rule`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              naturalDescription,
+              defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            } as PostTextAsCronRuleRequestBody),
+            signal,
+          }
+        );
+      } catch (e: unknown) {
+        return new Err(normalizeError(e));
+      }
 
-      return { cron: r.cronRule, timezone: r.timezone };
+      return new Ok({ cron: r.cronRule, timezone: r.timezone });
     },
     [workspace]
   );
 
   return textAsCronRule;
+}
+
+export function useWebhookFilterGenerator({
+  workspace,
+}: {
+  workspace: LightWorkspaceType;
+}) {
+  const generateFilter = useCallback(
+    async ({
+      naturalDescription,
+      eventSchema,
+    }: {
+      naturalDescription: string;
+      eventSchema: Record<string, any>;
+    }): Promise<{ filter: string }> => {
+      const r = await fetcher(
+        `/api/w/${workspace.sId}/assistant/agent_configurations/webhook_filter_generator`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            naturalDescription,
+            eventSchema,
+          }),
+        }
+      );
+
+      try {
+        parseMatcherExpression(r.filter);
+      } catch (e: unknown) {
+        throw new Error(
+          `Error generating filter: ${normalizeError(e).message}`
+        );
+      }
+
+      return { filter: r.filter };
+    },
+    [workspace]
+  );
+
+  return generateFilter;
 }
 
 export function useTriggerSubscribers({

@@ -42,6 +42,7 @@ jobs:
           component: "front-qa"
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
           depot_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          virtuoso_license_key: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
           commit_sha: ${{ needs.prepare.outputs.short_sha }}
 
   deploy:

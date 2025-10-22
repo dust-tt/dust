@@ -2,10 +2,8 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  DEFAULT_MCP_SERVER_ICON,
-  isCustomServerIconType,
-} from "@app/lib/actions/mcp_icons";
+import { isCustomResourceIconType } from "@app/components/resources/resources_icons";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   isInternalMCPServerName,
@@ -210,7 +208,7 @@ async function handler(
           icon:
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             defaultConfig?.icon ||
-            (isCustomServerIconType(metadata.icon)
+            (isCustomResourceIconType(metadata.icon)
               ? metadata.icon
               : DEFAULT_MCP_SERVER_ICON),
           version: metadata.version,

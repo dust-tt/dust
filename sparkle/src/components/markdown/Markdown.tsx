@@ -27,14 +27,18 @@ import {
 import { sanitizeContent } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
 
-const sizes = {
-  p: "s-copy-sm @sm:s-text-base @sm:s-leading-7",
+export const markdownHeaderClasses = {
   h1: "s-heading-2xl",
   h2: "s-heading-xl",
   h3: "s-heading-lg",
   h4: "s-text-base s-font-semibold",
   h5: "s-text-sm s-font-semibold",
   h6: "s-text-sm s-font-regular s-italic",
+};
+
+const sizes = {
+  p: "s-text-base s-leading-7",
+  ...markdownHeaderClasses,
 };
 
 function showUnsupportedDirective() {
@@ -221,7 +225,7 @@ export function Markdown({
 
   try {
     return (
-      <div className={cn("s-w-full", isStreaming ? "s-blinking-cursor" : "")}>
+      <div className="s-w-full">
         <MarkdownContentContext.Provider
           value={{
             content: processedContent,
@@ -242,7 +246,7 @@ export function Markdown({
     );
   } catch (error) {
     return (
-      <div className={cn("s-w-full", isStreaming ? "s-blinking-cursor" : "")}>
+      <div className="s-w-full">
         <Chip color="warning">
           There was an error parsing this markdown content
         </Chip>

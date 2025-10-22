@@ -1,4 +1,6 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type { ConnectorsAPIError } from "@dust-tt/client";
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isConnectorsAPIError } from "@dust-tt/client";
 import * as t from "io-ts";
 
@@ -10,12 +12,14 @@ import { Err, Ok } from "../shared/result";
 import type { AdminCommandType, AdminResponseType } from "./admin/cli";
 import type { ConnectorConfiguration } from "./configuration";
 import type { ContentNodesViewType } from "./content_nodes";
+import { DiscordBotConfigurationTypeSchema } from "./discord_bot";
 import { SlackConfigurationTypeSchema } from "./slack";
 import { WebCrawlerConfigurationTypeSchema } from "./webcrawler";
 
 export const ConnectorConfigurationTypeSchema = t.union([
   WebCrawlerConfigurationTypeSchema,
   SlackConfigurationTypeSchema,
+  DiscordBotConfigurationTypeSchema,
   t.null,
 ]);
 

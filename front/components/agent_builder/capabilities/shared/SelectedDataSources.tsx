@@ -22,7 +22,6 @@ import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
-  TABLE_QUERY_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -37,11 +36,7 @@ import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import type { DataSourceViewType } from "@app/types";
 import { asDisplayName, pluralize } from "@app/types";
 
-const tablesServer = [
-  TABLE_QUERY_SERVER_NAME,
-  TABLE_QUERY_V2_SERVER_NAME,
-  DATA_WAREHOUSE_SERVER_NAME,
-];
+const tablesServer = [TABLE_QUERY_V2_SERVER_NAME, DATA_WAREHOUSE_SERVER_NAME];
 
 const getVisualForSourceItem = (
   source: DataSourceFilterItem["selectedSources"][0]
@@ -203,7 +198,6 @@ export function SelectedDataSources() {
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
   });
-
   const { mcpServerViewsWithKnowledge } = useMCPServerViewsContext();
 
   const internalMcpServerView = mcpServerViewsWithKnowledge.find(
@@ -211,8 +205,7 @@ export function SelectedDataSources() {
   );
 
   const isTableOrWarehouseServer = tablesServer.includes(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    internalMcpServerView?.server.name || ""
+    internalMcpServerView?.server.name ?? ""
   );
 
   const dataSourceViews = useMemo(() => {

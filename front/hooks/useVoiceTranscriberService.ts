@@ -3,9 +3,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { AugmentedMessage } from "@app/lib/utils/find_agents_in_message";
 import type { LightWorkspaceType } from "@app/types";
+
+// We are using webm with Opus codec
+// In general browsers are using a 48 kbps bitrate
+// A 1-minute recording will be around 400kB
+// 60 seconds * 48000bps / 8 => 360 000 bit, round up to 400kB
+const MAXIMUM_FILE_SIZE_FOR_INPUT_BAR_IN_BYTES = 400 * 1024;
 
 interface UseVoiceTranscriberServiceParams {
   owner: LightWorkspaceType;
@@ -14,16 +19,15 @@ interface UseVoiceTranscriberServiceParams {
   fileUploaderService: FileUploaderService;
 }
 
-export type Mode = "transcribe" | "attachment";
-
 export function useVoiceTranscriberService({
   owner,
   onTranscribeDelta,
   onTranscribeComplete,
   fileUploaderService,
 }: UseVoiceTranscriberServiceParams) {
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [status, setStatus] = useState<
+    "idle" | "authorizing_microphone" | "recording" | "transcribing"
+  >("idle");
   const [level, setLevel] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -32,18 +36,17 @@ export function useVoiceTranscriberService({
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const rafRef = useRef<number | null>(null);
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const sendNotification = useSendNotification();
 
-  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
-
   const stopLevelMetering = useCallback(() => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
+    if (intervalRef.current !== null) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
+
     try {
       analyserRef.current = null;
       sourceNodeRef.current?.disconnect();
@@ -57,8 +60,15 @@ export function useVoiceTranscriberService({
     } finally {
       audioContextRef.current = null;
       setLevel(0);
+      setStatus("idle");
     }
   }, []);
+
+  useEffect(() => {
+    return () => {
+      stopLevelMetering();
+    };
+  }, [stopLevelMetering]);
 
   const startLevelMetering = useCallback(
     (stream: MediaStream) => {
@@ -83,6 +93,7 @@ export function useVoiceTranscriberService({
           if (!a) {
             return;
           }
+
           a.getByteTimeDomainData(buffer);
           // Compute RMS level from time-domain data. Normalize to [0, 1].
           let sumSquares = 0;
@@ -93,10 +104,10 @@ export function useVoiceTranscriberService({
           const rms = Math.sqrt(sumSquares / buffer.length); // ~0..1
           // Map RMS to a smoother visual level with light bias to show activity.
           const visual = Math.max(0, Math.min(1, (rms - 0.02) / 0.3));
+
           setLevel(visual);
-          rafRef.current = requestAnimationFrame(tick);
         };
-        rafRef.current = requestAnimationFrame(tick);
+        intervalRef.current = setInterval(tick, 250);
       } catch {
         // If metering fails (unsupported), we silently ignore.
         audioContextRef.current = null;
@@ -118,7 +129,7 @@ export function useVoiceTranscriberService({
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
-    if (isRecording) {
+    if (status === "recording") {
       interval = setInterval(() => {
         setElapsedSeconds((prev) => prev + 1);
       }, 1000);
@@ -132,13 +143,14 @@ export function useVoiceTranscriberService({
         clearInterval(interval);
       }
     };
-  }, [isRecording]);
+  }, [status]);
 
   const startRecording = useCallback(async () => {
-    if (isRecording) {
+    if (status === "recording" || status === "authorizing_microphone") {
       return;
     }
     try {
+      setStatus("authorizing_microphone");
       const stream = await requestMicrophone();
       streamRef.current = stream;
 
@@ -149,7 +161,8 @@ export function useVoiceTranscriberService({
       startLevelMetering(stream);
 
       recorder.start();
-      setIsRecording(true);
+
+      setStatus("recording");
     } catch {
       sendNotification({
         type: "error",
@@ -157,17 +170,17 @@ export function useVoiceTranscriberService({
         description: "Please allow microphone access and try again.",
       });
     }
-  }, [isRecording, sendNotification, startLevelMetering]);
+  }, [sendNotification, startLevelMetering, status]);
 
-  const finalizeRecordingHold = useCallback(
+  const finalizeRecordingTranscribeToInputBar = useCallback(
     async (file: File) => {
       const form = new FormData();
       form.append("file", file);
 
-      const resp = await fetch(
-        `/api/w/${owner.sId}/services/transcribe?stream=true`,
-        { method: "POST", body: form }
-      );
+      const resp = await fetch(`/api/w/${owner.sId}/services/transcribe`, {
+        method: "POST",
+        body: form,
+      });
 
       if (!resp.ok) {
         const msg = await resp.text();
@@ -195,17 +208,11 @@ export function useVoiceTranscriberService({
         onTranscribeDelta,
         onTranscribeComplete,
       });
-
-      sendNotification({
-        type: "success",
-        title: "Voice recorded.",
-        description: "Audio sent for transcription.",
-      });
     },
     [onTranscribeDelta, onTranscribeComplete, owner.sId, sendNotification]
   );
 
-  const finalizeRecordingClick = useCallback(
+  const finalizeRecordingAddAsAttachment = useCallback(
     async (file: File) => {
       await fileUploaderService.handleFilesUpload([file]);
       sendNotification({
@@ -217,64 +224,55 @@ export function useVoiceTranscriberService({
     [fileUploaderService, sendNotification]
   );
 
-  const stopAndFinalize = useCallback(
-    async (mode: Mode) => {
-      setIsRecording(false);
-      setIsTranscribing(true);
+  const stopAndFinalize = useCallback(async () => {
+    setStatus("transcribing");
 
-      try {
-        const file = buildAudioFile(chunksRef.current);
-        chunksRef.current = [];
+    try {
+      const file = buildAudioFile(chunksRef.current);
+      chunksRef.current = [];
 
-        if (mode === "transcribe") {
-          await finalizeRecordingHold(file);
-        } else {
-          await finalizeRecordingClick(file);
-        }
-      } catch (e) {
-        sendNotification({
-          type: "error",
-          title: "Recording error.",
-          description:
-            e instanceof Error ? e.message : "An unknown error occurred.",
-        });
-      } finally {
-        setIsTranscribing(false);
-        stopLevelMetering();
-        stopTracks(streamRef.current);
-        streamRef.current = null;
+      if (file.size <= MAXIMUM_FILE_SIZE_FOR_INPUT_BAR_IN_BYTES) {
+        await finalizeRecordingTranscribeToInputBar(file);
+      } else {
+        await finalizeRecordingAddAsAttachment(file);
       }
-    },
-    [
-      finalizeRecordingHold,
-      finalizeRecordingClick,
-      sendNotification,
-      stopLevelMetering,
-    ]
-  );
-
-  const stopRecording = useCallback(
-    async (mode: Mode) => {
-      const recorder = mediaRecorderRef.current;
-      if (!recorder || recorder.state === "inactive") {
-        return;
-      }
-
-      const stopped = new Promise<void>((resolve) => {
-        recorder.onstop = () => resolve();
+    } catch (e) {
+      sendNotification({
+        type: "error",
+        title: "Recording error.",
+        description:
+          e instanceof Error ? e.message : "An unknown error occurred.",
       });
+    } finally {
+      stopLevelMetering();
+      stopTracks(streamRef.current);
+      streamRef.current = null;
+    }
+  }, [
+    finalizeRecordingTranscribeToInputBar,
+    finalizeRecordingAddAsAttachment,
+    sendNotification,
+    stopLevelMetering,
+  ]);
 
-      recorder.stop();
-      await stopped;
-      await stopAndFinalize(mode);
-    },
-    [stopAndFinalize]
-  );
+  const stopRecording = useCallback(async () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state === "inactive") {
+      return;
+    }
 
-  return featureFlags.hasFeature("simple_audio_transcription")
+    const stopped = new Promise<void>((resolve) => {
+      recorder.onstop = () => resolve();
+    });
+
+    recorder.stop();
+    await stopped;
+    await stopAndFinalize();
+  }, [stopAndFinalize]);
+
+  return owner.metadata?.allowVoiceTranscription !== false
     ? {
-        isRecording,
-        isTranscribing,
+        status,
         level,
         elapsedSeconds,
         startRecording,
@@ -290,8 +288,7 @@ export type VoiceTranscriberService = ReturnType<
 // Helpers ---------------------------------------------------------------------
 
 const quackingVoiceTranscriptService = {
-  isRecording: false,
-  isTranscribing: false,
+  status: "idle",
   level: 0,
   elapsedSeconds: 0,
   startRecording: () => Promise.resolve(),

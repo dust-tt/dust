@@ -2,13 +2,11 @@ import * as t from "io-ts";
 import type { JSONSchema7 } from "json-schema";
 
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
-import type { SupportedModel } from "@app/types/assistant/assistant";
-import {
-  isSupportedModel,
-  ModelIdCodec,
-  ModelProviderIdCodec,
-  ReasoningEffortCodec,
-} from "@app/types/assistant/assistant";
+import { isSupportedModel } from "@app/types/assistant/assistant";
+import { ModelIdCodec } from "@app/types/assistant/models/models";
+import { ModelProviderIdCodec } from "@app/types/assistant/models/providers";
+import { ReasoningEffortCodec } from "@app/types/assistant/models/reasoning";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 import { createRangeCodec } from "@app/types/shared/utils/iots_utils";
 import { TimeframeUnitCodec } from "@app/types/shared/utils/time_frame";
 
@@ -49,8 +47,8 @@ export const GetAgentConfigurationsHistoryQuerySchema = t.type({
 
 const DataSourceFilterParentsCodec = t.union([
   t.type({
-    in: t.array(t.string),
-    not: t.array(t.string),
+    in: t.union([t.array(t.string), t.null]),
+    not: t.union([t.array(t.string), t.null]),
   }),
   t.null,
 ]);
@@ -203,7 +201,6 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     model: t.intersection([ModelConfigurationSchema, IsSupportedModelSchema]),
     actions: t.array(MCPServerActionConfigurationSchema),
     templateId: t.union([t.string, t.null, t.undefined]),
-    visualizationEnabled: t.boolean,
     tags: t.array(TagSchema),
     editors: t.array(EditorSchema),
   }),

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{info, warn};
 
-use crate::databases::csv::MAX_TABLE_COLUMNS;
+use crate::databases::csv::{MAX_COLUMN_NAME_LENGTH, MAX_TABLE_COLUMNS};
 use crate::databases::table_upserts_background_worker::{
     TableUpsertActivityData, REDIS_CLIENT, REDIS_LOCK_TTL_SECONDS, REDIS_TABLE_UPSERT_HASH_NAME,
     REDIS_URI,
@@ -199,6 +199,9 @@ impl Table {
     pub fn timestamp(&self) -> u64 {
         self.timestamp
     }
+    pub fn is_schema_stale(&self) -> bool {
+        self.schema_stale_at.is_some()
+    }
     pub fn schema_cached(&self) -> Option<&TableSchema> {
         self.schema.as_ref()
     }
@@ -232,6 +235,7 @@ impl Table {
     }
     pub fn set_schema(&mut self, schema: TableSchema) {
         self.schema = Some(schema);
+        self.schema_stale_at = None;
     }
     pub fn set_remote_database_secret_id(&mut self, remote_database_secret_id: String) {
         self.remote_database_secret_id = Some(remote_database_secret_id);
@@ -390,8 +394,12 @@ impl LocalTable {
         let rows = Arc::new(rows);
 
         let now = utils::now();
-        // Validate that all rows keys are lowercase. We run it in a spawn_blocking since it is CPU
+        // Validate a few things about the rows. We run it in a spawn_blocking since it is CPU
         // bound (even if running fast for resaonably sized tables);
+        // We check:
+        // - that rows don't start with an uppercase character
+        // - that no row has more than MAX_TABLE_COLUMNS columns
+        // - that no header name is longer than MAX_COLUMN_NAME_LENGTH
         {
             let rows = rows.clone();
             tokio::task::spawn_blocking(move || {
@@ -405,16 +413,23 @@ impl LocalTable {
                         ))?;
                     }
 
-                    match row.value().keys().find(|key| match key.chars().next() {
-                        Some(c) => c.is_ascii_uppercase(),
-                        None => false,
-                    }) {
-                        Some(key) => Err(anyhow!(
-                            "Row {} has a key '{}' that contains uppercase characters",
-                            row_index,
-                            key
-                        ))?,
-                        None => (),
+                    for header in row.headers.iter() {
+                        if let Some(first_char) = header.chars().next() {
+                            if first_char.is_ascii_uppercase() {
+                                return Err(anyhow!(
+                                    "Column name '{}' starts with an uppercase character",
+                                    header
+                                ));
+                            }
+                        }
+
+                        if header.len() > MAX_COLUMN_NAME_LENGTH {
+                            return Err(anyhow!(
+                                "Column name '{}' is longer than maximum allowed length ({})",
+                                header,
+                                MAX_COLUMN_NAME_LENGTH
+                            ));
+                        }
                     }
                 }
                 Ok::<_, anyhow::Error>(())
@@ -425,6 +440,7 @@ impl LocalTable {
             duration = utils::now() - now,
             table_id = self.table.table_id(),
             row_count = rows.len(),
+            first_row_id = rows.get(0).map(|row| row.row_id()).unwrap_or(""),
             truncate,
             "DSSTRUCTSTAT [upsert_rows] validation"
         );
@@ -756,27 +772,22 @@ impl LocalTable {
         &self,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
     ) -> Result<TableSchema> {
-        let mut schema: TableSchema = TableSchema::empty();
-        let limit = 500;
-        let mut offset = 0;
-        loop {
-            let (rows, total) = self
-                .list_rows(databases_store.clone(), Some((limit, offset)))
-                .await?;
-
-            let rows = Arc::new(rows);
-            if offset == 0 {
-                schema = TableSchema::from_rows_async(rows.clone()).await?;
-            } else {
-                schema = schema.merge(&TableSchema::from_rows_async(rows.clone()).await?)?;
-            }
-
-            offset += limit;
-            if offset >= total {
-                break;
-            }
-        }
-
+        let mut now = utils::now();
+        let (rows, _) = self.list_rows(databases_store, None).await?;
+        let rows = Arc::new(rows);
+        info!(
+            duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            row_count = rows.len(),
+            "DSSTRUCTSTAT [compute_schema] list rows"
+        );
+        now = utils::now();
+        let schema = TableSchema::from_rows_async(rows).await?;
+        info!(
+            duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            "DSSTRUCTSTAT [compute_schema] compute schema"
+        );
         Ok(schema)
     }
 

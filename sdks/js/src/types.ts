@@ -5,7 +5,7 @@ import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
-import { NotificationContentCreationFileContentSchema } from "./output_schemas";
+import { NotificationInteractiveContentFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
 import { TIMEZONE_NAMES } from "./timezone_names";
 
@@ -30,6 +30,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "deepseek"
   | "fireworks"
   | "xai"
+  | "noop"
 >();
 
 const ModelLLMIdSchema = FlexibleEnumSchema<
@@ -40,20 +41,24 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gpt-4o-mini"
   | "gpt-4.1-2025-04-14"
   | "gpt-4.1-mini-2025-04-14"
+  | "gpt-5-nano"
+  | "gpt-5-mini"
   | "gpt-5"
   | "o1"
   | "o1-mini"
   | "o3"
   | "o3-mini"
   | "o4-mini"
-  | "claude-4-opus-20250514"
-  | "claude-4-sonnet-20250514"
-  | "claude-3-opus-20240229"
+  | "claude-3-5-haiku-20241022"
   | "claude-3-5-sonnet-20240620"
   | "claude-3-5-sonnet-20241022"
   | "claude-3-7-sonnet-20250219"
-  | "claude-3-5-haiku-20241022"
   | "claude-3-haiku-20240307"
+  | "claude-3-opus-20240229"
+  | "claude-4-opus-20250514"
+  | "claude-4-sonnet-20250514"
+  | "claude-haiku-4-5-20251001"
+  | "claude-sonnet-4-5-20250929"
   | "claude-2.1"
   | "claude-instant-1.2"
   | "mistral-large-latest"
@@ -80,13 +85,16 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "deepseek-ai/DeepSeek-R1" // togetherai
   | "deepseek-chat" // deepseek api
   | "deepseek-reasoner" // deepseek api
-  | "accounts/fireworks/models/deepseek-r1" // fireworks
+  | "accounts/fireworks/models/deepseek-r1-0528" // fireworks
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
   | "grok-3-fast-latest" // xAI
   | "grok-3-mini-fast-latest" // xAI
   | "grok-4-latest" // xAI
+  | "grok-4-fast-non-reasoning-latest"
+  | "grok-4-fast-reasoning-latest"
+  | "noop" // Noop
 >();
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
@@ -167,6 +175,7 @@ export const supportedOtherFileFormats = {
   "text/tab-separated-values": [".tsv"],
   "text/tsv": [".tsv"],
   "text/vnd.dust.attachment.slack.thread": [".txt"],
+  "text/vnd.dust.attachment.pasted": [".txt"],
   "text/html": [".html", ".htm", ".xhtml", ".xhtml+xml"],
   "text/xml": [".xml"],
   "text/calendar": [".ics"],
@@ -267,13 +276,11 @@ const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedAudioFileFormats
 >();
 
-const ContentCreationExecutableSchema = z.literal(
-  "application/vnd.dust.client-executable"
-);
+const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
 
 const ActionGeneratedFileContentTypeSchema = z.union([
   SupportedFileContentFragmentTypeSchema,
-  ContentCreationExecutableSchema,
+  FrameContentTypeSchema,
 ]);
 
 export function isSupportedFileContentType(
@@ -312,6 +319,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "n8n"
   | "raycast"
   | "slack"
+  | "teams"
   | "triggered"
   | "web"
   | "zapier"
@@ -363,6 +371,7 @@ const Timezone = z.string().refine((s) => TIMEZONE_NAMES.includes(s), {
 
 const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "confluence"
+  | "discord_bot"
   | "github"
   | "google_drive"
   | "intercom"
@@ -370,6 +379,7 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "slack"
   | "slack_bot"
   | "microsoft"
+  | "microsoft_bot"
   | "webcrawler"
   | "snowflake"
   | "zendesk"
@@ -635,7 +645,6 @@ export type RetrievalDocumentPublicType = z.infer<
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
-  | "advanced_search"
   | "agent_builder_instructions_autocomplete"
   | "agent_management_tool"
   | "agent_to_yaml"
@@ -649,17 +658,19 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
-  | "exploded_tables_query"
   | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
   | "google_sheets_tool"
   | "hootl_subscriptions"
   | "hootl_webhooks"
+  | "hootl_dev_webhooks"
   | "index_private_slack_channel"
-  | "interactive_content_server"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
+  | "microsoft_teams_bot"
+  | "microsoft_drive_mcp_server"
+  | "microsoft_teams_mcp_server"
   | "monday_tool"
   | "notion_private_integration"
   | "openai_o1_custom_assistants_feature"
@@ -670,6 +681,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "research_agent"
   | "salesforce_synced_queries"
   | "salesforce_tool"
+  | "salesforce_tool_write"
   | "show_debug_tools"
   | "slack_semantic_search"
   | "slack_bot_mcp"
@@ -677,9 +689,15 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_message_splitting"
   | "slideshow"
   | "usage_data_api"
-  | "use_openai_eu_key"
+  | "web_summarization"
   | "xai_feature"
-  | "simple_audio_transcription"
+  | "noop_model_feature"
+  | "discord_bot"
+  | "elevenlabs_tool"
+  | "agent_builder_observability"
+  | "legacy_dust_apps"
+  | "dust_default_haiku_feature"
+  | "llm_router_direct_requests"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -746,6 +764,8 @@ const ActionGeneratedFileSchema = z.object({
   snippet: z.string().nullable(),
   hidden: z.boolean().optional(),
 });
+
+export type ActionGeneratedFileType = z.infer<typeof ActionGeneratedFileSchema>;
 
 const AgentActionTypeSchema = z.object({
   id: ModelIdSchema,
@@ -822,10 +842,12 @@ const LightAgentConfigurationSchema = z.object({
   lastAuthors: AgentRecentAuthorsSchema.optional(),
   usage: AgentUsageTypeSchema.optional(),
   maxStepsPerRun: z.number(),
-  visualizationEnabled: z.boolean(),
+  // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
+  visualizationEnabled: z.boolean().optional(),
   templateId: z.string().nullable(),
   groupIds: z.array(z.string()).optional(),
   requestedGroupIds: z.array(z.array(z.string())),
+  requestedSpaceIds: z.array(z.string()),
 });
 
 export type LightAgentConfigurationType = z.infer<
@@ -922,9 +944,10 @@ const UserMessageContextSchema = z.object({
   email: z.string().optional().nullable(),
   profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
+  originMessageId: z.string().optional().nullable(),
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
   selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
-  lastTriggerRunAt: z.date().optional().nullable(),
+  lastTriggerRunAt: z.number().optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
@@ -962,6 +985,7 @@ const AgentMessageTypeSchema = z.object({
   visibility: VisibilitySchema,
   version: z.number(),
   parentMessageId: z.string().nullable(),
+  parentAgentMessageId: z.string().nullable(),
   configuration: LightAgentConfigurationSchema,
   status: AgentMessageStatusSchema,
   actions: z.array(AgentActionTypeSchema),
@@ -1144,7 +1168,7 @@ const NotificationStoreResourceContentSchema = z.object({
 });
 
 const NotificationContentSchema = z.union([
-  NotificationContentCreationFileContentSchema,
+  NotificationInteractiveContentFileContentSchema,
   NotificationImageContentSchema,
   NotificationRunAgentChainOfThoughtSchema,
   NotificationRunAgentContentSchema,
@@ -1242,7 +1266,7 @@ export function isMCPServerPersonalAuthRequiredError(
   return (
     error.code === "mcp_server_personal_authentication_required" &&
     error.metadata &&
-    "mcpServerId" in error.metadata
+    "mcp_server_id" in error.metadata
   );
 }
 
@@ -1929,7 +1953,7 @@ export type PublicPostMessagesRequestBody = z.infer<
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;
-  agentMessages?: AgentMessagePublicType[];
+  agentMessages: AgentMessagePublicType[];
 };
 
 export const PublicPostEditMessagesRequestBodySchema = z.object({
@@ -2291,6 +2315,13 @@ const PostParentsResponseSchema = z.object({
 });
 export type PostParentsResponseType = z.infer<typeof PostParentsResponseSchema>;
 
+const CheckUpsertQueueResponseSchema = z.object({
+  running_count: z.number(),
+});
+export type CheckUpsertQueueResponseType = z.infer<
+  typeof CheckUpsertQueueResponseSchema
+>;
+
 const GetDocumentsResponseSchema = z.object({
   documents: z.array(CoreAPIDocumentSchema),
   total: z.number(),
@@ -2598,13 +2629,14 @@ export type FileUploadedRequestResponseType = z.infer<
   typeof FileUploadedRequestResponseSchema
 >;
 
-export const PublicFileResponseBodySchema = z.object({
+export const PublicFrameResponseBodySchema = z.object({
   content: z.string().optional(),
   file: FileTypeSchema,
+  conversationUrl: z.string().nullable(),
 });
 
-export type PublicFileResponseBodyType = z.infer<
-  typeof PublicFileResponseBodySchema
+export type PublicFrameResponseBodyType = z.infer<
+  typeof PublicFrameResponseBodySchema
 >;
 
 export const MembershipOriginType = FlexibleEnumSchema<
@@ -2756,6 +2788,7 @@ const OAuthProviderSchema = FlexibleEnumSchema<
   | "hubspot"
   | "mcp"
   | "mcp_static"
+  | "discord"
 >();
 
 const InternalAllowedIconSchema = FlexibleEnumSchema<
@@ -2763,6 +2796,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionCloudArrowLeftRightIcon"
   | "ActionDocumentTextIcon"
   | "ActionEmotionLaughIcon"
+  | "ActionFrameIcon"
   | "ActionGitBranchIcon"
   | "ActionGlobeAltIcon"
   | "ActionImageIcon"
@@ -2779,13 +2813,16 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "DriveLogo"
   | "GcalLogo"
   | "GithubLogo"
+  | "GitlabLogo"
   | "GmailLogo"
   | "GoogleSpreadsheetLogo"
   | "FreshserviceLogo"
   | "HubspotLogo"
-  | "OutlookLogo"
+  | "MicrosoftOutlookLogo"
+  | "MicrosoftTeamsLogo"
   | "JiraLogo"
   | "LinearLogo"
+  | "MicrosoftLogo"
   | "MondayLogo"
   | "NotionLogo"
   | "SalesforceLogo"
@@ -2839,6 +2876,7 @@ const CustomServerIconSchema = FlexibleEnumSchema<
   | "ActionExternalLinkIcon"
   | "ActionEyeIcon"
   | "ActionEyeSlashIcon"
+  | "ActionFrameIcon"
   | "ActionFilmIcon"
   | "ActionFilterIcon"
   | "ActionFingerprintIcon"
@@ -3083,6 +3121,7 @@ export type SearchWarningCode = z.infer<typeof SearchWarningCodeSchema>;
 export const PostWorkspaceSearchResponseBodySchema = z.object({
   nodes: DataSourceContentNodeSchema.array(),
   warningCode: SearchWarningCodeSchema.optional().nullable(),
+  resultsCount: z.number().optional().nullable(),
 });
 
 export type PostWorkspaceSearchResponseBodyType = z.infer<

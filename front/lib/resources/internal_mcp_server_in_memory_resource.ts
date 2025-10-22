@@ -127,16 +127,14 @@ export class InternalMCPServerInMemoryResource {
       useCase: MCPOAuthUseCase | null;
     }
   ) {
-    const canAdministrate =
-      await SpaceResource.canAdministrateSystemSpace(auth);
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
-    if (!canAdministrate) {
+    if (!systemSpace.canAdministrate(auth)) {
       throw new DustError(
         "unauthorized",
         "The user is not authorized to create an internal MCP server"
       );
     }
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
     let sid: string | null = null;
 
@@ -268,12 +266,14 @@ export class InternalMCPServerInMemoryResource {
     return new Ok(1);
   }
 
-  static async fetchById(auth: Authenticator, id: string) {
+  static async fetchById(
+    auth: Authenticator,
+    id: string,
+    systemSpace: SpaceResource
+  ) {
     // Fast path : Do not check for default internal MCP servers as they are always available.
     const availability = getAvailabilityOfInternalMCPServerById(id);
     if (availability === "manual") {
-      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-
       const server = await MCPServerViewModel.findOne({
         attributes: ["internalMCPServerId"],
         where: {

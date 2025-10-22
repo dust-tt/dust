@@ -7,16 +7,35 @@ import type {
   AgentMessageEvents,
   ConversationEvents,
 } from "@app/lib/api/assistant/streaming/types";
+import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type {
   AgentMessageNewEvent,
-  AgentMessageWithRankType,
+  AgentMessageType,
   ConversationType,
   UserMessageNewEvent,
-  UserMessageWithRankType,
+  UserMessageType,
 } from "@app/types";
 import { assertNever } from "@app/types";
 
+/**
+ * Generic event publication interface.
+ */
+export async function publishEvent({
+  origin,
+  channel,
+  event,
+}: {
+  origin: RedisUsageTagsType;
+  channel: string;
+  event: string;
+}) {
+  await getRedisHybridManager().publish(channel, event, origin);
+}
+
+/**
+ * Conversation event publication interface.
+ */
 export async function publishConversationEvent(
   event: ConversationEvents,
   {
@@ -34,11 +53,14 @@ export async function publishConversationEvent(
     JSON.stringify(event),
     "user_message_events",
     // Conversation & message initial states are setup before starting to listen to events so we really care about getting new events.
-    // We are setting a low value to accomodate for reconnections to the event stream.
+    // We are setting a low value to accommodate for reconnections to the event stream.
     5
   );
 }
 
+/**
+ * Message event publication interface.
+ */
 async function publishMessageEvent(
   event: AgentMessageEvents,
   {
@@ -122,8 +144,8 @@ export async function publishConversationRelatedEvent(
 
 export async function publishMessageEventsOnMessagePostOrEdit(
   conversation: ConversationType,
-  userMessage: UserMessageWithRankType,
-  agentMessages: AgentMessageWithRankType[]
+  userMessage: UserMessageType,
+  agentMessages: AgentMessageType[]
 ) {
   const userMessageEvent: UserMessageNewEvent = {
     type: "user_message_new",
@@ -160,7 +182,7 @@ export async function publishMessageEventsOnMessagePostOrEdit(
 
 export async function publishAgentMessageEventOnMessageRetry(
   conversation: ConversationType,
-  agentMessage: AgentMessageWithRankType
+  agentMessage: AgentMessageType
 ) {
   const agentMessageEvent: AgentMessageNewEvent = {
     type: "agent_message_new",

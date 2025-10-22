@@ -11,11 +11,11 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import cronstrue from "cronstrue";
-import uniqueId from "lodash/uniqueId";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -33,6 +33,8 @@ import { assertNever } from "@app/types";
 
 const scheduleFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
+  enabled: z.boolean().default(true),
+  naturalLanguageDescription: z.string().optional(),
   customPrompt: z.string(),
   cron: z.string().min(1, "Cron expression is required"),
   timezone: z.string().min(1, "Timezone is required"),
@@ -94,7 +96,9 @@ export function ScheduleEditionModal({
 
   const defaultValues: ScheduleFormData = {
     name: "Schedule",
+    enabled: true,
     cron: "",
+    naturalLanguageDescription: "",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     customPrompt: "",
   };
@@ -104,7 +108,6 @@ export function ScheduleEditionModal({
     defaultValues,
     disabled: !isEditor,
   });
-  const [naturalDescription, setNaturalDescription] = useState("");
   const [
     naturalDescriptionToCronRuleStatus,
     setNaturalDescriptionToCronRuleStatus,
@@ -114,6 +117,7 @@ export function ScheduleEditionModal({
     null
   );
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const textAsCronRule = useTextAsCronRule({
     workspace: owner,
   });
@@ -128,9 +132,13 @@ export function ScheduleEditionModal({
         : null;
     reset({
       name: trigger?.name ?? defaultValues.name,
+      enabled: trigger?.enabled ?? defaultValues.enabled,
       cron: scheduleConfig?.cron ?? defaultValues.cron,
       timezone: scheduleConfig?.timezone ?? defaultValues.timezone,
       customPrompt: trigger?.customPrompt ?? defaultValues.customPrompt,
+      naturalLanguageDescription:
+        trigger?.naturalLanguageDescription ??
+        defaultValues.naturalLanguageDescription,
     });
   }, [
     reset,
@@ -138,7 +146,9 @@ export function ScheduleEditionModal({
     defaultValues.cron,
     defaultValues.timezone,
     defaultValues.customPrompt,
+    defaultValues.naturalLanguageDescription,
     trigger,
+    defaultValues.enabled,
   ]);
 
   const cron = useWatch({
@@ -182,7 +192,8 @@ export function ScheduleEditionModal({
 
   const onSubmit = (data: ScheduleFormData) => {
     const triggerData: AgentBuilderTriggerType = {
-      sId: trigger?.sId ?? uniqueId(),
+      sId: trigger?.sId,
+      enabled: data.enabled,
       name: data.name.trim(),
       kind: "schedule",
       configuration: {
@@ -190,8 +201,9 @@ export function ScheduleEditionModal({
         timezone: data.timezone.trim(),
       },
       editor: trigger?.editor ?? user?.id ?? null,
+      naturalLanguageDescription: data.naturalLanguageDescription ?? null,
       customPrompt: data.customPrompt.trim() ?? null,
-      editorEmail: trigger?.editorEmail ?? user?.email,
+      editorName: trigger?.editorName ?? user?.fullName,
     };
 
     onSave(triggerData);
@@ -217,7 +229,7 @@ export function ScheduleEditionModal({
               You cannot edit this schedule. It is managed by{" "}
               <span className="font-semibold">
                 {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-                {trigger.editorEmail || "another user"}
+                {trigger.editorName || "another user"}
               </span>
               .
             </ContentMessage>
@@ -238,16 +250,42 @@ export function ScheduleEditionModal({
               </div>
 
               <div className="space-y-1">
+                <Label>Status</Label>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  When disabled, the trigger will not run.
+                </p>
+                <div className="flex flex-row items-center gap-2">
+                  <SliderToggle
+                    size="xs"
+                    disabled={!isEditor}
+                    selected={form.watch("enabled")}
+                    onClick={() => {
+                      if (!isEditor) {
+                        return;
+                      }
+                      form.setValue("enabled", !form.watch("enabled"));
+                    }}
+                  />
+                  {form.watch("enabled")
+                    ? "The trigger is currently enabled"
+                    : "The trigger is currently disabled"}
+                </div>
+              </div>
+
+              <div className="space-y-1">
                 <Label htmlFor="trigger-description">Scheduler</Label>
                 <TextArea
                   id="schedule-description"
                   placeholder='Describe when you want the agent to run in natural language. e.g. "run every day at 9 AM", or "Late afternoon on business days"...'
                   rows={3}
-                  value={naturalDescription}
+                  {...form.register("naturalLanguageDescription")}
                   disabled={!isEditor}
                   onChange={async (e) => {
+                    await form
+                      .register("naturalLanguageDescription")
+                      .onChange(e);
+
                     const txt = e.target.value;
-                    setNaturalDescription(txt);
                     setNaturalDescriptionToCronRuleStatus(
                       txt ? "loading" : "idle"
                     );
@@ -255,17 +293,31 @@ export function ScheduleEditionModal({
                       debounce(
                         debounceHandle,
                         async () => {
+                          // Cancel previous request
+                          if (abortControllerRef.current) {
+                            abortControllerRef.current.abort();
+                          }
+
+                          abortControllerRef.current = new AbortController();
+                          const signal = abortControllerRef.current.signal;
+
                           form.setValue("cron", "");
-                          try {
-                            const result = await textAsCronRule(txt);
-                            form.setValue("cron", result.cron);
-                            form.setValue("timezone", result.timezone);
-                            setGeneratedTimezone(result.timezone);
-                            setNaturalDescriptionToCronRuleStatus("idle");
-                          } catch (error) {
-                            setNaturalDescriptionToCronRuleStatus("error");
-                            setCronErrorMessage(extractErrorMessage(error));
-                            setGeneratedTimezone(null);
+                          const result = await textAsCronRule(txt, signal);
+
+                          // If the request was not aborted, we can update the form
+                          if (!signal.aborted) {
+                            if (result.isOk()) {
+                              form.setValue("cron", result.value.cron);
+                              form.setValue("timezone", result.value.timezone);
+                              setGeneratedTimezone(result.value.timezone);
+                              setNaturalDescriptionToCronRuleStatus("idle");
+                            } else {
+                              setNaturalDescriptionToCronRuleStatus("error");
+                              setCronErrorMessage(
+                                extractErrorMessage(result.error)
+                              );
+                              setGeneratedTimezone(null);
+                            }
                           }
                         },
                         500
@@ -274,6 +326,10 @@ export function ScheduleEditionModal({
                       if (debounceHandle.current) {
                         clearTimeout(debounceHandle.current);
                         debounceHandle.current = undefined;
+                      }
+                      if (abortControllerRef.current) {
+                        abortControllerRef.current.abort();
+                        abortControllerRef.current = null;
                       }
                     }
                   }}

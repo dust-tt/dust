@@ -7,16 +7,15 @@ import { FILESYSTEM_LIST_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
-  DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS,
   extractDataSourceIdFromNodeId,
-  getSearchNodesSortDirection,
   isDataSourceNodeId,
   makeQueryResourceForList,
 } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
 import {
   getAgentDataSourceConfigurations,
-  makeDataSourceViewFilter,
+  makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -49,7 +48,28 @@ const ListToolInputSchema = {
     ),
   dataSources:
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
-  ...DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS,
+  sortBy: z
+    .enum(["title", "timestamp"])
+    .optional()
+    .describe(
+      "Field to sort the results by. 'title' sorts alphabetically A-Z, 'timestamp' sorts by " +
+        "most recent first. If not specified, results are returned in the default order, which is " +
+        "folders first, then both documents and tables and alphabetically by title."
+    ),
+  limit: z
+    .number()
+    .optional()
+    .describe(
+      "Maximum number of results to return. Initial searches should use 10-20."
+    ),
+  nextPageCursor: z
+    .string()
+    .optional()
+    .describe(
+      "Cursor for fetching the next page of results. This parameter should only be used to fetch " +
+        "the next page of a previous search. The value should be exactly the 'nextPageCursor' from " +
+        "the previous search result."
+    ),
 };
 
 export function registerListTool(
@@ -74,7 +94,11 @@ export function registerListTool(
     ListToolInputSchema,
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_LIST_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
       async ({
         nodeId,
         dataSources,
@@ -94,6 +118,14 @@ export function registerListTool(
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
+        const authRes = await ensureAuthorizedDataSourceViews(
+          auth,
+          agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
+        );
+        if (authRes.isErr()) {
+          return new Err(authRes.error);
+        }
+
         const options = {
           cursor: nextPageCursor,
           limit,
@@ -111,7 +143,7 @@ export function registerListTool(
 
         if (!nodeId) {
           // When nodeId is null, search for data sources only.
-          const dataSourceViewFilter = makeDataSourceViewFilter(
+          const dataSourceViewFilter = makeCoreSearchNodesFilters(
             agentDataSourceConfigurations
           ).map((view) => ({
             ...view,
@@ -129,7 +161,11 @@ export function registerListTool(
           // If it's a data source node ID, extract the data source ID and list its root contents.
           const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
           if (!dataSourceId) {
-            return new Err(new MCPError("Invalid data source node ID format"));
+            return new Err(
+              new MCPError("Invalid data source node ID format", {
+                tracked: false,
+              })
+            );
           }
 
           const dataSourceConfig = agentDataSourceConfigurations.find(
@@ -144,7 +180,7 @@ export function registerListTool(
 
           searchResult = await coreAPI.searchNodes({
             filter: {
-              data_source_views: makeDataSourceViewFilter([dataSourceConfig]),
+              data_source_views: makeCoreSearchNodesFilters([dataSourceConfig]),
               node_ids: dataSourceConfig.filter.parents?.in ?? undefined,
               parent_id: dataSourceConfig.filter.parents?.in
                 ? undefined
@@ -155,7 +191,7 @@ export function registerListTool(
           });
         } else {
           // Regular node listing.
-          const dataSourceViewFilter = makeDataSourceViewFilter(
+          const dataSourceViewFilter = makeCoreSearchNodesFilters(
             agentDataSourceConfigurations
           );
 
@@ -170,7 +206,11 @@ export function registerListTool(
         }
 
         if (searchResult.isErr()) {
-          return new Err(new MCPError("Failed to list folder contents"));
+          return new Err(
+            new MCPError(
+              `Failed to list folder contents: ${searchResult.error.message}`
+            )
+          );
         }
 
         return new Ok([
@@ -193,4 +233,16 @@ export function registerListTool(
       }
     )
   );
+}
+
+function getSearchNodesSortDirection(
+  field: "title" | "timestamp"
+): "asc" | "desc" {
+  switch (field) {
+    case "title":
+      return "asc"; // Alphabetical A-Z.
+
+    case "timestamp":
+      return "desc"; // Most recent first.
+  }
 }

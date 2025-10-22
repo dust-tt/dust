@@ -35,7 +35,7 @@ types.setTypeParser(types.builtins.INT8, function (val: unknown) {
 const statsDClient = getStatsDClient();
 const CONNECTION_ACQUISITION_THRESHOLD_MS = 100;
 
-export const sequelizeConnection = new Sequelize(
+export const connectorsSequelize = new Sequelize(
   dbConfig.getRequiredDatabaseURI(),
   {
     pool: {

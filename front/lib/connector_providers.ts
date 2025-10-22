@@ -1,6 +1,7 @@
 import {
   BigQueryLogo,
   ConfluenceLogo,
+  DiscordLogo,
   DriveLogo,
   FolderIcon,
   GithubLogo,
@@ -91,6 +92,7 @@ export type ConnectorProviderConfiguration = {
     unselected: ConnectorPermission;
   };
   isDeletable: boolean;
+  isHiddenAsDataSource?: boolean;
 } & ConnectorPermissionsConfigurable;
 
 // TODO(slack 2025-06-19): Remove this function once the new app is published.
@@ -234,7 +236,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     permissionsDisabledPlaceholder: "N/A",
     description: "N/A",
     limitations: "N/A",
-    mismatchError: "N/A",
+    mismatchError: `You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
     guideLink: "https://docs.dust.tt/docs/slack-connection",
     selectLabel: "N/A",
     getLogoComponent: () => {
@@ -247,6 +249,31 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       unselected: "write",
     },
     isDeletable: false,
+    isHiddenAsDataSource: true,
+  },
+  discord_bot: {
+    name: "Discord (Bot)",
+    connectorProvider: "discord_bot",
+    status: "rolling_out",
+    hide: true,
+    isPermissionsConfigurableBlocked: true,
+    permissionsDisabledPlaceholder: "N/A",
+    description: "N/A",
+    limitations: "N/A",
+    mismatchError: "N/A",
+    guideLink: "https://docs.dust.tt/docs/discord-bot",
+    selectLabel: "N/A",
+    getLogoComponent: () => {
+      return DiscordLogo;
+    },
+    isNested: false,
+    isTitleFilterEnabled: true,
+    permissions: {
+      selected: "read_write",
+      unselected: "write",
+    },
+    isDeletable: false,
+    isHiddenAsDataSource: true,
   },
   github: {
     name: "GitHub",
@@ -313,12 +340,37 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
     ),
     isNested: true,
+    isTitleFilterEnabled: true,
     oauthExtraConfigComponent: MicrosoftOAuthExtraConfig,
     permissions: {
       selected: "read",
       unselected: "none",
     },
     isDeletable: false,
+  },
+  microsoft_bot: {
+    name: "Microsoft Teams (Bot)",
+    connectorProvider: "microsoft_bot",
+    status: "built",
+    rollingOutFlag: "microsoft_teams_bot",
+    hide: true,
+    description:
+      "Enable your Microsoft Teams bot integration to interact with Dust directly from Teams.",
+    limitations: "Bot must be enabled in organization settings.",
+    mismatchError: `You cannot select another Microsoft tenant.\nPlease contact us at support@dust.tt if you initially selected a wrong tenant.`,
+    guideLink: "https://docs.dust.tt/docs/microsoft-teams-bot",
+    selectLabel: "Bot configuration",
+    getLogoComponent: () => {
+      return MicrosoftLogo;
+    },
+    isNested: false,
+    oauthExtraConfigComponent: MicrosoftOAuthExtraConfig,
+    permissions: {
+      selected: "read_write",
+      unselected: "write",
+    },
+    isDeletable: false,
+    isHiddenAsDataSource: true,
   },
   webcrawler: {
     name: "Web Crawler",
@@ -503,11 +555,14 @@ export const isConnectorProviderAllowedForPlan = (
       return !!featureFlags?.includes("salesforce_synced_queries");
     case "microsoft":
     case "slack_bot":
+    case "discord_bot":
     case "snowflake":
     case "zendesk":
     case "bigquery":
     case "gong":
       return true;
+    case "microsoft_bot":
+      return !!featureFlags?.includes("microsoft_teams_bot");
     default:
       assertNever(provider);
   }
@@ -523,6 +578,7 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "google_drive":
     case "intercom":
     case "microsoft":
+    case "microsoft_bot":
     case "notion":
     case "slack":
     case "zendesk":
@@ -531,6 +587,7 @@ export const isConnectorProviderAssistantDefaultSelected = (
     // Remote database connectors are not available for semantic search so it makes no sense to select them by default
     case "bigquery":
     case "slack_bot":
+    case "discord_bot":
     case "salesforce":
     case "snowflake":
     case "webcrawler":
@@ -574,6 +631,7 @@ export function isConnectorTypeTrackable(
     case "github":
     case "notion":
     case "microsoft":
+    case "microsoft_bot":
     case "confluence":
     case "intercom":
     case "webcrawler":
@@ -585,6 +643,7 @@ export function isConnectorTypeTrackable(
       return true;
     case "slack":
     case "slack_bot":
+    case "discord_bot":
       return false;
     default:
       assertNever(connectorType);

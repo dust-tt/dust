@@ -14,9 +14,9 @@ import type {
 import assert from "assert";
 import { Op, Sequelize } from "sequelize";
 
+import { findMatchingChannelPatterns } from "@connectors/connectors/slack/auto_read_channel";
 import {
   getBotUserIdMemoized,
-  getUserCacheKey,
   shouldIndexSlackMessage,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
@@ -45,7 +45,6 @@ import {
 } from "@connectors/connectors/slack/lib/utils";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { cacheSet } from "@connectors/lib/cache";
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
@@ -103,7 +102,9 @@ export async function syncChannel(
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    rejectOnRateLimit: false,
+  });
 
   const remoteChannel = await withSlackErrorHandling(() =>
     getChannelById(slackClient, connectorId, channelId)
@@ -302,7 +303,9 @@ export async function getMessagesForChannel(
   limit = 100,
   nextCursor?: string
 ): Promise<ConversationsHistoryResponse> {
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    rejectOnRateLimit: false,
+  });
 
   reportSlackUsage({
     connectorId,
@@ -773,7 +776,9 @@ export async function syncThread(
     throw new Error(`Connector ${connectorId} not found`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    rejectOnRateLimit: false,
+  });
 
   let allMessages: MessageElement[] = [];
 
@@ -970,36 +975,6 @@ export async function syncThread(
     mimeType: INTERNAL_MIME_TYPES.SLACK.THREAD,
     async: true,
   });
-}
-
-export async function fetchUsers(connectorId: ModelId) {
-  let cursor: string | undefined;
-  const slackClient = await getSlackClient(connectorId);
-  do {
-    reportSlackUsage({
-      connectorId,
-      method: "users.list",
-      limit: 100,
-    });
-    const res = await withSlackErrorHandling(() =>
-      slackClient.users.list({
-        cursor: cursor,
-        limit: 100,
-      })
-    );
-    if (res.error) {
-      throw new Error(`Failed to fetch users: ${res.error}`);
-    }
-    if (!res.members) {
-      throw new Error(`Failed to fetch users: members is undefined`);
-    }
-    for (const member of res.members) {
-      if (member.id && member.name) {
-        await cacheSet(getUserCacheKey(member.id, connectorId), member.name);
-      }
-    }
-    cursor = res.response_metadata?.next_cursor;
-  } while (cursor);
 }
 
 export async function saveSuccessSyncActivity(connectorId: ModelId) {
@@ -1226,6 +1201,14 @@ export async function attemptChannelJoinActivity(
   connectorId: ModelId,
   channelId: string
 ) {
+  logger.info(
+    {
+      connectorId,
+      channelId,
+    },
+    "Attempting to join channel"
+  );
+
   const res = await joinChannel(connectorId, channelId);
 
   if (res.isErr()) {
@@ -1299,7 +1282,7 @@ export async function migrateChannelsFromLegacyBotToNewBotActivity(
 export async function autoReadChannelActivity(
   connectorId: ModelId,
   channelId: string
-): Promise<void> {
+): Promise<boolean> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -1338,13 +1321,22 @@ export async function autoReadChannelActivity(
   }
 
   const { autoReadChannelPatterns } = slackConfiguration;
-  const matchingPatterns = autoReadChannelPatterns.filter((pattern) => {
-    const regex = new RegExp(`^${pattern.pattern}$`);
-    return regex.test(channelName);
-  });
+  const matchingPatterns = findMatchingChannelPatterns(
+    channelName,
+    autoReadChannelPatterns
+  );
 
   if (matchingPatterns.length === 0) {
-    return;
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        channelName,
+        autoReadChannelPatterns,
+      },
+      "Channel does not match any auto-read patterns, skipping."
+    );
+    return false;
   }
 
   const provider = connector.type as "slack" | "slack_bot";
@@ -1371,7 +1363,7 @@ export async function autoReadChannelActivity(
 
   // For slack_bot context, only do the basic channel setup without data source operations
   if (provider === "slack_bot") {
-    return;
+    return true;
   }
 
   // Slack context: perform full data source operations
@@ -1467,4 +1459,6 @@ export async function autoReadChannelActivity(
   if (firstError && firstError.isErr()) {
     throw firstError.error;
   }
+
+  return true;
 }

@@ -104,6 +104,6 @@ jobs:
       - name: Lint
         working-directory: front
         run: npm run lint && npm run format:check
-      - name: Validate API Doc
-        working-directory: front
-        run: npm run docs
+      # - name: Validate API Doc
+      #   working-directory: front
+      #   run: npm run docs

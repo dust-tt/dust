@@ -7,7 +7,7 @@ import {
   getMcpServerViewDisplayName,
   mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
@@ -98,19 +98,23 @@ function getGroupedMCPServerViews({
 
   const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
     groupBy(mcpServerViewsWithLabel, (view) => {
-      const toolsConfigurations = getMCPServerToolsConfigurations(view);
+      const {
+        requiresDataSourceConfiguration,
+        requiresDataWarehouseConfiguration,
+        requiresTableConfiguration,
+      } = getMCPServerRequirements(view);
 
-      // Special handling for content_creation server:
-      // The content_creation server includes list and cat tools for convenience, but its primary purpose is
+      // Special handling for interactive_content server:
+      // The interactive_content server includes list and cat tools for convenience, but its primary purpose is
       // not data source operations. We don't want it to be classified as requiring knowledge.
-      const isContentCreationServer = view.server.name === "content_creation";
+      const isInteractiveContentServer =
+        view.server.name === "interactive_content";
 
       const isWithKnowledge =
-        !isContentCreationServer &&
-        (toolsConfigurations.dataSourceConfiguration ??
-          toolsConfigurations.dataWarehouseConfiguration ??
-          toolsConfigurations.tableConfiguration ??
-          false);
+        !isInteractiveContentServer &&
+        (requiresDataSourceConfiguration ||
+          requiresDataWarehouseConfiguration ||
+          requiresTableConfiguration);
 
       return isWithKnowledge
         ? "mcpServerViewsWithKnowledge"

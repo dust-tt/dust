@@ -79,7 +79,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     this.remoteToolsMetadata = includes?.remoteToolsMetadata;
   }
 
-  private async init(auth: Authenticator): Promise<Result<void, DustError>> {
+  private async init(
+    auth: Authenticator,
+    systemSpace: SpaceResource
+  ): Promise<Result<void, DustError>> {
     if (this.remoteMCPServerId) {
       const remoteServer = await RemoteMCPServerResource.findByPk(
         auth,
@@ -101,7 +104,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     if (this.internalMCPServerId) {
       const internalServer = await InternalMCPServerInMemoryResource.fetchById(
         auth,
-        this.internalMCPServerId
+        this.internalMCPServerId,
+        systemSpace
       );
       if (!internalServer) {
         return new Err(
@@ -157,8 +161,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     );
 
     const resource = new this(MCPServerViewResource.model, server.get(), space);
-
-    const r = await resource.init(auth);
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+    const r = await resource.init(auth, systemSpace);
     if (r.isErr()) {
       throw r.error;
     }
@@ -256,10 +260,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     if (options.includeDeleted) {
       filteredViews.push(...views);
     } else {
+      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
       await concurrentExecutor(
         views,
         async (view) => {
-          const r = await view.init(auth);
+          const r = await view.init(auth, systemSpace);
           if (r.isOk()) {
             filteredViews.push(view);
           }
@@ -339,12 +344,19 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     spaces: SpaceResource[],
     options?: ResourceFindOptions<MCPServerViewModel>
   ): Promise<MCPServerViewResource[]> {
+    // Filter out spaces that the user does not have read or administrate access to
+    const accessibleSpaces = spaces.filter((s) =>
+      s.canReadOrAdministrate(auth)
+    );
+    if (accessibleSpaces.length === 0) {
+      return [];
+    }
     return this.baseFetch(auth, {
       ...options,
       where: {
         ...options?.where,
         workspaceId: auth.getNonNullableWorkspace().id,
-        vaultId: spaces.map((s) => s.id),
+        vaultId: accessibleSpaces.map((s) => s.id),
       },
       order: [["id", "ASC"]],
     });

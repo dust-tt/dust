@@ -163,7 +163,8 @@ export async function getWorkOSSessionFromCookie(
         };
       } else {
         return {
-          cookie: "",
+          // Return the previous cookie in case it fails.
+          cookie: workOSSessionCookie,
           session: undefined,
         };
       }
@@ -183,7 +184,6 @@ export async function getWorkOSSessionFromCookie(
           family_name: r.user.lastName ?? "",
           given_name: r.user.firstName ?? "",
           nickname: getUserNicknameFromEmail(r.user.email) ?? "",
-          auth0Sub: null,
           workOSUserId: r.user.id,
         },
         organizationId,
@@ -194,8 +194,10 @@ export async function getWorkOSSessionFromCookie(
     };
   } catch (error) {
     logger.error({ error }, "Session authentication error");
+
     return {
-      cookie: "",
+      // In case WorkOS fails, do not clear the cookie.
+      cookie: undefined,
       session: undefined,
     };
   }

@@ -7,6 +7,7 @@ import { getFaviconUrl } from "@app/lib/utils/favicon";
 import { rand } from "@app/lib/utils/seeded_random";
 import type {
   AgentMessageType,
+  AllSupportedFileContentType,
   CitationType,
   LightAgentMessageType,
 } from "@app/types";
@@ -69,6 +70,7 @@ export function getCitationsFromActions(
       href: d.uri,
       title: d.text,
       provider: d.source.provider ?? "document",
+      contentType: d.mimeType,
     };
   });
 
@@ -86,6 +88,7 @@ export function getCitationsFromActions(
       title: d.resource.title,
       provider: "webcrawler",
       ...(faviconUrl && { faviconUrl }),
+      contentType: d.resource.mimeType,
     };
   });
 
@@ -110,6 +113,7 @@ export function getCitationsFromActions(
           title: citation.title,
           provider: citation.provider,
           ...(faviconUrl && { faviconUrl }),
+          contentType: citation.mimeType as AllSupportedFileContentType,
         };
       });
     }
@@ -129,8 +133,11 @@ export function getLightAgentMessageFromAgentMessage(
     type: "agent_message",
     sId: agentMessage.sId,
     created: agentMessage.created,
+    completedTs: agentMessage.completedTs,
     version: agentMessage.version,
+    rank: agentMessage.rank,
     parentMessageId: agentMessage.parentMessageId,
+    parentAgentMessageId: agentMessage.parentAgentMessageId,
     content: agentMessage.content,
     chainOfThought: agentMessage.chainOfThought,
     error: agentMessage.error,
@@ -141,7 +148,9 @@ export function getLightAgentMessageFromAgentMessage(
       pictureUrl: agentMessage.configuration.pictureUrl,
       status: agentMessage.configuration.status,
       canRead: agentMessage.configuration.canRead,
+      // TODO(2025-10-17 thomas): Remove requestedGroupIds.
       requestedGroupIds: agentMessage.configuration.requestedGroupIds,
+      requestedSpaceIds: agentMessage.configuration.requestedSpaceIds,
     },
     citations: getCitationsFromActions(agentMessage.actions),
     generatedFiles: agentMessage.actions

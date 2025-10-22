@@ -4,10 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { findAgentsInMessage } from "@app/lib/utils/find_agents_in_message";
-import {
-  transcribeFile,
-  transcribeStream,
-} from "@app/lib/utils/transcribe_service";
+import { transcribeStream } from "@app/lib/utils/transcribe_service";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -64,28 +61,8 @@ async function handler(
     });
   }
   const file = maybeFiles[0];
-  const streamResponse = req.query.stream === "true" || false;
 
   try {
-    if (!streamResponse) {
-      const r = await transcribeFile(file);
-      if (r.isErr()) {
-        logger.error(
-          { err: r.error, wId },
-          "Transcription failed for uploaded file."
-        );
-        res.status(500).json({
-          error: {
-            type: "internal_server_error",
-            message: "Failed to transcribe file. Please try again later.",
-          },
-        });
-        return;
-      }
-      res.status(200).json({ text: r.value });
-      return;
-    }
-
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",

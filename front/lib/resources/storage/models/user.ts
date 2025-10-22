@@ -12,7 +12,6 @@ export class UserModel extends BaseModel<UserModel> {
   declare lastLoginAt: Date | null;
 
   declare sId: string;
-  declare auth0Sub: string | null;
   declare workOSUserId: string | null;
   declare provider: UserProviderType;
   declare providerId: string | null;
@@ -55,11 +54,6 @@ UserModel.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    auth0Sub: {
-      type: DataTypes.STRING,
-      // TODO(2024-03-01 flav) Set to false once new login flow is released.
-      allowNull: true,
-    },
     workOSUserId: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -100,10 +94,9 @@ UserModel.init(
     indexes: [
       { fields: ["username"] },
       { fields: ["provider", "providerId"] },
-      { fields: ["auth0Sub"], unique: true, concurrently: true },
       { fields: ["workOSUserId"], unique: true, concurrently: true },
       {
-        fields: ["lastLoginAt"],
+        fields: ["id"],
         concurrently: true,
         where: { lastLoginAt: { [Op.ne]: null } },
       },
@@ -144,7 +137,12 @@ UserMetadataModel.init(
   {
     modelName: "user_metadata",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["userId", "key"], unique: true }],
+    indexes: [
+      {
+        fields: ["userId", "key"],
+        unique: true,
+      },
+    ],
   }
 );
 UserModel.hasMany(UserMetadataModel, {

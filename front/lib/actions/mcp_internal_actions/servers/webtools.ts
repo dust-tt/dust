@@ -3,35 +3,43 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
+import {
+  generatePlainTextFile,
+  uploadFileToConversationDataSource,
+} from "@app/lib/actions/action_file_helpers";
+import { MAXED_OUTPUT_FILE_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { summarizeWithAgent } from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   browseUrls,
   isBrowseScrapeSuccessResponse,
 } from "@app/lib/utils/webbrowse";
 import { webSearch } from "@app/lib/utils/websearch";
-import { Err, Ok } from "@app/types";
+import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
 
 const BROWSE_MAX_TOKENS_LIMIT = 32_000;
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer(DEFAULT_WEBSEARCH_ACTION_NAME);
 
   server.tool(
@@ -56,7 +64,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: WEBSEARCH_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: WEBSEARCH_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
       async ({ query, page }) => {
         if (!agentLoopContext?.runContext) {
           throw new Error(
@@ -135,15 +147,164 @@ const createServer = (
         .boolean()
         .optional()
         .describe("If true, also retrieve outgoing links from the page."),
+      useSummary: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN
+      ]
+        .describe(
+          "Summarize web pages using an AI agent before returning content. When enabled, provides concise summaries instead of full page content."
+        )
+        .default({
+          value: false,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
+        }),
     },
     withToolLogging(
       auth,
-      { toolName: WEBBROWSER_TOOL_NAME, agentLoopContext },
-      async ({ urls, format = "markdown", screenshotMode = "none", links }) => {
+      {
+        toolNameForMonitoring: WEBBROWSER_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
+      async ({
+        urls,
+        format = "markdown",
+        screenshotMode = "none",
+        links,
+        useSummary,
+      }) => {
+        const useSummarization = useSummary?.value === true;
+
+        if (useSummarization && !agentLoopContext?.runContext) {
+          return new Err(
+            new MCPError("agentLoopContext is required for summarization")
+          );
+        }
+
+        const summaryAgentId = useSummarization
+          ? GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY
+          : null;
+
         const results = await browseUrls(urls, 8, format, {
           screenshotMode,
           links,
         });
+
+        if (
+          useSummarization &&
+          summaryAgentId &&
+          agentLoopContext?.runContext
+        ) {
+          const runCtx = agentLoopContext.runContext;
+          const conversationId = runCtx.conversation.sId;
+          const { citationsOffset, websearchResultCount } = runCtx.stepContext;
+          const refs = getRefs().slice(
+            citationsOffset,
+            citationsOffset + websearchResultCount
+          );
+
+          const perUrlContents = await concurrentExecutor(
+            results,
+            async (result) => {
+              const contentBlocks: CallToolResult["content"] = [];
+              let isSuccess = false;
+
+              if (!isBrowseScrapeSuccessResponse(result)) {
+                const errText = `Browse error (${result.status}) for ${result.url}: ${result.error}`;
+                contentBlocks.push({ type: "text", text: errText });
+                return { contentBlocks, isSuccess };
+              }
+
+              const { markdown, title } = result;
+              const fileContent = markdown ?? "";
+
+              const snippetRes = await summarizeWithAgent({
+                auth,
+                agentLoopRunContext: runCtx,
+                summaryAgentId,
+                content: fileContent,
+              });
+              if (snippetRes.isErr()) {
+                contentBlocks.push({
+                  type: "text",
+                  text: `Failed to summarize content for ${result.url}: ${snippetRes.error.message}`,
+                });
+                return { contentBlocks, isSuccess };
+              }
+
+              isSuccess = true;
+              const snippet = snippetRes.value.slice(
+                0,
+                MAXED_OUTPUT_FILE_SNIPPET_LENGTH
+              );
+
+              const baseTitle = title ?? result.url;
+              const fileTitle = `${baseTitle}`;
+              const file = await generatePlainTextFile(auth, {
+                title: fileTitle,
+                conversationId,
+                content: fileContent,
+                snippet,
+              });
+
+              await uploadFileToConversationDataSource({ auth, file });
+
+              contentBlocks.push({
+                type: "resource",
+                resource: {
+                  mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+                  fileId: file.sId,
+                  title: fileTitle,
+                  contentType: file.contentType,
+                  snippet,
+                  uri: file.getPublicUrl(auth),
+                  text: "Web page content archived as a file.",
+                  hidden: true,
+                },
+              });
+
+              const ref = refs.shift();
+              if (ref) {
+                contentBlocks.push({
+                  type: "resource",
+                  resource: {
+                    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT,
+                    title: title ?? result.url,
+                    text: `Full web page content available as file ${file.sId}`,
+                    uri: result.url,
+                    reference: ref,
+                  },
+                });
+              }
+
+              return { contentBlocks, isSuccess };
+            },
+            { concurrency: 8 }
+          );
+
+          const hasAnySuccess = perUrlContents.some(
+            (result) => result.isSuccess
+          );
+          if (!hasAnySuccess) {
+            return new Err(
+              new MCPError(
+                "All web browsing and summarization attempts failed",
+                {
+                  cause: new Error(
+                    perUrlContents
+                      .flatMap((result) =>
+                        result.contentBlocks.map((block) => block.text)
+                      )
+                      .join("\n")
+                  ),
+                }
+              )
+            );
+          }
+
+          return new Ok(
+            perUrlContents.flatMap((result) => result.contentBlocks)
+          );
+        }
 
         const toolContent: CallToolResult["content"] = [];
         for (const result of results) {
@@ -308,6 +469,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

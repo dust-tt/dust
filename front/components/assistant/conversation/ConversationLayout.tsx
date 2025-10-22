@@ -1,17 +1,15 @@
-import { cn, ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
+import { ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
-import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import {
   ConversationErrorDisplay,
   ErrorDisplay,
 } from "@app/components/assistant/conversation/ConversationError";
 import ConversationSidePanelContainer from "@app/components/assistant/conversation/ConversationSidePanelContainer";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import {
   ConversationsNavigationProvider,
   useConversationsNavigation,
@@ -48,21 +46,20 @@ export interface ConversationLayoutProps {
   isAdmin: boolean;
 }
 
-export default function ConversationLayout({
+export function ConversationLayout({
   children,
   pageProps,
 }: {
   children: React.ReactNode;
   pageProps: ConversationLayoutProps;
 }) {
-  const { baseUrl, owner, subscription, user, isAdmin } = pageProps;
+  const { owner, subscription, user, isAdmin } = pageProps;
 
   return (
     <ConversationsNavigationProvider
       initialConversationId={pageProps.conversationId}
     >
       <ConversationLayoutContent
-        baseUrl={baseUrl}
         owner={owner}
         subscription={subscription}
         user={user}
@@ -75,7 +72,6 @@ export default function ConversationLayout({
 }
 
 interface ConversationLayoutContentProps {
-  baseUrl: string;
   children: React.ReactNode;
   owner: LightWorkspaceType;
   subscription: SubscriptionType;
@@ -84,7 +80,6 @@ interface ConversationLayoutContentProps {
 }
 
 const ConversationLayoutContent = ({
-  baseUrl,
   children,
   owner,
   subscription,
@@ -93,7 +88,7 @@ const ConversationLayoutContent = ({
 }: ConversationLayoutContentProps) => {
   const router = useRouter();
   const { onOpenChange: onOpenChangeAssistantModal } =
-    useURLSheet("assistantDetails");
+    useURLSheet("agentDetails");
   const { activeConversationId } = useConversationsNavigation();
   const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
@@ -110,12 +105,12 @@ const ConversationLayoutContent = ({
   );
 
   const assistantSId = useMemo(() => {
-    const sid = router.query.assistantDetails ?? [];
+    const sid = router.query.agentDetails ?? [];
     if (isString(sid)) {
       return sid;
     }
     return null;
-  }, [router.query.assistantDetails]);
+  }, [router.query.agentDetails]);
 
   // Logic for the welcome tour guide. We display it if the welcome query param is set to true.
   const { startConversationRef, spaceMenuButtonRef, createAgentButtonRef } =
@@ -152,6 +147,7 @@ const ConversationLayoutContent = ({
             assistantId={assistantSId}
             onClose={() => onOpenChangeAssistantModal(false)}
           />
+
           <CoEditionProvider
             owner={owner}
             hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
@@ -159,7 +155,6 @@ const ConversationLayoutContent = ({
             <ConversationSidePanelProvider>
               <ConversationInnerLayout
                 activeConversationId={activeConversationId}
-                baseUrl={baseUrl}
                 conversation={conversation}
                 conversationError={conversationError}
                 owner={owner}
@@ -189,7 +184,6 @@ interface ConversationInnerLayoutProps {
   children: React.ReactNode;
   conversation: ConversationWithoutContentType | null;
   owner: LightWorkspaceType;
-  baseUrl: string;
   conversationError: ConversationError | null;
   activeConversationId: string | null;
 }
@@ -210,12 +204,9 @@ function ConversationInnerLayout({
   children,
   conversation,
   owner,
-  baseUrl,
   conversationError,
   activeConversationId,
 }: ConversationInnerLayoutProps) {
-  const { currentPanel } = useConversationSidePanelContext();
-
   return (
     <ErrorBoundary fallback={<UncaughtConversationErrorFallback />}>
       <div className="flex h-full w-full flex-col">
@@ -225,24 +216,13 @@ function ConversationInnerLayout({
         >
           <ResizablePanel defaultSize={100}>
             <div className="flex h-full flex-col">
-              {activeConversationId && (
-                <ConversationTitle owner={owner} baseUrl={baseUrl} />
-              )}
+              {activeConversationId && <ConversationTitle owner={owner} />}
               {conversationError ? (
                 <ConversationErrorDisplay error={conversationError} />
               ) : (
                 <FileDropProvider>
                   <GenerationContextProvider>
-                    <div
-                      id={CONVERSATION_VIEW_SCROLL_LAYOUT}
-                      className={cn(
-                        "dd-privacy-mask h-full overflow-y-auto overscroll-y-none scroll-smooth px-4",
-                        // Hide conversation on mobile when any panel is opened.
-                        currentPanel && "hidden md:block"
-                      )}
-                    >
-                      {children}
-                    </div>
+                    {children}
                   </GenerationContextProvider>
                 </FileDropProvider>
               )}

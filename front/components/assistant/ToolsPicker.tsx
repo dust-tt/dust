@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
   Icon,
   LoadingBlock,
+  ToolsIcon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -18,12 +19,9 @@ import {
   mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import {
-  useInternalMCPServerViewsFromSpaces,
-  useRemoteMCPServerViewsFromSpaces,
-} from "@app/lib/swr/mcp_servers";
+import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { WorkspaceType } from "@app/types";
 
@@ -33,10 +31,10 @@ function ToolsPickerLoading({ count = 5 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div key={`tools-picker-loading-${i}`} className="px-1 py-1">
           <div className="flex items-center gap-3 rounded-md p-2">
-            <LoadingBlock className="h-5 w-5 rounded-full" />
+            <LoadingBlock className="h-5 w-5 rounded-full dark:bg-muted-foreground-night" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <LoadingBlock className="h-4 w-[80%]" />
-              <LoadingBlock className="h-3 w-[60%]" />
+              <LoadingBlock className="h-4 w-[80%] dark:bg-muted-foreground-night" />
+              <LoadingBlock className="h-3 w-[60%] dark:bg-muted-foreground-night" />
             </div>
           </div>
         </div>
@@ -52,6 +50,7 @@ interface ToolsPickerProps {
   onDeselect: (serverView: MCPServerViewType) => void;
   isLoading?: boolean;
   disabled?: boolean;
+  buttonSize?: "xs" | "sm" | "md";
 }
 
 export function ToolsPicker({
@@ -61,6 +60,7 @@ export function ToolsPicker({
   onDeselect,
   isLoading = false,
   disabled = false,
+  buttonSize = "xs",
 }: ToolsPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -70,20 +70,12 @@ export function ToolsPicker({
     () => spaces.filter((s) => s.kind === "global"),
     [spaces]
   );
-  const { serverViews: autoServerViews, isLoading: isAutoServerViewsLoading } =
-    useInternalMCPServerViewsFromSpaces(
+  const { serverViews, isLoading: isServerViewsLoading } =
+    useMCPServerViewsFromSpaces(
       owner,
       globalSpaces,
       { disabled: !isOpen } // We don't want to fetch the server views when the picker is closed.
     );
-  const {
-    serverViews: manualServerViews,
-    isLoading: isManualServerViewsLoading,
-  } = useRemoteMCPServerViewsFromSpaces(
-    owner,
-    globalSpaces,
-    { disabled: !isOpen } // We don't want to fetch the server views when the picker is closed.
-  );
 
   const selectedMCPServerViewIds = useMemo(
     () => selectedMCPServerViews.map((v) => v.sId),
@@ -91,13 +83,9 @@ export function ToolsPicker({
   );
 
   const { filteredServerViews, filteredServerViewsUnselected } = useMemo(() => {
-    const filteredServerViews = [
-      ...autoServerViews,
-      ...manualServerViews,
-    ].filter(
+    const filteredServerViews = serverViews.filter(
       (v) =>
-        // Only tools that do not require any configuration can be enabled directly in a conversation.
-        getMCPServerToolsConfigurations(v).configurable !== "required" &&
+        isJITMCPServerView(v) &&
         (searchText.length === 0 ||
           getMcpServerViewDisplayName(v)
             .toLowerCase()
@@ -113,12 +101,7 @@ export function ToolsPicker({
         (v) => !selectedMCPServerViewIds.includes(v.sId)
       ),
     };
-  }, [
-    autoServerViews,
-    manualServerViews,
-    searchText,
-    selectedMCPServerViewIds,
-  ]);
+  }, [serverViews, searchText, selectedMCPServerViewIds]);
 
   return (
     <DropdownMenu
@@ -132,9 +115,9 @@ export function ToolsPicker({
     >
       <DropdownMenuTrigger asChild>
         <Button
-          icon={BoltIcon}
+          icon={ToolsIcon}
           variant="ghost-secondary"
-          size="xs"
+          size={buttonSize}
           tooltip="Tools"
           disabled={disabled || isLoading}
         />
@@ -177,7 +160,7 @@ export function ToolsPicker({
                 return (
                   <DropdownMenuItem
                     key={`tools-picker-${v.sId}`}
-                    icon={() => getAvatar(v.server, "xs")}
+                    icon={() => getAvatar(v.server)}
                     label={getMcpServerViewDisplayName(v)}
                     description={getMcpServerViewDescription(v)}
                     truncateText
@@ -200,7 +183,7 @@ export function ToolsPicker({
               />
             )}
           </>
-        ) : isAutoServerViewsLoading || isManualServerViewsLoading ? (
+        ) : isServerViewsLoading ? (
           <ToolsPickerLoading />
         ) : (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">

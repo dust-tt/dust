@@ -1,23 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
-import type { AssistantBuilderMCPOrVizState } from "@app/components/assistant_builder/types";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 import { getSpaceIdToActionsMap } from "./get_spaceid_to_actions_map";
-
-const createMockAction = (
-  id: string,
-  name: string
-): AssistantBuilderMCPOrVizState => ({
-  id,
-  type: "DATA_VISUALIZATION",
-  configuration: null,
-  name,
-  description: `Description for ${name}`,
-  configurable: false,
-});
 
 const createMockMCPAction = (
   id: string,
@@ -44,7 +31,7 @@ const createMockMCPAction = (
     _jsonSchemaString: null,
     secretName: null,
   },
-  configurable: true,
+  configurationRequired: true,
 });
 
 const createMockMCPServerView = (
@@ -113,26 +100,6 @@ describe("getSpaceIdToActionsMap", () => {
     it("should return empty object", () => {
       const result = getSpaceIdToActionsMap([], []);
       expect(result).toEqual({});
-    });
-  });
-
-  describe("DATA_VISUALIZATION actions", () => {
-    it("should not map DATA_VISUALIZATION actions to any space", () => {
-      const vizAction = createMockAction("viz1", "Viz Action");
-      const result = getSpaceIdToActionsMap([vizAction], []);
-      expect(result).toEqual({});
-    });
-
-    it("should ignore DATA_VISUALIZATION actions when mixed with MCP actions", () => {
-      const vizAction = createMockAction("viz1", "Viz Action");
-      const mcpAction = createMockMCPAction("mcp1", "MCP Action", "server1");
-      const result = getSpaceIdToActionsMap(
-        [vizAction, mcpAction],
-        [mcpServerView1]
-      );
-      expect(result).toEqual({
-        space1: [mcpAction],
-      });
     });
   });
 
@@ -406,29 +373,6 @@ describe("getSpaceIdToActionsMap", () => {
       const result = getSpaceIdToActionsMap([mcpAction1, mcpAction2], []);
       expect(result).toEqual({
         space1: [mcpAction1, mcpAction2],
-        space2: [mcpAction2],
-      });
-    });
-
-    it("should handle mixed action types and configurations", () => {
-      const vizAction = createMockAction("viz1", "Viz Action");
-      const dataSourceConfigs = {
-        config1: createMockDataSourceConfiguration("space2", "datasource1"),
-      };
-      const mcpAction1 = createMockMCPAction("mcp1", "MCP Action 1", "server1");
-      const mcpAction2 = createMockMCPAction(
-        "mcp2",
-        "MCP Action 2",
-        undefined,
-        dataSourceConfigs
-      );
-
-      const result = getSpaceIdToActionsMap(
-        [vizAction, mcpAction1, mcpAction2],
-        [mcpServerView1]
-      );
-      expect(result).toEqual({
-        space1: [mcpAction1],
         space2: [mcpAction2],
       });
     });

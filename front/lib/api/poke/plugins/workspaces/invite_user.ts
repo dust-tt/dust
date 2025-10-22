@@ -2,7 +2,13 @@ import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { isEmailValid } from "@app/lib/utils";
 import type { MembershipRoleType } from "@app/types";
-import { Err, mapToEnumValues, MEMBERSHIP_ROLE_TYPES, Ok } from "@app/types";
+import {
+  Err,
+  mapToEnumValues,
+  MEMBERSHIP_ROLE_TYPES,
+  Ok,
+  pluralize,
+} from "@app/types";
 
 export const inviteUser = createPlugin({
   manifest: {
@@ -14,7 +20,8 @@ export const inviteUser = createPlugin({
       email: {
         type: "string",
         label: "Email",
-        description: "Email of the user to invite",
+        description:
+          "Email(s) of the user(s) to invite (comma-separated for bulk invites)",
       },
       role: {
         type: "enum",
@@ -50,9 +57,24 @@ export const inviteUser = createPlugin({
       );
     }
 
-    const email = args.email.trim();
-    if (isEmailValid(email) === false) {
-      return new Err(new Error("Email address is invalid."));
+    // Parse comma-separated emails and trim whitespace.
+    const emails = args.email
+      .split(",")
+      .map((e) => e.trim())
+      .filter((e) => e.length > 0);
+
+    if (emails.length === 0) {
+      return new Err(new Error("At least one email address is required."));
+    }
+
+    // Validate all email addresses before proceeding.
+    const invalidEmails = emails.filter((email) => !isEmailValid(email));
+    if (invalidEmails.length > 0) {
+      return new Err(
+        new Error(
+          `Invalid email address${invalidEmails.length !== 1 ? "es" : ""}: ${invalidEmails.join(", ")}`
+        )
+      );
     }
 
     const invitationRes = await handleMembershipInvitations(auth, {
@@ -60,28 +82,42 @@ export const inviteUser = createPlugin({
       user: auth.getNonNullableUser().toJSON(),
       subscription,
       force: args.force,
-      invitationRequests: [
-        {
-          ...args,
-          role: args.role[0] as MembershipRoleType,
-          email,
-        },
-      ],
+      invitationRequests: emails.map((email) => ({
+        email,
+        role: args.role[0] as MembershipRoleType,
+      })),
     });
 
     if (invitationRes.isErr()) {
       return new Err(new Error(invitationRes.error.api_error.message));
     }
 
-    const [result] = invitationRes.value;
+    const successes = invitationRes.value.filter((r) => r.success);
+    const failures = invitationRes.value.filter((r) => !r.success);
 
-    if (!result.success) {
-      return new Err(new Error(result.error_message));
+    const results: string[] = [];
+
+    if (successes.length > 0) {
+      results.push(
+        `Successfully invited ${successes.length} user${pluralize(successes.length)}: ${successes.map((r) => r.email).join(", ")}`
+      );
+    }
+
+    if (failures.length > 0) {
+      results.push(
+        `Failed to invite ${failures.length} user${pluralize(failures.length)}:`,
+        ...failures.map((r) => `  - ${r.email}: ${r.error_message}`)
+      );
+    }
+
+    // Return an error if all invitations failed.
+    if (successes.length === 0) {
+      return new Err(new Error(results.join("\n")));
     }
 
     return new Ok({
       display: "text",
-      value: `Invitation sent to ${result.email}.`,
+      value: results.join("\n"),
     });
   },
 });

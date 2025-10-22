@@ -12,7 +12,13 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import React, { useContext, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
 import { confirmPrivateNodesSync } from "@app/components/data_source/ConnectorPermissionsModal";
@@ -20,6 +26,7 @@ import { RequestDataSourceModal } from "@app/components/data_source/RequestDataS
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import {
@@ -42,6 +49,8 @@ interface EditSpaceManagedDataSourcesViewsProps {
   owner: WorkspaceType;
   systemSpace: SpaceType;
   space: SpaceType;
+  shouldOpenModal?: boolean;
+  onOpenModalHandled?: () => void;
 }
 
 /*
@@ -55,6 +64,8 @@ export function EditSpaceManagedDataSourcesViews({
   owner,
   systemSpace,
   space,
+  shouldOpenModal,
+  onOpenModalHandled,
 }: EditSpaceManagedDataSourcesViewsProps) {
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
@@ -92,13 +103,18 @@ export function EditSpaceManagedDataSourcesViews({
   });
   const filterSystemSpaceDataSourceViews = useMemo(
     () =>
-      systemSpaceDataSourceViews.filter(
-        (dsv) =>
+      systemSpaceDataSourceViews.filter((dsv) => {
+        const connectorConfig = dsv.dataSource.connectorProvider
+          ? CONNECTOR_CONFIGURATIONS[dsv.dataSource.connectorProvider]
+          : null;
+
+        return (
           isManaged(dsv.dataSource) &&
           (!dataSourceView ||
             dsv.dataSource.sId === dataSourceView.dataSource.sId) &&
-          dsv.dataSource.connectorProvider !== "slack_bot"
-      ),
+          !connectorConfig?.isHiddenAsDataSource
+        );
+      }),
     [systemSpaceDataSourceViews, dataSourceView]
   );
 
@@ -279,6 +295,33 @@ export function EditSpaceManagedDataSourcesViews({
     await onSelectedDataUpdated();
   };
 
+  const openAddDataModal = useCallback(() => {
+    if (systemSpaceDataSourceViews.length === 0) {
+      setShowNoConnectionDialog(true);
+    } else {
+      setShowDataSourcesModal(true);
+    }
+  }, [systemSpaceDataSourceViews.length]);
+
+  useEffect(() => {
+    // If the modal should be opened (from query param for instance) we wait for the data to be loaded
+    // before opening it.
+    if (!shouldOpenModal) {
+      return;
+    }
+    if (isSystemSpaceDataSourceViewsLoading || isSpaceDataSourceViewsLoading) {
+      return;
+    }
+    openAddDataModal();
+    onOpenModalHandled?.();
+  }, [
+    shouldOpenModal,
+    isSystemSpaceDataSourceViewsLoading,
+    isSpaceDataSourceViewsLoading,
+    openAddDataModal,
+    onOpenModalHandled,
+  ]);
+
   if (isSystemSpaceDataSourceViewsLoading || isSpaceDataSourceViewsLoading) {
     return false;
   }
@@ -304,11 +347,7 @@ export function EditSpaceManagedDataSourcesViews({
       icon={PlusIcon}
       size="sm"
       onClick={() => {
-        if (systemSpaceDataSourceViews.length === 0) {
-          setShowNoConnectionDialog(true);
-        } else {
-          setShowDataSourcesModal(true);
-        }
+        openAddDataModal();
       }}
       disabled={isSavingDisabled}
     />

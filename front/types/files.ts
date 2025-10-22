@@ -31,11 +31,7 @@ export type FileUseCaseMetadata = {
   lastEditedByAgentConfigurationId?: string;
 };
 
-export const fileShareScopeSchema = z.enum([
-  "conversation_participants",
-  "workspace",
-  "public",
-]);
+export const fileShareScopeSchema = z.enum(["workspace", "public"]);
 
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 
@@ -72,7 +68,7 @@ export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
   code: 50 * 1024 * 1024, // 50MB.
   delimited: 50 * 1024 * 1024, // 50MB.
   image: 5 * 1024 * 1024, // 5 MB
-  audio: 25 * 1024 * 1024, // 25 MB
+  audio: 100 * 1024 * 1024, // 100 MB, audio files can be large, ex transcript of meetings
 };
 
 export function fileSizeToHumanReadable(size: number, decimals = 0) {
@@ -205,6 +201,12 @@ export const FILE_FORMATS = {
     exts: [".md", ".markdown"],
     isSafeToDisplay: true,
   },
+  // Internal content type for pasted text attachments in conversations.
+  "text/vnd.dust.attachment.pasted": {
+    cat: "data",
+    exts: [".txt"],
+    isSafeToDisplay: true,
+  },
   "text/vnd.dust.attachment.slack.thread": {
     cat: "data",
     exts: [".txt"],
@@ -317,18 +319,18 @@ export const FILE_FORMATS = {
   "audio/mpeg": {
     cat: "audio",
     exts: [".mp3", ".mp4"],
-    isSafeToDisplay: false,
+    isSafeToDisplay: true,
   },
   // In theory deprecated => https://mimetype.io/audio/x-m4a
   // But apple voice recordings use it.
   "audio/x-m4a": {
     cat: "audio",
     exts: [".m4a", ".mp4"],
-    isSafeToDisplay: false,
+    isSafeToDisplay: true,
   },
-  "audio/wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: false },
-  "audio/ogg": { cat: "audio", exts: [".ogg"], isSafeToDisplay: false },
-  "audio/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: false },
+  "audio/wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: true },
+  "audio/ogg": { cat: "audio", exts: [".ogg"], isSafeToDisplay: true },
+  "audio/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: true },
 
   // Unknown.
   "application/octet-stream": {
@@ -344,37 +346,35 @@ export const FILE_FORMATS = {
 // Define a type that is the list of all keys from FILE_FORMATS.
 export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 
-export const clientExecutableContentType =
-  "application/vnd.dust.client-executable";
+export const frameContentType = "application/vnd.dust.frame";
 
-// Content Creation MIME types for specialized use cases (not exposed via APIs).
-export const CONTENT_CREATION_FILE_FORMATS = {
-  // Custom for client-executable code files managed by content_creation MCP server.
+// Interactive Content MIME types for specialized use cases (not exposed via APIs).
+export const INTERACTIVE_CONTENT_FILE_FORMATS = {
+  // Custom for frame code files managed by interactive_content MCP server.
   // These files are internal-only and should not be exposed via APIs.
   // Limited to JavaScript/TypeScript files that can run in the browser.
-  [clientExecutableContentType]: {
+  [frameContentType]: {
     cat: "code",
     exts: [".js", ".jsx", ".ts", ".tsx"],
     isSafeToDisplay: true,
   },
 } as const satisfies Record<string, FileFormat>;
 
-export function isContentCreationContentType(contentType: string): boolean {
-  return Object.keys(CONTENT_CREATION_FILE_FORMATS).includes(contentType);
+export function isInteractiveContentContentType(contentType: string): boolean {
+  return Object.keys(INTERACTIVE_CONTENT_FILE_FORMATS).includes(contentType);
 }
 
-// Define a type for Content Creation file content types.
-export type ContentCreationFileContentType =
-  keyof typeof CONTENT_CREATION_FILE_FORMATS;
+// Define a type for Interactive Content file content types.
+export type InteractiveContentFileContentType =
+  keyof typeof INTERACTIVE_CONTENT_FILE_FORMATS;
 
 export const ALL_FILE_FORMATS = {
-  ...CONTENT_CREATION_FILE_FORMATS,
+  ...INTERACTIVE_CONTENT_FILE_FORMATS,
   ...FILE_FORMATS,
 };
-
-// Union type for all supported content types (public + Content Creation).
+// Union type for all supported content types (public + Interactive Content).
 export type AllSupportedFileContentType =
-  | ContentCreationFileContentType
+  | InteractiveContentFileContentType
   | SupportedFileContentType;
 
 export type SupportedImageContentType = {
@@ -421,11 +421,11 @@ export function isSupportedFileContentType(
   return !!FILE_FORMATS[contentType as SupportedFileContentType];
 }
 
-export function isContentCreationFileContentType(
+export function isInteractiveContentFileContentType(
   contentType: string
-): contentType is ContentCreationFileContentType {
-  return !!CONTENT_CREATION_FILE_FORMATS[
-    contentType as ContentCreationFileContentType
+): contentType is InteractiveContentFileContentType {
+  return !!INTERACTIVE_CONTENT_FILE_FORMATS[
+    contentType as InteractiveContentFileContentType
   ];
 }
 
@@ -433,7 +433,7 @@ export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
-    isContentCreationFileContentType(contentType) ||
+    isInteractiveContentFileContentType(contentType) ||
     isSupportedFileContentType(contentType)
   );
 }
@@ -493,7 +493,7 @@ export function getFileFormatCategory(
   return null;
 }
 
-function getFileFormat(contentType: string): FileFormat | null {
+export function getFileFormat(contentType: string): FileFormat | null {
   if (isSupportedFileContentType(contentType)) {
     const format = FILE_FORMATS[contentType];
     if (format) {

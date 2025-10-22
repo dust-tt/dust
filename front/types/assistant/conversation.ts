@@ -1,5 +1,6 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type { AllSupportedFileContentType } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 import type { ContentFragmentType } from "../content_fragment";
@@ -58,13 +59,6 @@ export type MessageWithContentFragmentsType =
       contentFragments?: ContentFragmentType[];
     });
 
-export type WithRank<T> = T & {
-  rank: number;
-};
-export type MessageWithRankType = WithRank<MessageType>;
-
-export type LightMessageWithRankType = WithRank<LightMessageType>;
-
 /**
  * User messages
  */
@@ -79,6 +73,7 @@ export type UserMessageOrigin =
   | "n8n"
   | "raycast"
   | "slack"
+  | "teams"
   | "triggered"
   | "web"
   | "zapier"
@@ -95,7 +90,8 @@ export type UserMessageContext = {
   email: string | null;
   profilePictureUrl: string | null;
   origin?: UserMessageOrigin | null;
-  lastTriggerRunAt?: Date | null;
+  originMessageId?: string | null;
+  lastTriggerRunAt?: number | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
 };
@@ -107,12 +103,12 @@ export type UserMessageType = {
   sId: string;
   visibility: MessageVisibility;
   version: number;
+  rank: number;
   user: UserType | null;
   mentions: MentionType[];
   content: string;
   context: UserMessageContext;
 };
-export type UserMessageWithRankType = WithRank<UserMessageType>;
 
 export function isUserMessageType(
   arg: MessageType | LightMessageType
@@ -135,6 +131,10 @@ export interface CitationType {
   title: string;
   provider: string;
   faviconUrl?: string;
+  contentType:
+    | AllSupportedFileContentType
+    | "application/vnd.dust.tool-output.data-source-search-result"
+    | "application/vnd.dust.tool-output.websearch-result";
 }
 
 /**
@@ -148,8 +148,11 @@ export type BaseAgentMessageType = {
   type: "agent_message";
   sId: string;
   version: number;
+  rank: number;
   created: number;
+  completedTs: number | null;
   parentMessageId: string | null;
+  parentAgentMessageId: string | null; // If handover, this is the agent message that summoned this agent.
   status: AgentMessageStatus;
   content: string | null;
   chainOfThought: string | null;
@@ -184,6 +187,7 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     status: AgentConfigurationStatus;
     canRead: boolean;
     requestedGroupIds: string[][];
+    requestedSpaceIds: string[];
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
@@ -202,8 +206,6 @@ export function isLightAgentMessageWithActionsType(
   // LightAgentMessageWithActionsType; message.actions can therefore only be a AgentMCPActionType[].
   return "actions" in message;
 }
-
-export type AgentMessageWithRankType = WithRank<AgentMessageType>;
 
 export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
   return arg.type === "agent_message";
@@ -229,6 +231,7 @@ export type ConversationWithoutContentType = {
   updated?: number;
   unread: boolean;
   actionRequired: boolean;
+  hasError: boolean;
   owner: WorkspaceType;
   sId: string;
   title: string | null;
@@ -236,6 +239,7 @@ export type ConversationWithoutContentType = {
   depth: number;
   triggerId: string | null;
   requestedGroupIds: string[][];
+  requestedSpaceIds: string[];
 };
 
 /**
@@ -303,7 +307,7 @@ export type SubmitMessageError = {
 export interface FetchConversationMessagesResponse {
   hasMore: boolean;
   lastValue: number | null;
-  messages: LightMessageWithRankType[];
+  messages: LightMessageType[];
 }
 
 /**
@@ -315,7 +319,7 @@ export type UserMessageNewEvent = {
   type: "user_message_new";
   created: number;
   messageId: string;
-  message: UserMessageWithRankType;
+  message: UserMessageType;
 };
 
 // Event sent when the user message is created.
@@ -334,7 +338,7 @@ export type AgentMessageNewEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  message: AgentMessageWithRankType;
+  message: AgentMessageType;
 };
 
 // Event sent when the conversation title is updated.

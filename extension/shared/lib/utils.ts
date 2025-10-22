@@ -200,10 +200,10 @@ export function compareAgentsForSort(
     return 1;
   }
 
-  if (a.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
+  if (a.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return -1;
   }
-  if (b.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
+  if (b.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return 1;
   }
 

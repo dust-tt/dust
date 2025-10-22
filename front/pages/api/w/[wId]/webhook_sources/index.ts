@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
+import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -11,19 +12,22 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type {
-  WebhookSourceType,
-  WebhookSourceWithViews,
+  WebhookSourceForAdminType,
+  WebhookSourceWithViewsAndUsageType,
 } from "@app/types/triggers/webhooks";
-import { PostWebhookSourcesSchema } from "@app/types/triggers/webhooks";
+import {
+  postWebhookSourcesSchema,
+  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
+} from "@app/types/triggers/webhooks";
 
 export type GetWebhookSourcesResponseBody = {
   success: true;
-  webhookSourcesWithViews: WebhookSourceWithViews[];
+  webhookSourcesWithViews: WebhookSourceWithViewsAndUsageType[];
 };
 
 export type PostWebhookSourcesResponseBody = {
   success: true;
-  webhookSource: WebhookSourceType;
+  webhookSource: WebhookSourceForAdminType;
 };
 
 async function handler(
@@ -36,6 +40,16 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const { method } = req;
+  const isAdmin = await SpaceResource.canAdministrateSystemSpace(auth);
+  if (!isAdmin) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only admin can manage webhook sources.",
+      },
+    });
+  }
 
   switch (method) {
     case "GET": {
@@ -43,17 +57,18 @@ async function handler(
         await WebhookSourceResource.listByWorkspace(auth);
 
       try {
+        const usageBySourceId = await getWebhookSourcesUsage({ auth });
         const webhookSourcesWithViews = await concurrentExecutor(
           webhookSourceResources,
           async (webhookSourceResource) => {
-            const webhookSource = webhookSourceResource.toJSON();
+            const webhookSource = webhookSourceResource.toJSONForAdmin();
             const webhookSourceViewResources =
               await WebhookSourcesViewResource.listByWebhookSource(
                 auth,
                 webhookSource.id
               );
             const views = webhookSourceViewResources.map((view) =>
-              view.toJSON()
+              view.toJSONForAdmin()
             );
 
             return { ...webhookSource, views };
@@ -65,7 +80,10 @@ async function handler(
 
         return res.status(200).json({
           success: true,
-          webhookSourcesWithViews,
+          webhookSourcesWithViews: webhookSourcesWithViews.map((source) => ({
+            ...source,
+            usage: usageBySourceId[source.id] ?? { count: 0, agents: [] },
+          })),
         });
       } catch (error) {
         return res.status(500).json({
@@ -78,7 +96,7 @@ async function handler(
     }
 
     case "POST": {
-      const bodyValidation = PostWebhookSourcesSchema.safeParse(req.body);
+      const bodyValidation = postWebhookSourcesSchema.safeParse(req.body);
 
       if (!bodyValidation.success) {
         const pathError = fromError(bodyValidation.error).toString();
@@ -97,34 +115,47 @@ async function handler(
         secret,
         signatureHeader,
         signatureAlgorithm,
-        customHeaders,
         includeGlobal,
+        subscribedEvents,
+        kind,
+        connectionId,
+        remoteMetadata,
       } = bodyValidation.data;
 
       const workspace = auth.getNonNullableWorkspace();
+
+      const trimmedSignatureHeader = signatureHeader.trim();
 
       try {
         const webhookSourceRes = await WebhookSourceResource.makeNew(auth, {
           workspaceId: workspace.id,
           name,
           secret:
-            secret && secret.length > 0 ? secret : generateSecureSecret(64),
-          signatureHeader,
+            trimmedSignatureHeader.length === 0
+              ? null
+              : secret && secret.length > 0
+                ? secret
+                : generateSecureSecret(64),
+          urlSecret: generateSecureSecret(64),
+          kind,
+          signatureHeader:
+            trimmedSignatureHeader.length > 0 ? trimmedSignatureHeader : null,
           signatureAlgorithm,
-          customHeaders,
+          subscribedEvents,
         });
 
         if (webhookSourceRes.isErr()) {
           throw new Error(webhookSourceRes.error.message);
         }
 
-        const webhookSource = webhookSourceRes.value.toJSON();
+        const webhookSource = webhookSourceRes.value;
+        const webhookSourceJSON = webhookSource.toJSONForAdmin();
 
         if (includeGlobal) {
           const systemView =
             await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
               auth,
-              webhookSource.sId
+              webhookSourceJSON.sId
             );
 
           if (systemView === null) {
@@ -147,9 +178,47 @@ async function handler(
           });
         }
 
+        if (kind !== "custom" && connectionId && remoteMetadata) {
+          const { DUST_CLIENT_FACING_URL = "" } = process.env;
+          const webhookUrl = `${DUST_CLIENT_FACING_URL}/api/v1/w/${workspace.sId}/triggers/hooks/${webhookSourceJSON.sId}/${webhookSourceJSON.urlSecret}`;
+
+          const service =
+            WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].webhookService;
+          const result = await service.createWebhooks({
+            auth,
+            connectionId,
+            remoteMetadata,
+            webhookUrl,
+            events: subscribedEvents,
+            secret: webhookSourceJSON.secret ?? undefined,
+          });
+
+          if (result.isErr()) {
+            // If remote webhook creation fails, we still keep the webhook source
+            // but return an error message so the user knows
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: `Webhook source created but failed to create remote webhook: ${result.error.message}`,
+              },
+            });
+          }
+
+          // Update the webhook source with the id of the webhook
+          const webhookId = Object.values(result.value.webhookIds)[0];
+          await webhookSource.updateRemoteMetadata({
+            remoteMetadata: {
+              ...remoteMetadata,
+              webhookId,
+            },
+            oauthConnectionId: connectionId,
+          });
+        }
+
         return res.status(201).json({
           success: true,
-          webhookSource,
+          webhookSource: webhookSourceJSON,
         });
       } catch (error) {
         return apiError(req, res, {

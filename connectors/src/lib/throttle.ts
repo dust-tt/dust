@@ -1,8 +1,8 @@
 import _ from "lodash";
 
 import { distributedLock, distributedUnlock } from "@connectors/lib/lock";
-import { redisClient } from "@connectors/lib/redis";
 import logger from "@connectors/logger/logger";
+import { redisClient } from "@connectors/types/shared/redis_client";
 
 export type RateLimit = {
   limit: number;
@@ -12,8 +12,33 @@ export type RateLimit = {
 export async function throttleWithRedis<T>(
   rateLimit: RateLimit,
   key: string,
+  canBeIgnored: false,
+  func: () => Promise<T>,
+  extraLogs: Record<string, string>
+): Promise<T>;
+
+export async function throttleWithRedis<T>(
+  rateLimit: RateLimit,
+  key: string,
+  canBeIgnored: true,
+  func: () => Promise<T>,
+  extraLogs: Record<string, string>
+): Promise<T | undefined>;
+
+export async function throttleWithRedis<T>(
+  rateLimit: RateLimit,
+  key: string,
   canBeIgnored: boolean,
-  func: () => Promise<T>
+  func: () => Promise<T>,
+  extraLogs: Record<string, string>
+): Promise<T | undefined>;
+
+export async function throttleWithRedis<T>(
+  rateLimit: RateLimit,
+  key: string,
+  canBeIgnored: boolean,
+  func: () => Promise<T>,
+  extraLogs: Record<string, string>
 ): Promise<T | undefined> {
   const client = await redisClient({ origin: "throttle" });
   const redisKey = `throttle:${key}`;
@@ -68,7 +93,7 @@ export async function throttleWithRedis<T>(
     // Ignore the request
     return;
   } else if (throttleRes.delay && throttleRes.delay > 0) {
-    logger.info({ delay: throttleRes }, "Delaying api request");
+    logger.info({ delay: throttleRes, ...extraLogs }, "Delaying api request");
     await new Promise((resolve) => setTimeout(resolve, throttleRes.delay));
   } else if (throttleRes.delay === 0) {
     // Do nothing and just call the function

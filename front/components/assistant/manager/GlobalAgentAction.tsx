@@ -13,7 +13,7 @@ import { useRouter } from "next/router";
 
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
-import { GLOBAL_AGENTS_SID, isBuilder } from "@app/types";
+import { GLOBAL_AGENTS_SID, isAdmin, isBuilder } from "@app/types";
 
 type GlobalAgentActionProps = {
   agent: LightAgentConfigurationType;
@@ -45,7 +45,7 @@ export function GlobalAgentAction({
         variant="outline"
         icon={Cog6ToothIcon}
         size="xs"
-        disabled={!isBuilder(owner)}
+        disabled={!isAdmin(owner)}
         onClick={(e: Event) => {
           e.stopPropagation();
           void router.push(getAgentBuilderRoute(owner.sId, agent.sId));

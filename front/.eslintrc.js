@@ -5,8 +5,23 @@ module.exports = {
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
   ],
-  plugins: ["import", "simple-import-sort", "dust"],
+  plugins: [
+    "import",
+    "simple-import-sort",
+    "dust",
+    "eslint-plugin-unused-imports",
+  ],
   rules: {
+    // Intentionally discourage direct global fetch; prefer explicit egress helpers.
+    // For now set to "warn" so we can migrate incrementally.
+    // "no-restricted-globals": [
+    // "warn",
+    // {
+    //   name: "fetch",
+    //   message:
+    //     "Use trustedFetch or untrustedFetch from @app/lib/egress instead of the global fetch to make egress intent explicit.",
+    // },
+    // ],
     "import/no-cycle": "error",
     curly: ["error", "all"],
     "react/no-unescaped-entities": 0,
@@ -20,6 +35,7 @@ module.exports = {
         varsIgnorePattern: "^_",
       },
     ],
+    "unused-imports/no-unused-imports": "error",
     "no-case-declarations": 0,
     "@next/next/no-img-element": 0,
     "@typescript-eslint/no-floating-promises": "error",
@@ -73,6 +89,7 @@ module.exports = {
   overrides: [
     {
       files: ["*.jsx", "*.js", "*.ts", "*.tsx", "**/*.jsx"],
+      excludedFiles: ["migrations/**/*.ts", "mailings/**/*.ts"],
     },
     {
       // Force the setting of a swagger description on each public api endpoint

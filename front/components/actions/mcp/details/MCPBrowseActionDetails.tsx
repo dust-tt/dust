@@ -1,4 +1,5 @@
-import { Button, GlobeAltIcon } from "@dust-tt/sparkle";
+import { GlobeAltIcon } from "@dust-tt/sparkle";
+import Link from "next/link";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
@@ -7,6 +8,7 @@ import {
   isBrowseResultResourceType,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 
 export function MCPBrowseActionDetails({
   toolOutput,
@@ -49,15 +51,22 @@ export function MCPBrowseActionDetails({
                   >
                     {r.responseCode === "200" ? (
                       <>
-                        <Button
-                          icon={GlobeAltIcon}
-                          onClick={() => window.open(r.uri, "_blank")}
-                          label={r.title ?? r.requestedUrl}
-                          variant="outline"
-                        />
-                        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                          {r.requestedUrl}
-                        </span>
+                        {(() => {
+                          const urlValidation = validateUrl(r.uri);
+                          return urlValidation.valid ? (
+                            <Link
+                              href={urlValidation.standardized}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {r.title ?? r.requestedUrl}
+                            </Link>
+                          ) : (
+                            <span className="text-sm text-foreground dark:text-foreground-night">
+                              {r.title ?? r.requestedUrl} (invalid URL)
+                            </span>
+                          );
+                        })()}
                         {r.text && (
                           <span className="whitespace-pre-wrap text-sm text-foreground dark:text-foreground-night">
                             {r.description ?? r.text.slice(0, 2048)}

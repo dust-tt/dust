@@ -16,6 +16,7 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
+  AgentMessageType,
   ConversationType,
   Result,
 } from "@app/types";
@@ -28,6 +29,7 @@ export async function getOrCreateConversation(
     childAgentBlob,
     childAgentId,
     mainAgent,
+    originMessage,
     mainConversation,
     query,
     toolsetsToAdd,
@@ -37,6 +39,7 @@ export async function getOrCreateConversation(
     childAgentBlob: ChildAgentBlob;
     childAgentId: string;
     mainAgent: AgentConfigurationType;
+    originMessage: AgentMessageType;
     mainConversation: ConversationType;
     query: string;
     toolsetsToAdd: string[] | null;
@@ -134,6 +137,7 @@ export async function getOrCreateConversation(
               ? "run_agent"
               : "agent_handover",
           selectedMCPServerViewIds: toolsetsToAdd,
+          originMessageId: originMessage.sId,
         },
       },
     });
@@ -197,14 +201,11 @@ export async function getOrCreateConversation(
         // `run_agent` origin will skip adding the conversation to the user history.
         origin: "run_agent",
         selectedMCPServerViewIds: toolsetsToAdd,
+        originMessageId: originMessage.sId,
       },
     },
     contentFragments,
     skipToolsValidation: agentMessage.skipToolsValidation ?? false,
-    params: {
-      // TODO(DURABLE_AGENT 2025-08-20): Remove this if we decided to always use async mode.
-      execution: "async",
-    },
   });
 
   if (convRes.isErr()) {

@@ -40,7 +40,6 @@ import {
   isContentFragmentInputWithInlinedContent,
   isEmptyString,
 } from "@app/types";
-import { ExecutionModeSchema } from "@app/types/assistant/agent_run";
 
 const MAX_CONVERSATION_DEPTH = 4;
 
@@ -139,13 +138,6 @@ async function handler(
         skipToolsValidation,
         blocking,
       } = r.data;
-
-      const executionModeParseResult = ExecutionModeSchema.safeParse(
-        req.query.execution
-      );
-      const executionMode = executionModeParseResult.success
-        ? executionModeParseResult.data
-        : undefined;
 
       const hasReachedLimits = await hasReachedPublicAPILimits(auth);
       if (hasReachedLimits) {
@@ -369,6 +361,7 @@ async function handler(
           profilePictureUrl: message.context.profilePictureUrl ?? null,
           timezone: message.context.timezone,
           username: message.context.username,
+          originMessageId: message.context.originMessageId ?? null,
         };
 
         // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
@@ -404,7 +397,6 @@ async function handler(
                 content: message.content,
                 context: ctx,
                 conversation,
-                executionMode,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
               })
@@ -412,7 +404,6 @@ async function handler(
                 content: message.content,
                 context: ctx,
                 conversation,
-                executionMode,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
               });

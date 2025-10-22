@@ -22,4 +22,5 @@ export type CredentialsType = {
   FIREWORKS_API_KEY?: string;
   XAI_API_KEY?: string;
   FIRECRAWL_API_KEY?: string;
+  ELEVENLABS_API_KEY?: string;
 };

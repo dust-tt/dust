@@ -159,8 +159,8 @@ describe("augmentInputsWithConfiguration", () => {
         dataSources: [
           {
             workspaceId: mockWorkspace.sId,
-            sId: "ds-123",
-            dataSourceViewId: "view-123",
+            sId: "dsc_123",
+            dataSourceViewId: "view_123",
             filter: {
               tags: { in: ["test"], not: [], mode: "auto" },
               parents: { in: [], not: [] },
@@ -188,7 +188,7 @@ describe("augmentInputsWithConfiguration", () => {
       expect(result).toEqual({
         dataSource: [
           {
-            uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_configurations/ds-123`,
+            uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_configurations/dsc_123`,
             mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
           },
         ],
@@ -202,7 +202,7 @@ describe("augmentInputsWithConfiguration", () => {
           {
             workspaceId: mockWorkspace.sId,
             sId: undefined,
-            dataSourceViewId: "view-123",
+            dataSourceViewId: "view_123",
             filter: {
               tags: { in: ["test"], not: [], mode: "auto" },
               parents: { in: [], not: [] },
@@ -236,7 +236,7 @@ describe("augmentInputsWithConfiguration", () => {
       expect(result).toEqual({
         dataSource: [
           {
-            uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_views/view-123/filter/${expectedFilter}`,
+            uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_views/view_123/filter/${expectedFilter}`,
             mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
           },
         ],
@@ -252,7 +252,7 @@ describe("augmentInputsWithConfiguration", () => {
           {
             workspaceId: mockWorkspace.sId,
             sId: "table-123",
-            dataSourceViewId: "view-123",
+            dataSourceViewId: "view_123",
             tableId: "table-id-123",
           },
         ],
@@ -451,7 +451,7 @@ describe("augmentInputsWithConfiguration", () => {
     });
   });
 
-  describe("NULLABLE_TIME_FRAME mime type", () => {
+  describe("TIME_FRAME mime type", () => {
     it("should augment inputs with time frame configuration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
@@ -464,7 +464,7 @@ describe("augmentInputsWithConfiguration", () => {
           properties: {
             timeFrame:
               ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+                INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
               ],
           },
           required: ["timeFrame"],
@@ -481,12 +481,12 @@ describe("augmentInputsWithConfiguration", () => {
         timeFrame: {
           duration: 7,
           unit: "day",
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
         },
       });
     });
 
-    it("should return null when timeFrame is not configured", () => {
+    it("should return undefined when timeFrame is not configured", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         timeFrame: null,
@@ -494,24 +494,18 @@ describe("augmentInputsWithConfiguration", () => {
           type: "object",
           properties: {
             timeFrame: {
-              oneOf: [
-                { type: "null" },
-                {
-                  type: "object",
-                  properties: {
-                    duration: { type: "number" },
-                    unit: { type: "string" },
-                    mimeType: {
-                      type: "string",
-                      const: INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME,
-                    },
-                  },
-                  required: ["duration", "unit", "mimeType"],
+              type: "object",
+              properties: {
+                duration: { type: "number" },
+                unit: { type: "string" },
+                mimeType: {
+                  type: "string",
+                  const: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
                 },
-              ],
+              },
+              required: ["duration", "unit", "mimeType"],
             },
           },
-          required: ["timeFrame"],
         },
       });
 
@@ -522,33 +516,32 @@ describe("augmentInputsWithConfiguration", () => {
       });
 
       expect(result).toEqual({
-        timeFrame: null,
+        timeFrame: undefined,
       });
     });
-  });
 
-  describe("JSON_SCHEMA mime type", () => {
-    it("should augment inputs with JSON schema configuration", () => {
-      // FAILS
-      const rawInputs = {};
-      const jsonSchema = {
-        type: "object" as const,
-        properties: {
-          name: { type: "string" as const },
-        },
-        required: ["name"],
-      };
+    it("timeFrame should work when nested in an object", () => {
+      const rawInputs = { nested: {} };
       const config = createBasicMCPConfiguration({
-        jsonSchema,
+        timeFrame: {
+          duration: 7,
+          unit: "day",
+        },
         inputSchema: {
           type: "object",
           properties: {
-            schema:
-              ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
-              ],
+            nested: {
+              type: "object",
+              properties: {
+                timeFrame:
+                  ConfigurableToolInputJSONSchemas[
+                    INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+                  ],
+              },
+              required: ["timeFrame"],
+            },
           },
-          required: ["schema"],
+          required: ["nested"],
         },
       });
 
@@ -559,60 +552,977 @@ describe("augmentInputsWithConfiguration", () => {
       });
 
       expect(result).toEqual({
+        nested: {
+          timeFrame: {
+            duration: 7,
+            unit: "day",
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
+          },
+        },
+      });
+    });
+  });
+});
+
+describe("JSON_SCHEMA mime type", () => {
+  it("should augment inputs with JSON schema configuration", () => {
+    // FAILS
+    const rawInputs = {};
+    const jsonSchema = {
+      type: "object" as const,
+      properties: {
+        name: { type: "string" as const },
+      },
+      required: ["name"],
+    };
+    const config = createBasicMCPConfiguration({
+      jsonSchema,
+      inputSchema: {
+        type: "object",
+        properties: {
+          jsonSchema:
+            ConfigurableToolInputJSONSchemas[
+              INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+            ],
+        },
+        required: ["jsonSchema"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      jsonSchema: {
+        ...jsonSchema,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
+      },
+    });
+  });
+
+  it("should return undefined when jsonSchema is not configured", () => {
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      jsonSchema: undefined,
+      inputSchema: {
+        type: "object",
+        properties: {
+          schema: {
+            type: "object",
+            properties: {
+              type: { type: "string" },
+              required: { type: "array", items: { type: "string" } },
+              properties: { type: "object" },
+              mimeType: {
+                type: "string",
+                const: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
+              },
+            },
+            required: ["schema", "mimeType"],
+          },
+        },
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      undefined,
+    });
+  });
+
+  it("jsonSchema should work when nested in an object", () => {
+    const rawInputs = { nested: {} };
+    const jsonSchema = {
+      type: "object" as const,
+      properties: {
+        name: { type: "string" as const },
+      },
+      required: ["name"],
+    };
+    const config = createBasicMCPConfiguration({
+      jsonSchema,
+      inputSchema: {
+        type: "object",
+        properties: {
+          nested: {
+            type: "object",
+            properties: {
+              schema:
+                ConfigurableToolInputJSONSchemas[
+                  INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+                ],
+            },
+            required: ["schema"],
+          },
+        },
+        required: ["nested"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      nested: {
         schema: {
           ...jsonSchema,
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
         },
-      });
+      },
+    });
+  });
+});
+
+describe("primitive types", () => {
+  it("should augment inputs with string configuration", () => {
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        stringParam: "test-value",
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          stringParam: {
+            type: "object",
+            properties: {
+              value: { type: "string" },
+              mimeType: {
+                type: "string",
+                const: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+              },
+            },
+            required: ["value", "mimeType"],
+          },
+        },
+        required: ["stringParam"],
+      },
     });
 
-    it("should return null when jsonSchema is not configured", () => {
-      const rawInputs = {};
-      const config = createBasicMCPConfiguration({
-        jsonSchema: null,
-        inputSchema: {
-          type: "object",
-          properties: {
-            schema: {
-              oneOf: [
-                { type: "null" },
-                {
-                  type: "object",
-                  properties: {
-                    type: { type: "string" },
-                    mimeType: {
-                      type: "string",
-                      const: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      stringParam: {
+        value: "test-value",
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+      },
+    });
+  });
+
+  it("should augment inputs with number configuration", () => {
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        numberParam: 42,
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          numberParam: {
+            type: "object",
+            properties: {
+              value: { type: "number" },
+              mimeType: {
+                type: "string",
+                const: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
+              },
+            },
+            required: ["value", "mimeType"],
+          },
+        },
+        required: ["numberParam"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      numberParam: {
+        value: 42,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
+      },
+    });
+  });
+
+  it("should augment inputs with boolean configuration", () => {
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        booleanParam: true,
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          booleanParam: {
+            type: "object",
+            properties: {
+              value: { type: "boolean" },
+              mimeType: {
+                type: "string",
+                const: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
+              },
+            },
+            required: ["value", "mimeType"],
+          },
+        },
+        required: ["booleanParam"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      booleanParam: {
+        value: true,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
+      },
+    });
+  });
+
+  it("should augment inputs with enum configuration", () => {
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        enumParam: "option1",
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          enumParam: {
+            type: "object",
+            properties: {
+              options: {
+                anyOf: [
+                  {
+                    type: "object",
+                    properties: {
+                      value: { type: "string", const: "option1" },
+                      label: { type: "string", const: "Option 1" },
                     },
                   },
-                  required: ["type", "mimeType"],
-                },
-              ],
+                  {
+                    type: "object",
+                    properties: {
+                      value: { type: "string", const: "option2" },
+                      label: { type: "string", const: "Option 2" },
+                    },
+                  },
+                ],
+              },
+              value: { type: "string" },
+              mimeType: {
+                type: "string",
+                const: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
+              },
             },
+            required: ["options", "value", "mimeType"],
           },
-          required: ["schema"],
         },
-      });
+        required: ["enumParam"],
+      },
+    });
 
-      const result = augmentInputsWithConfiguration({
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      enumParam: {
+        value: "option1",
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
+      },
+    });
+  });
+
+  it("should augment inputs with enum configuration using new format", () => {
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        enumParam: "A",
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          enumParam: {
+            type: "object",
+            properties: {
+              options: {
+                anyOf: [
+                  {
+                    type: "object",
+                    properties: {
+                      value: { type: "string", const: "A" },
+                      label: { type: "string", const: "Option A" },
+                    },
+                  },
+                  {
+                    type: "object",
+                    properties: {
+                      value: { type: "string", const: "B" },
+                      label: { type: "string", const: "Option B" },
+                    },
+                  },
+                ],
+              },
+              value: { type: "string" },
+              mimeType: {
+                type: "string",
+                const: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
+              },
+            },
+            required: ["value", "mimeType"],
+          },
+        },
+        required: ["enumParam"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      enumParam: {
+        value: "A",
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
+      },
+    });
+  });
+
+  it("should augment inputs with list configuration", () => {
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        listParam: ["item1", "item2", "item3"],
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          listParam: {
+            type: "object",
+            properties: {
+              options: { type: "object" },
+              values: {
+                type: "array",
+                items: { type: "string" },
+              },
+              mimeType: {
+                type: "string",
+                const: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
+              },
+            },
+            required: ["options", "values", "mimeType"],
+          },
+        },
+        required: ["listParam"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      listParam: {
+        values: ["item1", "item2", "item3"],
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
+      },
+    });
+  });
+});
+
+describe("DUST_APP mime type", () => {
+  it("should augment inputs with Dust app configuration", () => {
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      dustAppConfiguration: {
+        id: 1,
+        sId: "app-123",
+        type: "dust_app_run_configuration",
+        name: "Test App",
+        description: "Test app description",
+        appWorkspaceId: mockWorkspace.sId,
+        appId: "app-123",
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          dustApp: {
+            type: "object",
+            properties: {
+              appId: { type: "string" },
+              mimeType: {
+                type: "string",
+                const: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
+              },
+            },
+            required: ["appId", "mimeType"],
+          },
+        },
+        required: ["dustApp"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      dustApp: {
+        appId: "app-123",
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
+      },
+    });
+  });
+
+  it("should throw error when dustAppConfiguration is missing", () => {
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      dustAppConfiguration: null,
+      inputSchema: {
+        type: "object",
+        properties: {
+          dustApp: {
+            type: "object",
+            properties: {
+              appId: { type: "string" },
+              mimeType: {
+                type: "string",
+                const: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
+              },
+            },
+            required: ["appId", "mimeType"],
+          },
+        },
+        required: ["dustApp"],
+      },
+    });
+
+    expect(() => {
+      augmentInputsWithConfiguration({
         owner: mockWorkspace,
         rawInputs,
         actionConfiguration: config,
       });
+    }).toThrow("Invalid Dust App configuration");
+  });
+});
 
-      expect(result).toEqual({
-        schema: null,
+describe("error handling", () => {
+  it("should throw error for invalid string type", () => {
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        stringParam: 123, // Invalid type
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          stringParam: {
+            type: "object",
+            properties: {
+              value: { type: "string" },
+              mimeType: {
+                type: "string",
+                const: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+              },
+            },
+            required: ["value", "mimeType"],
+          },
+        },
+        required: ["stringParam"],
+      },
+    });
+
+    expect(() => {
+      augmentInputsWithConfiguration({
+        owner: mockWorkspace,
+        rawInputs,
+        actionConfiguration: config,
       });
+    }).toThrow("Expected string value for key stringParam, got number");
+  });
+
+  it("should throw error for invalid number type", () => {
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        numberParam: "not-a-number",
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          numberParam: {
+            type: "object",
+            properties: {
+              value: { type: "number" },
+              mimeType: {
+                type: "string",
+                const: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
+              },
+            },
+            required: ["value", "mimeType"],
+          },
+        },
+        required: ["numberParam"],
+      },
+    });
+
+    expect(() => {
+      augmentInputsWithConfiguration({
+        owner: mockWorkspace,
+        rawInputs,
+        actionConfiguration: config,
+      });
+    }).toThrow("Expected number value for key numberParam, got string");
+  });
+
+  it("should throw error for invalid list type", () => {
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        listParam: "not-an-array",
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          listParam: {
+            type: "object",
+            properties: {
+              options: { type: "object" },
+              values: {
+                type: "array",
+                items: { type: "string" },
+              },
+              mimeType: {
+                type: "string",
+                const: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
+              },
+            },
+            required: ["options", "values", "mimeType"],
+          },
+        },
+        required: ["listParam"],
+      },
+    });
+
+    expect(() => {
+      augmentInputsWithConfiguration({
+        owner: mockWorkspace,
+        rawInputs,
+        actionConfiguration: config,
+      });
+    }).toThrow("Expected array of string values for key listParam, got string");
+  });
+});
+
+describe("nested objects and complex schemas", () => {
+  it("should handle nested objects with configurable properties", () => {
+    const rawInputs = { nested: {} };
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        "nested.stringParam": "nested-value",
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          nested: {
+            type: "object",
+            properties: {
+              stringParam:
+                ConfigurableToolInputJSONSchemas[
+                  INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                ],
+            },
+            required: ["stringParam"],
+          },
+        },
+        required: ["nested"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      nested: {
+        stringParam: {
+          value: "nested-value",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+        },
+      },
     });
   });
 
-  describe("primitive types", () => {
-    it("should augment inputs with string configuration", () => {
+  it("should initialize intermediate objects when parent is missing", () => {
+    // Test case where the parent object doesn't exist in rawInputs
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        "filter.stringParam": "filter-value",
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          filter: {
+            type: "object",
+            properties: {
+              stringParam:
+                ConfigurableToolInputJSONSchemas[
+                  INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                ],
+            },
+            required: ["stringParam"],
+          },
+        },
+        required: ["filter"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      filter: {
+        stringParam: {
+          value: "filter-value",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+        },
+      },
+    });
+  });
+
+  it("should initialize multiple levels of nested objects", () => {
+    // Test case verifying multi-level object initialization
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        "level1.level2.level3.stringParam": "deep-value",
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          level1: {
+            type: "object",
+            properties: {
+              level2: {
+                type: "object",
+                properties: {
+                  level3: {
+                    type: "object",
+                    properties: {
+                      stringParam:
+                        ConfigurableToolInputJSONSchemas[
+                          INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                        ],
+                    },
+                    required: ["stringParam"],
+                  },
+                },
+                required: ["level3"],
+              },
+            },
+            required: ["level2"],
+          },
+        },
+        required: ["level1"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    // Should create all intermediate objects: level1, level2, level3
+    expect(result).toEqual({
+      level1: {
+        level2: {
+          level3: {
+            stringParam: {
+              value: "deep-value",
+              mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+            },
+          },
+        },
+      },
+    });
+  });
+
+  it("should handle array property named 'items' with configurable fields", () => {
+    // Test the exact user schema: filter.items[] where items is an array property
+    // iterateOverSchemaPropertiesRecursive will generate path: filter.items.items.field
+    // (first 'items' is property name, second 'items' is array marker)
+    // Since field is configurable (STRING type), it should be augmented
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        "filter.items.items.field": "indicator-id",
+      },
+      inputSchema: {
+        type: "object",
+        required: ["portfolio_id"],
+        properties: {
+          portfolio_id: {
+            type: "string",
+            description: "The ID of the portfolio",
+          },
+          filter: {
+            type: "object",
+            properties: {
+              items: {
+                type: "array",
+                items: {
+                  type: "object",
+                  required: ["field", "operator", "value"],
+                  properties: {
+                    field:
+                      ConfigurableToolInputJSONSchemas[
+                        INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                      ],
+                    operator: {
+                      type: "string",
+                      enum: ["=", "!=", ">", ">=", "<", "<=", "isAnyOf"],
+                    },
+                    value: {},
+                  },
+                },
+              },
+              logicOperator: {
+                enum: ["and", "or"],
+                type: "string",
+              },
+            },
+            description: "Filter model for filtering portfolio lines",
+          },
+        },
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    // Should initialize filter.items.items.field structure
+    // Note: filter.items becomes an object (not array) because we're storing
+    // configuration values, not actual runtime array data
+    expect(result).toHaveProperty("filter");
+    expect(result.filter).toHaveProperty("items");
+    expect(result.filter).toMatchObject({
+      items: {
+        items: {
+          field: {
+            value: "indicator-id",
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+          },
+        },
+      },
+    });
+  });
+
+  it("should handle multiple missing properties", () => {
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        stringParam: "string-value",
+        numberParam: 42,
+      },
+      dataSources: [
+        {
+          workspaceId: mockWorkspace.sId,
+          sId: "dsc_123",
+          dataSourceViewId: "view_123",
+          filter: {
+            tags: { in: ["test"], not: [], mode: "auto" },
+            parents: { in: [], not: [] },
+          },
+        },
+      ],
+      inputSchema: {
+        type: "object",
+        properties: {
+          stringParam:
+            ConfigurableToolInputJSONSchemas[
+              INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+            ],
+          numberParam:
+            ConfigurableToolInputJSONSchemas[
+              INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER
+            ],
+          dataSource:
+            ConfigurableToolInputJSONSchemas[
+              INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+            ],
+        },
+        required: ["stringParam", "numberParam", "dataSource"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      stringParam: {
+        value: "string-value",
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+      },
+      numberParam: {
+        value: 42,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
+      },
+      dataSource: [
+        {
+          uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_configurations/dsc_123`,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+        },
+      ],
+    });
+  });
+});
+
+describe("edge cases", () => {
+  it("should handle empty data sources array", () => {
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      dataSources: [],
+      inputSchema: {
+        type: "object",
+        properties: {
+          dataSource:
+            ConfigurableToolInputJSONSchemas[
+              INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+            ],
+        },
+        required: ["dataSource"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      dataSource: [],
+    });
+  });
+
+  it("should handle null data sources", () => {
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      dataSources: null,
+      inputSchema: {
+        type: "object",
+        properties: {
+          dataSource:
+            ConfigurableToolInputJSONSchemas[
+              INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+            ],
+        },
+        required: ["dataSource"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      dataSource: [],
+    });
+  });
+
+  // moved: "should preserve existing inputs and only add missing ones" now under basic functionality
+
+  it("should ignore legacy additionalConfiguration keys not in inputSchema", () => {
+    const rawInputs = { existingParam: "keep-me", numberParam: 42 };
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        stringParam: "from-config",
+        otherStringParam: "legacy-ignored", // legacy key not present anymore in the current schema
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          existingParam: { type: "string" },
+          numberParam: { type: "number" },
+          stringParam:
+            ConfigurableToolInputJSONSchemas[
+              INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+            ],
+        },
+        required: ["existingParam", "numberParam", "stringParam"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      existingParam: "keep-me",
+      numberParam: 42,
+      stringParam: {
+        value: "from-config",
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+      },
+    });
+  });
+});
+
+describe("default value injection", () => {
+  describe("STRING mime type", () => {
+    it("should inject object-level default for missing string value", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
-        additionalConfiguration: {
-          stringParam: "test-value",
-        },
         inputSchema: {
           type: "object",
           properties: {
@@ -626,9 +1536,51 @@ describe("augmentInputsWithConfiguration", () => {
                 },
               },
               required: ["value", "mimeType"],
+              default: {
+                value: "default-string-value",
+                mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+              },
             },
           },
           required: ["stringParam"],
+        },
+        additionalConfiguration: {},
+      });
+
+      const result = augmentInputsWithConfiguration({
+        owner: mockWorkspace,
+        rawInputs,
+        actionConfiguration: config,
+      });
+
+      expect(result).toEqual({
+        stringParam: {
+          value: "default-string-value",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+        },
+      });
+    });
+
+    it("should not inject default when value is already provided", () => {
+      const rawInputs = {};
+      const config = createBasicMCPConfiguration({
+        inputSchema: {
+          type: "object",
+          properties: {
+            stringParam: {
+              ...ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+              ],
+              default: {
+                value: "should-not-be-used",
+                mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+              },
+            },
+          },
+          required: ["stringParam"],
+        },
+        additionalConfiguration: {
+          stringParam: "user-provided-value",
         },
       });
 
@@ -640,18 +1592,17 @@ describe("augmentInputsWithConfiguration", () => {
 
       expect(result).toEqual({
         stringParam: {
-          value: "test-value",
+          value: "user-provided-value",
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
         },
       });
     });
+  });
 
-    it("should augment inputs with number configuration", () => {
+  describe("NUMBER mime type", () => {
+    it("should inject object-level default for missing number value", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
-        additionalConfiguration: {
-          numberParam: 42,
-        },
         inputSchema: {
           type: "object",
           properties: {
@@ -665,10 +1616,15 @@ describe("augmentInputsWithConfiguration", () => {
                 },
               },
               required: ["value", "mimeType"],
+              default: {
+                value: 42,
+                mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
+              },
             },
           },
           required: ["numberParam"],
         },
+        additionalConfiguration: {},
       });
 
       const result = augmentInputsWithConfiguration({
@@ -684,13 +1640,12 @@ describe("augmentInputsWithConfiguration", () => {
         },
       });
     });
+  });
 
-    it("should augment inputs with boolean configuration", () => {
+  describe("BOOLEAN mime type", () => {
+    it("should inject object-level default for missing boolean value", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
-        additionalConfiguration: {
-          booleanParam: true,
-        },
         inputSchema: {
           type: "object",
           properties: {
@@ -704,10 +1659,15 @@ describe("augmentInputsWithConfiguration", () => {
                 },
               },
               required: ["value", "mimeType"],
+              default: {
+                value: true,
+                mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
+              },
             },
           },
           required: ["booleanParam"],
         },
+        additionalConfiguration: {},
       });
 
       const result = augmentInputsWithConfiguration({
@@ -723,13 +1683,12 @@ describe("augmentInputsWithConfiguration", () => {
         },
       });
     });
+  });
 
-    it("should augment inputs with enum configuration", () => {
+  describe("ENUM mime type", () => {
+    it("should inject object-level default for missing enum value", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
-        additionalConfiguration: {
-          enumParam: "option1",
-        },
         inputSchema: {
           type: "object",
           properties: {
@@ -752,76 +1711,33 @@ describe("augmentInputsWithConfiguration", () => {
                         label: { type: "string", const: "Option 2" },
                       },
                     },
+                    {
+                      type: "object",
+                      properties: {
+                        value: { type: "string", const: "option3" },
+                        label: { type: "string", const: "Option 3" },
+                      },
+                    },
                   ],
                 },
-                value: { type: "string" },
+                value: {
+                  type: "string",
+                },
                 mimeType: {
                   type: "string",
                   const: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
                 },
               },
               required: ["options", "value", "mimeType"],
-            },
-          },
-          required: ["enumParam"],
-        },
-      });
-
-      const result = augmentInputsWithConfiguration({
-        owner: mockWorkspace,
-        rawInputs,
-        actionConfiguration: config,
-      });
-
-      expect(result).toEqual({
-        enumParam: {
-          value: "option1",
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
-        },
-      });
-    });
-
-    it("should augment inputs with enum configuration using new format", () => {
-      const rawInputs = {};
-      const config = createBasicMCPConfiguration({
-        additionalConfiguration: {
-          enumParam: "A",
-        },
-        inputSchema: {
-          type: "object",
-          properties: {
-            enumParam: {
-              type: "object",
-              properties: {
-                options: {
-                  anyOf: [
-                    {
-                      type: "object",
-                      properties: {
-                        value: { type: "string", const: "A" },
-                        label: { type: "string", const: "Option A" },
-                      },
-                    },
-                    {
-                      type: "object",
-                      properties: {
-                        value: { type: "string", const: "B" },
-                        label: { type: "string", const: "Option B" },
-                      },
-                    },
-                  ],
-                },
-                value: { type: "string" },
-                mimeType: {
-                  type: "string",
-                  const: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
-                },
+              default: {
+                value: "option2",
+                mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
               },
-              required: ["value", "mimeType"],
             },
           },
           required: ["enumParam"],
         },
+        additionalConfiguration: {},
       });
 
       const result = augmentInputsWithConfiguration({
@@ -832,18 +1748,17 @@ describe("augmentInputsWithConfiguration", () => {
 
       expect(result).toEqual({
         enumParam: {
-          value: "A",
+          value: "option2",
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
         },
       });
     });
+  });
 
-    it("should augment inputs with list configuration", () => {
+  describe("LIST mime type", () => {
+    it("should inject object-level default for missing list value", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
-        additionalConfiguration: {
-          listParam: ["item1", "item2", "item3"],
-        },
         inputSchema: {
           type: "object",
           properties: {
@@ -861,9 +1776,62 @@ describe("augmentInputsWithConfiguration", () => {
                 },
               },
               required: ["options", "values", "mimeType"],
+              default: {
+                values: ["default1", "default2"],
+                mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
+              },
             },
           },
           required: ["listParam"],
+        },
+        additionalConfiguration: {},
+      });
+
+      const result = augmentInputsWithConfiguration({
+        owner: mockWorkspace,
+        rawInputs,
+        actionConfiguration: config,
+      });
+
+      expect(result).toEqual({
+        listParam: {
+          values: ["default1", "default2"],
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
+        },
+      });
+    });
+
+    it("should inject default when list is empty", () => {
+      const rawInputs = {};
+      const config = createBasicMCPConfiguration({
+        inputSchema: {
+          type: "object",
+          properties: {
+            listParam: {
+              type: "object",
+              properties: {
+                options: { type: "object" },
+                values: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+                mimeType: {
+                  type: "string",
+                  const: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
+                },
+              },
+              required: ["options", "values", "mimeType"],
+              default: {
+                options: {},
+                values: ["fallback1", "fallback2"],
+                mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
+              },
+            },
+          },
+          required: ["listParam"],
+        },
+        additionalConfiguration: {
+          listParam: [], // Empty array should trigger default
         },
       });
 
@@ -875,167 +1843,48 @@ describe("augmentInputsWithConfiguration", () => {
 
       expect(result).toEqual({
         listParam: {
-          values: ["item1", "item2", "item3"],
+          values: ["fallback1", "fallback2"],
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
         },
       });
     });
   });
 
-  describe("DUST_APP mime type", () => {
-    it("should augment inputs with Dust app configuration", () => {
+  describe("type safety", () => {
+    it("should ignore invalid object-level defaults with wrong types", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
-        dustAppConfiguration: {
-          id: 1,
-          sId: "app-123",
-          type: "dust_app_run_configuration",
-          name: "Test App",
-          description: "Test app description",
-          appWorkspaceId: mockWorkspace.sId,
-          appId: "app-123",
-        },
-        inputSchema: {
-          type: "object",
-          properties: {
-            dustApp: {
-              type: "object",
-              properties: {
-                appId: { type: "string" },
-                mimeType: {
-                  type: "string",
-                  const: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
-                },
-              },
-              required: ["appId", "mimeType"],
-            },
-          },
-          required: ["dustApp"],
-        },
-      });
-
-      const result = augmentInputsWithConfiguration({
-        owner: mockWorkspace,
-        rawInputs,
-        actionConfiguration: config,
-      });
-
-      expect(result).toEqual({
-        dustApp: {
-          appId: "app-123",
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
-        },
-      });
-    });
-
-    it("should throw error when dustAppConfiguration is missing", () => {
-      const rawInputs = {};
-      const config = createBasicMCPConfiguration({
-        dustAppConfiguration: null,
-        inputSchema: {
-          type: "object",
-          properties: {
-            dustApp: {
-              type: "object",
-              properties: {
-                appId: { type: "string" },
-                mimeType: {
-                  type: "string",
-                  const: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
-                },
-              },
-              required: ["appId", "mimeType"],
-            },
-          },
-          required: ["dustApp"],
-        },
-      });
-
-      expect(() => {
-        augmentInputsWithConfiguration({
-          owner: mockWorkspace,
-          rawInputs,
-          actionConfiguration: config,
-        });
-      }).toThrow("Invalid Dust App configuration");
-    });
-  });
-
-  describe("error handling", () => {
-    it("should throw error for invalid string type", () => {
-      const rawInputs = {};
-      const config = createBasicMCPConfiguration({
-        additionalConfiguration: {
-          stringParam: 123, // Invalid type
-        },
         inputSchema: {
           type: "object",
           properties: {
             stringParam: {
-              type: "object",
-              properties: {
-                value: { type: "string" },
-                mimeType: {
-                  type: "string",
-                  const: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-                },
+              ...ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+              ],
+              default: {
+                value: 123, // Wrong type - should be ignored
+                mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
               },
-              required: ["value", "mimeType"],
             },
           },
           required: ["stringParam"],
         },
+        additionalConfiguration: {},
       });
 
+      // Should throw because no valid default was found and value is required
       expect(() => {
         augmentInputsWithConfiguration({
           owner: mockWorkspace,
           rawInputs,
           actionConfiguration: config,
         });
-      }).toThrow("Expected string value for key stringParam, got number");
+      }).toThrow("Expected string value for key stringParam");
     });
 
-    it("should throw error for invalid number type", () => {
+    it("should ignore invalid list defaults with non-string elements", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
-        additionalConfiguration: {
-          numberParam: "not-a-number",
-        },
-        inputSchema: {
-          type: "object",
-          properties: {
-            numberParam: {
-              type: "object",
-              properties: {
-                value: { type: "number" },
-                mimeType: {
-                  type: "string",
-                  const: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
-                },
-              },
-              required: ["value", "mimeType"],
-            },
-          },
-          required: ["numberParam"],
-        },
-      });
-
-      expect(() => {
-        augmentInputsWithConfiguration({
-          owner: mockWorkspace,
-          rawInputs,
-          actionConfiguration: config,
-        });
-      }).toThrow("Expected number value for key numberParam, got string");
-    });
-
-    it("should throw error for invalid list type", () => {
-      const rawInputs = {};
-      const config = createBasicMCPConfiguration({
-        additionalConfiguration: {
-          listParam: "not-an-array",
-        },
         inputSchema: {
           type: "object",
           properties: {
@@ -1053,46 +1902,57 @@ describe("augmentInputsWithConfiguration", () => {
                 },
               },
               required: ["options", "values", "mimeType"],
+              default: {
+                options: {},
+                values: ["valid", 123, "also-valid"], // Mixed types - should be ignored
+                mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
+              },
             },
           },
           required: ["listParam"],
         },
+        additionalConfiguration: {},
       });
 
+      // Should throw because no valid default was found and value is required
       expect(() => {
         augmentInputsWithConfiguration({
           owner: mockWorkspace,
           rawInputs,
           actionConfiguration: config,
         });
-      }).toThrow(
-        "Expected array of string values for key listParam, got string"
-      );
+      }).toThrow("Expected array of string values for key listParam");
     });
   });
 
-  describe("nested objects and complex schemas", () => {
-    it("should handle nested objects with configurable properties", () => {
+  describe("nested paths", () => {
+    it("should inject defaults for nested object properties", () => {
       const rawInputs = { nested: {} };
       const config = createBasicMCPConfiguration({
-        additionalConfiguration: {
-          "nested.stringParam": "nested-value",
-        },
         inputSchema: {
           type: "object",
           properties: {
             nested: {
               type: "object",
               properties: {
-                stringParam:
-                  ConfigurableToolInputJSONSchemas[
+                stringParam: {
+                  ...ConfigurableToolInputJSONSchemas[
                     INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
                   ],
+                  default: {
+                    value: "nested-default",
+                    mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+                  },
+                },
               },
               required: ["stringParam"],
             },
           },
           required: ["nested"],
+        },
+        additionalConfiguration: {
+          // Use dot notation for nested properties - this will trigger default injection
+          // when the system can't find a valid value
         },
       });
 
@@ -1105,623 +1965,10 @@ describe("augmentInputsWithConfiguration", () => {
       expect(result).toEqual({
         nested: {
           stringParam: {
-            value: "nested-value",
+            value: "nested-default",
             mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
           },
         },
-      });
-    });
-
-    it("should handle multiple missing properties", () => {
-      const rawInputs = {};
-      const config = createBasicMCPConfiguration({
-        additionalConfiguration: {
-          stringParam: "string-value",
-          numberParam: 42,
-        },
-        dataSources: [
-          {
-            workspaceId: mockWorkspace.sId,
-            sId: "ds-123",
-            dataSourceViewId: "view-123",
-            filter: {
-              tags: { in: ["test"], not: [], mode: "auto" },
-              parents: { in: [], not: [] },
-            },
-          },
-        ],
-        inputSchema: {
-          type: "object",
-          properties: {
-            stringParam:
-              ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
-              ],
-            numberParam:
-              ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER
-              ],
-            dataSource:
-              ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-              ],
-          },
-          required: ["stringParam", "numberParam", "dataSource"],
-        },
-      });
-
-      const result = augmentInputsWithConfiguration({
-        owner: mockWorkspace,
-        rawInputs,
-        actionConfiguration: config,
-      });
-
-      expect(result).toEqual({
-        stringParam: {
-          value: "string-value",
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-        },
-        numberParam: {
-          value: 42,
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
-        },
-        dataSource: [
-          {
-            uri: `data_source_configuration://dust/w/${mockWorkspace.sId}/data_source_configurations/ds-123`,
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
-          },
-        ],
-      });
-    });
-  });
-
-  describe("edge cases", () => {
-    it("should handle empty data sources array", () => {
-      const rawInputs = {};
-      const config = createBasicMCPConfiguration({
-        dataSources: [],
-        inputSchema: {
-          type: "object",
-          properties: {
-            dataSource:
-              ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-              ],
-          },
-          required: ["dataSource"],
-        },
-      });
-
-      const result = augmentInputsWithConfiguration({
-        owner: mockWorkspace,
-        rawInputs,
-        actionConfiguration: config,
-      });
-
-      expect(result).toEqual({
-        dataSource: [],
-      });
-    });
-
-    it("should handle null data sources", () => {
-      const rawInputs = {};
-      const config = createBasicMCPConfiguration({
-        dataSources: null,
-        inputSchema: {
-          type: "object",
-          properties: {
-            dataSource:
-              ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-              ],
-          },
-          required: ["dataSource"],
-        },
-      });
-
-      const result = augmentInputsWithConfiguration({
-        owner: mockWorkspace,
-        rawInputs,
-        actionConfiguration: config,
-      });
-
-      expect(result).toEqual({
-        dataSource: [],
-      });
-    });
-
-    // moved: "should preserve existing inputs and only add missing ones" now under basic functionality
-
-    it("should ignore legacy additionalConfiguration keys not in inputSchema", () => {
-      const rawInputs = { existingParam: "keep-me", numberParam: 42 };
-      const config = createBasicMCPConfiguration({
-        additionalConfiguration: {
-          stringParam: "from-config",
-          otherStringParam: "legacy-ignored", // legacy key not present anymore in the current schema
-        },
-        inputSchema: {
-          type: "object",
-          properties: {
-            existingParam: { type: "string" },
-            numberParam: { type: "number" },
-            stringParam:
-              ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
-              ],
-          },
-          required: ["existingParam", "numberParam", "stringParam"],
-        },
-      });
-
-      const result = augmentInputsWithConfiguration({
-        owner: mockWorkspace,
-        rawInputs,
-        actionConfiguration: config,
-      });
-
-      expect(result).toEqual({
-        existingParam: "keep-me",
-        numberParam: 42,
-        stringParam: {
-          value: "from-config",
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-        },
-      });
-    });
-  });
-
-  describe("default value injection", () => {
-    describe("STRING mime type", () => {
-      it("should inject object-level default for missing string value", () => {
-        const rawInputs = {};
-        const config = createBasicMCPConfiguration({
-          inputSchema: {
-            type: "object",
-            properties: {
-              stringParam: {
-                type: "object",
-                properties: {
-                  value: { type: "string" },
-                  mimeType: {
-                    type: "string",
-                    const: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-                  },
-                },
-                required: ["value", "mimeType"],
-                default: {
-                  value: "default-string-value",
-                  mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-                },
-              },
-            },
-            required: ["stringParam"],
-          },
-          additionalConfiguration: {},
-        });
-
-        const result = augmentInputsWithConfiguration({
-          owner: mockWorkspace,
-          rawInputs,
-          actionConfiguration: config,
-        });
-
-        expect(result).toEqual({
-          stringParam: {
-            value: "default-string-value",
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-          },
-        });
-      });
-
-      it("should not inject default when value is already provided", () => {
-        const rawInputs = {};
-        const config = createBasicMCPConfiguration({
-          inputSchema: {
-            type: "object",
-            properties: {
-              stringParam: {
-                ...ConfigurableToolInputJSONSchemas[
-                  INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
-                ],
-                default: {
-                  value: "should-not-be-used",
-                  mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-                },
-              },
-            },
-            required: ["stringParam"],
-          },
-          additionalConfiguration: {
-            stringParam: "user-provided-value",
-          },
-        });
-
-        const result = augmentInputsWithConfiguration({
-          owner: mockWorkspace,
-          rawInputs,
-          actionConfiguration: config,
-        });
-
-        expect(result).toEqual({
-          stringParam: {
-            value: "user-provided-value",
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-          },
-        });
-      });
-    });
-
-    describe("NUMBER mime type", () => {
-      it("should inject object-level default for missing number value", () => {
-        const rawInputs = {};
-        const config = createBasicMCPConfiguration({
-          inputSchema: {
-            type: "object",
-            properties: {
-              numberParam: {
-                type: "object",
-                properties: {
-                  value: { type: "number" },
-                  mimeType: {
-                    type: "string",
-                    const: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
-                  },
-                },
-                required: ["value", "mimeType"],
-                default: {
-                  value: 42,
-                  mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
-                },
-              },
-            },
-            required: ["numberParam"],
-          },
-          additionalConfiguration: {},
-        });
-
-        const result = augmentInputsWithConfiguration({
-          owner: mockWorkspace,
-          rawInputs,
-          actionConfiguration: config,
-        });
-
-        expect(result).toEqual({
-          numberParam: {
-            value: 42,
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
-          },
-        });
-      });
-    });
-
-    describe("BOOLEAN mime type", () => {
-      it("should inject object-level default for missing boolean value", () => {
-        const rawInputs = {};
-        const config = createBasicMCPConfiguration({
-          inputSchema: {
-            type: "object",
-            properties: {
-              booleanParam: {
-                type: "object",
-                properties: {
-                  value: { type: "boolean" },
-                  mimeType: {
-                    type: "string",
-                    const: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
-                  },
-                },
-                required: ["value", "mimeType"],
-                default: {
-                  value: true,
-                  mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
-                },
-              },
-            },
-            required: ["booleanParam"],
-          },
-          additionalConfiguration: {},
-        });
-
-        const result = augmentInputsWithConfiguration({
-          owner: mockWorkspace,
-          rawInputs,
-          actionConfiguration: config,
-        });
-
-        expect(result).toEqual({
-          booleanParam: {
-            value: true,
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
-          },
-        });
-      });
-    });
-
-    describe("ENUM mime type", () => {
-      it("should inject object-level default for missing enum value", () => {
-        const rawInputs = {};
-        const config = createBasicMCPConfiguration({
-          inputSchema: {
-            type: "object",
-            properties: {
-              enumParam: {
-                type: "object",
-                properties: {
-                  options: {
-                    anyOf: [
-                      {
-                        type: "object",
-                        properties: {
-                          value: { type: "string", const: "option1" },
-                          label: { type: "string", const: "Option 1" },
-                        },
-                      },
-                      {
-                        type: "object",
-                        properties: {
-                          value: { type: "string", const: "option2" },
-                          label: { type: "string", const: "Option 2" },
-                        },
-                      },
-                      {
-                        type: "object",
-                        properties: {
-                          value: { type: "string", const: "option3" },
-                          label: { type: "string", const: "Option 3" },
-                        },
-                      },
-                    ],
-                  },
-                  value: {
-                    type: "string",
-                  },
-                  mimeType: {
-                    type: "string",
-                    const: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
-                  },
-                },
-                required: ["options", "value", "mimeType"],
-                default: {
-                  value: "option2",
-                  mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
-                },
-              },
-            },
-            required: ["enumParam"],
-          },
-          additionalConfiguration: {},
-        });
-
-        const result = augmentInputsWithConfiguration({
-          owner: mockWorkspace,
-          rawInputs,
-          actionConfiguration: config,
-        });
-
-        expect(result).toEqual({
-          enumParam: {
-            value: "option2",
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
-          },
-        });
-      });
-    });
-
-    describe("LIST mime type", () => {
-      it("should inject object-level default for missing list value", () => {
-        const rawInputs = {};
-        const config = createBasicMCPConfiguration({
-          inputSchema: {
-            type: "object",
-            properties: {
-              listParam: {
-                type: "object",
-                properties: {
-                  options: { type: "object" },
-                  values: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                  mimeType: {
-                    type: "string",
-                    const: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
-                  },
-                },
-                required: ["options", "values", "mimeType"],
-                default: {
-                  values: ["default1", "default2"],
-                  mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
-                },
-              },
-            },
-            required: ["listParam"],
-          },
-          additionalConfiguration: {},
-        });
-
-        const result = augmentInputsWithConfiguration({
-          owner: mockWorkspace,
-          rawInputs,
-          actionConfiguration: config,
-        });
-
-        expect(result).toEqual({
-          listParam: {
-            values: ["default1", "default2"],
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
-          },
-        });
-      });
-
-      it("should inject default when list is empty", () => {
-        const rawInputs = {};
-        const config = createBasicMCPConfiguration({
-          inputSchema: {
-            type: "object",
-            properties: {
-              listParam: {
-                type: "object",
-                properties: {
-                  options: { type: "object" },
-                  values: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                  mimeType: {
-                    type: "string",
-                    const: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
-                  },
-                },
-                required: ["options", "values", "mimeType"],
-                default: {
-                  options: {},
-                  values: ["fallback1", "fallback2"],
-                  mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
-                },
-              },
-            },
-            required: ["listParam"],
-          },
-          additionalConfiguration: {
-            listParam: [], // Empty array should trigger default
-          },
-        });
-
-        const result = augmentInputsWithConfiguration({
-          owner: mockWorkspace,
-          rawInputs,
-          actionConfiguration: config,
-        });
-
-        expect(result).toEqual({
-          listParam: {
-            values: ["fallback1", "fallback2"],
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
-          },
-        });
-      });
-    });
-
-    describe("type safety", () => {
-      it("should ignore invalid object-level defaults with wrong types", () => {
-        const rawInputs = {};
-        const config = createBasicMCPConfiguration({
-          inputSchema: {
-            type: "object",
-            properties: {
-              stringParam: {
-                ...ConfigurableToolInputJSONSchemas[
-                  INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
-                ],
-                default: {
-                  value: 123, // Wrong type - should be ignored
-                  mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-                },
-              },
-            },
-            required: ["stringParam"],
-          },
-          additionalConfiguration: {},
-        });
-
-        // Should throw because no valid default was found and value is required
-        expect(() => {
-          augmentInputsWithConfiguration({
-            owner: mockWorkspace,
-            rawInputs,
-            actionConfiguration: config,
-          });
-        }).toThrow("Expected string value for key stringParam");
-      });
-
-      it("should ignore invalid list defaults with non-string elements", () => {
-        const rawInputs = {};
-        const config = createBasicMCPConfiguration({
-          inputSchema: {
-            type: "object",
-            properties: {
-              listParam: {
-                type: "object",
-                properties: {
-                  options: { type: "object" },
-                  values: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                  mimeType: {
-                    type: "string",
-                    const: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
-                  },
-                },
-                required: ["options", "values", "mimeType"],
-                default: {
-                  options: {},
-                  values: ["valid", 123, "also-valid"], // Mixed types - should be ignored
-                  mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
-                },
-              },
-            },
-            required: ["listParam"],
-          },
-          additionalConfiguration: {},
-        });
-
-        // Should throw because no valid default was found and value is required
-        expect(() => {
-          augmentInputsWithConfiguration({
-            owner: mockWorkspace,
-            rawInputs,
-            actionConfiguration: config,
-          });
-        }).toThrow("Expected array of string values for key listParam");
-      });
-    });
-
-    describe("nested paths", () => {
-      it("should inject defaults for nested object properties", () => {
-        const rawInputs = { nested: {} };
-        const config = createBasicMCPConfiguration({
-          inputSchema: {
-            type: "object",
-            properties: {
-              nested: {
-                type: "object",
-                properties: {
-                  stringParam: {
-                    ...ConfigurableToolInputJSONSchemas[
-                      INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
-                    ],
-                    default: {
-                      value: "nested-default",
-                      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-                    },
-                  },
-                },
-                required: ["stringParam"],
-              },
-            },
-            required: ["nested"],
-          },
-          additionalConfiguration: {
-            // Use dot notation for nested properties - this will trigger default injection
-            // when the system can't find a valid value
-          },
-        });
-
-        const result = augmentInputsWithConfiguration({
-          owner: mockWorkspace,
-          rawInputs,
-          actionConfiguration: config,
-        });
-
-        expect(result).toEqual({
-          nested: {
-            stringParam: {
-              value: "nested-default",
-              mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-            },
-          },
-        });
       });
     });
   });
@@ -2142,5 +2389,217 @@ describe("findPathsToConfiguration", () => {
     expect(paths).toHaveLength(2);
     expect(paths).toContain("user.name");
     expect(paths).toContain("user.location");
+  });
+
+  it("should find JSON_SCHEMA configurations at multiple hierarchy levels", () => {
+    const mcpServerView: MCPServerViewType = {
+      id: 1,
+      sId: "json-schema-depths",
+      name: "JSON Schema Depths",
+      description: "Test",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      spaceId: "space-id",
+      serverType: "internal",
+      server: {
+        sId: "json-schema-depths",
+        name: "json_schema_depths",
+        version: "1.0.0",
+        description: "Desc",
+        icon: "ActionBrainIcon",
+        authorization: null,
+        tools: [
+          {
+            name: "tool",
+            description: "",
+            inputSchema: {
+              type: "object",
+              properties: {
+                schemaTop:
+                  ConfigurableToolInputJSONSchemas[
+                    INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+                  ],
+                container: {
+                  type: "object",
+                  properties: {
+                    schemaNested:
+                      ConfigurableToolInputJSONSchemas[
+                        INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+                      ],
+                  },
+                  required: ["schemaNested"],
+                },
+                arr: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      schemaItem:
+                        ConfigurableToolInputJSONSchemas[
+                          INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+                        ],
+                    },
+                    required: ["schemaItem"],
+                  },
+                },
+                tupleArr: {
+                  type: "array",
+                  items: [
+                    {
+                      type: "object",
+                      properties: {
+                        firstSchema:
+                          ConfigurableToolInputJSONSchemas[
+                            INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+                          ],
+                      },
+                      required: ["firstSchema"],
+                    },
+                    {
+                      type: "object",
+                      properties: {
+                        secondSchema:
+                          ConfigurableToolInputJSONSchemas[
+                            INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+                          ],
+                      },
+                    },
+                  ],
+                },
+              },
+              required: ["schemaTop", "container", "arr", "tupleArr"],
+            } as JSONSchema,
+          },
+        ],
+        availability: "manual",
+        allowMultipleInstances: false,
+        documentationUrl: null,
+      },
+      oAuthUseCase: null,
+      editedByUser: null,
+      toolsMetadata: [{ toolName: "tool", permission: "high", enabled: true }],
+    };
+
+    const jsonSchemaConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
+    });
+
+    const keys = Object.keys(jsonSchemaConfigurations);
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        "schemaTop",
+        "container.schemaNested",
+        "arr.items.schemaItem",
+        "tupleArr.items.0.firstSchema",
+        "tupleArr.items.1.secondSchema",
+      ])
+    );
+  });
+
+  it("should find TIME_FRAME configurations at multiple hierarchy levels", () => {
+    const mcpServerView: MCPServerViewType = {
+      id: 1,
+      sId: "timeframe-depths",
+      name: "TimeFrame Depths",
+      description: "Test",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      spaceId: "space-id",
+      serverType: "internal",
+      server: {
+        sId: "timeframe-depths",
+        name: "timeframe_depths",
+        version: "1.0.0",
+        description: "Desc",
+        icon: "ActionBrainIcon",
+        authorization: null,
+        tools: [
+          {
+            name: "tool",
+            description: "",
+            inputSchema: {
+              type: "object",
+              properties: {
+                timeTop:
+                  ConfigurableToolInputJSONSchemas[
+                    INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+                  ],
+                container: {
+                  type: "object",
+                  properties: {
+                    timeNested:
+                      ConfigurableToolInputJSONSchemas[
+                        INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+                      ],
+                  },
+                  required: ["timeNested"],
+                },
+                arr: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      timeItem:
+                        ConfigurableToolInputJSONSchemas[
+                          INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+                        ],
+                    },
+                    required: ["timeItem"],
+                  },
+                },
+                tupleArr: {
+                  type: "array",
+                  items: [
+                    {
+                      type: "object",
+                      properties: {
+                        firstTime:
+                          ConfigurableToolInputJSONSchemas[
+                            INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+                          ],
+                      },
+                      required: ["firstTime"],
+                    },
+                    {
+                      type: "object",
+                      properties: {
+                        secondTime:
+                          ConfigurableToolInputJSONSchemas[
+                            INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+                          ],
+                      },
+                    },
+                  ],
+                },
+              },
+              required: ["timeTop", "container", "arr", "tupleArr"],
+            } as JSONSchema,
+          },
+        ],
+        availability: "manual",
+        allowMultipleInstances: false,
+        documentationUrl: null,
+      },
+      oAuthUseCase: null,
+      editedByUser: null,
+      toolsMetadata: [{ toolName: "tool", permission: "high", enabled: true }],
+    };
+
+    const timeFrameConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
+    });
+
+    const keys = Object.keys(timeFrameConfigurations);
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        "timeTop",
+        "container.timeNested",
+        "arr.items.timeItem",
+        "tupleArr.items.0.firstTime",
+        "tupleArr.items.1.secondTime",
+      ])
+    );
   });
 });

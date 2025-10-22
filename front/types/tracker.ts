@@ -1,4 +1,8 @@
-import type { ModelIdType, ModelProviderIdType } from "./assistant/assistant";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
+
 import type { DataSourceViewSelectionConfigurations } from "./data_source_view";
 import type { ModelId } from "./shared/model_id";
 import type { SpaceType } from "./space";

@@ -1,6 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { McpError } from "@modelcontextprotocol/sdk/types.js";
-
 import type {
   MCPApproveExecutionEvent,
   MCPErrorEvent,
@@ -20,7 +18,6 @@ import type {
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/utils";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
-import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -52,7 +49,8 @@ export async function* runToolWithStreaming(
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
     conversation: ConversationType;
-  }
+  },
+  options?: { signal?: AbortSignal }
 ): AsyncGenerator<
   | MCPApproveExecutionEvent
   | MCPErrorEvent
@@ -66,6 +64,8 @@ export async function* runToolWithStreaming(
   const owner = auth.getNonNullableWorkspace();
 
   const { toolConfiguration, status, augmentedInputs: inputs } = action;
+
+  const signal = options?.signal;
 
   const localLogger = logger.child({
     actionConfigurationId: toolConfiguration.sId,
@@ -102,49 +102,22 @@ export async function* runToolWithStreaming(
           conversation,
           agentMessage,
         }),
+      signal,
     }
   );
 
   // Err here means an exception ahead of calling the tool, like a connection error, an input
   // validation error, or any other kind of error from MCP, but not a tool error, which are returned
   // as content.
-  if (toolCallResult.isErr()) {
+  if (toolCallResult.isError) {
     statsDClient.increment("mcp_actions_error.count", 1, tags);
-    localLogger.error(
-      {
-        error: toolCallResult.error.message,
-      },
-      "Error calling MCP tool on run."
-    );
-
-    const { error: toolError } = toolCallResult;
-
-    const isMCPTimeoutError =
-      toolError instanceof McpError && toolError.code === -32001;
-
-    let errorMessage: string;
-    if (isMCPTimeoutError) {
-      errorMessage = `The execution of tool ${action.functionCallName} timed out.`;
-
-      // If the tool should be retried on interrupt, we throw an error so the workflow retries the
-      // `runTool` activity. If the tool should not be retried on interrupt, the error is returned to
-      // the model, to let it decide what to do.
-      const retryPolicy =
-        getRetryPolicyFromToolConfiguration(toolConfiguration);
-      if (retryPolicy === "retry_on_interrupt") {
-        errorMessage += `Error: ${toolError.message}`;
-        throw new Error(errorMessage, { cause: toolError });
-      }
-    } else {
-      errorMessage = `The tool ${action.functionCallName} failed with the following error: ${toolError.message}`;
-    }
 
     yield await handleMCPActionError({
       action,
       agentConfiguration,
       agentMessage,
       status,
-      errorMessage,
+      errorContent: toolCallResult.content,
     });
     return;
   }
@@ -153,7 +126,7 @@ export async function* runToolWithStreaming(
     action,
     conversation,
     localLogger,
-    toolCallResult: toolCallResult.value,
+    toolCallResultContent: toolCallResult.content,
     toolConfiguration,
   });
 

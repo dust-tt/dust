@@ -13,6 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
+import type { ParsedUrlQuery } from "querystring";
 import React, {
   useCallback,
   useContext,
@@ -37,6 +38,7 @@ import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import {
+  CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
   isConnectorPermissionsEditable,
 } from "@app/lib/connector_providers";
@@ -45,6 +47,7 @@ import {
   useDeleteFolderOrWebsite,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
+import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type {
   ConnectorProvider,
   DataSourceViewCategoryWithoutApps,
@@ -57,6 +60,7 @@ import type {
 } from "@app/types";
 import {
   ANONYMOUS_USER_IMAGE_URL,
+  isString,
   isWebsiteOrFolderCategory,
 } from "@app/types";
 
@@ -76,6 +80,16 @@ type StringColumnDef = ColumnDef<RowData, string>;
 type NumberColumnDef = ColumnDef<RowData, number>;
 
 type TableColumnDef = StringColumnDef | NumberColumnDef;
+
+const hasWebsiteModalQuery = (
+  query: ParsedUrlQuery
+): query is ParsedUrlQuery & { modal: string } =>
+  isString(query.modal) && query.modal === "website";
+
+const hasManagedModalQuery = (
+  query: ParsedUrlQuery
+): query is ParsedUrlQuery & { modal: string } =>
+  isString(query.modal) && query.modal === "managed";
 
 function getTableColumns(
   setAssistantSId: (a: string | null) => void,
@@ -156,10 +170,9 @@ function getTableColumns(
           )}
           {ds.connector && info.row.original.workspaceId && ds.name && (
             <ConnectorSyncingChip
-              initialState={ds.connector}
-              workspaceId={info.row.original.workspaceId}
-              dataSource={ds}
               activeSeats={activeSeats}
+              connector={ds.connector}
+              connectorError={ds.fetchConnectorErrorMessage}
             />
           )}
         </DataTable.CellContent>
@@ -225,6 +238,7 @@ function getTableColumns(
       actionColumn,
     ];
   }
+
   if (isManaged || isWebsite) {
     return [
       nameColumn,
@@ -278,9 +292,11 @@ export const SpaceResourcesList = ({
   const [sorting, setSorting] = useState<SortingState>([
     { id: "name", desc: false },
   ]);
+
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Partial<Record<ConnectorProvider, boolean>>
   >({});
+  const [shouldOpenManagedModal, setShouldOpenManagedModal] = useState(false);
 
   const router = useRouter();
   const isSystemSpace = systemSpace.sId === space.sId;
@@ -288,6 +304,38 @@ export const SpaceResourcesList = ({
   const isWebsite = category === "website";
   const isFolder = category === "folder";
   const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
+
+  useEffect(() => {
+    if (!router.isReady || !isWebsite) {
+      return;
+    }
+    const { query } = router;
+    if (!hasWebsiteModalQuery(query)) {
+      return;
+    }
+    setSelectedDataSourceView(null);
+    setShowFolderOrWebsiteModal(true);
+    void removeParamFromRouter(router, "modal");
+  }, [isWebsite, router.isReady, router.query.modal, router]);
+
+  useEffect(() => {
+    if (!router.isReady || !isManagedCategory || isSystemSpace) {
+      return;
+    }
+    const { query } = router;
+    if (!hasManagedModalQuery(query)) {
+      return;
+    }
+    setSelectedDataSourceView(null);
+    setShouldOpenManagedModal(true);
+    void removeParamFromRouter(router, "modal");
+  }, [
+    isManagedCategory,
+    isSystemSpace,
+    router.isReady,
+    router.query.modal,
+    router,
+  ]);
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
@@ -316,10 +364,17 @@ export const SpaceResourcesList = ({
     }
 
     return spaceDataSourceViews
-      .filter(
-        (dataSourceView) =>
-          dataSourceView.dataSource.connectorProvider !== "slack_bot"
-      )
+      .filter((dataSourceView) => {
+        const connectorConfig = dataSourceView.dataSource.connectorProvider
+          ? CONNECTOR_CONFIGURATIONS[
+              dataSourceView.dataSource.connectorProvider
+            ]
+          : null;
+
+        // Some connectors, such as Slack/Discord bots, are not meant to be displayed in the list.
+        // These are managed separately in the Admin workspace settings page.
+        return !connectorConfig?.isHiddenAsDataSource;
+      })
       .map((dataSourceView) => {
         const provider = dataSourceView.dataSource.connectorProvider;
 
@@ -472,6 +527,8 @@ export const SpaceResourcesList = ({
           owner={owner}
           systemSpace={systemSpace}
           space={space}
+          shouldOpenModal={shouldOpenManagedModal}
+          onOpenModalHandled={() => setShouldOpenManagedModal(false)}
         />
       )}
       {isFolder && selectedDataSourceView && (

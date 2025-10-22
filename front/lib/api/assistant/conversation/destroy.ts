@@ -16,8 +16,13 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { ConversationWithoutContentType, ModelId } from "@app/types";
-import { removeNulls } from "@app/types";
+import type {
+  ConversationError,
+  ConversationWithoutContentType,
+  ModelId,
+  Result,
+} from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
@@ -131,7 +136,7 @@ export async function destroyConversation(
   }: {
     conversationId: string;
   }
-) {
+): Promise<Result<void, ConversationError>> {
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
       auth,
@@ -141,8 +146,9 @@ export async function destroyConversation(
       { includeDeleted: true, dangerouslySkipPermissionFiltering: true }
     );
   if (conversationRes.isErr()) {
-    throw conversationRes.error;
+    return new Err(conversationRes.error);
   }
+
   const conversation = conversationRes.value;
 
   const messages = await Message.findAll({
@@ -206,4 +212,6 @@ export async function destroyConversation(
   if (c) {
     await c.delete(auth);
   }
+
+  return new Ok(undefined);
 }

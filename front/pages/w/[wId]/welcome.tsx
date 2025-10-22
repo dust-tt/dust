@@ -18,6 +18,8 @@ import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { usePatchUser } from "@app/lib/swr/user";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type { UserType, WorkspaceType } from "@app/types";
 import type { JobType } from "@app/types/job_type";
 import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/job_type";
@@ -98,11 +100,10 @@ export default function Welcome({
       });
     }
 
-    await router.push(
-      `/w/${owner.sId}/assistant/new?welcome=true${
-        conversationId ? `&cId=${conversationId}` : ""
-      }`
-    );
+    const queryParams = `welcome=true${
+      conversationId ? `&cId=${conversationId}` : ""
+    }`;
+    await router.push(getConversationRoute(owner.sId, "new", queryParams));
   });
 
   return (
@@ -114,7 +115,13 @@ export default function Welcome({
           label={"Next"}
           disabled={!isFormValid || isSubmitting}
           size="sm"
-          onClick={submit}
+          onClick={withTracking(
+            TRACKING_AREAS.AUTH,
+            "onboarding_complete",
+            () => {
+              void submit();
+            }
+          )}
         />
       }
     >
@@ -198,7 +205,13 @@ export default function Welcome({
             label={"Next"}
             disabled={!isFormValid || isSubmitting}
             size="md"
-            onClick={submit}
+            onClick={withTracking(
+              TRACKING_AREAS.AUTH,
+              "onboarding_complete",
+              () => {
+                void submit();
+              }
+            )}
           />
         </div>
       </div>

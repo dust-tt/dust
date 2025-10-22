@@ -5,7 +5,7 @@ import { DustError } from "@app/lib/error";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import * as temporalClient from "@app/temporal/agent_schedule/client";
+import * as temporalClient from "@app/lib/triggers/temporal/schedule/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -664,10 +664,10 @@ describe("TriggerResource", () => {
     it("should successfully disable all enabled triggers in a workspace", async () => {
       // Mock temporal workflow operations to avoid failures in test environment
       const mockCreateOrUpdateWorkflow = vi
-        .spyOn(temporalClient, "createOrUpdateAgentScheduleWorkflow")
+        .spyOn(temporalClient, "createOrUpdateAgentSchedule")
         .mockResolvedValue(new Ok("workflow-id"));
       const mockDeleteWorkflow = vi
-        .spyOn(temporalClient, "deleteAgentScheduleWorkflow")
+        .spyOn(temporalClient, "deleteTriggerSchedule")
         .mockResolvedValue(new Ok(undefined));
 
       const { workspace, authenticator } = await createResourceTest({
@@ -787,10 +787,10 @@ describe("TriggerResource", () => {
     it("should successfully enable all disabled triggers that point to active agents", async () => {
       // Mock temporal workflow operations
       const mockCreateOrUpdateWorkflow = vi
-        .spyOn(temporalClient, "createOrUpdateAgentScheduleWorkflow")
+        .spyOn(temporalClient, "createOrUpdateAgentSchedule")
         .mockResolvedValue(new Ok("workflow-id"));
       const mockDeleteWorkflow = vi
-        .spyOn(temporalClient, "deleteAgentScheduleWorkflow")
+        .spyOn(temporalClient, "deleteTriggerSchedule")
         .mockResolvedValue(new Ok(undefined));
 
       const { workspace, authenticator } = await createResourceTest({

@@ -26,9 +26,7 @@ import {
 import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
 import { registerListTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
 import {
-  DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS,
   extractDataSourceIdFromNodeId,
-  getSearchNodesSortDirection,
   isDataSourceNodeId,
   makeQueryResourceForFind,
 } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
@@ -40,7 +38,7 @@ import {
 import {
   getAgentDataSourceConfigurations,
   getCoreSearchArgs,
-  makeDataSourceViewFilter,
+  makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -191,7 +189,10 @@ async function searchCallback(
   if (coreSearchArgs.length === 0) {
     return new Err(
       new MCPError(
-        "Search action must have at least one data source configured."
+        "Search action must have at least one data source configured.",
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -290,10 +291,9 @@ async function searchCallback(
     const searchResult = await coreAPI.searchNodes({
       filter: {
         node_ids: searchNodeIds,
-        data_source_views: coreSearchArgs.map((args) => ({
-          data_source_id: args.dataSourceId,
-          view_filter: args.filter.parents?.in ?? [],
-        })),
+        data_source_views: makeCoreSearchNodesFilters(
+          agentDataSourceConfigurations
+        ),
       },
       options: {
         limit: searchNodeIds.length,
@@ -332,10 +332,10 @@ async function searchCallback(
   ]);
 }
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("data_sources_file_system");
 
   registerCatTool(auth, server, agentLoopContext, {
@@ -354,8 +354,7 @@ const createServer = (
         .describe(
           "The title to search for. This supports partial matching and does not require the " +
             "exact title. For example, searching for 'budget' will find 'Budget 2024.xlsx', " +
-            "'Q1 Budget Report', etc. This parameter is mutually exclusive with the `sortBy` " +
-            "parameter."
+            "'Q1 Budget Report', etc..."
         ),
       rootNodeId: z
         .string()
@@ -379,16 +378,32 @@ const createServer = (
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
         ],
-      ...DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS,
+      limit: z
+        .number()
+        .optional()
+        .describe(
+          "Maximum number of results to return. Initial searches should use 10-20."
+        ),
+      nextPageCursor: z
+        .string()
+        .optional()
+        .describe(
+          "Cursor for fetching the next page of results. This parameter should only be used to fetch " +
+            "the next page of a previous search. The value should be exactly the 'nextPageCursor' from " +
+            "the previous search result."
+        ),
     },
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_FIND_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
       async ({
         query,
         dataSources,
         limit,
-        sortBy,
         nextPageCursor,
         rootNodeId,
         mimeTypes,
@@ -415,7 +430,7 @@ const createServer = (
         // are searched. It is not straightforward to guess which data source it
         // belongs to, this is why irrelevant data sources are not directly
         // filtered out.
-        let viewFilter = makeDataSourceViewFilter(
+        let viewFilter = makeCoreSearchNodesFilters(
           agentDataSourceConfigurations
         );
 
@@ -439,14 +454,6 @@ const createServer = (
           options: {
             cursor: nextPageCursor,
             limit,
-            sort: sortBy
-              ? [
-                  {
-                    field: sortBy,
-                    direction: getSearchNodesSortDirection(sortBy),
-                  },
-                ]
-              : undefined,
           },
         });
 
@@ -497,7 +504,11 @@ const createServer = (
       SearchToolInputSchema.shape,
       withToolLogging(
         auth,
-        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        {
+          toolNameForMonitoring: SEARCH_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
         async (params) => searchCallback(auth, agentLoopContext, params)
       )
     );
@@ -536,7 +547,11 @@ const createServer = (
       },
       withToolLogging(
         auth,
-        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        {
+          toolNameForMonitoring: SEARCH_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
         async (params) =>
           searchCallback(auth, agentLoopContext, params, {
             tagsIn: params.tagsIn,
@@ -561,7 +576,11 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
       async ({ nodeId, dataSources }) => {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const fetchResult = await getAgentDataSourceConfigurations(
@@ -577,7 +596,11 @@ const createServer = (
         if (isDataSourceNodeId(nodeId)) {
           const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
           if (!dataSourceId) {
-            return new Err(new MCPError("Invalid data source node ID format"));
+            return new Err(
+              new MCPError("Invalid data source node ID format", {
+                tracked: false,
+              })
+            );
           }
 
           const dataSourceConfig = agentDataSourceConfigurations.find(
@@ -586,7 +609,9 @@ const createServer = (
 
           if (!dataSourceConfig) {
             return new Err(
-              new MCPError(`Data source not found for ID: ${dataSourceId}`)
+              new MCPError(`Data source not found for ID: ${dataSourceId}`, {
+                tracked: false,
+              })
             );
           }
 
@@ -613,7 +638,7 @@ const createServer = (
         const searchResult = await coreAPI.searchNodes({
           filter: {
             node_ids: [nodeId],
-            data_source_views: makeDataSourceViewFilter(
+            data_source_views: makeCoreSearchNodesFilters(
               agentDataSourceConfigurations
             ),
           },
@@ -640,7 +665,7 @@ const createServer = (
           const pathSearchResult = await coreAPI.searchNodes({
             filter: {
               node_ids: parentNodeIds,
-              data_source_views: makeDataSourceViewFilter(
+              data_source_views: makeCoreSearchNodesFilters(
                 agentDataSourceConfigurations
               ),
             },
@@ -716,6 +741,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

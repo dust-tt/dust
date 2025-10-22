@@ -113,7 +113,14 @@ impl Block for Database {
         let query = replace_variables_in_string(&self.query, "query", env)?;
         let tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
-        match execute_query(tables, &query, env.store.clone()).await {
+        match execute_query(
+            tables,
+            &query,
+            env.store.clone(),
+            env.databases_store.clone(),
+        )
+        .await
+        {
             Ok((results, schema, query)) => Ok(BlockResult {
                 value: json!({
                     "results": results,

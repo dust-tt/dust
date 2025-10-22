@@ -29,8 +29,8 @@ import type {
   FetchConversationMessagesResponse,
   LightAgentConfigurationType,
   LightAgentMessageType,
-  LightMessageWithRankType,
-  MessageWithRankType,
+  LightMessageType,
+  MessageType,
   ModelId,
   Result,
   UserMessageType,
@@ -119,10 +119,36 @@ export async function generateParsedContents(
   return parsedContents;
 }
 
+// Ensure at least one whitespace boundary between adjacent text fragments when
+// reconstructing content from step contents. If neither the previous fragment
+// ends with whitespace nor the next fragment starts with whitespace, insert a
+// single "\n" between them. This avoids words being concatenated across step
+// boundaries without altering content that already contains spacing.
+function interleaveConditionalNewlines(parts: string[]): string[] {
+  if (parts.length === 0) {
+    return [];
+  }
+  const out: string[] = [];
+  out.push(parts[0]);
+  for (let i = 1; i < parts.length; i++) {
+    const prev = parts[i - 1];
+    const curr = parts[i];
+    const prevLast = prev.length ? prev[prev.length - 1] : "";
+    const currFirst = curr.length ? curr[0] : "";
+    const prevEndsWs = /\s/.test(prevLast);
+    const currStartsWs = /\s/.test(currFirst);
+    if (!prevEndsWs && !currStartsWs) {
+      out.push("\n");
+    }
+    out.push(curr);
+  }
+  return out;
+}
+
 async function batchRenderUserMessages(
   auth: Authenticator,
   messages: Message[]
-): Promise<{ m: UserMessageType; rank: number; version: number }[]> {
+): Promise<UserMessageType[]> {
   const userMessages = messages.filter(
     (m) => m.userMessage !== null && m.userMessage !== undefined
   );
@@ -164,6 +190,7 @@ async function batchRenderUserMessages(
       type: "user_message",
       visibility: message.visibility,
       version: message.version,
+      rank: message.rank,
       created: message.createdAt.getTime(),
       user: user ? user.toJSON() : null,
       mentions: messageMentions
@@ -184,11 +211,13 @@ async function batchRenderUserMessages(
         email: userMessage.userContextEmail,
         profilePictureUrl: userMessage.userContextProfilePictureUrl,
         origin: userMessage.userContextOrigin,
+        originMessageId: userMessage.userContextOriginMessageId,
         clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
-        lastTriggerRunAt: userMessage.userContextLastTriggerRunAt,
+        lastTriggerRunAt:
+          userMessage.userContextLastTriggerRunAt?.getTime() ?? null,
       },
     } satisfies UserMessageType;
-    return { m, rank: message.rank, version: message.version };
+    return m;
   });
 }
 
@@ -198,9 +227,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   viewType: V
 ): Promise<
   Result<
-    V extends "full"
-      ? { m: AgentMessageType; rank: number; version: number }[]
-      : { m: LightAgentMessageType; rank: number; version: number }[],
+    V extends "full" ? AgentMessageType[] : LightAgentMessageType[],
     ConversationError
   >
 > {
@@ -260,6 +287,10 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       },
       {} as Record<string, AgentStepContentResource[]>
     );
+
+  // Create maps for efficient lookups
+  const messagesBySId = new Map(messages.map((m) => [m.sId, m]));
+  const messagesById = new Map(messages.map((m) => [m.id, m]));
 
   // The only async part here is the content parsing, but it's "fake async" as the content parsing is not doing
   // any IO or network. We need it to be async as we want to re-use the async generators for the content parsing.
@@ -339,10 +370,13 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
 
       const { content, chainOfThought } = await (async () => {
+        const textFragments = interleaveConditionalNewlines(
+          textContents.map((c) => c.content.value)
+        );
+
         if (reasoningContents.length > 0) {
-          // don't use the content parser, we just use raw contents and native CoT
           return {
-            content: textContents.map((c) => c.content.value).join(""),
+            content: textFragments.join(""),
             chainOfThought: reasoningContents
               .map((sc) => sc.content.value.reasoning)
               .filter((r) => !!r)
@@ -354,9 +388,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
             message.sId,
             getDelimitersConfiguration({ agentConfiguration })
           );
-          const parsedContent = await contentParser.parseContents(
-            textContents.map((r) => r.content.value)
-          );
+          const parsedContent =
+            await contentParser.parseContents(textFragments);
           return {
             content: parsedContent.content,
             chainOfThought: parsedContent.chainOfThought,
@@ -364,16 +397,35 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         }
       })();
 
+      const parentMessage = message.parentId
+        ? messagesById.get(message.parentId) ?? null
+        : null;
+
+      let parentAgentMessage: Message | null = null;
+      if (
+        parentMessage &&
+        parentMessage?.userMessage &&
+        parentMessage.userMessage.userContextOrigin === "agent_handover" &&
+        parentMessage.userMessage.userContextOriginMessageId
+      ) {
+        parentAgentMessage =
+          messagesBySId.get(
+            parentMessage.userMessage.userContextOriginMessageId
+          ) ?? null;
+      }
+
       const m = {
         id: message.id,
         agentMessageId: agentMessage.id,
         sId: message.sId,
         created: message.createdAt.getTime(),
+        completedTs: agentMessage.completedAt?.getTime() ?? null,
         type: "agent_message" as const,
         visibility: message.visibility,
         version: message.version,
-        parentMessageId:
-          messages.find((m) => m.id === message.parentId)?.sId ?? null,
+        rank: message.rank,
+        parentMessageId: parentMessage?.sId ?? null,
+        parentAgentMessageId: parentAgentMessage?.sId ?? null,
         status: agentMessage.status,
         actions,
         content,
@@ -390,13 +442,9 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       } satisfies AgentMessageType;
 
       if (viewType === "full") {
-        return new Ok({ m, rank: message.rank, version: message.version });
+        return new Ok(m);
       } else {
-        return new Ok({
-          m: getLightAgentMessageFromAgentMessage(m),
-          rank: message.rank,
-          version: message.version,
-        });
+        return new Ok(getLightAgentMessageFromAgentMessage(m));
       }
     })
   );
@@ -409,19 +457,9 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   }
 
   return new Ok(
-    renderedMessages
-      .filter(
-        (
-          m
-        ): m is Ok<{
-          m: AgentMessageType;
-          rank: number;
-          version: number;
-        }> => m.isOk()
-      )
-      .map((m) => m.value) as V extends "full"
-      ? { m: AgentMessageType; rank: number; version: number }[]
-      : { m: LightAgentMessageType; rank: number; version: number }[]
+    removeNulls(
+      renderedMessages.map((m) => (m.isOk() ? m.value : null))
+    ) as V extends "full" ? AgentMessageType[] : LightAgentMessageType[]
   );
 }
 
@@ -429,7 +467,7 @@ async function batchRenderContentFragment(
   auth: Authenticator,
   conversationId: string,
   messages: Message[]
-): Promise<{ m: ContentFragmentType; rank: number; version: number }[]> {
+): Promise<ContentFragmentType[]> {
   const messagesWithContentFragment = messages.filter(
     (m) => !!m.contentFragment
   );
@@ -448,11 +486,7 @@ async function batchRenderContentFragment(
         message,
       });
 
-      return {
-        m: render,
-        rank: message.rank,
-        version: message.version,
-      };
+      return render;
     })
   );
 }
@@ -577,7 +611,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   viewType: V
 ): Promise<
   Result<
-    V extends "full" ? MessageWithRankType[] : LightMessageWithRankType[],
+    V extends "full" ? MessageType[] : LightMessageType[],
     ConversationError
   >
 > {
@@ -593,7 +627,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
 
   const agentMessages = agentMessagesRes.value;
 
-  if (agentMessages.some((m) => !canReadMessage(auth, m.m))) {
+  if (agentMessages.some((m) => !canReadMessage(auth, m))) {
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
@@ -601,14 +635,10 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
     ...userMessages,
     ...agentMessages,
     ...contentFragments,
-  ]
-    .sort((a, b) => a.rank - b.rank || a.version - b.version)
-    .map(({ m, rank }) => ({ ...m, rank }));
+  ].sort((a, b) => a.rank - b.rank || a.version - b.version);
 
   return new Ok(
-    renderedMessages as V extends "full"
-      ? MessageWithRankType[]
-      : LightMessageWithRankType[]
+    renderedMessages as V extends "full" ? MessageType[] : LightMessageType[]
   );
 }
 
@@ -661,6 +691,7 @@ export function canReadMessage(
   auth: Authenticator,
   message: AgentMessageType | LightAgentMessageType
 ) {
+  // TODO(2025-10-17 thomas): Update permission to use space requirements.
   return auth.canRead(
     Authenticator.createResourcePermissionsFromGroupIds(
       message.configuration.requestedGroupIds
@@ -671,13 +702,15 @@ export function canReadMessage(
 export async function fetchMessageInConversation(
   auth: Authenticator,
   conversation: ConversationWithoutContentType,
-  messageId: string
+  messageId: string,
+  version?: number
 ) {
   return Message.findOne({
     where: {
       conversationId: conversation.id,
       sId: messageId,
       workspaceId: auth.getNonNullableWorkspace()?.id,
+      ...(version ? { version } : {}),
     },
     include: [
       {

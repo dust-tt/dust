@@ -5,6 +5,7 @@ import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
@@ -14,10 +15,10 @@ import type { ModelId } from "@app/types";
 import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
 import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type {
-  RunAgentArgs,
-  RunAgentExecutionData,
+  AgentLoopArgsWithTiming,
+  AgentLoopExecutionData,
 } from "@app/types/assistant/agent_run";
-import { getRunAgentData } from "@app/types/assistant/agent_run";
+import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
@@ -41,11 +42,11 @@ export async function runModelAndCreateActionsActivity({
   authType: AuthenticatorType;
   autoRetryCount?: number;
   checkForResume?: boolean;
-  runAgentArgs: RunAgentArgs;
+  runAgentArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   step: number;
 }): Promise<RunModelAndCreateActionsResult | null> {
-  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
+  const runAgentDataRes = await getAgentLoopData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
     return null;
   }
@@ -56,7 +57,6 @@ export async function runModelAndCreateActionsActivity({
   logAgentLoopStepStart({
     agentMessageId: runAgentData.agentMessage.sId,
     conversationId: runAgentData.conversation.sId,
-    executionMode: runAgentArgs.sync ? "sync" : "async",
     step,
   });
 
@@ -117,6 +117,13 @@ export async function runModelAndCreateActionsActivity({
     step,
   });
 
+  const needsApproval = createResult.actionBlobs.some((a) => a.needsApproval);
+  if (needsApproval) {
+    await ConversationResource.markAsActionRequired(auth, {
+      conversation: runAgentData.conversation,
+    });
+  }
+
   return {
     runId,
     actionBlobs: createResult.actionBlobs,
@@ -129,7 +136,7 @@ export async function runModelAndCreateActionsActivity({
  */
 async function getExistingActionsAndBlobs(
   auth: Authenticator,
-  runAgentArgs: RunAgentExecutionData,
+  runAgentArgs: AgentLoopExecutionData,
   step: number
 ): Promise<{
   actionBlobs: ActionBlob[];

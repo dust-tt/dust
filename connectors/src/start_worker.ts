@@ -11,8 +11,8 @@ import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/wo
 import { runSalesforceWorker } from "@connectors/connectors/salesforce/temporal/worker";
 import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/worker";
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
-import { closeRedisClient } from "@connectors/lib/redis";
 import { isDevelopment, setupGlobalErrorHandler } from "@connectors/types";
+import { closeRedisClients } from "@connectors/types/shared/redis_client";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runGoogleWorkers } from "./connectors/google_drive/temporal/worker";
@@ -50,7 +50,7 @@ Runtime.install({
 });
 
 type WorkerType =
-  | Exclude<ConnectorProvider, "slack_bot">
+  | Exclude<ConnectorProvider, "slack_bot" | "discord_bot" | "microsoft_bot">
   | "notion_garbage_collector";
 
 const workerFunctions: Record<WorkerType, () => Promise<void>> = {
@@ -96,8 +96,8 @@ async function runWorkers(workers: WorkerType[]) {
     await Runtime.instance().shutdown();
   }
 
-  // Shutdown potential Redis client
-  await closeRedisClient();
+  // Shutdown potential Redis clients.
+  await closeRedisClients();
 }
 
 yargs(hideBin(process.argv))

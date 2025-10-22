@@ -71,7 +71,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
   }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
-    const client = await getClient(connectionId);
+    const client = await getMicrosoftClient(connectionId);
 
     try {
       // Sanity checks - check connectivity and permissions. User should be able to access the sites and teams list.
@@ -127,10 +127,10 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     if (connectionId) {
       try {
         const logger = getActivityLogger(connector);
-        const client = await getClient(connector.connectionId);
+        const client = await getMicrosoftClient(connector.connectionId);
         const currentOrg = await clientApiGet(logger, client, "/organization");
 
-        const newClient = await getClient(connectionId);
+        const newClient = await getMicrosoftClient(connectionId);
         const newOrg = await clientApiGet(logger, newClient, "/organization");
 
         if (
@@ -254,7 +254,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       return new Ok(nRes.value);
     }
 
-    const client = await getClient(connector.connectionId);
+    const client = await getMicrosoftClient(connector.connectionId);
     const nodes = [];
 
     const selectedResources = (
@@ -604,7 +604,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }
 }
 
-export async function getClient(connectionId: string) {
+export async function getMicrosoftClient(connectionId: string) {
   const { access_token: accessToken } =
     await getOAuthConnectionAccessTokenWithThrow({
       logger,

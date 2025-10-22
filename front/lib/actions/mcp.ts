@@ -1,13 +1,13 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
+import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
-import type {
-  CustomServerIconType,
-  InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -49,7 +49,7 @@ export type BaseMCPServerConfigurationType = {
   name: string;
 
   description: string | null;
-  icon?: CustomServerIconType | InternalAllowedIconType;
+  icon?: CustomResourceIconType | InternalAllowedIconType;
 };
 
 // Server-side MCP server = Remote MCP Server OR our own MCP server.

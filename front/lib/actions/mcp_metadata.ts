@@ -9,6 +9,7 @@ import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { ProxyAgent } from "undici";
 
+import { isInternalAllowedIcon } from "@app/components/resources/resources_icons";
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
   DEFAULT_MCP_ACTION_NAME,
@@ -20,17 +21,13 @@ import {
 } from "@app/lib/actions/mcp_authentication";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import {
-  DEFAULT_MCP_SERVER_ICON,
-  isInternalAllowedIcon,
-} from "@app/lib/actions/mcp_icons";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
-import config from "@app/lib/api/config";
 import type {
   InternalMCPServerDefinitionType,
   MCPServerDefinitionType,
@@ -38,6 +35,7 @@ import type {
   MCPToolType,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { getUntrustedEgressAgent } from "@app/lib/egress";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
@@ -125,25 +123,21 @@ export type MCPConnectionParams =
   | ClientSideMCPConnectionParams;
 
 function createMCPDispatcher(auth: Authenticator): ProxyAgent | undefined {
-  // Default to the generic proxy.
-  let proxyHost = config.getUntrustedEgressProxyHost();
-  let proxyPort = config.getUntrustedEgressProxyPort();
-
   if (isWorkspaceUsingStaticIP(auth.getNonNullableWorkspace())) {
-    proxyHost = `${EnvironmentConfig.getEnvVariable(
+    const proxyHost = `${EnvironmentConfig.getEnvVariable(
       "PROXY_USER_NAME"
     )}:${EnvironmentConfig.getEnvVariable(
       "PROXY_USER_PASSWORD"
     )}@${EnvironmentConfig.getEnvVariable("PROXY_HOST")}`;
-    proxyPort = EnvironmentConfig.getEnvVariable("PROXY_PORT");
+    const proxyPort = EnvironmentConfig.getEnvVariable("PROXY_PORT");
+
+    if (proxyHost && proxyPort) {
+      const proxyUrl = `http://${proxyHost}:${proxyPort}`;
+      return new ProxyAgent(proxyUrl);
+    }
   }
 
-  if (proxyHost && proxyPort) {
-    const proxyUrl = `http://${proxyHost}:${proxyPort}`;
-    return new ProxyAgent(proxyUrl);
-  }
-
-  return undefined;
+  return getUntrustedEgressAgent();
 }
 
 export const connectToMCPServer = async (

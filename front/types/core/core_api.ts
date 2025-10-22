@@ -2,8 +2,8 @@ import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { EmbeddingProviderIdType } from "@app/types";
 import { dustManagedCredentials } from "@app/types/api/credentials";
-import type { EmbeddingProviderIdType } from "@app/types/assistant/assistant";
 import type { ProviderVisibility } from "@app/types/connectors/connectors_api";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import type {
@@ -229,6 +229,7 @@ export const CoreAPIDatasourceViewFilterSchema = t.intersection([
   }),
   t.partial({
     search_scope: CoreAPISearchScopeSchema,
+    filter: t.array(t.string),
   }),
 ]);
 

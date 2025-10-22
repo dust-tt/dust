@@ -1,73 +1,38 @@
 import {
+  ActionFrameIcon,
   Citation,
   CitationDescription,
   CitationGrid,
-  CitationIcons,
-  CitationIndex,
   CitationTitle,
   Icon,
-  SparklesIcon,
 } from "@dust-tt/sparkle";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
+import { formatCalendarDate } from "@app/lib/utils/timestamps";
 import type { LightAgentMessageType } from "@app/types";
-import { clientExecutableContentType } from "@app/types";
-
-interface DefaultAgentMessageGeneratedFilesProps {
-  document: MarkdownCitation;
-  index: number;
-}
-
-function CitationContent({
-  document,
-  index,
-}: DefaultAgentMessageGeneratedFilesProps) {
-  return (
-    <>
-      <CitationIcons>
-        {index !== -1 && <CitationIndex>{index}</CitationIndex>}
-        {document.icon}
-      </CitationIcons>
-      <CitationTitle>{document.title}</CitationTitle>
-    </>
-  );
-}
-
-export function DefaultAgentMessageGeneratedFiles({
-  document,
-  index,
-}: DefaultAgentMessageGeneratedFilesProps) {
-  return (
-    <Citation href={document.href} tooltip={document.title}>
-      <CitationContent document={document} index={index} />
-    </Citation>
-  );
-}
-
-// Content creation files.
+import { frameContentType, getTime } from "@app/types";
 
 function getDescriptionForContentType(
   file: LightAgentMessageType["generatedFiles"][number]
 ) {
-  if (file.contentType === clientExecutableContentType) {
-    return "Visualization";
+  if (file.contentType === frameContentType) {
+    return "Frames";
   }
 
   return null;
 }
 
-interface AgentMessageContentCreationGeneratedFilesProps {
+interface AgentMessageInteractiveContentGeneratedFilesProps {
   files: LightAgentMessageType["generatedFiles"];
   onClick?: () => void;
   variant?: "list" | "grid";
 }
 
-export function AgentMessageContentCreationGeneratedFiles({
+export function AgentMessageInteractiveContentGeneratedFiles({
   files,
   onClick,
   variant = "list",
-}: AgentMessageContentCreationGeneratedFilesProps) {
+}: AgentMessageInteractiveContentGeneratedFilesProps) {
   const { openPanel } = useConversationSidePanelContext();
 
   if (files.length === 0) {
@@ -80,7 +45,7 @@ export function AgentMessageContentCreationGeneratedFiles({
         const handleClick = (e: React.MouseEvent) => {
           e.preventDefault();
           openPanel({
-            type: "content_creation",
+            type: "interactive_content",
             fileId: file.fileId,
           });
           onClick?.();
@@ -95,18 +60,24 @@ export function AgentMessageContentCreationGeneratedFiles({
             onClick={handleClick}
             className="bg-gray-50 dark:bg-gray-800"
           >
-            <div className="flex flex-row items-center gap-2">
+            <div className="flex flex-row items-center">
               <CitationTitle>{file.title}</CitationTitle>
-              {description && variant === "list" && (
-                <CitationTitle className="text-muted-foreground dark:text-muted-foreground-night">
-                  {description}
-                </CitationTitle>
-              )}
             </div>
             <CitationDescription>
               <div className="flow-row flex items-center gap-2">
-                <Icon visual={SparklesIcon} size="xs" />
-                Content Creation
+                {variant === "grid" && file.createdAt && (
+                  <div>
+                    <span>{formatCalendarDate(file.createdAt)}</span>
+                    <span className="mx-1">{"\u00B7"}</span>
+                    <time>{getTime(file.createdAt)}</time>
+                  </div>
+                )}
+                {variant === "list" && description && (
+                  <p className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    <Icon visual={ActionFrameIcon} size="xs" />
+                    {description}
+                  </p>
+                )}
               </div>
             </CitationDescription>
           </Citation>

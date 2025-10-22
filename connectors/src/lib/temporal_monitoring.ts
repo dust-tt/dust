@@ -14,6 +14,7 @@ import type { Logger } from "@connectors/logger/logger";
 import type logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { WithRetriesError } from "@connectors/types";
 
 import {
   DustConnectorWorkflowError,
@@ -26,6 +27,21 @@ import { getConnectorId } from "./temporal";
 
 const TRACK_SUCCESSFUL_ACTIVITIES_FOR_CONNECTOR_IDS = [145];
 const TRANSIENT_ERROR_PRE_BACKOFF_RETRY_ATTEMPTS = 19;
+
+function redactErrorForLogs(err: unknown) {
+  if (err instanceof WithRetriesError) {
+    // Omitting the whole errors array, data meant to be logged  should be
+    // passed in additionalContext.
+    return {
+      name: err.name,
+      message: err.message,
+      retries: err.retries,
+      delayBetweenRetriesMs: err.delayBetweenRetriesMs,
+      additionalContext: err.additionalContext,
+    };
+  }
+  return err;
+}
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
@@ -141,6 +157,7 @@ export class ActivityInboundLogInterceptor
           )}s`,
           type: err.type, // "transient_upstream_activity_error"
           nextRetryDelay: err.retryAfterMs,
+          cause: err,
         });
       }
 
@@ -166,8 +183,7 @@ export class ActivityInboundLogInterceptor
 
       if (
         err instanceof ExternalOAuthTokenError ||
-        err instanceof WorkspaceQuotaExceededError ||
-        err instanceof ApplicationFailure
+        err instanceof WorkspaceQuotaExceededError
       ) {
         // We have a connector working on an expired token, we need to cancel the workflow.
         const { workflowId } = this.context.info.workflowExecution;
@@ -192,10 +208,6 @@ export class ActivityInboundLogInterceptor
             this.logger.info(
               `Stopping connector manager because of quota exceeded for the workspace.`
             );
-          } else if (err instanceof ApplicationFailure) {
-            // This will be handled automatically by the Temporal SDK.
-            // We don't need to do anything here.
-            return;
           } else {
             assertNever(err);
           }
@@ -240,7 +252,7 @@ export class ActivityInboundLogInterceptor
           // Unknown error type.
           this.logger.error(
             {
-              error,
+              error: redactErrorForLogs(error),
               error_stack: error?.stack,
               durationMs: durationMs,
               attempt: this.context.info.attempt,

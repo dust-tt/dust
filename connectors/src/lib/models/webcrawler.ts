@@ -2,7 +2,7 @@ import type { Action } from "@mendable/firecrawl-js";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type { CrawlingFrequency, DepthOption } from "@connectors/types";
 
@@ -75,7 +75,7 @@ WebCrawlerConfigurationModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [],
     modelName: "webcrawler_configurations",
   }
@@ -113,7 +113,7 @@ WebCrawlerConfigurationHeader.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "webcrawler_configuration_headers",
     indexes: [
       {
@@ -172,7 +172,7 @@ WebCrawlerFolder.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       {
         unique: true,
@@ -241,7 +241,7 @@ WebCrawlerPage.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       {
         unique: true,

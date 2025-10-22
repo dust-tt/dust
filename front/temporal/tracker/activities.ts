@@ -102,7 +102,9 @@ export async function trackersGenerationActivity(
   }
 
   const dataSourceDocument = dataSourceDocumentRes.value;
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const documentText = dataSourceDocument.document.text || "";
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const documentSourceUrl = dataSourceDocument.document.source_url || undefined;
   if (!documentText) {
     localLogger.warn(
@@ -267,9 +269,10 @@ export async function trackersGenerationActivity(
           error: maintainedScopeRetrievalRes.error,
           runId,
         },
-        "Error retrieving content from maintained scope."
+        "Error retrieving content from maintained scope. Skipping this tracker."
       );
-      throw maintainedScopeRetrievalRes.error;
+      // Skip this tracker instead of failing the entire workflow
+      continue;
     }
 
     const maintainedScopeRetrieval = maintainedScopeRetrievalRes.value.result;
@@ -389,9 +392,10 @@ export async function trackersGenerationActivity(
           runId,
           error: scoreDocsRes.error,
         },
-        "Error scoring documents."
+        "Error scoring documents. Skipping this tracker."
       );
-      throw scoreDocsRes.error;
+      // Skip this tracker instead of failing the entire workflow
+      continue;
     }
 
     const scoreDocsOutput = scoreDocsRes.value.result;
@@ -448,9 +452,10 @@ export async function trackersGenerationActivity(
             runId,
             error: suggestChangesRes.error,
           },
-          "Error suggesting changes."
+          "Error suggesting changes. Skipping this document."
         );
-        throw suggestChangesRes.error;
+        // Skip this document instead of failing the entire workflow
+        continue;
       }
 
       const suggestChangesOutput = suggestChangesRes.value.result;
@@ -469,9 +474,13 @@ export async function trackersGenerationActivity(
           maintainedDataSourceId
         );
       if (!maintainedDocumentDataSource) {
-        throw new Error(
-          `Could not find maintained data source ${maintainedDataSourceId}`
+        trackerLogger.error(
+          {
+            maintainedDataSourceId,
+          },
+          `Could not find maintained data source. Skipping this document.`
         );
+        continue;
       }
 
       const suggestedChanges = suggestChangesOutput.suggestion;

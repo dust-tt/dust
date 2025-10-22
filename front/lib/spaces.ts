@@ -1,5 +1,5 @@
 import {
-  BellIcon,
+  BoltIcon,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
   CompanyIcon,
@@ -127,6 +127,7 @@ export const CATEGORY_DETAILS: {
   apps: {
     label: "Apps",
     icon: CommandLineIcon,
+    flag: "legacy_dust_apps",
   },
   actions: {
     label: "Tools",
@@ -134,7 +135,7 @@ export const CATEGORY_DETAILS: {
   },
   triggers: {
     label: "Triggers",
-    icon: BellIcon,
+    icon: BoltIcon,
     flag: "hootl_webhooks",
   },
 };

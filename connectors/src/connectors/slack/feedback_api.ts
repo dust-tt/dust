@@ -3,7 +3,7 @@ import type { Block, KnownBlock } from "@slack/web-api";
 import { makeFeedbackSubmittedBlock } from "@connectors/connectors/slack/chat/blocks";
 import {
   getSlackClient,
-  getSlackUserInfo,
+  getSlackUserInfoMemoized,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
@@ -97,7 +97,7 @@ export async function submitFeedbackToAPI({
     let userEmail: string | undefined = undefined;
     try {
       const slackClient = await getSlackClient(connector.id);
-      const slackUserInfo = await getSlackUserInfo(
+      const slackUserInfo = await getSlackUserInfoMemoized(
         connector.id,
         slackClient,
         slackUserId
@@ -217,7 +217,8 @@ export async function submitFeedbackToAPI({
                 ts: slackMessageTs,
                 blocks: updatedBlocks,
                 text: currentMessage.text || "",
-              })
+              }),
+            { source: "submitFeedbackToAPI" }
           );
         } else {
           logger.warn(

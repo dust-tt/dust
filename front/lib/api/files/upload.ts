@@ -10,6 +10,7 @@ import { fileSync } from "tmp";
 import config from "@app/lib/api/config";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { untrustedFetch } from "@app/lib/egress";
 import type { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { transcribeFile } from "@app/lib/utils/transcribe_service";
@@ -23,7 +24,10 @@ import type {
   SupportedImageContentType,
 } from "@app/types";
 import { isSupportedAudioContentType } from "@app/types";
-import { isContentCreationFileContentType, normalizeError } from "@app/types";
+import {
+  isInteractiveContentFileContentType,
+  normalizeError,
+} from "@app/types";
 import {
   assertNever,
   Err,
@@ -78,11 +82,11 @@ const uploadToPublicBucket: ProcessingFunction = async (
 // Images processing.
 
 const createReadableFromUrl = async (url: string): Promise<Readable> => {
-  const response = await fetch(url);
+  const response = await untrustedFetch(url);
   if (!response.ok || !response.body) {
     throw new Error(`Failed to fetch from URL: ${response.statusText}`);
   }
-  return Readable.fromWeb(response.body as any); // Type assertion needed due to Node.js types mismatch
+  return Readable.fromWeb(response.body);
 };
 
 const resizeAndUploadToFileStorage: ProcessingFunction = async (
@@ -273,7 +277,11 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
 
     // 4) Store transcript in processed version as plain text.
     const transcript = tr.value;
-    const writeStream = file.getWriteStream({ auth, version: "processed" });
+    const writeStream = file.getWriteStream({
+      auth,
+      version: "processed",
+      overrideContentType: "text/plain", // Explicitly set content type to plain text as it's a transcription
+    });
     await pipeline(Readable.from(transcript), writeStream);
 
     return new Ok(undefined);
@@ -350,14 +358,16 @@ type ProcessingFunction = (
 ) => Promise<Result<undefined, Error>>;
 
 const getProcessingFunction = ({
+  auth,
   contentType,
   useCase,
 }: {
+  auth: Authenticator;
   contentType: AllSupportedFileContentType;
   useCase: FileUseCase;
 }): ProcessingFunction | undefined => {
-  // Content Creation file types are not processed.
-  if (isContentCreationFileContentType(contentType)) {
+  // Interactive Content file types are not processed.
+  if (isInteractiveContentFileContentType(contentType)) {
     return undefined;
   }
 
@@ -394,7 +404,11 @@ const getProcessingFunction = ({
   }
 
   if (isSupportedAudioContentType(contentType)) {
-    if (useCase === "conversation") {
+    if (
+      useCase === "conversation" &&
+      // Only handle voice transcription if the workspace has enabled it.
+      auth.getNonNullableWorkspace().metadata?.allowVoiceTranscription !== false
+    ) {
       return extractTextFromAudioAndUpload;
     }
     return undefined;
@@ -464,6 +478,11 @@ const getProcessingFunction = ({
         return storeRawText;
       }
       break;
+    case "text/vnd.dust.attachment.pasted":
+      if (useCase === "conversation") {
+        return storeRawText;
+      }
+      break;
     case "application/vnd.dust.section.json":
       if (useCase === "tool_output") {
         return storeRawText;
@@ -481,6 +500,7 @@ const getProcessingFunction = ({
 };
 
 export const isUploadSupported = (arg: {
+  auth: Authenticator;
   contentType: SupportedFileContentType;
   useCase: FileUseCase;
 }): boolean => {
@@ -494,7 +514,7 @@ const maybeApplyProcessing: ProcessingFunction = async (
 ) => {
   const start = performance.now();
 
-  const processing = getProcessingFunction(file);
+  const processing = getProcessingFunction({ auth, ...file });
   if (!processing) {
     return new Err(
       new Error(
@@ -640,7 +660,7 @@ export async function processAndStoreFromUrl(
   }
 
   try {
-    const response = await fetch(url);
+    const response = await untrustedFetch(url);
     if (!response.ok) {
       return new Err({
         name: "dust_error",
@@ -688,7 +708,7 @@ export async function processAndStoreFromUrl(
       file,
       content: {
         type: "readable",
-        value: Readable.fromWeb(response.body as any),
+        value: Readable.fromWeb(response.body),
       },
     });
   } catch (error) {

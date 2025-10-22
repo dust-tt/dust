@@ -2,17 +2,17 @@ import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { OAuthProvider } from "@app/types";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+  OAuthProvider,
+} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
-import type {
-  ModelIdType,
-  ModelProviderIdType,
-} from "@app/types/assistant/assistant";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { isOAuthProvider, isValidScope } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -135,12 +135,15 @@ export type LightAgentConfigurationType = {
   feedbacks?: { up: number; down: number };
 
   maxStepsPerRun: number;
-  visualizationEnabled: boolean;
   tags: TagType[];
 
   templateId: string | null;
 
-  // Group restrictions for accessing the agent/conversation.
+  // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
+  visualizationEnabled?: boolean;
+
+  // TODO(2025-10-17 thomas): Remove this.
+  // Group restrictions for accessing the agent/conversation. Deprecated
   // The array of arrays represents permission requirements:
   // - If empty, no restrictions apply
   // - Each sub-array represents an OR condition (user must belong to AT LEAST ONE group)
@@ -148,6 +151,14 @@ export type LightAgentConfigurationType = {
   //
   // Example: [[1,2], [3,4]] means (1 OR 2) AND (3 OR 4)
   requestedGroupIds: string[][];
+
+  // Space restrictions for accessing the agent/conversation - replaces group restrictions.
+  // The array represents permission requirements:
+  // - If empty, no restrictions apply
+  // - Each element represents an AND condition (user must belong to ALL spaces)
+  //
+  // Example: [1,2] means (1 AND 2)
+  requestedSpaceIds: string[];
 
   canRead: boolean;
   canEdit: boolean;
@@ -169,7 +180,6 @@ export interface TemplateAgentConfigurationType {
   instructions: string | null;
   isTemplate: true;
   maxStepsPerRun?: number;
-  visualizationEnabled: boolean;
   tags: TagType[];
 }
 
@@ -289,6 +299,7 @@ export type AgentMessageDoneEvent = {
   conversationId: string;
   configurationId: string;
   messageId: string;
+  status: "success" | "error";
 };
 
 // Event sent when an error occurred during the tool call.

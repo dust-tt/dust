@@ -2,7 +2,6 @@ import assert from "assert";
 import _, { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
 
-import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   getAgentConfiguration,
@@ -10,7 +9,10 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { canReadMessage } from "@app/lib/api/assistant/messages";
-import { getContentFragmentGroupIds } from "@app/lib/api/assistant/permissions";
+import {
+  getContentFragmentGroupIds,
+  getContentFragmentSpaceIds,
+} from "@app/lib/api/assistant/permissions";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
@@ -49,9 +51,9 @@ import {
 } from "@app/lib/utils/rate_limiter";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   AgentMessageType,
-  AgentMessageWithRankType,
   APIErrorWithStatusCode,
   ContentFragmentContextType,
   ContentFragmentInputWithContentNode,
@@ -67,7 +69,6 @@ import type {
   Result,
   UserMessageContext,
   UserMessageType,
-  UserMessageWithRankType,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -76,7 +77,6 @@ import {
   ConversationError,
   Err,
   isAgentMention,
-  isAgentMessageType,
   isContentFragmentInputWithContentNode,
   isContentFragmentType,
   isProviderWhitelisted,
@@ -85,7 +85,6 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-import type { ExecutionMode } from "@app/types/assistant/agent_run";
 
 // Soft assumption that we will not have more than 10 mentions in the same user message.
 const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
@@ -117,6 +116,7 @@ export async function createConversation(
     depth,
     triggerId,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
   });
 
   return {
@@ -131,8 +131,9 @@ export async function createConversation(
     content: [],
     unread: false,
     actionRequired: false,
-    requestedGroupIds:
-      conversation.getConversationRequestedGroupIdsFromModel(auth),
+    hasError: false,
+    requestedGroupIds: conversation.getRequestedGroupIdsFromModel(auth),
+    requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
   };
 }
 
@@ -372,18 +373,19 @@ export async function postUserMessage(
     mentions,
     context,
     skipToolsValidation,
-    executionMode,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
     skipToolsValidation: boolean;
-    executionMode?: ExecutionMode;
   }
 ): Promise<
   Result<
-    { userMessage: UserMessageType; agentMessages: AgentMessageType[] },
+    {
+      userMessage: UserMessageType;
+      agentMessages: AgentMessageType[];
+    },
     APIErrorWithStatusCode
   >
 > {
@@ -504,6 +506,17 @@ export async function postUserMessage(
       // connection pool, resulting in a deadlock.
       await getConversationRankVersionLock(conversation, t);
 
+      // We clear the hasError flag of a conversation when posting a new user message.
+      if (conversation.hasError) {
+        await ConversationResource.clearHasError(
+          auth,
+          {
+            conversation,
+          },
+          t
+        );
+      }
+
       let nextMessageRank =
         ((await Message.max<number | null, Message>("rank", {
           where: {
@@ -511,6 +524,16 @@ export async function postUserMessage(
           },
           transaction: t,
         })) ?? -1) + 1;
+
+      // Fetch originMessage to ensure it exists
+      const originMessage = context.originMessageId
+        ? await Message.findOne({
+            where: {
+              workspaceId: owner.id,
+              sId: context.originMessageId,
+            },
+          })
+        : null;
 
       async function createMessageAndUserMessage(workspace: WorkspaceType) {
         return Message.create(
@@ -531,7 +554,10 @@ export async function postUserMessage(
                   userContextEmail: context.email,
                   userContextProfilePictureUrl: context.profilePictureUrl,
                   userContextOrigin: context.origin,
-                  userContextLastTriggerRunAt: context.lastTriggerRunAt,
+                  userContextOriginMessageId: originMessage?.sId ?? null,
+                  userContextLastTriggerRunAt: context.lastTriggerRunAt
+                    ? new Date(context.lastTriggerRunAt)
+                    : null,
                   userId: user
                     ? user.id
                     : (
@@ -554,7 +580,7 @@ export async function postUserMessage(
       }
 
       const m = await createMessageAndUserMessage(owner);
-      const userMessage: UserMessageWithRankType = {
+      const userMessage: UserMessageType = {
         id: m.id,
         created: m.createdAt.getTime(),
         sId: m.sId,
@@ -621,17 +647,24 @@ export async function postUserMessage(
                 }
               );
 
+              const parentAgentMessageId =
+                userMessage.context.origin === "agent_handover"
+                  ? userMessage.context.originMessageId ?? null
+                  : null;
+
               return {
                 row: agentMessageRow,
                 m: {
                   id: messageRow.id,
                   agentMessageId: agentMessageRow.id,
                   created: agentMessageRow.createdAt.getTime(),
+                  completedTs: agentMessageRow.completedAt?.getTime() ?? null,
                   sId: messageRow.sId,
                   type: "agent_message",
                   visibility: "visible",
                   version: 0,
                   parentMessageId: userMessage.sId,
+                  parentAgentMessageId,
                   status: "created",
                   actions: [],
                   content: null,
@@ -643,7 +676,7 @@ export async function postUserMessage(
                   skipToolsValidation: agentMessageRow.skipToolsValidation,
                   contents: [],
                   parsedContents: {},
-                } satisfies AgentMessageWithRankType,
+                } satisfies AgentMessageType,
               };
             })();
           })
@@ -651,7 +684,7 @@ export async function postUserMessage(
 
       const nonNullResults = results.filter((r) => r !== null) as {
         row: AgentMessage;
-        m: AgentMessageWithRankType;
+        m: AgentMessageType;
       }[];
 
       await updateConversationRequestedGroupIds(auth, {
@@ -705,13 +738,6 @@ export async function postUserMessage(
   await concurrentExecutor(
     agentMessages,
     async (agentMessage) => {
-      // We stitch the conversation to add the user message and only that agent message
-      // so that it can be used to prompt the agent.
-      const enrichedConversation = {
-        ...conversation,
-        content: [...conversation.content, [userMessage], [agentMessage]],
-      };
-
       // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
       const agentMessageRow = agentMessageRowById.get(
         agentMessage.agentMessageId
@@ -731,19 +757,18 @@ export async function postUserMessage(
         "Unreachable: could not find detailed configuration for agent"
       );
 
-      const inMemoryData = {
-        agentConfiguration,
-        conversation: enrichedConversation,
-        userMessage,
-        agentMessage,
-        agentMessageRow,
-      };
-
-      void runAgentLoop(
+      void launchAgentLoopWorkflow({
         auth,
-        { sync: true, inMemoryData },
-        { executionMode, startStep: 0 }
-      );
+        agentLoopArgs: {
+          agentMessageId: agentMessage.sId,
+          agentMessageVersion: agentMessage.version,
+          conversationId: conversation.sId,
+          conversationTitle: conversation.title,
+          userMessageId: userMessage.sId,
+          userMessageVersion: userMessage.version,
+        },
+        startStep: 0,
+      });
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );
@@ -861,8 +886,8 @@ export async function editUserMessage(
     });
   }
 
-  let userMessage: UserMessageWithRankType | null = null;
-  let agentMessages: AgentMessageWithRankType[] = [];
+  let userMessage: UserMessageType | null = null;
+  let agentMessages: AgentMessageType[] = [];
   let agentMessageRows: AgentMessage[] = [];
 
   const results = await Promise.all([
@@ -1002,7 +1027,7 @@ export async function editUserMessage(
 
       const m = await createMessageAndUserMessage(owner, messageRow);
 
-      const userMessage: UserMessageWithRankType = {
+      const userMessage: UserMessageType = {
         id: m.id,
         created: m.createdAt.getTime(),
         sId: m.sId,
@@ -1034,7 +1059,7 @@ export async function editUserMessage(
         })) ?? -1) + 1;
       const results: ({
         row: AgentMessage;
-        m: AgentMessageWithRankType;
+        m: AgentMessageType;
       } | null)[] = await Promise.all(
         mentions.filter(isAgentMention).map((mention) => {
           // For each assistant/agent mention, create an "empty" agent message.
@@ -1081,17 +1106,24 @@ export async function editUserMessage(
               }
             );
 
+            const parentAgentMessageId =
+              userMessage.context.origin === "agent_handover"
+                ? userMessage.context.originMessageId ?? null
+                : null;
+
             return {
               row: agentMessageRow,
               m: {
                 id: messageRow.id,
                 agentMessageId: agentMessageRow.id,
                 created: agentMessageRow.createdAt.getTime(),
+                completedTs: agentMessageRow.completedAt?.getTime() ?? null,
                 sId: messageRow.sId,
                 type: "agent_message",
                 visibility: "visible",
                 version: 0,
                 parentMessageId: userMessage.sId,
+                parentAgentMessageId,
                 status: "created",
                 actions: [],
                 content: null,
@@ -1103,7 +1135,7 @@ export async function editUserMessage(
                 skipToolsValidation: agentMessageRow.skipToolsValidation,
                 contents: [],
                 parsedContents: {},
-              } satisfies AgentMessageWithRankType,
+              } satisfies AgentMessageType,
             };
           })();
         })
@@ -1111,7 +1143,7 @@ export async function editUserMessage(
 
       const nonNullResults = results.filter((r) => r !== null) as {
         row: AgentMessage;
-        m: AgentMessageWithRankType;
+        m: AgentMessageType;
       }[];
 
       await updateConversationRequestedGroupIds(auth, {
@@ -1168,13 +1200,6 @@ export async function editUserMessage(
   await concurrentExecutor(
     agentMessages,
     async (agentMessage) => {
-      // We stitch the conversation to add the user message and only that agent message
-      // so that it can be used to prompt the agent.
-      const enrichedConversation = {
-        ...conversation,
-        content: [...conversation.content, [userMessage], [agentMessage]],
-      };
-
       // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
       const agentMessageRow = agentMessageRowById.get(
         agentMessage.agentMessageId
@@ -1194,15 +1219,18 @@ export async function editUserMessage(
         "Unreachable: could not find detailed configuration for agent"
       );
 
-      const inMemoryData = {
-        agentConfiguration,
-        conversation: enrichedConversation,
-        userMessage,
-        agentMessage,
-        agentMessageRow,
-      };
-
-      void runAgentLoop(auth, { sync: true, inMemoryData }, { startStep: 0 });
+      void launchAgentLoopWorkflow({
+        auth,
+        agentLoopArgs: {
+          agentMessageId: agentMessage.sId,
+          agentMessageVersion: agentMessage.version,
+          conversationId: conversation.sId,
+          conversationTitle: conversation.title,
+          userMessageId: userMessage.sId,
+          userMessageVersion: userMessage.version,
+        },
+        startStep: 0,
+      });
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );
@@ -1235,7 +1263,7 @@ export async function retryAgentMessage(
     conversation: ConversationType;
     message: AgentMessageType;
   }
-): Promise<Result<AgentMessageWithRankType, APIErrorWithStatusCode>> {
+): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
   if (!canReadMessage(auth, message)) {
     return new Err({
       status_code: 403,
@@ -1247,12 +1275,23 @@ export async function retryAgentMessage(
   }
 
   let agentMessageResult: {
-    agentMessage: AgentMessageWithRankType;
+    agentMessage: AgentMessageType;
     agentMessageRow: AgentMessage;
   } | null = null;
   try {
     agentMessageResult = await withTransaction(async (t) => {
       await getConversationRankVersionLock(conversation, t);
+
+      // We clear the hasError flag of a conversation when retrying an agent message.
+      if (conversation.hasError) {
+        await ConversationResource.clearHasError(
+          auth,
+          {
+            conversation,
+          },
+          t
+        );
+      }
 
       const messageRow = await Message.findOne({
         where: {
@@ -1319,15 +1358,17 @@ export async function retryAgentMessage(
         t,
       });
 
-      const agentMessage: AgentMessageWithRankType = {
+      const agentMessage: AgentMessageType = {
         id: m.id,
         agentMessageId: agentMessageRow.id,
         created: m.createdAt.getTime(),
+        completedTs: agentMessageRow.completedAt?.getTime() ?? null,
         sId: m.sId,
         type: "agent_message",
         visibility: m.visibility,
         version: m.version,
         parentMessageId: message.parentMessageId,
+        parentAgentMessageId: message.parentAgentMessageId,
         status: "created",
         actions: [],
         content: null,
@@ -1370,10 +1411,7 @@ export async function retryAgentMessage(
     });
   }
 
-  const { agentMessage, agentMessageRow } = agentMessageResult;
-
-  // We stitch the conversation to retry the agent message correctly: no other
-  // messages than this agent's past its parent message.
+  const { agentMessage } = agentMessageResult;
 
   // First, find the array of the parent message in conversation.content.
   const parentMessageIndex = conversation.content.findIndex((messages) => {
@@ -1385,18 +1423,6 @@ export async function retryAgentMessage(
     );
   }
 
-  // Then, find this agentmessage's array in conversation.content and add the
-  // new agent message to it.
-  const agentMessageArray = conversation.content.find((messages) => {
-    return messages.some((m) => m.sId === message.sId && isAgentMessageType(m));
-  }) as AgentMessageType[];
-
-  // Finally, stitch the conversation.
-  const newContent = [
-    ...conversation.content.slice(0, parentMessageIndex + 1),
-    [...agentMessageArray, agentMessage],
-  ];
-
   const userMessage =
     conversation.content[parentMessageIndex][
       conversation.content[parentMessageIndex].length - 1
@@ -1404,11 +1430,6 @@ export async function retryAgentMessage(
   if (!isUserMessageType(userMessage)) {
     throw new Error("Unreachable: parent message must be a user message");
   }
-
-  const enrichedConversation = {
-    ...conversation,
-    content: newContent,
-  };
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: agentMessage.configuration.sId,
@@ -1420,15 +1441,18 @@ export async function retryAgentMessage(
     "Unreachable: could not find detailed configuration for agent"
   );
 
-  const inMemoryData = {
-    agentConfiguration,
-    conversation: enrichedConversation,
-    userMessage,
-    agentMessage,
-    agentMessageRow,
-  };
-
-  void runAgentLoop(auth, { sync: true, inMemoryData }, { startStep: 0 });
+  void launchAgentLoopWorkflow({
+    auth,
+    agentLoopArgs: {
+      agentMessageId: agentMessage.sId,
+      agentMessageVersion: agentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      userMessageId: userMessage.sId,
+      userMessageVersion: userMessage.version,
+    },
+    startStep: 0,
+  });
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
@@ -1584,15 +1608,25 @@ async function isMessagesLimitReached({
   }
 
   // Checking plan limit
-  if (mentions.length === 0) {
+  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
+
+  if (plan.limits.assistant.maxMessages === -1) {
     return {
       isLimitReached: false,
       limitType: null,
     };
   }
-  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
 
-  if (plan.limits.assistant.maxMessages === -1) {
+  // If no mentions, check general message limit against the plan
+  if (mentions.length === 0) {
+    // Block messages if maxMessages is 0 (no plan or very restrictive plan)
+    if (maxMessages === 0) {
+      return {
+        isLimitReached: true,
+        limitType: "plan_message_limit_exceeded",
+      };
+    }
+    // Otherwise allow non-mention messages for users with a valid plan
     return {
       isLimitReached: false,
       limitType: null,
@@ -1625,6 +1659,8 @@ async function isMessagesLimitReached({
 }
 
 /**
+ * TODO(2025-10-17 thomas): Remove groups requirements, only handle requiredSpaces
+ *
  * Update the conversation requestedGroupIds based on the mentioned agents. This function is purely
  * additive - requirements are never removed.
  *
@@ -1649,9 +1685,11 @@ export async function updateConversationRequestedGroupIds(
     t: Transaction;
   }
 ): Promise<void> {
-  let newRequirements: string[][] = [];
+  let newGroupsRequirements: string[][] = [];
+  let newSpaceRequirements: string[] = [];
   if (agents) {
-    newRequirements = agents.flatMap((agent) => agent.requestedGroupIds);
+    newGroupsRequirements = agents.flatMap((agent) => agent.requestedGroupIds);
+    newSpaceRequirements = agents.flatMap((agent) => agent.requestedSpaceIds);
   }
   if (contentFragment) {
     const rawRequestedGroupIds = await getContentFragmentGroupIds(
@@ -1666,35 +1704,55 @@ export async function updateConversationRequestedGroupIds(
         })
       )
     );
-    newRequirements.push(...requestedGroupIds);
+    newGroupsRequirements.push(...requestedGroupIds);
+
+    const requestedSpaceId = await getContentFragmentSpaceIds(
+      auth,
+      contentFragment
+    );
+
+    newSpaceRequirements.push(requestedSpaceId);
   }
+
   // Remove duplicates and sort each requirement.
-  newRequirements = _.uniqWith(
-    newRequirements.map((r) => sortBy(r)),
+  newGroupsRequirements = _.uniqWith(
+    newGroupsRequirements.map((r) => sortBy(r)),
     isEqual
   );
-  const currentRequirements = conversation.requestedGroupIds;
+
+  newSpaceRequirements = _.uniq(newSpaceRequirements);
+
+  const currentGroupsRequirements = conversation.requestedGroupIds;
+  const currentSpaceRequirements = conversation.requestedSpaceIds;
 
   // Check if each new requirement already exists in current requirements.
-  const areAllRequirementsPresent = newRequirements.every((newReq) =>
-    currentRequirements.some(
+  const areAllGroupRequirementsPresent = newGroupsRequirements.every((newReq) =>
+    currentGroupsRequirements.some(
       // newReq was sorted, so we need to sort currentReq as well.
       (currentReq) => isEqual(newReq, sortBy(currentReq))
     )
   );
 
+  const areAllSpaceRequirementsPresent = newSpaceRequirements.every((newReq) =>
+    currentSpaceRequirements.includes(newReq)
+  );
+
   // Early return if all new requirements are already present.
-  if (areAllRequirementsPresent) {
+  if (areAllGroupRequirementsPresent && areAllSpaceRequirementsPresent) {
     return;
   }
 
   // Get missing requirements.
-  const requirementsToAdd = newRequirements.filter(
+  const groupRequirementsToAdd = newGroupsRequirements.filter(
     (newReq) =>
-      !currentRequirements.some((currentReq) =>
+      !currentGroupsRequirements.some((currentReq) =>
         // newReq was sorted, so we need to sort currentReq as well.
         isEqual(newReq, sortBy(currentReq))
       )
+  );
+
+  const spaceRequirementsToAdd = newSpaceRequirements.filter(
+    (newReq) => !currentSpaceRequirements.includes(newReq)
   );
 
   // Convert all sIds to modelIds.
@@ -1710,15 +1768,21 @@ export async function updateConversationRequestedGroupIds(
     return sIdToModelId.get(sId)!;
   };
 
-  const allRequirements = [
-    ...currentRequirements.map((req) => sortBy(req.map(getModelId))),
-    ...requirementsToAdd.map((req) => sortBy(req.map(getModelId))),
+  const allGroupsRequirements = [
+    ...currentGroupsRequirements.map((req) => sortBy(req.map(getModelId))),
+    ...groupRequirementsToAdd.map((req) => sortBy(req.map(getModelId))),
+  ];
+
+  const allSpaceRequirements = [
+    ...currentSpaceRequirements.map(getModelId),
+    ...spaceRequirementsToAdd.map(getModelId),
   ];
 
   await ConversationResource.updateRequestedGroupIds(
     auth,
     conversation.sId,
-    normalizeArrays(allRequirements),
+    normalizeArrays(allGroupsRequirements),
+    allSpaceRequirements,
     t
   );
 }

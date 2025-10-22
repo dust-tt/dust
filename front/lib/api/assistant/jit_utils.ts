@@ -13,8 +13,8 @@ import {
 import type { ConversationType } from "@app/types";
 import {
   isAgentMessageType,
-  isContentCreationFileContentType,
   isContentFragmentType,
+  isInteractiveContentFileContentType,
   isSupportedImageContentType,
 } from "@app/types";
 
@@ -44,8 +44,8 @@ export function listAttachments(
       const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
 
       for (const f of generatedFiles) {
-        // Content Creation files should not be shown in the JIT.
-        if (isContentCreationFileContentType(f.contentType)) {
+        // Interactive Content files should not be shown in the JIT.
+        if (isInteractiveContentFileContentType(f.contentType)) {
           continue;
         }
 

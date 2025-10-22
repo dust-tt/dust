@@ -5,7 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EyeIcon,
-  LockIcon,
+  EyeSlashIcon,
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -37,11 +37,11 @@ export function AccessSection() {
   const { supportedDataSourceViews } = useDataSourceViewsContext();
 
   const getDisplayValue = () => {
-    return scope.value === "visible" ? "Shared" : "Private";
+    return scope.value === "visible" ? "Published" : "Unpublished";
   };
 
   const getDisplayIcon = () => {
-    return scope.value === "visible" ? EyeIcon : LockIcon;
+    return scope.value === "visible" ? EyeIcon : EyeSlashIcon;
   };
 
   const slackDataSource = slackProvider
@@ -52,7 +52,7 @@ export function AccessSection() {
 
   return (
     <SettingSectionContainer title="Editors & Access">
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
         <EditorsSheet />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -67,15 +67,15 @@ export function AccessSection() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuItem
-              label="Shared"
+              label="Published"
               description="Visible & usable by all members of the workspace."
               icon={EyeIcon}
               onClick={() => scope.onChange("visible")}
             />
             <DropdownMenuItem
-              label="Private"
+              label="Unpublished"
               description="Visible & usable by editors only."
-              icon={LockIcon}
+              icon={EyeSlashIcon}
               onClick={() => scope.onChange("hidden")}
             />
           </DropdownMenuContent>

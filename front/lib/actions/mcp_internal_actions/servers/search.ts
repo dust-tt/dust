@@ -21,6 +21,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -59,6 +60,7 @@ export async function searchFunction({
   agentLoopContext?: AgentLoopContextType;
 }): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
 
@@ -98,10 +100,21 @@ export async function searchFunction({
     coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
   );
 
+  const authRes = await ensureAuthorizedDataSourceViews(
+    auth,
+    coreSearchArgs.map((a) => a.dataSourceView.sId)
+  );
+  if (authRes.isErr()) {
+    return authRes;
+  }
+
   if (coreSearchArgs.length === 0) {
     return new Err(
       new MCPError(
-        "Search action must have at least one data source configured."
+        "Search action must have at least one data source configured.",
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -266,7 +279,11 @@ function createServer(
       commonInputsSchema,
       withToolLogging(
         auth,
-        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        {
+          toolNameForMonitoring: SEARCH_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
         async (args) => searchFunction({ ...args, auth, agentLoopContext })
       )
     );
@@ -282,7 +299,11 @@ function createServer(
       },
       withToolLogging(
         auth,
-        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        {
+          toolNameForMonitoring: SEARCH_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
         async (args) => searchFunction({ ...args, auth, agentLoopContext })
       )
     );

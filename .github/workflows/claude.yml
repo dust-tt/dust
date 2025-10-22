@@ -53,39 +53,15 @@ jobs:
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@beta
+        uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
-          # Specify model (defaults to Claude Sonnet 4, using Claude Opus 4)
-          model: "claude-opus-4-20250514"
-
-          # Optional: Customize the trigger phrase (default: @claude)
-          # trigger_phrase: "/claude"
-
-          # Optional: Trigger when specific user is assigned to an issue
-          # assignee_trigger: "claude-bot"
-
-          # Allow Claude to use all available tools
-          allowed_tools: |
-            Agent,
-            Bash,
-            Edit,
-            Glob,
-            Grep,
-            LS,
-            MultiEdit,
-            NotebookEdit,
-            NotebookRead,
-            Read,
-            TodoRead,
-            TodoWrite,
-            WebFetch,
-            WebSearch,
-            Write
-
-          # Custom instructions based on CLAUDE.md
-          custom_instructions: |
+          claude_args: |
+            --model claude-sonnet-4-5-20250929
+            --max-turns 36
+            --allowed-tools Agent,Bash,Edit,Glob,Grep,LS,MultiEdit,NotebookEdit,NotebookRead,Read,TodoRead,TodoWrite,WebFetch,WebSearch,Write
+            --system-prompt "
             ### 1. General Principles
 
             - Never make changes to the codebase that the user did not ask for.
@@ -95,6 +71,10 @@ jobs:
             - Avoid "defensive" patterns (default values, removing tests, non-null assertions).
             - Add comments **only** for complex, non-obvious logic; wrap at ~100 characters.
             - Write code that fails fast and explicitly; assume valid inputs.
+            - Write high quality, general purpose solutions. Implement solutions that works correctly for all valid inputs, not just the test cases.
+            - After receiving tool results, carefully reflect on their quality and determine optimal next steps before proceeding. Use your thinking to plan and iterate based on this new information, and then take the best next action.
+            - Follow the codebase's best practices and aim for consistency.
+            - In TypeScript, never use `any`. Properly type your code.
 
             ### 2. Code Modification & Compilation
 
@@ -125,12 +105,12 @@ jobs:
 
             - If asked to create a plan, propose actions only—**no code changes** until approval.
 
-            ### 8. Internet Access
+            ### 7. Internet Access
 
             - Use your WebSearch tools to search the internet.
             - This is required to find documentation for libraries, latest package versions, etc.
 
-            ### 9. Import Rules
+            ### 8. Import Rules
 
             - For TypeScript, place all imports at the top of the file; never use async imports.
 
@@ -154,8 +134,15 @@ jobs:
             - Follow all CODING_RULES.md files in each project directory
             - Let exceptions propagate, avoid defensive patterns
             - Make minimal changes required
-            - Use normalizeError() instead of `err as Error`
+            - Use normalizeError() instead of `err as Error`"
+
+          # Optional: Customize the trigger phrase (default: @claude)
+          # trigger_phrase: "/claude"
 
           # Environment variables for Claude
-          claude_env: |
-            NODE_ENV: test
+          settings: |
+            {
+              "env": {
+                "NODE_ENV": "test"
+              }
+            }

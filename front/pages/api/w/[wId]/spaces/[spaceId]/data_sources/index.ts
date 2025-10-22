@@ -304,6 +304,12 @@ const handleDataSourceWithProvider = async ({
     };
   }
 
+  if (provider === "discord_bot") {
+    configuration = {
+      botEnabled: true,
+    };
+  }
+
   if (provider === "webcrawler") {
     const configurationRes = ioTsParsePayload(
       configuration,

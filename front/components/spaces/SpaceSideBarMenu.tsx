@@ -1,5 +1,4 @@
 import {
-  BellIcon,
   BoltIcon,
   Button,
   CloudArrowLeftRightIcon,
@@ -8,6 +7,7 @@ import {
   NavigationListItem,
   NavigationListLabel,
   PlusIcon,
+  ToolsIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type { ReturnTypeOf } from "@octokit/core/types";
@@ -17,6 +17,11 @@ import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
+import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { useSpaceSidebarItemFocus } from "@app/hooks/useSpaceSidebarItemFocus";
@@ -44,6 +49,7 @@ import {
 } from "@app/lib/swr/spaces";
 import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type {
   AppType,
   DataSourceViewCategory,
@@ -247,13 +253,13 @@ const SYSTEM_SPACE_ITEMS: {
   },
   {
     label: "Tools",
-    visual: BoltIcon,
+    visual: ToolsIcon,
     category: "actions",
     flag: null,
   },
   {
     label: "Triggers",
-    visual: BellIcon,
+    visual: BoltIcon,
     category: "triggers",
     flag: "hootl_webhooks",
   },
@@ -789,8 +795,20 @@ const SpaceActionsSubMenu = ({
   );
 };
 
-const SpaceTriggerItem = ({ label }: { label: string }): ReactElement => {
-  return <Tree.Item type="leaf" label={label} visual={BellIcon} />;
+const SpaceTriggerItem = ({
+  label,
+  icon,
+}: {
+  label: string;
+  icon: InternalAllowedIconType | CustomResourceIconType | null | undefined;
+}): ReactElement => {
+  return (
+    <Tree.Item
+      type="leaf"
+      label={label}
+      visual={() => getAvatarFromIcon(normalizeWebhookIcon(icon), "xs")}
+    />
+  );
 };
 
 const TRIGGERS_CATEGORY: DataSourceViewCategory = "triggers";
@@ -843,7 +861,8 @@ const SpaceTriggersSubMenu = ({
         <Tree isLoading={isWebhookSourceViewsLoading}>
           {webhookSourceViews.map((webhookView) => (
             <SpaceTriggerItem
-              label={webhookView.customName ?? webhookView.webhookSource.name}
+              label={webhookView.customName}
+              icon={webhookView.icon}
               key={webhookView.sId}
             />
           ))}

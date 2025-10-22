@@ -14,8 +14,17 @@ inputs:
   workload_identity_provider:
     description: "Workload Identity Provider"
     required: true
-  depot_token:
-    description: "Depot project token"
+  depot_eu_project_id:
+    description: "EU Depot project ID"
+    required: false
+  depot_eu_token:
+    description: "EU Depot token"
+    required: false
+  depot_us_project_id:
+    description: "US Depot project ID"
+    required: true
+  depot_us_token:
+    description: "US Depot token"
     required: true
   dd_api_key:
     description: "Datadog api key"
@@ -29,6 +38,13 @@ inputs:
   commit_sha_long:
     description: "Commit SHA long"
     required: false
+  virtuoso_license_key:
+    description: "Virtuoso license key"
+    required: false
+  depot_region:
+    description: "Depot region"
+    required: false
+    default: "us"
 
 runs:
   using: "composite"
@@ -56,9 +72,16 @@ runs:
     - name: "Build and Push"
       shell: bash
       env:
-        DEPOT_TOKEN: ${{ inputs.depot_token }}
+        DEPOT_TOKEN: ${{ inputs.depot_region == 'eu' && inputs.depot_eu_token || inputs.depot_us_token }}
       run: |
         COMPONENT="${{ inputs.component }}"
+
+        # Set depot project ID based on region
+        if [[ "${{ inputs.depot_region }}" == "us" ]]; then
+          DEPOT_PROJECT_ID="${{ inputs.depot_us_project_id }}"
+        else
+          DEPOT_PROJECT_ID="${{ inputs.depot_eu_project_id }}"
+        fi
 
         # Determine environment and base component name
         if [[ ${COMPONENT} == *"-qa" ]]; then
@@ -79,6 +102,11 @@ runs:
           [[ -n "$key" ]] && build_args+=("--build-arg" "$(echo "$key" | xargs)=$(echo "$value" | xargs)")
         done < "$CONFIG_FILE"
 
+        # Only set the Virtuoso license key if provided
+        if [[ -n "${{ inputs.virtuoso_license_key }}" ]]; then
+          build_args+=("--build-arg NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY=${{ inputs.virtuoso_license_key }}")
+        fi
+
         # Only set the Datadog API key if provided
         if [[ -n "${{ inputs.dd_api_key }}" ]]; then
           build_args+=("--build-arg DATADOG_API_KEY=${{ inputs.dd_api_key }}")
@@ -91,7 +119,7 @@ runs:
         fi
 
         depot build \
-          --project 3vz0lnf16v \
+          --project $DEPOT_PROJECT_ID \
           --platform linux/amd64 \
           --provenance=false \
           --cache-from type=gha,scope=${{ inputs.component }} \

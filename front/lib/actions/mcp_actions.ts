@@ -2,14 +2,13 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type {
-  CallToolResult,
-  McpError,
-} from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import {
   CallToolResultSchema,
+  McpError,
   ProgressNotificationSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 import EventEmitter from "events";
 import type { JSONSchema7 } from "json-schema";
@@ -25,6 +24,7 @@ import {
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
+  RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
 } from "@app/lib/actions/constants";
 import type {
   ClientSideMCPServerConfigurationType,
@@ -45,7 +45,10 @@ import {
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeMCPToolExit,
+  makePersonalAuthenticationError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import type {
   MCPConnectionParams,
   ServerSideMCPConnectionParams,
@@ -74,7 +77,10 @@ import type {
   MCPToolType,
   ServerSideMCPToolTypeWithStakeAndRetryPolicy,
 } from "@app/lib/api/mcp";
-import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
+import {
+  DEFAULT_MCP_TOOL_RETRY_POLICY,
+  getRetryPolicyFromToolConfiguration,
+} from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -82,6 +88,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
+import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT } from "@app/temporal/agent_loop/workflows";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok, slugify } from "@app/types";
 
@@ -89,6 +96,8 @@ const MAX_OUTPUT_ITEMS = 128;
 
 const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
+const MCP_TOOL_ERROR_EVENT_NAME = "TOOL_ERROR" as const;
+const MCP_TOOL_HEARTBEAT_EVENT_NAME = "TOOL_HEARTBEAT" as const;
 
 const EMPTY_INPUT_SCHEMA: JSONSchema7 = {
   properties: {},
@@ -258,22 +267,27 @@ export async function* tryCallMCPTool(
   {
     progressToken,
     makeToolNotificationEvent,
+    signal,
   }: {
     progressToken: ModelId;
     makeToolNotificationEvent: (
       notification: MCPProgressNotificationType
     ) => Promise<ToolNotificationEvent>;
+    signal?: AbortSignal;
   }
-): AsyncGenerator<
-  ToolNotificationEvent,
-  Result<CallToolResult["content"], Error | McpError>
-> {
+): AsyncGenerator<ToolNotificationEvent, CallToolResult> {
   const { toolConfiguration } = agentLoopRunContext;
 
   if (!isMCPToolConfiguration(toolConfiguration)) {
-    return new Err(
-      new Error("Invalid action configuration: not an MCP action configuration")
-    );
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: "Could not call tool, invalid action configuration: not an MCP action configuration",
+        },
+      ],
+    };
   }
 
   const conversationId = agentLoopRunContext.conversation.sId;
@@ -288,7 +302,15 @@ export async function* tryCallMCPTool(
     }
   );
   if (connectionParamsRes.isErr()) {
-    return connectionParamsRes;
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: `The tool execution failed with the following error: ${connectionParamsRes.error.message}`,
+        },
+      ],
+    };
   }
 
   let mcpClient;
@@ -302,15 +324,25 @@ export async function* tryCallMCPTool(
         connectionResult.error instanceof
         MCPServerPersonalAuthenticationRequiredError
       ) {
-        return new Ok(
-          makePersonalAuthenticationError(
+        return {
+          // Complex code path, but errors returned here are processed in getExitOrPauseEvents.
+          isError: false,
+          content: makePersonalAuthenticationError(
             connectionResult.error.provider,
             connectionResult.error.scope
-          ).content
-        );
+          ).content,
+        };
       }
 
-      return connectionResult;
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: `The tool execution failed with the following error: ${connectionResult.error.message}`,
+          },
+        ],
+      };
     }
     mcpClient = connectionResult.value;
 
@@ -321,6 +353,8 @@ export async function* tryCallMCPTool(
       emitter,
       MCP_NOTIFICATION_EVENT_NAME
     );
+
+    const abortSignal = signal;
 
     // Subscribe to notifications before calling the tool.
     // Longer term we should use the `onprogress` callback of the `callTool` method. Right now,
@@ -349,48 +383,81 @@ export async function* tryCallMCPTool(
       CallToolResultSchema,
       {
         timeout: toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+        signal: abortSignal,
       }
     );
 
     // Read from notificationStream and yield events until the tool is done.
     let toolDone = false;
+    let notificationPromise = notificationStream.next();
+
+    // Frequently heartbeat to get notified of cancellation.
+    const getHeartbeatPromise = (): Promise<void> =>
+      new Promise((resolve) => {
+        setTimeout(() => {
+          heartbeat();
+          resolve();
+        }, TOOL_ACTIVITY_HEARTBEAT_TIMEOUT / 2);
+      });
+
     while (!toolDone) {
       const notificationOrDone = await Promise.race([
-        notificationStream.next(), // Next notification.
-        toolPromise.then(() => MCP_TOOL_DONE_EVENT_NAME), // Or tool fully completes.
+        notificationPromise,
+        toolPromise
+          .then(() => MCP_TOOL_DONE_EVENT_NAME)
+          .catch(() => MCP_TOOL_ERROR_EVENT_NAME), // Or tool rejects (abort or error).
+        getHeartbeatPromise().then(() => MCP_TOOL_HEARTBEAT_EVENT_NAME),
       ]);
 
-      // If the tool completed, break from the loop and stop reading notifications.
-      if (notificationOrDone === MCP_TOOL_DONE_EVENT_NAME) {
+      // If the tool completed or errored, break from the loop and stop reading notifications.
+      if (
+        notificationOrDone === MCP_TOOL_DONE_EVENT_NAME ||
+        notificationOrDone === MCP_TOOL_ERROR_EVENT_NAME
+      ) {
         toolDone = true;
+      } else if (notificationOrDone === MCP_TOOL_HEARTBEAT_EVENT_NAME) {
+        // Do nothing.
       } else {
         const iteratorResult = notificationOrDone;
         if (iteratorResult.done) {
           // The notifications ended prematurely.
           break;
         }
-
+        notificationPromise = notificationStream.next();
         yield makeToolNotificationEvent(iteratorResult.value);
       }
     }
 
-    // Tool is done now, wait for the actual result.
-    const toolCallResult = await toolPromise;
+    let toolCallResult: Awaited<typeof toolPromise>;
+    try {
+      toolCallResult = await toolPromise;
+    } catch (toolError) {
+      if (abortSignal?.aborted) {
+        return makeMCPToolExit({
+          message: "The tool execution was cancelled.",
+          isError: true,
+        });
+      }
 
-    // We do not check toolCallResult.isError here and raise an error if true as this would break
-    // the conversation.
-    // Instead, we let the model decide what to do based on the content exposed.
+      throw toolError;
+    }
 
     // Type inference is not working here because of them using passthrough in the zod schema.
     const content: CallToolResult["content"] = (toolCallResult.content ??
       []) as CallToolResult["content"];
 
     if (content.length >= MAX_OUTPUT_ITEMS) {
-      return new Err(
-        new Error(
-          `Too many output items: ${content.length} (max is ${MAX_OUTPUT_ITEMS})`
-        )
-      );
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text:
+              "The tool execution failed because of too many output items: " +
+              `${content.length} (max is ${MAX_OUTPUT_ITEMS})`,
+          },
+        ],
+      };
     }
 
     let serverType;
@@ -409,14 +476,27 @@ export async function* tryCallMCPTool(
         const contentMetadata = generateContentMetadata(content);
         logger.info(
           { contentMetadata, isValid },
-          "information on MCP tool result"
+          "Information on MCP tool result"
         );
 
-        return new Err(new Error("MCP tool result content size too large."));
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text:
+                "The tool execution failed because of a tool result content size exceeding " +
+                "the maximum limit.",
+            },
+          ],
+        };
       }
     }
 
-    return new Ok(content);
+    return {
+      isError: (toolCallResult.isError as boolean) ?? false,
+      content,
+    };
   } catch (error) {
     logger.error(
       {
@@ -429,7 +509,37 @@ export async function* tryCallMCPTool(
       "Exception calling MCP tool in tryCallMCPTool()"
     );
 
-    return new Err(normalizeError(error));
+    const isMCPTimeoutError =
+      error instanceof McpError && error.code === -32001;
+
+    if (isMCPTimeoutError) {
+      // If the tool should not be retried on interrupt, the error is returned
+      // to the model, to let it decide what to do. If the tool should be
+      // retried on interrupt, we throw an error so the workflow retries the
+      // `runTool` activity, unless it's the last attempt.
+      const retryPolicy =
+        getRetryPolicyFromToolConfiguration(toolConfiguration);
+      if (retryPolicy === "retry_on_interrupt") {
+        const info = Context.current().info;
+        const isLastAttempt = info.attempt >= RETRY_ON_INTERRUPT_MAX_ATTEMPTS;
+        if (!isLastAttempt) {
+          throw new Error(
+            `The tool execution timed out, error: ${error.message}`,
+            { cause: error }
+          );
+        }
+      }
+    }
+
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: `The tool execution failed with the following error: ${normalizeError(error).message}`,
+        },
+      ],
+    };
   } finally {
     await mcpClient?.close();
   }

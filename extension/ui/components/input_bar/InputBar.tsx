@@ -50,7 +50,6 @@ export function AssistantInputBar({
   isTabIncluded,
   setIncludeTab,
   isSubmitting,
-  attachmentPickerSide,
 }: {
   owner: ExtensionWorkspaceType;
   onSubmit: (
@@ -65,7 +64,6 @@ export function AssistantInputBar({
   isTabIncluded: boolean;
   setIncludeTab: (includeTab: boolean) => void;
   isSubmitting?: boolean;
-  attachmentPickerSide?: "top" | "right" | "bottom" | "left";
 }) {
   const platform = usePlatform();
   const dustAPI = useDustAPI();
@@ -352,7 +350,7 @@ export function AssistantInputBar({
               "rounded-3xl transition-all",
               "bg-muted-background dark:bg-muted-background-night",
               "border",
-              "border-border-dark dark:border-border-dark-night",
+              "border-border-dark dark:border-border-dark/10",
               "sm:border-border-dark/50 sm:focus-within:border-border-dark",
               "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
               "focus-within:ring-1 dark:focus-within:ring-1",
@@ -385,7 +383,6 @@ export function AssistantInputBar({
                 onNodeSelect={handleNodesAttachmentSelect}
                 onNodeUnselect={handleNodesAttachmentRemove}
                 attachedNodes={attachedNodes}
-                attachmentPickerSide={attachmentPickerSide}
               />
             </div>
           </div>

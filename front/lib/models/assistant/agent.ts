@@ -43,11 +43,12 @@ export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> 
   declare authorId: ForeignKey<UserModel["id"]>;
 
   declare maxStepsPerRun: number;
-  declare visualizationEnabled: boolean;
+  // declare visualizationEnabled: boolean;
 
   declare templateId: ForeignKey<TemplateModel["id"]> | null;
 
   declare requestedGroupIds: number[][];
+  declare requestedSpaceIds: number[];
 
   declare author: NonAttribute<UserModel>;
 
@@ -148,6 +149,11 @@ AgentConfiguration.init(
     },
     requestedGroupIds: {
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
+      allowNull: false,
+      defaultValue: [],
+    },
+    requestedSpaceIds: {
+      type: DataTypes.ARRAY(DataTypes.BIGINT),
       allowNull: false,
       defaultValue: [],
     },

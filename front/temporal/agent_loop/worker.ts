@@ -43,10 +43,15 @@ export async function runAgentLoopWorker() {
     connection,
     namespace,
     shutdownGraceTime: SHUTDOWN_GRACE_TIME,
+    // This also bounds the time until an activity may receive a cancellation signal.
+    // See https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling
+    maxHeartbeatThrottleInterval: "20 seconds",
     interceptors: {
-      activityInbound: [
+      activity: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return {
+            inbound: new ActivityInboundLogInterceptor(ctx, logger),
+          };
         },
       ],
     },

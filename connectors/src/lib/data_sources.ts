@@ -1060,7 +1060,7 @@ export async function upsertDataSourceTableFromCsv({
   tags?: string[];
   allowEmptySchema?: boolean;
 }) {
-  const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
+  const localLogger = logger.child({ ...loggerArgs, tableId });
   const statsDTags = [
     `data_source_id:${dataSourceConfig.dataSourceId}`,
     `workspace_id:${dataSourceConfig.workspaceId}`,
@@ -1584,5 +1584,64 @@ export async function deleteDataSourceFolder({
 
   if (r.isErr()) {
     throw r.error;
+  }
+}
+
+/**
+ * Checks the status of the upsert queue for a data source.
+ * Returns the number of currently running upsert workflows.
+ */
+export async function checkDataSourceUpsertQueueStatus({
+  dataSourceConfig,
+  loggerArgs = {},
+}: {
+  dataSourceConfig: DataSourceConfig;
+  loggerArgs?: Record<string, string | number>;
+}): Promise<number> {
+  const localLogger = logger.child({
+    ...loggerArgs,
+    dataSourceId: dataSourceConfig.dataSourceId,
+    workspaceId: dataSourceConfig.workspaceId,
+  });
+
+  const endpoint =
+    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/check_upsert_queue`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+    timeout: 10000, // 10 seconds per request
+  };
+
+  try {
+    const dustRequestResult = await axiosWithTimeout.get(
+      endpoint,
+      dustRequestConfig
+    );
+
+    if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
+      const runningCount = dustRequestResult.data.running_count as number;
+      localLogger.info(
+        { runningCount },
+        "Checked upsert queue status for data source."
+      );
+      return runningCount;
+    } else {
+      localLogger.error(
+        {
+          status: dustRequestResult.status,
+        },
+        "Error checking upsert queue for data source."
+      );
+      // Checking is a best-effort, so we return 0 on error, allowing the workflow to proceed.
+      return 0;
+    }
+  } catch (e) {
+    localLogger.error(
+      { error: e },
+      "Error checking upsert queue for data source."
+    );
+    return 0;
   }
 }

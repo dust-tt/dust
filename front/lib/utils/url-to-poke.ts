@@ -9,10 +9,18 @@ interface RouteMapping {
 }
 
 const ROUTE_MAPPINGS: RouteMapping[] = [
-  // Conversations
+  // Conversations (old /assistant/, /agent/, and new /conversation/ URLs)
   {
     pattern: /^\/w\/([^/]+)\/assistant\/([^/]+)$/,
-    pokePath: "/poke/$1/conversations/$2",
+    pokePath: "/poke/$1/conversation/$2",
+  },
+  {
+    pattern: /^\/w\/([^/]+)\/agent\/([^/]+)$/,
+    pokePath: "/poke/$1/conversation/$2",
+  },
+  {
+    pattern: /^\/w\/([^/]+)\/conversation\/([^/]+)$/,
+    pokePath: "/poke/$1/conversation/$2",
   },
 
   // Assistants
@@ -124,12 +132,15 @@ export function convertUrlToPoke(url: string): string | null {
   try {
     const urlObj = new URL(url);
 
-    // Check if it's a Dust domain (dust.tt or any subdomain like eu.dust.tt)
+    // Check if it's a Dust domain (dust.tt or any subdomain like eu.dust.tt) or localhost
     // Must be exactly dust.tt or *.dust.tt (not *dust.tt which would match notdust.tt)
-    if (
-      urlObj.hostname !== "dust.tt" &&
-      !urlObj.hostname.endsWith(".dust.tt")
-    ) {
+    const isValidHostname =
+      urlObj.hostname === "dust.tt" ||
+      urlObj.hostname.endsWith(".dust.tt") ||
+      urlObj.hostname === "localhost" ||
+      urlObj.hostname === "127.0.0.1";
+
+    if (!isValidHostname) {
       return null;
     }
 
@@ -172,12 +183,15 @@ export function convertPokeToUrl(pokeUrl: string): string | null {
   try {
     const urlObj = new URL(pokeUrl);
 
-    // Check if it's a Dust domain (dust.tt or any subdomain like eu.dust.tt)
+    // Check if it's a Dust domain (dust.tt or any subdomain like eu.dust.tt) or localhost
     // Must be exactly dust.tt or *.dust.tt (not *dust.tt which would match notdust.tt)
-    if (
-      urlObj.hostname !== "dust.tt" &&
-      !urlObj.hostname.endsWith(".dust.tt")
-    ) {
+    const isValidHostname =
+      urlObj.hostname === "dust.tt" ||
+      urlObj.hostname.endsWith(".dust.tt") ||
+      urlObj.hostname === "localhost" ||
+      urlObj.hostname === "127.0.0.1";
+
+    if (!isValidHostname) {
       return null;
     }
 
@@ -193,8 +207,8 @@ export function convertPokeToUrl(pokeUrl: string): string | null {
 
     // Define reverse mappings
     const reverseMappings: Array<[RegExp, string]> = [
-      [/^([^/]+)\/conversations\/([^/]+)$/, "/w/$1/assistant/$2"],
-      [/^([^/]+)\/assistants\/([^/]+)$/, "/w/$1/builder/assistants/$2"],
+      [/^([^/]+)\/conversation\/([^/]+)$/, "/w/$1/conversation/$2"],
+      [/^([^/]+)\/agents\/([^/]+)$/, "/w/$1/builder/agents/$2"],
       [/^([^/]+)\/spaces\/([^/]+)\/apps\/([^/]+)$/, "/w/$1/spaces/$2/apps/$3"],
       [
         /^([^/]+)\/spaces\/([^/]+)\/data_source_views\/([^/]+)$/,

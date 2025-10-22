@@ -254,3 +254,28 @@ export const ExtendedColorPalette = () => {
     </div>
   );
 };
+
+const backgroundColors = ["background", "muted-background"] as const;
+
+export const BackgroundColors = () => {
+  return (
+    <div className="s-flex s-flex-col s-gap-8">
+      <div className="s-flex s-flex-col s-gap-2">
+        <h2 className="s-text-xl s-font-semibold">Background Colors</h2>
+        <p className="s-text-sm s-text-primary-600 dark:s-text-primary-400">
+          Background colors used for structural elements in the UI.
+        </p>
+      </div>
+      <div className="s-flex s-flex-wrap s-gap-4">
+        {backgroundColors.map((bg) => (
+          <div key={bg}>
+            <ColorSwatch
+              colorClass={`s-bg-${bg} dark:s-bg-${bg}-night`}
+              label={bg}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};

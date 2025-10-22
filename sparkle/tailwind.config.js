@@ -2,6 +2,14 @@
 const colors = require("tailwindcss/colors");
 const plugin = require("tailwindcss/plugin");
 
+// Remove unused deprecated colors that just generate noise
+// See here for the hack: https://github.com/tailwindlabs/tailwindcss/discussions/15127
+delete colors.lightBlue;
+delete colors.warmGray;
+delete colors.trueGray;
+delete colors.coolGray;
+delete colors.blueGray;
+
 const safeColorsArray = [
   "gray",
   "green",
@@ -33,6 +41,7 @@ const customColors = {
   gray: {
     950: "#111418",
     900: "#1C222D",
+    850: "#232A37",
     800: "#2A3241",
     700: "#364153",
     600: "#545D6C",
@@ -227,6 +236,9 @@ const safeColorlist = safeColorsArray.flatMap((color) => [
 ]);
 
 module.exports = {
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
     screens: {
       xxs: "384px",
@@ -471,20 +483,6 @@ module.exports = {
             transform: "scale(0.95)",
           },
         },
-        "cursor-blink": {
-          "0%": {
-            opacity: 1,
-          },
-          "60%": {
-            opacity: 1,
-          },
-          "70%": {
-            opacity: 0,
-          },
-          "100%": {
-            opacity: 0,
-          },
-        },
         "shiny-text": {
           "0%": {
             "background-position": "calc(-200%) 0",
@@ -520,7 +518,6 @@ module.exports = {
           "background-position-spin 2000ms infinite alternate",
         breathing: "breathing 3s infinite ease-in-out",
         "breathing-scale": "breathing-scale 3s infinite ease-in-out",
-        "cursor-blink": "cursor-blink 0.9s infinite;",
         "move-square": "move-square 3s ease-out infinite",
         rainbow: "rainbow var(--speed, 16s) infinite linear",
         "collapse-down": "collapse-down 150ms ease-out",
@@ -631,10 +628,10 @@ module.exports = {
             night: colors.rose[800],
           },
         },
-        background: { DEFAULT: colors.white, night: colors.black },
+        background: { DEFAULT: colors.white, night: colors.gray[950] },
         foreground: {
           DEFAULT: colors.gray[950],
-          night: colors.gray[50],
+          night: colors.gray[200],
           warning: {
             DEFAULT: colors.rose[500],
             night: colors.rose[500],
@@ -649,7 +646,7 @@ module.exports = {
           },
           background: {
             DEFAULT: colors.gray[50],
-            night: colors.gray[950],
+            night: colors.gray[900],
           },
         },
         faint: {

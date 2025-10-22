@@ -13,7 +13,9 @@ export async function getStaticProps() {
 }
 
 export default function ConsultingFirms() {
-  return <IndustryTemplate config={consultingConfig} />;
+  return (
+    <IndustryTemplate config={consultingConfig} trackingPrefix="consulting" />
+  );
 }
 
 ConsultingFirms.getLayout = (

@@ -1,4 +1,5 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { extname } from "path";
 import type { Logger } from "pino";
 
 import {
@@ -114,13 +115,13 @@ export async function processToolResults(
     action,
     conversation,
     localLogger,
-    toolCallResult,
+    toolCallResultContent,
     toolConfiguration,
   }: {
     action: AgentMCPActionResource;
     conversation: ConversationType;
     localLogger: Logger;
-    toolCallResult: CallToolResult["content"];
+    toolCallResultContent: CallToolResult["content"];
     toolConfiguration: LightMCPToolConfigurationType;
   }
 ): Promise<{
@@ -136,7 +137,7 @@ export async function processToolResults(
     content: CallToolResult["content"][number];
     file: FileResource | null;
   }[] = await concurrentExecutor(
-    toolCallResult,
+    toolCallResultContent,
     async (block) => {
       switch (block.type) {
         case "text": {
@@ -225,14 +226,19 @@ export async function processToolResults(
             isSupportedFileContentType(block.resource.mimeType)
           ) {
             if (isBlobResource(block)) {
-              const fileName = isResourceWithName(block)
-                ? block.name
-                : `generated-file-${Date.now()}${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0]}`;
+              const extensionFromContentType =
+                extensionsForContentType(
+                  block.resource.mimeType as SupportedFileContentType
+                )[0] || "";
+              const extensionFromURI = extname(block.resource.uri);
+              const fileName = extensionFromURI
+                ? block.resource.uri
+                : `${block.resource.uri}${extensionFromContentType}`;
 
               return handleBase64Upload(auth, {
                 base64Data: block.resource.blob,
                 mimeType: block.resource.mimeType,
-                fileName,
+                fileName: fileName,
                 block,
                 fileUseCase,
                 fileUseCaseMetadata,

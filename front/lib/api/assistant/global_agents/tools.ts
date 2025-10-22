@@ -130,3 +130,36 @@ export function _getAgentRouterToolsConfiguration(
     },
   ];
 }
+
+export function _getInteractiveContentToolConfiguration({
+  agentId,
+  interactiveContentMCPServerView,
+}: {
+  agentId: GLOBAL_AGENTS_SID;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
+}): ServerSideMCPServerConfigurationType[] {
+  if (!interactiveContentMCPServerView) {
+    return [];
+  }
+
+  return [
+    {
+      id: -1,
+      sId: agentId + "-interactive-content",
+      type: "mcp_server_configuration",
+      name: "interactive_content",
+      description: "Create & update Interactive Content files.",
+      mcpServerViewId: interactiveContentMCPServerView.sId,
+      internalMCPServerId: interactiveContentMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      secretName: null,
+    },
+  ];
+}

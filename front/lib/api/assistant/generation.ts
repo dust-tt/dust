@@ -1,13 +1,12 @@
 import moment from "moment-timezone";
 
 import {
-  DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+  DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
-  isMCPConfigurationForInternalContentCreation,
   isMCPConfigurationForInternalNotion,
   isMCPConfigurationForInternalSlack,
   isMCPConfigurationForInternalWebsearch,
@@ -15,9 +14,7 @@ import {
   isMCPConfigurationWithDataSource,
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
-import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -153,7 +150,7 @@ export async function constructPromptMultiActions(
     "Attachments may originate from the user directly or from tool outputs. " +
     "These tags indicate when the file was attached but do not always contain the full contents (it may contain a small snippet or description of the file).\n" +
     "Each file attachment has a specific content type and status (includable, queryable, searchable):\n\n" +
-    `// includable: full content can be retrieved using \`${DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME}\`\n` +
+    `// includable: content can be retrieved using \`${DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME}\`\n` +
     `// queryable: represents tabular data that can be queried alongside other queryable files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`\n` +
     `// searchable: content can be searched alongside other searchable files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
     "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files mime types to decide which tool to use on which file.\n";
@@ -175,18 +172,6 @@ export async function constructPromptMultiActions(
 
   if (canRetrieveDocuments) {
     guidelinesSection += `\n${citationMetaPrompt(isUsingRunAgent)}\n`;
-  }
-
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const hasContentCreationServer =
-    featureFlags.includes("interactive_content_server") &&
-    agentConfiguration.actions.some((action) =>
-      isMCPConfigurationForInternalContentCreation(action)
-    );
-
-  // Only inject the visualization system prompt if the Content Creation server is not enabled.
-  if (agentConfiguration.visualizationEnabled && !hasContentCreationServer) {
-    guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
   }
 
   guidelinesSection +=

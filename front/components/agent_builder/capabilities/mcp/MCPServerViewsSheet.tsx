@@ -6,7 +6,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import uniqueId from "lodash/uniqueId";
 import React, {
   useCallback,
   useEffect,
@@ -23,7 +22,6 @@ import type {
   MCPFormData,
   MCPServerConfigurationType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
@@ -60,7 +58,6 @@ import { TimeFrameSection } from "@app/components/agent_builder/capabilities/sha
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type {
-  ActionSpecification,
   AgentBuilderAction,
   ConfigurationPagePageId,
 } from "@app/components/agent_builder/types";
@@ -71,40 +68,37 @@ import {
 import { ConfirmContext } from "@app/components/Confirm";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
-import {
-  DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-  DEFAULT_DATA_VISUALIZATION_NAME,
-} from "@app/lib/actions/constants";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
+import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 
 const TOP_MCP_SERVER_VIEWS = [
   "web_search_&_browse",
   "image_generation",
-  "agent_memory",
-  "deep_research",
-  "content_creation",
+  AGENT_MEMORY_SERVER_NAME,
+  "deep_dive",
+  "interactive_content",
   "slack",
   "gmail",
   "google_calendar",
 ];
 
-export type SelectedTool =
-  | {
-      type: "MCP";
-      view: MCPServerViewType;
-      configuredAction?: AgentBuilderAction;
-    }
-  | { type: "DATA_VISUALIZATION" };
+export type SelectedTool = {
+  type: "MCP";
+  view: MCPServerViewTypeWithLabel;
+  configuredAction?: AgentBuilderAction;
+};
 
 export type SheetMode =
   | { type: "add" }
   | {
       type: "configure";
       action: AgentBuilderAction;
-      mcpServerView: MCPServerViewType;
+      mcpServerView: MCPServerViewTypeWithLabel;
     }
   | { type: "edit"; action: AgentBuilderAction; index: number }
   | {
@@ -132,7 +126,6 @@ function isMCPActionWithConfiguration(
 
 interface MCPServerViewsSheetProps {
   addTools: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
-  dataVisualization: ActionSpecification | null;
   mode: SheetMode | null;
   onModeChange: (mode: SheetMode | null) => void;
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
@@ -142,7 +135,6 @@ interface MCPServerViewsSheetProps {
 
 export function MCPServerViewsSheet({
   addTools,
-  dataVisualization,
   mode,
   onModeChange,
   onActionUpdate,
@@ -153,8 +145,10 @@ export function MCPServerViewsSheet({
   const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const {
     mcpServerViews: allMcpServerViews,
+    mcpServerViewsWithKnowledge,
     mcpServerViewsWithoutKnowledge,
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
@@ -173,7 +167,7 @@ export function MCPServerViewsSheet({
     useState<AgentBuilderAction | null>(getInitialConfigurationTool(mode));
 
   const [configurationMCPServerView, setConfigurationMCPServerView] =
-    useState<MCPServerViewType | null>(null);
+    useState<MCPServerViewTypeWithLabel | null>(null);
   const [infoMCPServerView, setInfoMCPServerView] =
     useState<MCPServerViewType | null>(null);
 
@@ -187,7 +181,8 @@ export function MCPServerViewsSheet({
         if (
           action.type === "MCP" &&
           action.configuration &&
-          action.configuration.mcpServerViewId
+          action.configuration.mcpServerViewId &&
+          !action.configurationRequired
         ) {
           const selectedView = allMcpServerViews.find(
             (mcpServerView) =>
@@ -224,8 +219,9 @@ export function MCPServerViewsSheet({
       return filteredList;
     }
 
+    // You should not be able to select Reasoning if there is no reasoning model available.
     return filteredList.filter(
-      (view) => !getMCPServerToolsConfigurations(view).reasoningConfiguration
+      (view) => !getMCPServerRequirements(view).requiresReasoningConfiguration
     );
   }, [
     topMCPServerViews,
@@ -258,21 +254,6 @@ export function MCPServerViewsSheet({
       nonTopViews: filterViews(selectableNonTopMCPServerViews),
     };
   }, [searchTerm, selectableTopMCPServerViews, selectableNonTopMCPServerViews]);
-  const showDataVisualization = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return true;
-    }
-    if (!dataVisualization) {
-      return false;
-    }
-
-    const searchTermLower = searchTerm.toLowerCase();
-    return (
-      dataVisualization.label.toLowerCase().includes(searchTermLower) ||
-      dataVisualization.description?.toLowerCase().includes(searchTermLower) ||
-      false
-    );
-  }, [searchTerm, dataVisualization]);
 
   useEffect(() => {
     if (mode?.type === "edit") {
@@ -281,11 +262,12 @@ export function MCPServerViewsSheet({
       setSelectedToolsInSheet([]);
 
       const action = mode.action;
-      if (
-        isMCPActionWithConfiguration(action) &&
-        allMcpServerViews.length > 0
-      ) {
-        const mcpServerView = allMcpServerViews.find(
+      if (isMCPActionWithConfiguration(action)) {
+        const labeledViews: MCPServerViewTypeWithLabel[] = [
+          ...mcpServerViewsWithKnowledge,
+          ...mcpServerViewsWithoutKnowledge,
+        ];
+        const mcpServerView = labeledViews.find(
           (view) => view.sId === action.configuration.mcpServerViewId
         );
         if (mcpServerView) {
@@ -322,7 +304,12 @@ export function MCPServerViewsSheet({
       setSearchTerm("");
     }
     setIsOpen(!!mode);
-  }, [mode, allMcpServerViews]);
+  }, [
+    mode,
+    allMcpServerViews,
+    mcpServerViewsWithKnowledge,
+    mcpServerViewsWithoutKnowledge,
+  ]);
 
   // Focus SearchInput when opening on TOOL_SELECTION page
   useEffect(() => {
@@ -337,12 +324,6 @@ export function MCPServerViewsSheet({
   const toggleToolSelection = useCallback((tool: SelectedTool) => {
     setSelectedToolsInSheet((prev) => {
       const isAlreadySelected = prev.some((selected) => {
-        if (
-          tool.type === "DATA_VISUALIZATION" &&
-          selected.type === "DATA_VISUALIZATION"
-        ) {
-          return true;
-        }
         if (tool.type === "MCP" && selected.type === "MCP") {
           return tool.view.sId === selected.view.sId;
         }
@@ -351,12 +332,6 @@ export function MCPServerViewsSheet({
 
       if (isAlreadySelected) {
         return prev.filter((selected) => {
-          if (
-            tool.type === "DATA_VISUALIZATION" &&
-            selected.type === "DATA_VISUALIZATION"
-          ) {
-            return false;
-          }
           if (tool.type === "MCP" && selected.type === "MCP") {
             return tool.view.sId !== selected.view.sId;
           }
@@ -368,27 +343,18 @@ export function MCPServerViewsSheet({
     });
   }, []);
 
-  // Data Visualization is not an action but we show like an action in UI.
-  const onClickDataVisualization = useCallback(() => {
-    if (dataVisualization) {
-      toggleToolSelection({
-        type: "DATA_VISUALIZATION",
-      });
-    }
-  }, [dataVisualization, toggleToolSelection]);
-
-  function onClickMCPServer(mcpServerView: MCPServerViewType) {
+  function onClickMCPServer(mcpServerView: MCPServerViewTypeWithLabel) {
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
-    const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
+    const requirements = getMCPServerRequirements(mcpServerView, featureFlags);
 
-    if (toolsConfigurations.configurable !== "no") {
+    if (!requirements.noRequirement) {
       const action = getDefaultMCPAction(mcpServerView);
-      const isReasoning = toolsConfigurations.reasoningConfiguration
-        ? true
-        : false;
 
       let configuredAction = action;
-      if (action.type === "MCP" && isReasoning) {
+      if (
+        action.type === "MCP" &&
+        requirements.requiresReasoningConfiguration
+      ) {
         if (reasoningModels.length === 0) {
           sendNotification({
             title: "No reasoning model available",
@@ -401,14 +367,8 @@ export function MCPServerViewsSheet({
 
         const defaultReasoningModel =
           reasoningModels.find(
-            (model) =>
-              model.modelId ===
-              toolsConfigurations.reasoningConfiguration?.default?.modelId
-          ) ??
-          reasoningModels.find(
             (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
-          ) ??
-          reasoningModels[0];
+          ) ?? reasoningModels[0];
 
         configuredAction = {
           ...action,
@@ -479,19 +439,8 @@ export function MCPServerViewsSheet({
     // All validations passed, add the tools
     addTools(
       selectedToolsInSheet.map((tool) => {
-        if (tool.type === "DATA_VISUALIZATION") {
-          return {
-            id: uniqueId(),
-            type: "DATA_VISUALIZATION",
-            configuration: null,
-            name: DEFAULT_DATA_VISUALIZATION_NAME,
-            description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-            configurable: false,
-          };
-        } else {
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          return tool.configuredAction || getDefaultMCPAction(tool.view);
-        }
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        return tool.configuredAction || getDefaultMCPAction(tool.view);
       })
     );
 
@@ -527,10 +476,12 @@ export function MCPServerViewsSheet({
     shouldUnregister: false,
   });
 
-  const toolsConfigurations = useMemo(
+  const requirements = useMemo(
     () =>
-      mcpServerView ? getMCPServerToolsConfigurations(mcpServerView) : null,
-    [mcpServerView]
+      mcpServerView
+        ? getMCPServerRequirements(mcpServerView, featureFlags)
+        : null,
+    [mcpServerView, featureFlags]
   );
 
   // Stable form reset handler - no form dependency to prevent re-renders
@@ -581,14 +532,13 @@ export function MCPServerViewsSheet({
             topMCPServerViews={filteredViews.topViews}
             nonTopMCPServerViews={filteredViews.nonTopViews}
             onItemClick={onClickMCPServer}
-            dataVisualization={showDataVisualization ? dataVisualization : null}
-            onDataVisualizationClick={onClickDataVisualization}
             selectedToolsInSheet={selectedToolsInSheet}
             onToolDetailsClick={(tool) => {
               if (tool.type === "MCP") {
                 handleToolInfoClick(tool.view);
               }
             }}
+            featureFlags={featureFlags}
           />
         </>
       ),
@@ -596,31 +546,23 @@ export function MCPServerViewsSheet({
         selectedToolsInSheet.length > 0 ? (
           <MCPServerViewsFooter
             selectedToolsInSheet={selectedToolsInSheet}
-            dataVisualization={dataVisualization}
             onRemoveSelectedTool={toggleToolSelection}
           />
         ) : undefined,
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.CONFIGURATION,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      title: mcpServerView?.name || "Configure Tool",
+      title: `Configure ${mcpServerView?.label ?? "tool"}`,
       description: "",
-      icon: undefined,
+      icon: mcpServerView
+        ? () => getAvatar(mcpServerView.server, "md")
+        : undefined,
       content:
-        configurationTool &&
-        mcpServerView &&
-        toolsConfigurations &&
-        formSchema ? (
+        configurationTool && mcpServerView && requirements && formSchema ? (
           <FormProvider form={form} className="h-full">
             <div className="h-full">
               <div className="h-full space-y-6 pt-3">
-                <MCPActionHeader
-                  action={configurationTool}
-                  mcpServerView={mcpServerView}
-                />
-
-                {configurationTool.configurable && (
+                {configurationTool.configurationRequired && (
                   <NameSection
                     title="Name"
                     placeholder="My tool name…"
@@ -628,44 +570,36 @@ export function MCPServerViewsSheet({
                   />
                 )}
 
-                {toolsConfigurations.reasoningConfiguration && (
+                {requirements.requiresReasoningConfiguration && (
                   <ReasoningModelSection />
                 )}
 
-                {toolsConfigurations.childAgentConfiguration && (
+                {requirements.requiresChildAgentConfiguration && (
                   <ChildAgentSection />
                 )}
 
-                {toolsConfigurations.mayRequireTimeFrameConfiguration && (
+                {requirements.mayRequireTimeFrameConfiguration && (
                   <TimeFrameSection actionType="search" />
                 )}
 
-                {toolsConfigurations.mayRequireDustAppConfiguration && (
+                {requirements.requiresDustAppConfiguration && (
                   <DustAppSection />
                 )}
 
-                {toolsConfigurations.mayRequireSecretConfiguration && (
-                  <SecretSection />
-                )}
+                {requirements.requiresSecretConfiguration && <SecretSection />}
 
-                {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
+                {requirements.mayRequireJsonSchemaConfiguration && (
                   <JsonSchemaSection
                     getAgentInstructions={getAgentInstructions}
                   />
                 )}
 
                 <AdditionalConfigurationSection
-                  stringConfigurations={
-                    toolsConfigurations.stringConfigurations
-                  }
-                  numberConfigurations={
-                    toolsConfigurations.numberConfigurations
-                  }
-                  booleanConfigurations={
-                    toolsConfigurations.booleanConfigurations
-                  }
-                  enumConfigurations={toolsConfigurations.enumConfigurations}
-                  listConfigurations={toolsConfigurations.listConfigurations}
+                  requiredStrings={requirements.requiredStrings}
+                  requiredNumbers={requirements.requiredNumbers}
+                  requiredBooleans={requirements.requiredBooleans}
+                  requiredEnums={requirements.requiredEnums}
+                  requiredLists={requirements.requiredLists}
                 />
               </div>
             </div>
@@ -678,32 +612,16 @@ export function MCPServerViewsSheet({
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.INFO,
-      title: getInfoPageTitle(
-        infoMCPServerView,
-        mode?.type === "info" ? mode.action : null
+      title: getInfoPageTitle(infoMCPServerView),
+      description: getInfoPageDescription(infoMCPServerView),
+      icon: getInfoPageIcon(infoMCPServerView),
+      content: infoMCPServerView ? (
+        <MCPServerInfoPage infoMCPServerView={infoMCPServerView} />
+      ) : (
+        <div className="flex h-40 w-full items-center justify-center">
+          <Spinner />
+        </div>
       ),
-      description: getInfoPageDescription(
-        infoMCPServerView,
-        mode?.type === "info" ? mode.action : null
-      ),
-      icon: getInfoPageIcon(
-        infoMCPServerView,
-        mode?.type === "info" ? mode.action : null
-      ),
-      content:
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        infoMCPServerView ||
-        (mode?.type === "info" &&
-          mode.action?.type === "DATA_VISUALIZATION") ? (
-          <MCPServerInfoPage
-            infoMCPServerView={infoMCPServerView}
-            infoAction={mode?.type === "info" ? mode.action : null}
-          />
-        ) : (
-          <div className="flex h-40 w-full items-center justify-center">
-            <Spinner />
-          </div>
-        ),
     },
   ];
 

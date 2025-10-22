@@ -22,6 +22,7 @@ import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
+import type { AppStatus } from "@app/lib/api/status";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -89,16 +90,18 @@ export const NavigationSidebar = React.forwardRef<
 
   const { setSidebarOpen } = useContext(SidebarContext);
 
-  // We display the banner if the end date is in 30 days or less.
+  const { appStatus } = useAppStatus();
+
+  const hasIncidentBanner =
+    appStatus?.dustStatus !== null || appStatus?.providersStatus !== null;
   const endDate = subscription.endDate;
-  const shouldDisplaySubscriptionEndBanner =
-    endDate && endDate < Date.now() + 30 * 24 * 60 * 60 * 1000;
+  const in30Days = Date.now() + 30 * 24 * 60 * 60 * 1000;
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
       <div className="flex flex-col gap-2 pt-3">
-        <AppStatusBanner />
-        {shouldDisplaySubscriptionEndBanner && endDate && (
+        {appStatus && <AppStatusBanner appStatus={appStatus} />}
+        {!hasIncidentBanner && endDate && endDate < in30Days && (
           <SubscriptionEndBanner
             endDate={endDate}
             isFreePlan={isFreePlan(subscription.plan.code)}
@@ -136,63 +139,61 @@ export const NavigationSidebar = React.forwardRef<
             {navs.map((tab) => (
               <TabsContent key={tab.id} value={tab.id}>
                 <NavigationList className="px-3">
-                  {subNavigation && tab.isCurrent(activePath) && (
-                    <>
-                      {subNavigation.map((nav) => (
-                        <React.Fragment key={`nav-${nav.label}`}>
-                          {nav.label && (
-                            <NavigationListLabel
-                              label={nav.label}
-                              variant={nav.variant}
-                            />
-                          )}
-                          {nav.menus
-                            .filter(
-                              (menu) =>
-                                !menu.featureFlag ||
-                                featureFlags.includes(menu.featureFlag)
-                            )
-                            .map((menu) => (
-                              <React.Fragment key={menu.id}>
-                                <NavigationListItem
-                                  selected={menu.current}
-                                  label={menu.label}
-                                  icon={menu.icon}
-                                  href={menu.href}
-                                  target={menu.target}
-                                  onClick={() => handleTabClick(menu.href)}
-                                />
-                                {menu.subMenuLabel && (
-                                  <div
-                                    className={classNames(
-                                      "grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase",
-                                      "text-muted-foreground dark:text-muted-foreground-night"
-                                    )}
-                                  >
-                                    {menu.subMenuLabel}
-                                  </div>
-                                )}
-                                {menu.subMenu && (
-                                  <div className="mb-2 flex flex-col">
-                                    {menu.subMenu.map((nav) => (
-                                      <NavigationListItem
-                                        key={nav.id}
-                                        selected={nav.current}
-                                        label={nav.label}
-                                        icon={nav.icon}
-                                        className="grow pl-14 pr-4"
-                                        href={nav.href ? nav.href : undefined}
-                                        onClick={() => handleTabClick(nav.href)}
-                                      />
-                                    ))}
-                                  </div>
-                                )}
-                              </React.Fragment>
-                            ))}
-                        </React.Fragment>
-                      ))}
-                    </>
-                  )}
+                  {subNavigation &&
+                    tab.isCurrent(activePath) &&
+                    subNavigation.map((nav) => (
+                      <React.Fragment key={`nav-${nav.label}`}>
+                        {nav.label && (
+                          <NavigationListLabel
+                            label={nav.label}
+                            variant={nav.variant}
+                          />
+                        )}
+                        {nav.menus
+                          .filter(
+                            (menu) =>
+                              !menu.featureFlag ||
+                              featureFlags.includes(menu.featureFlag)
+                          )
+                          .map((menu) => (
+                            <React.Fragment key={menu.id}>
+                              <NavigationListItem
+                                selected={menu.current}
+                                label={menu.label}
+                                icon={menu.icon}
+                                href={menu.href}
+                                target={menu.target}
+                                onClick={() => handleTabClick(menu.href)}
+                              />
+                              {menu.subMenuLabel && (
+                                <div
+                                  className={classNames(
+                                    "grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase",
+                                    "text-muted-foreground dark:text-muted-foreground-night"
+                                  )}
+                                >
+                                  {menu.subMenuLabel}
+                                </div>
+                              )}
+                              {menu.subMenu && (
+                                <div className="mb-2 flex flex-col">
+                                  {menu.subMenu.map((nav) => (
+                                    <NavigationListItem
+                                      key={nav.id}
+                                      selected={nav.current}
+                                      label={nav.label}
+                                      icon={nav.icon}
+                                      className="grow pl-14 pr-4"
+                                      href={nav.href ? nav.href : undefined}
+                                      onClick={() => handleTabClick(nav.href)}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </React.Fragment>
+                          ))}
+                      </React.Fragment>
+                    ))}
                 </NavigationList>
               </TabsContent>
             ))}
@@ -204,7 +205,7 @@ export const NavigationSidebar = React.forwardRef<
         <div
           className={classNames(
             "flex items-center border-t px-2 py-2",
-            "border-border-dark dark:border-border-dark-night",
+            "border-border-dark dark:border-border-darker-night",
             "text-foreground dark:text-foreground-night"
           )}
         >
@@ -262,13 +263,10 @@ function StatusBanner({
   );
 }
 
-function AppStatusBanner() {
-  const { appStatus } = useAppStatus();
-
-  if (!appStatus) {
-    return null;
-  }
-
+interface AppStatusBannerProps {
+  appStatus: AppStatus;
+}
+function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   const { providersStatus, dustStatus } = appStatus;
 
   if (dustStatus) {

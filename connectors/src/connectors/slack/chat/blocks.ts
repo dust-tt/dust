@@ -8,8 +8,8 @@ import {
   REJECT_TOOL_EXECUTION,
   STATIC_AGENT_CONFIG,
 } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
-import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
-import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
+import type { MessageFootnotes } from "@connectors/lib/bot/citations";
+import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 import { truncate } from "@connectors/types";
 
 /*
@@ -20,9 +20,6 @@ import { truncate } from "@connectors/types";
  * to accommodate ellipses and ensure buffer space.
  */
 export const MAX_SLACK_MESSAGE_LENGTH = 2500;
-
-export const DUST_URL = "https://dust.tt/home";
-export const SLACK_HELP_URL = "https://docs.dust.tt/docs/slack";
 
 function makeDividerBlock() {
   return {
@@ -44,7 +41,7 @@ export function makeMarkdownBlock(text?: string) {
     : [];
 }
 
-function makeFootnotesBlock(footnotes: SlackMessageFootnotes) {
+function makeFootnotesBlock(footnotes: MessageFootnotes) {
   // We are limited to 10 blocks when posting a message on Slack,
   // so we are posting 5 footnotes at most to leave rooms for other blocks (e.g. conversation link, divier, ...).
   const elements = footnotes.slice(0, 5).map((f) => ({
@@ -72,7 +69,7 @@ function makeContextSectionBlocks({
   state: "thinking" | "answered";
   assistantName: string;
   conversationUrl: string | null;
-  footnotes: SlackMessageFootnotes | undefined;
+  footnotes: MessageFootnotes | undefined;
   workspaceId: string;
 }) {
   const blocks = [];
@@ -93,57 +90,7 @@ function makeContextSectionBlocks({
     })
   );
 
-  const resultBlocks = blocks.length ? [makeDividerBlock(), ...blocks] : [];
-
-  return resultBlocks;
-}
-
-export function makeFeedbackButtonBlock({
-  conversationId,
-  messageId,
-  workspaceId,
-}: {
-  conversationId: string;
-  messageId: string;
-  workspaceId: string;
-}) {
-  return [
-    {
-      type: "actions",
-      elements: [
-        {
-          type: "button",
-          text: {
-            type: "plain_text",
-            text: "👍",
-            emoji: true,
-          },
-          action_id: LEAVE_FEEDBACK_UP,
-          value: JSON.stringify({
-            conversationId,
-            messageId,
-            workspaceId,
-            preselectedThumb: "up",
-          }),
-        },
-        {
-          type: "button",
-          text: {
-            type: "plain_text",
-            text: "👎",
-            emoji: true,
-          },
-          action_id: LEAVE_FEEDBACK_DOWN,
-          value: JSON.stringify({
-            conversationId,
-            messageId,
-            workspaceId,
-            preselectedThumb: "down",
-          }),
-        },
-      ],
-    },
-  ];
+  return blocks.length ? [makeDividerBlock(), ...blocks] : [];
 }
 
 export function makeFeedbackSubmittedBlock() {
@@ -173,7 +120,8 @@ function makeThinkingBlock({
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `_${thinkingText}_`,
+            // -2 because we add two underscores for italic
+            text: `_${truncate(thinkingText, MAX_SLACK_MESSAGE_LENGTH - 2)}_`,
           },
         },
       ]
@@ -260,7 +208,7 @@ export type SlackMessageUpdate = {
   assistantName: string;
   agentConfigurations: LightAgentConfigurationType[];
   text?: string;
-  footnotes?: SlackMessageFootnotes;
+  footnotes?: MessageFootnotes;
   conversationId?: string;
   messageId?: string;
 };
@@ -276,7 +224,7 @@ export function makeFooterBlock({
   conversationUrl: string | null;
   workspaceId: string;
 }) {
-  const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/assistant/new`);
+  const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/agent/new`);
   let attribution = "";
   if (assistantName) {
     if (state === "thinking") {
@@ -377,7 +325,7 @@ export function makeErrorBlock(
     ],
     mrkdwn: true,
     unfurl_links: false,
-    text: errorMessage,
+    text: truncate(errorMessage, MAX_SLACK_MESSAGE_LENGTH),
   };
 }
 

@@ -1,10 +1,4 @@
-import {
-  ActionIncludeIcon,
-  ActionScanIcon,
-  BarChartIcon,
-  BoltIcon,
-  MagnifyingGlassIcon,
-} from "@dust-tt/sparkle";
+import { ToolsIcon } from "@dust-tt/sparkle";
 
 import type { ActionSpecification } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
@@ -33,60 +27,10 @@ export const RUN_AGENT_ACTION_NUM_RESULTS = 64;
 export const MCP_SPECIFICATION: ActionSpecification = {
   label: "More...",
   description: "Add additional sets of tools",
-  cardIcon: BoltIcon,
-  dropDownIcon: BoltIcon,
+  cardIcon: ToolsIcon,
+  dropDownIcon: ToolsIcon,
   flag: null,
 };
-
-export const DATA_VISUALIZATION_SPECIFICATION: ActionSpecification = {
-  label: "Data Visualization",
-  description: "Generate a data visualization",
-  cardIcon: BarChartIcon,
-  dropDownIcon: BarChartIcon,
-  flag: null,
-};
-
-export const SEARCH_SPECIFICATION: ActionSpecification = {
-  label: "Search",
-  description: "Search across selected data sources",
-  cardIcon: MagnifyingGlassIcon,
-  dropDownIcon: MagnifyingGlassIcon,
-  flag: null,
-};
-
-export const INCLUDE_DATA_SPECIFICATION: ActionSpecification = {
-  label: "Include Data",
-  description: "Include recent documents from selected data sources",
-  cardIcon: ActionIncludeIcon,
-  dropDownIcon: ActionIncludeIcon,
-  flag: null,
-};
-
-export const EXTRACT_DATA_SPECIFICATION: ActionSpecification = {
-  label: "Extract Data",
-  description: "Extract structured data from selected data sources",
-  cardIcon: ActionScanIcon,
-  dropDownIcon: ActionScanIcon,
-  flag: null,
-};
-
-// Mapping for action types to their specifications
-export const ACTION_SPECIFICATIONS_MAP = {
-  DATA_VISUALIZATION: DATA_VISUALIZATION_SPECIFICATION,
-  SEARCH: SEARCH_SPECIFICATION,
-  INCLUDE_DATA: INCLUDE_DATA_SPECIFICATION,
-  EXTRACT_DATA: EXTRACT_DATA_SPECIFICATION,
-} as const;
-
-export function getActionSpecification(
-  actionType: string
-): ActionSpecification | null {
-  return (
-    ACTION_SPECIFICATIONS_MAP[
-      actionType as keyof typeof ACTION_SPECIFICATIONS_MAP
-    ] || null
-  );
-}
 
 /**
  * This function computes the topK for retrieval actions. This is used by both the action (to
@@ -232,18 +176,6 @@ export function computeStepContexts({
   }
 
   return stepContexts;
-}
-
-export function getMCPApprovalKey({
-  conversationId,
-  messageId,
-  actionId,
-}: {
-  conversationId: string;
-  messageId: string;
-  actionId: number;
-}): string {
-  return `conversation:${conversationId}:message:${messageId}:action:${actionId}`;
 }
 
 export async function getExecutionStatusFromConfig(

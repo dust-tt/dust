@@ -7,69 +7,40 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
+import { useFormContext, useWatch } from "react-hook-form";
 
-import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import {
-  useAddWebhookSourceViewToSpace,
-  useRemoveWebhookSourceViewFromSpace,
-} from "@app/lib/swr/webhook_source";
+import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import type { LightWorkspaceType } from "@app/types";
 import type { SpaceType } from "@app/types/space";
-import type {
-  WebhookSourceType,
-  WebhookSourceViewType,
-  WebhookSourceWithViews,
-} from "@app/types/triggers/webhooks";
+import type { WebhookSourceWithViewsType } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsSharingProps = {
-  webhookSource: WebhookSourceWithViews;
+  webhookSource: WebhookSourceWithViewsType;
   owner: LightWorkspaceType;
+  spaces: SpaceType[];
 };
 
 type RowData = {
   name: string;
   space: SpaceType;
-  webhookSourceView: WebhookSourceViewType | undefined;
+  isEnabled: boolean;
   onClick: () => void;
 };
 
 const ActionCell = ({
-  webhookSource,
-  webhookSourceView,
-  space,
-  addToSpace,
-  removeFromSpace,
+  isEnabled,
+  onToggle,
 }: {
-  webhookSource: WebhookSourceType;
-  webhookSourceView?: WebhookSourceViewType;
-  space: SpaceType;
-  addToSpace: ({
-    space,
-    webhookSource,
-  }: {
-    space: SpaceType;
-    webhookSource: WebhookSourceType;
-  }) => Promise<void>;
-  removeFromSpace: (params: {
-    webhookSourceView: WebhookSourceViewType;
-    space: SpaceType;
-  }) => Promise<void>;
+  isEnabled: boolean;
+  onToggle: () => void;
 }) => {
-  const [loading, setLoading] = useState(false);
-
   return (
     <DataTable.CellContent>
       <SliderToggle
-        disabled={loading}
-        selected={webhookSourceView !== undefined}
-        onClick={async () => {
-          setLoading(true);
-          if (webhookSourceView) {
-            await removeFromSpace({ webhookSourceView, space });
-          } else {
-            await addToSpace({ space, webhookSource });
-          }
-          setLoading(false);
+        selected={isEnabled}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
         }}
       />
     </DataTable.CellContent>
@@ -77,45 +48,40 @@ const ActionCell = ({
 };
 
 export function WebhookSourceDetailsSharing({
-  webhookSource,
-  owner,
+  spaces,
 }: WebhookSourceDetailsSharingProps) {
-  const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("");
-  const { spaces } = useSpacesAsAdmin({
-    workspaceId: owner.sId,
-    disabled: false,
+  const form = useFormContext<WebhookSourceFormValues>();
+  const sharingSettings = useWatch({
+    control: form.control,
+    name: "sharingSettings",
   });
 
-  const globalSpace = spaces.find((space) => space.kind === "global") ?? null;
-  const webhookSourceViewsWithSpace = webhookSource.views.map((view) => ({
-    ...view,
-    space: spaces.find((space) => space.sId === view.spaceId) ?? null,
-  }));
-  const globalView =
-    webhookSourceViewsWithSpace.find((view) => view.space?.kind === "global") ??
-    null;
-  const isRestricted = globalView === null;
+  const globalSpace = spaces.find((space) => space.kind === "global");
+  const availableSpaces = spaces.filter((s) => s.kind === "regular");
 
-  const { addToSpace } = useAddWebhookSourceViewToSpace({
-    owner,
-  });
-  const { removeFromSpace } = useRemoveWebhookSourceViewFromSpace({
-    owner,
-  });
+  const isRestricted = globalSpace ? !sharingSettings?.[globalSpace.sId] : true;
 
-  const availableSpaces = (spaces ?? []).filter((s) => s.kind === "regular");
+  const handleToggle = (space: SpaceType) => {
+    const currentState = sharingSettings?.[space.sId] ?? false;
+    const newState = !currentState;
+
+    form.setValue(`sharingSettings.${space.sId}`, newState, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+  };
 
   const rows: RowData[] = availableSpaces
     .map((space) => ({
       name: space.name,
       space: space,
-      webhookSourceView: webhookSource.views.find(
-        (view) => view.spaceId === space.sId
-      ),
-      onClick: () => {},
+      isEnabled: sharingSettings?.[space.sId] ?? false,
+      onClick: () => handleToggle(space),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
+
   const columns: ColumnDef<RowData, any>[] = [
     {
       id: "name",
@@ -125,17 +91,14 @@ export function WebhookSourceDetailsSharing({
     {
       id: "action",
       header: "",
-      accessorKey: "viewId",
+      accessorKey: "isEnabled",
       meta: {
         className: "w-14",
       },
-      cell: (info: CellContext<RowData, string>) => (
+      cell: (info: CellContext<RowData, boolean>) => (
         <ActionCell
-          webhookSource={webhookSource}
-          addToSpace={addToSpace}
-          removeFromSpace={removeFromSpace}
-          webhookSourceView={info.row.original.webhookSourceView}
-          space={info.row.original.space}
+          isEnabled={info.row.original.isEnabled}
+          onToggle={info.row.original.onClick}
         />
       ),
     },
@@ -147,20 +110,11 @@ export function WebhookSourceDetailsSharing({
         <div className="flex w-full items-center justify-between overflow-visible">
           <Page.SectionHeader title="Available to all Spaces" />
           <SliderToggle
-            disabled={loading}
             selected={!isRestricted}
-            onClick={async () => {
-              if (globalSpace !== null) {
-                setLoading(true);
-                if (!isRestricted) {
-                  await removeFromSpace({
-                    webhookSourceView: globalView,
-                    space: globalSpace,
-                  });
-                } else {
-                  await addToSpace({ space: globalSpace, webhookSource });
-                }
-                setLoading(false);
+            onClick={(e) => {
+              e.stopPropagation();
+              if (globalSpace) {
+                handleToggle(globalSpace);
               }
             }}
           />
@@ -178,17 +132,18 @@ export function WebhookSourceDetailsSharing({
 
       {isRestricted && (
         <>
-          <div className="flex flex-row gap-2">
+          <div className="flex w-full flex-row gap-2">
             <SearchInput
               name="filter"
               placeholder="Search a space"
               value={filter}
               onChange={(e) => setFilter(e)}
+              className="w-full"
             />
           </div>
 
           <ScrollArea className="h-full">
-            <DataTable
+            <DataTable<RowData>
               data={rows}
               columns={columns}
               filter={filter}

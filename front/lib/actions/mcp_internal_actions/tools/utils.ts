@@ -22,6 +22,7 @@ import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   ConnectorProvider,
+  CoreAPIDatasourceViewFilter,
   CoreAPISearchFilter,
   DataSourceViewType,
   Result,
@@ -36,15 +37,19 @@ export type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
     connectorProvider: ConnectorProvider | null;
     name: string;
   };
+  dataSourceView: DataSourceViewResource;
 };
 
-export function makeDataSourceViewFilter(
+export function makeCoreSearchNodesFilters(
   agentDataSourceConfigurations: ResolvedDataSourceConfiguration[]
-) {
-  return agentDataSourceConfigurations.map(({ dataSource, filter }) => ({
-    data_source_id: dataSource.dustAPIDataSourceId,
-    view_filter: filter.parents?.in ?? [],
-  }));
+): CoreAPIDatasourceViewFilter[] {
+  return agentDataSourceConfigurations.map(
+    ({ dataSource, dataSourceView, filter }) => ({
+      data_source_id: dataSource.dustAPIDataSourceId,
+      view_filter: dataSourceView.parentsIn ?? [],
+      filter: filter.parents?.in ?? undefined,
+    })
+  );
 }
 
 async function fetchAgentDataSourceConfiguration(
@@ -310,30 +315,35 @@ export async function getAgentDataSourceConfigurations(
             id: agentConfig.dataSourceView.id,
             workspaceId: agentConfig.dataSourceView.workspaceId,
           });
+
+          const dataSourceView = await DataSourceViewResource.fetchById(
+            auth,
+            dataSourceViewSId
+          );
+          if (!dataSourceView) {
+            return new Err(
+              new Error(`Data source view not found: ${dataSourceViewSId}`)
+            );
+          }
+
           const resolved: ResolvedDataSourceConfiguration = {
             workspaceId: agentConfig.dataSourceView.workspace.sId,
             dataSourceViewId: dataSourceViewSId,
             filter: {
               parents:
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                agentConfig.parentsIn || agentConfig.parentsNotIn
+                agentConfig.parentsIn !== null ||
+                agentConfig.parentsNotIn !== null
                   ? {
-                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                      in: agentConfig.parentsIn || [],
-                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                      not: agentConfig.parentsNotIn || [],
+                      in: agentConfig.parentsIn ?? [],
+                      not: agentConfig.parentsNotIn ?? [],
                     }
                   : null,
               tags:
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                agentConfig.tagsIn || agentConfig.tagsNotIn
+                agentConfig.tagsIn !== null || agentConfig.tagsNotIn !== null
                   ? {
-                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                      in: agentConfig.tagsIn || [],
-                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                      not: agentConfig.tagsNotIn || [],
-                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                      mode: agentConfig.tagsMode || "custom",
+                      in: agentConfig.tagsIn ?? [],
+                      not: agentConfig.tagsNotIn ?? [],
+                      mode: agentConfig.tagsMode ?? "custom",
                     }
                   : undefined,
             },
@@ -343,6 +353,7 @@ export async function getAgentDataSourceConfigurations(
               connectorProvider: agentConfig.dataSource.connectorProvider,
               name: agentConfig.dataSource.name,
             },
+            dataSourceView,
           };
           return new Ok(resolved);
         }
@@ -386,6 +397,7 @@ export async function getAgentDataSourceConfigurations(
               connectorProvider: dataSource.connectorProvider,
               name: dataSource.name,
             },
+            dataSourceView,
           };
           return new Ok(resolved);
         }
@@ -485,16 +497,12 @@ export async function getCoreSearchArgs(
         dataSourceId: dataSource.dustAPIDataSourceId,
         filter: {
           tags: {
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            in: config.filter.tags?.in || null,
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            not: config.filter.tags?.not || null,
+            in: config.filter.tags?.in ?? null,
+            not: config.filter.tags?.not ?? null,
           },
           parents: {
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            in: config.filter.parents?.in || null,
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            not: config.filter.parents?.not || null,
+            in: config.filter.parents?.in ?? null,
+            not: config.filter.parents?.not ?? null,
           },
         },
         view_filter: dataSourceView.toViewFilter(),

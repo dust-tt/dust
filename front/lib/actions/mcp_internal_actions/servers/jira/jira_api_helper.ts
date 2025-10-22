@@ -3,6 +3,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { markdownToAdf } from "marklassian";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   createJQLFromSearchFilters,
   processFieldsForJira,
@@ -43,10 +44,11 @@ import {
   SEARCH_ISSUES_MAX_RESULTS,
   SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
 
 import { sanitizeFilename } from "../../utils/file_utils";
 
@@ -892,7 +894,10 @@ export async function updateIssue(
 
 type WithAuthParams = {
   authInfo?: AuthInfo;
-  action: (baseUrl: string, accessToken: string) => Promise<CallToolResult>;
+  action: (
+    baseUrl: string,
+    accessToken: string
+  ) => Promise<Result<CallToolResult["content"], MCPError>>;
 };
 
 export async function createIssueLink(
@@ -1034,18 +1039,18 @@ export async function searchUsersByEmailExact(
 export const withAuth = async ({
   authInfo,
   action,
-}: WithAuthParams): Promise<CallToolResult> => {
+}: WithAuthParams): Promise<Result<CallToolResult["content"], MCPError>> => {
   const accessToken = authInfo?.token;
 
   if (!accessToken) {
-    return makeMCPToolTextError("No access token found");
+    return new Err(new MCPError("No access token found"));
   }
 
   try {
     // Get the base URL from accessible resources
     const baseUrl = await getJiraBaseUrl(accessToken);
     if (!baseUrl) {
-      return makeMCPToolTextError("No base url found");
+      return new Err(new MCPError("No base url found"));
     }
 
     return await action(baseUrl, accessToken);
@@ -1063,14 +1068,14 @@ function logAndReturnError({
 }: {
   error: unknown;
   message: string;
-}): CallToolResult {
+}): Result<CallToolResult["content"], MCPError> {
   logger.error(
     {
       error,
     },
     `[JIRA MCP Server] ${message}`
   );
-  return makeMCPToolTextError(normalizeError(error).message);
+  return new Err(new MCPError(normalizeError(error).message));
 }
 
 function logAndReturnApiError<T>({
@@ -1194,4 +1199,141 @@ export async function getIssueAttachments({
 
   const attachments = result.value.fields?.attachment ?? [];
   return new Ok(attachments);
+}
+
+async function downloadAttachmentContent({
+  baseUrl,
+  accessToken,
+  attachmentId,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  attachmentId: string;
+}): Promise<Result<Buffer, JiraErrorResult>> {
+  try {
+    const url = `${baseUrl}/rest/api/3/attachment/content/${attachmentId}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "*/*",
+      },
+      redirect: "follow",
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      const msg = `JIRA API error: ${response.status} ${response.statusText} - ${errorBody}`;
+      logger.warn(`${msg}`);
+      return logAndReturnApiError({
+        error: new Error(msg),
+        message: "JIRA attachment download failed",
+      });
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return new Ok(buffer);
+  } catch (error) {
+    logger.warn(`Attachment download failed:`, {
+      error: error instanceof Error ? error.message : String(error),
+      attachmentId,
+    });
+    return logAndReturnApiError({
+      error,
+      message: `JIRA attachment download failed: ${normalizeError(error).message}`,
+    });
+  }
+}
+
+export async function extractTextFromAttachment({
+  baseUrl,
+  accessToken,
+  attachmentId,
+  mimeType,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  attachmentId: string;
+  mimeType: string;
+}): Promise<Result<string, JiraErrorResult>> {
+  if (!isTextExtractionSupportedContentType(mimeType)) {
+    return new Err(`Text extraction not supported for file type: ${mimeType}.`);
+  }
+
+  const downloadResult = await downloadAttachmentContent({
+    baseUrl,
+    accessToken,
+    attachmentId,
+  });
+
+  if (downloadResult.isErr()) {
+    return downloadResult;
+  }
+
+  const textResult = await extractTextFromBuffer(
+    downloadResult.value,
+    mimeType
+  );
+
+  if (textResult.isErr()) {
+    logger.error(`Text extraction failed:`, {
+      error: textResult.error,
+      attachmentId,
+      mimeType,
+    });
+    return logAndReturnApiError({
+      error: new Error(textResult.error),
+      message: "Failed to extract text from attachment",
+    });
+  }
+
+  return textResult;
+}
+
+export async function getAttachmentContent({
+  baseUrl,
+  accessToken,
+  attachmentId,
+  mimeType,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  attachmentId: string;
+  mimeType: string;
+}): Promise<
+  Result<
+    { content: string; contentType: string; size: number },
+    JiraErrorResult
+  >
+> {
+  const downloadResult = await downloadAttachmentContent({
+    baseUrl,
+    accessToken,
+    attachmentId,
+  });
+
+  if (downloadResult.isErr()) {
+    return downloadResult;
+  }
+
+  const buffer = downloadResult.value;
+
+  // For text files, return the content directly
+  if (mimeType.startsWith("text/")) {
+    const content = buffer.toString("utf-8");
+    return new Ok({
+      content,
+      contentType: mimeType,
+      size: buffer.length,
+    });
+  }
+
+  // For other file types, return as base64
+  const base64Content = buffer.toString("base64");
+  return new Ok({
+    content: base64Content,
+    contentType: mimeType,
+    size: buffer.length,
+  });
 }

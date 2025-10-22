@@ -99,6 +99,8 @@ pub struct DatasourceViewFilter {
     view_filter: Vec<String>,
     #[serde(default = "default_search_scope")]
     search_scope: SearchScopeType,
+    #[serde(default)]
+    filter: Option<Vec<String>>,
 }
 
 fn default_search_scope() -> SearchScopeType {
@@ -312,20 +314,13 @@ impl SearchStore for ElasticsearchSearchStore {
             None => MAX_PAGE_SIZE,
         };
 
-        // sort and query are mutually exclusive
-        if options.sort.is_some() && query.is_some() {
-            return Err(anyhow::anyhow!(
-                "Sort option and query string are mutually exclusive"
-            ));
-        }
-
         // Build search query with potential truncation.
         let (bool_query, indices_to_query, warning_code) =
             self.build_search_node_query(query.clone(), filter, &options)?;
 
-        let sort = match query {
-            None => self.build_search_nodes_sort(options.sort)?,
-            Some(_) => self.build_relevance_sort(),
+        let sort = match options.sort {
+            Some(_) => self.build_search_nodes_sort(options.sort)?,
+            None => self.build_relevance_sort(),
         };
 
         // Build and run search
@@ -815,7 +810,15 @@ impl ElasticsearchSearchStore {
                 // Only add parents filter if the index supports it.
                 if index_name == DATA_SOURCE_NODE_INDEX_NAME && !f.view_filter.is_empty() {
                     counter.add(1);
-                    bool_query = bool_query.filter(Query::terms("parents", f.view_filter));
+                    bool_query = bool_query.filter(Query::terms("parents", f.view_filter.clone()));
+                }
+
+                // Apply additional filter if present (in addition to view_filter).
+                if let Some(ref filter) = f.filter {
+                    if index_name == DATA_SOURCE_NODE_INDEX_NAME && !filter.is_empty() {
+                        counter.add(1);
+                        bool_query = bool_query.filter(Query::terms("parents", filter.clone()));
+                    }
                 }
 
                 Some(Query::Bool(bool_query))

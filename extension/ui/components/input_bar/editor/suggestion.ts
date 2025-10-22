@@ -6,6 +6,7 @@ export interface EditorSuggestion {
   label: string;
   pictureUrl: string;
   userFavorite: boolean;
+  description: string;
 }
 
 export interface EditorSuggestions {
@@ -18,7 +19,7 @@ const SUGGESTION_DISPLAY_LIMIT = 7;
 
 const SUGGESTION_PRIORITY: Record<string, number> = {
   [GLOBAL_AGENTS_SID.DUST]: 1,
-  [GLOBAL_AGENTS_SID.DUST_DEEP]: 2,
+  [GLOBAL_AGENTS_SID.DEEP_DIVE]: 2,
 };
 
 function filterAndSortSuggestions(

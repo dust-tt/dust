@@ -5,36 +5,31 @@ import {
   Page,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
-import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
+import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
-import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
+import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
+import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import {
-  createConversationWithMessage,
-  createPlaceholderUserMessage,
-  submitMessage,
-} from "@app/components/assistant/conversation/lib";
+import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
 import {
   useConversationMessages,
   useConversations,
 } from "@app/lib/swr/conversations";
+import { classNames } from "@app/lib/utils";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type {
-  AgentMention,
   ContentFragmentsType,
-  LightAgentConfigurationType,
-  MentionType,
   Result,
   SubscriptionType,
   UserType,
@@ -46,33 +41,23 @@ interface ConversationContainerProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
-  agentIdToMention: string | null;
 }
 
-export function ConversationContainer({
+export function ConversationContainerVirtuoso({
   owner,
   subscription,
   user,
-  agentIdToMention,
 }: ConversationContainerProps) {
   const { activeConversationId } = useConversationsNavigation();
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
-  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
 
-  const { animate, setAnimate, setSelectedAssistant } =
-    useContext(InputBarContext);
+  const { setSelectedAssistant } = useContext(InputBarContext);
 
   const { hasBlockedActions, totalBlockedActions, showBlockedActionsDialog } =
     useActionValidationContext();
 
-  const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
-  const { scrollConversationsToTop } = useConversationsNavigation();
-
   const router = useRouter();
-
-  const { execution } = router.query;
-  const executionMode = typeof execution === "string" ? execution : "auto";
 
   const sendNotification = useSendNotification();
 
@@ -83,134 +68,20 @@ export function ConversationContainer({
     },
   });
 
-  const { mutateMessages, isMessagesError } = useConversationMessages({
+  const { isMessagesError } = useConversationMessages({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
     limit: 50,
   });
 
-  const setInputBarMention = useCallback(
-    (agentId: string) => {
-      setSelectedAssistant({ configurationId: agentId });
-      setAnimate(true);
-    },
-    [setAnimate, setSelectedAssistant]
-  );
-
-  useEffect(() => {
-    if (agentIdToMention) {
-      setInputBarMention(agentIdToMention);
-    }
-  }, [agentIdToMention, setInputBarMention]);
-
-  useEffect(() => {
-    if (animate) {
-      setTimeout(() => setAnimate(false), 500);
-    }
-  });
-
   const { serverId } = useCoEditionContext();
-
-  const handleSubmit = async (
-    input: string,
-    mentions: MentionType[],
-    contentFragments: ContentFragmentsType
-  ): Promise<Result<undefined, DustError>> => {
-    if (!activeConversationId) {
-      return new Err({
-        code: "internal_error",
-        name: "NoActiveConversation",
-        message: "No active conversation",
-      });
-    }
-
-    const messageData = {
-      input,
-      mentions,
-      contentFragments,
-      clientSideMCPServerIds: removeNulls([serverId]),
-    };
-
-    try {
-      // Update the local state immediately and fire the request. Since the API will return the
-      // updated data, there is no need to start a new revalidation and we can directly populate the
-      // cache.
-      await mutateMessages(
-        async (currentMessagePages) => {
-          const result = await submitMessage({
-            owner,
-            user,
-            conversationId: activeConversationId,
-            messageData,
-            executionMode,
-          });
-
-          // Replace placeholder message with API response.
-          if (result.isOk()) {
-            const { message } = result.value;
-
-            return updateMessagePagesWithOptimisticData(
-              currentMessagePages,
-              message
-            );
-          }
-
-          if (result.error.type === "plan_limit_reached_error") {
-            setPlanLimitReached(true);
-          } else {
-            sendNotification({
-              title: result.error.title,
-              description: result.error.message,
-              type: "error",
-            });
-          }
-
-          throw result.error;
-        },
-        {
-          // Add optimistic data placeholder.
-          optimisticData: (currentMessagePages) => {
-            const lastMessageRank =
-              currentMessagePages?.at(0)?.messages.at(-1)?.rank ?? 0;
-
-            const placeholderMessage = createPlaceholderUserMessage({
-              input,
-              mentions,
-              user,
-              lastMessageRank,
-            });
-            return updateMessagePagesWithOptimisticData(
-              currentMessagePages,
-              placeholderMessage
-            );
-          },
-          revalidate: false,
-          // Rollback optimistic update on errors.
-          rollbackOnError: true,
-          populateCache: true,
-        }
-      );
-      await mutateConversations();
-      scrollConversationsToTop();
-    } catch (err) {
-      // If the API errors, the original data will be rolled back by SWR automatically.
-      console.error("Failed to post message:", err);
-      return new Err({
-        code: "internal_error",
-        name: "FailedToPostMessage",
-        message: `Failed to post message ${err}`,
-      });
-    }
-
-    return new Ok(undefined);
-  };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleConversationCreation = useCallback(
     async (
       input: string,
-      mentions: MentionType[],
+      mentions: EditorMention[],
       contentFragments: ContentFragmentsType,
       selectedMCPServerViewIds?: string[]
     ): Promise<Result<undefined, DustError>> => {
@@ -229,12 +100,13 @@ export function ConversationContainer({
         user,
         messageData: {
           input,
-          mentions,
+          mentions: mentions.map((mention) => ({
+            configurationId: mention.id,
+          })),
           contentFragments,
           clientSideMCPServerIds: removeNulls([serverId]),
           selectedMCPServerViewIds,
         },
-        executionMode,
       });
 
       setIsSubmitting(false);
@@ -258,66 +130,43 @@ export function ConversationContainer({
       } else {
         // We start the push before creating the message to optimize for instantaneity as well.
         await router.push(
-          `/w/${owner.sId}/assistant/${conversationRes.value.sId}`,
+          getConversationRoute(owner.sId, conversationRes.value.sId),
           undefined,
           { shallow: true }
         );
-        await mutateConversations();
-        scrollConversationsToTop();
+
+        await mutateConversations(
+          (currentData) => {
+            // Immediately update the list of conversations in the sidebar by adding the new conversation.
+            return {
+              ...currentData,
+              conversations: [
+                ...(currentData?.conversations ?? []),
+                conversationRes.value,
+              ],
+            };
+          },
+          { revalidate: false }
+        );
 
         return new Ok(undefined);
       }
     },
     [
-      executionMode,
       isSubmitting,
       mutateConversations,
       owner,
       router,
-      scrollConversationsToTop,
       sendNotification,
       serverId,
       user,
     ]
   );
 
-  useEffect(() => {
-    const scrollContainerElement = document.getElementById(
-      "assistant-input-header"
-    );
-
-    if (scrollContainerElement) {
-      const observer = new IntersectionObserver(
-        () => {
-          if (assistantToMention.current) {
-            setInputBarMention(assistantToMention.current.sId);
-            assistantToMention.current = null;
-          }
-        },
-        { threshold: 0.8 }
-      );
-      observer.observe(scrollContainerElement);
-    }
-    const handleRouteChange = (url: string) => {
-      if (url.endsWith("/new")) {
-        setSelectedAssistant(null);
-        assistantToMention.current = null;
-      }
-    };
-    router.events.on("routeChangeComplete", handleRouteChange);
-  }, [setAnimate, setInputBarMention, router, setSelectedAssistant]);
-
   const [greeting, setGreeting] = useState<string>("");
   useEffect(() => {
     setGreeting(getRandomGreetingForName(user.firstName));
   }, [user]);
-
-  const onStickyMentionsChange = useCallback(
-    (mentions: AgentMention[]) => {
-      setStickyMentions(mentions);
-    },
-    [setStickyMentions]
-  );
 
   const { startConversationRef } = useWelcomeTourGuide();
 
@@ -338,70 +187,72 @@ export function ConversationContainer({
     );
   }
 
-  return (
+  const body = (
     <DropzoneContainer
       description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
       title="Attach files to the conversation"
     >
       {activeConversationId ? (
-        <ConversationViewer
-          owner={owner}
-          user={user}
-          conversationId={activeConversationId}
-          // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
-          onStickyMentionsChange={onStickyMentionsChange}
-        />
-      ) : (
-        <div
-          id="assistant-input-header"
-          className="flex h-fit min-h-[20vh] w-full max-w-3xl flex-col justify-end gap-8 py-4"
-          ref={startConversationRef}
-        >
-          <Page.Header title={greeting} />
-        </div>
-      )}
-
-      {activeConversationId && hasBlockedActions && (
-        <ContentMessageInline
-          icon={InformationCircleIcon}
-          variant="primary"
-          className="mb-5 flex max-h-screen w-full sm:w-full sm:max-w-3xl"
-        >
-          <span className="font-bold">
-            {totalBlockedActions} action
-            {pluralize(totalBlockedActions)}
-          </span>{" "}
-          require{conjugate(totalBlockedActions)} manual approval
-          <ContentMessageAction
-            label="Review actions"
-            variant="outline"
-            size="xs"
-            onClick={() => showBlockedActionsDialog()}
+        <>
+          <ConversationViewer
+            owner={owner}
+            user={user}
+            conversationId={activeConversationId}
+            setPlanLimitReached={setPlanLimitReached}
           />
-        </ContentMessageInline>
+          {hasBlockedActions && (
+            <ContentMessageInline
+              icon={InformationCircleIcon}
+              variant="primary"
+              className="max-h-dvh mb-5 flex w-full sm:w-full sm:max-w-3xl"
+            >
+              <span className="font-bold">
+                {totalBlockedActions} action
+                {pluralize(totalBlockedActions)}
+              </span>{" "}
+              require{conjugate(totalBlockedActions)} manual approval
+              <ContentMessageAction
+                label="Review actions"
+                variant="outline"
+                size="xs"
+                onClick={() => showBlockedActionsDialog()}
+              />
+            </ContentMessageInline>
+          )}
+        </>
+      ) : (
+        <>
+          <div
+            id="assistant-input-header"
+            className="flex h-fit min-h-[20vh] w-full max-w-3xl flex-col justify-end gap-8 py-4"
+            ref={startConversationRef}
+          >
+            <Page.Header title={greeting} />
+          </div>
+          <div
+            className={classNames(
+              "max-h-dvh sticky bottom-0 z-20 flex w-full",
+              "pb-2",
+              "sm:w-full sm:max-w-3xl sm:pb-4"
+            )}
+          >
+            <InputBar
+              owner={owner}
+              onSubmit={handleConversationCreation}
+              conversationId={null}
+              disable={false}
+              disableAutoFocus={false}
+            />
+          </div>
+          <AgentBrowserContainer
+            onAgentConfigurationClick={(agentId) => {
+              setSelectedAssistant({ configurationId: agentId });
+            }}
+            owner={owner}
+            user={user}
+          />
+        </>
       )}
-
-      <FixedAssistantInputBar
-        owner={owner}
-        onSubmit={
-          activeConversationId ? handleSubmit : handleConversationCreation
-        }
-        stickyMentions={stickyMentions}
-        conversationId={activeConversationId}
-        disable={activeConversationId !== null && hasBlockedActions}
-      />
-
-      {!activeConversationId && (
-        <AssistantBrowserContainer
-          onAgentConfigurationClick={setInputBarMention}
-          setAssistantToMention={(assistant) => {
-            assistantToMention.current = assistant;
-          }}
-          owner={owner}
-          user={user}
-        />
-      )}
-
       <ReachedLimitPopup
         isOpened={planLimitReached}
         onClose={() => setPlanLimitReached(false)}
@@ -410,5 +261,13 @@ export function ConversationContainer({
         code="message_limit"
       />
     </DropzoneContainer>
+  );
+
+  // we wrap the body in a div to avoid a bug with the virtuoso scrolling
+  // when there is no active conversation
+  return activeConversationId ? (
+    body
+  ) : (
+    <div className="h-full overflow-auto px-4 py-4 md:px-8">{body}</div>
   );
 }

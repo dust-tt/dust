@@ -1,3 +1,4 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
 import * as t from "io-ts";
 
@@ -17,9 +18,8 @@ export const MessageBaseSchema = t.type({
     }),
     t.partial({
       clientSideMCPServerIds: t.array(t.string),
-    }),
-    t.partial({
       selectedMCPServerViewIds: t.array(t.string),
+      originMessageId: t.string,
     }),
   ]),
 });
@@ -234,10 +234,25 @@ export type BuilderSuggestionsRequestType = t.TypeOf<
   typeof InternalPostBuilderSuggestionsRequestBodySchema
 >;
 
+export type BuilderSuggestionInputType =
+  BuilderSuggestionsRequestType["inputs"];
+
+export type BuilderSuggestionType = BuilderSuggestionsRequestType["type"];
+
+const BuilderTextSuggestionTypeSchema = t.union([
+  t.array(t.string),
+  t.null,
+  t.undefined,
+]);
+
+export type BuilderTextSuggestionsType = t.TypeOf<
+  typeof BuilderTextSuggestionTypeSchema
+>;
+
 export const BuilderSuggestionsResponseBodySchema = t.union([
   t.type({
     status: t.literal("ok"),
-    suggestions: t.union([t.array(t.string), t.null, t.undefined]),
+    suggestions: BuilderTextSuggestionTypeSchema,
   }),
   t.type({
     status: t.literal("unavailable"),

@@ -135,9 +135,7 @@ async function handler(
       },
     });
   }
-  return res
-    .status(200)
-    .json({ success: true, emailTo: mcpServerView.editedByUser.email });
+  return res.status(200).json({ success: true });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

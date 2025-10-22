@@ -8,8 +8,8 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
-import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
-import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerDialog";
+import { AddToolsMenu } from "@app/components/actions/mcp/AddToolsMenu";
+import { CreateMCPServerSheet } from "@app/components/actions/mcp/CreateMCPServerSheet";
 import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
@@ -217,13 +217,13 @@ export const AdminActionsList = ({
             rowB.original.mcpServer.name
           );
         },
+        meta: {
+          className: "w-28 @2xl:w-32",
+        },
       },
       {
         header: "Used by",
         accessorFn: (row: RowData) => row.usage?.count ?? 0,
-        meta: {
-          className: "w-24",
-        },
         cell: (info) => (
           <DataTable.CellContent>
             <UsedByButton
@@ -232,6 +232,9 @@ export const AdminActionsList = ({
             />
           </DataTable.CellContent>
         ),
+        meta: {
+          className: "hidden @sm:w-10 @sm:table-cell",
+        },
       },
       {
         id: "access",
@@ -260,7 +263,7 @@ export const AdminActionsList = ({
           );
         },
         meta: {
-          className: "w-28",
+          className: "hidden w-28 @2xl:w-10 @sm:table-cell",
         },
       },
       {
@@ -279,7 +282,7 @@ export const AdminActionsList = ({
           );
         },
         meta: {
-          className: "w-10",
+          className: "hidden @sm:w-10 @sm:table-cell",
         },
       },
       {
@@ -296,7 +299,7 @@ export const AdminActionsList = ({
           />
         ),
         meta: {
-          className: "w-28",
+          className: "hidden @sm:w-28 @sm:table-cell @2xl:w-10",
         },
       }
     );
@@ -312,7 +315,7 @@ export const AdminActionsList = ({
         assistantId={assistantSId}
         onClose={() => setAssistantSId(null)}
       />
-      <CreateMCPServerDialog
+      <CreateMCPServerSheet
         isOpen={isCreateOpen}
         internalMCPServer={internalMCPServerToCreate}
         setIsOpen={setIsCreateOpen}
@@ -323,7 +326,7 @@ export const AdminActionsList = ({
       />
       {rows.length > 0 &&
         portalToHeader(
-          <AddActionMenu
+          <AddToolsMenu
             owner={owner}
             enabledMCPServers={mcpServers}
             setIsLoading={setIsLoading}
@@ -343,7 +346,7 @@ export const AdminActionsList = ({
           <EmptyCTA
             message="You don’t have any tools yet."
             action={
-              <AddActionMenu
+              <AddToolsMenu
                 buttonVariant="outline"
                 owner={owner}
                 enabledMCPServers={mcpServers}

@@ -41,3 +41,15 @@ export const getAgentBuilderRoute = (
   const fullPath = `/w/${workspaceId}/builder/${basePath}${route === "manage" ? "" : `/${route}`}`;
   return queryParams ? `${fullPath}?${queryParams}` : fullPath;
 };
+
+export const getConversationRoute = (
+  workspaceId: string,
+  conversationIdOrNew: string | null = "new",
+  queryParams?: string,
+  baseUrl?: string
+): string => {
+  const conversationId = conversationIdOrNew ?? "new";
+  const fullPath = `/w/${workspaceId}/conversation/${conversationId}`;
+  const route = queryParams ? `${fullPath}?${queryParams}` : fullPath;
+  return baseUrl ? `${baseUrl}${route}` : route;
+};

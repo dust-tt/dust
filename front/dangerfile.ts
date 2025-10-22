@@ -103,7 +103,7 @@ function checkDocumentationLabel() {
 function failDocumentationAck() {
   fail(
     "Files in `**/api/v1/` have been modified. " +
-      `Please add the \`${documentationAckLabel}\` label to acknowlegde that if anything changes 
+      `Please add the \`${documentationAckLabel}\` label to acknowledge that if anything changes 
       in a public endpoint, you need to edit the JSDoc comment 
       above the handler definition and/or the swagger_schemas.ts file and regenerate the documentation using \`npm run docs\``
   );

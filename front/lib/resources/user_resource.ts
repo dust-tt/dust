@@ -16,13 +16,7 @@ import {
   UserModel,
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type {
-  LightWorkspaceType,
-  ModelId,
-  Result,
-  UserProviderType,
-  UserType,
-} from "@app/types";
+import type { LightWorkspaceType, ModelId, Result, UserType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 export interface SearchMembersPaginationParams {
@@ -163,23 +157,95 @@ export class UserResource extends BaseResource<UserModel> {
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
-  async updateAuth0Sub({
-    sub,
-    provider,
-  }: {
-    sub: string;
-    provider: UserProviderType;
-  }) {
-    return this.update({
-      auth0Sub: sub,
-      provider,
+  static async listUserWithExactEmails(
+    owner: LightWorkspaceType,
+    emails: string[]
+  ): Promise<UserResource[]> {
+    const users = await UserModel.findAll({
+      include: [
+        {
+          model: MembershipModel,
+          as: "memberships",
+          where: {
+            workspaceId: owner.id,
+            startAt: { [Op.lte]: new Date() },
+            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+          },
+          required: true,
+        },
+      ],
+      where: {
+        email: emails,
+      },
     });
+
+    return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
-  async updateWorkOSUserId({ workOSUserId }: { workOSUserId: string }) {
-    return this.update({
-      workOSUserId,
+  static async listUsersWithEmailPredicat(
+    owner: LightWorkspaceType,
+    options: {
+      email?: string;
+    },
+    paginationParams: SearchMembersPaginationParams
+  ): Promise<{ users: UserResource[]; total: number }> {
+    const userWhereClause: WhereOptions<UserModel> = {};
+    if (options.email) {
+      userWhereClause.email = {
+        [Op.iLike]: `%${options.email}%`,
+      };
+    }
+
+    const memberships = await MembershipModel.findAll({
+      where: {
+        workspaceId: owner.id,
+        startAt: { [Op.lte]: new Date() },
+        endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+      },
     });
+    userWhereClause.id = {
+      [Op.in]: memberships.map((m) => m.userId),
+    };
+
+    // Create a map of userId to membership for consistent lookup.
+    const membershipsByUserId = new Map<number, MembershipModel>();
+    memberships.forEach((membership) => {
+      if (!membershipsByUserId.has(membership.userId)) {
+        membershipsByUserId.set(membership.userId, membership);
+      }
+    });
+
+    const { count, rows: users } = await UserModel.findAndCountAll({
+      where: userWhereClause,
+      include: [
+        {
+          model: MembershipModel,
+          as: "memberships",
+          where: {
+            id: {
+              [Op.in]: memberships.map((m) => m.id),
+            },
+          },
+        },
+      ],
+      order: [[paginationParams.orderColumn, paginationParams.orderDirection]],
+      limit: paginationParams.limit,
+      offset: paginationParams.offset,
+    });
+
+    return {
+      users: users.map((u) => {
+        const userBlob = u.get();
+        const membership = membershipsByUserId.get(u.id);
+
+        // Augment user with their membership in the workspace.
+        return new UserResource(UserModel, {
+          ...userBlob,
+          ...(membership && { memberships: [membership] }),
+        });
+      }),
+      total: count,
+    };
   }
 
   async updateName(firstName: string, lastName: string | null) {
@@ -190,6 +256,12 @@ export class UserResource extends BaseResource<UserModel> {
     return this.update({
       firstName,
       lastName,
+    });
+  }
+
+  async updateImage(imageUrl: string | null) {
+    return this.update({
+      imageUrl,
     });
   }
 
@@ -382,70 +454,6 @@ export class UserResource extends BaseResource<UserModel> {
       fullName: this.fullName(),
       image: this.imageUrl,
       lastLoginAt: this.lastLoginAt?.getTime() ?? null,
-    };
-  }
-
-  static async listUserWithExactEmails(
-    owner: LightWorkspaceType,
-    emails: string[]
-  ): Promise<UserResource[]> {
-    const users = await UserModel.findAll({
-      include: [
-        {
-          model: MembershipModel,
-          as: "memberships",
-          where: {
-            workspaceId: owner.id,
-            startAt: { [Op.lte]: new Date() },
-            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
-          },
-          required: true,
-        },
-      ],
-      where: {
-        email: emails,
-      },
-    });
-
-    return users.map((user) => new UserResource(UserModel, user.get()));
-  }
-
-  static async listUsersWithEmailPredicat(
-    owner: LightWorkspaceType,
-    options: {
-      email?: string;
-    },
-    paginationParams: SearchMembersPaginationParams
-  ): Promise<{ users: UserResource[]; total: number }> {
-    const userWhereClause: any = {};
-    if (options.email) {
-      userWhereClause.email = {
-        [Op.iLike]: `%${options.email}%`,
-      };
-    }
-
-    const { count, rows: users } = await UserModel.findAndCountAll({
-      where: userWhereClause,
-      include: [
-        {
-          model: MembershipModel,
-          as: "memberships",
-          where: {
-            workspaceId: owner.id,
-            startAt: { [Op.lte]: new Date() },
-            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
-          },
-          required: true,
-        },
-      ],
-      order: [[paginationParams.orderColumn, paginationParams.orderDirection]],
-      limit: paginationParams.limit,
-      offset: paginationParams.offset,
-    });
-
-    return {
-      users: users.map((u) => new UserResource(UserModel, u.get())),
-      total: count,
     };
   }
 

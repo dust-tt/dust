@@ -7,6 +7,7 @@ import type {
 } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence";
 import { ConfluenceToolsOAuthProvider } from "@app/lib/api/oauth/providers/confluence_tools";
+import { DiscordOAuthProvider } from "@app/lib/api/oauth/providers/discord";
 import { FreshserviceOAuthProvider } from "@app/lib/api/oauth/providers/freshservice";
 import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
 import { GmailOAuthProvider } from "@app/lib/api/oauth/providers/gmail";
@@ -50,6 +51,7 @@ export type OAuthError = {
 const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   confluence: new ConfluenceOAuthProvider(),
   confluence_tools: new ConfluenceToolsOAuthProvider(),
+  discord: new DiscordOAuthProvider(),
   freshservice: new FreshserviceOAuthProvider(),
   github: new GithubOAuthProvider(),
   gmail: new GmailOAuthProvider(),
@@ -278,7 +280,9 @@ export async function checkConnectionOwnership(
   });
   if (
     connectionRes.isErr() ||
-    connectionRes.value.connection.metadata.user_id !== auth.user()?.sId
+    connectionRes.value.connection.metadata.user_id !== auth.user()?.sId ||
+    connectionRes.value.connection.metadata.workspace_id !==
+      auth.workspace()?.sId
   ) {
     return new Err(new Error("Invalid connection"));
   }

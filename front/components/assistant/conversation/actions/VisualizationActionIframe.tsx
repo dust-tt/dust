@@ -22,6 +22,7 @@ import React, {
   useState,
 } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
@@ -65,40 +66,22 @@ const getExtensionFromBlob = (blob: Blob): string => {
 
 // Custom hook to encapsulate the logic for handling visualization messages.
 function useVisualizationDataHandler({
-  visualization,
+  getFileBlob,
+  setCodeDrawerOpened,
   setContentHeight,
   setErrorMessage,
-  setCodeDrawerOpened,
+  visualization,
   vizIframeRef,
-  workspaceId,
 }: {
-  visualization: Visualization;
+  getFileBlob: (fileId: string) => Promise<Blob | null>;
+  setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
   setContentHeight: (v: SetStateAction<number>) => void;
   setErrorMessage: (v: SetStateAction<string | null>) => void;
-  setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
+  visualization: Visualization;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
-  workspaceId: string | null;
 }) {
-  const code = visualization.code;
-
-  const getFileBlob = useCallback(
-    async (fileId: string) => {
-      const response = await fetch(
-        `/api/w/${workspaceId}/files/${fileId}?action=view`
-      );
-      if (!response.ok) {
-        return null;
-      }
-
-      const resBuffer = await response.arrayBuffer();
-
-      return new Blob([resBuffer], {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        type: response.headers.get("Content-Type") || undefined,
-      });
-    },
-    [workspaceId]
-  );
+  const sendNotification = useSendNotification();
+  const { code } = visualization;
 
   const downloadFileFromBlob = useCallback(
     (blob: Blob, filename?: string) => {
@@ -125,6 +108,22 @@ function useVisualizationDataHandler({
 
       const isOriginatingFromViz =
         event.source && event.source === vizIframeRef.current?.contentWindow;
+
+      // Handle EXPORT_ERROR messages
+      if (
+        data.type === "EXPORT_ERROR" &&
+        isOriginatingFromViz &&
+        data.identifier === visualization.identifier
+      ) {
+        sendNotification({
+          title: "Export Failed",
+          type: "error",
+          description:
+            data.errorMessage ||
+            "An error occurred while exporting the content.",
+        });
+        return;
+      }
 
       if (
         !isVisualizationRPCRequest(data) ||
@@ -155,6 +154,8 @@ function useVisualizationDataHandler({
         case "setErrorMessage":
           datadogLogger.info("Visualization error", {
             errorMessage: data.params.errorMessage,
+            fileId: data.params.fileId,
+            isInteractiveContent: data.params.isInteractiveContent,
           });
           setErrorMessage(data.params.errorMessage);
           break;
@@ -183,6 +184,7 @@ function useVisualizationDataHandler({
     setCodeDrawerOpened,
     visualization.identifier,
     vizIframeRef,
+    sendNotification,
   ]);
 }
 
@@ -223,6 +225,7 @@ interface VisualizationActionIframeProps {
   visualization: Visualization;
   workspaceId: string;
   isPublic?: boolean;
+  getFileBlob: (fileId: string) => Promise<Blob | null>;
 }
 
 export const VisualizationActionIframe = forwardRef<
@@ -256,18 +259,19 @@ export const VisualizationActionIframe = forwardRef<
   const {
     agentConfigurationId,
     conversationId,
+    getFileBlob,
     isInDrawer = false,
+    isPublic = false,
     visualization,
     workspaceId,
-    isPublic = false,
   } = props;
 
   useVisualizationDataHandler({
-    visualization,
-    workspaceId,
+    getFileBlob,
+    setCodeDrawerOpened,
     setContentHeight,
     setErrorMessage,
-    setCodeDrawerOpened,
+    visualization,
     vizIframeRef,
   });
 
@@ -360,13 +364,14 @@ export const VisualizationActionIframe = forwardRef<
               {isErrored && !retryClicked && !isPublic && (
                 <div className="flex h-full w-full items-center justify-center p-6">
                   <ContentMessage
-                    title="Visualization Error"
+                    title="Visualization failed"
                     variant="warning"
                     icon={ExclamationCircleIcon}
-                    className="max-w-md text-center"
+                    className="max-w-md"
                   >
                     <div className="mb-4 text-sm">
-                      An error occurred while rendering the visualization.
+                      The visualization failed due to an error in the generated
+                      code.
                     </div>
 
                     {errorMessage && (
@@ -376,15 +381,12 @@ export const VisualizationActionIframe = forwardRef<
                     )}
 
                     {canRetry && (
-                      <div className="flex justify-center">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          label="Retry Visualization"
-                          onClick={handleRetryClick}
-                          disabled={retryClicked}
-                        />
-                      </div>
+                      <Button
+                        variant="outline"
+                        label="Ask agent to fix"
+                        onClick={handleRetryClick}
+                        disabled={retryClicked}
+                      />
                     )}
                   </ContentMessage>
                 </div>

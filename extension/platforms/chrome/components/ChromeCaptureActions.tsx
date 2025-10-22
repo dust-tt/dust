@@ -43,8 +43,8 @@ export function ChromeCaptureActions({
               ? "Attach text from page"
               : "Attachment disabled on this website"
           }
-          variant="outline"
-          size="sm"
+          variant="ghost-secondary"
+          size="xs"
           className={isBlinking ? "animate-[bgblink_200ms_3]" : ""}
           onClick={handleCapture}
           disabled={isLoading || isBlacklisted}
@@ -58,8 +58,8 @@ export function ChromeCaptureActions({
               ? "Attach page screenshot"
               : "Attachment disabled on this website"
           }
-          variant="outline"
-          size="sm"
+          variant="ghost-secondary"
+          size="xs"
           onClick={handleCapturePageContent}
           disabled={isLoading || isBlacklisted}
         />
@@ -73,8 +73,8 @@ export function ChromeCaptureActions({
               ? "Attach text from page"
               : "Attachment disabled on this website"
           }
-          variant="outline"
-          size="sm"
+          variant="ghost-secondary"
+          size="xs"
           className={isBlinking ? "animate-[bgblink_200ms_3]" : ""}
           onClick={handleCapture}
           disabled={isLoading || isBlacklisted}
@@ -89,8 +89,8 @@ export function ChromeCaptureActions({
               ? "Attach page screenshot"
               : "Attachment disabled on this website"
           }
-          variant="outline"
-          size="sm"
+          variant="ghost-secondary"
+          size="xs"
           onClick={() =>
             fileUploaderService.uploadContentTab({
               includeContent: false,

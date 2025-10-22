@@ -7,4 +7,8 @@ export const RATE_LIMITS = {
     limit: 50,
     windowInMs: 60 * 1000,
   },
+  "users.info": {
+    limit: 100,
+    windowInMs: 60 * 1000,
+  },
 } satisfies Record<string, RateLimit>;

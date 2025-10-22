@@ -30,17 +30,25 @@ export async function setupOAuthConnection({
     const oauthPopup = window.open(url);
     let authComplete = false;
 
-    const popupMessageEventListener = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) {
-        return;
+    const handleFinalization = (data: any) => {
+      if (authComplete) {
+        return; // Already processed
       }
 
-      if (event.data.type === "connection_finalized") {
+      if (data.type === "connection_finalized" && data.provider === provider) {
         authComplete = true;
-        const { error, connection } = event.data;
+        const { error, connection } = data;
+
+        cleanup();
+        oauthPopup?.close();
+
         if (error) {
           resolve(new Err(new Error(error)));
-        } else if (connection && isOAuthConnectionType(connection)) {
+        } else if (
+          connection &&
+          isOAuthConnectionType(connection) &&
+          connection.provider === provider
+        ) {
           resolve(new Ok(connection));
         } else {
           resolve(
@@ -49,25 +57,35 @@ export async function setupOAuthConnection({
             )
           );
         }
-        window.removeEventListener("message", popupMessageEventListener);
-        oauthPopup?.close();
       }
     };
 
-    window.addEventListener("message", popupMessageEventListener);
-
-    const checkPopupStatus = setInterval(() => {
-      if (oauthPopup && oauthPopup.closed) {
-        window.removeEventListener("message", popupMessageEventListener);
-        clearInterval(checkPopupStatus);
-        setTimeout(() => {
-          if (!authComplete) {
-            resolve(
-              new Err(new Error("User closed the window before auth completed"))
-            );
-          }
-        }, 100);
+    // Method 1: window.postMessage (preferred, direct communication)
+    const handleWindowMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) {
+        return;
       }
-    }, 100);
+      handleFinalization(event.data);
+    };
+
+    window.addEventListener("message", handleWindowMessage);
+
+    // Method 2: BroadcastChannel (fallback)
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel("oauth_finalize");
+      channel.addEventListener("message", (event: MessageEvent) => {
+        handleFinalization(event.data);
+      });
+    } catch (e) {
+      // BroadcastChannel not supported
+    }
+
+    const cleanup = () => {
+      window.removeEventListener("message", handleWindowMessage);
+      if (channel) {
+        channel.close();
+      }
+    };
   });
 }

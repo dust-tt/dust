@@ -9,6 +9,7 @@ import type {
   Drive,
   Entity,
   ItemReference,
+  Organization,
   Site,
   Team,
   WorkbookRange,
@@ -413,6 +414,26 @@ export async function getMessages(
   return { results: res.value };
 }
 
+export async function getMessagesFromConversation(
+  logger: LoggerInterface,
+  client: Client,
+  conversationId: string
+): Promise<{ results: ChatMessage[]; nextLink?: string }> {
+  const res = await clientApiGet(
+    logger,
+    client,
+    `/chats/${conversationId}/messages?$top=50&$orderBy=createdDateTime desc`
+  );
+
+  if ("@odata.nextLink" in res) {
+    return {
+      results: res.value,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+  return { results: res.value };
+}
+
 /**
  * Given a getter function with a single nextLink optional parameter, this function
  * fetches all items by following nextLinks
@@ -621,4 +642,16 @@ export function extractPath(item: BaseItem) {
   } else {
     return "unknown";
   }
+}
+
+export async function getOrganization(
+  logger: LoggerInterface,
+  client: Client
+): Promise<Organization> {
+  const org = await clientApiGet(logger, client, "/organization");
+  if (!org.value || !org.value[0] || !org.value[0]) {
+    throw new Error("Unexpected: no organization found");
+  }
+
+  return org.value[0];
 }

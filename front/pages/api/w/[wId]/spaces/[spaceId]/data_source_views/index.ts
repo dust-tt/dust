@@ -83,7 +83,7 @@ async function handler(
 
         if (space.isSystem()) {
           // In case of system space, we want to reflect the usage by datasources themselves so we
-          // get usage accross all spaces.
+          // get usage across all spaces.
           const usagesByDataSources = await getDataSourcesUsageByCategory({
             auth,
             category,
@@ -194,6 +194,7 @@ async function handler(
           },
         });
       }
+
       const existing = await DataSourceViewResource.listForDataSourcesInSpace(
         auth,
         [dataSource],
@@ -208,15 +209,26 @@ async function handler(
           },
         });
       }
-      const dataSourceView =
+      const dataSourceViewRes =
         await DataSourceViewResource.createViewInSpaceFromDataSource(
+          auth,
           space,
           dataSource,
-          parentsIn,
-          auth.user()
+          parentsIn
         );
+
+      if (dataSourceViewRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: dataSourceViewRes.error.message,
+          },
+        });
+      }
+
       return res.status(201).json({
-        dataSourceView: dataSourceView.toJSON(),
+        dataSourceView: dataSourceViewRes.value.toJSON(),
       });
     }
 

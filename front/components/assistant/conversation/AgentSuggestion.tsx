@@ -119,7 +119,7 @@ export function AgentSuggestion({
 
   const showAssistantDetails = useCallback(
     (agentConfiguration: LightAgentConfigurationType) => {
-      setQueryParam(router, "assistantDetails", agentConfiguration.sId);
+      setQueryParam(router, "agentDetails", agentConfiguration.sId);
     },
     [router]
   );
@@ -205,10 +205,10 @@ function sortAgents(
   } else if (b.sId === GLOBAL_AGENTS_SID.DUST) {
     return 1;
   }
-  // Dust-deep always second
-  if (a.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
+  // Deep dive always second
+  if (a.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return -1;
-  } else if (b.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
+  } else if (b.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return 1;
   }
 

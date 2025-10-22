@@ -4,11 +4,9 @@ import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
 import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
-import {
-  MODEL_IDS,
-  MODEL_PROVIDER_IDS,
-  REASONING_EFFORT_IDS,
-} from "@app/types/assistant/assistant";
+import { MODEL_IDS } from "@app/types/assistant/models/models";
+import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import { REASONING_EFFORT_IDS } from "@app/types/assistant/models/reasoning";
 
 const modelIdSchema = z.enum(MODEL_IDS);
 const providerIdSchema = z.enum(MODEL_PROVIDER_IDS);
@@ -100,7 +98,7 @@ const baseActionSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
-  configurable: z.boolean().optional(),
+  configurationRequired: z.boolean().optional(),
 });
 
 const TAG_KINDS = z.union([z.literal("standard"), z.literal("protected")]);
@@ -109,11 +107,6 @@ const tagSchema = z.object({
   sId: z.string(),
   name: z.string(),
   kind: TAG_KINDS,
-});
-
-const dataVisualizationActionSchema = baseActionSchema.extend({
-  type: z.literal("DATA_VISUALIZATION"),
-  configuration: z.null(),
 });
 
 export const reasoningModelSchema = z
@@ -143,15 +136,10 @@ export type MCPServerConfigurationType = z.infer<
   typeof mcpServerConfigurationSchema
 >;
 
-const mcpActionSchema = baseActionSchema.extend({
+const actionSchema = baseActionSchema.extend({
   type: z.literal("MCP"),
   configuration: mcpServerConfigurationSchema,
 });
-
-const actionSchema = z.discriminatedUnion("type", [
-  dataVisualizationActionSchema,
-  mcpActionSchema,
-]);
 
 const userSchema = z.object({
   sId: z.string(),
@@ -196,27 +184,33 @@ const scheduleConfigSchema = z.object({
 
 const webhookConfigSchema = z.object({
   includePayload: z.boolean(),
+  event: z.string().optional(),
+  filter: z.string().optional(),
 });
 
 const webhookTriggerSchema = z.object({
   sId: z.string().optional(),
+  enabled: z.boolean().default(true),
   name: z.string(),
   kind: z.enum(["webhook"]),
   customPrompt: z.string().nullable(),
+  naturalLanguageDescription: z.string().nullable(),
   configuration: webhookConfigSchema,
   editor: z.number().nullable(),
   webhookSourceViewSId: z.string().nullable().optional(),
-  editorEmail: z.string().optional(),
+  editorName: z.string().optional(),
 });
 
 const scheduleTriggerSchema = z.object({
   sId: z.string().optional(),
+  enabled: z.boolean().default(true),
   name: z.string(),
   kind: z.enum(["schedule"]),
   customPrompt: z.string().nullable(),
+  naturalLanguageDescription: z.string().nullable(),
   configuration: scheduleConfigSchema,
   editor: z.number().nullable(),
-  editorEmail: z.string().optional(),
+  editorName: z.string().optional(),
 });
 
 const triggerSchema = z.discriminatedUnion("kind", [
@@ -248,7 +242,9 @@ export const agentBuilderFormSchema = z.object({
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
   actions: z.array(actionSchema),
-  triggers: z.array(triggerSchema),
+  triggersToCreate: z.array(triggerSchema),
+  triggersToUpdate: z.array(triggerSchema),
+  triggersToDelete: z.array(z.string()),
   maxStepsPerRun: z
     .number()
     .min(1, "Max steps per run must be at least 1")
@@ -259,9 +255,6 @@ export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
 export type AgentBuilderTriggerType = z.infer<typeof triggerSchema>;
 export type AgentBuilderAction = z.infer<typeof actionSchema>;
-export type AgentBuilderDataVizAction = z.infer<
-  typeof dataVisualizationActionSchema
->;
 
 // TODO: create types from schema
 export interface MCPFormData {

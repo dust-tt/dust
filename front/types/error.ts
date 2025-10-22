@@ -117,7 +117,9 @@ const API_ERROR_TYPES = [
   "trigger_not_found",
   "webhook_source_not_found",
   "webhook_source_view_auth_error",
+  "webhook_source_auth_error",
   "webhook_source_view_not_found",
+  "webhook_source_view_triggering_agent",
   "webhook_source_misconfiguration",
   // MCP Server Connections:
   "mcp_server_connection_not_found",
@@ -137,6 +139,8 @@ const API_ERROR_TYPES = [
   "workos_multiple_directories_not_supported",
   "user_authentication_required",
   "agent_memory_not_found",
+  // ES
+  "elasticsearch_error",
 ] as const;
 
 export type APIErrorType = (typeof API_ERROR_TYPES)[number];

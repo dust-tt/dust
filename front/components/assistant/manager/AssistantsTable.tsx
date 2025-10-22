@@ -13,6 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
@@ -52,10 +53,15 @@ type RowData = {
   menuItems?: MenuItem[];
   agentTags: TagType[];
   agentTagsAsString: string;
-  action?: React.ReactNode;
+  action?: ReactNode;
   isSelected: boolean;
   canArchive: boolean;
 };
+
+// Global agents (canArchive: false) cannot be edited, so we disable them in batch edit.
+function isDisabled(canArchive: boolean, isBatchEdit: boolean): boolean {
+  return !canArchive && isBatchEdit;
+}
 
 const getTableColumns = ({
   owner,
@@ -68,6 +74,19 @@ const getTableColumns = ({
   isBatchEdit: boolean;
   mutateAgentConfigurations: () => Promise<any>;
 }) => {
+  /**
+   * Columns order:
+   * - Select (if batch edit)
+   * - Name (always)
+   * - Access (hidden on mobile)
+   * - Editors (hidden on mobile)
+   * - Tags (always)
+   * - Usage (hidden on mobile)
+   * - Feedback (hidden on mobile)
+   * - Last Edited (hidden on mobile)
+   * - Actions (always)
+   */
+
   return [
     ...(isBatchEdit
       ? [
@@ -75,7 +94,9 @@ const getTableColumns = ({
             header: "",
             accessorKey: "select",
             cell: (info: CellContext<RowData, boolean>) => (
-              <DataTable.CellContent>
+              <DataTable.CellContent
+                disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+              >
                 <Checkbox
                   checked={info.row.original.isSelected}
                   disabled={!info.row.original.canArchive}
@@ -94,13 +115,15 @@ const getTableColumns = ({
       header: "Name",
       accessorKey: "name",
       cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent>
+        <DataTable.CellContent
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+        >
           <div className={classNames("flex flex-row items-center gap-2 py-3")}>
             <div>
               <Avatar visual={info.row.original.pictureUrl} size="sm" />
             </div>
             <div className="flex min-w-0 grow flex-col">
-              <div className="overflow-hidden truncate text-sm font-semibold text-foreground dark:text-foreground-night">
+              <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
                 {`@${info.getValue()}`}
               </div>
               <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -110,12 +133,17 @@ const getTableColumns = ({
           </div>
         </DataTable.CellContent>
       ),
+      meta: {
+        className: "w-40 @lg:w-full",
+      },
     },
     {
       header: "Access",
       accessorKey: "scope",
       cell: (info: CellContext<RowData, AgentConfigurationScope>) => (
-        <DataTable.CellContent>
+        <DataTable.CellContent
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+        >
           {info.getValue() !== "hidden" && (
             <Chip
               size="xs"
@@ -127,7 +155,7 @@ const getTableColumns = ({
         </DataTable.CellContent>
       ),
       meta: {
-        className: "w-32",
+        className: "hidden @sm:w-32 @sm:table-cell",
       },
     },
     {
@@ -137,31 +165,39 @@ const getTableColumns = ({
         const { editors } = info.row.original;
 
         if (!editors) {
-          return <DataTable.BasicCellContent label="-" />;
+          return (
+            <DataTable.BasicCellContent
+              disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+              label="-"
+            />
+          );
         }
 
         return (
-          <DataTable.CellContent>
-            <div className="flex -space-x-2">
-              <Avatar.Stack
-                avatars={editors.map((editor) => ({
-                  name: editor.fullName,
-                  visual: editor.image,
-                }))}
-                nbVisibleItems={4}
-                size="xs"
-                isRounded
-              />
-            </div>
-          </DataTable.CellContent>
+          <DataTable.CellContent
+            avatarStack={{
+              items: editors.map((editor) => ({
+                name: editor.fullName,
+                visual: editor.image,
+              })),
+              nbVisibleItems: 4,
+            }}
+          />
         );
+      },
+      meta: {
+        className: "hidden @sm:w-32 @sm:table-cell",
       },
     },
     {
       header: "Tags",
       accessorKey: "agentTagsAsString",
       cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent grow className="flex flex-row items-center">
+        <DataTable.CellContent
+          grow
+          className={classNames("flex flex-row items-center")}
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+        >
           <div className="group flex flex-row items-center gap-1">
             <div className="truncate text-muted-foreground dark:text-muted-foreground-night">
               <Tooltip
@@ -182,7 +218,7 @@ const getTableColumns = ({
       ),
       isFilterable: true,
       meta: {
-        className: "w-32 xl:w-64",
+        className: "w-32 xl:w-60",
         tooltip: "Tags",
       },
     },
@@ -191,7 +227,8 @@ const getTableColumns = ({
       accessorFn: (row: RowData) => row.usage?.messageCount ?? 0,
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
         <DataTable.BasicCellContent
-          className="font-semibold"
+          className="font-mono"
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
           tooltip={assistantUsageMessage({
             assistantName: info.row.original.name,
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -204,7 +241,10 @@ const getTableColumns = ({
           label={info.row.original.usage?.messageCount ?? 0}
         />
       ),
-      meta: { className: "w-16", tooltip: "Messages in the last 30 days" },
+      meta: {
+        className: "hidden @sm:w-16 @sm:table-cell",
+        tooltip: "Messages in the last 30 days",
+      },
     },
     {
       header: "Feedback",
@@ -219,20 +259,25 @@ const getTableColumns = ({
           const feedbacksCount = `${f.up + f.down} feedback${pluralize(f.up + f.down)} over the last 30 days`;
           return (
             <DataTable.BasicCellContent
-              className="font-semibold"
+              className="font-mono"
+              disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
               tooltip={feedbacksCount}
               label={`${f.up + f.down}`}
             />
           );
         }
       },
-      meta: { className: "w-20", tooltip: "Active users in the last 30 days" },
+      meta: {
+        className: "hidden @sm:w-20 @sm:table-cell",
+        tooltip: "Active users in the last 30 days",
+      },
     },
     {
       header: "Last Edited",
       accessorKey: "lastUpdate",
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
           tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
           label={
             info.getValue()
@@ -241,7 +286,7 @@ const getTableColumns = ({
           }
         />
       ),
-      meta: { className: "w-32" },
+      meta: { className: "hidden @sm:w-32 @sm:table-cell" },
     },
     {
       header: "",
@@ -249,12 +294,19 @@ const getTableColumns = ({
       cell: (info: CellContext<RowData, number>) => {
         if (info.row.original.scope === "global") {
           return (
-            <DataTable.CellContent>
+            <DataTable.CellContent
+              disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+            >
               {info.row.original.action}
             </DataTable.CellContent>
           );
         }
-        return <DataTable.MoreButton menuItems={info.row.original.menuItems} />;
+        return (
+          <DataTable.MoreButton
+            menuItems={info.row.original.menuItems}
+            disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+          />
+        );
       },
       meta: {
         className: "w-14",

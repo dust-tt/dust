@@ -19,20 +19,37 @@ export class GithubOAuthProvider implements BaseOAuthStrategyProvider {
   }) {
     if (useCase === "personal_actions") {
       // OAuth flow for personal connections (user access tokens)
-      return (
+      const clientId = config.getOAuthGithubAppPersonalActions();
+      const redirectUri = finalizeUriForProvider("github");
+      const url =
         `https://github.com/login/oauth/authorize?` +
-        `client_id=${config.getOAuthGithubAppPersonalActions()}` +
+        `client_id=${clientId}` +
         `&state=${connection.connection_id}` +
-        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("github"))}` +
-        `&scope=repo`
-      );
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&scope=repo`;
+
+      return url;
+    }
+
+    if (useCase === "webhooks") {
+      // OAuth flow for webhook management
+      const clientId = config.getOAuthGithubAppWebhooks();
+      const redirectUri = finalizeUriForProvider("github");
+      const url =
+        `https://github.com/login/oauth/authorize?` +
+        `client_id=${clientId}` +
+        `&state=${connection.connection_id}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&scope=repo,admin:repo_hook,read:org`;
+
+      return url;
     }
 
     const app =
       useCase === "platform_actions"
         ? config.getOAuthGithubAppPlatformActions()
         : config.getOAuthGithubApp();
-    // Only the `installations/new` URL supports state passing.
+
     return (
       `https://github.com/apps/${app}/installations/new` +
       `?state=${connection.connection_id}`

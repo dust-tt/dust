@@ -13,7 +13,6 @@ import {
   DialogTrigger,
   Hoverable,
   Icon,
-  ListCheckIcon,
   LockIcon,
   Page,
   Sheet,
@@ -605,7 +604,6 @@ export function ConnectorPermissionsModal({
     [owner, dataSource]
   );
 
-  const { resources: treeResources } = useResourcesHook(null);
   const { resources: allSelectedResources, isResourcesLoading } =
     useConnectorPermissions({
       owner,
@@ -627,27 +625,6 @@ export function ConnectorPermissionsModal({
     }
     return node.parentInternalIds ?? [];
   };
-
-  // Helper function to toggle all resource selections
-  const toggleAllResources = () => {
-    const newSelectedState = !isAllSelected;
-    const updates = Object.fromEntries(
-      treeResources.map((resource) => [
-        resource.internalId,
-        { isSelected: newSelectedState, node: resource, parents: [] },
-      ])
-    );
-    setSelectedNodes((prev) => ({ ...prev, ...updates }));
-  };
-
-  const isAllSelected = useMemo(
-    () =>
-      treeResources.length > 0 &&
-      treeResources.every(
-        (resource) => selectedNodes[resource.internalId]?.isSelected === true
-      ),
-    [treeResources, selectedNodes]
-  );
 
   const initialTreeSelectionModel = useMemo(
     () =>
@@ -903,24 +880,11 @@ export function ConnectorPermissionsModal({
                         <div className="heading-xl">
                           {connectorConfiguration.selectLabel}
                         </div>
-                        {canUpdatePermissions &&
-                          !isResourcesLoading &&
-                          treeResources.length > 0 && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-xs"
-                              label={
-                                isAllSelected ? "Unselect All" : "Select All"
-                              }
-                              icon={ListCheckIcon}
-                              onClick={toggleAllResources}
-                            />
-                          )}
                       </div>
                       <ContentNodeTree
                         isTitleFilterEnabled={
-                          connectorConfiguration.isTitleFilterEnabled
+                          connectorConfiguration.isTitleFilterEnabled &&
+                          canUpdatePermissions
                         }
                         isRoundedBackground={true}
                         useResourcesHook={useResourcesHook}
@@ -1045,6 +1009,9 @@ export function ConnectorPermissionsModal({
               />
             );
           case "slack_bot":
+          case "microsoft_bot":
+            return null;
+          case "discord_bot":
             return null;
           default:
             assertNever(c.type);

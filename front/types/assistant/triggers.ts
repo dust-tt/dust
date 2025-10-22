@@ -11,6 +11,8 @@ export type ScheduleConfig = {
 
 export type WebhookConfig = {
   includePayload: boolean;
+  event?: string;
+  filter?: string;
 };
 
 export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
@@ -35,6 +37,8 @@ export type TriggerType = {
   enabled: boolean;
   webhookSourceViewSId?: string | null;
   createdAt: number;
+  executionPerDayLimitOverride: number | null;
+  naturalLanguageDescription: string | null;
 } & TriggerConfiguration;
 
 export type TriggerKind = TriggerType["kind"];
@@ -70,22 +74,34 @@ const ScheduleConfigSchema = t.type({
   timezone: t.string,
 });
 
-const WebhookConfigSchema = t.type({
-  includePayload: t.boolean,
-});
+const WebhookConfigSchema = t.intersection([
+  t.type({
+    includePayload: t.boolean,
+  }),
+  t.partial({
+    event: t.string,
+    filter: t.string,
+  }),
+]);
 
 export const TriggerSchema = t.union([
   t.type({
+    enabled: t.boolean,
     name: t.string,
     kind: t.literal("schedule"),
     customPrompt: t.string,
+    naturalLanguageDescription: t.union([t.string, t.null]),
     configuration: ScheduleConfigSchema,
+    editor: t.union([t.number, t.undefined]),
   }),
   t.type({
+    enabled: t.boolean,
     name: t.string,
     kind: t.literal("webhook"),
     customPrompt: t.string,
+    naturalLanguageDescription: t.union([t.string, t.null]),
     configuration: WebhookConfigSchema,
     webhookSourceViewSId: t.string,
+    editor: t.union([t.number, t.undefined]),
   }),
 ]);

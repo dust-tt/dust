@@ -18,9 +18,11 @@ export async function runDataRetentionWorker() {
     connection,
     namespace,
     interceptors: {
-      activityInbound: [
+      activity: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return {
+            inbound: new ActivityInboundLogInterceptor(ctx, logger),
+          };
         },
       ],
     },

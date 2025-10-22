@@ -20,6 +20,7 @@ import {
   useAgentConfigurationHistory,
 } from "@app/lib/swr/assistants";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
@@ -262,7 +263,12 @@ function FeedbackCard({ owner, feedback, className }: FeedbackCardProps) {
     // IMPORTANT: We need to check if the conversation is shared before displaying it.
     // This check is redundant: the conversationId is null if the conversation is not shared.
     feedback.isConversationShared
-      ? `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/assistant/${feedback.conversationId}?messageId=${feedback.messageId}`
+      ? getConversationRoute(
+          owner.sId,
+          feedback.conversationId,
+          `messageId=${feedback.messageId}`,
+          process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+        )
       : null;
 
   const timeSinceFeedback = timeAgoFrom(
@@ -289,15 +295,11 @@ function FeedbackCard({ owner, feedback, className }: FeedbackCardProps) {
       }
     >
       <div className="flex flex-shrink-0 items-center gap-3 px-4 py-3">
-        {feedback.userImageUrl ? (
-          <Avatar
-            size="sm"
-            visual={feedback.userImageUrl}
-            name={feedback.userName}
-          />
-        ) : (
-          <Spinner size="sm" />
-        )}
+        <Avatar
+          size="sm"
+          visual={feedback.userImageUrl}
+          name={feedback.userName}
+        />
         <div className="flex flex-col">
           <div className="font-semibold">{feedback.userName}</div>
           <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">

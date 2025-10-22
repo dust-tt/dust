@@ -35,7 +35,7 @@ import { isSupportedAudioContentType } from "@app/types";
 import {
   assertNever,
   Err,
-  isContentCreationFileContentType,
+  isInteractiveContentFileContentType,
   isSupportedImageContentType,
   Ok,
   slugify,
@@ -288,7 +288,7 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     });
 
     const parentId = workbookFolderId ?? file.sId;
-    const parents = workbookFolderId ? [tableId, workbookFolderId] : [tableId];
+    const parents = [tableId, parentId];
 
     const upsertTableArgs: UpsertTableArgs = {
       ...upsertArgs,
@@ -320,6 +320,8 @@ const upsertExcelToDatasource: ProcessingFunction = async (
 
     if (res.isOk()) {
       tableIds.push(tableId);
+    } else {
+      logger.error({ ...res.error, worksheetName }, "Error upserting table");
     }
   };
 
@@ -419,8 +421,8 @@ const getProcessingFunction = ({
     return undefined;
   }
 
-  // Content Creation files should not be processed.
-  if (isContentCreationFileContentType(contentType)) {
+  // Interactive Content files should not be processed.
+  if (isInteractiveContentFileContentType(contentType)) {
     return undefined;
   }
 
