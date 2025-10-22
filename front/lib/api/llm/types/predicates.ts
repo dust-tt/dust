@@ -8,7 +8,6 @@ import assert from "assert";
 import isNil from "lodash/isNil";
 
 import logger from "@app/logger/logger";
-import { assertNever } from "@app/types";
 
 export type ExpectedDeltaMessage =
   | {
@@ -26,10 +25,6 @@ export function isCorrectDelta(
   delta: DeltaMessage
 ): delta is ExpectedDeltaMessage {
   const { content, toolCalls } = delta;
-  if (toolCalls && !isNil(content)) {
-    logger.error("Mistral completion event has both content and toolCalls");
-    assertNever(delta as never);
-  }
 
   assert(
     !(toolCalls && !isNil(content)),
