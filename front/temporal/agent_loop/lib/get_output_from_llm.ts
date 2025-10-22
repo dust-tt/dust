@@ -171,6 +171,7 @@ export async function getOutputFromLLMStream(
       contents: tempContents,
     },
     nativeChainOfThought,
+    // Later we will send another id that will enable debugging
     dustRunId: "",
   });
 }
