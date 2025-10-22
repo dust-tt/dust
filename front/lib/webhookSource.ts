@@ -8,7 +8,9 @@ import {
   isCustomResourceIconType,
   isInternalAllowedIcon,
 } from "@app/components/resources/resources_icons";
+import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import type {
+  WebhookSourceForAdminType,
   WebhookSourceSignatureAlgorithm,
   WebhookSourceWithViewsType,
 } from "@app/types/triggers/webhooks";
@@ -78,14 +80,12 @@ export const verifySignature = ({
 
 export const buildWebhookUrl = ({
   apiBaseUrl,
-  workspaceSId,
-  webhookSourceSId,
-  urlSecret,
+  workspaceId,
+  webhookSource,
 }: {
   apiBaseUrl: string;
-  workspaceSId: string;
-  webhookSourceSId: string;
-  urlSecret: string;
+  workspaceId: string;
+  webhookSource: WebhookSourceForAdminType | WebhookSourceResource;
 }): string => {
-  return `${apiBaseUrl}/api/v1/w/${workspaceSId}/triggers/hooks/${webhookSourceSId}/${urlSecret}`;
+  return `${apiBaseUrl}/api/v1/w/${workspaceId}/triggers/hooks/${webhookSource.sId}/${webhookSource.urlSecret}`;
 };

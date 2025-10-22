@@ -103,15 +103,10 @@ export function WebhookSourceDetailsInfo({
   const webhookUrl = useMemo(() => {
     return buildWebhookUrl({
       apiBaseUrl: config.getDustAPIConfig().url,
-      workspaceSId: owner.sId,
-      webhookSourceSId: webhookSourceView.webhookSource.sId,
-      urlSecret: webhookSourceView.webhookSource.urlSecret,
+      workspaceId: owner.sId,
+      webhookSource: webhookSourceView.webhookSource,
     });
-  }, [
-    owner.sId,
-    webhookSourceView.webhookSource.sId,
-    webhookSourceView.webhookSource.urlSecret,
-  ]);
+  }, [owner.sId, webhookSourceView.webhookSource]);
 
   const isCustomKind = webhookSourceView.webhookSource.kind === "custom";
 

@@ -29,7 +29,14 @@ const TEST_EVENT: WebhookEvent = {
 };
 
 class TestWebhookService implements RemoteWebhookService {
-  async createWebhooks(params: {
+  async createWebhooks({
+    auth,
+    connectionId: _connectionId,
+    remoteMetadata,
+    webhookUrl: _webhookUrl,
+    events: _events,
+    secret: _secret,
+  }: {
     auth: Authenticator;
     connectionId: string;
     remoteMetadata: Record<string, any>;
@@ -46,23 +53,29 @@ class TestWebhookService implements RemoteWebhookService {
     >
   > {
     logger.info(
-      `Creating webhooks for test preset in workspace ${params.auth.getNonNullableWorkspace().sId}`
+      { workspaceId: auth.getNonNullableWorkspace().sId },
+      `Creating webhooks for test preset`
     );
     return new Ok({
       updatedRemoteMetadata: {
-        ...params.remoteMetadata,
+        ...remoteMetadata,
         webhookIds: { test_event: `test-webhook-id-${Date.now()}` },
       },
     });
   }
 
-  async deleteWebhooks(params: {
+  async deleteWebhooks({
+    auth,
+    connectionId: _connectionId,
+    remoteMetadata: _remoteMetadata,
+  }: {
     auth: Authenticator;
     connectionId: string;
     remoteMetadata: Record<string, any>;
   }): Promise<Result<void, Error>> {
     logger.info(
-      `Deleting webhooks for test preset in workspace ${params.auth.getNonNullableWorkspace().sId}`
+      { workspaceId: auth.getNonNullableWorkspace().sId },
+      `Deleting webhooks for test preset`
     );
     return new Ok(undefined);
   }

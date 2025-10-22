@@ -182,9 +182,8 @@ async function handler(
         if (kind !== "custom" && connectionId && remoteMetadata) {
           const webhookUrl = buildWebhookUrl({
             apiBaseUrl: config.getClientFacingUrl(),
-            workspaceSId: workspace.sId,
-            webhookSourceSId: webhookSource.sId(),
-            urlSecret: webhookSource.urlSecret,
+            workspaceId: workspace.sId,
+            webhookSource: webhookSource,
           });
 
           const service =
