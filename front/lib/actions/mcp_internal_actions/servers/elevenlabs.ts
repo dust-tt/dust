@@ -1,56 +1,62 @@
+import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  getElevenLabsClient,
-  resolveDefaultVoiceId,
-  streamToBase64,
-  VOICE_GENDERS,
-  VOICE_LANGUAGES,
-  VOICE_USE_CASES,
-} from "@app/lib/actions/mcp_internal_actions/servers/elevenlabs/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, normalizeError, Ok } from "@app/types";
+import { dustManagedCredentials, Err, normalizeError, Ok } from "@app/types";
+
+function getElevenLabsClient() {
+  const credentials = dustManagedCredentials();
+  const environment =
+    regionsConfig.getCurrentRegion() === "europe-west1"
+      ? ElevenLabsEnvironment.ProductionEu
+      : ElevenLabsEnvironment.ProductionUs;
+
+  return new ElevenLabsClient({
+    apiKey: credentials.ELEVENLABS_API_KEY,
+    environment,
+  });
+}
+
+async function streamToBase64(
+  stream: ReadableStream<Uint8Array>
+): Promise<string> {
+  // Convert a web ReadableStream to a base64 string.
+  const arrayBuffer = await new Response(stream).arrayBuffer();
+  return Buffer.from(arrayBuffer).toString("base64");
+}
+
+const VOICE_TO_VOICE_ID = {
+  female: "cgSgspJ2msm6clMCkdW9",
+  male: "bIHbv24MWmeRgasZH58o",
+};
 
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer("speech_generator");
+  const server = makeInternalMCPServer("elevenlabs");
 
   server.tool(
     "text_to_speech",
-    "Generate speech audio from a text prompt with desired voice.",
+    "Generate speech audio from a text prompt using ElevenLabs. Provide the desired voice.",
     {
       text: z
         .string()
         .min(1)
         .max(10_000)
         .describe("The text to convert to speech."),
-      gender: z
-        .enum(VOICE_GENDERS)
-        .optional()
+      voice: z
+        .enum(["female", "male"])
         .default("female")
         .describe(
-          "The desired gender of the voice. Possible options are female, male, or neutral."
-        ),
-      language: z
-        .enum(VOICE_LANGUAGES)
-        .optional()
-        .default("english_american")
-        .describe(
-          "Preferred language/accent for the voice (does not translate text)."
-        ),
-      use_case: z
-        .enum(VOICE_USE_CASES)
-        .optional()
-        .default("conversational")
-        .describe(
-          "Intended use case for the voice (used for better voice selection in the future)."
+          "The ElevenLabs voice to use. Possible options are female, or male."
         ),
       name: z
         .string()
@@ -65,21 +71,10 @@ function createServer(
         toolNameForMonitoring: "elevenlabs_text_to_speech",
         agentLoopContext,
       },
-      async ({
-        text,
-        gender = "female",
-        language = "english_american",
-        use_case = "conversational",
-        name = "speech",
-      }) => {
+      async ({ text, voice = "female", name = "speech" }) => {
         try {
           const client = getElevenLabsClient();
-
-          const voiceId = resolveDefaultVoiceId({
-            language,
-            useCase: use_case,
-            gender,
-          });
+          const voiceId = VOICE_TO_VOICE_ID[voice];
 
           const stream = await client.textToSpeech.convert(voiceId, {
             text,
@@ -99,7 +94,7 @@ function createServer(
                 blob: base64,
                 text: "Your audio file was generated successfully.",
                 mimeType: "audio/mpeg",
-                uri: fileName,
+                uri: "",
               },
             },
           ]);
@@ -119,76 +114,59 @@ function createServer(
   );
 
   server.tool(
-    "text_to_dialogue",
-    "Generate dialogue audio from multiple lines with speakers.",
+    "generate_music",
+    "Generate a short music track from a prompt using ElevenLabs Music.",
     {
-      dialogues: z
-        .array(
-          z.object({
-            speaker: z
-              .object({
-                gender: z.enum(VOICE_GENDERS),
-                language: z.enum(VOICE_LANGUAGES),
-                use_case: z.enum(VOICE_USE_CASES),
-              })
-              .describe(
-                "The speaker for this line. An object with { gender, language, use_case }."
-              ),
-            text: z
-              .string()
-              .min(1)
-              .max(10_000)
-              .describe("The text content for this speaker line."),
-          })
-        )
+      prompt: z
+        .string()
         .min(1)
-        .max(5_000)
+        .max(2000)
         .describe(
-          "An array of dialogue lines, each with a speaker and text. Maximum of 5_000 lines."
+          "Describe the style and mood of the music to generate (eg: 'energetic electronic beat with ambient pads')."
+        ),
+      duration_ms: z
+        .number()
+        .int()
+        .min(3000)
+        .max(120000)
+        .optional()
+        .default(20000)
+        .describe(
+          "Target duration of the generated music in milliseconds (3s to 120s)."
         ),
       name: z
         .string()
         .max(128)
         .optional()
-        .default("dialogue")
+        .default("music")
         .describe("Base filename (without extension) for the generated audio."),
     },
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "elevenlabs_text_to_dialogue",
+        toolNameForMonitoring: "elevenlabs_generate_music",
         agentLoopContext,
       },
-      async ({ dialogues, name = "dialogue" }) => {
+      async ({ prompt, duration_ms = 20000, name = "music" }) => {
         try {
           const client = getElevenLabsClient();
 
-          const inputs = dialogues.map((d) => {
-            const { gender, language, use_case: useCase } = d.speaker;
-            return {
-              text: d.text,
-              voiceId: resolveDefaultVoiceId({ gender, language, useCase }),
-            };
-          });
-
-          const stream = await client.textToDialogue.stream({
-            inputs,
-            modelId: "eleven_v3",
-            outputFormat: "mp3_44100_128",
+          const stream = await client.music.compose({
+            prompt,
+            musicLengthMs: duration_ms,
           });
 
           const base64 = await streamToBase64(stream);
-          const fileName = `${name}.mp3`;
 
           return new Ok([
             {
               type: "resource" as const,
               resource: {
-                name: fileName,
+                name: `${name}.mp3`,
                 blob: base64,
-                text: "Your dialogue audio file was generated successfully.",
+                text: "Your music track was generated successfully.",
                 mimeType: "audio/mpeg",
-                uri: fileName,
+                uri: "",
               },
             },
           ]);
@@ -196,7 +174,7 @@ function createServer(
           const cause = normalizeError(e);
           return new Err(
             new MCPError(
-              `Error generating dialogue audio with ElevenLabs: ${cause.message}`,
+              `Error generating music with ElevenLabs: ${cause.message}`,
               {
                 cause,
               }

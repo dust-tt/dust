@@ -14,6 +14,7 @@ import { default as conversationFilesServer } from "@app/lib/actions/mcp_interna
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses";
 import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
+import { default as elevenlabsServer } from "@app/lib/actions/mcp_internal_actions/servers/elevenlabs";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
@@ -45,8 +46,6 @@ import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/s
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack";
 import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack_bot";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
-import { default as soundStudio } from "@app/lib/actions/mcp_internal_actions/servers/sound_studio";
-import { default as speechGenerator } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
@@ -99,10 +98,8 @@ export async function getInternalMCPServer(
       return hubspotServer();
     case "image_generation":
       return imageGenerationServer(auth, agentLoopContext);
-    case "speech_generator":
-      return speechGenerator(auth, agentLoopContext);
-    case "sound_studio":
-      return soundStudio(auth, agentLoopContext);
+    case "elevenlabs":
+      return elevenlabsServer(auth, agentLoopContext);
     case "file_generation":
       return generateFileServer(auth, agentLoopContext);
     case "interactive_content":
