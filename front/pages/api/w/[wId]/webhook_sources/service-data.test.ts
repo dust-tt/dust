@@ -19,11 +19,11 @@ vi.mock("@app/lib/api/config", () => ({
 }));
 
 // Mock the GitHub service functions
-vi.mock("@app/types/triggers/github/repos", () => ({
+vi.mock("@app/lib/api/webhooks/github/repos", () => ({
   getGithubRepositories: vi.fn(),
 }));
 
-vi.mock("@app/types/triggers/github/orgs", () => ({
+vi.mock("@app/lib/api/webhooks/github/orgs", () => ({
   getGithubOrganizations: vi.fn(),
 }));
 
@@ -64,7 +64,7 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
   });
 
   it("should successfully fetch GitHub service data", async () => {
-    const { req, res, workspace } = await setupTest();
+    const { req, res, workspace, authenticator } = await setupTest();
 
     const mockConnectionId = "conn_123456";
     const mockAccessToken = "gho_mockToken123";
@@ -99,6 +99,14 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
     mockGetAccessToken.mockResolvedValue(
       new Ok({
         access_token: mockAccessToken,
+        connection: {
+          id: mockConnectionId,
+          provider: "github",
+          metadata: {
+            workspace_id: workspace.sId,
+            user_id: authenticator.user()?.sId,
+          },
+        },
       } as any)
     );
 
@@ -178,21 +186,25 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
   });
 
   it("should return 403 when connection does not belong to workspace", async () => {
-    const { req, res } = await setupTest();
+    const { req, res, authenticator } = await setupTest();
 
-    mockGetConnectionMetadata.mockResolvedValue(
+    // Mock getAccessToken to return a connection with different workspace_id
+    // This will make checkConnectionOwnership fail
+    mockGetAccessToken.mockResolvedValue(
       new Ok({
+        access_token: "gho_mockToken123",
         connection: {
-          id: "conn_123456",
+          id: "con_123456",
           provider: "github",
           metadata: {
-            workspace_id: "different_workspace_id",
+            workspace_id: "different_workspace_id_not_matching",
+            user_id: authenticator.user()?.sId,
           },
         },
       } as any)
     );
 
-    req.query.connectionId = "conn_123456";
+    req.query.connectionId = "con_123456";
     req.query.kind = "github";
 
     await handler(req, res);
@@ -202,7 +214,40 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
     expect(responseData.error).toBeDefined();
     expect(responseData.error.type).toBe("workspace_auth_error");
     expect(responseData.error.message).toBe(
-      "Connection does not belong to this workspace"
+      "Connection does not belong to this user/workspace"
+    );
+  });
+
+  it("should return 403 when connection does not belong to user", async () => {
+    const { req, res, workspace } = await setupTest();
+
+    // Mock getAccessToken to return a connection with different user_id
+    // This will make checkConnectionOwnership fail
+    mockGetAccessToken.mockResolvedValue(
+      new Ok({
+        access_token: "gho_mockToken123",
+        connection: {
+          id: "con_123456",
+          provider: "github",
+          metadata: {
+            workspace_id: workspace.sId,
+            user_id: "different_user_id_not_matching",
+          },
+        },
+      } as any)
+    );
+
+    req.query.connectionId = "con_123456";
+    req.query.kind = "github";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    const responseData = res._getJSONData();
+    expect(responseData.error).toBeDefined();
+    expect(responseData.error.type).toBe("workspace_auth_error");
+    expect(responseData.error.message).toBe(
+      "Connection does not belong to this user/workspace"
     );
   });
 
