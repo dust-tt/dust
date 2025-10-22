@@ -29,8 +29,8 @@ export function getWebhookFormDefaultValues({
     customPrompt: trigger?.customPrompt ?? "",
     webhookSourceViewSId: webhookSourceView?.sId ?? "",
     event: trigger?.configuration.event,
-    filter: "",
+    filter: trigger?.configuration.filter ?? "",
     includePayload: trigger?.configuration.includePayload ?? true,
-    naturalDescription: "",
+    naturalDescription: trigger?.naturalLanguageDescription ?? "",
   };
 }

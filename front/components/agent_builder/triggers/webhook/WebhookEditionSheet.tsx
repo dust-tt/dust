@@ -20,15 +20,17 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import React, { useEffect, useMemo } from "react";
-import { useFormContext, useWatch } from "react-hook-form";
+import React, { useEffect, useMemo, useState } from "react";
+import { useController, useFormContext, useWatch } from "react-hook-form";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
-import { useWebhookFilterGeneration } from "@app/components/agent_builder/triggers/useWebhookFilterGeneration";
 import type { WebhookFormValues } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
+import { useDebounce } from "@app/hooks/useDebounce";
+import { useWebhookFilterGenerator } from "@app/lib/swr/agent_triggers";
 import type { LightWorkspaceType } from "@app/types";
+import { normalizeError } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 import type {
@@ -36,103 +38,275 @@ import type {
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
 
-interface WebhookEditionSheetProps {
-  owner: LightWorkspaceType;
-  trigger: AgentBuilderWebhookTriggerType | null;
-  isOpen: boolean;
-  onCancel: () => void;
-  onClose: () => void;
-  onSave: (trigger: AgentBuilderWebhookTriggerType) => void;
-  agentConfigurationId: string | null;
-  webhookSourceView: WebhookSourceViewType | null;
+interface WebhookEditionMessageInputProps {
   isEditor: boolean;
 }
 
-export function WebhookEditionSheet({
-  owner,
-  trigger,
-  isOpen,
-  onCancel,
-  onClose,
-  onSave,
-  agentConfigurationId,
-  webhookSourceView,
+function WebhookEditionMessageInput({
   isEditor,
-}: WebhookEditionSheetProps) {
-  const form = useFormContext<WebhookFormValues>();
+}: WebhookEditionMessageInputProps) {
+  const { control } = useFormContext<WebhookFormValues>();
+  const { field } = useController({ control, name: "customPrompt" });
 
-  const selectedEvent = useWatch({
-    control: form.control,
-    name: "event",
-  });
-  const includePayload = useWatch({
-    control: form.control,
-    name: "includePayload",
-  });
+  return (
+    <>
+      <Label htmlFor="trigger-prompt">Message (Optional)</Label>
+      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        Add context or instructions for the agent when the trigger runs.
+      </p>
+      <TextArea
+        id="trigger-prompt"
+        minRows={4}
+        disabled={!isEditor}
+        {...field}
+      />
+    </>
+  );
+}
 
-  const selectedPreset = useMemo((): PresetWebhook | null => {
-    if (!webhookSourceView || webhookSourceView.kind === "custom") {
-      return null;
-    }
-    return WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[webhookSourceView.kind];
-  }, [webhookSourceView]);
+interface WebhookEditionNameInputProps {
+  isEditor: boolean;
+}
 
-  const availableEvents = useMemo(() => {
-    if (!selectedPreset || !webhookSourceView) {
-      return [];
-    }
+function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
+  const { register, formState } = useFormContext<WebhookFormValues>();
 
-    return selectedPreset.events.filter((event) =>
-      webhookSourceView.subscribedEvents.includes(event.value)
-    );
-  }, [selectedPreset, webhookSourceView]);
+  return (
+    <>
+      <Label htmlFor="trigger-name">Name</Label>
+      <Input
+        id="trigger-name"
+        placeholder="Enter trigger name"
+        disabled={!isEditor}
+        {...register("name")}
+        isError={!!formState.errors.name}
+        message={formState.errors.name?.message}
+        messageStatus="error"
+      />
+    </>
+  );
+}
 
-  const selectedEventSchema = useMemo<WebhookEvent | null>(() => {
-    if (!selectedEvent || !selectedPreset) {
-      return null;
-    }
+interface WebhookEditionStatusToggleProps {
+  isEditor: boolean;
+}
 
-    return (
-      selectedPreset.events.find((event) => event.name === selectedEvent) ??
-      null
-    );
-  }, [selectedEvent, selectedPreset]);
+function WebhookEditionStatusToggle({
+  isEditor,
+}: WebhookEditionStatusToggleProps) {
+  const { watch, setValue } = useFormContext<WebhookFormValues>();
+  const enabled = watch("enabled");
+
+  return (
+    <>
+      <Label>Status</Label>
+      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        When disabled, the trigger will not run.
+      </p>
+      <div className="flex flex-row items-center gap-2">
+        <SliderToggle
+          size="xs"
+          disabled={!isEditor}
+          selected={enabled}
+          onClick={() => {
+            if (!isEditor) {
+              return;
+            }
+            setValue("enabled", !enabled);
+          }}
+        />
+        {enabled
+          ? "The trigger is currently enabled"
+          : "The trigger is currently disabled"}
+      </div>
+    </>
+  );
+}
+
+interface WebhookEditionEventSelectorProps {
+  isEditor: boolean;
+  selectedPreset: PresetWebhook | null;
+  availableEvents: WebhookEvent[];
+}
+
+function WebhookEditionEventSelector({
+  isEditor,
+  selectedPreset,
+  availableEvents,
+}: WebhookEditionEventSelectorProps) {
+  const { setValue, formState, control } = useFormContext<WebhookFormValues>();
+  const selectedEvent = useWatch({ control, name: "event" });
+
+  if (!selectedPreset || availableEvents.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      <Label htmlFor="webhook-event">Event</Label>
+      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        Select the event that will trigger this webhook.
+      </p>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            id="webhook-event"
+            variant="outline"
+            isSelect
+            className="w-fit"
+            disabled={!isEditor}
+            label={
+              selectedEvent
+                ? availableEvents.find((e) => e.value === selectedEvent)
+                    ?.name ?? "Select event"
+                : "Select event"
+            }
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuLabel label="Select event" />
+          {availableEvents.map((event) => (
+            <DropdownMenuItem
+              key={event.value}
+              label={event.name}
+              disabled={!isEditor}
+              onClick={() => {
+                setValue("event", event.value, {
+                  shouldValidate: true,
+                });
+              }}
+            />
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {formState.errors.event && (
+        <p className="text-sm text-warning">{formState.errors.event.message}</p>
+      )}
+    </>
+  );
+}
+
+interface WebhookEditionIncludePayloadProps {
+  isEditor: boolean;
+}
+
+function WebhookEditionIncludePayload({
+  isEditor,
+}: WebhookEditionIncludePayloadProps) {
+  const { setValue, control } = useFormContext<WebhookFormValues>();
+  const includePayload = useWatch({ control, name: "includePayload" });
+
+  return (
+    <>
+      <div className="flex flex-col space-y-1">
+        <Label>Include payload</Label>
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          When enabled, the webhook payload will be included in the agent's
+          context.
+        </p>
+      </div>
+      <Checkbox
+        size="sm"
+        checked={includePayload}
+        onClick={() => {
+          if (!isEditor) {
+            return;
+          }
+          setValue("includePayload", !includePayload);
+        }}
+        disabled={!isEditor}
+      />
+    </>
+  );
+}
+
+interface WebhookEditionFiltersProps {
+  isEditor: boolean;
+  webhookSourceView: WebhookSourceViewType | null;
+  selectedPreset: PresetWebhook | null;
+  availableEvents: WebhookEvent[];
+  selectedEventSchema: WebhookEvent | null;
+  workspace: LightWorkspaceType;
+}
+
+function WebhookEditionFilters({
+  isEditor,
+  webhookSourceView,
+  selectedPreset,
+  availableEvents,
+  selectedEventSchema,
+  workspace,
+}: WebhookEditionFiltersProps) {
+  const { register, formState, setError, control, setValue, getValues } =
+    useFormContext<WebhookFormValues>();
+  const selectedEvent = useWatch({ control, name: "event" });
+  const formFilter = useWatch({ control, name: "filter" });
+
+  const [filterGenerationStatus, setFilterGenerationStatus] = useState<
+    "idle" | "loading" | "error"
+  >("idle");
+  const [filterErrorMessage, setFilterErrorMessage] = useState<string | null>(
+    null
+  );
+
+  const generateFilter = useWebhookFilterGenerator({ workspace });
 
   const {
-    naturalDescription,
-    setNaturalDescription,
-    generatedFilter,
-    status: filterGenerationStatus,
-    errorMessage: filterErrorMessage,
-  } = useWebhookFilterGeneration({
-    workspace: owner,
-    eventSchema: selectedEventSchema,
-  });
+    inputValue: naturalDescription,
+    debouncedValue: debouncedDescription,
+    isDebouncing,
+    setValue: setNaturalDescription,
+  } = useDebounce("", { delay: 500, minLength: 10 });
 
-  // Sync generated filter to form.
+  // Initialize naturalDescription from form on mount
   useEffect(() => {
-    if (generatedFilter) {
-      form.setValue("filter", generatedFilter);
+    const initialValue = getValues("naturalDescription");
+    if (initialValue) {
+      setNaturalDescription(initialValue);
     }
-  }, [generatedFilter, form]);
+  }, [getValues, setNaturalDescription]);
 
-  // Sync natural description to form.
+  // Update form field when naturalDescription changes
+  const handleNaturalDescriptionChange = (value: string) => {
+    setNaturalDescription(value);
+    setValue("naturalDescription", value);
+  };
+
   useEffect(() => {
-    if (!isOpen || !trigger) {
-      setNaturalDescription("");
+    if (isDebouncing) {
+      setFilterGenerationStatus("loading");
+    }
+  }, [isDebouncing]);
+
+  useEffect(() => {
+    if (!debouncedDescription || !selectedEventSchema) {
+      if (!debouncedDescription) {
+        setFilterGenerationStatus("idle");
+        setFilterErrorMessage(null);
+      }
       return;
     }
 
-    setNaturalDescription(trigger.naturalLanguageDescription ?? "");
-  }, [form, isOpen, trigger, setNaturalDescription]);
+    const generateFilterAsync = async () => {
+      setFilterGenerationStatus("loading");
+      try {
+        const result = await generateFilter({
+          naturalDescription: debouncedDescription,
+          eventSchema: selectedEventSchema.fields,
+        });
+        setValue("filter", result.filter);
+        setFilterGenerationStatus("idle");
+        setFilterErrorMessage(null);
+      } catch (error) {
+        setFilterGenerationStatus("error");
+        setFilterErrorMessage(
+          `Error generating filter: ${normalizeError(error).message}`
+        );
+      }
+    };
 
-  const handleClose = () => {
-    setNaturalDescription("");
-    onCancel();
-    onClose();
-  };
-
-  const formFilter = form.getValues("filter");
+    void generateFilterAsync();
+  }, [debouncedDescription, selectedEventSchema, generateFilter, setValue]);
 
   const filterGenerationResult = useMemo(() => {
     switch (filterGenerationStatus) {
@@ -170,6 +344,128 @@ export function WebhookEditionSheet({
     }
   }, [filterGenerationStatus, filterErrorMessage, formFilter]);
 
+  return (
+    <>
+      {selectedPreset && availableEvents.length > 0 && (
+        <>
+          <Label htmlFor="trigger-filter-description">
+            Filter Description (optional)
+          </Label>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Describe in natural language the conditions under which the agent
+            should trigger. Will always trigger if left empty.
+          </p>
+          <TextArea
+            id="trigger-filter-description"
+            placeholder='e.g. "New pull requests that changes more than 500 lines of code, or have the `auto-review` label."'
+            rows={3}
+            value={naturalDescription}
+            disabled={!isEditor}
+            onChange={(e) => {
+              if (!selectedEvent || !selectedPreset) {
+                setError("event", {
+                  type: "manual",
+                  message: "Please select an event first",
+                });
+                return;
+              }
+
+              handleNaturalDescriptionChange(e.target.value);
+            }}
+          />
+        </>
+      )}
+
+      {webhookSourceView?.kind === "custom" && (
+        <>
+          <Label htmlFor="trigger-filter-description">
+            Filter Expression (optional)
+          </Label>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Enter a filter that will be used to filter the webhook payload JSON.
+            Will always trigger if left empty.
+          </p>
+          <TextArea
+            id="trigger-filter-description"
+            placeholder={
+              'example:\n\n(and\n  (eq "action" "opened")\n  (exists "pull_request")\n)'
+            }
+            rows={6}
+            {...register("filter")}
+            disabled={!isEditor}
+            error={formState.errors.filter?.message}
+          />
+        </>
+      )}
+
+      <div className="pt-2">{filterGenerationResult}</div>
+    </>
+  );
+}
+
+interface WebhookEditionSheetProps {
+  owner: LightWorkspaceType;
+  trigger: AgentBuilderWebhookTriggerType | null;
+  isOpen: boolean;
+  onCancel: () => void;
+  onClose: () => void;
+  onSave: (trigger: AgentBuilderWebhookTriggerType) => void;
+  agentConfigurationId: string | null;
+  webhookSourceView: WebhookSourceViewType | null;
+  isEditor: boolean;
+}
+
+export function WebhookEditionSheet({
+  owner,
+  trigger,
+  isOpen,
+  onCancel,
+  onClose,
+  onSave,
+  agentConfigurationId,
+  webhookSourceView,
+  isEditor,
+}: WebhookEditionSheetProps) {
+  const form = useFormContext<WebhookFormValues>();
+
+  const selectedEvent = useWatch({
+    control: form.control,
+    name: "event",
+  });
+
+  const selectedPreset = useMemo((): PresetWebhook | null => {
+    if (!webhookSourceView || webhookSourceView.kind === "custom") {
+      return null;
+    }
+    return WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[webhookSourceView.kind];
+  }, [webhookSourceView]);
+
+  const availableEvents = useMemo(() => {
+    if (!selectedPreset || !webhookSourceView) {
+      return [];
+    }
+
+    return selectedPreset.events.filter((event) =>
+      webhookSourceView.subscribedEvents.includes(event.value)
+    );
+  }, [selectedPreset, webhookSourceView]);
+
+  const selectedEventSchema = useMemo<WebhookEvent | null>(() => {
+    if (!selectedEvent || !selectedPreset) {
+      return null;
+    }
+
+    return (
+      selectedPreset.events.find((event) => event.name === selectedEvent) ??
+      null
+    );
+  }, [selectedEvent, selectedPreset]);
+
+  const handleClose = () => {
+    onCancel();
+    onClose();
+  };
+
   const modalTitle = useMemo(() => {
     if (trigger) {
       return isEditor ? "Edit Webhook" : "View Webhook";
@@ -197,181 +493,40 @@ export function WebhookEditionSheet({
               .
             </ContentMessage>
           )}
-
           <div className="space-y-5">
             <div className="space-y-1">
-              <Label htmlFor="trigger-name">Name</Label>
-              <Input
-                id="trigger-name"
-                placeholder="Enter trigger name"
-                disabled={!isEditor}
-                {...form.register("name")}
-                isError={!!form.formState.errors.name}
-                message={form.formState.errors.name?.message}
-                messageStatus="error"
+              <WebhookEditionNameInput isEditor={isEditor} />
+            </div>
+
+            <div className="space-y-1">
+              <WebhookEditionStatusToggle isEditor={isEditor} />
+            </div>
+
+            <div className="flex flex-col space-y-1">
+              <WebhookEditionEventSelector
+                isEditor={isEditor}
+                selectedPreset={selectedPreset}
+                availableEvents={availableEvents}
               />
             </div>
 
             <div className="space-y-1">
-              <Label>Status</Label>
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                When disabled, the trigger will not run.
-              </p>
-              <div className="flex flex-row items-center gap-2">
-                <SliderToggle
-                  size="xs"
-                  disabled={!isEditor}
-                  selected={form.watch("enabled")}
-                  onClick={() => {
-                    if (!isEditor) {
-                      return;
-                    }
-                    form.setValue("enabled", !form.watch("enabled"));
-                  }}
-                />
-                {form.watch("enabled")
-                  ? "The trigger is currently enabled"
-                  : "The trigger is currently disabled"}
-              </div>
-            </div>
-
-            {/* Event selector for non-custom webhooks */}
-            {selectedPreset && availableEvents.length > 0 && (
-              <div className="flex flex-col space-y-1">
-                <Label htmlFor="webhook-event">Event</Label>
-                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  Select the event that will trigger this webhook.
-                </p>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      id="webhook-event"
-                      variant="outline"
-                      isSelect
-                      className="w-fit"
-                      disabled={!isEditor}
-                      label={
-                        selectedEvent
-                          ? availableEvents.find(
-                              (e) => e.value === selectedEvent
-                            )?.name ?? "Select event"
-                          : "Select event"
-                      }
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuLabel label="Select event" />
-                    {availableEvents.map((event) => (
-                      <DropdownMenuItem
-                        key={event.value}
-                        label={event.name}
-                        disabled={!isEditor}
-                        onClick={() => {
-                          form.setValue("event", event.value, {
-                            shouldValidate: true,
-                          });
-                        }}
-                      />
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                {form.formState.errors.event && (
-                  <p className="text-sm text-warning">
-                    {form.formState.errors.event.message}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Filters input */}
-            <div className="space-y-1">
-              {selectedPreset && availableEvents.length > 0 && (
-                <>
-                  <Label htmlFor="trigger-filter-description">
-                    Filter Description (optional)
-                  </Label>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Describe in natural language the conditions under which the
-                    agent should trigger. Will always trigger if left empty.
-                  </p>
-                  <TextArea
-                    id="trigger-filter-description"
-                    placeholder='e.g. "New pull requests that changes more than 500 lines of code, or have the `auto-review` label."'
-                    rows={3}
-                    value={naturalDescription}
-                    disabled={!isEditor}
-                    onChange={(e) => {
-                      if (!selectedEvent || !selectedPreset) {
-                        form.setError("event", {
-                          type: "manual",
-                          message: "Please select an event first",
-                        });
-                        return;
-                      }
-
-                      setNaturalDescription(e.target.value);
-                    }}
-                  />
-                </>
-              )}
-
-              {webhookSourceView?.kind === "custom" && (
-                <>
-                  <Label htmlFor="trigger-filter-description">
-                    Filter Expression (optional)
-                  </Label>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Enter a filter that will be used to filter the webhook
-                    payload JSON. Will always trigger if left empty.
-                  </p>
-                  <TextArea
-                    id="trigger-filter-description"
-                    placeholder={
-                      'example:\n\n(and\n  (eq "action" "opened")\n  (exists "pull_request")\n)'
-                    }
-                    rows={6}
-                    {...form.register("filter")}
-                    disabled={!isEditor}
-                    error={form.formState.errors.filter?.message}
-                  />
-                </>
-              )}
-
-              <div className="pt-2">{filterGenerationResult}</div>
+              <WebhookEditionFilters
+                isEditor={isEditor}
+                webhookSourceView={webhookSourceView}
+                selectedPreset={selectedPreset}
+                availableEvents={availableEvents}
+                selectedEventSchema={selectedEventSchema}
+                workspace={owner}
+              />
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="flex flex-col space-y-1">
-                <Label>Include payload</Label>
-                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  When enabled, the webhook payload will be included in the
-                  agent's context.
-                </p>
-              </div>
-              <Checkbox
-                size="sm"
-                checked={includePayload}
-                onClick={() => {
-                  if (!isEditor) {
-                    return;
-                  }
-                  form.setValue("includePayload", !includePayload);
-                }}
-                disabled={!isEditor}
-              />
+              <WebhookEditionIncludePayload isEditor={isEditor} />
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="trigger-prompt">Message (Optional)</Label>
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Add context or instructions for the agent when the trigger runs.
-              </p>
-              <TextArea
-                id="trigger-prompt"
-                rows={4}
-                disabled={!isEditor}
-                {...form.register("customPrompt")}
-              />
+              <WebhookEditionMessageInput isEditor={isEditor} />
             </div>
 
             {/* Recent Webhook Requests */}
@@ -385,15 +540,6 @@ export function WebhookEditionSheet({
               </div>
             )}
           </div>
-
-          <TextArea
-            id="trigger-filter"
-            placeholder="Filter will be generated..."
-            disabled={true}
-            value={form.watch("filter")}
-            rows={3}
-            className="hidden"
-          />
         </SheetContainer>
 
         <SheetFooter
