@@ -20,17 +20,14 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useEffect, useMemo } from "react";
-import { useForm, useFormContext, useWatch } from "react-hook-form";
-import { z } from "zod";
+import { useFormContext, useWatch } from "react-hook-form";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
 import { useWebhookFilterGeneration } from "@app/components/agent_builder/triggers/useWebhookFilterGeneration";
-import { FormProvider } from "@app/components/sparkle/FormProvider";
-import { useUser } from "@app/lib/swr/user";
+import type { WebhookFormValues } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
@@ -39,138 +36,7 @@ import type {
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
 
-const WebhookFormSchema = z.object({
-  name: z.string().min(1, "Name is required").max(255, "Name is too long"),
-  enabled: z.boolean().default(true),
-  customPrompt: z.string(),
-  webhookSourceViewSId: z.string().min(1, "Select a webhook source"),
-  event: z.string().optional(),
-  filter: z.string().optional(),
-  includePayload: z.boolean().default(false),
-  naturalDescription: z.string().optional(),
-});
-
-type WebhookFormValues = z.infer<typeof WebhookFormSchema>;
-
-interface WebhookEditionProps {
-  owner: LightWorkspaceType;
-  trigger: AgentBuilderWebhookTriggerType | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (trigger: AgentBuilderWebhookTriggerType) => void;
-  agentConfigurationId: string | null;
-  webhookSourceView: WebhookSourceViewType | null;
-}
-
-export function WebhookEdition({
-  owner,
-  trigger,
-  isOpen,
-  onClose,
-  onSave,
-  agentConfigurationId,
-  webhookSourceView,
-}: WebhookEditionProps) {
-  const { user } = useUser();
-
-  const isEditor = (trigger?.editor ?? user?.id) === user?.id;
-
-  const defaultValues = useMemo(
-    (): WebhookFormValues => ({
-      name: trigger?.name ?? "",
-      enabled: trigger?.enabled ?? true,
-      customPrompt: trigger?.customPrompt ?? "",
-      webhookSourceViewSId: webhookSourceView?.sId ?? "",
-      event: trigger?.configuration.event,
-      filter: "",
-      includePayload: trigger?.configuration.includePayload ?? true,
-      naturalDescription: "",
-    }),
-    [trigger, webhookSourceView]
-  );
-
-  const form = useForm<WebhookFormValues>({
-    defaultValues,
-    resolver: webhookSourceView ? zodResolver(WebhookFormSchema) : undefined,
-  });
-
-  useEffect(() => {
-    form.reset(defaultValues);
-  }, [form, defaultValues]);
-
-  const onSheetSave = async (): Promise<boolean> => {
-    if (!webhookSourceView) {
-      return false;
-    }
-
-    await form.handleSubmit(async (values: WebhookFormValues) => {
-      if (!user) {
-        return;
-      }
-
-      // Validate that event is selected for preset webhooks (not custom)
-      if (
-        webhookSourceView &&
-        webhookSourceView.kind !== "custom" &&
-        !values.event
-      ) {
-        form.setError("event", {
-          type: "manual",
-          message: "Please select an event",
-        });
-        return;
-      }
-
-      const triggerData: AgentBuilderWebhookTriggerType = {
-        sId: trigger?.sId,
-        enabled: values.enabled,
-        name: values.name.trim(),
-        customPrompt: trigger?.customPrompt?.trim() ?? null,
-        naturalLanguageDescription:
-          webhookSourceView?.kind !== "custom"
-            ? values.naturalDescription ?? null
-            : null,
-        kind: "webhook",
-        configuration: {
-          includePayload: values.includePayload,
-          event: values.event,
-          filter: values.filter?.trim() ?? undefined,
-        },
-        webhookSourceViewSId: values.webhookSourceViewSId ?? undefined,
-        editor: trigger?.editor ?? user.id ?? null,
-        editorName: trigger?.editorName ?? user.fullName ?? undefined,
-      };
-
-      onSave(triggerData);
-      onClose();
-    })();
-
-    return true;
-  };
-
-  const onCancel = () => {
-    form.reset(defaultValues);
-    onClose();
-  };
-
-  return (
-    <FormProvider form={form}>
-      <WebhookEditionSheet
-        owner={owner}
-        trigger={trigger}
-        isOpen={isOpen}
-        onCancel={onCancel}
-        onClose={onClose}
-        onSave={onSheetSave}
-        agentConfigurationId={agentConfigurationId}
-        webhookSourceView={webhookSourceView}
-        isEditor={isEditor}
-      />
-    </FormProvider>
-  );
-}
-
-interface WebhookEditionModalProps {
+interface WebhookEditionSheetProps {
   owner: LightWorkspaceType;
   trigger: AgentBuilderWebhookTriggerType | null;
   isOpen: boolean;
@@ -192,7 +58,7 @@ export function WebhookEditionSheet({
   agentConfigurationId,
   webhookSourceView,
   isEditor,
-}: WebhookEditionModalProps) {
+}: WebhookEditionSheetProps) {
   const form = useFormContext<WebhookFormValues>();
 
   const selectedEvent = useWatch({
