@@ -1,7 +1,10 @@
 import { Octokit } from "@octokit/core";
 
 import config from "@app/lib/api/config";
+import { getGithubOrganizations } from "@app/lib/api/webhooks/github/orgs";
+import { getGithubRepositories } from "@app/lib/api/webhooks/github/repos";
 import type { Authenticator } from "@app/lib/auth";
+import type { GithubAdditionalData } from "@app/lib/triggers/services/github_service_types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isString, OAuthAPI, Ok } from "@app/types";
@@ -9,6 +12,17 @@ import { Err, isString, OAuthAPI, Ok } from "@app/types";
 import type { RemoteWebhookService } from "./remote_webhook_service";
 
 export class GitHubWebhookService implements RemoteWebhookService {
+  async getServiceData(
+    oauthToken: string
+  ): Promise<Result<GithubAdditionalData, Error>> {
+    const [repositories, organizations] = await Promise.all([
+      getGithubRepositories(oauthToken),
+      getGithubOrganizations(oauthToken),
+    ]);
+
+    return new Ok({ repositories, organizations });
+  }
+
   async createWebhooks({
     auth,
     connectionId,

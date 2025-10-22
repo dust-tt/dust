@@ -15,15 +15,16 @@ import {
 import { useEffect, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import {
-  useGithubOrganizations,
-  useGithubRepositories,
-} from "@app/lib/swr/useGithubRepositories";
+import type { GithubAdditionalData } from "@app/lib/triggers/services/github_service_types";
+import { GithubAdditionalDataSchema } from "@app/lib/triggers/services/github_service_types";
 import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
 
 type CreateWebhookGithubConnectionProps = {
   owner: LightWorkspaceType;
+  serviceData: Record<string, unknown> | null;
+  isFetchingServiceData: boolean;
+  onFetchServiceData: (connectionId: string) => Promise<void>;
   onGithubDataChange?: (
     data: {
       connectionId: string;
@@ -34,8 +35,22 @@ type CreateWebhookGithubConnectionProps = {
   onReadyToSubmitChange?: (isReady: boolean) => void;
 };
 
+function isGithubAdditionalData(
+  data: Record<string, unknown> | null
+): data is GithubAdditionalData {
+  if (!data) {
+    return false;
+  }
+
+  const result = GithubAdditionalDataSchema.safeParse(data);
+  return result.success;
+}
+
 export function CreateWebhookGithubConnection({
   owner,
+  serviceData,
+  isFetchingServiceData,
+  onFetchServiceData,
   onGithubDataChange,
   onReadyToSubmitChange,
 }: CreateWebhookGithubConnectionProps) {
@@ -43,10 +58,6 @@ export function CreateWebhookGithubConnection({
   const [githubConnection, setGithubConnection] =
     useState<OAuthConnectionType | null>(null);
   const [isConnectingGithub, setIsConnectingGithub] = useState(false);
-  const { githubRepositories, isFetchingRepos, fetchGithubRepositories } =
-    useGithubRepositories(owner);
-  const { githubOrganizations, isFetchingOrgs, fetchGithubOrganizations } =
-    useGithubOrganizations(owner);
   const [selectedRepositories, setSelectedRepositories] = useState<string[]>(
     []
   );
@@ -54,6 +65,9 @@ export function CreateWebhookGithubConnection({
     []
   );
   const [repoSearchQuery, setRepoSearchQuery] = useState("");
+  const githubData = isGithubAdditionalData(serviceData) ? serviceData : null;
+  const githubRepositories = githubData?.repositories ?? [];
+  const githubOrganizations = githubData?.organizations ?? [];
   const [orgSearchQuery, setOrgSearchQuery] = useState("");
   const [showRepoDropdown, setShowRepoDropdown] = useState(false);
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
@@ -123,11 +137,8 @@ export function CreateWebhookGithubConnection({
           title: "Connected to GitHub",
           description: "Fetching your repositories and organizations...",
         });
-        // Fetch both repositories and organizations after successful connection
-        await Promise.all([
-          fetchGithubRepositories(connectionRes.value.connection_id),
-          fetchGithubOrganizations(connectionRes.value.connection_id),
-        ]);
+        // Fetch repositories after successful connection
+        await onFetchServiceData(connectionRes.value.connection_id);
       }
     } catch (error) {
       sendNotification({
@@ -214,7 +225,7 @@ export function CreateWebhookGithubConnection({
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Select repositories to monitor for events
             </p>
-            {isFetchingRepos ? (
+            {isFetchingServiceData ? (
               <div className="mt-2 flex items-center gap-2 py-2">
                 <Spinner size="sm" />
                 <span className="text-sm text-muted-foreground">
@@ -300,7 +311,7 @@ export function CreateWebhookGithubConnection({
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Select organizations to monitor all their repositories
             </p>
-            {isFetchingOrgs ? (
+            {isFetchingServiceData ? (
               <div className="mt-2 flex items-center gap-2 py-2">
                 <Spinner size="sm" />
                 <span className="text-sm text-muted-foreground">
