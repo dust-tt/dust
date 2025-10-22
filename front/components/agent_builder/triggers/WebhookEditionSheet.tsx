@@ -272,24 +272,24 @@ export function WebhookEditionSheet({
   }, [trigger, isEditor, webhookSourceView]);
 
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <SheetContent size="xl">
-        <SheetHeader>
-          <SheetTitle>{modalTitle}</SheetTitle>
-        </SheetHeader>
+    <FormProvider form={form} onSubmit={onSubmit}>
+      <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+        <SheetContent size="xl">
+          <SheetHeader>
+            <SheetTitle>{modalTitle}</SheetTitle>
+          </SheetHeader>
 
-        <SheetContainer>
-          {trigger && !isEditor && (
-            <ContentMessage variant="info">
-              You cannot edit this trigger. It is managed by{" "}
-              <span className="font-semibold">
-                {trigger.editorName ?? "another user"}
-              </span>
-              .
-            </ContentMessage>
-          )}
+          <SheetContainer>
+            {trigger && !isEditor && (
+              <ContentMessage variant="info">
+                You cannot edit this trigger. It is managed by{" "}
+                <span className="font-semibold">
+                  {trigger.editorName ?? "another user"}
+                </span>
+                .
+              </ContentMessage>
+            )}
 
-          <FormProvider form={form} onSubmit={onSubmit}>
             <div className="space-y-5">
               <div className="space-y-1">
                 <Label htmlFor="trigger-name">Name</Label>
@@ -488,33 +488,33 @@ export function WebhookEditionSheet({
               rows={3}
               className="hidden"
             />
-          </FormProvider>
-        </SheetContainer>
+          </SheetContainer>
 
-        <SheetFooter
-          leftButtonProps={
-            isEditor
-              ? {
-                  label: "Cancel",
-                  variant: "outline",
-                  onClick: handleClose,
-                }
-              : undefined
-          }
-          rightButtonProps={{
-            label: trigger
-              ? isEditor
-                ? "Update Webhook"
-                : "Close"
-              : webhookSourceView
-                ? `Add ${webhookSourceView.customName} Trigger`
-                : "Add Webhook",
-            variant: "primary",
-            onClick: isEditor ? form.handleSubmit(onSubmit) : handleClose,
-            disabled: form.formState.isSubmitting,
-          }}
-        />
-      </SheetContent>
-    </Sheet>
+          <SheetFooter
+            leftButtonProps={
+              isEditor
+                ? {
+                    label: "Cancel",
+                    variant: "outline",
+                    onClick: handleClose,
+                  }
+                : undefined
+            }
+            rightButtonProps={{
+              label: trigger
+                ? isEditor
+                  ? "Update Webhook"
+                  : "Close"
+                : webhookSourceView
+                  ? `Add ${webhookSourceView.customName} Trigger`
+                  : "Add Webhook",
+              variant: "primary",
+              onClick: isEditor ? form.handleSubmit(onSubmit) : handleClose,
+              disabled: form.formState.isSubmitting,
+            }}
+          />
+        </SheetContent>
+      </Sheet>
+    </FormProvider>
   );
 }
