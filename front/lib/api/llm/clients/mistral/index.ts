@@ -1,5 +1,4 @@
 import { Mistral } from "@mistralai/mistralai";
-import compact from "lodash/compact";
 
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
@@ -57,7 +56,7 @@ export class MistralLLM extends LLM {
         role: "system" as const,
         content: prompt,
       },
-      ...compact(conversation.messages.map(toMessage)),
+      ...conversation.messages.map(toMessage),
     ];
 
     const events = await this.client.chat.stream({

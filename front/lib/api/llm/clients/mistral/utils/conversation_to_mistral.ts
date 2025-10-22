@@ -4,10 +4,9 @@ import type {
   ContentChunk,
   Tool,
 } from "@mistralai/mistralai/models/components";
-import compact from "lodash/compact";
+import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import logger from "@app/logger/logger";
 import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
@@ -23,7 +22,7 @@ import type {
 
 function toContentChunk(
   content: Content | TextContentType | ReasoningContentType
-): ContentChunk | undefined {
+): ContentChunk {
   switch (content.type) {
     case "text":
       return content;
@@ -38,12 +37,11 @@ function toContentChunk(
         text: content.value,
       };
     case "reasoning":
-      return content.value.reasoning === undefined
-        ? undefined
-        : {
-            type: "thinking",
-            thinking: [{ type: "text", text: content.value.reasoning }],
-          };
+      assert(content.value.reasoning, "Reasoning content is missing reasoning");
+      return {
+        type: "thinking",
+        thinking: [{ type: "text", text: content.value.reasoning }],
+      };
     default:
       assertNever(content);
   }
@@ -53,22 +51,15 @@ function toAssistantMessage(
   message:
     | AssistantFunctionCallMessageTypeModel
     | AssistantContentMessageTypeModel
-): (AssistantMessage & { role: "assistant" }) | null {
-  if (!message.contents) {
-    logger.error("Assistant message is missing contents");
+): AssistantMessage & { role: "assistant" } {
+  assert(message.contents, "Assistant message is missing contents");
 
-    return null;
-  }
-
-  const textContents = compact(
-    message.contents
-      .filter(
-        (c): c is TextContentType | ReasoningContentType =>
-          c.type !== "function_call"
-      )
-      .map(toContentChunk)
-  );
-
+  const textContents = message.contents
+    .filter(
+      (c): c is TextContentType | ReasoningContentType =>
+        c.type !== "function_call"
+    )
+    .map(toContentChunk);
   const toolCalls = message.contents
     .filter((c): c is FunctionCallContentType => c.type === "function_call")
     .map((fc) => ({
@@ -100,12 +91,12 @@ export function toTool(specification: AgentActionSpecification): Tool {
 
 export function toMessage(
   message: ModelMessageTypeMultiActionsWithoutContentFragment
-): ChatCompletionStreamRequest["messages"][number] | null {
+): ChatCompletionStreamRequest["messages"][number] {
   switch (message.role) {
     case "user": {
       return {
         role: "user",
-        content: compact(message.content.map(toContentChunk)),
+        content: message.content.map(toContentChunk),
       };
     }
     case "function": {
@@ -114,7 +105,7 @@ export function toMessage(
         content:
           typeof message.content === "string"
             ? message.content
-            : compact(message.content.map(toContentChunk)),
+            : message.content.map(toContentChunk),
         name: message.name,
         toolCallId: message.function_call_id,
       };
