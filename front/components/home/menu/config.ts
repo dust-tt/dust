@@ -466,6 +466,10 @@ export const menuConfig: DocsConfig = {
           isExternal: true,
         },
         {
+          title: "Brand resources",
+          href: "/home/brand-resources",
+        },
+        {
           title: "Support",
           href: "/home/support",
         },
