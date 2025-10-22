@@ -137,6 +137,9 @@ export function MCPServerSelectionPage({
     <>
       <div className="flex flex-col gap-4 py-2">
         <div className="grid grid-cols-2 gap-3">
+          {topMCPServerViews.length ? (
+            <span className="text-lg font-semibold">Top tools</span>
+          ) : null}
           {topMCPServerViews.map((view) => (
             <MCPServerCard
               key={view.id}
