@@ -230,7 +230,7 @@ export async function editClientExecutableFile(
   if (fileContentResult.isErr()) {
     return new Err({
       message: fileContentResult.error.message,
-      tracked: true,
+      tracked: fileContentResult.error.tracked,
     });
   }
   const { fileResource, content: currentContent } = fileContentResult.value;
@@ -332,44 +332,60 @@ export async function renameClientExecutableFile(
 export async function getClientExecutableFileContent(
   auth: Authenticator,
   fileId: string
-): Promise<Result<{ fileResource: FileResource; content: string }, Error>> {
+): Promise<
+  Result<
+    { fileResource: FileResource; content: string },
+    {
+      message: string;
+      tracked: boolean;
+    }
+  >
+> {
   try {
     // Sometimes the model makes up a random file id that doesn't exist,
     // so we check if this is actually a valid id or not.
     const resourceId = getResourceIdFromSId(fileId);
 
     if (resourceId === null) {
-      return new Err(new Error(`The id ${fileId} is not a valid file id`));
+      return new Err({
+        message: `The id ${fileId} is not a valid file id`,
+        tracked: false,
+      });
     }
 
     const fileResource = await FileResource.fetchById(auth, fileId);
     if (!fileResource) {
-      return new Err(new Error(`File not found: ${fileId}`));
+      return new Err({
+        message: `File not found: ${fileId}`,
+        tracked: false,
+      });
     }
 
     // Check if it's an Interactive Content file.
     if (!isInteractiveContentFileContentType(fileResource.contentType)) {
-      return new Err(
-        new Error(
+      return new Err({
+        message:
           `File '${fileId}' is not an Interactive Content file ` +
-            `(content type: ${fileResource.contentType})`
-        )
-      );
+          `(content type: ${fileResource.contentType})`,
+        tracked: false,
+      });
     }
 
     // Get the file content.
     const content = await getFileContent(auth, fileResource, "original");
     if (!content) {
-      return new Err(new Error(`Failed to read content from file '${fileId}'`));
+      return new Err({
+        message: `Failed to read content from file '${fileId}'`,
+        tracked: true,
+      });
     }
 
     return new Ok({ fileResource, content });
   } catch (error) {
-    return new Err(
-      new Error(
-        `Failed to retrieve file content for '${fileId}': ${normalizeError(error)}`
-      )
-    );
+    return new Err({
+      message: `Failed to retrieve file content for '${fileId}': ${normalizeError(error)}`,
+      tracked: true,
+    });
   }
 }
 
