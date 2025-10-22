@@ -25,9 +25,11 @@ export abstract class LLM {
     conversation,
     prompt,
     specifications,
+    step,
   }: {
     conversation: ModelConversationTypeMultiActions;
     prompt: string;
     specifications: AgentActionSpecification[];
+    step: number;
   }): AsyncGenerator<LLMEvent>;
 }

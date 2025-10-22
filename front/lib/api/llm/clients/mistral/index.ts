@@ -46,10 +46,12 @@ export class MistralLLM extends LLM {
     conversation,
     prompt,
     specifications,
+    step: _step,
   }: {
     conversation: ModelConversationTypeMultiActions;
     prompt: string;
     specifications: AgentActionSpecification[];
+    step: number;
   }): AsyncGenerator<LLMEvent> {
     const messages = [
       {

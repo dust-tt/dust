@@ -35,6 +35,7 @@ export async function getOutputFromLLMStream(
     conversation: modelConversationRes.value.modelConversation,
     prompt,
     specifications,
+    step,
   });
 
   const tempContents: Array<
