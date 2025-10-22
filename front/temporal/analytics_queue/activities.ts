@@ -2,7 +2,8 @@ import assert from "assert";
 
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
-import { getClient } from "@app/lib/api/elasticsearch";
+import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
+import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
@@ -11,6 +12,7 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AgentMessageType } from "@app/types";
+import { normalizeError } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 import type {
@@ -60,7 +62,7 @@ export async function storeAgentAnalyticsActivity(
     agent_id: agentConfiguration.sId,
     agent_version: agentConfiguration.version.toString(),
     conversation_id: conversation.sId,
-    // TODO(observability 21025-10-20): We don't have all the models latency.
+    // TODO(observability 21025-10-20): Add support for latency once defined.
     latency_ms: 0,
     message_id: agentMessage.sId,
     status: agentMessage.status,
@@ -104,6 +106,7 @@ async function collectTokenUsage(
       completion: 0,
       reasoning: 0,
       cached: 0,
+      cost_cents: 0,
     };
   }
 
@@ -118,17 +121,26 @@ async function collectTokenUsage(
   );
 
   return runUsages.flat().reduce(
-    (acc, usage) => ({
-      prompt: acc.prompt + usage.promptTokens,
-      completion: acc.completion + usage.completionTokens,
-      reasoning: acc.reasoning + 0, // No reasoning tokens in RunUsageType yet.
-      cached: acc.cached + (usage.cachedTokens ?? 0),
-    }),
+    (acc, usage) => {
+      const usageCostUsd = calculateTokenUsageCost([usage]);
+      // Use ceiling to ensure any non-zero cost is at least 1 cent.
+      const usageCostCents =
+        usageCostUsd > 0 ? Math.ceil(usageCostUsd * 100) : 0;
+
+      return {
+        prompt: acc.prompt + usage.promptTokens,
+        completion: acc.completion + usage.completionTokens,
+        reasoning: acc.reasoning, // No reasoning tokens in RunUsageType yet.
+        cached: acc.cached + (usage.cachedTokens ?? 0),
+        cost_cents: acc.cost_cents + usageCostCents,
+      };
+    },
     {
       prompt: 0,
       completion: 0,
       reasoning: 0,
       cached: 0,
+      cost_cents: 0,
     }
   );
 }
@@ -179,21 +191,21 @@ async function storeToElasticsearch(
   document: AgentMessageAnalyticsData
 ): Promise<void> {
   const esClient = await getClient();
-  const analyticsIndex = "front.agent_message_analytics_1";
+
   const documentId = `${document.workspace_id}_${document.message_id}_${document.timestamp}`;
 
   try {
     await esClient.index({
-      index: analyticsIndex,
+      index: ANALYTICS_ALIAS_NAME,
       id: documentId,
       body: document,
     });
   } catch (error) {
     logger.error(
       {
-        error: error instanceof Error ? error.message : String(error),
-        index: analyticsIndex,
         documentId,
+        error: normalizeError(error),
+        index: ANALYTICS_ALIAS_NAME,
         messageId: document.message_id,
       },
       "Failed to index document in Elasticsearch"
