@@ -23,20 +23,24 @@ export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
 export type WebhookSourceSignatureAlgorithm =
   (typeof WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS)[number];
 
-export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
+export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP = {
+  github: GITHUB_WEBHOOK_PRESET,
+  test: TEST_WEBHOOK_PRESET,
+  custom: {
+    name: "Custom" as const,
+    icon: ActionGlobeAltIcon,
+    featureFlag: undefined,
+  },
+} as const satisfies Record<
   Exclude<WebhookSourceKind, "custom">,
-  PresetWebhook
+  PresetWebhook<any>
 > & {
   custom: {
     name: string;
     icon: typeof Icon;
     featureFlag?: WhitelistableFeature;
   };
-} = {
-  github: GITHUB_WEBHOOK_PRESET,
-  test: TEST_WEBHOOK_PRESET,
-  custom: { name: "Custom", icon: ActionGlobeAltIcon },
-} as const;
+};
 
 export const WEBHOOK_SOURCE_KIND = ["custom", "github", "test"] as const;
 

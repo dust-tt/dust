@@ -15,10 +15,12 @@ import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 
+import type { ComponentType } from "react";
+
 import { CreateWebhookGithubConnection } from "@app/components/triggers/CreateWebhookGithubConnection";
+import { CreateWebhookTestConnection } from "@app/components/triggers/CreateWebhookTestConnection";
 import { useWebhookServiceData } from "@app/lib/swr/useWebhookServiceData";
 import type { LightWorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 import {
   basePostWebhookSourcesSchema,
@@ -63,6 +65,79 @@ type CreateWebhookSourceFormContentProps = {
   onPresetReadyToSubmitChange?: (isReady: boolean) => void;
 };
 
+// Component wrapper for GitHub - uses literal type for proper inference
+function GitHubConnectionWrapper({
+  owner,
+  onRemoteProviderDataChange,
+  onReadyToSubmitChange,
+}: {
+  owner: LightWorkspaceType;
+  onRemoteProviderDataChange?: (data: RemoteProviderData | null) => void;
+  onReadyToSubmitChange?: (isReady: boolean) => void;
+}) {
+  const { serviceData, isFetchingServiceData, fetchServiceData } =
+    useWebhookServiceData(owner, "github");
+
+  return (
+    <CreateWebhookGithubConnection
+      owner={owner}
+      serviceData={serviceData}
+      isFetchingServiceData={isFetchingServiceData}
+      onFetchServiceData={fetchServiceData}
+      onGithubDataChange={onRemoteProviderDataChange}
+      onReadyToSubmitChange={onReadyToSubmitChange}
+    />
+  );
+}
+
+// Component wrapper for Test - uses literal type for proper inference
+function TestConnectionWrapper({
+  owner,
+  onRemoteProviderDataChange,
+  onReadyToSubmitChange,
+}: {
+  owner: LightWorkspaceType;
+  onRemoteProviderDataChange?: (data: RemoteProviderData | null) => void;
+  onReadyToSubmitChange?: (isReady: boolean) => void;
+}) {
+  const { serviceData, isFetchingServiceData, fetchServiceData } =
+    useWebhookServiceData(owner, "test");
+
+  return (
+    <CreateWebhookTestConnection
+      owner={owner}
+      serviceData={serviceData}
+      isFetchingServiceData={isFetchingServiceData}
+      onFetchServiceData={fetchServiceData}
+      onTestDataChange={(data) => {
+        if (onRemoteProviderDataChange && data) {
+          onRemoteProviderDataChange({
+            connectionId: data.connectionId,
+            repositories: [],
+            organizations: [],
+          });
+        } else if (onRemoteProviderDataChange) {
+          onRemoteProviderDataChange(null);
+        }
+      }}
+      onReadyToSubmitChange={onReadyToSubmitChange}
+    />
+  );
+}
+
+// Map from kind to wrapper component - this is the central registry
+const WEBHOOK_CONNECTION_COMPONENTS = {
+  github: GitHubConnectionWrapper,
+  test: TestConnectionWrapper,
+} as const satisfies Record<
+  Exclude<WebhookSourceKind, "custom">,
+  ComponentType<{
+    owner: LightWorkspaceType;
+    onRemoteProviderDataChange?: (data: RemoteProviderData | null) => void;
+    onReadyToSubmitChange?: (isReady: boolean) => void;
+  }>
+>;
+
 export function CreateWebhookSourceFormContent({
   form,
   kind,
@@ -75,21 +150,7 @@ export function CreateWebhookSourceFormContent({
     name: "subscribedEvents",
   });
 
-  const { serviceData, isFetchingServiceData, fetchServiceData } =
-    useWebhookServiceData(owner ?? null, kind);
-
-  const isGithub = kind === "github";
-  const isCustom = (() => {
-    switch (kind) {
-      case "custom":
-      case "test":
-        return true; // These are not OAuth-based kinds
-      case "github":
-        return false;
-      default:
-        assertNever(kind);
-    }
-  })();
+  const isCustom = kind === "custom";
 
   return (
     <>
@@ -170,16 +231,18 @@ export function CreateWebhookSourceFormContent({
           />
         )}
 
-      {isGithub && owner && (
-        <CreateWebhookGithubConnection
-          owner={owner}
-          serviceData={serviceData}
-          isFetchingServiceData={isFetchingServiceData}
-          onFetchServiceData={fetchServiceData}
-          onGithubDataChange={onRemoteProviderDataChange}
-          onReadyToSubmitChange={onPresetReadyToSubmitChange}
-        />
-      )}
+      {!isCustom && owner && (() => {
+        // Use the component map to dynamically render the right connection component
+        // TypeScript knows kind is not "custom" here due to !isCustom check
+        const ConnectionComponent = WEBHOOK_CONNECTION_COMPONENTS[kind as keyof typeof WEBHOOK_CONNECTION_COMPONENTS];
+        return ConnectionComponent ? (
+          <ConnectionComponent
+            owner={owner}
+            onRemoteProviderDataChange={onRemoteProviderDataChange}
+            onReadyToSubmitChange={onPresetReadyToSubmitChange}
+          />
+        ) : null;
+      })()}
 
       {isCustom && (
         <div>

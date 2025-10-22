@@ -1,19 +1,18 @@
 import { useCallback, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetServiceDataResponseType } from "@app/pages/api/w/[wId]/webhook_sources/service-data";
 import type { LightWorkspaceType } from "@app/types";
 import { normalizeError } from "@app/types";
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 
-export function useWebhookServiceData(
-  owner: LightWorkspaceType | null,
-  kind: WebhookSourceKind
-) {
+export function useWebhookServiceData<
+  K extends Exclude<WebhookSourceKind, "custom">,
+>(owner: LightWorkspaceType | null, kind: K) {
   const sendNotification = useSendNotification();
-  const [serviceData, setServiceData] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
+  const [serviceData, setServiceData] = useState<GetServiceDataResponseType<K>["serviceData"] | null>(
+    null
+  );
   const [isFetchingServiceData, setIsFetchingServiceData] = useState(false);
 
   const fetchServiceData = useCallback(
@@ -35,7 +34,7 @@ export function useWebhookServiceData(
           );
         }
 
-        const data = await response.json();
+        const data: GetServiceDataResponseType<K> = await response.json();
         setServiceData(data.serviceData || null);
       } catch (error) {
         sendNotification({

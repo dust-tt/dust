@@ -28,10 +28,12 @@ const TEST_EVENT: WebhookEvent = {
   ],
 };
 
-class TestWebhookService implements RemoteWebhookService {
+type TestServiceData = { info: string; timestamp: number };
+
+class TestWebhookService implements RemoteWebhookService<TestServiceData> {
   async getServiceData(
     oauthToken: string
-  ): Promise<Result<Record<string, unknown>, Error>> {
+  ): Promise<Result<TestServiceData, Error>> {
     logger.info("Fetching service data with oauthToken:", oauthToken);
     return new Ok({
       info: "This is test service data",
@@ -91,7 +93,7 @@ class TestWebhookService implements RemoteWebhookService {
   }
 }
 
-export const TEST_WEBHOOK_PRESET: PresetWebhook = {
+export const TEST_WEBHOOK_PRESET: PresetWebhook<TestServiceData> = {
   name: "Test",
   eventCheck: {
     type: "headers",

@@ -8,13 +8,30 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString, OAuthAPI } from "@app/types";
+import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 import {
   isWebhookSourceKind,
   WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
 } from "@app/types/triggers/webhooks";
+import type {
+  ExtractAllServiceData,
+  ExtractServiceData,
+} from "@app/types/triggers/webhooks_source_preset";
 
-export type GetServiceDataResponseType = {
-  serviceData: Record<string, unknown>;
+// Automatically derive union type of all service data types from the preset map
+// When adding a new preset, just add it to WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP - no changes needed here!
+export type WebhookServiceData = ExtractAllServiceData<
+  typeof WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP
+>;
+
+// Type-safe response type that narrows based on the kind parameter
+export type GetServiceDataResponseType<
+  K extends Exclude<WebhookSourceKind, "custom"> = Exclude<
+    WebhookSourceKind,
+    "custom"
+  >,
+> = {
+  serviceData: ExtractServiceData<typeof WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[K]>;
 };
 
 async function handler(

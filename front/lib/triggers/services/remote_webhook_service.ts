@@ -1,10 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types";
 
-export interface RemoteWebhookService {
+export interface RemoteWebhookService<TServiceData = Record<string, unknown>> {
   getServiceData(
     oauthToken: string
-  ): Promise<Result<Record<string, unknown>, Error>>;
+  ): Promise<Result<TServiceData, Error>>;
 
   /**
    * Creates webhooks on the remote service (e.g., GitHub, Jira)
