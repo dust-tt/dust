@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -406,7 +407,7 @@ function createServer(
           const requestBody = {
             body: {
               contentType: "html",
-              content: finalContent,
+              content: sanitizeHtml(finalContent),
             },
           };
 
