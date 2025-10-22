@@ -560,7 +560,6 @@ async function handleCreateOrUpdateWorkOSUser(
 
   const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
   const externalUser: ExternalUser = {
-    auth0Sub: null,
     email: workOSUser.email,
     email_verified: true,
     name: workOSUser.email ?? "",

@@ -4,6 +4,7 @@ import React from "react";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { pluralize } from "@app/types";
 
 interface MCPServerInfoPageProps {
   infoMCPServerView: MCPServerViewType;
@@ -13,6 +14,8 @@ export function MCPServerInfoPage({
   infoMCPServerView,
 }: MCPServerInfoPageProps) {
   const { owner } = useAgentBuilderContext();
+
+  const nbTools = (infoMCPServerView.server.tools ?? []).length;
 
   return (
     <div className="flex h-full flex-col space-y-6 pt-3">
@@ -25,16 +28,16 @@ export function MCPServerInfoPage({
             <Chip
               size="xs"
               color="info"
-              label={`${infoMCPServerView.server.tools?.length || 0} tools`}
+              label={`${nbTools} tool${pluralize(nbTools)}`}
             />
           </div>
 
-          {infoMCPServerView.server.tools &&
-          infoMCPServerView.server.tools.length > 0 ? (
+          {nbTools > 0 ? (
             <div className="flex flex-col gap-4">
               <span className="text-md text-muted-foreground dark:text-muted-foreground-night">
-                These tools will be available to your agent during conversations
-                and can be configured with different permission levels:
+                {nbTools > 1 ? "These tools" : "This tool"}&nbsp;will be
+                available to your agent during conversations and can be
+                configured with different permission levels:
               </span>
               <ToolsList
                 owner={owner}

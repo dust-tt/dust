@@ -28,21 +28,20 @@ import { WebhookSourceGithubDetails } from "@app/components/triggers/WebhookSour
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import {
+  buildWebhookUrl,
   DEFAULT_WEBHOOK_ICON,
   normalizeWebhookIcon,
 } from "@app/lib/webhookSource";
 import type { LightWorkspaceType } from "@app/types";
-import type { WebhookSourceViewWithWebhookSourceType } from "@app/types/triggers/webhooks";
+import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsInfoProps = {
-  webhookSourceView: WebhookSourceViewWithWebhookSourceType;
+  webhookSourceView: WebhookSourceViewForAdminType;
   owner: LightWorkspaceType;
 };
 
-const getEditedLabel = (
-  webhookSourceView: WebhookSourceViewWithWebhookSourceType
-) => {
+const getEditedLabel = (webhookSourceView: WebhookSourceViewForAdminType) => {
   if (
     webhookSourceView.editedByUser === null ||
     (webhookSourceView.editedByUser.editedAt === null &&
@@ -102,13 +101,12 @@ export function WebhookSourceDetailsInfo({
   }, [isCopied, sendNotification]);
 
   const webhookUrl = useMemo(() => {
-    const { url } = config.getDustAPIConfig();
-    return `${url}/api/v1/w/${owner.sId}/triggers/hooks/${webhookSourceView.webhookSource.sId}/${webhookSourceView.webhookSource.urlSecret}`;
-  }, [
-    owner.sId,
-    webhookSourceView.webhookSource.sId,
-    webhookSourceView.webhookSource.urlSecret,
-  ]);
+    return buildWebhookUrl({
+      apiBaseUrl: config.getDustAPIConfig().url,
+      workspaceId: owner.sId,
+      webhookSource: webhookSourceView.webhookSource,
+    });
+  }, [owner.sId, webhookSourceView.webhookSource]);
 
   const isCustomKind = webhookSourceView.webhookSource.kind === "custom";
 

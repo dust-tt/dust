@@ -7,6 +7,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { checkTriggerForExecutionPerDayLimit } from "@app/lib/triggers/common";
 import { launchAgentTriggerWorkflow } from "@app/lib/triggers/temporal/common/client";
 import {
@@ -329,4 +330,28 @@ export async function runTriggerWebhookActivity({
 
   // Finally, mark the webhook request as processed.
   await webhookRequest.markAsProcessed();
+}
+
+export async function webhookCleanupActivity() {
+  const workspacesToCleanup =
+    await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests();
+
+  if (workspacesToCleanup.length === 0) {
+    logger.info("No workspaces with too many webhook requests to cleanup.");
+    return;
+  }
+
+  for (const workspaceId of workspacesToCleanup) {
+    const workspace = await WorkspaceResource.fetchByModelId(workspaceId);
+    if (!workspace) {
+      logger.error({ workspaceId }, "Workspace not found.");
+      continue;
+    }
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await WebhookRequestResource.cleanUpWorkspace(auth);
+    logger.info(
+      { workspaceId: workspace.sId },
+      "Cleaned up webhook requests for workspace."
+    );
+  }
 }

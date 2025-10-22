@@ -32,7 +32,7 @@ function createServer(
 
   server.tool(
     "handoff",
-    `Launch a handoff to the :mention[${DEEP_DIVE_NAME}]{sId=${GLOBAL_AGENTS_SID.DEEP_DIVE}} agent`,
+    `Hand off the task to @${DEEP_DIVE_NAME} agent for comprehensive analysis across company data, databases, and web sources.`,
     {},
     withToolLogging(
       auth,

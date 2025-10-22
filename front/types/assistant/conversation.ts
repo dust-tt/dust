@@ -232,12 +232,10 @@ export type ConversationWithoutContentType = {
   unread: boolean;
   actionRequired: boolean;
   hasError: boolean;
-  owner: WorkspaceType;
   sId: string;
   title: string | null;
-  visibility: ConversationVisibility;
-  depth: number;
-  triggerId: string | null;
+
+  // Ideally, theses 2 properties should be moved to the ConversationType.
   requestedGroupIds: string[][];
   requestedSpaceIds: string[];
 };
@@ -247,6 +245,9 @@ export type ConversationWithoutContentType = {
  * messages).
  */
 export type ConversationType = ConversationWithoutContentType & {
+  owner: WorkspaceType;
+  visibility: ConversationVisibility;
+  depth: number;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
 

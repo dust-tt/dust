@@ -50,6 +50,10 @@ const whitelistedCommands = [
     command: "run-auto-join",
   },
   {
+    majorCommand: "slack",
+    command: "check-channel",
+  },
+  {
     majorCommand: "connectors",
     command: "set-error",
   },

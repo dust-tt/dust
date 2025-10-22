@@ -10,12 +10,12 @@
   "developer": {
     "name": "Dust",
     "websiteUrl": "https://dust.tt",
-    "privacyUrl": "https://dust.tt/privacy",
+    "privacyUrl": "https://dust.tt/home/platform-privacy",
     "termsOfUseUrl": "https://dust.tt/terms"
   },
   "description": {
-    "short": "AI assistant powered by Dust",
-    "full": "Intelligent AI assistant that can help with various tasks using Dust's AI platform"
+    "short": "AI agents connected to your company knowledge and tools",
+    "full": "The Dust App for Teams enables interaction with agents created on Dust directly from Microsoft Teams.\n\nWhat is Dust?\nDust is the platform to build and operate AI agents, connected to your company knowledge and tools, powered by the best AI models. Think of it as your team's AI toolkit enabling you to create agents tailored to specific workflows—from content creation to data analysis to code review. This Teams integration brings those powerful agents directly into your team conversations.\n\nHow Dust Works in Teams\nOnce installed, Dust transforms your Teams workspace with intelligent agents that work alongside your team:\n• @dust - Access your default AI agent for general assistance, reasoning, and quick questions\n• @dust +agent_name - Call any custom agent your team has built (like @dust +sales_writer or @dust +code_reviewer)\n• Thread-aware conversations - Agents understand context from previous messages in the thread\n• Channel integration - Link specific agents to channels for automatic responses when mentioned\n• Multi-agent workflows - Use multiple specialized agents in the same conversation for complex tasks\nExample workflow: Ask @dust +data_analyst to review your quarterly metrics, then have @dust +report_writer create a summary for leadership—all without leaving your Teams conversation.\n\nEnterprise Ready\nBuilt for business with zero data retention policy, SOC2 Type II certification, role-based access controls, and enterprise-grade security. Deploy new agents in minutes without coding—just describe what you need and your team can access it instantly from Teams."
   },
   "icons": {
     "outline": "outline.png",
@@ -26,34 +26,6 @@
     {
       "botId": "<MICROSOFT_BOT_ID>",
       "scopes": ["personal", "team", "groupChat"],
-      "commandLists": [
-        {
-          "commands": [
-            {
-              "title": "+dust",
-              "description": "Ask any question to Dust AI assistants"
-            },
-            {
-              "title": "+help",
-              "description": "Get help using Dust in Teams"
-            }
-          ],
-          "scopes": ["personal"]
-        },
-        {
-          "commands": [
-            {
-              "title": "+dust",
-              "description": "Ask any question to Dust AI assistants"
-            },
-            {
-              "title": "+help",
-              "description": "Get help using Dust in Teams"
-            }
-          ],
-          "scopes": ["team"]
-        }
-      ],
       "isNotificationOnly": false,
       "supportsCalling": false,
       "supportsVideo": false,

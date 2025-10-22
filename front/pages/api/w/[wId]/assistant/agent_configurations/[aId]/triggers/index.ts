@@ -19,7 +19,7 @@ export interface GetTriggersResponseBody {
   triggers: (TriggerType & {
     isSubscriber: boolean;
     isEditor: boolean;
-    editorEmail?: string;
+    editorName?: string;
   })[];
 }
 
@@ -103,8 +103,8 @@ async function handler(
         ...new Set(allTriggers.map((trigger) => trigger.editor)),
       ];
       const editorUsers = await UserResource.fetchByModelIds(editorIds);
-      const editorEmailMap = new Map(
-        editorUsers.map((user) => [user.id, user.email])
+      const editorNamesMap = new Map(
+        editorUsers.map((user) => [user.id, user.fullName()])
       );
 
       const triggersWithIsSubscriber = await Promise.all(
@@ -112,7 +112,7 @@ async function handler(
           ...trigger.toJSON(),
           isSubscriber: await trigger.isSubscriber(auth),
           isEditor: trigger.editor === auth.getNonNullableUser().id,
-          editorEmail: editorEmailMap.get(trigger.editor),
+          editorName: editorNamesMap.get(trigger.editor),
         }))
       );
 
@@ -333,6 +333,8 @@ async function handler(
           kind: validatedTrigger.kind,
           enabled: validatedTrigger.enabled,
           configuration: validatedTrigger.configuration,
+          naturalLanguageDescription:
+            validatedTrigger.naturalLanguageDescription,
           customPrompt: validatedTrigger.customPrompt,
           editor: auth.getNonNullableUser().id,
           webhookSourceViewId,

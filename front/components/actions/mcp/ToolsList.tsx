@@ -41,6 +41,10 @@ interface ToolItemProps {
     | CustomRemoteMCPToolStakeLevelType
     | "never_ask"
   )[];
+  metadata?: {
+    enabled: boolean;
+    permission: CustomRemoteMCPToolStakeLevelType | "never_ask";
+  };
 }
 
 function ToolItem({
@@ -48,14 +52,15 @@ function ToolItem({
   mayUpdate,
   serverType,
   availableStakeLevels,
+  metadata,
 }: ToolItemProps) {
   const { control } = useFormContext<MCPServerFormValues>();
   const { field } = useController({
     control,
     name: `toolSettings.${tool.name}`,
     defaultValue: {
-      enabled: true,
-      permission: FALLBACK_MCP_TOOL_STAKE_LEVEL,
+      enabled: metadata?.enabled ?? true,
+      permission: metadata?.permission ?? FALLBACK_MCP_TOOL_STAKE_LEVEL,
     },
   });
 
@@ -188,17 +193,25 @@ export function ToolsList({
         {tools && tools.length > 0 ? (
           <div className="flex flex-col gap-4">
             {tools.map(
-              (tool: { name: string; description: string }, index: number) => (
-                <ToolItem
-                  key={index}
-                  tool={tool}
-                  mayUpdate={mayUpdate}
-                  serverType={serverType}
-                  availableStakeLevels={getAvailableStakeLevelsForTool(
-                    tool.name
-                  )}
-                />
-              )
+              (tool: { name: string; description: string }, index: number) => {
+                const availableStakeLevels = getAvailableStakeLevelsForTool(
+                  tool.name
+                );
+                const metadata = mcpServerView.toolsMetadata?.find(
+                  (m) => m.toolName === tool.name
+                );
+
+                return (
+                  <ToolItem
+                    key={index}
+                    tool={tool}
+                    mayUpdate={mayUpdate}
+                    serverType={serverType}
+                    availableStakeLevels={availableStakeLevels}
+                    metadata={metadata}
+                  />
+                );
+              }
             )}
           </div>
         ) : (

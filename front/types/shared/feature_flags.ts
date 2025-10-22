@@ -197,11 +197,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   microsoft_drive_mcp_server: {
     description: "Microsoft Drive MCP server",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   microsoft_teams_mcp_server: {
     description: "Microsoft Teams MCP server",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   agent_builder_observability: {
     description:

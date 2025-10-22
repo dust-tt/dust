@@ -100,7 +100,8 @@ export async function executePostMessage(
     message: string;
     threadTs: string | undefined;
     fileId: string | undefined;
-  }
+  },
+  mcpServerId: string
 ) {
   const slackClient = await getSlackClient(accessToken);
   const originalMessage = message;
@@ -114,6 +115,7 @@ export async function executePostMessage(
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
   // If a file is provided, upload it as attachment of the original message
+  fileId = undefined; // TODO(2025-10-22 chris): remove this once Slack enables file:write scope
   if (fileId) {
     const file = await FileResource.fetchById(auth, fileId);
     if (!file) {
@@ -125,16 +127,12 @@ export async function executePostMessage(
     }
 
     // Resolve channel id
-    const conversationsList = await slackClient.conversations.list({
-      exclude_archived: true,
+    const conversationsList = await getCachedPublicChannels({
+      mcpServerId,
+      slackClient,
     });
-    if (!conversationsList.ok) {
-      return new Err(
-        new MCPError(conversationsList.error ?? "Failed to list conversations")
-      );
-    }
     const searchString = to.trim().replace(/^#/, "").toLowerCase();
-    const channel = conversationsList.channels?.find(
+    const channel = conversationsList.find(
       (c) =>
         c.name?.toLowerCase() === searchString ||
         c.id?.toLowerCase() === searchString

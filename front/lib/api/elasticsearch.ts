@@ -8,6 +8,8 @@ import { Err, Ok } from "@app/types/shared/result";
 
 let esClient: Client | null = null;
 
+export const ANALYTICS_ALIAS_NAME = "front.agent_message_analytics";
+
 export interface ElasticsearchBaseDocument {
   workspace_id: string;
   [key: string]: unknown;
@@ -131,9 +133,8 @@ export async function searchAnalytics<
 ): Promise<
   Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
 > {
-  const analyticsIndex = config.getElasticsearchConfig().analyticsIndex;
   return esSearch<TDocument, TAggregations>({
-    index: analyticsIndex,
+    index: ANALYTICS_ALIAS_NAME,
     query,
     aggs: options?.aggregations,
     size: options?.size,

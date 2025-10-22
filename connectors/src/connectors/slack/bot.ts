@@ -27,7 +27,6 @@ import {
   makeMessageUpdateBlocksAndText,
 } from "@connectors/connectors/slack/chat/blocks";
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
-import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import {
   getBotUserIdMemoized,
   getUserName,
@@ -54,6 +53,7 @@ import {
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { sectionFullText } from "@connectors/lib/data_sources";
 import { ProviderRateLimitError } from "@connectors/lib/error";
@@ -1380,9 +1380,10 @@ async function makeContentFragments(
   }
 
   // Prepend $url to the content to make it available to the model.
+  const sectionHeader = `This only shows user-generated messages since ${startingAtTs} in #${channelName}. Look at the conversation history for the full thread.\n`;
   const section = document
-    ? `$url: ${url}\n${sectionFullText(document)}`
-    : `$url: ${url}\nNo messages previously sent in this thread.`;
+    ? `$url: ${url}\n${sectionHeader}${sectionFullText(document)}`
+    : `$url: ${url}\n${sectionHeader}`;
 
   const contentType = "text/vnd.dust.attachment.slack.thread";
   const fileName = `slack_thread-${channelName}-${threadTs}.txt`;

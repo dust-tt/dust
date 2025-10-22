@@ -61,16 +61,19 @@ export interface FunctionCallType {
 // Assistant requiring usage of function(s) call(s)
 export interface AssistantFunctionCallMessageTypeModel {
   role: "assistant";
+  /** @deprecated, use contents instead. */
   content?: string;
+  /** @deprecated, use contents instead. */
   function_calls: FunctionCallType[];
-  contents?: Array<Exclude<AgentContentItemType, ErrorContentType>>;
+  contents: Array<Exclude<AgentContentItemType, ErrorContentType>>;
 }
 
 export interface AssistantContentMessageTypeModel {
   role: "assistant";
   name: string;
-  content: string;
-  contents?: Array<Exclude<AgentContentItemType, ErrorContentType>>;
+  /** @deprecated, use contents instead. */
+  content?: string;
+  contents: Array<Exclude<AgentContentItemType, ErrorContentType>>;
 }
 
 // This is the output of one function call

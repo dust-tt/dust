@@ -1,5 +1,10 @@
 import { RocketIcon } from "@dust-tt/sparkle";
 
+import type { Authenticator } from "@app/lib/auth";
+import type { RemoteWebhookService } from "@app/lib/triggers/services/remote_webhook_service";
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { Ok } from "@app/types";
 import type {
   PresetWebhook,
   WebhookEvent,
@@ -23,6 +28,59 @@ const TEST_EVENT: WebhookEvent = {
   ],
 };
 
+class TestWebhookService implements RemoteWebhookService {
+  async createWebhooks({
+    auth,
+    connectionId: _connectionId,
+    remoteMetadata,
+    webhookUrl: _webhookUrl,
+    events: _events,
+    secret: _secret,
+  }: {
+    auth: Authenticator;
+    connectionId: string;
+    remoteMetadata: Record<string, any>;
+    webhookUrl: string;
+    events: string[];
+    secret?: string;
+  }): Promise<
+    Result<
+      {
+        updatedRemoteMetadata: Record<string, any>;
+        errors?: string[];
+      },
+      Error
+    >
+  > {
+    logger.info(
+      { workspaceId: auth.getNonNullableWorkspace().sId },
+      `Creating webhooks for test preset`
+    );
+    return new Ok({
+      updatedRemoteMetadata: {
+        ...remoteMetadata,
+        webhookIds: { test_event: `test-webhook-id-${Date.now()}` },
+      },
+    });
+  }
+
+  async deleteWebhooks({
+    auth,
+    connectionId: _connectionId,
+    remoteMetadata: _remoteMetadata,
+  }: {
+    auth: Authenticator;
+    connectionId: string;
+    remoteMetadata: Record<string, any>;
+  }): Promise<Result<void, Error>> {
+    logger.info(
+      { workspaceId: auth.getNonNullableWorkspace().sId },
+      `Deleting webhooks for test preset`
+    );
+    return new Ok(undefined);
+  }
+}
+
 export const TEST_WEBHOOK_PRESET: PresetWebhook = {
   name: "Test",
   eventCheck: {
@@ -34,4 +92,6 @@ export const TEST_WEBHOOK_PRESET: PresetWebhook = {
   description: "A test webhook preset with a simple event structure.",
   // Used for dev tests only, it should always be hidden behind the flag
   featureFlag: "hootl_dev_webhooks",
+  // inline dummy service for test purposes
+  webhookService: new TestWebhookService(),
 };

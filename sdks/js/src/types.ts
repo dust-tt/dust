@@ -842,6 +842,8 @@ const LightAgentConfigurationSchema = z.object({
   lastAuthors: AgentRecentAuthorsSchema.optional(),
   usage: AgentUsageTypeSchema.optional(),
   maxStepsPerRun: z.number(),
+  // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
+  visualizationEnabled: z.boolean().optional(),
   templateId: z.string().nullable(),
   groupIds: z.array(z.string()).optional(),
   requestedGroupIds: z.array(z.array(z.string())),
@@ -983,6 +985,7 @@ const AgentMessageTypeSchema = z.object({
   visibility: VisibilitySchema,
   version: z.number(),
   parentMessageId: z.string().nullable(),
+  parentAgentMessageId: z.string().nullable(),
   configuration: LightAgentConfigurationSchema,
   status: AgentMessageStatusSchema,
   actions: z.array(AgentActionTypeSchema),
@@ -1035,6 +1038,8 @@ export type ConversationVisibility = z.infer<
   typeof ConversationVisibilitySchema
 >;
 
+// Beware when you add anything to this schema as it will be difficult to remove it later.
+// It do NOT need to be a perfect match with the internal ConversationWithoutContentType, only keep the subset that makes sense for the public api.
 const ConversationWithoutContentSchema = z.object({
   id: ModelIdSchema,
   created: z.number(),
@@ -1046,7 +1051,7 @@ const ConversationWithoutContentSchema = z.object({
   title: z.string().nullable(),
   visibility: ConversationVisibilitySchema,
   groupIds: z.array(z.string()).optional(),
-  requestedGroupIds: z.array(z.array(z.string())),
+  requestedGroupIds: z.array(z.array(z.string())).optional(), // Same as groupIds, should be removed once the chrome extension is updated
 });
 
 export const ConversationSchema = ConversationWithoutContentSchema.extend({
@@ -2810,6 +2815,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "DriveLogo"
   | "GcalLogo"
   | "GithubLogo"
+  | "GitlabLogo"
   | "GmailLogo"
   | "GoogleSpreadsheetLogo"
   | "FreshserviceLogo"

@@ -204,6 +204,7 @@ export async function workspaceRelocateFrontTableWorkflow({
         tableName,
         sourceRegion,
         destRegion,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CHUNK_SIZE,
       });
 
@@ -652,6 +653,7 @@ export async function workspaceRelocateDataSourceDocumentsWorkflow({
         dataSourceCoreIds,
         sourceRegion,
         workspaceId,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CORE_API_LIST_NODES_BATCH_SIZE,
       });
 
@@ -764,6 +766,7 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
         dataSourceCoreIds,
         sourceRegion,
         workspaceId,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CORE_API_LIST_TABLES_BATCH_SIZE,
       });
     if (dataPath) {

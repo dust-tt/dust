@@ -5,6 +5,8 @@ import {
   _getClaude3GlobalAgent,
   _getClaude3HaikuGlobalAgent,
   _getClaude3OpusGlobalAgent,
+  _getClaude4_5HaikuGlobalAgent,
+  _getClaude4_5SonnetGlobalAgent,
   _getClaude4SonnetGlobalAgent,
   _getClaudeInstantGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
@@ -217,6 +219,22 @@ function getGlobalAgent({
         settings,
       });
       break;
+    case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
+      agentConfiguration = _getClaude4_5SonnetGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU:
+      agentConfiguration = _getClaude4_5HaikuGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
+      });
+      break;
     case GLOBAL_AGENTS_SID.CLAUDE_4_SONNET:
       agentConfiguration = _getClaude4SonnetGlobalAgent({
         auth,
@@ -384,6 +402,11 @@ function getGlobalAgent({
       return null;
     default:
       return null;
+  }
+
+  // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
+  if (agentConfiguration) {
+    agentConfiguration.visualizationEnabled = false;
   }
 
   return agentConfiguration;

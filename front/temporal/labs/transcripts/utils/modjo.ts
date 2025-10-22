@@ -322,10 +322,12 @@ export async function retrieveModjoTranscripts(
       );
 
       // Check if we should continue to next page
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (paginationInfo?.nextPage && page < (paginationInfo.lastPage || 0)) {
         page = paginationInfo.nextPage;
       } else if (
         !paginationInfo?.nextPage ||
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         page >= (paginationInfo.lastPage || 0)
       ) {
         hasMorePages = false;
@@ -333,6 +335,7 @@ export async function retrieveModjoTranscripts(
           {
             finalPage: page,
             totalTranscriptsFound: fileIdsToProcess.length,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             totalCallsReviewed: paginationInfo?.totalValues || 0,
           },
           "[retrieveModjoTranscripts] Completed pagination - no more pages"
@@ -493,6 +496,7 @@ export async function retrieveModjoTranscriptContent(
     {
       userParticipated,
       user,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       speakers: callData.relations?.speakers || [],
     },
     "[retrieveModjoTranscripts] User participated in the call?"
@@ -505,9 +509,11 @@ export async function retrieveModjoTranscriptContent(
     minutes < 10 ? "0" + minutes : minutes
   } minutes`;
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const transcriptTitle = callData.title || "Untitled";
   let transcriptContent = `Meeting title: ${
     transcriptTitle || "Untitled"
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   }\n\nDate: ${callData.startDate || "Unknown"}\n\nDuration: ${callDuration}\n\n`;
 
   // Add speakers section
@@ -517,6 +523,7 @@ export async function retrieveModjoTranscriptContent(
   ) {
     transcriptContent += "Speakers:\n";
     callData.relations.speakers.forEach((speaker) => {
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       transcriptContent += `${speaker.name || "Unknown"} (${speaker.type || "Unknown"})`;
       if (speaker.email) {
         transcriptContent += ` - ${speaker.email}`;
@@ -562,6 +569,7 @@ export async function retrieveModjoTranscriptContent(
   if (callData.relations?.account) {
     transcriptContent += "Account:\n";
     const account = callData.relations.account;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     transcriptContent += `${account.name || "Unknown"}`;
     if (account.domain) {
       transcriptContent += ` (${account.domain})`;
@@ -582,6 +590,7 @@ export async function retrieveModjoTranscriptContent(
   if (callData.relations?.deal) {
     transcriptContent += "Deal:\n";
     const deal = callData.relations.deal;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     transcriptContent += `${deal.name || "Unknown"}`;
     if (deal.stage) {
       transcriptContent += ` - Stage: ${deal.stage}`;
@@ -627,6 +636,7 @@ export async function retrieveModjoTranscriptContent(
           )
         : null;
       const speakerName = speaker ? speaker.name : `Speaker ${entry.speakerId}`;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       transcriptContent += `${speakerName}: ${entry.content || ""}\n`;
     });
   }
