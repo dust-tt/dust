@@ -25,12 +25,12 @@ import {
   makeToolValidationBlock,
   MAX_SLACK_MESSAGE_LENGTH,
 } from "@connectors/connectors/slack/chat/blocks";
-import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { annotateCitations } from "@connectors/lib/bot/citations";
+import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";

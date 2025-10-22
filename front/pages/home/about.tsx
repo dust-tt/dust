@@ -371,8 +371,7 @@ const PEOPLE: Record<
   neyla: {
     name: "Neyla Belmaachi",
     title: "Business Development Representative",
-    image:
-      "https://media.licdn.com/dms/image/v2/D4D03AQFOta7Ao6aodg/profile-displayphoto-shrink_800_800/B4DZeCQlSRH4Ac-/0/1750237075055?e=1759968000&v=beta&t=HR_yS-qenHyqOcrwWAXiqO3czAvb0KGRDpja8sutgIs",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNWQDT2-8e9a078de65f-192",
     linkedIn: "https://www.linkedin.com/in/neyla-belmaachi-4817b0166/",
     github: null,
   },

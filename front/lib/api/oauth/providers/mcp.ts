@@ -33,6 +33,7 @@ const BaseMCPMetadataSchema = z.object({
 
 const MCPOAuthConnectionMetadataSchema = BaseMCPMetadataSchema.extend({
   client_secret: z.string().optional(),
+  scope: z.string().optional(),
 });
 
 const MCPMetadataSchema = BaseMCPMetadataSchema.extend({

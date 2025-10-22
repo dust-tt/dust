@@ -102,7 +102,9 @@ export async function trackersGenerationActivity(
   }
 
   const dataSourceDocument = dataSourceDocumentRes.value;
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const documentText = dataSourceDocument.document.text || "";
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const documentSourceUrl = dataSourceDocument.document.source_url || undefined;
   if (!documentText) {
     localLogger.warn(

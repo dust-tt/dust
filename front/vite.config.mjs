@@ -15,7 +15,7 @@ export default defineConfig({
     poolOptions: {
       forks: {
         singleFork: false, // Use multiple forks for parallelism
-        isolate: true, // Each test file gets its own process
+        isolate: true, // Each test file gets its own proces
       },
     },
   },

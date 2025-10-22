@@ -1,5 +1,4 @@
-import { cn } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -16,18 +15,13 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import { ChartContainer } from "@app/components/agent_builder/observability/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
-import type {
-  ObservabilityIntervalType,
-  ObservabilityTimeRangeType,
-} from "@app/components/agent_builder/observability/constants";
 import {
   CHART_HEIGHT,
-  DEFAULT_PERIOD_DAYS,
-  OBSERVABILITY_INTERVALS,
   USAGE_METRICS_LEGEND,
   USAGE_METRICS_PALETTE,
   VERSION_MARKER_STYLE,
 } from "@app/components/agent_builder/observability/constants";
+import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
 import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
@@ -134,16 +128,13 @@ export function UsageMetricsChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const [period, setPeriod] =
-    useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
-  const [interval, setInterval] = useState<ObservabilityIntervalType>("day");
-
+  const { period } = useObservability();
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useAgentUsageMetrics({
       workspaceId,
       agentConfigurationId,
       days: period,
-      interval,
+      interval: "day",
       disabled: !workspaceId || !agentConfigurationId,
     });
 
@@ -174,45 +165,42 @@ export function UsageMetricsChart({
     };
   }, [usageMetrics?.points, versionMarkers]);
 
-  const intervalControls = (
-    <div className="flex items-center gap-2">
-      {OBSERVABILITY_INTERVALS.map((i) => (
-        <button
-          key={i}
-          onClick={() => setInterval(i)}
-          className={cn(
-            "rounded px-2 py-1 text-xs",
-            interval === i
-              ? "bg-foreground text-background"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          {i}
-        </button>
-      ))}
-    </div>
-  );
-
   return (
     <ChartContainer
       title="Usage Metrics"
-      period={period}
-      onPeriodChange={setPeriod}
       isLoading={isLoading}
       errorMessage={isError ? "Failed to load observability data." : undefined}
-      additionalControls={intervalControls}
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <BarChart
           data={data}
           margin={{ top: 10, right: 30, left: 10, bottom: 0 }}
         >
-          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-          <XAxis dataKey="date" className="text-xs text-muted-foreground" />
-          <YAxis className="text-xs text-muted-foreground" />
+          <CartesianGrid vertical={false} className="stroke-border" />
+          <XAxis
+            dataKey="date"
+            className="text-xs text-muted-foreground"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            minTickGap={16}
+          />
+          <YAxis
+            className="text-xs text-muted-foreground"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+          />
           <Tooltip
-            cursor={{ fill: "hsl(var(--border) / 0.1)" }}
+            cursor={false}
             content={UsageMetricsTooltip}
+            wrapperStyle={{ outline: "none" }}
+            contentStyle={{
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              boxShadow: "none",
+            }}
           />
           {USAGE_METRICS_LEGEND.map(({ key, label }) => (
             <Bar
@@ -221,6 +209,7 @@ export function UsageMetricsChart({
               name={label}
               fill="currentColor"
               className={USAGE_METRICS_PALETTE[key]}
+              radius={[4, 4, 0, 0]}
             />
           ))}
           {snappedMarkers.map((m, index) => (

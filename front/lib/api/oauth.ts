@@ -280,23 +280,11 @@ export async function checkConnectionOwnership(
   });
   if (
     connectionRes.isErr() ||
-    connectionRes.value.connection.metadata.user_id !== auth.user()?.sId
+    connectionRes.value.connection.metadata.user_id !== auth.user()?.sId ||
+    connectionRes.value.connection.metadata.workspace_id !==
+      auth.workspace()?.sId
   ) {
     return new Err(new Error("Invalid connection"));
-  }
-  if (
-    connectionRes.value.connection.metadata.workspace_id !==
-    auth.workspace()?.sId
-  ) {
-    logger.error(
-      {
-        connectionWorkspaceId:
-          connectionRes.value.connection.metadata.workspace_id,
-        workspaceId: auth.workspace()?.sId,
-        userId: connectionRes.value.connection.metadata.user_id,
-      },
-      "OAuth: Connection does not belong to this workspace"
-    );
   }
 
   return new Ok(undefined);

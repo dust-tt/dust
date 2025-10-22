@@ -664,10 +664,10 @@ describe("TriggerResource", () => {
     it("should successfully disable all enabled triggers in a workspace", async () => {
       // Mock temporal workflow operations to avoid failures in test environment
       const mockCreateOrUpdateWorkflow = vi
-        .spyOn(temporalClient, "createOrUpdateAgentScheduleWorkflow")
+        .spyOn(temporalClient, "createOrUpdateAgentSchedule")
         .mockResolvedValue(new Ok("workflow-id"));
       const mockDeleteWorkflow = vi
-        .spyOn(temporalClient, "deleteAgentScheduleWorkflow")
+        .spyOn(temporalClient, "deleteTriggerSchedule")
         .mockResolvedValue(new Ok(undefined));
 
       const { workspace, authenticator } = await createResourceTest({
@@ -787,10 +787,10 @@ describe("TriggerResource", () => {
     it("should successfully enable all disabled triggers that point to active agents", async () => {
       // Mock temporal workflow operations
       const mockCreateOrUpdateWorkflow = vi
-        .spyOn(temporalClient, "createOrUpdateAgentScheduleWorkflow")
+        .spyOn(temporalClient, "createOrUpdateAgentSchedule")
         .mockResolvedValue(new Ok("workflow-id"));
       const mockDeleteWorkflow = vi
-        .spyOn(temporalClient, "deleteAgentScheduleWorkflow")
+        .spyOn(temporalClient, "deleteTriggerSchedule")
         .mockResolvedValue(new Ok(undefined));
 
       const { workspace, authenticator } = await createResourceTest({

@@ -22,6 +22,24 @@
       font-synthesis-weight: none;
     }
   }
+
+  :root {
+    /* Chart tokens (light): exact shadcn palette */
+    --chart-1: 211 100% 78%;
+    --chart-2: 216 100% 58%;
+    --chart-3: 221 97% 54%;
+    --chart-4: 225 84% 49%;
+    --chart-5: 227 76% 41%;
+  }
+
+  .dark {
+    /* Chart tokens (dark): exact shadcn palette */
+    --chart-1: 211 100% 78%;
+    --chart-2: 216 100% 58%;
+    --chart-3: 221 97% 54%;
+    --chart-4: 225 84% 49%;
+    --chart-5: 227 76% 41%;
+  }
 }
 
 html,
@@ -139,6 +157,7 @@ main {
   * {
     scrollbar-width: thin;
   }
+
   .dark * {
     scrollbar-color: theme("colors.gray.700") theme("colors.gray.900");
   }

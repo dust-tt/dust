@@ -153,6 +153,7 @@ export async function retrieveGoogleTranscriptContent(
       );
     }
     const fileContentIsAccessible = true;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const transcriptTitle = metadataRes.data.name || "Untitled";
     const transcriptContent = <string>contentRes.data;
 

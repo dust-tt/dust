@@ -1,15 +1,17 @@
 import parseArgs from "minimist";
 
-import { launchProductionChecksWorkflow } from "@app/temporal/production_checks/client";
+import { createOrUpdateWebhookCleanupSchedule } from "@app/lib/triggers/temporal/schedule/client";
 
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
   const [command] = argv._;
 
+  console.log(`Running command: ${command}`);
+
   switch (command) {
     case "start":
-      await launchProductionChecksWorkflow();
+      await createOrUpdateWebhookCleanupSchedule();
       return;
     default:
       console.log("Unknown command, possible values: `start`");

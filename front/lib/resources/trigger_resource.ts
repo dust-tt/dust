@@ -21,8 +21,8 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import {
-  createOrUpdateAgentScheduleWorkflow,
-  deleteAgentScheduleWorkflow,
+  createOrUpdateAgentSchedule,
+  deleteTriggerSchedule,
 } from "@app/lib/triggers/temporal/schedule/client";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ModelId, Result } from "@app/types";
@@ -296,6 +296,38 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
+  static async deleteAllForUser(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
+    const triggers = await this.listByUserEditor(auth);
+    if (triggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const r = await concurrentExecutor(
+      triggers,
+      async (trigger) => {
+        try {
+          return await trigger.delete(auth);
+        } catch (error) {
+          return new Err(normalizeError(error));
+        }
+      },
+      {
+        concurrency: 10,
+      }
+    );
+
+    if (r.find((res) => res.isErr())) {
+      return new Err(
+        new Error(
+          `Failed to delete ${r.filter((res) => res.isErr()).length} triggers`
+        )
+      );
+    }
+    return new Ok(undefined);
+  }
+
   static async disableAllForWorkspace(
     auth: Authenticator
   ): Promise<Result<undefined, Error>> {
@@ -432,7 +464,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   async upsertTemporalWorkflow(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
-        return createOrUpdateAgentScheduleWorkflow({
+        return createOrUpdateAgentSchedule({
           auth,
           trigger: this,
         });
@@ -448,7 +480,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   ): Promise<Result<void, Error>> {
     switch (this.kind) {
       case "schedule":
-        return deleteAgentScheduleWorkflow({
+        return deleteTriggerSchedule({
           workspaceId: auth.getNonNullableWorkspace().sId,
           trigger: this,
         });
