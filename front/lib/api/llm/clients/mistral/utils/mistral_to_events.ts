@@ -114,7 +114,7 @@ export async function* streamLLMEvents({
         break;
       }
       default: {
-        logger.error(`Unknown finish reason: ${choice.finishReason as string}`);
+        logger.error(`Unknown finish reason: ${choice.finishReason}`);
         break;
       }
     }
