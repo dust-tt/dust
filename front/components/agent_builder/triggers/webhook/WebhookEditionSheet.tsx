@@ -108,12 +108,7 @@ function WebhookEditionStatusToggle({
           size="xs"
           disabled={!isEditor}
           selected={enabled}
-          onClick={() => {
-            if (!isEditor) {
-              return;
-            }
-            setValue("enabled", !enabled);
-          }}
+          onClick={() => setValue("enabled", !enabled)}
         />
         {enabled
           ? "The trigger is currently enabled"
@@ -210,12 +205,7 @@ function WebhookEditionIncludePayload({
       <Checkbox
         size="sm"
         checked={value}
-        onClick={() => {
-          if (!isEditor) {
-            return;
-          }
-          onChange(!value);
-        }}
+        onClick={() => onChange(!value)}
         disabled={!isEditor}
       />
     </>
