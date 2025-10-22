@@ -129,10 +129,8 @@ function WebhookEditionEventSelector({
             className="w-fit"
             disabled={!isEditor}
             label={
-              selectedEvent
-                ? availableEvents.find((e) => e.value === selectedEvent)
-                    ?.name ?? "Select event"
-                : "Select event"
+              availableEvents.find((e) => e.value === selectedEvent)?.name ??
+              "Select event"
             }
           />
         </DropdownMenuTrigger>
