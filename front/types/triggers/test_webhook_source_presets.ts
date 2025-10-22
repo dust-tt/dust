@@ -38,7 +38,7 @@ class TestWebhookService implements RemoteWebhookService {
   }): Promise<
     Result<
       {
-        webhookIds: Record<string, string>;
+        updatedRemoteMetadata: Record<string, any>;
         errors?: string[];
       },
       Error
@@ -46,7 +46,10 @@ class TestWebhookService implements RemoteWebhookService {
   > {
     logger.info("Creating webhooks with params:", params);
     return new Ok({
-      webhookIds: { test_event: `test-webhook-id-${Date.now()}` },
+      updatedRemoteMetadata: {
+        ...params.remoteMetadata,
+        webhookIds: { test_event: `test-webhook-id-${Date.now()}` },
+      },
     });
   }
 
