@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getGithubOrganizations } from "@app/lib/api/webhooks/github/orgs";
+import { getGithubRepositories } from "@app/lib/api/webhooks/github/repos";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Err, Ok } from "@app/types";
@@ -40,9 +42,6 @@ vi.mock("@app/types", async (importOriginal) => {
     })),
   };
 });
-
-import { getGithubOrganizations } from "@app/types/triggers/github/orgs";
-import { getGithubRepositories } from "@app/types/triggers/github/repos";
 
 async function setupTest() {
   const { req, res, workspace, authenticator } =

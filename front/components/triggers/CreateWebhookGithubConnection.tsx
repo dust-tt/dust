@@ -15,17 +15,14 @@ import {
 import { useEffect, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import type {
-  GithubAdditionalData,
-  GithubOrganization,
-  GithubRepository,
-} from "@app/lib/triggers/services/github_webhook_service";
+import type { GithubAdditionalData } from "@app/lib/triggers/services/github_webhook_service";
+import { GithubAdditionalDataSchema } from "@app/lib/triggers/services/github_webhook_service";
 import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
 
 type CreateWebhookGithubConnectionProps = {
   owner: LightWorkspaceType;
-  serviceData: Record<string, any> | null;
+  serviceData: Record<string, unknown> | null;
   isFetchingServiceData: boolean;
   onFetchServiceData: (connectionId: string) => Promise<void>;
   onGithubDataChange?: (
@@ -38,47 +35,15 @@ type CreateWebhookGithubConnectionProps = {
   onReadyToSubmitChange?: (isReady: boolean) => void;
 };
 
-function isGithubOrganization(obj: unknown): obj is GithubOrganization {
-  return (
-    typeof obj === "object" &&
-    obj !== null &&
-    "login" in obj &&
-    "id" in obj &&
-    typeof obj.login === "string" &&
-    typeof obj.id === "number"
-  );
-}
-
-function isGithubRepository(obj: unknown): obj is GithubRepository {
-  return (
-    typeof obj === "object" &&
-    obj !== null &&
-    "full_name" in obj &&
-    "id" in obj &&
-    typeof obj.full_name === "string" &&
-    typeof obj.id === "number"
-  );
-}
-
 function toGithubData(
-  data: Record<string, any> | null
+  data: Record<string, unknown> | null
 ): GithubAdditionalData | null {
   if (!data) {
     return null;
   }
-  if (
-    "repositories" in data &&
-    Array.isArray(data.repositories) &&
-    "organizations" in data &&
-    Array.isArray(data.organizations) &&
-    data.repositories.every(isGithubRepository) &&
-    data.organizations.every(isGithubOrganization)
-  ) {
-    const repositories = data.repositories;
-    const organizations = data.organizations;
-    return { repositories, organizations };
-  }
-  return null;
+
+  const result = GithubAdditionalDataSchema.safeParse(data);
+  return result.success ? result.data : null;
 }
 
 export function CreateWebhookGithubConnection({

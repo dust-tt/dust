@@ -1,29 +1,34 @@
 import { Octokit } from "@octokit/core";
+import { z } from "zod";
 
 import config from "@app/lib/api/config";
+import { getGithubOrganizations } from "@app/lib/api/webhooks/github/orgs";
+import { getGithubRepositories } from "@app/lib/api/webhooks/github/repos";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isString, normalizeError, OAuthAPI, Ok } from "@app/types";
-import { getGithubOrganizations } from "@app/types/triggers/github/orgs";
-import { getGithubRepositories } from "@app/types/triggers/github/repos";
 
 import type { RemoteWebhookService } from "./remote_webhook_service";
 
-export type GithubAdditionalData = {
-  repositories: GithubRepository[];
-  organizations: GithubOrganization[];
-};
+export const GithubOrganizationSchema = z.object({
+  id: z.number(),
+  login: z.string(),
+});
 
-export type GithubOrganization = {
-  id: number;
-  login: string;
-};
+export const GithubRepositorySchema = z.object({
+  id: z.number(),
+  full_name: z.string(),
+});
 
-export type GithubRepository = {
-  id: number;
-  full_name: string;
-};
+export const GithubAdditionalDataSchema = z.object({
+  repositories: z.array(GithubRepositorySchema),
+  organizations: z.array(GithubOrganizationSchema),
+});
+
+export type GithubOrganization = z.infer<typeof GithubOrganizationSchema>;
+export type GithubRepository = z.infer<typeof GithubRepositorySchema>;
+export type GithubAdditionalData = z.infer<typeof GithubAdditionalDataSchema>;
 
 export class GitHubWebhookService implements RemoteWebhookService {
   async getServiceData(

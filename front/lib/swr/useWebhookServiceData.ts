@@ -9,9 +9,10 @@ export function useWebhookServiceData(
   kind: WebhookSourceKind
 ) {
   const sendNotification = useSendNotification();
-  const [serviceData, setServiceData] = useState<Record<string, any> | null>(
-    null
-  );
+  const [serviceData, setServiceData] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [isFetchingServiceData, setIsFetchingServiceData] = useState(false);
 
   const fetchServiceData = useCallback(

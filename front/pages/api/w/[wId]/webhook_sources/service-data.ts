@@ -2,12 +2,16 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { OAuthAPI } from "@app/types";
-import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import {
+  isNonCustomWebhookSourceKind,
+  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
+} from "@app/types/triggers/webhooks";
 
 export type GetServiceDataResponseType = {
   serviceData: Record<string, any>;
@@ -53,12 +57,7 @@ async function handler(
         });
       }
 
-      // Validate that kind is a valid webhook source kind (excluding "custom")
-      const preset =
-        WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[
-          kind as keyof typeof WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP
-        ];
-      if (!preset || kind === "custom") {
+      if (!isNonCustomWebhookSourceKind(kind)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -67,23 +66,28 @@ async function handler(
           },
         });
       }
-
-      // Check if the preset has a webhookService
-      if (!("webhookService" in preset)) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Kind ${kind} does not support service data retrieval.`,
-          },
-        });
-      }
+      const preset = WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind];
 
       try {
+        // Verify the connection belongs to this user and workspace
+        const ownershipCheck = await checkConnectionOwnership(
+          auth,
+          connectionId
+        );
+        if (ownershipCheck.isErr()) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: "Connection does not belong to this user/workspace",
+            },
+          });
+        }
+
         // Get access token from OAuth API
         const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), console);
 
-        // First, verify the connection belongs to this workspace
+        // Verify the connection is for the correct provider
         const metadataRes = await oauthAPI.getConnectionMetadata({
           connectionId,
         });
@@ -93,29 +97,7 @@ async function handler(
             status_code: 404,
             api_error: {
               type: "invalid_request_error",
-              message: "OAuth connection not found",
-            },
-          });
-        }
-
-        const workspace = auth.workspace();
-        if (!workspace) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "workspace_not_found",
-              message: "Workspace not found",
-            },
-          });
-        }
-
-        const workspaceId = metadataRes.value.connection.metadata.workspace_id;
-        if (!workspaceId || workspaceId !== workspace.sId) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "workspace_auth_error",
-              message: "Connection does not belong to this workspace",
+              message: "Connection not found",
             },
           });
         }
