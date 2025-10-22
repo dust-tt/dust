@@ -180,12 +180,14 @@ async function handler(
         }
 
         if (kind !== "custom" && connectionId && remoteMetadata) {
+          // Allow redirection to public URL in local dev for webhook registrations.
+          const baseUrl =
+            process.env.DUST_WEBHOOKS_PUBLIC_URL ?? config.getClientFacingUrl();
           const webhookUrl = buildWebhookUrl({
-            apiBaseUrl: config.getClientFacingUrl(),
+            apiBaseUrl: baseUrl,
             workspaceId: workspace.sId,
-            webhookSource: webhookSource,
+            webhookSource: webhookSource.toJSONForAdmin(),
           });
-
           const service =
             WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].webhookService;
           const result = await service.createWebhooks({
