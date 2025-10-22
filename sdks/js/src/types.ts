@@ -168,6 +168,7 @@ export const supportedOtherFileFormats = {
   "application/vnd.ms-excel": [".xls"],
   "application/pdf": [".pdf"],
   "application/vnd.dust.section.json": [".json"],
+  "message/rfc822": [".eml"],
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
   "text/markdown": [".md", ".markdown"],
