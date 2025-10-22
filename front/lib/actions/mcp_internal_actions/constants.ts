@@ -938,14 +938,14 @@ The directive should be used to display a clickable version of the agent name in
       );
     },
     allowMultipleInstances: false,
-    isPreview: true,
+    isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "deep_dive",
       version: "0.1.0",
-      description: `Launch a handoff of the user's query to the @${DEEP_DIVE_NAME} agent.`,
+      description: `Hand off complex questions to the @${DEEP_DIVE_NAME} agent for comprehensive analysis across company data, databases, and web sources—thorough analysis that may take several minutes.`,
       authorization: null,
       icon: "ActionAtomIcon",
       documentationUrl: null,
