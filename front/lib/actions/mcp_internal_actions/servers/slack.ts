@@ -782,13 +782,18 @@ async function createServer(
         }
 
         try {
-          return await executePostMessage(auth, agentLoopContext, {
-            to,
-            message,
-            threadTs,
-            fileId,
-            accessToken,
-          });
+          return await executePostMessage(
+            auth,
+            agentLoopContext,
+            {
+              to,
+              message,
+              threadTs,
+              fileId,
+              accessToken,
+            },
+            mcpServerId
+          );
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
             return new Ok(makePersonalAuthenticationError("slack").content);
