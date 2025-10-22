@@ -2831,6 +2831,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SlackLogo"
   | "StripeLogo"
   | "OpenaiLogo"
+  | "ValTownLogo"
 >();
 
 const CustomServerIconSchema = FlexibleEnumSchema<

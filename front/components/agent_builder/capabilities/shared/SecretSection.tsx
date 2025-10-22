@@ -29,7 +29,6 @@ function SecretSelectionTable({
       <DataTable
         data={tableData}
         columns={columns}
-        pagination={{ pageSize: 10, pageIndex: 0 }}
         className="h-full"
         filterColumn="name"
       />
