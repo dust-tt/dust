@@ -27,6 +27,7 @@ import {
 import logger from "@connectors/logger/logger";
 import type { SnowflakeCredentials } from "@connectors/types";
 import { EXCLUDE_DATABASES, EXCLUDE_SCHEMAS } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SnowflakeRow = Record<string, any>;
@@ -296,7 +297,7 @@ export async function connectToSnowflake(
 
     return new Ok(connection);
   } catch (error) {
-    return new Err(error instanceof Error ? error : new Error(String(error)));
+    return new Err(normalizeError(error));
   }
 }
 
@@ -693,7 +694,7 @@ async function _closeConnection(
     await new Promise<void>((resolve, reject) => {
       conn.destroy((err: SnowflakeError | undefined) => {
         if (err) {
-          console.error("Error closing connection:", err);
+          logger.error({ error: err }, "Error closing Snowflake connection");
           reject(err);
         } else {
           resolve();
@@ -702,7 +703,7 @@ async function _closeConnection(
     });
     return new Ok(undefined);
   } catch (error) {
-    return new Err(error instanceof Error ? error : new Error(String(error)));
+    return new Err(normalizeError(error));
   }
 }
 
@@ -734,6 +735,6 @@ async function _executeQuery(
     );
     return new Ok(r);
   } catch (error) {
-    return new Err(error instanceof Error ? error : new Error(String(error)));
+    return new Err(normalizeError(error));
   }
 }
