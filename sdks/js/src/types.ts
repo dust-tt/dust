@@ -943,6 +943,15 @@ const AgentMentionSchema = z.object({
 
 export type AgentMentionType = z.infer<typeof AgentMentionSchema>;
 
+const UserMentionSchema = z.object({
+  type: z.literal("user"),
+  userId: z.string(),
+});
+
+export type UserMentionType = z.infer<typeof UserMentionSchema>;
+
+const MentionSchema = z.union([AgentMentionSchema, UserMentionSchema]);
+
 const UserMessageContextSchema = z.object({
   username: z.string(),
   timezone: Timezone,
@@ -964,7 +973,7 @@ const UserMessageSchema = z.object({
   visibility: VisibilitySchema,
   version: z.number(),
   user: UserSchema.nullable(),
-  mentions: z.array(AgentMentionSchema),
+  mentions: z.array(MentionSchema),
   content: z.string(),
   context: UserMessageContextSchema,
 });
@@ -1938,11 +1947,7 @@ export type GetWorkspaceFeatureFlagsResponseType = z.infer<
 export const PublicPostMessagesRequestBodySchema = z.intersection(
   z.object({
     content: z.string().min(1),
-    mentions: z.array(
-      z.object({
-        configurationId: z.string(),
-      })
-    ),
+    mentions: z.array(MentionSchema),
     context: UserMessageContextSchema.extend({
       clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
@@ -1966,11 +1971,7 @@ export type PostMessagesResponseBody = {
 
 export const PublicPostEditMessagesRequestBodySchema = z.object({
   content: z.string(),
-  mentions: z.array(
-    z.object({
-      configurationId: z.string(),
-    })
-  ),
+  mentions: z.array(MentionSchema),
   skipToolsValidation: z.boolean().optional().default(false),
 });
 
@@ -2046,11 +2047,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
       z.intersection(
         z.object({
           content: z.string().min(1),
-          mentions: z.array(
-            z.object({
-              configurationId: z.string(),
-            })
-          ),
+          mentions: z.array(MentionSchema),
           context: UserMessageContextSchema,
         }),
         z
