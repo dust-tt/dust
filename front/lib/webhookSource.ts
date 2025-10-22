@@ -75,3 +75,17 @@ export const verifySignature = ({
     return false;
   }
 };
+
+export const buildWebhookUrl = ({
+  apiBaseUrl,
+  workspaceSId,
+  webhookSourceSId,
+  urlSecret,
+}: {
+  apiBaseUrl: string;
+  workspaceSId: string;
+  webhookSourceSId: string;
+  urlSecret: string;
+}): string => {
+  return `${apiBaseUrl}/api/v1/w/${workspaceSId}/triggers/hooks/${webhookSourceSId}/${urlSecret}`;
+};

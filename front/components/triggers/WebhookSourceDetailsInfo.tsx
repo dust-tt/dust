@@ -28,6 +28,7 @@ import { WebhookSourceGithubDetails } from "@app/components/triggers/WebhookSour
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import {
+  buildWebhookUrl,
   DEFAULT_WEBHOOK_ICON,
   normalizeWebhookIcon,
 } from "@app/lib/webhookSource";
@@ -100,8 +101,12 @@ export function WebhookSourceDetailsInfo({
   }, [isCopied, sendNotification]);
 
   const webhookUrl = useMemo(() => {
-    const { url } = config.getDustAPIConfig();
-    return `${url}/api/v1/w/${owner.sId}/triggers/hooks/${webhookSourceView.webhookSource.sId}/${webhookSourceView.webhookSource.urlSecret}`;
+    return buildWebhookUrl({
+      apiBaseUrl: config.getDustAPIConfig().url,
+      workspaceSId: owner.sId,
+      webhookSourceSId: webhookSourceView.webhookSource.sId,
+      urlSecret: webhookSourceView.webhookSource.urlSecret,
+    });
   }, [
     owner.sId,
     webhookSourceView.webhookSource.sId,
