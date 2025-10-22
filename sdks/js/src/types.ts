@@ -1038,6 +1038,8 @@ export type ConversationVisibility = z.infer<
   typeof ConversationVisibilitySchema
 >;
 
+// Beware when you add anything to this schema as it will be difficult to remove it later.
+// It do NOT need to be a perfect match with the internal ConversationWithoutContentType, only keep the subset that makes sense for the public api.
 const ConversationWithoutContentSchema = z.object({
   id: ModelIdSchema,
   created: z.number(),
@@ -1049,7 +1051,7 @@ const ConversationWithoutContentSchema = z.object({
   title: z.string().nullable(),
   visibility: ConversationVisibilitySchema,
   groupIds: z.array(z.string()).optional(),
-  requestedGroupIds: z.array(z.array(z.string())),
+  requestedGroupIds: z.array(z.array(z.string())).optional(), // Same as groupIds, should be removed once the chrome extension is updated
 });
 
 export const ConversationSchema = ConversationWithoutContentSchema.extend({
