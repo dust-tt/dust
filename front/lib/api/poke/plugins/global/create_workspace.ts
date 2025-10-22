@@ -4,6 +4,7 @@ import { config } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { Plan } from "@app/lib/models/plan";
+import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { getRegionDisplay } from "@app/lib/poke/regions";
 import { isEmailValid } from "@app/lib/utils";
 import { Err, Ok } from "@app/types";
@@ -59,10 +60,12 @@ export const createWorkspacePlugin = createPlugin({
         label: "None (redirect to Pro plan paywall)",
         value: "",
       },
-      ...plans.map((plan) => ({
-        label: `${plan.name} (${plan.code})`,
-        value: plan.code,
-      })),
+      ...plans
+        .filter((plan) => isFreePlan(plan.code))
+        .map((plan) => ({
+          label: `${plan.name} (${plan.code})`,
+          value: plan.code,
+        })),
     ];
 
     return new Ok({
