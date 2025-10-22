@@ -21,7 +21,9 @@ import type {
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 
-function userContentToContentChunk(content: Content): ContentChunk {
+function toContentChunk(
+  content: Content | TextContentType | ReasoningContentType
+): ContentChunk | undefined {
   switch (content.type) {
     case "text":
       return content;
@@ -31,15 +33,6 @@ function userContentToContentChunk(content: Content): ContentChunk {
         type: "image_url",
         imageUrl: content.image_url.url,
       };
-    default:
-      assertNever(content);
-  }
-}
-
-function assistantContentToContentChunk(
-  content: TextContentType | ReasoningContentType
-): ContentChunk | undefined {
-  switch (content.type) {
     case "text_content":
       return {
         type: "text",
@@ -74,7 +67,7 @@ function toAssistantMessage(
         (c): c is TextContentType | ReasoningContentType =>
           c.type !== "function_call"
       )
-      .map(assistantContentToContentChunk)
+      .map(toContentChunk)
   );
 
   const toolCalls = message.contents
@@ -113,7 +106,7 @@ export function toMessage(
     case "user": {
       return {
         role: "user",
-        content: message.content.map(userContentToContentChunk),
+        content: compact(message.content.map(toContentChunk)),
       };
     }
     case "function": {
@@ -122,7 +115,7 @@ export function toMessage(
         content:
           typeof message.content === "string"
             ? message.content
-            : message.content.map(userContentToContentChunk),
+            : compact(message.content.map(toContentChunk)),
         name: message.name,
         toolCallId: message.function_call_id,
       };
