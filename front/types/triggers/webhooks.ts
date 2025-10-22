@@ -40,10 +40,12 @@ export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
 
 export const WEBHOOK_SOURCE_KIND = ["custom", "github", "test"] as const;
 
-export function isNonCustomWebhookSourceKind(
+export function isWebhookSourceKind(
   kind: string
-): kind is Exclude<(typeof WEBHOOK_SOURCE_KIND)[number], "custom"> {
-  return kind !== "custom" && WEBHOOK_SOURCE_KIND.includes(kind as any);
+): kind is (typeof WEBHOOK_SOURCE_KIND)[number] {
+  return WEBHOOK_SOURCE_KIND.includes(
+    kind as (typeof WEBHOOK_SOURCE_KIND)[number]
+  );
 }
 
 export type WebhookSourceKind = (typeof WEBHOOK_SOURCE_KIND)[number];

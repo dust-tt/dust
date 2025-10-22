@@ -7,14 +7,14 @@ import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { OAuthAPI } from "@app/types";
+import { isString, OAuthAPI } from "@app/types";
 import {
-  isNonCustomWebhookSourceKind,
+  isWebhookSourceKind,
   WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
 } from "@app/types/triggers/webhooks";
 
 export type GetServiceDataResponseType = {
-  serviceData: Record<string, any>;
+  serviceData: Record<string, unknown>;
 };
 
 async function handler(
@@ -37,7 +37,7 @@ async function handler(
     case "GET":
       const { connectionId, kind } = req.query;
 
-      if (!connectionId || typeof connectionId !== "string") {
+      if (!connectionId || !isString(connectionId)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -47,7 +47,7 @@ async function handler(
         });
       }
 
-      if (!kind || typeof kind !== "string") {
+      if (!kind || !isString(kind)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -57,7 +57,7 @@ async function handler(
         });
       }
 
-      if (!isNonCustomWebhookSourceKind(kind)) {
+      if (!isWebhookSourceKind(kind) || kind === "custom") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -68,93 +68,77 @@ async function handler(
       }
       const preset = WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind];
 
-      try {
-        // Verify the connection belongs to this user and workspace
-        const ownershipCheck = await checkConnectionOwnership(
-          auth,
-          connectionId
-        );
-        if (ownershipCheck.isErr()) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "workspace_auth_error",
-              message: "Connection does not belong to this user/workspace",
-            },
-          });
-        }
-
-        // Get access token from OAuth API
-        const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), console);
-
-        // Verify the connection is for the correct provider
-        const metadataRes = await oauthAPI.getConnectionMetadata({
-          connectionId,
+      // Verify the connection belongs to this user and workspace
+      const ownershipCheck = await checkConnectionOwnership(auth, connectionId);
+      if (ownershipCheck.isErr()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Connection does not belong to this user/workspace",
+          },
         });
+      }
 
-        if (metadataRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Connection not found",
-            },
-          });
-        }
+      // Get access token from OAuth API
+      const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), console);
 
-        if (metadataRes.value.connection.provider !== kind) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "workspace_auth_error",
-              message: "Connection is not made for this provider",
-            },
-          });
-        }
+      // Verify the connection is for the correct provider
+      const metadataRes = await oauthAPI.getConnectionMetadata({
+        connectionId,
+      });
 
-        const tokenRes = await oauthAPI.getAccessToken({ connectionId });
-
-        if (tokenRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Failed to get access token",
-            },
-          });
-        }
-
-        const accessToken = tokenRes.value.access_token;
-
-        // Call getServiceData on the webhook service
-        const serviceDataResult =
-          await preset.webhookService.getServiceData(accessToken);
-
-        if (serviceDataResult.isErr()) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: serviceDataResult.error.message,
-            },
-          });
-        }
-
-        return res.status(200).json({
-          serviceData: serviceDataResult.value,
+      if (metadataRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Connection not found",
+          },
         });
-      } catch (error) {
+      }
+
+      if (metadataRes.value.connection.provider !== kind) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Connection is not made for this provider",
+          },
+        });
+      }
+
+      const tokenRes = await oauthAPI.getAccessToken({ connectionId });
+
+      if (tokenRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message:
-              error instanceof Error
-                ? error.message
-                : "Failed to fetch service data",
+            message: "Failed to get access token",
           },
         });
       }
+
+      const accessToken = tokenRes.value.access_token;
+
+      // Call getServiceData on the webhook service
+      const serviceDataResult =
+        await preset.webhookService.getServiceData(accessToken);
+
+      if (serviceDataResult.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: serviceDataResult.error.message,
+          },
+        });
+      }
+
+      return res.status(200).json({
+        serviceData: serviceDataResult.value,
+      });
 
     default:
       return apiError(req, res, {

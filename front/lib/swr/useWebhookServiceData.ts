@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { LightWorkspaceType } from "@app/types";
+import { normalizeError } from "@app/types";
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 
 export function useWebhookServiceData(
@@ -40,7 +41,7 @@ export function useWebhookServiceData(
         sendNotification({
           type: "error",
           title: "Failed to fetch service data",
-          description: error instanceof Error ? error.message : "Unknown error",
+          description: normalizeError(error).message,
         });
         setServiceData(null);
       } finally {

@@ -15,8 +15,8 @@ import {
 import { useEffect, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { GithubAdditionalData } from "@app/lib/triggers/services/github_webhook_service";
-import { GithubAdditionalDataSchema } from "@app/lib/triggers/services/github_webhook_service";
+import type { GithubAdditionalData } from "@app/lib/triggers/services/github_service_types";
+import { GithubAdditionalDataSchema } from "@app/lib/triggers/services/github_service_types";
 import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
 
@@ -35,15 +35,15 @@ type CreateWebhookGithubConnectionProps = {
   onReadyToSubmitChange?: (isReady: boolean) => void;
 };
 
-function toGithubData(
+function isGithubAdditionalData(
   data: Record<string, unknown> | null
-): GithubAdditionalData | null {
+): data is GithubAdditionalData {
   if (!data) {
-    return null;
+    return false;
   }
 
   const result = GithubAdditionalDataSchema.safeParse(data);
-  return result.success ? result.data : null;
+  return result.success;
 }
 
 export function CreateWebhookGithubConnection({
@@ -65,9 +65,9 @@ export function CreateWebhookGithubConnection({
     []
   );
   const [repoSearchQuery, setRepoSearchQuery] = useState("");
-  const githubAdditionalData = toGithubData(serviceData);
-  const githubRepositories = githubAdditionalData?.repositories ?? [];
-  const githubOrganizations = githubAdditionalData?.organizations ?? [];
+  const githubData = isGithubAdditionalData(serviceData) ? serviceData : null;
+  const githubRepositories = githubData?.repositories ?? [];
+  const githubOrganizations = githubData?.organizations ?? [];
   const [orgSearchQuery, setOrgSearchQuery] = useState("");
   const [showRepoDropdown, setShowRepoDropdown] = useState(false);
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);

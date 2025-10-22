@@ -31,7 +31,7 @@ const TEST_EVENT: WebhookEvent = {
 class TestWebhookService implements RemoteWebhookService {
   async getServiceData(
     oauthToken: string
-  ): Promise<Result<Record<string, any>, Error>> {
+  ): Promise<Result<Record<string, unknown>, Error>> {
     logger.info("Fetching service data with oauthToken:", oauthToken);
     return new Ok({
       info: "This is test service data",
