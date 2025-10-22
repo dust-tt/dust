@@ -11,6 +11,11 @@ import {
 import { useEffect, useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import {
+  makeQueryTextForDataSourceSearch,
+  makeQueryTextForFind,
+  makeQueryTextForList,
+} from "@app/components/actions/mcp/details/input_rendering";
 import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
 import {
@@ -54,16 +59,19 @@ import {
   isResourceContentWithText,
   isTextContent,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
+import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
+import {
+  isDataSourceFilesystemFindInputType,
+  isDataSourceFilesystemListInputType,
+  isIncludeInputType,
+  isSearchInputType,
+  isWebsearchInputType,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
-import {
-  asDisplayName,
-  isString,
-  isSupportedImageContentType,
-  parseTimeFrame,
-} from "@app/types";
+import { parseTimeFrame } from "@app/types";
+import { asDisplayName, isSupportedImageContentType } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 export interface MCPActionDetailsProps {
@@ -124,33 +132,26 @@ export function MCPActionDetails({
     isInternalMCPServerOfName(mcpServerId, "search") ||
     isInternalMCPServerOfName(mcpServerId, "data_sources_file_system")
   ) {
-    if (toolName === SEARCH_TOOL_NAME && isString(params.relativeTimeFrame)) {
-      const timeFrame = parseTimeFrame(params.relativeTimeFrame);
-      // TODO: remove these typecasts
-      const queryResource = makeQueryResource({
-        query: params.query as string,
-        timeFrame: timeFrame,
-        tagsIn: params.tagsIn as string[],
-        tagsNot: params.tagsNot as string[],
-        nodeIds: params.nodeIds as string[],
-      });
-
+    if (toolName === SEARCH_TOOL_NAME && isSearchInputType(params)) {
       return (
         <SearchResultDetails
           viewType={viewType}
-          defaultQuery={queryResource.text}
           actionName={
             viewType === "conversation" ? "Searching data" : "Search data"
           }
           actionOutput={output}
           visual={MagnifyingGlassIcon}
+          query={makeQueryTextForDataSourceSearch({
+            ...params,
+            timeFrame: parseTimeFrame(params.relativeTimeFrame),
+          })}
         />
       );
     }
 
     if (
-      toolName === FILESYSTEM_LIST_TOOL_NAME ||
-      toolName === FILESYSTEM_FIND_TOOL_NAME
+      toolName === FILESYSTEM_FIND_TOOL_NAME &&
+      isDataSourceFilesystemFindInputType(params)
     ) {
       return (
         <SearchResultDetails
@@ -161,6 +162,26 @@ export function MCPActionDetails({
               : "Browse data sources"
           }
           actionOutput={output}
+          query={makeQueryTextForFind(params)}
+          visual={ActionDocumentTextIcon}
+        />
+      );
+    }
+
+    if (
+      toolName === FILESYSTEM_LIST_TOOL_NAME &&
+      isDataSourceFilesystemListInputType(params)
+    ) {
+      return (
+        <SearchResultDetails
+          viewType={viewType}
+          actionName={
+            viewType === "conversation"
+              ? "Browsing data sources"
+              : "Browse data sources"
+          }
+          actionOutput={output}
+          query={makeQueryTextForList(params)}
           visual={ActionDocumentTextIcon}
         />
       );
@@ -176,7 +197,7 @@ export function MCPActionDetails({
   }
 
   if (isInternalMCPServerOfName(mcpServerId, "include_data")) {
-    if (toolName === INCLUDE_TOOL_NAME) {
+    if (toolName === INCLUDE_TOOL_NAME && isIncludeInputType(params)) {
       return (
         <SearchResultDetails
           viewType={viewType}
@@ -185,17 +206,18 @@ export function MCPActionDetails({
           }
           actionOutput={output}
           visual={ClockIcon}
+          query={`Requested to include documents ${renderRelativeTimeFrameForToolOutput(params.timeFrame ?? null)}.`}
         />
       );
     }
   }
 
   if (isInternalMCPServerOfName(mcpServerId, "web_search_&_browse")) {
-    if (toolName === WEBSEARCH_TOOL_NAME) {
+    if (toolName === WEBSEARCH_TOOL_NAME && isWebsearchInputType(params)) {
       return (
         <SearchResultDetails
           viewType={viewType}
-          defaultQuery={params.query as string}
+          query={params.query}
           actionName={
             viewType === "conversation" ? "Searching the web" : "Web search"
           }

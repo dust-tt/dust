@@ -1,6 +1,16 @@
-import type { TimeFrame } from "@app/shared/lib/time_frame";
 import { parseTimeFrame } from "@app/shared/lib/time_frame";
 import { asDisplayName } from "@app/shared/lib/utils";
+import {
+  isDataSourceFilesystemFindInputType,
+  isDataSourceFilesystemListInputType,
+  isIncludeInputType,
+  isSearchInputType,
+  isWebsearchInputType,
+  makeQueryTextForDataSourceSearch,
+  makeQueryTextForFind,
+  makeQueryTextForList,
+  renderRelativeTimeFrameForInclude,
+} from "@app/shared/lib/mcp_input_types";
 import { ActionDetailsWrapper } from "@app/ui/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/ui/components/actions/mcp/details/MCPBrowseActionDetails";
 import {
@@ -49,58 +59,6 @@ export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
 
-export function renderRelativeTimeFrameForToolOutput(
-  relativeTimeFrame: TimeFrame | null
-): string {
-  return relativeTimeFrame
-    ? "over the last " +
-        (relativeTimeFrame.duration > 1
-          ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
-          : `${relativeTimeFrame.unit}`)
-    : "across all time periods";
-}
-
-export function renderTagsForToolOutput(
-  tagsIn?: string[],
-  tagsNot?: string[]
-): string {
-  const tagsInAsString =
-    tagsIn && tagsIn.length > 0 ? `, with labels ${tagsIn?.join(", ")}` : "";
-  const tagsNotAsString =
-    tagsNot && tagsNot.length > 0
-      ? `, excluding labels ${tagsNot?.join(", ")}`
-      : "";
-  return `${tagsInAsString}${tagsNotAsString}`;
-}
-
-function renderSearchNodeIds(nodeIds?: string[]): string {
-  return nodeIds && nodeIds.length > 0
-    ? `within ${nodeIds.length} different subtrees `
-    : "";
-}
-
-export function makeQueryResource({
-  query,
-  timeFrame,
-  tagsIn,
-  tagsNot,
-  nodeIds,
-}: {
-  query: string;
-  timeFrame: TimeFrame | null;
-  tagsIn?: string[];
-  tagsNot?: string[];
-  nodeIds?: string[];
-}): string {
-  const timeFrameAsString = renderRelativeTimeFrameForToolOutput(timeFrame);
-  const tagsAsString = renderTagsForToolOutput(tagsIn, tagsNot);
-  const nodeIdsAsString = renderSearchNodeIds(nodeIds);
-
-  return query
-    ? `Searching "${query}" ${nodeIdsAsString}${timeFrameAsString}${tagsAsString}.`
-    : `Searching ${timeFrameAsString}${tagsAsString}.`;
-}
-
 export function MCPActionDetails(props: MCPActionDetailsProps) {
   const {
     action: { output, functionCallName, internalMCPServerName, params },
@@ -114,32 +72,29 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     internalMCPServerName === "search" ||
     internalMCPServerName === "data_sources_file_system"
   ) {
-    if (toolName === SEARCH_TOOL_NAME) {
-      const timeFrame = parseTimeFrame(params.relativeTimeFrame as string);
-      const query = makeQueryResource({
-        query: params.query as string,
-        timeFrame: timeFrame,
-        tagsIn: params.tagsIn as string[],
-        tagsNot: params.tagsNot as string[],
-        nodeIds: params.nodeIds as string[],
-      });
-
+    if (toolName === SEARCH_TOOL_NAME && isSearchInputType(params)) {
       return (
         <SearchResultDetails
           viewType={viewType}
-          defaultQuery={query}
           actionName={
             viewType === "conversation" ? "Searching data" : "Search data"
           }
           actionOutput={output}
           visual={MagnifyingGlassIcon}
+          query={makeQueryTextForDataSourceSearch({
+            query: params.query,
+            timeFrame: parseTimeFrame(params.relativeTimeFrame),
+            tagsIn: params.tagsIn,
+            tagsNot: params.tagsNot,
+            nodeIds: params.nodeIds,
+          })}
         />
       );
     }
 
     if (
-      toolName === FILESYSTEM_LIST_TOOL_NAME ||
-      toolName === FILESYSTEM_FIND_TOOL_NAME
+      toolName === FILESYSTEM_FIND_TOOL_NAME &&
+      isDataSourceFilesystemFindInputType(params)
     ) {
       return (
         <SearchResultDetails
@@ -150,6 +105,26 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
               : "Browse data sources"
           }
           actionOutput={output}
+          query={makeQueryTextForFind(params)}
+          visual={ActionDocumentTextIcon}
+        />
+      );
+    }
+
+    if (
+      toolName === FILESYSTEM_LIST_TOOL_NAME &&
+      isDataSourceFilesystemListInputType(params)
+    ) {
+      return (
+        <SearchResultDetails
+          viewType={viewType}
+          actionName={
+            viewType === "conversation"
+              ? "Browsing data sources"
+              : "Browse data sources"
+          }
+          actionOutput={output}
+          query={makeQueryTextForList(params)}
           visual={ActionDocumentTextIcon}
         />
       );
@@ -165,7 +140,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   }
 
   if (internalMCPServerName === "include_data") {
-    if (toolName === INCLUDE_TOOL_NAME) {
+    if (toolName === INCLUDE_TOOL_NAME && isIncludeInputType(params)) {
       return (
         <SearchResultDetails
           viewType={viewType}
@@ -174,17 +149,20 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           }
           actionOutput={output}
           visual={ClockIcon}
+          query={`Requested to include documents ${renderRelativeTimeFrameForInclude(
+            params.timeFrame ? (parseTimeFrame(params.timeFrame) ?? null) : null
+          )}.`}
         />
       );
     }
   }
 
   if (internalMCPServerName === "web_search_&_browse") {
-    if (toolName === WEBSEARCH_TOOL_NAME) {
+    if (toolName === WEBSEARCH_TOOL_NAME && isWebsearchInputType(params)) {
       return (
         <SearchResultDetails
           viewType={viewType}
-          defaultQuery={params.query as string}
+          query={params.query}
           actionName={
             viewType === "conversation" ? "Searching the web" : "Web search"
           }
