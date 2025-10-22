@@ -163,7 +163,8 @@
     "yargs": "^17.7.2",
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.24.5",
-    "zod-validation-error": "^3.4.0"
+    "zod-validation-error": "^3.4.0",
+    "mathjs": "^15.0.0"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.3.0",
