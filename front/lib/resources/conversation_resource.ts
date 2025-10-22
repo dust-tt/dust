@@ -87,6 +87,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  // TODO(2025-10-22 flav): Add authorization check.
   private static async baseFetch(
     auth: Authenticator,
     fetchConversationOptions?: FetchConversationOptions,
@@ -127,8 +128,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ) {
     return this.baseFetch(auth, options, {
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        sId: sIds,
+        sId: { [Op.in]: sIds },
       },
     });
   }
@@ -150,6 +150,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return this.baseFetch(auth, options);
   }
 
+  // TODO(2025-10-22 flav): Use baseFetch.
   static async listMentionsByConfiguration(
     auth: Authenticator,
     {
@@ -212,15 +213,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return mentions;
   }
 
-  static async listAllBeforeDate({
-    auth,
-    cutoffDate,
-    batchSize = 1000,
-  }: {
-    auth: Authenticator;
-    cutoffDate: Date;
-    batchSize?: number;
-  }): Promise<ConversationResource[]> {
+  static async listAllBeforeDate(
+    auth: Authenticator,
+    cutoffDate: Date,
+    options?: FetchConversationOptions & { batchSize: number }
+  ): Promise<ConversationResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
     const inactiveConversations = await Message.findAll({
       attributes: [
@@ -235,11 +232,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       order: [[fn("MAX", col("createdAt")), "DESC"]],
     });
 
+    const { batchSize = 1000 } = options ?? {};
+
     // We batch to avoid a big where in clause.
     const results: ConversationResource[] = [];
     for (let i = 0; i < inactiveConversations.length; i += batchSize) {
       const batch = inactiveConversations.slice(i, i + batchSize);
-      const conversations = await ConversationModel.findAll({
+      const conversations = await this.baseFetch(auth, options, {
         where: {
           workspaceId,
           id: {
@@ -247,20 +246,24 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           },
         },
       });
-      results.push(...conversations.map((c) => new this(this.model, c.get())));
+
+      results.push(...conversations);
     }
 
     return results;
   }
-  static async listConversationWithAgentCreatedBeforeDate({
-    auth,
-    agentConfigurationId,
-    cutoffDate,
-  }: {
-    auth: Authenticator;
-    agentConfigurationId: string;
-    cutoffDate: Date;
-  }): Promise<string[]> {
+
+  static async listConversationWithAgentCreatedBeforeDate(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      cutoffDate,
+    }: {
+      agentConfigurationId: string;
+      cutoffDate: Date;
+    },
+    options?: FetchConversationOptions
+  ): Promise<string[]> {
     // Find all conversations that:
     // 1. Were created before the cutoff date.
     // 2. Have at least one message from the specified agent.
@@ -298,7 +301,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Step 2: Filter conversations by creation date.
     const conversationIds = messageWithAgent.map((m) => m.conversationId);
-    const conversations = await this.model.findAll({
+    const conversations = await this.baseFetch(auth, options, {
       where: {
         workspaceId,
         id: {
@@ -328,12 +331,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return auth.canRead(
       Authenticator.createResourcePermissionsFromGroupIds(requestedGroupIds)
     );
-
-    // TODO(2025-10-17 thomas): Update permission to use space requirements.
-    // const requestedSpaceIds =
-    //   conversation instanceof ConversationResource
-    //     ? conversation.getRequestedSpaceIdsFromModel(auth)
-    //     : conversation.requestedGroupIds;
   }
 
   static async fetchConversationWithoutContent(
@@ -393,6 +390,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
+  // TODO(2025-10-22 flav): Use baseFetch.
   static async listConversationsForUser(
     auth: Authenticator,
     options?: FetchConversationOptions
@@ -463,8 +461,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     triggerId: string,
     options?: FetchConversationOptions
   ): Promise<ConversationWithoutContentType[]> {
-    const owner = auth.getNonNullableWorkspace();
-
     const triggerModelId = getResourceIdFromSId(triggerId);
     if (triggerModelId === null) {
       return [];
@@ -472,7 +468,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const conversations = await this.baseFetch(auth, options, {
       where: {
-        workspaceId: owner.id,
         triggerId: triggerModelId,
       },
       order: [["createdAt", "DESC"]],
@@ -985,6 +980,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   getRequestedGroupIdsFromModel(auth: Authenticator) {
     const workspace = auth.getNonNullableWorkspace();
+
     return this.requestedGroupIds.map((groups) =>
       groups.map((g) =>
         GroupResource.modelIdToSId({
@@ -997,6 +993,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   getRequestedSpaceIdsFromModel(auth: Authenticator) {
     const workspace = auth.getNonNullableWorkspace();
+
     return this.requestedSpaceIds.map((id) =>
       SpaceResource.modelIdToSId({
         id,

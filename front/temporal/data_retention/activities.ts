@@ -73,11 +73,15 @@ export async function purgeConversationsBatchActivity({
     let nbConversationsDeleted = 0;
 
     do {
-      conversations = await ConversationResource.listAllBeforeDate({
+      conversations = await ConversationResource.listAllBeforeDate(
         auth,
         cutoffDate,
-        batchSize: WORKSPACE_CONVERSATIONS_BATCH_SIZE,
-      });
+        {
+          batchSize: WORKSPACE_CONVERSATIONS_BATCH_SIZE,
+          includeDeleted: true,
+          includeTest: true,
+        }
+      );
 
       logger.info(
         {
@@ -176,11 +180,17 @@ export async function purgeAgentConversationsBatchActivity({
   cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
   const conversationIds =
-    await ConversationResource.listConversationWithAgentCreatedBeforeDate({
+    await ConversationResource.listConversationWithAgentCreatedBeforeDate(
       auth,
-      agentConfigurationId,
-      cutoffDate,
-    });
+      {
+        agentConfigurationId,
+        cutoffDate,
+      },
+      {
+        includeDeleted: true,
+        includeTest: true,
+      }
+    );
 
   await concurrentExecutor(
     conversationIds,
