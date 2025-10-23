@@ -76,14 +76,13 @@ export function ScheduleEdition({
   );
 
   const onSheetSave = async (): Promise<boolean> => {
-    void form.handleSubmit(handleSubmit)();
+    await form.handleSubmit(handleSubmit)();
 
     return true;
   };
 
   const onCancel = () => {
     form.reset(defaultValues);
-    onClose();
   };
 
   return (

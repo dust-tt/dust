@@ -112,7 +112,7 @@ interface ScheduleEditionSheetProps {
   isOpen: boolean;
   onCancel: () => void;
   onClose: () => void;
-  onSave: () => void;
+  onSave: () => Promise<boolean>;
   isEditor: boolean;
 }
 
@@ -186,7 +186,13 @@ export function ScheduleEditionSheet({
                 : "Close"
               : "Add Trigger",
             variant: "primary",
-            onClick: isEditor ? onSave : handleClose,
+            onClick: async () => {
+              if (isEditor) {
+                await onSave();
+              } else {
+                handleClose();
+              }
+            },
             disabled: isSubmitting,
           }}
         />
