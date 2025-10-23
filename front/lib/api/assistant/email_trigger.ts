@@ -11,6 +11,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { sendEmail } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
+import { mentionAgent } from "@app/lib/mentions";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -368,7 +369,7 @@ export async function triggerFromEmail({
   const content =
     agentConfigurations
       .map((agent) => {
-        return `:mention[${agent.name}]{sId=${agent.sId}}`;
+        return mentionAgent(agent);
       })
       .join(" ") +
     " " +

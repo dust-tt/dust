@@ -1,4 +1,3 @@
-import assert from "assert";
 import type {
   CreationAttributes,
   InferAttributes,
@@ -17,14 +16,19 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { createResourcePermissionsFromSpaces } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import type {
   ConversationMCPServerViewType,
   ConversationType,
@@ -36,10 +40,6 @@ import type {
   UserType,
 } from "@app/types";
 import { ConversationError, Err, normalizeError, Ok } from "@app/types";
-
-import { GroupResource } from "./group_resource";
-import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
-import type { ResourceFindOptions } from "./types";
 
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
@@ -88,29 +88,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
-  private static buildSpaceIdToGroupsMap(
-    spaces: SpaceResource[],
-    workspaceId: number
-  ): Map<number, string[][]> {
-    const spaceIdToGroupsMap = new Map<number, string[][]>();
-    for (const space of spaces) {
-      const permissions = space.requestedPermissions();
-      // Extract group IDs from the space's requested permissions.
-      const groupIds = permissions.map((permission) =>
-        permission.groups.map((group) =>
-          GroupResource.modelIdToSId({
-            id: group.id,
-            workspaceId,
-          })
-        )
-      );
-      spaceIdToGroupsMap.set(space.id, groupIds);
-    }
-
-    return spaceIdToGroupsMap;
-  }
-
-  // TODO(2025-10-22 flav): Add authorization check.
   private static async baseFetchWithAuthorization(
     auth: Authenticator,
     fetchConversationOptions?: FetchConversationOptions,
@@ -128,51 +105,61 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       limit: options.limit,
     });
 
+    const uniqueSpaceIds = Array.from(
+      new Set(conversations.flatMap((c) => c.requestedSpaceIds))
+    );
+
+    const spaces = await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds);
+
     const featureFlags = await getFeatureFlags(workspace);
-    if (featureFlags.includes("use_requested_space_ids")) {
-      const uniqueSpaceIds = Array.from(
-        new Set(conversations.flatMap((c) => c.requestedSpaceIds))
+    const hasRequestedSpaceIdsFF = featureFlags.includes(
+      "use_requested_space_ids"
+    );
+
+    // Critical security check: ensure we found ALL requested spaces.
+    if (spaces.length !== uniqueSpaceIds.length) {
+      const foundSpaceIds = new Set(spaces.map((s) => s.id));
+      const missingSpaceIds = uniqueSpaceIds.filter(
+        (id) => !foundSpaceIds.has(id)
       );
 
-      const spaces = await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds);
-
-      // Critical security check: ensure we found ALL requested spaces.
-      if (spaces.length !== uniqueSpaceIds.length) {
-        const foundSpaceIds = new Set(spaces.map((s) => s.id));
-        const missingSpaceIds = uniqueSpaceIds.filter(
-          (id) => !foundSpaceIds.has(id)
-        );
-
+      // TODO(2025-10-23 REQUESTED_SPACE_IDS): Remove this FF check.
+      if (hasRequestedSpaceIdsFF) {
         throw new Error(
           `Security violation: Cannot resolve spaces ${missingSpaceIds.join(", ")} in workspace ${workspace.sId}. ` +
             `Conversations cannot reference spaces from other workspaces.`
         );
       }
+    }
 
-      // Build efficient space ID to groups mapping to avoid O(n) lookups
-      const spaceIdToGroupsMap = this.buildSpaceIdToGroupsMap(
-        spaces,
-        workspace.id
-      );
+    const accessibleConversations = conversations.filter((c) =>
+      auth.canRead(
+        createResourcePermissionsFromSpaces(auth, spaces, {
+          // Parse as Number since Sequelize array of BigInts are returned as strings.
+          requestedSpaceIds: c.requestedSpaceIds.map((id) => Number(id)),
+        })
+      )
+    );
 
-      const accessibleConversations = conversations.filter((c) => {
-        // Resolve space IDs to their corresponding group requirements.
-        const resolvedGroupIds: string[][] = [];
-        for (const spaceId of c.requestedSpaceIds) {
-          const groupIds = spaceIdToGroupsMap.get(spaceId);
-
-          // This should never be undefined since we verified all spaces exist above.
-          assert(groupIds, `No group IDs found for space ID ${spaceId}`);
-
-          resolvedGroupIds.push(...groupIds!);
-        }
-
-        return auth.canRead(
-          Authenticator.createResourcePermissionsFromGroupIds(resolvedGroupIds)
+    if (accessibleConversations.length !== conversations.length) {
+      // If the feature flag is enabled, only return the accessible conversations.
+      // TODO(2025-10-23 REQUESTED_SPACE_IDS): Remove this FF check.
+      if (hasRequestedSpaceIdsFF) {
+        return accessibleConversations.map(
+          (c) => new this(this.model, c.get())
         );
-      });
+      }
 
-      return accessibleConversations.map((c) => new this(this.model, c.get()));
+      // Otherwise, log a warning and return all conversations.
+      logger.warn(
+        {
+          workspaceId: workspace.sId,
+          allConversations: conversations.map((c) => c.sId),
+          accessibleConversations: accessibleConversations.map((c) => c.sId),
+        },
+        "[REQUESTED_SPACE_IDS] User attempted to access conversations referencing spaces they do " +
+          "not have access to. Returning all conversations for backward compatibility."
+      );
     }
 
     return conversations.map((c) => new this(this.model, c.get()));
@@ -285,10 +272,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async listAllBeforeDate(
     auth: Authenticator,
-    cutoffDate: Date,
-    options?: FetchConversationOptions & { batchSize: number }
+    options?: FetchConversationOptions & {
+      batchSize?: number;
+      cutoffDate: Date;
+    }
   ): Promise<ConversationResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const { batchSize = 1000, cutoffDate } = options ?? {};
+
     const inactiveConversations = await Message.findAll({
       attributes: [
         "conversationId",
@@ -302,8 +294,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       order: [[fn("MAX", col("createdAt")), "DESC"]],
     });
 
-    const { batchSize = 1000 } = options ?? {};
-
     // We batch to avoid a big where in clause.
     const results: ConversationResource[] = [];
     for (let i = 0; i < inactiveConversations.length; i += batchSize) {
@@ -313,7 +303,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         options,
         {
           where: {
-            workspaceId,
             id: {
               [Op.in]: batch.map((m) => m.conversationId),
             },
@@ -377,7 +366,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const conversationIds = messageWithAgent.map((m) => m.conversationId);
     const conversations = await this.baseFetchWithAuthorization(auth, options, {
       where: {
-        workspaceId,
         id: {
           [Op.in]: conversationIds,
         },
@@ -951,7 +939,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     { conversation }: { conversation: ConversationWithoutContentType },
     transaction?: Transaction
   ) {
-    return ConversationResource.model.update(
+    return this.model.update(
       {
         hasError: true,
       },
@@ -970,7 +958,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     { conversation }: { conversation: ConversationWithoutContentType },
     transaction?: Transaction
   ) {
-    return ConversationResource.model.update(
+    return this.model.update(
       {
         hasError: false,
       },

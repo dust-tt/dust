@@ -43,7 +43,7 @@ export async function fetchVersionMarkers(
     },
   };
 
-  const result = await searchAnalytics<unknown, VersionMarkersAggs>(baseQuery, {
+  const result = await searchAnalytics<never, VersionMarkersAggs>(baseQuery, {
     aggregations: aggs,
     size: 0,
   });

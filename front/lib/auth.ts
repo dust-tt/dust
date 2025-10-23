@@ -62,7 +62,7 @@ export const getAuthType = (token: string): PublicAPIAuthMethod => {
 };
 
 export interface AuthenticatorType {
-  workspaceId: string | null;
+  workspaceId: string;
   userId: string | null;
   role: RoleType;
   groupIds: string[];
@@ -899,8 +899,10 @@ export class Authenticator {
   }
 
   toJSON(): AuthenticatorType {
+    assert(this._workspace, "Workspace is required to serialize Authenticator");
+
     return {
-      workspaceId: this._workspace?.sId ?? null,
+      workspaceId: this._workspace.sId,
       userId: this._user?.sId ?? null,
       role: this._role,
       groupIds: this._groups.map((g) => g.sId),
@@ -1156,7 +1158,9 @@ export async function prodAPICredentialsForOwner(
 }
 
 export const getFeatureFlags = memoizer.sync({
-  load: async (workspace: WorkspaceType): Promise<WhitelistableFeature[]> => {
+  load: async (
+    workspace: LightWorkspaceType
+  ): Promise<WhitelistableFeature[]> => {
     if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
       return [...WHITELISTABLE_FEATURES];
     } else {
@@ -1167,7 +1171,7 @@ export const getFeatureFlags = memoizer.sync({
     }
   },
 
-  hash: function (workspace: WorkspaceType) {
+  hash: function (workspace: LightWorkspaceType) {
     return `feature_flags_${workspace.id}`;
   },
 

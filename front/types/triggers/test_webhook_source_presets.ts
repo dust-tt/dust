@@ -104,4 +104,8 @@ export const TEST_WEBHOOK_PRESET: PresetWebhook = {
   featureFlag: "hootl_dev_webhooks",
   // inline dummy service for test purposes
   webhookService: new TestWebhookService(),
+  components: {
+    detailsComponent: () => null,
+    createFormComponent: () => null,
+  },
 };
