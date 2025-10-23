@@ -98,11 +98,6 @@ export class GitHubWebhookService implements RemoteWebhookService {
       // Create webhooks for repositories
       for (const repository of repositories) {
         const fullName = repository.fullName;
-        if (!isString(fullName)) {
-          errors.push(`Invalid repository format: ${fullName}`);
-          continue;
-        }
-
         const [owner, repo] = fullName.split("/");
         if (!owner || !repo) {
           errors.push(
@@ -160,11 +155,6 @@ export class GitHubWebhookService implements RemoteWebhookService {
       // Create webhooks for organizations
       for (const organization of organizations) {
         const orgName = organization.name;
-        if (!isString(orgName)) {
-          errors.push(`Invalid organization format: ${orgName}`);
-          continue;
-        }
-
         try {
           const { data: webhook } = await octokit.request(
             "POST /orgs/{org}/hooks",
