@@ -127,7 +127,6 @@ export function ScheduleEditionSheet({
 }: ScheduleEditionSheetProps) {
   const {
     formState: { isSubmitting },
-    register,
   } = useFormContext<ScheduleFormValues>();
 
   const handleClose = () => {
@@ -167,20 +166,6 @@ export function ScheduleEditionSheet({
             <ScheduleEditionScheduler isEditor={isEditor} owner={owner} />
 
             <ScheduleEditionMessageInput isEditor={isEditor} />
-
-            <Input
-              id="trigger-cron"
-              {...register("cron")}
-              placeholder="e.g., 0 9 * * 1-5 (weekdays at 9 AM)"
-              className="hidden"
-            />
-
-            <Input
-              id="trigger-timezone"
-              {...register("timezone")}
-              placeholder="e.g., America/New_York, Europe/Paris"
-              className="hidden"
-            />
           </div>
         </SheetContainer>
 
