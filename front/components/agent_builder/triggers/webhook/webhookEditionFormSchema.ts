@@ -4,7 +4,10 @@ import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_build
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 export const WebhookFormSchema = z.object({
-  name: z.string().min(1, "Name is required").max(255, "Name is too long"),
+  name: z
+    .string()
+    .min(1, "Name is required")
+    .max(255, "Name should be less than 255 characters"),
   enabled: z.boolean().default(true),
   customPrompt: z.string(),
   webhookSourceViewSId: z.string().min(1, "Select a webhook source"),
