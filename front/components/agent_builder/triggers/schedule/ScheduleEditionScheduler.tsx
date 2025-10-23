@@ -157,7 +157,7 @@ export function ScheduleEditionScheduler({
 
   return (
     <div className="space-y-1">
-      <Label htmlFor="trigger-description">Scheduler</Label>
+      <Label htmlFor="schedule-description">Scheduler</Label>
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         Describe when you want the agent to run in natural language.
       </p>
@@ -165,7 +165,7 @@ export function ScheduleEditionScheduler({
         id="schedule-description"
         placeholder='e.g. "run every day at 9 AM", or "Late afternoon on business days"...'
         rows={3}
-        value={naturalLanguageDescription ?? ""}
+        value={naturalLanguageDescription}
         disabled={!isEditor}
         onChange={handleNaturalDescriptionChange}
       />
