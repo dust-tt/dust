@@ -429,6 +429,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
           id: {
             [Op.in]: dataSourceViewModelIds,
           },
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
       }
     );

@@ -390,6 +390,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           agentMessageId,
           step,
           index,
+          workspaceId,
         },
         order: [["version", "DESC"]],
         attributes: ["version"],
