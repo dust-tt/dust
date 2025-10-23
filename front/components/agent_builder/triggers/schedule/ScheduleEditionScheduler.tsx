@@ -57,7 +57,8 @@ export function ScheduleEditionScheduler({
   isEditor,
   owner,
 }: ScheduleEditionSchedulerProps) {
-  const { control, setValue } = useFormContext<ScheduleFormValues>();
+  const { control, setValue, getFieldState, formState } =
+    useFormContext<ScheduleFormValues>();
   const {
     field: {
       value: naturalLanguageDescription,
@@ -66,6 +67,8 @@ export function ScheduleEditionScheduler({
   } = useController({ control, name: "naturalLanguageDescription" });
 
   const cron = useWatch({ control, name: "cron" });
+  const { error: cronError } = getFieldState("cron", formState);
+  const { error: timezoneError } = getFieldState("timezone", formState);
 
   const [generationStatus, setGenerationStatus] = useState<
     "idle" | "loading" | "error"
@@ -189,6 +192,12 @@ export function ScheduleEditionScheduler({
               )}
             </div>
           </ContentMessage>
+        </div>
+      )}
+
+      {(cronError !== undefined || timezoneError !== undefined) && (
+        <div className="text-xs text-warning">
+          {cronError?.message ?? timezoneError?.message}
         </div>
       )}
     </div>
