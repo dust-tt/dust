@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 import type { AgentBuilderScheduleTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -47,8 +47,8 @@ export function ScheduleEdition({
     form.reset(defaultValues);
   }, [form, defaultValues]);
 
-  const onSheetSave = async (): Promise<boolean> => {
-    await form.handleSubmit(async (values: ScheduleFormValues) => {
+  const handleSubmit = useCallback(
+    async (values: ScheduleFormValues) => {
       if (!user) {
         return;
       }
@@ -71,7 +71,12 @@ export function ScheduleEdition({
 
       onSave(triggerData);
       onClose();
-    })();
+    },
+    [user, trigger, onSave, onClose]
+  );
+
+  const onSheetSave = async (): Promise<boolean> => {
+    await form.handleSubmit(handleSubmit)();
 
     return true;
   };
