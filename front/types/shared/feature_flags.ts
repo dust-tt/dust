@@ -28,6 +28,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Collaborative editing features",
     stage: "dust_only",
   },
+  sandbox_tool: {
+    description: "Sandbox MCP tool for running code in sandboxed environments",
+    stage: "dust_only",
+  },
   confluence_tool: {
     description: "Confluence MCP tool",
     stage: "on_demand",

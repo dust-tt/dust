@@ -41,6 +41,7 @@ import { default as reasoningServer } from "@app/lib/actions/mcp_internal_action
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
+import { default as sandboxServer } from "@app/lib/actions/mcp_internal_actions/servers/sandbox";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack";
 import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack_bot";
@@ -190,6 +191,8 @@ export async function getInternalMCPServer(
       return valtownServer(auth, agentLoopContext);
     case "deep_dive":
       return deepDiveServer(auth, agentLoopContext);
+    case "sandbox":
+      return sandboxServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

@@ -71,6 +71,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "agent_management",
   AGENT_MEMORY_SERVER_NAME,
   "agent_router",
+  "sandbox",
   "confluence",
   "conversation_files",
   "data_sources_file_system",
@@ -1150,6 +1151,29 @@ The directive should be used to display a clickable version of the agent name in
       description: "Create music tracks and sound effects",
       authorization: null,
       icon: "ActionMegaphoneIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  sandbox: {
+    id: 39,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("sandbox_tool");
+    },
+    tools_stakes: {
+      execute_code: "low",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "sandbox",
+      version: "1.0.0",
+      description: "Execute code snippets in a sandboxed environment.",
+      authorization: null,
+      icon: "CommandLineIcon",
       documentationUrl: null,
       instructions: null,
     },
