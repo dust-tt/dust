@@ -1,13 +1,19 @@
-import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
+import { getLLM } from "@app/lib/api/llm";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import type { BuilderSuggestionInputType, Result } from "@app/types";
-import { Err, GPT_3_5_TURBO_MODEL_ID, Ok } from "@app/types";
+import type {
+  BuilderSuggestionInputType,
+  ModelConversationTypeMultiActions,
+  Result,
+  UserMessageTypeModel,
+} from "@app/types";
+import { Err, isStringArray, Ok, safeParseJSON } from "@app/types";
 
 const FUNCTION_NAME = "send_suggestions";
 
-const specifications = [
+const specifications: AgentActionSpecification[] = [
   {
     name: FUNCTION_NAME,
     description: "Send suggestions of names for the agent",
@@ -28,7 +34,9 @@ const specifications = [
   },
 ];
 
-function getConversationContext(inputs: BuilderSuggestionInputType) {
+function getConversationContext(inputs: BuilderSuggestionInputType): {
+  messages: Array<UserMessageTypeModel>;
+} {
   const instructions = "instructions" in inputs ? inputs.instructions : "";
   const description = "description" in inputs ? inputs.description : "";
 
@@ -46,7 +54,13 @@ function getConversationContext(inputs: BuilderSuggestionInputType) {
     messages: [
       {
         role: "user",
-        content: initialPrompt + descriptionText + instructionsText,
+        content: [
+          {
+            type: "text",
+            text: initialPrompt + descriptionText + instructionsText,
+          },
+        ],
+        name: "",
       },
     ],
   };
@@ -77,41 +91,60 @@ export async function getBuilderNameSuggestions(
   auth: Authenticator,
   inputs: BuilderSuggestionInputType
 ): Promise<Result<SuggestionResults, Error>> {
-  const res = await runMultiActionsAgent(
-    auth,
-    {
-      functionCall: FUNCTION_NAME,
-      modelId: GPT_3_5_TURBO_MODEL_ID,
-      providerId: "openai",
-      temperature: 0.7,
-      useCache: false,
-    },
-    {
-      conversation: getConversationContext(inputs),
-      prompt:
-        "The user is currently creating an agent based on a large language model." +
-        "The agent has instructions and a description. You are provided with a single " +
-        "message, consisting of this information if it is available. Your role is to " +
-        "suggest good names for the agent.",
-      specifications,
-    }
-  );
+  const prompt =
+    "The user is currently creating an agent based on a large language model." +
+    "The agent has instructions and a description. You are provided with a single " +
+    "message, consisting of this information if it is available. Your role is to " +
+    "suggest good names for the agent. Names can not include whitespaces.";
+  const conversation: ModelConversationTypeMultiActions =
+    getConversationContext(inputs);
+  const llm = await getLLM(auth, {
+    modelId: "mistral-small-latest",
+    options: { bypassFeatureFlag: true },
+  });
 
-  if (res.isErr()) {
-    return new Err(res.error);
+  if (llm === null) {
+    return new Err(new Error("Model not found"));
   }
 
-  if (res.value.actions?.[0]?.arguments?.suggestions) {
-    const { suggestions } = res.value.actions[0].arguments;
+  const events = await llm.stream({
+    conversation,
+    prompt,
+    specifications,
+  });
 
-    const filteredSuggestions = await filterSuggestedNames(auth, suggestions);
+  for await (const event of events) {
+    if (event.type === "tool_call") {
+      const parsedArguments = safeParseJSON(event.content.arguments);
+      if (parsedArguments.isErr()) {
+        return new Err(
+          new Error(
+            `Error parsing suggestions from LLM: ${parsedArguments.error.message}`
+          )
+        );
+      }
+      if (
+        !parsedArguments.value ||
+        !("suggestions" in parsedArguments.value) ||
+        !isStringArray(parsedArguments.value.suggestions)
+      ) {
+        return new Err(
+          new Error(
+            `Error retrieving suggestions from arguments: ${parsedArguments.value}`
+          )
+        );
+      }
 
-    return new Ok({
-      status: "ok",
-      suggestions: Array.isArray(filteredSuggestions)
-        ? filteredSuggestions
-        : null,
-    });
+      const filteredSuggestions = await filterSuggestedNames(
+        auth,
+        parsedArguments.value.suggestions
+      );
+
+      return new Ok({
+        status: "ok",
+        suggestions: filteredSuggestions,
+      });
+    }
   }
 
   return new Err(new Error("No suggestions found"));

@@ -21,9 +21,11 @@ import type { WorkspaceType } from "@app/types";
 interface MentionComponentProps {
   node: {
     attrs: {
+      type: "agent" | "user";
       id: string;
       label: string;
       description?: string;
+      pictureUrl?: string;
     };
   };
   owner?: WorkspaceType;

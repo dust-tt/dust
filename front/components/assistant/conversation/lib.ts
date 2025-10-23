@@ -166,7 +166,7 @@ export function createPlaceholderAgentMessage({
       configuration: {
         sId: mention.id,
         name: mention.label,
-        pictureUrl: mention.pictureUrl,
+        pictureUrl: mention.pictureUrl ?? "",
         status: "active",
         canRead: true,
         // TODO(2025-10-17 thomas): Remove.

@@ -1,10 +1,10 @@
 import { GithubLogo } from "@dust-tt/sparkle";
 
-import { CreateWebhookGithubConnection } from "@app/components/triggers/CreateWebhookGithubConnection";
-import { WebhookSourceGithubDetails } from "@app/components/triggers/WebhookSourceGithubDetails";
-import { GitHubWebhookService } from "@app/lib/triggers/services/github_webhook_service";
-import { issuesSchema } from "@app/types/triggers/github/json_schema_issues";
-import { prSchema } from "@app/types/triggers/github/json_schema_pr";
+import { CreateWebhookGithubConnection } from "@app/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection";
+import { WebhookSourceGithubDetails } from "@app/lib/triggers/built-in-webhooks/github/components/WebhookSourceGithubDetails";
+import { GitHubWebhookService } from "@app/lib/triggers/built-in-webhooks/github/github_webhook_service";
+import { issuesSchema } from "@app/lib/triggers/built-in-webhooks/github/schemas/json_schema_issues";
+import { prSchema } from "@app/lib/triggers/built-in-webhooks/github/schemas/json_schema_pr";
 import type {
   PresetWebhook,
   WebhookEvent,
