@@ -221,6 +221,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   use_requested_space_ids: {
     description: "Use requested spaces Ids for permissions checking.",
     stage: "dust_only",
+  },
   mentions_v2: {
     description: "Enable mentions v2, aka mention users",
     stage: "on_demand",

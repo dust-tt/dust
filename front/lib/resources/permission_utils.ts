@@ -21,11 +21,16 @@ export function createSpaceIdToGroupsMap(
   const spaceIdToGroupsMap = new Map<ModelId, string[]>();
 
   for (const space of allFetchedSpaces) {
-    const groupIds = space.groups.map((group) =>
-      GroupResource.modelIdToSId({
-        id: group.id,
-        workspaceId,
-      })
+    // Use `requestedPermissions` to get up-to-date permission groups (this includes provisioned groups).
+    // TODO: Refactor to avoid calling `requestedPermissions` but still get the right groups.
+    const permissions = space.requestedPermissions();
+    const groupIds = permissions.flatMap((permission) =>
+      permission.groups.map((group) =>
+        GroupResource.modelIdToSId({
+          id: group.id,
+          workspaceId,
+        })
+      )
     );
     spaceIdToGroupsMap.set(space.id, groupIds);
   }
