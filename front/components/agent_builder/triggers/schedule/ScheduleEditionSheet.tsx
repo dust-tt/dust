@@ -164,9 +164,7 @@ export function ScheduleEditionSheet({
 
             <ScheduleEditionStatusToggle isEditor={isEditor} />
 
-            <div className="space-y-1">
-              <ScheduleEditionScheduler isEditor={isEditor} owner={owner} />
-            </div>
+            <ScheduleEditionScheduler isEditor={isEditor} owner={owner} />
 
             <ScheduleEditionMessageInput isEditor={isEditor} />
 

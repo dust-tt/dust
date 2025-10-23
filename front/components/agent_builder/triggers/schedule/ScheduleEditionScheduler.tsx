@@ -156,7 +156,7 @@ export function ScheduleEditionScheduler({
   };
 
   return (
-    <>
+    <div className="space-y-1">
       <Label htmlFor="trigger-description">Scheduler</Label>
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         Describe when you want the agent to run in natural language.
@@ -191,6 +191,6 @@ export function ScheduleEditionScheduler({
           </ContentMessage>
         </div>
       )}
-    </>
+    </div>
   );
 }
