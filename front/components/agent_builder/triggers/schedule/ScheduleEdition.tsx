@@ -76,7 +76,7 @@ export function ScheduleEdition({
   );
 
   const onSheetSave = async (): Promise<boolean> => {
-    await form.handleSubmit(handleSubmit)();
+    void form.handleSubmit(handleSubmit)();
 
     return true;
   };
