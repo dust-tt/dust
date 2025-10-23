@@ -8,6 +8,7 @@ use rsa::RsaPrivateKey;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use tracing::debug;
+use zeroize::Zeroizing;
 
 use super::{
     client::SnowflakeAuthMethod, client::SnowflakeClientConfig, error::Error, error::Result,
@@ -41,7 +42,6 @@ pub async fn login(
 
     let login_data = login_request_data(username, auth, config)?;
 
-    let start_time = std::time::Instant::now();
     let response = match http
         .post(url)
         .query(&queries)
@@ -130,7 +130,8 @@ fn generate_jwt_from_key_pair(
         "iat": timestamp,
         "exp": timestamp + 600
     });
-    let key = EncodingKey::from_rsa_pem(private.to_pkcs8_pem(LineEnding::LF)?.as_bytes())?;
+    let pkcs8_pem = Zeroizing::new(private.to_pkcs8_pem(LineEnding::LF)?);
+    let key = EncodingKey::from_rsa_pem(pkcs8_pem.as_bytes())?;
     let jwt = jsonwebtoken::encode(
         &Header {
             alg: Algorithm::RS256,
@@ -205,8 +206,8 @@ fn try_parse_with_openssl(pem: &str, password: Option<&[u8]>) -> Result<Option<R
     use openssl::pkey::{Id, PKey};
 
     let parsed = if let Some(pass) = password {
-        let mut pw = pass.to_vec();
-        PKey::private_key_from_pem_passphrase(pem.as_bytes(), &mut pw)
+        let mut pw = Zeroizing::new(pass.to_vec());
+        PKey::private_key_from_pem_passphrase(pem.as_bytes(), &mut pw[..])
     } else {
         PKey::private_key_from_pem(pem.as_bytes())
     };
@@ -223,7 +224,8 @@ fn try_parse_with_openssl(pem: &str, password: Option<&[u8]>) -> Result<Option<R
     }
 
     // First try exporting PKCS#8 PEM then parse using rsa crate.
-    if let Ok(pkcs8_pem) = pkey.private_key_to_pem_pkcs8() {
+    if let Ok(pkcs8_pem_vec) = pkey.private_key_to_pem_pkcs8() {
+        let pkcs8_pem = Zeroizing::new(pkcs8_pem_vec);
         if let Ok(s) = std::str::from_utf8(&pkcs8_pem) {
             if let Ok(k) = RsaPrivateKey::from_pkcs8_pem(s) {
                 return Ok(Some(k));
@@ -234,10 +236,13 @@ fn try_parse_with_openssl(pem: &str, password: Option<&[u8]>) -> Result<Option<R
     // Fallback: export PKCS#1 DER and parse.
     match pkey.rsa() {
         Ok(r) => match r.private_key_to_der() {
-            Ok(der) => match RsaPrivateKey::from_pkcs1_der(&der) {
-                Ok(k) => Ok(Some(k)),
-                Err(_) => Ok(None),
-            },
+            Ok(der_vec) => {
+                let der = Zeroizing::new(der_vec);
+                match RsaPrivateKey::from_pkcs1_der(&der) {
+                    Ok(k) => Ok(Some(k)),
+                    Err(_) => Ok(None),
+                }
+            }
             Err(_) => Ok(None),
         },
         Err(_) => Ok(None),

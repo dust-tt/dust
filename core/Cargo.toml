@@ -183,3 +183,4 @@ unicode-normalization = "0.1.24"
 url = "2.5"
 urlencoding = "2.1"
 uuid = { version = "1.8", features = ["v4"] }
+zeroize = "1"
