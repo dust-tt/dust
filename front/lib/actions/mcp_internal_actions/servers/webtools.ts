@@ -1,7 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
 
 import {
   generatePlainTextFile,
@@ -18,7 +17,10 @@ import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { WebsearchInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
+import {
+  WebbrowseInputSchema,
+  WebsearchInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { summarizeWithAgent } from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
