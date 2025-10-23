@@ -68,7 +68,7 @@ export async function fetchToolStepIndexDistribution(
     },
   };
 
-  const result = await searchAnalytics<unknown, ToolStepIndexAggs>(baseQuery, {
+  const result = await searchAnalytics<never, ToolStepIndexAggs>(baseQuery, {
     aggregations: aggs,
     size: 0,
   });
