@@ -264,7 +264,7 @@ export function CreateWebhookGithubConnection({
                       />
                     </div>
                   ))}
-                  {githubRepositories.length > 0 && (
+                  {repositoriesInDropdown.length > 0 && (
                     <DropdownMenu
                       open={showRepoDropdown}
                       onOpenChange={setShowRepoDropdown}
@@ -343,7 +343,7 @@ export function CreateWebhookGithubConnection({
                       />
                     </div>
                   ))}
-                  {githubOrganizations.length > 0 && (
+                  {organizationsInDropdown.length > 0 && (
                     <DropdownMenu
                       open={showOrgDropdown}
                       onOpenChange={setShowOrgDropdown}
