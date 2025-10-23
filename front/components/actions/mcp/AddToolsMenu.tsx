@@ -109,6 +109,7 @@ export const AddToolsMenu = ({
             <DropdownMenuItem
               key={mcpServer.sId}
               label={getMcpServerDisplayName(mcpServer)}
+              className="m-1"
               icon={getIcon(mcpServer.icon)}
               onClick={withTracking(
                 TRACKING_AREAS.TOOLS,
