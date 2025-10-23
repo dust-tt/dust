@@ -3,6 +3,7 @@ import { Client, errors as esErrors } from "@elastic/elasticsearch";
 
 import config from "@app/lib/api/config";
 import { normalizeError } from "@app/types";
+import type { AgentMessageAnalyticsFeedback } from "@app/types/assistant/analytics";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -172,4 +173,19 @@ export async function updateAnalyticsDocById({
       },
     })
   );
+}
+
+/**
+ * Convenience: append a feedback entry atomically to the `feedbacks` array.
+ */
+export async function appendFeedbackToAnalyticsDoc({
+  id,
+  feedback,
+}: {
+  id: string;
+  feedback: AgentMessageAnalyticsFeedback;
+}): Promise<Result<estypes.UpdateResponse, ElasticsearchError>> {
+  const scriptSource =
+    "if (ctx._source.feedbacks == null) { ctx._source.feedbacks = []; } ctx._source.feedbacks.add(params.feedback);";
+  return updateAnalyticsDocById({ id, scriptSource, params: { feedback } });
 }
