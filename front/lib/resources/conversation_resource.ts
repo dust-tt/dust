@@ -123,26 +123,21 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       "use_requested_space_ids"
     );
 
-    // Critical security check: ensure we found ALL requested spaces.
-    if (spaces.length !== uniqueSpaceIds.length) {
-      const foundSpaceIds = new Set(spaces.map((s) => s.id));
-      const missingSpaceIds = uniqueSpaceIds.filter(
-        (id) => !foundSpaceIds.has(id)
-      );
-
-      // TODO(2025-10-23 REQUESTED_SPACE_IDS): Remove this FF check.
-      if (hasRequestedSpaceIdsFF) {
-        throw new Error(
-          `Security violation: Cannot resolve spaces ${missingSpaceIds.join(", ")} in workspace ${workspace.sId}. ` +
-            `Conversations cannot reference spaces from other workspaces.`
-        );
-      }
-    }
+    // Filter out conversations that reference missing/deleted spaces.
+    // There are two reasons why a space may be missing here:
+    // 1. When a space is deleted, conversations referencing it won't be deleted but should not be accessible.
+    // 2. When a space belongs to another workspace (should not happen), conversations referencing it won't be accessible.
+    const foundSpaceIds = new Set(spaces.map((s) => s.id));
+    const validConversations = conversations
+      .filter((c) =>
+        c.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
+      )
+      .map((c) => new this(this.model, c.get()));
 
     // Create space-to-groups mapping once for efficient permission checks.
     const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
 
-    const accessibleConversations = conversations.filter((c) =>
+    const newSpaceBasedAccessible = validConversations.filter((c) =>
       auth.canRead(
         createResourcePermissionsFromSpacesWithMap(
           spaceIdToGroupsMap,
@@ -152,28 +147,38 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       )
     );
 
-    if (accessibleConversations.length !== conversations.length) {
+    if (newSpaceBasedAccessible.length !== validConversations.length) {
       // If the feature flag is enabled, only return the accessible conversations.
       // TODO(2025-10-23 REQUESTED_SPACE_IDS): Remove this FF check.
       if (hasRequestedSpaceIdsFF) {
-        return accessibleConversations.map(
-          (c) => new this(this.model, c.get())
-        );
+        return newSpaceBasedAccessible;
       }
 
-      // Otherwise, log a warning and return all conversations for now.
-      logger.warn(
-        {
-          workspaceId: workspace.sId,
-          allConversations: conversations.map((c) => c.sId),
-          accessibleConversations: accessibleConversations.map((c) => c.sId),
-        },
-        "[REQUESTED_SPACE_IDS] User attempted to access conversations referencing spaces they do " +
-          "not have access to. Returning all conversations for backward compatibility."
+      // Compare new space-based permissions with legacy group-based permissions.
+      const legacyGroupBasedAccessible = validConversations.filter((c) =>
+        ConversationResource.canAccessConversation(auth, c)
       );
+
+      if (
+        newSpaceBasedAccessible.length !== legacyGroupBasedAccessible.length
+      ) {
+        // Otherwise, log a warning showing the difference between new and legacy permissions.
+        logger.warn(
+          {
+            workspaceId: workspace.sId,
+            validConversations: validConversations.map((c) => c.sId),
+            newSpaceBasedAccessible: newSpaceBasedAccessible.map((c) => c.sId),
+            legacyGroupBasedAccessible: legacyGroupBasedAccessible.map(
+              (c) => c.sId
+            ),
+          },
+          "[REQUESTED_SPACE_IDS] Mismatch between new space-based and legacy group-based permission results. " +
+            "Returning all valid conversations for backward compatibility."
+        );
+      }
     }
 
-    return conversations.map((c) => new this(this.model, c.get()));
+    return validConversations;
   }
 
   static triggerIdToSId(triggerId: number | null, workspaceId: number) {

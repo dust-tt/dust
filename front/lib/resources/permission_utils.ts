@@ -54,7 +54,10 @@ export function createResourcePermissionsFromSpacesWithMap(
 
   for (const spaceId of requestedSpaceIds) {
     const groupIds = spaceIdToGroupsMap.get(spaceId);
+
+    // This should never happen since conversations are pre-filtered to only include valid spaces.
     assert(groupIds, `No group IDs found for space ID ${spaceId}`);
+
     resolvedGroupIds.push(groupIds);
   }
 

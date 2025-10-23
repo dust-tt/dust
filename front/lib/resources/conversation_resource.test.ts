@@ -665,6 +665,43 @@ describe("ConversationResource", () => {
           conversationId: multiSpaceConvo.sId,
         });
       });
+
+      it("should filter out conversations referencing deleted spaces", async () => {
+        // Create a regular space and a conversation referencing it.
+        const tempSpace = await SpaceFactory.regular(workspace);
+        const res = await tempSpace.addMembers(adminAuth, {
+          userIds: [adminAuth.getNonNullableUser().sId],
+        });
+        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+          adminAuth.getNonNullableUser().sId,
+          workspace.sId
+        );
+        assert(res.isOk(), "Failed to add member to temp space");
+
+        const tempSpaceConvo = await ConversationFactory.create(auth, {
+          agentConfigurationId: agents[0].sId,
+          requestedSpaceIds: [tempSpace.id], // Reference the space that will be "deleted".
+          messagesCreatedAt: [dateFromDaysAgo(5)],
+        });
+
+        // Verify conversation is initially visible.
+        let allConversations = await ConversationResource.listAll(auth);
+        let conversationIds = allConversations.map((c) => c.sId);
+        expect(conversationIds).toContain(tempSpaceConvo.sId);
+
+        // Simulate space deletion by deleting the space from database.
+        await tempSpace.delete(auth, { hardDelete: false });
+
+        // Now the conversation should be filtered out because its space no longer exists.
+        allConversations = await ConversationResource.listAll(auth);
+        conversationIds = allConversations.map((c) => c.sId);
+        expect(conversationIds).not.toContain(tempSpaceConvo.sId);
+
+        // Clean up the conversation.
+        await destroyConversation(auth, {
+          conversationId: tempSpaceConvo.sId,
+        });
+      });
     });
   });
 });
