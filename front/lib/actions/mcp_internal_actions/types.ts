@@ -119,6 +119,40 @@ export function isWebsearchInputType(
   return WebsearchInputSchema.safeParse(input).success;
 }
 
+export const WebbrowseInputSchema = z.object({
+  urls: z.string().array().describe("List of urls to browse"),
+  format: z
+    .enum(["markdown", "html"])
+    .optional()
+    .describe("Format to return content: 'markdown' (default) or 'html'."),
+  screenshotMode: z
+    .enum(["none", "viewport", "fullPage"])
+    .optional()
+    .describe("Screenshot mode: 'none' (default), 'viewport', or 'fullPage'."),
+  links: z
+    .boolean()
+    .optional()
+    .describe("If true, also retrieve outgoing links from the page."),
+  useSummary: ConfigurableToolInputSchemas[
+    INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN
+  ]
+    .describe(
+      "Summarize web pages using an AI agent before returning content. When enabled, provides concise summaries instead of full page content."
+    )
+    .default({
+      value: false,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
+    }),
+});
+
+export type WebbrowseInputType = z.infer<typeof WebbrowseInputSchema>;
+
+export function isWebbrowseInputType(
+  input: Record<string, unknown>
+): input is WebbrowseInputType {
+  return WebbrowseInputSchema.safeParse(input).success;
+}
+
 export const DataSourceFilesystemFindInputSchema = z.object({
   query: z
     .string()
