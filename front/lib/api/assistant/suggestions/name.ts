@@ -95,7 +95,7 @@ export async function getBuilderNameSuggestions(
     "The user is currently creating an agent based on a large language model." +
     "The agent has instructions and a description. You are provided with a single " +
     "message, consisting of this information if it is available. Your role is to " +
-    "suggest good names for the agent.";
+    "suggest good names for the agent. Names can not include whitespaces.";
   const conversation: ModelConversationTypeMultiActions =
     getConversationContext(inputs);
   const llm = await getLLM(auth, {
