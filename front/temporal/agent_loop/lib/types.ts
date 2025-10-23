@@ -21,7 +21,6 @@ export type Output = {
   actions: Array<{
     functionCallId: string;
     name: string | null;
-    arguments: Record<string, string | boolean | number> | null;
   }>;
   generation: string | null;
   contents: Array<

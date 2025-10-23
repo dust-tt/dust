@@ -7,13 +7,9 @@ import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activiti
 import type {
   GetOutputRequestParams,
   GetOutputResponse,
+  Output,
 } from "@app/temporal/agent_loop/lib/types";
-import { Err, Ok } from "@app/types";
-import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
-} from "@app/types/assistant/agent_message_content";
+import { Err, Ok, safeParseJSON } from "@app/types";
 
 export async function getOutputFromLLMStream(
   auth: Authenticator,
@@ -38,14 +34,8 @@ export async function getOutputFromLLMStream(
     specifications,
   });
 
-  const contents: Array<
-    TextContentType | FunctionCallContentType | ReasoningContentType
-  > = [];
-  const actions: Array<{
-    functionCallId: string;
-    name: string | null;
-    arguments: Record<string, string | boolean | number> | null;
-  }> = [];
+  const contents: Output["contents"] = [];
+  const actions: Output["actions"] = [];
   let generation = "";
   let nativeChainOfThought = "";
 
@@ -129,30 +119,29 @@ export async function getOutputFromLLMStream(
     }
 
     if (event.type === "tool_call") {
-      try {
-        const args = JSON.parse(event.content.arguments);
+      const argsRes = safeParseJSON(event.content.arguments);
 
-        actions.push({
-          name: event.content.name,
-          functionCallId: event.content.id,
-          arguments: args,
-        });
-        contents.push({
-          type: "function_call",
-          value: {
-            id: event.content.id,
-            name: event.content.name,
-            arguments: event.content.arguments,
-          },
-        });
-      } catch (error) {
+      if (argsRes.isErr()) {
         await publishAgentError({
           code: "tool_call_error",
-          message: `Error parsing tool call arguments: ${error}`,
+          message: `Error parsing tool call arguments: ${argsRes.error.message}`,
           metadata: null,
         });
         return new Err({ type: "shouldReturnNull" });
       }
+
+      actions.push({
+        name: event.content.name,
+        functionCallId: event.content.id,
+      });
+      contents.push({
+        type: "function_call",
+        value: {
+          id: event.content.id,
+          name: event.content.name,
+          arguments: event.content.arguments,
+        },
+      });
     }
 
     if (event.type === "text_generated") {

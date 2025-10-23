@@ -13,7 +13,7 @@ import type {
   GetOutputResponse,
   Output,
 } from "@app/temporal/agent_loop/lib/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok, safeParseJSON } from "@app/types";
 import type { ReasoningContentType } from "@app/types/assistant/agent_message_content";
 
 export async function getOutputFromAction(
@@ -220,21 +220,19 @@ export async function getOutputFromAction(
 
         if (block.message.function_calls?.length) {
           for (const fc of block.message.function_calls) {
-            try {
-              const args = JSON.parse(fc.arguments);
-              blockExecutionOutput.actions.push({
-                name: fc.name,
-                functionCallId: fc.id,
-                arguments: args,
-              });
-            } catch (error) {
+            const argsRes = safeParseJSON(fc.arguments);
+            if (argsRes.isErr()) {
               await publishAgentError({
                 code: "function_call_error",
-                message: `Error parsing function call arguments: ${error}`,
+                message: `Error parsing function call arguments: ${argsRes.error.message}`,
                 metadata: null,
               });
               return new Err({ type: "shouldReturnNull" });
             }
+            blockExecutionOutput.actions.push({
+              name: fc.name,
+              functionCallId: fc.id,
+            });
           }
         } else {
           blockExecutionOutput.generation = block.message.content ?? null;
