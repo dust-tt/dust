@@ -137,7 +137,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // Create space-to-groups mapping once for efficient permission checks.
     const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
 
-    const accessibleConversations = validConversations.filter((c) =>
+    const newSpaceBasedAccessible = validConversations.filter((c) =>
       auth.canRead(
         createResourcePermissionsFromSpacesWithMap(
           spaceIdToGroupsMap,
@@ -147,11 +147,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       )
     );
 
-    if (accessibleConversations.length !== validConversations.length) {
+    if (newSpaceBasedAccessible.length !== validConversations.length) {
       // If the feature flag is enabled, only return the accessible conversations.
       // TODO(2025-10-23 REQUESTED_SPACE_IDS): Remove this FF check.
       if (hasRequestedSpaceIdsFF) {
-        return accessibleConversations;
+        return newSpaceBasedAccessible;
       }
 
       // Compare new space-based permissions with legacy group-based permissions.
@@ -160,14 +160,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       );
 
       if (
-        accessibleConversations.length !== legacyGroupBasedAccessible.length
+        newSpaceBasedAccessible.length !== legacyGroupBasedAccessible.length
       ) {
         // Otherwise, log a warning showing the difference between new and legacy permissions.
         logger.warn(
           {
             workspaceId: workspace.sId,
             validConversations: validConversations.map((c) => c.sId),
-            newSpaceBasedAccessible: accessibleConversations.map((c) => c.sId),
+            newSpaceBasedAccessible: newSpaceBasedAccessible.map((c) => c.sId),
             legacyGroupBasedAccessible: legacyGroupBasedAccessible.map(
               (c) => c.sId
             ),
