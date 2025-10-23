@@ -66,28 +66,7 @@
       "type": "object",
       "description": "The pull request itself",
       "properties": {
-        "url": {
-          "type": "string",
-          "description": "API URL of the pull request"
-        },
         "id": { "type": "integer", "description": "Pull request ID" },
-        "node_id": { "type": "string", "description": "GraphQL node ID" },
-        "html_url": {
-          "type": "string",
-          "description": "GitHub URL of the pull request"
-        },
-        "diff_url": {
-          "type": "string",
-          "description": "Diff URL of the pull request"
-        },
-        "patch_url": {
-          "type": "string",
-          "description": "Patch URL of the pull request"
-        },
-        "issue_url": {
-          "type": "string",
-          "description": "API URL of the associated issue"
-        },
         "number": { "type": "integer", "description": "Pull request number" },
         "state": {
           "type": "string",
@@ -106,54 +85,6 @@
           "description": "User who created the pull request",
           "properties": {
             "login": { "type": "string", "description": "GitHub username" },
-            "id": { "type": "integer", "description": "User ID" },
-            "node_id": { "type": "string", "description": "GraphQL node ID" },
-            "avatar_url": {
-              "type": "string",
-              "description": "URL to user avatar"
-            },
-            "gravatar_id": { "type": "string", "description": "Gravatar ID" },
-            "url": { "type": "string", "description": "API URL of the user" },
-            "html_url": {
-              "type": "string",
-              "description": "GitHub profile URL"
-            },
-            "followers_url": {
-              "type": "string",
-              "description": "URL for user followers"
-            },
-            "following_url": {
-              "type": "string",
-              "description": "URL for users being followed"
-            },
-            "gists_url": {
-              "type": "string",
-              "description": "URL for user gists"
-            },
-            "starred_url": {
-              "type": "string",
-              "description": "URL for starred repositories"
-            },
-            "subscriptions_url": {
-              "type": "string",
-              "description": "URL for user subscriptions"
-            },
-            "organizations_url": {
-              "type": "string",
-              "description": "URL for user organizations"
-            },
-            "repos_url": {
-              "type": "string",
-              "description": "URL for user repositories"
-            },
-            "events_url": {
-              "type": "string",
-              "description": "URL for user events"
-            },
-            "received_events_url": {
-              "type": "string",
-              "description": "URL for events received by user"
-            },
             "type": { "type": "string", "description": "Type of user account" },
             "site_admin": {
               "type": "boolean",
@@ -185,63 +116,12 @@
           "format": "date-time",
           "description": "When the pull request was merged"
         },
-        "merge_commit_sha": {
-          "type": ["string", "null"],
-          "description": "SHA of the merge commit"
-        },
         "assignee": {
           "type": ["object", "null"],
           "description": "User assigned to the pull request",
           "properties": {
             "login": { "type": "string", "description": "GitHub username" },
-            "id": { "type": "integer", "description": "User ID" },
-            "node_id": { "type": "string", "description": "GraphQL node ID" },
-            "avatar_url": {
-              "type": "string",
-              "description": "URL to user avatar"
-            },
-            "gravatar_id": { "type": "string", "description": "Gravatar ID" },
-            "url": { "type": "string", "description": "API URL of the user" },
-            "html_url": {
-              "type": "string",
-              "description": "GitHub profile URL"
-            },
-            "followers_url": {
-              "type": "string",
-              "description": "URL for user followers"
-            },
-            "following_url": {
-              "type": "string",
-              "description": "URL for users being followed"
-            },
-            "gists_url": {
-              "type": "string",
-              "description": "URL for user gists"
-            },
-            "starred_url": {
-              "type": "string",
-              "description": "URL for starred repositories"
-            },
-            "subscriptions_url": {
-              "type": "string",
-              "description": "URL for user subscriptions"
-            },
-            "organizations_url": {
-              "type": "string",
-              "description": "URL for user organizations"
-            },
-            "repos_url": {
-              "type": "string",
-              "description": "URL for user repositories"
-            },
-            "events_url": {
-              "type": "string",
-              "description": "URL for user events"
-            },
-            "received_events_url": {
-              "type": "string",
-              "description": "URL for events received by user"
-            },
+
             "type": { "type": "string", "description": "Type of user account" },
             "site_admin": {
               "type": "boolean",
@@ -257,53 +137,7 @@
             "properties": {
               "login": { "type": "string", "description": "GitHub username" },
               "id": { "type": "integer", "description": "User ID" },
-              "node_id": { "type": "string", "description": "GraphQL node ID" },
-              "avatar_url": {
-                "type": "string",
-                "description": "URL to user avatar"
-              },
-              "gravatar_id": { "type": "string", "description": "Gravatar ID" },
-              "url": { "type": "string", "description": "API URL of the user" },
-              "html_url": {
-                "type": "string",
-                "description": "GitHub profile URL"
-              },
-              "followers_url": {
-                "type": "string",
-                "description": "URL for user followers"
-              },
-              "following_url": {
-                "type": "string",
-                "description": "URL for users being followed"
-              },
-              "gists_url": {
-                "type": "string",
-                "description": "URL for user gists"
-              },
-              "starred_url": {
-                "type": "string",
-                "description": "URL for starred repositories"
-              },
-              "subscriptions_url": {
-                "type": "string",
-                "description": "URL for user subscriptions"
-              },
-              "organizations_url": {
-                "type": "string",
-                "description": "URL for user organizations"
-              },
-              "repos_url": {
-                "type": "string",
-                "description": "URL for user repositories"
-              },
-              "events_url": {
-                "type": "string",
-                "description": "URL for user events"
-              },
-              "received_events_url": {
-                "type": "string",
-                "description": "URL for events received by user"
-              },
+
               "type": {
                 "type": "string",
                 "description": "Type of user account"
@@ -323,53 +157,7 @@
             "properties": {
               "login": { "type": "string", "description": "GitHub username" },
               "id": { "type": "integer", "description": "User ID" },
-              "node_id": { "type": "string", "description": "GraphQL node ID" },
-              "avatar_url": {
-                "type": "string",
-                "description": "URL to user avatar"
-              },
-              "gravatar_id": { "type": "string", "description": "Gravatar ID" },
-              "url": { "type": "string", "description": "API URL of the user" },
-              "html_url": {
-                "type": "string",
-                "description": "GitHub profile URL"
-              },
-              "followers_url": {
-                "type": "string",
-                "description": "URL for user followers"
-              },
-              "following_url": {
-                "type": "string",
-                "description": "URL for users being followed"
-              },
-              "gists_url": {
-                "type": "string",
-                "description": "URL for user gists"
-              },
-              "starred_url": {
-                "type": "string",
-                "description": "URL for starred repositories"
-              },
-              "subscriptions_url": {
-                "type": "string",
-                "description": "URL for user subscriptions"
-              },
-              "organizations_url": {
-                "type": "string",
-                "description": "URL for user organizations"
-              },
-              "repos_url": {
-                "type": "string",
-                "description": "URL for user repositories"
-              },
-              "events_url": {
-                "type": "string",
-                "description": "URL for user events"
-              },
-              "received_events_url": {
-                "type": "string",
-                "description": "URL for events received by user"
-              },
+
               "type": {
                 "type": "string",
                 "description": "Type of user account"
@@ -393,16 +181,7 @@
             "type": "object",
             "properties": {
               "id": { "type": "integer", "description": "Label ID" },
-              "node_id": { "type": "string", "description": "GraphQL node ID" },
-              "url": {
-                "type": "string",
-                "description": "API URL of the label"
-              },
               "name": { "type": "string", "description": "Label name" },
-              "color": {
-                "type": "string",
-                "description": "Hexadecimal color code"
-              },
               "default": {
                 "type": "boolean",
                 "description": "Whether this is a default label"
@@ -418,26 +197,6 @@
           "type": ["object", "null"],
           "description": "Milestone associated with the pull request"
         },
-        "commits_url": {
-          "type": "string",
-          "description": "API URL for pull request commits"
-        },
-        "review_comments_url": {
-          "type": "string",
-          "description": "API URL for review comments"
-        },
-        "review_comment_url": {
-          "type": "string",
-          "description": "API URL template for individual review comments"
-        },
-        "comments_url": {
-          "type": "string",
-          "description": "API URL for comments"
-        },
-        "statuses_url": {
-          "type": "string",
-          "description": "API URL for commit statuses"
-        },
         "head": {
           "type": "object",
           "description": "Head branch of the pull request",
@@ -451,62 +210,6 @@
               "properties": {
                 "login": { "type": "string", "description": "GitHub username" },
                 "id": { "type": "integer", "description": "User ID" },
-                "node_id": {
-                  "type": "string",
-                  "description": "GraphQL node ID"
-                },
-                "avatar_url": {
-                  "type": "string",
-                  "description": "URL to user avatar"
-                },
-                "gravatar_id": {
-                  "type": "string",
-                  "description": "Gravatar ID"
-                },
-                "url": {
-                  "type": "string",
-                  "description": "API URL of the user"
-                },
-                "html_url": {
-                  "type": "string",
-                  "description": "GitHub profile URL"
-                },
-                "followers_url": {
-                  "type": "string",
-                  "description": "URL for user followers"
-                },
-                "following_url": {
-                  "type": "string",
-                  "description": "URL for users being followed"
-                },
-                "gists_url": {
-                  "type": "string",
-                  "description": "URL for user gists"
-                },
-                "starred_url": {
-                  "type": "string",
-                  "description": "URL for starred repositories"
-                },
-                "subscriptions_url": {
-                  "type": "string",
-                  "description": "URL for user subscriptions"
-                },
-                "organizations_url": {
-                  "type": "string",
-                  "description": "URL for user organizations"
-                },
-                "repos_url": {
-                  "type": "string",
-                  "description": "URL for user repositories"
-                },
-                "events_url": {
-                  "type": "string",
-                  "description": "URL for user events"
-                },
-                "received_events_url": {
-                  "type": "string",
-                  "description": "URL for events received by user"
-                },
                 "type": {
                   "type": "string",
                   "description": "Type of user account"
@@ -522,10 +225,7 @@
               "description": "Repository containing the head branch",
               "properties": {
                 "id": { "type": "integer", "description": "Repository ID" },
-                "node_id": {
-                  "type": "string",
-                  "description": "GraphQL node ID"
-                },
+
                 "name": { "type": "string", "description": "Repository name" },
                 "full_name": {
                   "type": "string",
@@ -539,10 +239,7 @@
                   "type": "object",
                   "description": "Repository owner"
                 },
-                "html_url": {
-                  "type": "string",
-                  "description": "GitHub repository URL"
-                },
+
                 "description": {
                   "type": ["string", "null"],
                   "description": "Repository description"
@@ -550,151 +247,6 @@
                 "fork": {
                   "type": "boolean",
                   "description": "Whether the repository is a fork"
-                },
-                "url": {
-                  "type": "string",
-                  "description": "API URL of the repository"
-                },
-                "forks_url": {
-                  "type": "string",
-                  "description": "URL for repository forks"
-                },
-                "keys_url": {
-                  "type": "string",
-                  "description": "URL for repository keys"
-                },
-                "collaborators_url": {
-                  "type": "string",
-                  "description": "URL for repository collaborators"
-                },
-                "teams_url": {
-                  "type": "string",
-                  "description": "URL for repository teams"
-                },
-                "hooks_url": {
-                  "type": "string",
-                  "description": "URL for repository webhooks"
-                },
-                "issue_events_url": {
-                  "type": "string",
-                  "description": "URL for issue events"
-                },
-                "events_url": {
-                  "type": "string",
-                  "description": "URL for repository events"
-                },
-                "assignees_url": {
-                  "type": "string",
-                  "description": "URL for assignees"
-                },
-                "branches_url": {
-                  "type": "string",
-                  "description": "URL for branches"
-                },
-                "tags_url": { "type": "string", "description": "URL for tags" },
-                "blobs_url": {
-                  "type": "string",
-                  "description": "URL for blobs"
-                },
-                "git_tags_url": {
-                  "type": "string",
-                  "description": "URL for git tags"
-                },
-                "git_refs_url": {
-                  "type": "string",
-                  "description": "URL for git refs"
-                },
-                "trees_url": {
-                  "type": "string",
-                  "description": "URL for trees"
-                },
-                "statuses_url": {
-                  "type": "string",
-                  "description": "URL for commit statuses"
-                },
-                "languages_url": {
-                  "type": "string",
-                  "description": "URL for repository languages"
-                },
-                "stargazers_url": {
-                  "type": "string",
-                  "description": "URL for stargazers"
-                },
-                "contributors_url": {
-                  "type": "string",
-                  "description": "URL for contributors"
-                },
-                "subscribers_url": {
-                  "type": "string",
-                  "description": "URL for subscribers"
-                },
-                "subscription_url": {
-                  "type": "string",
-                  "description": "URL for subscription"
-                },
-                "commits_url": {
-                  "type": "string",
-                  "description": "URL for commits"
-                },
-                "git_commits_url": {
-                  "type": "string",
-                  "description": "URL for git commits"
-                },
-                "comments_url": {
-                  "type": "string",
-                  "description": "URL for comments"
-                },
-                "issue_comment_url": {
-                  "type": "string",
-                  "description": "URL for issue comments"
-                },
-                "contents_url": {
-                  "type": "string",
-                  "description": "URL for contents"
-                },
-                "compare_url": {
-                  "type": "string",
-                  "description": "URL for comparing commits"
-                },
-                "merges_url": {
-                  "type": "string",
-                  "description": "URL for merges"
-                },
-                "archive_url": {
-                  "type": "string",
-                  "description": "URL for archive"
-                },
-                "downloads_url": {
-                  "type": "string",
-                  "description": "URL for downloads"
-                },
-                "issues_url": {
-                  "type": "string",
-                  "description": "URL for issues"
-                },
-                "pulls_url": {
-                  "type": "string",
-                  "description": "URL for pull requests"
-                },
-                "milestones_url": {
-                  "type": "string",
-                  "description": "URL for milestones"
-                },
-                "notifications_url": {
-                  "type": "string",
-                  "description": "URL for notifications"
-                },
-                "labels_url": {
-                  "type": "string",
-                  "description": "URL for labels"
-                },
-                "releases_url": {
-                  "type": "string",
-                  "description": "URL for releases"
-                },
-                "deployments_url": {
-                  "type": "string",
-                  "description": "URL for deployments"
                 },
                 "created_at": {
                   "type": "string",
@@ -710,26 +262,6 @@
                   "type": "string",
                   "format": "date-time",
                   "description": "When the repository was last pushed to"
-                },
-                "git_url": {
-                  "type": "string",
-                  "description": "Git URL of the repository"
-                },
-                "ssh_url": {
-                  "type": "string",
-                  "description": "SSH URL of the repository"
-                },
-                "clone_url": {
-                  "type": "string",
-                  "description": "HTTPS clone URL of the repository"
-                },
-                "svn_url": {
-                  "type": "string",
-                  "description": "SVN URL of the repository"
-                },
-                "homepage": {
-                  "type": ["string", "null"],
-                  "description": "Repository homepage URL"
                 },
                 "size": {
                   "type": "integer",
@@ -770,10 +302,6 @@
                 "forks_count": {
                   "type": "integer",
                   "description": "Number of forks"
-                },
-                "mirror_url": {
-                  "type": ["string", "null"],
-                  "description": "Mirror repository URL"
                 },
                 "archived": {
                   "type": "boolean",
@@ -849,44 +377,6 @@
             }
           }
         },
-        "_links": {
-          "type": "object",
-          "description": "Links to related resources",
-          "properties": {
-            "self": {
-              "type": "object",
-              "properties": { "href": { "type": "string" } }
-            },
-            "html": {
-              "type": "object",
-              "properties": { "href": { "type": "string" } }
-            },
-            "issue": {
-              "type": "object",
-              "properties": { "href": { "type": "string" } }
-            },
-            "comments": {
-              "type": "object",
-              "properties": { "href": { "type": "string" } }
-            },
-            "review_comments": {
-              "type": "object",
-              "properties": { "href": { "type": "string" } }
-            },
-            "review_comment": {
-              "type": "object",
-              "properties": { "href": { "type": "string" } }
-            },
-            "commits": {
-              "type": "object",
-              "properties": { "href": { "type": "string" } }
-            },
-            "statuses": {
-              "type": "object",
-              "properties": { "href": { "type": "string" } }
-            }
-          }
-        },
         "author_association": {
           "type": "string",
           "description": "Association of the author with the repository"
@@ -955,7 +445,6 @@
       "description": "The repository where the event occurred",
       "properties": {
         "id": { "type": "integer", "description": "Repository ID" },
-        "node_id": { "type": "string", "description": "GraphQL node ID" },
         "name": { "type": "string", "description": "Repository name" },
         "full_name": {
           "type": "string",
@@ -966,10 +455,6 @@
           "description": "Whether the repository is private"
         },
         "owner": { "type": "object", "description": "Repository owner" },
-        "html_url": {
-          "type": "string",
-          "description": "GitHub repository URL"
-        },
         "description": {
           "type": ["string", "null"],
           "description": "Repository description"
@@ -977,109 +462,6 @@
         "fork": {
           "type": "boolean",
           "description": "Whether the repository is a fork"
-        },
-        "url": { "type": "string", "description": "API URL of the repository" },
-        "forks_url": {
-          "type": "string",
-          "description": "URL for repository forks"
-        },
-        "keys_url": {
-          "type": "string",
-          "description": "URL for repository keys"
-        },
-        "collaborators_url": {
-          "type": "string",
-          "description": "URL for repository collaborators"
-        },
-        "teams_url": {
-          "type": "string",
-          "description": "URL for repository teams"
-        },
-        "hooks_url": {
-          "type": "string",
-          "description": "URL for repository webhooks"
-        },
-        "issue_events_url": {
-          "type": "string",
-          "description": "URL for issue events"
-        },
-        "events_url": {
-          "type": "string",
-          "description": "URL for repository events"
-        },
-        "assignees_url": {
-          "type": "string",
-          "description": "URL for assignees"
-        },
-        "branches_url": { "type": "string", "description": "URL for branches" },
-        "tags_url": { "type": "string", "description": "URL for tags" },
-        "blobs_url": { "type": "string", "description": "URL for blobs" },
-        "git_tags_url": { "type": "string", "description": "URL for git tags" },
-        "git_refs_url": { "type": "string", "description": "URL for git refs" },
-        "trees_url": { "type": "string", "description": "URL for trees" },
-        "statuses_url": {
-          "type": "string",
-          "description": "URL for commit statuses"
-        },
-        "languages_url": {
-          "type": "string",
-          "description": "URL for repository languages"
-        },
-        "stargazers_url": {
-          "type": "string",
-          "description": "URL for stargazers"
-        },
-        "contributors_url": {
-          "type": "string",
-          "description": "URL for contributors"
-        },
-        "subscribers_url": {
-          "type": "string",
-          "description": "URL for subscribers"
-        },
-        "subscription_url": {
-          "type": "string",
-          "description": "URL for subscription"
-        },
-        "commits_url": { "type": "string", "description": "URL for commits" },
-        "git_commits_url": {
-          "type": "string",
-          "description": "URL for git commits"
-        },
-        "comments_url": { "type": "string", "description": "URL for comments" },
-        "issue_comment_url": {
-          "type": "string",
-          "description": "URL for issue comments"
-        },
-        "contents_url": { "type": "string", "description": "URL for contents" },
-        "compare_url": {
-          "type": "string",
-          "description": "URL for comparing commits"
-        },
-        "merges_url": { "type": "string", "description": "URL for merges" },
-        "archive_url": { "type": "string", "description": "URL for archive" },
-        "downloads_url": {
-          "type": "string",
-          "description": "URL for downloads"
-        },
-        "issues_url": { "type": "string", "description": "URL for issues" },
-        "pulls_url": {
-          "type": "string",
-          "description": "URL for pull requests"
-        },
-        "milestones_url": {
-          "type": "string",
-          "description": "URL for milestones"
-        },
-        "notifications_url": {
-          "type": "string",
-          "description": "URL for notifications"
-        },
-        "labels_url": { "type": "string", "description": "URL for labels" },
-        "releases_url": { "type": "string", "description": "URL for releases" },
-        "deployments_url": {
-          "type": "string",
-          "description": "URL for deployments"
         },
         "created_at": {
           "type": "string",
@@ -1095,22 +477,6 @@
           "type": "string",
           "format": "date-time",
           "description": "When the repository was last pushed to"
-        },
-        "git_url": {
-          "type": "string",
-          "description": "Git URL of the repository"
-        },
-        "ssh_url": {
-          "type": "string",
-          "description": "SSH URL of the repository"
-        },
-        "clone_url": {
-          "type": "string",
-          "description": "HTTPS clone URL of the repository"
-        },
-        "svn_url": {
-          "type": "string",
-          "description": "SVN URL of the repository"
         },
         "homepage": {
           "type": ["string", "null"],
@@ -1150,10 +516,6 @@
           "description": "Whether GitHub Pages is enabled"
         },
         "forks_count": { "type": "integer", "description": "Number of forks" },
-        "mirror_url": {
-          "type": ["string", "null"],
-          "description": "Mirror repository URL"
-        },
         "archived": {
           "type": "boolean",
           "description": "Whether the repository is archived"
@@ -1209,39 +571,6 @@
       "properties": {
         "login": { "type": "string", "description": "Organization login/name" },
         "id": { "type": "integer", "description": "Organization ID" },
-        "node_id": { "type": "string", "description": "GraphQL node ID" },
-        "url": {
-          "type": "string",
-          "description": "API URL of the organization"
-        },
-        "repos_url": {
-          "type": "string",
-          "description": "URL for organization repositories"
-        },
-        "events_url": {
-          "type": "string",
-          "description": "URL for organization events"
-        },
-        "hooks_url": {
-          "type": "string",
-          "description": "URL for organization webhooks"
-        },
-        "issues_url": {
-          "type": "string",
-          "description": "URL for organization issues"
-        },
-        "members_url": {
-          "type": "string",
-          "description": "URL for organization members"
-        },
-        "public_members_url": {
-          "type": "string",
-          "description": "URL for public organization members"
-        },
-        "avatar_url": {
-          "type": "string",
-          "description": "URL to organization avatar"
-        },
         "description": {
           "type": "string",
           "description": "Organization description"
@@ -1252,8 +581,7 @@
       "type": ["object", "null"],
       "description": "GitHub App installation object when the event is configured for and sent to a GitHub App",
       "properties": {
-        "id": { "type": "integer", "description": "Installation ID" },
-        "node_id": { "type": "string", "description": "GraphQL node ID" }
+        "id": { "type": "integer", "description": "Installation ID" }
       }
     },
     "sender": {
@@ -1262,44 +590,6 @@
       "properties": {
         "login": { "type": "string", "description": "GitHub username" },
         "id": { "type": "integer", "description": "User ID" },
-        "node_id": { "type": "string", "description": "GraphQL node ID" },
-        "avatar_url": { "type": "string", "description": "URL to user avatar" },
-        "gravatar_id": { "type": "string", "description": "Gravatar ID" },
-        "url": { "type": "string", "description": "API URL of the user" },
-        "html_url": { "type": "string", "description": "GitHub profile URL" },
-        "followers_url": {
-          "type": "string",
-          "description": "URL for user followers"
-        },
-        "following_url": {
-          "type": "string",
-          "description": "URL for users being followed"
-        },
-        "gists_url": { "type": "string", "description": "URL for user gists" },
-        "starred_url": {
-          "type": "string",
-          "description": "URL for starred repositories"
-        },
-        "subscriptions_url": {
-          "type": "string",
-          "description": "URL for user subscriptions"
-        },
-        "organizations_url": {
-          "type": "string",
-          "description": "URL for user organizations"
-        },
-        "repos_url": {
-          "type": "string",
-          "description": "URL for user repositories"
-        },
-        "events_url": {
-          "type": "string",
-          "description": "URL for user events"
-        },
-        "received_events_url": {
-          "type": "string",
-          "description": "URL for events received by user"
-        },
         "type": { "type": "string", "description": "Type of user account" },
         "site_admin": {
           "type": "boolean",
