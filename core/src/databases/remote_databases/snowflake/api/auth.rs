@@ -160,18 +160,6 @@ fn try_parse_private_key(pem: &str, password: Option<&[u8]>) -> Result<RsaPrivat
                 "A public key was provided. Please supply a private key PEM (-----BEGIN PRIVATE KEY----- or -----BEGIN RSA PRIVATE KEY-----). If you copied the Snowflake RSA_PUBLIC_KEY into this field, replace it with the corresponding private key.".to_string(),
             ));
         }
-
-        if label.eq_ignore_ascii_case("ENCRYPTED PRIVATE KEY") {
-            let missing_or_empty = match password {
-                Some(p) => p.is_empty(),
-                None => true,
-            };
-            if missing_or_empty {
-                return Err(Error::Decode(
-                    "An encrypted private key was provided but no passphrase is set. Provide 'private_key_passphrase' or use an unencrypted PKCS#8 private key.".to_string(),
-                ));
-            }
-        }
     }
 
     // Try formats in a simple, ordered sequence. Log detailed failures; return generic errors.
@@ -197,9 +185,18 @@ fn try_parse_private_key(pem: &str, password: Option<&[u8]>) -> Result<RsaPrivat
         return Ok(key);
     }
 
-    Err(Error::Decode(
-        "Failed to parse private key. Supported formats: PKCS#8 (-----BEGIN PRIVATE KEY-----) and PKCS#1 (-----BEGIN RSA PRIVATE KEY-----). For encrypted keys, provide 'private_key_passphrase'.".to_string(),
-    ))
+    let encrypted_label = pem_label
+        .as_deref()
+        .map(|l| l.eq_ignore_ascii_case("ENCRYPTED PRIVATE KEY"))
+        .unwrap_or(false);
+    let msg = if encrypted_label && password.is_none() {
+        "Failed to parse private key. Encrypted key detected but no passphrase was provided. We attempted decryption with an empty passphrase and it failed. Provide 'private_key_passphrase' (non-empty) or use an unencrypted PKCS#8 private key (-----BEGIN PRIVATE KEY-----)."
+            .to_string()
+    } else {
+        "Failed to parse private key. Supported formats: PKCS#8 (-----BEGIN PRIVATE KEY-----) and PKCS#1 (-----BEGIN RSA PRIVATE KEY-----). For encrypted keys, provide 'private_key_passphrase'."
+            .to_string()
+    };
+    Err(Error::Decode(msg))
 }
 
 fn try_parse_with_openssl(pem: &str, password: Option<&[u8]>) -> Result<Option<RsaPrivateKey>> {
@@ -209,7 +206,12 @@ fn try_parse_with_openssl(pem: &str, password: Option<&[u8]>) -> Result<Option<R
         let mut pw = Zeroizing::new(pass.to_vec());
         PKey::private_key_from_pem_passphrase(pem.as_bytes(), &mut pw[..])
     } else {
-        PKey::private_key_from_pem(pem.as_bytes())
+        // Attempt with an empty passphrase first, then fall back to unencrypted parsing.
+        let mut empty = Zeroizing::new(Vec::<u8>::new());
+        match PKey::private_key_from_pem_passphrase(pem.as_bytes(), &mut empty[..]) {
+            Ok(p) => Ok(p),
+            Err(_) => PKey::private_key_from_pem(pem.as_bytes()),
+        }
     };
 
     let pkey = match parsed {
