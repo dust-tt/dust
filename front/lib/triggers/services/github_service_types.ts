@@ -1,14 +1,18 @@
 import { z } from "zod";
 
-export const GithubOrganizationSchema = z.object({
-  name: z.string().describe("A GitHub organization name"),
-});
+export const GithubOrganizationSchema = z
+  .object({
+    name: z.string().describe("A GitHub organization name"),
+  })
+  .passthrough();
 
-export const GithubRepositorySchema = z.object({
-  fullName: z
-    .string()
-    .describe("A GitHub full repository name, e.g. 'owner/repo'"),
-});
+export const GithubRepositorySchema = z
+  .object({
+    fullName: z
+      .string()
+      .describe("A GitHub full repository name, e.g. 'owner/repo'"),
+  })
+  .passthrough();
 
 export const GithubAdditionalDataSchema = z.object({
   repositories: z.array(GithubRepositorySchema),
