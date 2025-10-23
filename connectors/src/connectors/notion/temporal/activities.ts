@@ -298,12 +298,18 @@ export async function getPagesAndDatabasesToSync({
   };
   excludeUpToDatePages: boolean;
   loggerArgs: Record<string, string | number>;
-  filter?: "page" | "data_source";
+  filter?: "page" | "data_source" | "database";
 }): Promise<{
   pageIds: string[];
   databaseIds: string[];
   nextCursor: string | null;
 }> {
+  // The code never passes "database", but it could happen when replying existing workflows.
+  // Eventually we can remove this check.
+  if (filter == "database") {
+    filter = "data_source";
+  }
+
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("Could not find connector");
