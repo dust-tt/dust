@@ -288,7 +288,7 @@ export async function getPagesAndDatabasesEditedSince({
         continue;
       }
       if (isFullDataSource(pageOrDb)) {
-        if (pageOrDb.in_trash) {
+        if (pageOrDb.archived) {
           continue;
         }
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
@@ -465,7 +465,7 @@ export async function isAccessibleAndUnarchived(
       if (!isFullDataSource(db)) {
         return false;
       }
-      return !db.in_trash;
+      return !db.archived;
     }
   } catch (e) {
     if (APIResponseError.isAPIResponseError(e)) {
@@ -671,7 +671,7 @@ export async function getParsedDatabase(
   }
 
   if (!isFullDataSource(dataSource)) {
-    localLogger.info("Database is not a full data source.");
+    localLogger.info("Data source is not a full data source.");
     return null;
   }
 
@@ -730,7 +730,7 @@ export async function getParsedDatabase(
     title,
     parentId,
     parentType: parentType as ParsedNotionPage["parentType"],
-    archived: dataSource.in_trash,
+    archived: dataSource.archived,
   };
 }
 
@@ -900,7 +900,7 @@ export function getPageOrBlockParent(
       };
     case "data_source_id":
       // In the new API, pages/blocks can be children of data_sources
-      // We treat the data_source_id as a database
+      // We treat the data_source_id as a database (in the Dust sense)
       return {
         type: "database",
         id: pageOrBlock.parent.data_source_id,

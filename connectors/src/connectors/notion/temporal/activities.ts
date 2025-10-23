@@ -3113,6 +3113,10 @@ export async function getParentPageOrDb({
   if (page) {
     switch (page.parent.type) {
       case "database_id":
+        logger.warn(
+          { parentId: page.parent.database_id },
+          "Pages should not have database parents. Should instead be a data_source."
+        );
         return { parentId: page.parent.database_id, parentType: "database" };
       case "data_source_id":
         // In the new API, pages can be children of data_sources
