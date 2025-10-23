@@ -1,3 +1,4 @@
+import { SliderToggle } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 import {
   Bar,
@@ -9,8 +10,6 @@ import {
   YAxis,
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-
-import { SliderToggle } from "@dust-tt/sparkle";
 
 import { ChartContainer } from "@app/components/agent_builder/observability/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/ChartLegend";
@@ -240,7 +239,9 @@ export function ToolUsageChart({
   const renderTooltip = useCallback(
     (props: TooltipContentProps<number, string>) => {
       const { active, payload, label } = props;
-      if (!active || !payload || payload.length === 0) return null;
+      if (!active || !payload || payload.length === 0) {
+        return null;
+      }
       const rows = payload
         .filter((p) => typeof p.value === "number" && p.value > 0)
         .sort((a, b) => (b.value as number) - (a.value as number))
@@ -302,6 +303,12 @@ export function ToolUsageChart({
             tickLine={false}
             axisLine={false}
             tickMargin={8}
+            label={{
+              value: xAxisLabel,
+              position: "insideBottom",
+              offset: -10,
+              style: { textAnchor: "middle" },
+            }}
           />
           <YAxis
             className="text-xs text-muted-foreground"
