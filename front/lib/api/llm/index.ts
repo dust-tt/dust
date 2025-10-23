@@ -7,13 +7,16 @@ import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 
 // Keep this until the list includes all the supported model IDs (cf SUPPORTED_MODEL_CONFIGS)
-const WHITELISTED_MODEL_IDS: ModelIdType[] = ["mistral-large-latest"];
+const WHITELISTED_MODEL_IDS: ModelIdType[] = [
+  "mistral-large-latest",
+  "mistral-small-latest",
+];
 
 export async function getLLM(
   auth: Authenticator,
   {
     modelId,
-    options: _options,
+    options,
   }: {
     modelId: ModelIdType;
     options?: LLMOptions;
@@ -36,7 +39,10 @@ export async function getLLM(
 
   switch (modelId) {
     case "mistral-large-latest":
-      return hasFeature ? new MistralLLM({ model: modelConfiguration }) : null;
+    case "mistral-small-latest":
+      return options?.bypassFeatureFlag ?? hasFeature
+        ? new MistralLLM({ model: modelConfiguration })
+        : null;
     default:
       return null;
   }
