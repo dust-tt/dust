@@ -1,6 +1,6 @@
 import { Op, Sequelize } from "sequelize";
 
-import { filterAgentsByRequestedSpace } from "@app/lib/api/assistant/configuration/agent";
+import { filterAgentsByRequestedSpaces } from "@app/lib/api/assistant/configuration/agent";
 import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
 import type {
   SortStrategy,
@@ -308,7 +308,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
   const allowedAgentConfigurations = dangerouslySkipPermissionFiltering
     ? agentConfigurations
-    : await filterAgentsByRequestedSpace(auth, agentConfigurations);
+    : await filterAgentsByRequestedSpaces(auth, agentConfigurations);
 
   return enrichAgentConfigurations(auth, allowedAgentConfigurations, {
     variant,

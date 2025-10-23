@@ -97,7 +97,7 @@ async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
     order: [["version", "DESC"]],
   });
 
-  const allowedWorkspaceAgents = await filterAgentsByRequestedSpace(
+  const allowedWorkspaceAgents = await filterAgentsByRequestedSpaces(
     auth,
     workspaceAgents
   );
@@ -141,7 +141,7 @@ export async function listsAgentConfigurationVersions<
       },
       order: [["version", "DESC"]],
     });
-    const allowedWorkspaceAgents = await filterAgentsByRequestedSpace(
+    const allowedWorkspaceAgents = await filterAgentsByRequestedSpaces(
       auth,
       workspaceAgents
     );
@@ -214,7 +214,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
         order: [["version", "DESC"]],
       });
       const allowedWorkspaceAgentConfigurations =
-        await filterAgentsByRequestedSpace(auth, workspaceAgentConfigurations);
+        await filterAgentsByRequestedSpaces(auth, workspaceAgentConfigurations);
       allowedWorkspaceAgents = await enrichAgentConfigurations(
         auth,
         allowedWorkspaceAgentConfigurations,
@@ -1167,7 +1167,7 @@ export async function updateAgentRequestedGroupIds(
   return new Ok(updated[0] > 0);
 }
 
-export async function filterAgentsByRequestedSpace(
+export async function filterAgentsByRequestedSpaces(
   auth: Authenticator,
   agents: AgentConfiguration[]
 ) {
