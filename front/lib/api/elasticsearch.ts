@@ -120,7 +120,7 @@ export function formatUTCDateFromMillis(ms: number): string {
  * query other Elasticsearch indexes from the front service.
  */
 export async function searchAnalytics<
-  TDocument extends ElasticsearchBaseDocument,
+  TDocument extends ElasticsearchBaseDocument | never,
   TAggregations = unknown,
 >(
   query: estypes.QueryDslQueryContainer,
