@@ -84,6 +84,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "google_calendar",
   "google_drive",
   "google_sheets",
+  "http_client",
   "hubspot",
   "image_generation",
   "include_data",
@@ -1011,7 +1012,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "OpenaiLogo",
       documentationUrl: null,
       instructions: null,
-      requiresSecret: true,
+      developerSecretSelection: "required",
     },
   },
   confluence: {
@@ -1187,6 +1188,35 @@ The directive should be used to display a clickable version of the agent name in
       icon: "MicrosoftExcelLogo",
       documentationUrl: null,
       instructions: null,
+    },
+  },
+  http_client: {
+    id: 39,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("http_client_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      send_request: "low",
+      websearch: "never_ask",
+      webbrowser: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "http_client",
+      version: "1.0.0",
+      description:
+        "Make HTTP requests to external APIs with optional Bearer token authentication.",
+      authorization: null,
+      icon: "ActionGlobeAltIcon",
+      documentationUrl: null,
+      instructions: null,
+      developerSecretSelectionDescription:
+        "This is optional. If set, this secret will be used as a default Bearer token (Authorization header) for HTTP requests.",
+      developerSecretSelection: "optional",
     },
   },
   [SEARCH_SERVER_NAME]: {
@@ -1441,7 +1471,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ValTownLogo",
       documentationUrl: "https://docs.dust.tt/docs/val-town",
       instructions: null,
-      requiresSecret: true,
+      developerSecretSelection: "required",
     },
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
