@@ -59,7 +59,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
   addPasteRules() {
     const pasteRule = nodePasteRule({
       find: (text) => {
-        // Note The suggestions object should be available from the MentionStorage extension but it might takes some time to load.
+        // Note: the `suggestions` object should be available from the MentionStorage extension but it might takes some time to load.
         const suggestions: EditorSuggestions =
           this.editor.storage.MentionStorage.suggestions;
 

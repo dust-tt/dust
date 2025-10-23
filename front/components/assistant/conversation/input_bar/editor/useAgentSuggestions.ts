@@ -1,12 +1,13 @@
 import { useMemo } from "react";
 
+import type { EditorSuggestionAgent } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { compareAgentsForSort } from "@app/types";
 
-function makeEditorSuggestions(
+function makeEditorSuggestionAgents(
   agentConfigurations: LightAgentConfigurationType[]
-) {
+): EditorSuggestionAgent[] {
   return agentConfigurations
     .filter((a) => a.status === "active")
     .sort(compareAgentsForSort)
@@ -16,10 +17,11 @@ function makeEditorSuggestions(
       pictureUrl: agent.pictureUrl,
       userFavorite: agent.userFavorite,
       description: agent.description,
+      type: "agent",
     }));
 }
 
-const useAssistantSuggestions = (
+const useAgentSuggestions = (
   inListAgentConfigurations: LightAgentConfigurationType[],
   owner: WorkspaceType
 ) => {
@@ -28,11 +30,11 @@ const useAssistantSuggestions = (
     workspaceId: owner.sId,
   });
 
-  // `useMemo` will ensure that suggestions is only recalculated
+  // `useMemo` will ensure that suggestions are only recalculated
   // when `inListAgentConfigurations` or `agentConfigurations` changes.
   const allSuggestions = useMemo(() => {
-    const suggestions = makeEditorSuggestions(inListAgentConfigurations);
-    const fallbackSuggestions = makeEditorSuggestions(agentConfigurations);
+    const suggestions = makeEditorSuggestionAgents(inListAgentConfigurations);
+    const fallbackSuggestions = makeEditorSuggestionAgents(agentConfigurations);
 
     return { suggestions, fallbackSuggestions };
   }, [agentConfigurations, inListAgentConfigurations]);
@@ -40,4 +42,4 @@ const useAssistantSuggestions = (
   return { ...allSuggestions, isLoading };
 };
 
-export default useAssistantSuggestions;
+export default useAgentSuggestions;
