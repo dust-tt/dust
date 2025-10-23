@@ -12,7 +12,7 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -56,18 +56,39 @@ export function CreateWebhookGithubConnection({
   >([]);
   const [repoSearchQuery, setRepoSearchQuery] = useState("");
   const githubData = isGithubAdditionalData(serviceData) ? serviceData : null;
-  const githubRepositories = githubData?.repositories ?? [];
-  const githubOrganizations = githubData?.organizations ?? [];
   const [orgSearchQuery, setOrgSearchQuery] = useState("");
   const [showRepoDropdown, setShowRepoDropdown] = useState(false);
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
 
-  const filteredRepositories = githubRepositories.filter((repo) =>
-    repo.fullName.toLowerCase().includes(repoSearchQuery.toLowerCase())
+  const filteredRepositories = useMemo(() => {
+    const githubRepositories = githubData?.repositories ?? [];
+    return githubRepositories.filter((repo) =>
+      repo.fullName.toLowerCase().includes(repoSearchQuery.toLowerCase())
+    );
+  }, [githubData, repoSearchQuery]);
+
+  const filteredOrganizations = useMemo(() => {
+    const githubOrganizations = githubData?.organizations ?? [];
+    return githubOrganizations.filter((org) =>
+      org.name.toLowerCase().includes(orgSearchQuery.toLowerCase())
+    );
+  }, [githubData, orgSearchQuery]);
+
+  const repositoriesInDropdown = useMemo(
+    () =>
+      filteredRepositories.filter(
+        (repo) =>
+          !selectedRepositories.some((r) => r.fullName === repo.fullName)
+      ),
+    [filteredRepositories, selectedRepositories]
   );
 
-  const filteredOrganizations = githubOrganizations.filter((org) =>
-    org.name.toLowerCase().includes(orgSearchQuery.toLowerCase())
+  const organizationsInDropdown = useMemo(
+    () =>
+      filteredOrganizations.filter(
+        (org) => !selectedOrganizations.some((o) => o.name === org.name)
+      ),
+    [filteredOrganizations, selectedOrganizations]
   );
 
   // Notify parent component when data changes
@@ -144,7 +165,7 @@ export function CreateWebhookGithubConnection({
   };
 
   const handleAddRepository = (repo: GithubRepository) => {
-    if (!selectedRepositories.includes(repo)) {
+    if (!selectedRepositories.some((r) => r.fullName === repo.fullName)) {
       setSelectedRepositories([...selectedRepositories, repo]);
     }
     setRepoSearchQuery("");
@@ -158,7 +179,7 @@ export function CreateWebhookGithubConnection({
   };
 
   const handleAddOrganization = (org: GithubOrganization) => {
-    if (!selectedOrganizations.includes(org)) {
+    if (!selectedOrganizations.some((o) => o.name === org.name)) {
       setSelectedOrganizations([...selectedOrganizations, org]);
     }
     setOrgSearchQuery("");
@@ -264,19 +285,15 @@ export function CreateWebhookGithubConnection({
                           onChange={setRepoSearchQuery}
                         />
                         <div className="max-h-64 overflow-y-auto">
-                          {filteredRepositories.length > 0 ? (
-                            filteredRepositories
-                              .filter(
-                                (repo) => !selectedRepositories.includes(repo)
-                              )
-                              .map((repo) => (
-                                <DropdownMenuItem
-                                  key={repo.fullName}
-                                  onClick={() => handleAddRepository(repo)}
-                                >
-                                  {repo.fullName}
-                                </DropdownMenuItem>
-                              ))
+                          {repositoriesInDropdown.length > 0 ? (
+                            repositoriesInDropdown.map((repo) => (
+                              <DropdownMenuItem
+                                key={repo.fullName}
+                                onClick={() => handleAddRepository(repo)}
+                              >
+                                {repo.fullName}
+                              </DropdownMenuItem>
+                            ))
                           ) : (
                             <div className="px-2 py-6 text-center text-sm text-muted-foreground">
                               No repositories found
@@ -347,19 +364,15 @@ export function CreateWebhookGithubConnection({
                           onChange={setOrgSearchQuery}
                         />
                         <div className="max-h-64 overflow-y-auto">
-                          {filteredOrganizations.length > 0 ? (
-                            filteredOrganizations
-                              .filter(
-                                (org) => !selectedOrganizations.includes(org)
-                              )
-                              .map((org) => (
-                                <DropdownMenuItem
-                                  key={org.name}
-                                  onClick={() => handleAddOrganization(org)}
-                                >
-                                  {org.name}
-                                </DropdownMenuItem>
-                              ))
+                          {organizationsInDropdown.length > 0 ? (
+                            organizationsInDropdown.map((org) => (
+                              <DropdownMenuItem
+                                key={org.name}
+                                onClick={() => handleAddOrganization(org)}
+                              >
+                                {org.name}
+                              </DropdownMenuItem>
+                            ))
                           ) : (
                             <div className="px-2 py-6 text-center text-sm text-muted-foreground">
                               No organizations found
