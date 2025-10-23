@@ -1,3 +1,4 @@
+import assert from "assert";
 import type {
   CreationAttributes,
   InferAttributes,
@@ -5,7 +6,7 @@ import type {
 } from "sequelize";
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
 import {
   AgentMessage,
@@ -87,8 +88,30 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  private static buildSpaceIdToGroupsMap(
+    spaces: SpaceResource[],
+    workspaceId: number
+  ): Map<number, string[][]> {
+    const spaceIdToGroupsMap = new Map<number, string[][]>();
+    for (const space of spaces) {
+      const permissions = space.requestedPermissions();
+      // Extract group IDs from the space's requested permissions.
+      const groupIds = permissions.map((permission) =>
+        permission.groups.map((group) =>
+          GroupResource.modelIdToSId({
+            id: group.id,
+            workspaceId,
+          })
+        )
+      );
+      spaceIdToGroupsMap.set(space.id, groupIds);
+    }
+
+    return spaceIdToGroupsMap;
+  }
+
   // TODO(2025-10-22 flav): Add authorization check.
-  private static async baseFetch(
+  private static async baseFetchWithAuthorization(
     auth: Authenticator,
     fetchConversationOptions?: FetchConversationOptions,
     options: ResourceFindOptions<ConversationModel> = {}
@@ -104,6 +127,53 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
       limit: options.limit,
     });
+
+    const featureFlags = await getFeatureFlags(workspace);
+    if (featureFlags.includes("use_requested_space_ids")) {
+      const uniqueSpaceIds = Array.from(
+        new Set(conversations.flatMap((c) => c.requestedSpaceIds))
+      );
+
+      const spaces = await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds);
+
+      // Critical security check: ensure we found ALL requested spaces.
+      if (spaces.length !== uniqueSpaceIds.length) {
+        const foundSpaceIds = new Set(spaces.map((s) => s.id));
+        const missingSpaceIds = uniqueSpaceIds.filter(
+          (id) => !foundSpaceIds.has(id)
+        );
+
+        throw new Error(
+          `Security violation: Cannot resolve spaces ${missingSpaceIds.join(", ")} in workspace ${workspace.sId}. ` +
+            `Conversations cannot reference spaces from other workspaces.`
+        );
+      }
+
+      // Build efficient space ID to groups mapping to avoid O(n) lookups
+      const spaceIdToGroupsMap = this.buildSpaceIdToGroupsMap(
+        spaces,
+        workspace.id
+      );
+
+      const accessibleConversations = conversations.filter((c) => {
+        // Resolve space IDs to their corresponding group requirements.
+        const resolvedGroupIds: string[][] = [];
+        for (const spaceId of c.requestedSpaceIds) {
+          const groupIds = spaceIdToGroupsMap.get(spaceId);
+
+          // This should never be undefined since we verified all spaces exist above.
+          assert(groupIds, `No group IDs found for space ID ${spaceId}`);
+
+          resolvedGroupIds.push(...groupIds!);
+        }
+
+        return auth.canRead(
+          Authenticator.createResourcePermissionsFromGroupIds(resolvedGroupIds)
+        );
+      });
+
+      return accessibleConversations.map((c) => new this(this.model, c.get()));
+    }
 
     return conversations.map((c) => new this(this.model, c.get()));
   }
@@ -126,7 +196,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     sIds: string[],
     options?: FetchConversationOptions
   ) {
-    return this.baseFetch(auth, options, {
+    return this.baseFetchWithAuthorization(auth, options, {
       where: {
         sId: { [Op.in]: sIds },
       },
@@ -147,10 +217,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     options?: FetchConversationOptions
   ): Promise<ConversationResource[]> {
-    return this.baseFetch(auth, options);
+    return this.baseFetchWithAuthorization(auth, options);
   }
 
-  // TODO(2025-10-22 flav): Use baseFetch.
+  // TODO(2025-10-22 flav): Use baseFetchWithAuthorization.
   static async listMentionsByConfiguration(
     auth: Authenticator,
     {
@@ -238,14 +308,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const results: ConversationResource[] = [];
     for (let i = 0; i < inactiveConversations.length; i += batchSize) {
       const batch = inactiveConversations.slice(i, i + batchSize);
-      const conversations = await this.baseFetch(auth, options, {
-        where: {
-          workspaceId,
-          id: {
-            [Op.in]: batch.map((m) => m.conversationId),
+      const conversations = await this.baseFetchWithAuthorization(
+        auth,
+        options,
+        {
+          where: {
+            workspaceId,
+            id: {
+              [Op.in]: batch.map((m) => m.conversationId),
+            },
           },
-        },
-      });
+        }
+      );
 
       results.push(...conversations);
     }
@@ -301,7 +375,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Step 2: Filter conversations by creation date.
     const conversationIds = messageWithAgent.map((m) => m.conversationId);
-    const conversations = await this.baseFetch(auth, options, {
+    const conversations = await this.baseFetchWithAuthorization(auth, options, {
       where: {
         workspaceId,
         id: {
@@ -390,7 +464,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
-  // TODO(2025-10-22 flav): Use baseFetch.
+  // TODO(2025-10-22 flav): Use baseFetchWithAuthorization.
   static async listConversationsForUser(
     auth: Authenticator,
     options?: FetchConversationOptions
@@ -466,7 +540,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return [];
     }
 
-    const conversations = await this.baseFetch(auth, options, {
+    const conversations = await this.baseFetchWithAuthorization(auth, options, {
       where: {
         triggerId: triggerModelId,
       },
