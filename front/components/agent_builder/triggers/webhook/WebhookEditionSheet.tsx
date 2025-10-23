@@ -313,11 +313,13 @@ export function WebhookEditionSheet({
             <WebhookEditionMessageInput isEditor={isEditor} />
 
             {trigger && (
-              <RecentWebhookRequests
-                owner={owner}
-                agentConfigurationId={agentConfigurationId}
-                trigger={trigger}
-              />
+              <div className="space-y-1">
+                <RecentWebhookRequests
+                  owner={owner}
+                  agentConfigurationId={agentConfigurationId}
+                  trigger={trigger}
+                />
+              </div>
             )}
           </div>
         </SheetContainer>
