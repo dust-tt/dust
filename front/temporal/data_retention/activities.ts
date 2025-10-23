@@ -73,15 +73,12 @@ export async function purgeConversationsBatchActivity({
     let nbConversationsDeleted = 0;
 
     do {
-      conversations = await ConversationResource.listAllBeforeDate(
-        auth,
+      conversations = await ConversationResource.listAllBeforeDate(auth, {
+        batchSize: WORKSPACE_CONVERSATIONS_BATCH_SIZE,
         cutoffDate,
-        {
-          batchSize: WORKSPACE_CONVERSATIONS_BATCH_SIZE,
-          includeDeleted: true,
-          includeTest: true,
-        }
-      );
+        includeDeleted: true,
+        includeTest: true,
+      });
 
       logger.info(
         {

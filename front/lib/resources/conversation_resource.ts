@@ -215,10 +215,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async listAllBeforeDate(
     auth: Authenticator,
-    cutoffDate: Date,
-    options?: FetchConversationOptions & { batchSize: number }
+    options?: FetchConversationOptions & {
+      batchSize?: number;
+      cutoffDate: Date;
+    }
   ): Promise<ConversationResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const { batchSize = 1000, cutoffDate } = options ?? {};
+
     const inactiveConversations = await Message.findAll({
       attributes: [
         "conversationId",
@@ -232,15 +237,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       order: [[fn("MAX", col("createdAt")), "DESC"]],
     });
 
-    const { batchSize = 1000 } = options ?? {};
-
     // We batch to avoid a big where in clause.
     const results: ConversationResource[] = [];
     for (let i = 0; i < inactiveConversations.length; i += batchSize) {
       const batch = inactiveConversations.slice(i, i + batchSize);
       const conversations = await this.baseFetch(auth, options, {
         where: {
-          workspaceId,
           id: {
             [Op.in]: batch.map((m) => m.conversationId),
           },
@@ -303,7 +305,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const conversationIds = messageWithAgent.map((m) => m.conversationId);
     const conversations = await this.baseFetch(auth, options, {
       where: {
-        workspaceId,
         id: {
           [Op.in]: conversationIds,
         },
@@ -877,7 +878,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     { conversation }: { conversation: ConversationWithoutContentType },
     transaction?: Transaction
   ) {
-    return ConversationResource.model.update(
+    return this.model.update(
       {
         hasError: true,
       },
@@ -896,7 +897,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     { conversation }: { conversation: ConversationWithoutContentType },
     transaction?: Transaction
   ) {
-    return ConversationResource.model.update(
+    return this.model.update(
       {
         hasError: false,
       },
