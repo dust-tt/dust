@@ -22,7 +22,7 @@ import { AgentBuilderSectionContainer } from "@app/components/agent_builder/Agen
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { ScheduleEdition } from "@app/components/agent_builder/triggers/schedule/ScheduleEdition";
 import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
-import { WebhookEditionSheet } from "@app/components/agent_builder/triggers/WebhookEditionSheet";
+import { WebhookEdition } from "@app/components/agent_builder/triggers/webhook/WebhookEdition";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
@@ -313,12 +313,12 @@ export function AgentBuilderTriggersBlock({
       />
 
       {/* Create/Edit Webhook Modal */}
-      <WebhookEditionSheet
+      <WebhookEdition
         owner={owner}
         trigger={
           dialogMode?.type === "edit" && dialogMode.trigger.kind === "webhook"
             ? dialogMode.trigger
-            : undefined
+            : null
         }
         isOpen={
           (dialogMode?.type === "add" && dialogMode.kind === "webhook") ||
