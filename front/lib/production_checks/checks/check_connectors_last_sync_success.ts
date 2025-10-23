@@ -1,6 +1,9 @@
 import { QueryTypes } from "sequelize";
 
-import { isWebhookBasedProvider } from "@app/lib/connector_providers";
+import {
+  isBotTypeProvider,
+  isWebhookBasedProvider,
+} from "@app/lib/connector_providers";
 import type { CheckFunction } from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import type { ConnectorProvider } from "@app/types";
@@ -65,12 +68,10 @@ export const checkConnectorsLastSyncSuccess: CheckFunction = async (
   const stalledLastSyncConnectors: any[] = [];
   const connectors = (await listAllConnectors()).filter(
     (connector) =>
-      // Ignore webhook-based connectors and webcrawlers
+      // Ignore webhook-based connectors, webcrawlers, and bot-type connectors
       !isWebhookBasedProvider(connector.type) &&
-      connector.type !== "webcrawler" &&
-      connector.type !== "slack_bot" &&
-      connector.type !== "microsoft_bot" &&
-      connector.type !== "discord_bot"
+      !isBotTypeProvider(connector.type) &&
+      connector.type !== "webcrawler"
   );
   heartbeat();
 
