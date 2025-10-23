@@ -3,8 +3,8 @@ import { GithubLogo } from "@dust-tt/sparkle";
 import { CreateWebhookGithubConnection } from "@app/components/triggers/CreateWebhookGithubConnection";
 import { WebhookSourceGithubDetails } from "@app/components/triggers/WebhookSourceGithubDetails";
 import { GitHubWebhookService } from "@app/lib/triggers/services/github_webhook_service";
-import issuesSchema from "@app/types/triggers/github/json_schema_issues.json";
-import prSchema from "@app/types/triggers/github/json_schema_pr.json";
+import { issuesSchema } from "@app/types/triggers/github/json_schema_issues";
+import { prSchema } from "@app/types/triggers/github/json_schema_pr";
 import type {
   PresetWebhook,
   WebhookEvent,

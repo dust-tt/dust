@@ -1,5 +1,6 @@
 import type { Icon } from "@dust-tt/sparkle";
 import { GithubLogo, JiraLogo } from "@dust-tt/sparkle";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type React from "react";
 
 import type {
@@ -18,7 +19,7 @@ export type WebhookEvent = {
   name: string;
   value: string;
   description: string;
-  schema: any;
+  schema: JSONSchema;
 };
 
 const WebhookPresetIcons = {
