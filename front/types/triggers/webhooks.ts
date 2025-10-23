@@ -40,6 +40,14 @@ export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
 
 export const WEBHOOK_SOURCE_KIND = ["custom", "github", "test"] as const;
 
+export function isWebhookSourceKind(
+  kind: string
+): kind is (typeof WEBHOOK_SOURCE_KIND)[number] {
+  return WEBHOOK_SOURCE_KIND.includes(
+    kind as (typeof WEBHOOK_SOURCE_KIND)[number]
+  );
+}
+
 export type WebhookSourceKind = (typeof WEBHOOK_SOURCE_KIND)[number];
 
 export type WebhookSourceType = {
@@ -108,6 +116,9 @@ export const basePostWebhookSourcesSchema = z.object({
   includeGlobal: z.boolean().optional(),
   subscribedEvents: z.array(z.string()).default([]),
   kind: z.enum(WEBHOOK_SOURCE_KIND),
+  // Optional fields for creating remote webhooks
+  connectionId: z.string().optional(),
+  remoteMetadata: z.record(z.any()).optional(),
 });
 
 export const refineSubscribedEvents: [

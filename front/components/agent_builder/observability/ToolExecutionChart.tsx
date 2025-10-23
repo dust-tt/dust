@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -13,17 +13,68 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import { ChartContainer } from "@app/components/agent_builder/observability/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
-import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import {
   CHART_HEIGHT,
-  DEFAULT_PERIOD_DAYS,
   MAX_TOOLS_DISPLAYED,
   PERCENTAGE_MULTIPLIER,
 } from "@app/components/agent_builder/observability/constants";
+import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { getToolColor } from "@app/components/agent_builder/observability/utils";
 import { useAgentToolExecution } from "@app/lib/swr/assistants";
 
 type ChartRow = { version: string; values: Record<string, number> };
+
+type BarShapeProps = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fill?: string;
+  payload: ChartRow;
+};
+
+function isTopForPayloadFactory(topTools: string[]) {
+  return (payload: ChartRow, seriesIdx: number) => {
+    for (let k = seriesIdx + 1; k < topTools.length; k++) {
+      const nextTool = topTools[k];
+      if ((payload.values[nextTool] ?? 0) > 0) {
+        return false;
+      }
+    }
+    return true;
+  };
+}
+
+type IsTopForPayload = (payload: ChartRow, seriesIdx: number) => boolean;
+
+type RoundedTopBarShapeProps = Partial<BarShapeProps> & {
+  isTopForPayload: IsTopForPayload;
+  seriesIdx: number;
+};
+
+function RoundedTopBarShape(props: RoundedTopBarShapeProps): JSX.Element {
+  const { x, y, width, height, fill, payload, isTopForPayload, seriesIdx } =
+    props;
+
+  if (
+    typeof x !== "number" ||
+    typeof y !== "number" ||
+    typeof width !== "number" ||
+    typeof height !== "number" ||
+    !payload
+  ) {
+    return <g />;
+  }
+
+  const r = 4;
+  if (!isTopForPayload(payload, seriesIdx)) {
+    return <rect x={x} y={y} width={width} height={height} fill={fill} />;
+  }
+  const right = x + width;
+  const bottom = y + height;
+  const d = `M ${x} ${bottom} L ${x} ${y + r} A ${r} ${r} 0 0 1 ${x + r} ${y} L ${right - r} ${y} A ${r} ${r} 0 0 1 ${right} ${y + r} L ${right} ${bottom} Z`;
+  return <path d={d} fill={fill} />;
+}
 
 interface ToolExecutionChartProps {
   workspaceId: string;
@@ -56,9 +107,7 @@ export function ToolExecutionChart({
   workspaceId,
   agentConfigurationId,
 }: ToolExecutionChartProps) {
-  const [period, setPeriod] =
-    useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
-
+  const { period } = useObservability();
   const {
     toolExecutionByVersion,
     isToolExecutionLoading,
@@ -128,11 +177,15 @@ export function ToolExecutionChart({
     colorClassName: getToolColor(toolName, topTools),
   }));
 
+  // Factory used by the shape to decide when to round
+  const isTopForPayload = useMemo(
+    () => isTopForPayloadFactory(topTools),
+    [topTools]
+  );
+
   return (
     <ChartContainer
       title="Tool Usage by Version"
-      period={period}
-      onPeriodChange={setPeriod}
       isLoading={isToolExecutionLoading}
       errorMessage={
         isToolExecutionError ? "Failed to load tool execution data." : undefined
@@ -148,10 +201,19 @@ export function ToolExecutionChart({
           data={chartData}
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
-          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-          <XAxis dataKey="version" className="text-xs text-muted-foreground" />
+          <CartesianGrid vertical={false} className="stroke-border" />
+          <XAxis
+            dataKey="version"
+            className="text-xs text-muted-foreground"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+          />
           <YAxis
             className="text-xs text-muted-foreground"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
             label={{
               value: "Usage %",
               angle: -90,
@@ -160,10 +222,17 @@ export function ToolExecutionChart({
             }}
           />
           <Tooltip
-            cursor={{ fill: "hsl(var(--border) / 0.1)" }}
+            cursor={false}
             content={renderTooltip}
+            wrapperStyle={{ outline: "none" }}
+            contentStyle={{
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              boxShadow: "none",
+            }}
           />
-          {topTools.map((toolName) => (
+          {topTools.map((toolName, idx) => (
             <Bar
               key={toolName}
               dataKey={(row: ChartRow) => row.values[toolName] ?? 0}
@@ -171,6 +240,12 @@ export function ToolExecutionChart({
               fill="currentColor"
               className={getToolColor(toolName, topTools)}
               name={toolName}
+              shape={
+                <RoundedTopBarShape
+                  seriesIdx={idx}
+                  isTopForPayload={isTopForPayload}
+                />
+              }
             />
           ))}
         </BarChart>

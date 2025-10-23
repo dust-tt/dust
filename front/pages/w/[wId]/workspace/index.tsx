@@ -291,7 +291,7 @@ export default function WorkspaceAdmin({
                     botDataSource={microsoftBotDataSource}
                     systemSpace={systemSpace}
                     oauth={{
-                      provider: "microsoft",
+                      provider: "microsoft_tools",
                       useCase: "bot",
                       extraConfig: {},
                     }}

@@ -7,15 +7,15 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
+import { QUEUE_NAME as COMMON_QUEUE_NAME } from "@app/lib/triggers/temporal/common/config";
+import { agentTriggerWorkflow } from "@app/lib/triggers/temporal/common/workflows";
+import { QUEUE_NAME as WEBHOOK_QUEUE_NAME } from "@app/lib/triggers/temporal/webhook/config";
 import { webhookCleanupWorkflow } from "@app/lib/triggers/temporal/webhook/workflows";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import type { ScheduleTriggerType } from "@app/types/assistant/triggers";
 import { isScheduleTrigger } from "@app/types/assistant/triggers";
-
-import { QUEUE_NAME } from "../common/config";
-import { agentTriggerWorkflow } from "../common/workflows";
 
 export const WEBHOOK_CLEANUP_SCHEDULE_ID = "webhook-cleanup-schedule";
 
@@ -33,7 +33,7 @@ function getTriggerScheduleOptions(
         auth.getNonNullableWorkspace().sId,
         triggerData,
       ],
-      taskQueue: QUEUE_NAME,
+      taskQueue: COMMON_QUEUE_NAME,
     },
     scheduleId,
     policies: {
@@ -182,7 +182,7 @@ export async function createOrUpdateWebhookCleanupSchedule(): Promise<
       type: "startWorkflow" as const,
       workflowType: webhookCleanupWorkflow,
       args: [],
-      taskQueue: QUEUE_NAME,
+      taskQueue: WEBHOOK_QUEUE_NAME,
     },
     scheduleId,
     policies: {

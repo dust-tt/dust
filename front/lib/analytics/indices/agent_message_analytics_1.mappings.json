@@ -1,0 +1,68 @@
+{
+  "properties": {
+    "message_id": {
+      "type": "keyword"
+    },
+    "workspace_id": {
+      "type": "keyword"
+    },
+    "conversation_id": {
+      "type": "keyword"
+    },
+    "agent_id": {
+      "type": "keyword"
+    },
+    "agent_version": {
+      "type": "keyword"
+    },
+    "user_id": {
+      "type": "keyword"
+    },
+    "timestamp": {
+      "type": "date"
+    },
+    "status": {
+      "type": "keyword"
+    },
+    "latency_ms": {
+      "type": "integer"
+    },
+    "tokens": {
+      "type": "object",
+      "properties": {
+        "prompt": {
+          "type": "integer"
+        },
+        "completion": {
+          "type": "integer"
+        },
+        "reasoning": {
+          "type": "integer"
+        },
+        "cached": {
+          "type": "integer"
+        }
+      }
+    },
+    "tools_used": {
+      "type": "nested",
+      "properties": {
+        "step_index": {
+          "type": "short"
+        },
+        "server_name": {
+          "type": "keyword"
+        },
+        "tool_name": {
+          "type": "keyword"
+        },
+        "execution_time_ms": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "keyword"
+        }
+      }
+    }
+  }
+}

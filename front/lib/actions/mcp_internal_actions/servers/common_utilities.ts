@@ -1,11 +1,13 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { compile } from "mathjs";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
 const MAX_WAIT_DURATION_MS = 3 * 60 * 1_000;
@@ -150,6 +152,40 @@ function createServer(
             text: parts.join("\n"),
           },
         ]);
+      }
+    )
+  );
+
+  server.tool(
+    "math_operation",
+    "Perform mathematical operations.",
+    {
+      expression: z.string().describe("The expression to evaluate. "),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "math_operation",
+        agentLoopContext,
+      },
+      async ({ expression }) => {
+        const evalFunction = compile(expression);
+        try {
+          const result = evalFunction.evaluate();
+          return new Ok([
+            {
+              type: "text",
+              text: result.toString(),
+            },
+          ]);
+        } catch (e) {
+          const cause = normalizeError(e);
+          return new Err(
+            new MCPError(`Error evaluating math expression: ${cause.message}`, {
+              cause,
+            })
+          );
+        }
       }
     )
   );

@@ -83,7 +83,7 @@ interface ScheduleEditionModalProps {
   onSave: (trigger: AgentBuilderTriggerType) => void;
 }
 
-export function ScheduleEditionModal({
+export function ScheduleEditionSheet({
   owner,
   trigger,
   isOpen,

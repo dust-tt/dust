@@ -1,9 +1,8 @@
 import type { Result } from "@dust-tt/client";
-import { Err, normalizeError, Ok } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import axios from "axios";
 import type { Activity, TurnContext } from "botbuilder";
 
-import logger from "@connectors/logger/logger";
 import { cacheWithRedis } from "@connectors/types/shared/cache";
 
 /**
@@ -40,14 +39,6 @@ async function acquireTenantSpecificToken(): Promise<string> {
     }
   );
 
-  logger.info(
-    {
-      tokenType: tokenResponse.data.token_type,
-      expiresIn: tokenResponse.data.expires_in,
-    },
-    "Tenant-specific token acquired"
-  );
-
   return tokenResponse.data.access_token;
 }
 
@@ -55,7 +46,7 @@ async function acquireTenantSpecificToken(): Promise<string> {
  * Cached version of token acquisition using Redis
  * Cache for 50 minutes (tokens expire in 1 hour, 10-minute buffer)
  */
-const getCachedTenantToken = cacheWithRedis(
+export const getTenantSpecificToken: () => Promise<string> = cacheWithRedis(
   acquireTenantSpecificToken,
   () =>
     `teams-bot-token-${process.env.MICROSOFT_BOT_ID}-${process.env.MICROSOFT_BOT_TENANT_ID}`,
@@ -63,18 +54,6 @@ const getCachedTenantToken = cacheWithRedis(
     ttlMs: 50 * 60 * 1000, // 50 minutes
   }
 );
-
-/**
- * Acquire tenant-specific token for Bot Framework API calls
- */
-export async function getTenantSpecificToken(): Promise<string | null> {
-  try {
-    return await getCachedTenantToken();
-  } catch (error) {
-    logger.error({ error }, "Failed to acquire tenant-specific token");
-    return null;
-  }
-}
 
 /**
  * Reliable replacement for context.sendActivity()
@@ -85,48 +64,24 @@ export async function sendActivity(
   activity: Partial<Activity>
 ): Promise<Result<string, Error>> {
   const token = await getTenantSpecificToken();
-  if (!token) {
-    return new Err(new Error("Cannot send activity - no valid token"));
-  }
 
-  try {
-    const response = await axios.post(
-      `${context.activity.serviceUrl}/v3/conversations/${context.activity.conversation.id}/activities`,
-      activity,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        timeout: 10000,
-      }
-    );
-
-    logger.debug(
-      {
-        activityId: response.data?.id,
-        statusCode: response.status,
+  const response = await axios.post(
+    `${context.activity.serviceUrl}/v3/conversations/${context.activity.conversation.id}/activities`,
+    activity,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-      "Activity sent successfully"
-    );
-
-    if (response.data?.id) {
-      return new Ok(response.data.id);
+      timeout: 10000,
     }
+  );
 
-    return new Err(new Error("Cannot send activity - no activity ID"));
-  } catch (error) {
-    logger.error(
-      {
-        error,
-        serviceUrl: context.activity.serviceUrl,
-        conversationId: context.activity.conversation?.id,
-      },
-      "Failed to send activity"
-    );
-
-    return new Err(normalizeError(error));
+  if (response.data?.id) {
+    return new Ok(response.data.id);
   }
+
+  return new Err(new Error("Cannot send activity - no activity ID"));
 }
 
 /**
@@ -138,9 +93,6 @@ export async function updateActivity(
   activity: Partial<Activity>
 ): Promise<Result<void, Error>> {
   const token = await getTenantSpecificToken();
-  if (!token) {
-    return new Err(new Error("Cannot send activity - no valid token"));
-  }
 
   if (!activity.id) {
     return new Err(
@@ -148,40 +100,19 @@ export async function updateActivity(
     );
   }
 
-  try {
-    const response = await axios.put(
-      `${context.activity.serviceUrl}/v3/conversations/${context.activity.conversation.id}/activities/${activity.id}`,
-      activity,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        timeout: 10000,
-      }
-    );
-
-    logger.debug(
-      {
-        activityId: activity.id,
-        statusCode: response.status,
+  await axios.put(
+    `${context.activity.serviceUrl}/v3/conversations/${context.activity.conversation.id}/activities/${activity.id}`,
+    activity,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-      "Activity updated successfully"
-    );
+      timeout: 10000,
+    }
+  );
 
-    return new Ok(undefined);
-  } catch (error) {
-    logger.error(
-      {
-        error,
-        serviceUrl: context.activity.serviceUrl,
-        conversationId: context.activity.conversation?.id,
-        activityId: activity.id,
-      },
-      "Failed to update activity"
-    );
-    return new Err(normalizeError(error));
-  }
+  return new Ok(undefined);
 }
 
 /**

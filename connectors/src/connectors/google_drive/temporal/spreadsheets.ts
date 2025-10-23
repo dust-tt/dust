@@ -491,6 +491,7 @@ export async function syncSpreadSheet(
               }
             } else {
               // Allow locally retrying the API call.
+              continue;
             }
           } else if (isGAxiosNotFoundError(err)) {
             localLogger.info(

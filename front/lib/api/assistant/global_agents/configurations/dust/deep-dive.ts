@@ -25,6 +25,7 @@ import type {
 } from "@app/types";
 import {
   assertNever,
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   GEMINI_2_5_FLASH_MODEL_CONFIG,
   getLargeWhitelistedModel,
@@ -34,7 +35,7 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 
-const MAX_CONCURRENT_SUB_AGENT_TASKS = 3;
+const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
 
 const deepDiveKnowledgeCutoffPrompt = `Your knowledge cutoff was at least 1 year ago. You have no internal knowledge of anything that happened since then.
 Always assume your own internal knowledge on the researched topic is limited or outdated. Major events may have happened since your knowledge cutoff.
@@ -125,7 +126,7 @@ Avoid browsing several web pages yourself. Delegate browsing tasks to sub-agents
 </delegation_policy>
 
 <concurrency_limits>
-- You MUST USE parallel tool calling to execute several SIMULTANOUS sub-agent tasks. DO NOT execute sequentially when you can execute in parallel.
+- You should use parallel tool calling to execute several SIMULTANOUS sub-agent tasks. DO NOT execute sequentially when you can execute in parallel.
 - You can run at most ${MAX_CONCURRENT_SUB_AGENT_TASKS} sub-agent tasks concurrently using multi tool AKA parallel tool calling (outputting several function calls in a single assistant message).
 - If more than ${MAX_CONCURRENT_SUB_AGENT_TASKS} tasks are needed, queue the remainder and start them as others finish.
 - Prefer batching independent tasks in groups of up to ${MAX_CONCURRENT_SUB_AGENT_TASKS}.
@@ -371,6 +372,12 @@ function getFastModelConfig(owner: WorkspaceType): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: AgentReasoningEffort;
 } | null {
+  if (isProviderWhitelisted(owner, "anthropic")) {
+    return {
+      modelConfiguration: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+      reasoningEffort: "none",
+    };
+  }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
     return {
       modelConfiguration: GEMINI_2_5_FLASH_MODEL_CONFIG,

@@ -101,6 +101,7 @@ export function useZendeskOrganizationTagFilters({
       excludedTags,
       mutateIncludedTags,
       mutateExcludedTags,
+      sendNotification,
     ]
   );
 

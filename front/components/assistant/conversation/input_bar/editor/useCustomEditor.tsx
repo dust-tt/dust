@@ -19,6 +19,7 @@ import type { SuggestionProps } from "@app/components/assistant/conversation/inp
 import { mentionPluginKey } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
+import { mentionAgent } from "@app/lib/mentions";
 import { isMobile } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 
@@ -48,7 +49,10 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
   // If the node is a 'mention', concatenate the mention label and add to mentions array.
   if (node.type === "mention") {
     // TODO: We should not expose `sId` here.
-    textContent += `:mention[${node.attrs?.label}]{sId=${node.attrs?.id}}`;
+    textContent += mentionAgent({
+      name: node.attrs?.label,
+      sId: node.attrs?.id,
+    });
     mentions.push({
       id: node.attrs?.id,
       label: node.attrs?.label,

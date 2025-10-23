@@ -20,7 +20,7 @@ import type {
   UserMessageNewEvent,
   UserMessageType,
 } from "@dust-tt/client";
-import { isAgentMention } from "@dust-tt/client";
+import { isAgentMention, isAgentMessage } from "@dust-tt/client";
 import debounce from "lodash/debounce";
 import groupBy from "lodash/groupBy";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -205,6 +205,15 @@ export function ConversationViewer({
     [typedGroupedMessages]
   );
 
+  const userAndAgentMessages = useMemo(
+    () =>
+      messages.filter(
+        (message): message is UserMessageType | AgentMessagePublicType =>
+          message.type === "user_message" || isAgentMessage(message)
+      ),
+    [messages]
+  );
+
   return (
     <div
       className={classNames(
@@ -224,6 +233,7 @@ export function ConversationViewer({
                 <MessageGroup
                   key={`typed-group-${index}`}
                   messages={typedGroup}
+                  userAndAgentMessages={userAndAgentMessages}
                   feedbacks={feedbacks}
                   isLastMessageGroup={isLastGroup}
                   conversationId={conversationId}

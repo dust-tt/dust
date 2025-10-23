@@ -4,6 +4,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
@@ -127,6 +128,7 @@ async function handler(
           success: true,
         });
       } catch (error) {
+        logger.warn({ error }, "Failed to delete webhook source.");
         return apiError(req, res, {
           status_code: 500,
           api_error: {

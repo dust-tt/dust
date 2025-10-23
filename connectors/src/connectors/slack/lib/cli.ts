@@ -820,6 +820,36 @@ export const slack = async ({
       return { success: true };
     }
 
+    case "check-channel": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.channelId) {
+        throw new Error("Missing --channelId argument");
+      }
+
+      const connector = await ConnectorModel.findOne({
+        where: { workspaceId: `${args.wId}`, type: "slack" },
+      });
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${args.wId}`);
+      }
+
+      const slackClient = await getSlackClient(connector.id);
+
+      const remoteChannel = await getChannelById(
+        slackClient,
+        connector.id,
+        args.channelId
+      );
+
+      if (!remoteChannel) {
+        throw new Error(`Could not find the channel ${args.channelId}`);
+      }
+
+      return { success: true };
+    }
+
     default:
       throw new Error("Unknown slack command: " + command);
   }

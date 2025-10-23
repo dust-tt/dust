@@ -8,6 +8,7 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
+import { handleMentions } from "@app/lib/api/assistant/conversation/mentions";
 import { canReadMessage } from "@app/lib/api/assistant/messages";
 import {
   getContentFragmentGroupIds,
@@ -27,7 +28,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
   AgentMessage,
-  Mention,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
@@ -125,13 +125,12 @@ export async function createConversation(
     created: conversation.createdAt.getTime(),
     sId: conversation.sId,
     title: conversation.title,
-    visibility: conversation.visibility,
     depth: conversation.depth,
-    triggerId: conversation.triggerSId(),
     content: [],
     unread: false,
     actionRequired: false,
     hasError: false,
+    visibility: conversation.visibility,
     requestedGroupIds: conversation.getRequestedGroupIdsFromModel(auth),
     requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
   };
@@ -159,41 +158,6 @@ export async function updateConversationTitle(
   await conversation.updateTitle(title);
 
   return new Ok(undefined);
-}
-
-/**
- *  Mark the conversation as deleted, but does not remove it from database
- *  unless destroy is explicitly set to true
- */
-export async function deleteConversation(
-  auth: Authenticator,
-  {
-    conversationId,
-    destroy,
-  }: {
-    conversationId: string;
-    destroy?: boolean;
-  }
-): Promise<Result<{ success: true }, ConversationError>> {
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-
-  if (!conversation) {
-    return new Err(new ConversationError("conversation_not_found"));
-  }
-
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationError("conversation_access_restricted"));
-  }
-
-  if (destroy) {
-    await conversation.delete(auth);
-  } else {
-    await conversation.updateVisibilityToDeleted();
-  }
-  return new Ok({ success: true });
 }
 
 /**
@@ -600,92 +564,17 @@ export async function postUserMessage(
         excludedUser: user?.toJSON(),
       });
 
-      const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
-        await Promise.all(
-          mentions.filter(isAgentMention).map((mention) => {
-            // For each assistant/agent mention, create an "empty" agent message.
-            return (async () => {
-              // `getAgentConfiguration` checks that we're only pulling a configuration from the
-              // same workspace or a global one.
-              const configuration = agentConfigurations.find(
-                (ac) => ac.sId === mention.configurationId
-              );
-              if (!configuration) {
-                return null;
-              }
-
-              await Mention.create(
-                {
-                  messageId: m.id,
-                  agentConfigurationId: configuration.sId,
-                  workspaceId: owner.id,
-                },
-                { transaction: t }
-              );
-
-              const agentMessageRow = await AgentMessage.create(
-                {
-                  status: "created",
-                  agentConfigurationId: configuration.sId,
-                  agentConfigurationVersion: configuration.version,
-                  workspaceId: owner.id,
-                  skipToolsValidation,
-                },
-                { transaction: t }
-              );
-              const messageRow = await Message.create(
-                {
-                  sId: generateRandomModelSId(),
-                  rank: nextMessageRank++,
-                  conversationId: conversation.id,
-                  parentId: userMessage.id,
-                  agentMessageId: agentMessageRow.id,
-                  workspaceId: owner.id,
-                },
-                {
-                  transaction: t,
-                }
-              );
-
-              const parentAgentMessageId =
-                userMessage.context.origin === "agent_handover"
-                  ? userMessage.context.originMessageId ?? null
-                  : null;
-
-              return {
-                row: agentMessageRow,
-                m: {
-                  id: messageRow.id,
-                  agentMessageId: agentMessageRow.id,
-                  created: agentMessageRow.createdAt.getTime(),
-                  completedTs: agentMessageRow.completedAt?.getTime() ?? null,
-                  sId: messageRow.sId,
-                  type: "agent_message",
-                  visibility: "visible",
-                  version: 0,
-                  parentMessageId: userMessage.sId,
-                  parentAgentMessageId,
-                  status: "created",
-                  actions: [],
-                  content: null,
-                  chainOfThought: null,
-                  rawContents: [],
-                  error: null,
-                  configuration,
-                  rank: messageRow.rank,
-                  skipToolsValidation: agentMessageRow.skipToolsValidation,
-                  contents: [],
-                  parsedContents: {},
-                } satisfies AgentMessageType,
-              };
-            })();
-          })
-        );
-
-      const nonNullResults = results.filter((r) => r !== null) as {
-        row: AgentMessage;
-        m: AgentMessageType;
-      }[];
+      const nonNullResults = await handleMentions({
+        mentions,
+        agentConfigurations,
+        m,
+        owner,
+        t,
+        skipToolsValidation,
+        nextMessageRank,
+        conversation,
+        userMessage,
+      });
 
       await updateConversationRequestedGroupIds(auth, {
         agents: nonNullResults.map(({ m }) => m.configuration),
@@ -1050,101 +939,25 @@ export async function editUserMessage(
       // For now agent messages are appended at the end of conversation
       // it is fine since for now editing with new mentions is only supported
       // for the last user message
-      let nextMessageRank =
+      const nextMessageRank =
         ((await Message.max<number | null, Message>("rank", {
           where: {
             conversationId: conversation.id,
           },
           transaction: t,
         })) ?? -1) + 1;
-      const results: ({
-        row: AgentMessage;
-        m: AgentMessageType;
-      } | null)[] = await Promise.all(
-        mentions.filter(isAgentMention).map((mention) => {
-          // For each assistant/agent mention, create an "empty" agent message.
-          return (async () => {
-            // `getAgentConfiguration` checks that we're only pulling a configuration from the
-            // same workspace or a global one.
-            const configuration = agentConfigurations.find(
-              (ac) => ac.sId === mention.configurationId
-            );
-            if (!configuration) {
-              return null;
-            }
 
-            await Mention.create(
-              {
-                messageId: m.id,
-                agentConfigurationId: configuration.sId,
-                workspaceId: owner.id,
-              },
-              { transaction: t }
-            );
-
-            const agentMessageRow = await AgentMessage.create(
-              {
-                status: "created",
-                agentConfigurationId: configuration.sId,
-                agentConfigurationVersion: configuration.version,
-                workspaceId: owner.id,
-                skipToolsValidation,
-              },
-              { transaction: t }
-            );
-            const messageRow = await Message.create(
-              {
-                sId: generateRandomModelSId(),
-                rank: nextMessageRank++,
-                conversationId: conversation.id,
-                parentId: userMessage.id,
-                agentMessageId: agentMessageRow.id,
-                workspaceId: owner.id,
-              },
-              {
-                transaction: t,
-              }
-            );
-
-            const parentAgentMessageId =
-              userMessage.context.origin === "agent_handover"
-                ? userMessage.context.originMessageId ?? null
-                : null;
-
-            return {
-              row: agentMessageRow,
-              m: {
-                id: messageRow.id,
-                agentMessageId: agentMessageRow.id,
-                created: agentMessageRow.createdAt.getTime(),
-                completedTs: agentMessageRow.completedAt?.getTime() ?? null,
-                sId: messageRow.sId,
-                type: "agent_message",
-                visibility: "visible",
-                version: 0,
-                parentMessageId: userMessage.sId,
-                parentAgentMessageId,
-                status: "created",
-                actions: [],
-                content: null,
-                chainOfThought: null,
-                rawContents: [],
-                error: null,
-                configuration,
-                rank: messageRow.rank,
-                skipToolsValidation: agentMessageRow.skipToolsValidation,
-                contents: [],
-                parsedContents: {},
-              } satisfies AgentMessageType,
-            };
-          })();
-        })
-      );
-
-      const nonNullResults = results.filter((r) => r !== null) as {
-        row: AgentMessage;
-        m: AgentMessageType;
-      }[];
+      const nonNullResults = await handleMentions({
+        mentions,
+        agentConfigurations,
+        m,
+        owner,
+        t,
+        skipToolsValidation,
+        nextMessageRank,
+        conversation,
+        userMessage,
+      });
 
       await updateConversationRequestedGroupIds(auth, {
         agents: nonNullResults.map(({ m }) => m.configuration),

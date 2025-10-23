@@ -2,6 +2,7 @@ import type { ConnectorProvider } from "@dust-tt/client";
 import {
   BigQueryLogo,
   ConfluenceLogo,
+  DiscordLogo,
   DriveLogo,
   FolderIcon,
   GithubLogo,
@@ -127,6 +128,18 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "Gong",
     getLogoComponent: () => {
       return GongLogo;
+    },
+  },
+  discord_bot: {
+    name: "Discord (Bot)",
+    getLogoComponent: () => {
+      return DiscordLogo;
+    },
+  },
+  microsoft_bot: {
+    name: "Microsoft (Bot)",
+    getLogoComponent: () => {
+      return MicrosoftLogo;
     },
   },
 };
