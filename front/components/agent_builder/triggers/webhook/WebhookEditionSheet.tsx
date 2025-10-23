@@ -104,12 +104,11 @@ function WebhookEditionEventSelector({
   selectedPreset,
   availableEvents,
 }: WebhookEditionEventSelectorProps) {
-  const { control, getFieldState, formState } =
-    useFormContext<WebhookFormValues>();
+  const { control } = useFormContext<WebhookFormValues>();
   const {
     field: { value: selectedEvent, onChange: setSelectedEvent },
+    fieldState: { error },
   } = useController({ control, name: "event" });
-  const { error } = getFieldState("event", formState);
 
   if (!selectedPreset || availableEvents.length === 0) {
     return null;
