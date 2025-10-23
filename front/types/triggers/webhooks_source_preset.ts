@@ -7,8 +7,8 @@ import type {
   WebhookCreateFormComponentProps,
   WebhookDetailsComponentProps,
 } from "@app/components/triggers/webhook_preset_components";
-import type { RemoteWebhookService } from "@app/lib/triggers/services/remote_webhook_service";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 
 export type EventCheck = {
   type: "headers" | "body";

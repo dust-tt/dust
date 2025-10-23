@@ -1,15 +1,14 @@
 import { Octokit } from "@octokit/core";
 
 import config from "@app/lib/api/config";
-import { getGithubOrganizations } from "@app/lib/api/webhooks/github/orgs";
-import { getGithubRepositories } from "@app/lib/api/webhooks/github/repos";
 import type { Authenticator } from "@app/lib/auth";
-import type { GithubAdditionalData } from "@app/lib/triggers/services/github_service_types";
+import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
+import { getGithubOrganizations } from "@app/lib/triggers/built-in-webhooks/github/orgs";
+import { getGithubRepositories } from "@app/lib/triggers/built-in-webhooks/github/repos";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isString, OAuthAPI, Ok } from "@app/types";
-
-import type { RemoteWebhookService } from "./remote_webhook_service";
+import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 
 export class GitHubWebhookService implements RemoteWebhookService {
   async getServiceData(
