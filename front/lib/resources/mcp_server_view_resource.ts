@@ -643,7 +643,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return getAvailabilityOfInternalMCPServerById(this.internalMCPServerId);
   }
 
-  static async ensureAllAutoToolsAreCreated(auth: Authenticator) {
+  static async ensureAllAutoToolsAreCreated(auth: Authenticator): Promise<{
+    updated: number;
+  }> {
     return tracer.trace("ensureAllAutoToolsAreCreated", async () => {
       const names = AVAILABLE_INTERNAL_MCP_SERVER_NAMES;
 
@@ -667,13 +669,13 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
 
       if (autoInternalMCPServerIds.length === 0) {
-        return;
+        return { updated: 0 };
       }
 
       // TODO(mcp): Think this through and determine how / when we create the default internal mcp server views
       // For now, only admins can create the default internal mcp server views otherwise, we would have an assert error
       if (!auth.isAdmin()) {
-        return;
+        return { updated: 0 };
       }
 
       // Get system and global spaces
@@ -703,6 +705,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           );
         }
 
+        let updated = 0;
+
         // Create the missing views
         for (const id of autoInternalMCPServerIds) {
           // Check if exists in system space.
@@ -719,6 +723,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
               editedByUserId: auth.user()?.id,
               oAuthUseCase: null,
             });
+            updated++;
           }
           const systemView = new this(
             MCPServerViewModel,
@@ -735,9 +740,14 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
               systemView,
               space: globalSpace,
             });
+            updated++;
           }
         }
+
+        return { updated };
       }
+
+      return { updated: 0 };
     });
   }
 
