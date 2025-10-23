@@ -70,9 +70,8 @@ export function ScheduleEdition({
       };
 
       onSave(triggerData);
-      onClose();
     },
-    [user, trigger, onSave, onClose]
+    [user, trigger, onSave]
   );
 
   const onSheetSave = async (): Promise<boolean> => {
