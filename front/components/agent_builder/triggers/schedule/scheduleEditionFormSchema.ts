@@ -3,7 +3,10 @@ import { z } from "zod";
 import type { AgentBuilderScheduleTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 
 export const ScheduleFormSchema = z.object({
-  name: z.string().min(1, "Name is required").max(255, "Name should be less than 255 characters"),
+  name: z
+    .string()
+    .min(1, "Name is required")
+    .max(255, "Name should be less than 255 characters"),
   enabled: z.boolean().default(true),
   naturalLanguageDescription: z.string().optional(),
   customPrompt: z.string(),
