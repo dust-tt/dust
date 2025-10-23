@@ -34,7 +34,10 @@ import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { createSpaceIdToGroupsMap } from "@app/lib/resources/permission_utils";
+import {
+  createResourcePermissionsFromSpacesWithMap,
+  createSpaceIdToGroupsMap,
+} from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -59,11 +62,12 @@ import {
   Err,
   isAdmin,
   isBuilder,
+  isGlobalAgentId,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   normalizeAsInternalDustError,
   Ok,
+  removeNulls,
 } from "@app/types";
-import { isGlobalAgentId, removeNulls } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 /**
@@ -1184,12 +1188,16 @@ export async function filterAgentsByRequestedSpaces(
   const spaces = await SpaceResource.fetchByModelIds(auth, uniqSpaceIds);
   const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
 
-  const allowedBySpaceIds = agents.filter((agent) =>
+  const foundSpaceIds = new Set(spaces.map((s) => s.id));
+  const validAgents = agents.filter((c) =>
+    c.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
+  );
+
+  const allowedBySpaceIds = validAgents.filter((agent) =>
     auth.canRead(
-      Authenticator.createResourcePermissionsFromGroupIds(
-        agent.requestedSpaceIds.map(
-          (spaceId) => spaceIdToGroupsMap.get(spaceId) ?? []
-        )
+      createResourcePermissionsFromSpacesWithMap(
+        spaceIdToGroupsMap,
+        agent.requestedSpaceIds.map((id) => Number(id))
       )
     )
   );
@@ -1198,7 +1206,7 @@ export async function filterAgentsByRequestedSpaces(
     return allowedBySpaceIds;
   }
 
-  const allowedByGroupIds = agents.filter((agent) =>
+  const allowedByGroupIds = validAgents.filter((agent) =>
     auth.canRead(
       Authenticator.createResourcePermissionsFromGroupIds(
         agent.requestedGroupIds.map((groupIds) =>
