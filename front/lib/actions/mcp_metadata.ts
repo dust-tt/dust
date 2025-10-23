@@ -451,8 +451,11 @@ export function extractMetadataFromServerVersion(
       documentationUrl: isInternalMCPServerDefinition(r)
         ? r.documentationUrl
         : null,
-      requiresSecret: isInternalMCPServerDefinition(r)
-        ? r.requiresSecret
+      developerSecretSelection: isInternalMCPServerDefinition(r)
+        ? r.developerSecretSelection
+        : undefined,
+      developerSecretSelectionDescription: isInternalMCPServerDefinition(r)
+        ? r.developerSecretSelectionDescription
         : undefined,
     };
   }
@@ -464,7 +467,6 @@ export function extractMetadataFromServerVersion(
     icon: DEFAULT_MCP_SERVER_ICON,
     authorization: null,
     documentationUrl: null,
-    requiresSecret: undefined,
   };
 }
 
