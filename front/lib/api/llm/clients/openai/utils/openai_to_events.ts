@@ -11,6 +11,21 @@ import type {
 } from "@app/lib/api/llm/types/events";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 
+export async function* streamLLMEvents({
+  responseStreamEvents,
+  metadata,
+}: {
+  responseStreamEvents: AsyncIterable<ResponseStreamEvent>;
+  metadata: ProviderMetadata;
+}) {
+  for await (const event of responseStreamEvents) {
+    yield* toEvents({
+      event,
+      metadata,
+    });
+  }
+}
+
 function textDelta(delta: string, metadata: ProviderMetadata): LLMEvent {
   return {
     type: "text_delta",
@@ -56,10 +71,10 @@ function toolCall(
   return events;
 }
 
-function reaponseOutputItemToLLMOutputItem(
+function itemToEvent(
   item: ResponseOutputItem,
   metadata: ProviderMetadata
-): LLMOutputItem | undefined {
+): LLMEvent | undefined {
   switch (item.type) {
     case "message":
       return {
@@ -103,32 +118,27 @@ function responseCompleted(
   response: Response,
   metadata: ProviderMetadata
 ): LLMEvent[] {
-  const outputItems: LLMOutputItem[] = response.output
-    .map((item) => reaponseOutputItemToLLMOutputItem(item, metadata))
-    .filter((item): item is LLMOutputItem => item !== undefined);
-  const events: LLMEvent[] = [];
-  events.push(...outputItems);
+  const events: LLMEvent[] = response.output
+    .map((item) => itemToEvent(item, metadata))
+    .filter((item): item is LLMEvent => item !== undefined);
 
   if (response.usage) {
     events.push({
       type: "token_usage",
       content: {
         inputTokens: response.usage.input_tokens,
+        cachedTokens: response.usage.input_tokens_details.cached_tokens,
+        reasoningTokens: response.usage.output_tokens_details.reasoning_tokens,
         outputTokens: response.usage.output_tokens,
         totalTokens: response.usage.total_tokens,
       },
       metadata,
     });
   }
-  events.push({
-    type: "success",
-    content: outputItems,
-    metadata,
-  });
   return events;
 }
 
-export function toEvents({
+function toEvents({
   event,
   metadata,
 }: {
