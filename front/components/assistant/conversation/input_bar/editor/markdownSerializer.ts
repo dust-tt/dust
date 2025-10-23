@@ -5,6 +5,8 @@ import {
   MarkdownSerializer,
 } from "prosemirror-markdown";
 
+import { mentionAgent } from "@app/lib/mentions";
+
 function buildNodeSerializers(schema: Schema) {
   // Start with default serializers.
   const map = { ...defaultMarkdownSerializer.nodes };
@@ -36,7 +38,7 @@ function buildNodeSerializers(schema: Schema) {
   };
 
   map.mention = (state: MarkdownSerializerState, node: ProseMirrorNode) => {
-    state.write(`:mention[${node.attrs?.label}]{sId=${node.attrs?.id}}`);
+    state.write(mentionAgent({ name: node.attrs.label, sId: node.attrs.id }));
   };
 
   map.dataSourceLink = (

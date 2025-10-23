@@ -13,6 +13,7 @@ import { DEEP_DIVE_NAME } from "@app/lib/api/assistant/global_agents/configurati
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { mentionAgent } from "@app/lib/mentions";
 import logger from "@app/logger/logger";
 import {
   Err,
@@ -97,7 +98,7 @@ function createServer(
         }
 
         const response = makeMCPToolExit({
-          message: `Handoff from :mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}} to :mention[${DEEP_DIVE_NAME}]{sId=${GLOBAL_AGENTS_SID.DEEP_DIVE}} successfully launched.`,
+          message: `Handoff from ${mentionAgent(agentConfiguration)} to ${mentionAgent({ name: DEEP_DIVE_NAME, sId: GLOBAL_AGENTS_SID.DEEP_DIVE })}successfully launched.`,
           isError: false,
         });
 
