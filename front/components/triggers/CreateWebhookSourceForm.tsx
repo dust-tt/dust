@@ -44,16 +44,15 @@ export type CreateWebhookSourceFormData = z.infer<
   typeof CreateWebhookSourceSchema
 >;
 
-export type RemoteProviderData = {
-  connectionId: string;
-  [key: string]: unknown;
-};
+export type RemoteProviderData = Record<string, unknown>;
 
 type CreateWebhookSourceFormContentProps = {
   form: ReturnType<typeof useForm<CreateWebhookSourceFormData>>;
   kind: WebhookSourceKind;
   owner?: LightWorkspaceType;
-  onRemoteProviderDataChange?: (data: RemoteProviderData | null) => void;
+  onRemoteProviderDataChange?: (
+    data: { connectionId: string; remoteMetadata: RemoteProviderData } | null
+  ) => void;
   onPresetReadyToSubmitChange?: (isReady: boolean) => void;
 };
 

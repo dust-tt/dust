@@ -19,11 +19,10 @@ export interface WebhookCreateFormComponentProps {
   isFetchingServiceData: boolean;
   onFetchServiceData: (connectionId: string) => Promise<void>;
   onDataToCreateWebhookChange?: (
-    data:
-      | ({
-          connectionId: string;
-        } & Record<string, unknown>)
-      | null
+    data: {
+      connectionId: string;
+      remoteMetadata: Record<string, unknown>;
+    } | null
   ) => void;
   onReadyToSubmitChange?: (isReady: boolean) => void;
 }

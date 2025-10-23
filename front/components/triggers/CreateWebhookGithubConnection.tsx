@@ -14,12 +14,12 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
+import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { GithubAdditionalData } from "@app/lib/triggers/services/github_service_types";
 import { GithubAdditionalDataSchema } from "@app/lib/triggers/services/github_service_types";
 import type { OAuthConnectionType } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
-import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
 
 function isGithubAdditionalData(
   data: Record<string, unknown> | null
@@ -76,8 +76,10 @@ export function CreateWebhookGithubConnection({
     if (isReady && onDataToCreateWebhookChange) {
       onDataToCreateWebhookChange({
         connectionId: githubConnection.connection_id,
-        repositories: selectedRepositories,
-        organizations: selectedOrganizations,
+        remoteMetadata: {
+          repositories: selectedRepositories,
+          organizations: selectedOrganizations,
+        },
       });
     } else if (onDataToCreateWebhookChange) {
       onDataToCreateWebhookChange(null);
