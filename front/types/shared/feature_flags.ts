@@ -141,14 +141,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",
   },
-  research_agent: {
-    description: "Activate @deepDive agent.",
-    stage: "rolling_out",
-  },
-  deep_research_as_a_tool: {
-    description: "Activate Deep Dive tool",
-    stage: "dust_only",
-  },
   hootl_subscriptions: {
     description: "Subscription feature for Schedule & Triggers.",
     stage: "dust_only",

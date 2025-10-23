@@ -932,10 +932,9 @@ The directive should be used to display a clickable version of the agent name in
   deep_dive: {
     id: 29,
     availability: "auto",
-    isRestricted: ({ featureFlags, isDeepDiveDisabled }) => {
-      return (
-        !featureFlags.includes("deep_research_as_a_tool") || isDeepDiveDisabled
-      );
+    isRestricted: ({ isDeepDiveDisabled }) => {
+      // If the workspace has disable the deep dive agent, the tool is not available.
+      return isDeepDiveDisabled;
     },
     allowMultipleInstances: false,
     isPreview: false,
