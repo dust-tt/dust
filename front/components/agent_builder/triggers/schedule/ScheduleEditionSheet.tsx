@@ -23,9 +23,7 @@ interface ScheduleEditionNameInputProps {
   isEditor: boolean;
 }
 
-function ScheduleEditionNameInput({
-  isEditor,
-}: ScheduleEditionNameInputProps) {
+function ScheduleEditionNameInput({ isEditor }: ScheduleEditionNameInputProps) {
   const { control } = useFormContext<ScheduleFormValues>();
   const {
     field,
@@ -167,10 +165,7 @@ export function ScheduleEditionSheet({
             <ScheduleEditionStatusToggle isEditor={isEditor} />
 
             <div className="space-y-1">
-              <ScheduleEditionScheduler
-                isEditor={isEditor}
-                workspace={owner}
-              />
+              <ScheduleEditionScheduler isEditor={isEditor} workspace={owner} />
             </div>
 
             <ScheduleEditionMessageInput isEditor={isEditor} />
