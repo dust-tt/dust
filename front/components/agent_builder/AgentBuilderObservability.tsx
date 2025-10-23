@@ -18,9 +18,8 @@ import {
   ObservabilityProvider,
   useObservability,
 } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { ToolExecutionChart } from "@app/components/agent_builder/observability/ToolExecutionChart";
 import { ToolLatencyChart } from "@app/components/agent_builder/observability/ToolLatencyChart";
-import { ToolStepIndexChart } from "@app/components/agent_builder/observability/ToolStepIndexChart";
+import { ToolUsageChart } from "@app/components/agent_builder/observability/ToolUsageChart";
 import { UsageMetricsChart } from "@app/components/agent_builder/observability/UsageMetricsChart";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 
@@ -71,11 +70,7 @@ export function AgentBuilderObservability({
                 workspaceId={owner.sId}
                 agentConfigurationId={agentConfiguration.sId}
               />
-              <ToolStepIndexChart
-                workspaceId={owner.sId}
-                agentConfigurationId={agentConfiguration.sId}
-              />
-              <ToolExecutionChart
+              <ToolUsageChart
                 workspaceId={owner.sId}
                 agentConfigurationId={agentConfiguration.sId}
               />
