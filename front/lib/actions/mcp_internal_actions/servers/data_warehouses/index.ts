@@ -321,7 +321,7 @@ function createServer(
         );
 
         if (validationResult.isErr()) {
-          return new Err(new MCPError(validationResult.error.message));
+          return validationResult.error;
         }
 
         const { validatedNodes, dataSourceId } = validationResult.value;
@@ -436,7 +436,7 @@ function createServer(
         );
 
         if (validationResult.isErr()) {
-          return new Err(new MCPError(validationResult.error.message));
+          return validationResult.error;
         }
 
         const { validatedNodes, dataSourceId } = validationResult.value;
