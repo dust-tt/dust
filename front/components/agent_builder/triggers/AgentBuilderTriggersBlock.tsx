@@ -20,7 +20,7 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import { ScheduleEditionSheet } from "@app/components/agent_builder/triggers/ScheduleEditionSheet";
+import { ScheduleEdition } from "@app/components/agent_builder/triggers/schedule/ScheduleEdition";
 import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
 import { WebhookEditionSheet } from "@app/components/agent_builder/triggers/WebhookEditionSheet";
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -296,12 +296,12 @@ export function AgentBuilderTriggersBlock({
       </div>
 
       {/* Create/Edit Schedule Modal */}
-      <ScheduleEditionSheet
+      <ScheduleEdition
         owner={owner}
         trigger={
           dialogMode?.type === "edit" && dialogMode.trigger.kind === "schedule"
             ? dialogMode.trigger
-            : undefined
+            : null
         }
         isOpen={
           (dialogMode?.type === "add" && dialogMode.kind === "schedule") ||
