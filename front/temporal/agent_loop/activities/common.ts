@@ -15,9 +15,25 @@ import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import type { ConversationWithoutContentType } from "@app/types";
+import type {
+  ConversationWithoutContentType,
+  ToolErrorEvent,
+} from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
+
+export async function markAgentMessageAsFailed(
+  agentMessageRow: AgentMessage,
+  error: ToolErrorEvent["error"]
+): Promise<void> {
+  await agentMessageRow.update({
+    completedAt: new Date(),
+    errorCode: error.code,
+    errorMessage: error.message,
+    errorMetadata: error.metadata,
+    status: "failed",
+  });
+}
 
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
@@ -31,13 +47,7 @@ async function processEventForDatabase(
     case "agent_error":
     case "tool_error":
       // Store error in database.
-      await agentMessageRow.update({
-        status: "failed",
-        errorCode: event.error.code,
-        errorMessage: event.error.message,
-        errorMetadata: event.error.metadata,
-        completedAt: new Date(),
-      });
+      await markAgentMessageAsFailed(agentMessageRow, event.error);
 
       // Mark the conversation as errored.
       await ConversationResource.markHasError(auth, {
