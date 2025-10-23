@@ -156,36 +156,35 @@ export function WebhookEditionFilters({
 
   return (
     <>
-      {selectedPreset && (
-          <>
-            <Label htmlFor="webhook-filter-description">
-              Filter Description (optional)
-            </Label>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Describe in natural language the conditions under which the agent
-              should trigger. Will always trigger if left empty.
-            </p>
-            <TextArea
-              id="webhook-filter-description"
-              placeholder='e.g. "New pull requests that changes more than 500 lines of code, or have the `auto-review` label."'
-              rows={3}
-              value={naturalDescription}
-              disabled={!isEditor}
-              onChange={(e) => {
-                if (!selectedEvent || !selectedPreset) {
-                  setError("event", {
-                    type: "manual",
-                    message: "Please select an event first",
-                  });
-                  return;
-                }
+      {selectedPreset && availableEvents.length > 0 && (
+        <>
+          <Label htmlFor="webhook-filter-description">
+            Filter Description (optional)
+          </Label>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Describe in natural language the conditions under which the agent
+            should trigger. Will always trigger if left empty.
+          </p>
+          <TextArea
+            id="webhook-filter-description"
+            placeholder='e.g. "New pull requests that changes more than 500 lines of code, or have the `auto-review` label."'
+            rows={3}
+            value={naturalDescription}
+            disabled={!isEditor}
+            onChange={(e) => {
+              if (!selectedEvent || !selectedPreset) {
+                setError("event", {
+                  type: "manual",
+                  message: "Please select an event first",
+                });
+                return;
+              }
 
-                handleNaturalDescriptionChange(e.target.value);
-              }}
-            />
-          </>
-        ) &&
-        availableEvents.length > 0}
+              handleNaturalDescriptionChange(e.target.value);
+            }}
+          />
+        </>
+      )}
 
       {webhookSourceView?.kind === "custom" && (
         <>
