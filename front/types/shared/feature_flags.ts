@@ -226,6 +226,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Use direct LLM call over Dust app run in a conversation.",
     stage: "on_demand",
   },
+  mentions_v2: {
+    description: "Enable mentions v2, aka mention users",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
