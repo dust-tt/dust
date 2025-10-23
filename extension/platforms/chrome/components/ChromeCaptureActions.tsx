@@ -19,7 +19,7 @@ export function ChromeCaptureActions({
         : currentDomain.endsWith(d)
     );
 
-  const handleCapture = () => {
+  const handleCaptureText = () => {
     void fileUploaderService.uploadContentTab({
       includeContent: true,
       includeCapture: false,
@@ -46,7 +46,7 @@ export function ChromeCaptureActions({
           variant="ghost-secondary"
           size="xs"
           className={isBlinking ? "animate-[bgblink_200ms_3]" : ""}
-          onClick={handleCapture}
+          onClick={handleCaptureText}
           disabled={isLoading || isBlacklisted}
         />
       </div>
@@ -76,7 +76,7 @@ export function ChromeCaptureActions({
           variant="ghost-secondary"
           size="xs"
           className={isBlinking ? "animate-[bgblink_200ms_3]" : ""}
-          onClick={handleCapture}
+          onClick={handleCaptureText}
           disabled={isLoading || isBlacklisted}
         />
       </div>
