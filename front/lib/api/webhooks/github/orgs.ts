@@ -21,7 +21,7 @@ export async function getGithubOrganizations(
   });
 
   return orgs.map((org: any): GithubOrganization => {
-    const organization = org.login;
+    const organization = { name: org.login };
     if (!isGithubOrganization(organization)) {
       throw new Error(
         `Invalid GithubOrganization data: ${JSON.stringify(organization)}`

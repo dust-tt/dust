@@ -16,7 +16,11 @@ import { useEffect, useState } from "react";
 
 import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { GithubAdditionalData } from "@app/lib/triggers/services/github_service_types";
+import type {
+  GithubAdditionalData,
+  GithubOrganization,
+  GithubRepository,
+} from "@app/lib/triggers/services/github_service_types";
 import { GithubAdditionalDataSchema } from "@app/lib/triggers/services/github_service_types";
 import type { OAuthConnectionType } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
@@ -44,12 +48,12 @@ export function CreateWebhookGithubConnection({
   const [githubConnection, setGithubConnection] =
     useState<OAuthConnectionType | null>(null);
   const [isConnectingGithub, setIsConnectingGithub] = useState(false);
-  const [selectedRepositories, setSelectedRepositories] = useState<string[]>(
-    []
-  );
-  const [selectedOrganizations, setSelectedOrganizations] = useState<string[]>(
-    []
-  );
+  const [selectedRepositories, setSelectedRepositories] = useState<
+    GithubRepository[]
+  >([]);
+  const [selectedOrganizations, setSelectedOrganizations] = useState<
+    GithubOrganization[]
+  >([]);
   const [repoSearchQuery, setRepoSearchQuery] = useState("");
   const githubData = isGithubAdditionalData(serviceData) ? serviceData : null;
   const githubRepositories = githubData?.repositories ?? [];
@@ -59,11 +63,11 @@ export function CreateWebhookGithubConnection({
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
 
   const filteredRepositories = githubRepositories.filter((repo) =>
-    repo.toLowerCase().includes(repoSearchQuery.toLowerCase())
+    repo.fullName.toLowerCase().includes(repoSearchQuery.toLowerCase())
   );
 
   const filteredOrganizations = githubOrganizations.filter((org) =>
-    org.toLowerCase().includes(orgSearchQuery.toLowerCase())
+    org.name.toLowerCase().includes(orgSearchQuery.toLowerCase())
   );
 
   // Notify parent component when data changes
@@ -139,31 +143,31 @@ export function CreateWebhookGithubConnection({
     }
   };
 
-  const handleAddRepository = (repoFullName: string) => {
-    if (!selectedRepositories.includes(repoFullName)) {
-      setSelectedRepositories([...selectedRepositories, repoFullName]);
+  const handleAddRepository = (repo: GithubRepository) => {
+    if (!selectedRepositories.includes(repo)) {
+      setSelectedRepositories([...selectedRepositories, repo]);
     }
     setRepoSearchQuery("");
     setShowRepoDropdown(false);
   };
 
-  const handleRemoveRepository = (repoFullName: string) => {
+  const handleRemoveRepository = (repo: GithubRepository) => {
     setSelectedRepositories(
-      selectedRepositories.filter((r) => r !== repoFullName)
+      selectedRepositories.filter((r) => r.fullName !== repo.fullName)
     );
   };
 
-  const handleAddOrganization = (orgLogin: string) => {
-    if (!selectedOrganizations.includes(orgLogin)) {
-      setSelectedOrganizations([...selectedOrganizations, orgLogin]);
+  const handleAddOrganization = (org: GithubOrganization) => {
+    if (!selectedOrganizations.includes(org)) {
+      setSelectedOrganizations([...selectedOrganizations, org]);
     }
     setOrgSearchQuery("");
     setShowOrgDropdown(false);
   };
 
-  const handleRemoveOrganization = (orgLogin: string) => {
+  const handleRemoveOrganization = (org: GithubOrganization) => {
     setSelectedOrganizations(
-      selectedOrganizations.filter((o) => o !== orgLogin)
+      selectedOrganizations.filter((o) => o.name !== org.name)
     );
   };
 
@@ -225,10 +229,12 @@ export function CreateWebhookGithubConnection({
                 <div className="mt-2 flex flex-col gap-2">
                   {selectedRepositories.map((repo) => (
                     <div
-                      key={repo}
+                      key={repo.fullName}
                       className="border-border-light bg-background-light dark:bg-background-dark flex items-center justify-between rounded border px-3 py-2 dark:border-border-dark"
                     >
-                      <span className="text-sm font-medium">{repo}</span>
+                      <span className="text-sm font-medium">
+                        {repo.fullName}
+                      </span>
                       <Button
                         size="xs"
                         variant="ghost"
@@ -265,10 +271,10 @@ export function CreateWebhookGithubConnection({
                               )
                               .map((repo) => (
                                 <DropdownMenuItem
-                                  key={repo}
+                                  key={repo.fullName}
                                   onClick={() => handleAddRepository(repo)}
                                 >
-                                  {repo}
+                                  {repo.fullName}
                                 </DropdownMenuItem>
                               ))
                           ) : (
@@ -308,10 +314,10 @@ export function CreateWebhookGithubConnection({
                 <div className="mt-2 flex flex-col gap-2">
                   {selectedOrganizations.map((org) => (
                     <div
-                      key={org}
+                      key={org.name}
                       className="border-border-light bg-background-light dark:bg-background-dark flex items-center justify-between rounded border px-3 py-2 dark:border-border-dark"
                     >
-                      <span className="text-sm font-medium">{org}</span>
+                      <span className="text-sm font-medium">{org.name}</span>
                       <Button
                         size="xs"
                         variant="ghost"
@@ -348,10 +354,10 @@ export function CreateWebhookGithubConnection({
                               )
                               .map((org) => (
                                 <DropdownMenuItem
-                                  key={org}
+                                  key={org.name}
                                   onClick={() => handleAddOrganization(org)}
                                 >
-                                  {org}
+                                  {org.name}
                                 </DropdownMenuItem>
                               ))
                           ) : (

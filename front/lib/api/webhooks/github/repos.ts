@@ -87,7 +87,7 @@ export async function getGithubRepositories(
   allRepos.sort((a, b) => a.full_name.localeCompare(b.full_name));
 
   return allRepos.map((repo: any): GithubRepository => {
-    const repoFullName = repo.full_name;
+    const repoFullName = { fullName: repo.full_name };
 
     if (!isGithubRepository(repoFullName)) {
       throw new Error(

@@ -1,6 +1,7 @@
 import { ExternalLinkIcon, Page } from "@dust-tt/sparkle";
 
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
+import { GithubAdditionalDataSchema } from "@app/lib/triggers/services/github_service_types";
 
 export function WebhookSourceGithubDetails({
   webhookSource,
@@ -10,17 +11,18 @@ export function WebhookSourceGithubDetails({
   }
 
   const metadata = webhookSource.remoteMetadata;
+  const parsed = GithubAdditionalDataSchema.safeParse(metadata);
 
   // Normalize legacy format (single repository) into array format
   const legacyRepository = metadata.repository as string | undefined;
-  let repositories = (metadata.repositories as string[]) || [];
+  let repositories = parsed.success ? parsed.data.repositories : [];
 
   // If legacy format exists and no new format, use it
   if (legacyRepository && repositories.length === 0) {
-    repositories = [legacyRepository];
+    repositories = [{ fullName: legacyRepository }];
   }
 
-  const organizations = (metadata.organizations as string[]) || [];
+  const organizations = parsed.success ? parsed.data.organizations : [];
 
   const hasRepositories = repositories.length > 0;
   const hasOrganizations = organizations.length > 0;
@@ -38,12 +40,15 @@ export function WebhookSourceGithubDetails({
           </Page.H>
           <div className="space-y-2">
             {repositories.map((repository) => (
-              <div key={repository} className="flex items-center gap-2">
+              <div
+                key={repository.fullName}
+                className="flex items-center gap-2"
+              >
                 <span className="font-mono text-sm text-foreground dark:text-foreground-night">
-                  {repository}
+                  {repository.fullName}
                 </span>
                 <a
-                  href={`https://github.com/${repository}/settings/hooks`}
+                  href={`https://github.com/${repository.fullName}/settings/hooks`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-action-500 hover:text-action-600 dark:text-action-400 dark:hover:text-action-300 inline-flex items-center gap-1 text-xs"
@@ -65,12 +70,12 @@ export function WebhookSourceGithubDetails({
           </Page.H>
           <div className="space-y-2">
             {organizations.map((organization) => (
-              <div key={organization} className="flex items-center gap-2">
+              <div key={organization.name} className="flex items-center gap-2">
                 <span className="font-mono text-sm text-foreground dark:text-foreground-night">
-                  {organization}
+                  {organization.name}
                 </span>
                 <a
-                  href={`https://github.com/organizations/${organization}/settings/hooks`}
+                  href={`https://github.com/organizations/${organization.name}/settings/hooks`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-action-500 hover:text-action-600 dark:text-action-400 dark:hover:text-action-300 inline-flex items-center gap-1 text-xs"
