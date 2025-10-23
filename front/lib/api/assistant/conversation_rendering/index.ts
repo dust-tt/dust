@@ -1,6 +1,7 @@
 import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 import type {
@@ -66,12 +67,15 @@ export async function renderConversationForModel(
 > {
   const now = Date.now();
 
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+
   const messages = await renderAllMessages(auth, {
     conversation,
     model,
     excludeActions,
     excludeImages,
     onMissingAction,
+    featureFlags,
   });
 
   const messagesWithTokensRes = await countTokensForMessages(messages, model);

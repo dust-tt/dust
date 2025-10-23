@@ -7,6 +7,7 @@ import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_sche
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { renderResourceForModel } from "@app/lib/model_rendering/resource_renderers";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -41,7 +42,9 @@ export type Step = {
  * Renders an action result for multi-actions model
  */
 export function renderActionForMultiActionsModel(
-  action: AgentMCPActionWithOutputType
+  action: AgentMCPActionWithOutputType,
+  model: ModelConfigurationType,
+  useResourceRendering: boolean
 ): FunctionMessageTypeModel {
   if (action.status === "denied") {
     return {
@@ -58,12 +61,20 @@ export function renderActionForMultiActionsModel(
   );
 
   let output;
+
   if (outputItems.length === 0) {
     output = "Successfully executed action, no output.";
   } else if (outputItems.every((item) => isTextContent(item))) {
     output = outputItems.map((item) => item.text).join("\n");
   } else {
-    output = JSON.stringify(outputItems);
+    if (!useResourceRendering) {
+      output = JSON.stringify(outputItems);
+    } else {
+      output = outputItems
+        .map((item) => renderResourceForModel(item))
+        .filter((item) => !!item.trim().length)
+        .join("\n\n");
+    }
   }
 
   return {
@@ -85,12 +96,14 @@ export async function getSteps(
     workspaceId,
     conversationId,
     onMissingAction,
+    useResourceRendering,
   }: {
     model: ModelConfigurationType;
     message: AgentMessageType;
     workspaceId: string;
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
+    useResourceRendering: boolean;
   }
 ): Promise<Step[]> {
   const supportedModel = getSupportedModelConfig(model);
@@ -117,7 +130,11 @@ export async function getSteps(
         name: action.functionCallName,
         arguments: JSON.stringify(action.params),
       },
-      result: renderActionForMultiActionsModel(action),
+      result: renderActionForMultiActionsModel(
+        action,
+        model,
+        useResourceRendering
+      ),
     });
   }
 
