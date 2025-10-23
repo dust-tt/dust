@@ -194,9 +194,7 @@ export function MCPActionDetails({
           actionOutput={output}
           visual={ClockIcon}
           query={
-            isIncludeInputType(params)
-              ? makeQueryTextForInclude({ timeFrame: params.timeFrame ?? null })
-              : null
+            isIncludeInputType(params) ? makeQueryTextForInclude(params) : null
           }
         />
       );
