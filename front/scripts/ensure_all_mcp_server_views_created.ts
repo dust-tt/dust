@@ -56,10 +56,10 @@ makeScript(
 
         if (execute) {
           try {
-            const { updated } =
+            const { createdViewsCount } =
               await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
             logger.info(
-              { updated },
+              { createdViewsCount },
               "Successfully ensured MCP server views are created."
             );
           } catch (e) {

@@ -644,7 +644,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   }
 
   static async ensureAllAutoToolsAreCreated(auth: Authenticator): Promise<{
-    updated: number;
+    createdViewsCount: number;
   }> {
     return tracer.trace("ensureAllAutoToolsAreCreated", async () => {
       const names = AVAILABLE_INTERNAL_MCP_SERVER_NAMES;
@@ -669,13 +669,13 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
 
       if (autoInternalMCPServerIds.length === 0) {
-        return { updated: 0 };
+        return { createdViewsCount: 0 };
       }
 
       // TODO(mcp): Think this through and determine how / when we create the default internal mcp server views
       // For now, only admins can create the default internal mcp server views otherwise, we would have an assert error
       if (!auth.isAdmin()) {
-        return { updated: 0 };
+        return { createdViewsCount: 0 };
       }
 
       // Get system and global spaces
@@ -696,7 +696,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       // Quick check: there should be 2 views for each default internal MCP server
       // (enforced by a unique constraint), if already the case, no need to check further
       if (views.length === autoInternalMCPServerIds.length * 2) {
-        return { updated: 0 };
+        return { createdViewsCount: 0 };
       }
 
       const systemSpace = spaces.find((s) => s.isSystem());
@@ -708,7 +708,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         );
       }
 
-      let updated = 0;
+      let createdViewsCount = 0;
 
       // Create the missing views
       for (const id of autoInternalMCPServerIds) {
@@ -726,7 +726,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
             editedByUserId: auth.user()?.id,
             oAuthUseCase: null,
           });
-          updated++;
+          createdViewsCount++;
         }
         const systemView = new this(
           MCPServerViewModel,
@@ -743,11 +743,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
             systemView,
             space: globalSpace,
           });
-          updated++;
+          createdViewsCount++;
         }
       }
 
-      return { updated };
+      return { createdViewsCount };
     });
   }
 
