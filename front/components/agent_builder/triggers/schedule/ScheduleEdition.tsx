@@ -40,6 +40,7 @@ export function ScheduleEdition({
   const form = useForm<ScheduleFormValues>({
     defaultValues,
     resolver: zodResolver(ScheduleFormSchema),
+    mode: "onSubmit",
   });
 
   useEffect(() => {
