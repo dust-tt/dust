@@ -10,8 +10,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
+import { getIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
-import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -109,7 +109,7 @@ export const AddToolsMenu = ({
             <DropdownMenuItem
               key={mcpServer.sId}
               label={getMcpServerDisplayName(mcpServer)}
-              icon={() => getAvatar(mcpServer, "sm")}
+              icon={getIcon(mcpServer.icon)}
               onClick={withTracking(
                 TRACKING_AREAS.TOOLS,
                 "tool_select",
