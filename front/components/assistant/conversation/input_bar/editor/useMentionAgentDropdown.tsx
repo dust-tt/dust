@@ -1,13 +1,16 @@
 import { PluginKey } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
+import type { MutableRefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
   EditorSuggestion,
+  EditorSuggestionAgent,
   EditorSuggestions,
 } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import { filterSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import { isEditorSuggestionAgent } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import { filterSuggestionAgents } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 
 interface CommandFunction {
   (props: { id: string; label: string }): void;
@@ -28,7 +31,7 @@ export type SuggestionProps = {
 export interface MentionDropdownState {
   isOpen: boolean;
   query: string;
-  suggestions: EditorSuggestion[];
+  suggestionAgents: EditorSuggestionAgent[];
   selectedIndex: number;
   triggerRect: DOMRect | null;
   isLoading: boolean;
@@ -36,14 +39,14 @@ export interface MentionDropdownState {
 
 export const mentionPluginKey = new PluginKey("mention-suggestion");
 
-export const useMentionDropdown = (
+export const useMentionAgentDropdown = (
   editorSuggestions: EditorSuggestions,
-  editorRef: React.MutableRefObject<Editor | null>
+  editorRef: MutableRefObject<Editor | null>
 ) => {
   const [state, setState] = useState<MentionDropdownState>({
     isOpen: false,
     query: "",
-    suggestions: [],
+    suggestionAgents: [],
     selectedIndex: 0,
     triggerRect: null,
     isLoading: editorSuggestions.isLoading,
@@ -55,7 +58,7 @@ export const useMentionDropdown = (
   // Store the current suggestion range for text replacement
   const rangeRef = useRef<Range | null>(null);
 
-  // Use refs to store current state for the onKeyDown handler to avoid stale closure
+  // Use refs to store the current state for the onKeyDown handler to avoid stale closure
   const currentStateRef = useRef(state);
   currentStateRef.current = state;
 
@@ -145,16 +148,16 @@ export const useMentionDropdown = (
 
   // Single source of truth: filter suggestions whenever data or query changes
   useEffect(() => {
-    const filteredSuggestions = filterSuggestions(
+    const filteredSuggestionAgents = filterSuggestionAgents(
       state.query,
-      editorSuggestions.suggestions,
-      editorSuggestions.fallbackSuggestions
+      editorSuggestions.suggestions.filter(isEditorSuggestionAgent),
+      editorSuggestions.fallbackSuggestions.filter(isEditorSuggestionAgent)
     );
 
     setState((prev) => ({
       ...prev,
       isLoading: editorSuggestions.isLoading,
-      suggestions: filteredSuggestions,
+      suggestionAgents: filteredSuggestionAgents,
     }));
   }, [
     editorSuggestions.suggestions,
@@ -220,7 +223,7 @@ export const useMentionDropdown = (
                   selectedIndex:
                     prev.selectedIndex > 0
                       ? prev.selectedIndex - 1
-                      : prev.suggestions.length - 1,
+                      : prev.suggestionAgents.length - 1,
                 }));
                 return true;
               case "ArrowDown":
@@ -228,7 +231,7 @@ export const useMentionDropdown = (
                 setState((prev) => ({
                   ...prev,
                   selectedIndex:
-                    prev.selectedIndex < prev.suggestions.length - 1
+                    prev.selectedIndex < prev.suggestionAgents.length - 1
                       ? prev.selectedIndex + 1
                       : 0,
                 }));
@@ -236,9 +239,9 @@ export const useMentionDropdown = (
               case "Enter":
               case "Tab":
                 event.preventDefault();
-                if (currentState.suggestions[currentState.selectedIndex]) {
+                if (currentState.suggestionAgents[currentState.selectedIndex]) {
                   selectSuggestion(
-                    currentState.suggestions[currentState.selectedIndex]
+                    currentState.suggestionAgents[currentState.selectedIndex]
                   );
                 }
                 return true;
@@ -248,14 +251,16 @@ export const useMentionDropdown = (
               case " ":
                 if (currentState.isOpen) {
                   event.preventDefault();
-                  if (currentState.suggestions[currentState.selectedIndex]) {
+                  if (
+                    currentState.suggestionAgents[currentState.selectedIndex]
+                  ) {
                     selectSuggestion(
-                      currentState.suggestions[currentState.selectedIndex]
+                      currentState.suggestionAgents[currentState.selectedIndex]
                     );
                   }
                   return true;
                 } else {
-                  const firstSuggestion = currentState.suggestions[0];
+                  const firstSuggestion = currentState.suggestionAgents[0];
                   if (
                     firstSuggestion &&
                     currentState.query === firstSuggestion.label
@@ -283,7 +288,7 @@ export const useMentionDropdown = (
 
   return {
     isOpen: state.isOpen,
-    suggestions: state.suggestions,
+    suggestions: state.suggestionAgents,
     selectedIndex: state.selectedIndex,
     triggerRect: state.triggerRect,
     isLoading: state.isLoading,

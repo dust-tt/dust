@@ -6,11 +6,11 @@ import type {
 } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import type { AgentMention, LightAgentConfigurationType } from "@app/types";
 
-const useHandleMentions = (
+const useHandleAgentMentions = (
   editorService: EditorService,
   agentConfigurations: LightAgentConfigurationType[],
   stickyMentions: AgentMention[] | undefined,
-  selectedAssistant: AgentMention | null,
+  selectedAgent: AgentMention | null,
   disableAutoFocus: boolean
 ) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
@@ -58,9 +58,9 @@ const useHandleMentions = (
   }, [agentConfigurations, editorService, stickyMentions, disableAutoFocus]);
 
   useEffect(() => {
-    if (selectedAssistant) {
+    if (selectedAgent) {
       const agentConfiguration = agentConfigurations.find(
-        (agent) => agent.sId === selectedAssistant.configurationId
+        (agent) => agent.sId === selectedAgent.configurationId
       );
 
       if (!agentConfiguration) {
@@ -77,7 +77,7 @@ const useHandleMentions = (
         editorService.insertMention(mention);
       }
     }
-  }, [selectedAssistant, editorService, disableAutoFocus, agentConfigurations]);
+  }, [selectedAgent, editorService, disableAutoFocus, agentConfigurations]);
 };
 
-export default useHandleMentions;
+export default useHandleAgentMentions;
