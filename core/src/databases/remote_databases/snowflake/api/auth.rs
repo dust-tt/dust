@@ -162,7 +162,7 @@ fn try_parse_private_key(pem: &str, password: Option<&[u8]>) -> Result<RsaPrivat
         }
     }
 
-    // Try formats in a simple, ordered sequence. Log detailed failures; return generic errors.
+    // Try formats in ordered sequence.
     if let Some(pass) = password {
         if let Ok(k) = RsaPrivateKey::from_pkcs8_encrypted_pem(trimmed, pass) {
             return Ok(k);
