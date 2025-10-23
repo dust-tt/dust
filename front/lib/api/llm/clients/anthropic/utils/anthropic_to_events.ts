@@ -1,5 +1,6 @@
 import type {
   ContentBlock,
+  MessageDeltaUsage,
   MessageStreamEvent,
   TextBlock,
   ThinkingBlock,
@@ -8,16 +9,43 @@ import type {
 
 import type {
   LLMEvent,
-  LLMOutputItem,
   ProviderMetadata,
   ReasoningDeltaEvent,
+  ReasoningGeneratedEvent,
   TextDeltaEvent,
-} from "@app/lib/llm/types";
+  TextGeneratedEvent,
+  TokenUsageEvent,
+  ToolCallEvent,
+} from "@app/lib/api/llm/types/events";
 
-export function textDelta(
-  delta: string,
-  metadata: ProviderMetadata
-): TextDeltaEvent {
+export async function* streamLLMEvents({
+  messageStreamEvents,
+  metadata,
+}: {
+  messageStreamEvents: AsyncIterable<MessageStreamEvent>;
+  metadata: ProviderMetadata;
+}): AsyncGenerator<LLMEvent> {
+  let finalEvents: LLMEvent[] = [];
+  for await (const messageStreamEvent of messageStreamEvents) {
+    if (messageStreamEvent.type === "message_start") {
+      // Anthropic sends the whole messages and tool calls in the first message,
+      // we want to send them at the end of the stream like other providers
+      metadata["messageId"] = messageStreamEvent.message.id;
+      finalEvents = contentBlockToEvents({
+        content: messageStreamEvent.message.content,
+        metadata,
+      });
+    } else {
+      yield* toEvents({
+        messageStreamEvent,
+        metadata,
+        finalEvents,
+      });
+    }
+  }
+}
+
+function textDelta(delta: string, metadata: ProviderMetadata): TextDeltaEvent {
   return {
     type: "text_delta",
     content: {
@@ -27,7 +55,7 @@ export function textDelta(
   };
 }
 
-export function reasoningDelta(
+function reasoningDelta(
   delta: string,
   metadata: ProviderMetadata
 ): ReasoningDeltaEvent {
@@ -40,78 +68,64 @@ export function reasoningDelta(
   };
 }
 
-export function finalEvents(
-  itemsAccumulator: LLMOutputItem[],
+function tokenUsage(
+  usage: MessageDeltaUsage,
   metadata: ProviderMetadata
-): LLMEvent[] {
-  const events: LLMEvent[] = [];
-  for (const item of itemsAccumulator) {
-    if (item.type === "tool_call") {
-      events.push({
-        type: "tool_call",
-        content: item.content,
-        metadata,
-      });
-    }
-  }
-  events.push({
-    type: "success",
-    content: itemsAccumulator,
+): TokenUsageEvent {
+  return {
+    type: "token_usage",
+    content: {
+      inputTokens: usage.input_tokens ?? 0,
+      outputTokens: usage.output_tokens,
+      cachedTokens:
+        (usage.cache_creation_input_tokens ?? 0) +
+        (usage.cache_read_input_tokens ?? 0),
+      totalTokens: (usage.input_tokens ?? 0) + usage.output_tokens,
+    },
     metadata,
-  });
-  return events;
+  };
 }
 
-function textContentBlockToLLMOutputItem({
+function textContentBlockToTextGeneratedEvent({
   content,
   metadata,
-  appendToItemsAccumulator,
 }: {
   content: TextBlock;
   metadata: ProviderMetadata;
-  appendToItemsAccumulator: (item: LLMOutputItem) => void;
-}): LLMOutputItem {
-  const output: LLMOutputItem = {
+}): TextGeneratedEvent {
+  return {
     type: "text_generated",
     content: {
       text: content.text,
     },
     metadata,
   };
-  appendToItemsAccumulator(output);
-  return output;
 }
 
-function reasoningContentBlockToLLMOutputItem({
+function reasoningContentBlockToReasoningGeneratedEvent({
   content,
   metadata,
-  appendToItemsAccumulator,
 }: {
   content: ThinkingBlock;
   metadata: ProviderMetadata;
-  appendToItemsAccumulator: (item: LLMOutputItem) => void;
-}): LLMOutputItem {
-  const output: LLMOutputItem = {
+}): ReasoningGeneratedEvent {
+  return {
     type: "reasoning_generated",
     content: {
       text: content.thinking,
     },
     metadata,
   };
-  appendToItemsAccumulator(output);
-  return output;
 }
 
-function toolUseContentBlockToLLMOutputItem({
+function toolUseContentBlockToToolCallEvent({
   content,
   metadata,
-  appendToItemsAccumulator,
 }: {
   content: ToolUseBlock;
   metadata: ProviderMetadata;
-  appendToItemsAccumulator: (item: LLMOutputItem) => void;
-}): LLMOutputItem {
-  const output: LLMOutputItem = {
+}): ToolCallEvent {
+  return {
     type: "tool_call",
     content: {
       id: content.id,
@@ -120,45 +134,38 @@ function toolUseContentBlockToLLMOutputItem({
     },
     metadata,
   };
-  appendToItemsAccumulator(output);
-  return output;
 }
-function contentBlockToLLMOutputItems({
+function contentBlockToEvents({
   content,
   metadata,
-  appendToItemsAccumulator,
 }: {
   content: ContentBlock[];
   metadata: ProviderMetadata;
-  appendToItemsAccumulator: (item: LLMOutputItem) => void;
-}): LLMOutputItem[] {
-  const items: LLMOutputItem[] = [];
+}): LLMEvent[] {
+  const items: LLMEvent[] = [];
   for (const item of content) {
     switch (item.type) {
       case "text":
         items.push(
-          textContentBlockToLLMOutputItem({
+          textContentBlockToTextGeneratedEvent({
             content: item,
             metadata,
-            appendToItemsAccumulator,
           })
         );
         break;
       case "thinking":
         items.push(
-          reasoningContentBlockToLLMOutputItem({
+          reasoningContentBlockToReasoningGeneratedEvent({
             content: item,
             metadata,
-            appendToItemsAccumulator,
           })
         );
         break;
       case "tool_use":
         items.push(
-          toolUseContentBlockToLLMOutputItem({
+          toolUseContentBlockToToolCallEvent({
             content: item,
             metadata,
-            appendToItemsAccumulator,
           })
         );
         break;
@@ -167,20 +174,14 @@ function contentBlockToLLMOutputItems({
   return items;
 }
 
-export function toEvents({
+function toEvents({
   messageStreamEvent,
   metadata,
-  updateMetadata,
-  accumulatorUtils,
+  finalEvents,
 }: {
   messageStreamEvent: MessageStreamEvent;
   metadata: ProviderMetadata;
-  updateMetadata: (key: string, value: any) => void;
-  accumulatorUtils: {
-    resetItemsAccumulator: () => void;
-    appendToItemsAccumulator: (item: LLMOutputItem) => void;
-    getItemsAccumulator: () => LLMOutputItem[];
-  };
+  finalEvents: LLMEvent[];
 }): LLMEvent[] {
   const events: LLMEvent[] = [];
   switch (messageStreamEvent.type) {
@@ -198,20 +199,33 @@ export function toEvents({
           break;
       }
       break;
-    case "message_start":
-      updateMetadata("messageId", messageStreamEvent.message.id);
-      accumulatorUtils.resetItemsAccumulator();
-      const items = contentBlockToLLMOutputItems({
-        content: messageStreamEvent.message.content,
-        metadata,
-        appendToItemsAccumulator: accumulatorUtils.appendToItemsAccumulator,
-      });
-      events.push(...items);
+    case "message_delta":
+      events.push(tokenUsage(messageStreamEvent.usage, metadata));
+      if (messageStreamEvent.delta.stop_reason) {
+        const stopReason = messageStreamEvent.delta.stop_reason;
+        switch (stopReason) {
+          case "end_turn":
+          case "stop_sequence":
+          case "tool_use":
+          // pause simply stops a long run but it can be resumed
+          case "pause_turn":
+            break;
+          case "max_tokens":
+          case "refusal":
+            events.push({
+              type: "error",
+              content: {
+                message: `Stop reason: ${stopReason}`,
+                code: 0,
+              },
+              metadata,
+            });
+            break;
+        }
+      }
       break;
     case "message_stop":
-      events.push(
-        ...finalEvents(accumulatorUtils.getItemsAccumulator(), metadata)
-      );
+      events.push(...finalEvents);
       break;
     default:
       break;
