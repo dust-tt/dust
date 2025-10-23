@@ -8,23 +8,17 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { CoreAPI } from "@app/types";
-
-export type DeleteFolderResponseType = {
-  folder: {
-    folder_id: string;
-  };
-};
+import { CoreAPI, isString } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<DeleteFolderResponseType>>,
+  res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator,
   { dataSource }: { dataSource: DataSourceResource }
 ): Promise<void> {
   const { fId } = req.query;
 
-  if (typeof fId !== "string" || fId === "") {
+  if (!isString(fId) || fId === "") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -66,11 +60,7 @@ async function handler(
         });
       }
 
-      res.status(200).json({
-        folder: {
-          folder_id: fId,
-        },
-      });
+      res.status(204);
       return;
 
     default:

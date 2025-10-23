@@ -22,7 +22,6 @@ import {
   DocumentDeletionKey,
   isSpreadsheetFolderContentNode,
 } from "@app/types";
-import { DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE } from "@dust-tt/client";
 
 interface DocumentOrTableDeleteDialogProps {
   dataSourceView: DataSourceViewType | null;
