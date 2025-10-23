@@ -168,6 +168,7 @@ export const supportedOtherFileFormats = {
   "application/vnd.ms-excel": [".xls"],
   "application/pdf": [".pdf"],
   "application/vnd.dust.section.json": [".json"],
+  "message/rfc822": [".eml"],
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
   "text/markdown": [".md", ".markdown"],
@@ -653,7 +654,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_opus_feature"
   | "co_edition"
   | "confluence_tool"
-  | "deep_research_as_a_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
@@ -685,7 +685,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
-  | "research_agent"
   | "salesforce_synced_queries"
   | "salesforce_tool_write"
   | "salesforce_tool"
@@ -699,6 +698,14 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_requested_space_ids"
   | "web_summarization"
   | "xai_feature"
+  | "noop_model_feature"
+  | "discord_bot"
+  | "elevenlabs_tool"
+  | "agent_builder_observability"
+  | "legacy_dust_apps"
+  | "dust_default_haiku_feature"
+  | "llm_router_direct_requests"
+  | "mentions_v2"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
