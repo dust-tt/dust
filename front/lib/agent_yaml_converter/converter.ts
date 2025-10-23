@@ -57,7 +57,7 @@ export class AgentYAMLConverter {
           scope: formData.agentSettings.scope,
           avatar_url: formData.agentSettings.pictureUrl,
           max_steps_per_run: formData.maxStepsPerRun,
-          visualization_enabled: false, // hardcoding until removed 
+          visualization_enabled: false, // Hardcoding until removed.
         },
         instructions: formData.instructions,
         generation_settings: {
