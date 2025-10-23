@@ -602,7 +602,12 @@ export async function getNextConversationBatchToSyncActivity({
       slidingWindow: intercomWorkspace.conversationsSlidingWindow,
       cursor,
       pageSize: INTERCOM_CONVO_BATCH_SIZE,
-      closedAfter,
+      filterOptions: closedAfter
+        ? {
+            filterType: "closedAfter",
+            value: closedAfter,
+          }
+        : undefined,
     });
   } else {
     result = await fetchIntercomConversations({
@@ -610,7 +615,12 @@ export async function getNextConversationBatchToSyncActivity({
       slidingWindow: intercomWorkspace.conversationsSlidingWindow,
       cursor,
       pageSize: INTERCOM_CONVO_BATCH_SIZE,
-      closedAfter,
+      filterOptions: closedAfter
+        ? {
+            filterType: "closedAfter",
+            value: closedAfter,
+          }
+        : undefined,
     });
   }
 
