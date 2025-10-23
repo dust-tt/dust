@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
@@ -34,8 +34,14 @@ export function useZendeskOrganizationTagFilters({
     owner,
   });
 
-  const includedTags = includedTagsConfig ? JSON.parse(includedTagsConfig) : [];
-  const excludedTags = excludedTagsConfig ? JSON.parse(excludedTagsConfig) : [];
+  const includedTags = useMemo(
+    () => (includedTagsConfig ? JSON.parse(includedTagsConfig) : []),
+    [includedTagsConfig]
+  );
+  const excludedTags = useMemo(
+    () => (excludedTagsConfig ? JSON.parse(excludedTagsConfig) : []),
+    [excludedTagsConfig]
+  );
 
   const addOrganizationTag = useCallback(
     async (tag: string, type: "include" | "exclude") => {

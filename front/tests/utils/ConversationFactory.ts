@@ -13,19 +13,22 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import type { ConversationType, ModelId, WorkspaceType } from "@app/types";
 
 export class ConversationFactory {
-  static async create({
-    auth,
-    agentConfigurationId,
-    messagesCreatedAt,
-    conversationCreatedAt,
-    t,
-  }: {
-    auth: Authenticator;
-    agentConfigurationId: string;
-    messagesCreatedAt: Date[];
-    conversationCreatedAt?: Date;
-    t?: Transaction;
-  }): Promise<ConversationType> {
+  static async create(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      messagesCreatedAt,
+      conversationCreatedAt,
+      requestedSpaceIds,
+      t,
+    }: {
+      agentConfigurationId: string;
+      messagesCreatedAt: Date[];
+      conversationCreatedAt?: Date;
+      requestedSpaceIds?: ModelId[];
+      t?: Transaction;
+    }
+  ): Promise<ConversationType> {
     const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
 
@@ -37,6 +40,13 @@ export class ConversationFactory {
     if (conversationCreatedAt) {
       await ConversationModel.update(
         { createdAt: conversationCreatedAt },
+        { where: { id: conversation.id } }
+      );
+    }
+
+    if (requestedSpaceIds && requestedSpaceIds.length > 0) {
+      await ConversationModel.update(
+        { requestedSpaceIds },
         { where: { id: conversation.id } }
       );
     }

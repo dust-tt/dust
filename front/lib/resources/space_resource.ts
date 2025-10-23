@@ -342,6 +342,18 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return space;
   }
 
+  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+    const spaces = await this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: ids,
+        },
+      },
+    });
+
+    return spaces ?? [];
+  }
+
   static async isNameAvailable(
     auth: Authenticator,
     name: string,
