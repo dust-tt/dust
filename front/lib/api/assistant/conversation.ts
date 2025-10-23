@@ -161,41 +161,6 @@ export async function updateConversationTitle(
 }
 
 /**
- *  Mark the conversation as deleted, but does not remove it from database
- *  unless destroy is explicitly set to true
- */
-export async function deleteConversation(
-  auth: Authenticator,
-  {
-    conversationId,
-    destroy,
-  }: {
-    conversationId: string;
-    destroy?: boolean;
-  }
-): Promise<Result<{ success: true }, ConversationError>> {
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-
-  if (!conversation) {
-    return new Err(new ConversationError("conversation_not_found"));
-  }
-
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationError("conversation_access_restricted"));
-  }
-
-  if (destroy) {
-    await conversation.delete(auth);
-  } else {
-    await conversation.updateVisibilityToDeleted();
-  }
-  return new Ok({ success: true });
-}
-
-/**
  * Delete-or-Leave:
  * - If the user is the last participant: perform a soft-delete
  * - Otherwise just remove the user from the participants
