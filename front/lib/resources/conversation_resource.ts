@@ -109,7 +109,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       new Set(conversations.flatMap((c) => c.requestedSpaceIds))
     );
 
-    const spaces = await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds);
+    // Only fetch spaces if there are any requestedSpaceIds.
+    const spaces =
+      uniqueSpaceIds.length === 0
+        ? []
+        : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds);
 
     const featureFlags = await getFeatureFlags(workspace);
     const hasRequestedSpaceIdsFF = featureFlags.includes(
