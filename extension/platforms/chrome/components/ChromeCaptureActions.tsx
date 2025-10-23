@@ -26,10 +26,10 @@ export function ChromeCaptureActions({
     });
   };
 
-  const handleCapturePageContent = () => {
+  const handleCaptureScreenshot = () => {
     void fileUploaderService.uploadContentTab({
-      includeContent: true,
-      includeCapture: false,
+      includeContent: false,
+      includeCapture: true,
     });
   };
 
@@ -60,7 +60,7 @@ export function ChromeCaptureActions({
           }
           variant="ghost-secondary"
           size="xs"
-          onClick={handleCapturePageContent}
+          onClick={handleCaptureScreenshot}
           disabled={isLoading || isBlacklisted}
         />
       </div>
@@ -91,12 +91,7 @@ export function ChromeCaptureActions({
           }
           variant="ghost-secondary"
           size="xs"
-          onClick={() =>
-            fileUploaderService.uploadContentTab({
-              includeContent: false,
-              includeCapture: true,
-            })
-          }
+          onClick={handleCaptureScreenshot}
           disabled={isLoading || isBlacklisted}
         />
       </div>
