@@ -87,7 +87,7 @@ export function ScheduleEdition({
   };
 
   return (
-    <FormProvider form={form}>
+    <FormProvider form={form} onSubmit={handleSubmit}>
       <ScheduleEditionSheet
         owner={owner}
         trigger={trigger}
