@@ -66,93 +66,6 @@ type WebhookSourceSheetProps = {
   onClose: () => void;
 };
 
-/**
- * Creates the actual webhook on the remote provider's servers and stores metadata locally
- */
-async function createActualWebhook({
-  webhookSource,
-  providerData,
-  subscribedEvents,
-  owner,
-  sendNotification,
-}: {
-  webhookSource: {
-    sId: string;
-    urlSecret: string;
-    secret: string | null;
-    kind: WebhookSourceKind;
-  };
-  providerData: RemoteProviderData;
-  subscribedEvents: string[];
-  owner: LightWorkspaceType;
-  sendNotification: ReturnType<typeof useSendNotification>;
-}): Promise<void> {
-  try {
-    const webhookUrl = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/triggers/hooks/${webhookSource.sId}/${webhookSource.urlSecret}`;
-
-    const { connectionId, ...remoteWebhookData } = providerData;
-
-    const response = await fetch(
-      `/api/w/${owner.sId}/${webhookSource.kind}/${connectionId}/webhooks`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          connectionId,
-          remoteMetadata: remoteWebhookData,
-          webhookUrl: webhookUrl,
-          events: subscribedEvents,
-          secret: webhookSource.secret,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.api_error?.message ||
-          `Failed to create ${webhookSource.kind} webhook`
-      );
-    }
-
-    const webhookResponse = await response.json();
-
-    // Store the webhook metadata in the webhook source
-    if (webhookResponse.webhook?.id) {
-      await fetch(`/api/w/${owner.sId}/webhook_sources/${webhookSource.sId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          remoteMetadata: {
-            ...remoteWebhookData,
-            id: String(webhookResponse.webhook.id),
-          },
-          oauthConnectionId: connectionId,
-        }),
-      });
-    }
-
-    sendNotification({
-      type: "success",
-      title: `${webhookSource.kind} webhook created`,
-      description: `Webhook successfully created on ${webhookSource.kind}.`,
-    });
-  } catch (error) {
-    sendNotification({
-      type: "error",
-      title: `Failed to create ${webhookSource.kind} webhook`,
-      description:
-        error instanceof Error ? error.message : "Unknown error occurred",
-    });
-    // Note: We don't throw here because the webhook source was already created
-    // The user can manually set up the webhook if needed
-  }
-}
-
 export function WebhookSourceSheet({
   owner,
   mode,
@@ -235,6 +148,7 @@ function WebhookSourceSheetContent({
   const [isSaving, setIsSaving] = useState(false);
   const [remoteProviderData, setRemoteProviderData] =
     useState<RemoteProviderData | null>(null);
+  const [connectionId, setConnectionId] = useState<string | null>(null);
   const [isPresetReadyToSubmit, setIsPresetReadyToSubmit] = useState(true);
 
   const { spaces } = useSpacesAsAdmin({
@@ -330,30 +244,22 @@ function WebhookSourceSheetContent({
   const onCreateSubmit = useCallback(
     async (
       data: CreateWebhookSourceFormData,
-      providerData?: RemoteProviderData
+      connectionId?: string,
+      remoteMetadata?: RemoteProviderData
     ) => {
       const apiData = {
         ...data,
         includeGlobal: true,
+        ...(remoteMetadata ? { remoteMetadata } : {}),
+        ...(connectionId ? { connectionId } : {}),
       };
 
-      const webhookSource = await createWebhookSource(apiData);
-
-      // If we have provider data, create the actual webhook on the remote provider
-      if (webhookSource && providerData) {
-        await createActualWebhook({
-          webhookSource: { ...webhookSource, kind: mode.kind },
-          providerData,
-          subscribedEvents: data.subscribedEvents,
-          owner,
-          sendNotification,
-        });
-      }
+      await createWebhookSource(apiData);
 
       createForm.reset();
       onClose();
     },
-    [createWebhookSource, createForm, onClose, mode, owner, sendNotification]
+    [createWebhookSource, createForm, onClose]
   );
 
   const applySharingChanges = useCallback(
@@ -591,7 +497,11 @@ function WebhookSourceSheetContent({
           disabled: createForm.formState.isSubmitting || !isPresetReadyToSubmit,
           onClick: () => {
             void createForm.handleSubmit((data) =>
-              onCreateSubmit(data, remoteProviderData ?? undefined)
+              onCreateSubmit(
+                data,
+                connectionId ?? undefined,
+                remoteProviderData ?? undefined
+              )
             )();
           },
         },
@@ -630,6 +540,7 @@ function WebhookSourceSheetContent({
     onEditSave,
     isPresetReadyToSubmit,
     remoteProviderData,
+    connectionId,
   ]);
 
   const pages: MultiPageSheetPage[] = useMemo(
@@ -646,7 +557,10 @@ function WebhookSourceSheetContent({
                 form={createForm}
                 kind={mode.kind}
                 owner={owner}
-                onRemoteProviderDataChange={setRemoteProviderData}
+                onRemoteProviderDataChange={(data) => {
+                  setRemoteProviderData(data?.remoteMetadata ?? null);
+                  setConnectionId(data?.connectionId ?? null);
+                }}
                 onPresetReadyToSubmitChange={setIsPresetReadyToSubmit}
               />
             </div>

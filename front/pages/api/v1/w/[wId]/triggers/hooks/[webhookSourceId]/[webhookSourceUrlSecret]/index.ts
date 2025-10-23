@@ -141,7 +141,7 @@ async function handler(
   }
 
   await processWebhookRequest(auth, {
-    webhookSource: webhookSource.toJSON(),
+    webhookSource: webhookSource.toJSONForAdmin(),
     headers,
     body,
   });

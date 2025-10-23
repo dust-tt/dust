@@ -113,7 +113,7 @@ export function getCitationsFromActions(
           title: citation.title,
           provider: citation.provider,
           ...(faviconUrl && { faviconUrl }),
-          contentType: citation.mimeType as AllSupportedFileContentType,
+          contentType: citation.contentType as AllSupportedFileContentType,
         };
       });
     }

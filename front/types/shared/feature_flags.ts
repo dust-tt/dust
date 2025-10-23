@@ -141,14 +141,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",
   },
-  research_agent: {
-    description: "Activate @deepDive agent.",
-    stage: "rolling_out",
-  },
-  deep_research_as_a_tool: {
-    description: "Activate Deep Dive tool",
-    stage: "dust_only",
-  },
   hootl_subscriptions: {
     description: "Subscription feature for Schedule & Triggers.",
     stage: "dust_only",
@@ -197,11 +189,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   microsoft_drive_mcp_server: {
     description: "Microsoft Drive MCP server",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   microsoft_teams_mcp_server: {
     description: "Microsoft Teams MCP server",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   agent_builder_observability: {
     description:
@@ -224,6 +216,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   llm_router_direct_requests: {
     description: "Use direct LLM call over Dust app run in a conversation.",
+    stage: "on_demand",
+  },
+  mentions_v2: {
+    description: "Enable mentions v2, aka mention users",
     stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;

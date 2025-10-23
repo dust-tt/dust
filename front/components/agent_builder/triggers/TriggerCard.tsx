@@ -88,11 +88,11 @@ export const TriggerCard = ({
         <span className="text-muted-foreground dark:text-muted-foreground-night">
           <span className="line-clamp-2 break-words">{description}</span>
         </span>
-        {trigger.editorEmail && (
+        {trigger.editorName && (
           <span className="mt-auto text-xs text-muted-foreground dark:text-muted-foreground-night">
             Managed by{" "}
             <span className="font-semibold">
-              {trigger.editorEmail ?? "another user"}
+              {trigger.editorName ?? "another user"}
             </span>
             .
           </span>

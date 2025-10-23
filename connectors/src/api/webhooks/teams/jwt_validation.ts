@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
 import logger from "@connectors/logger/logger";
@@ -126,23 +125,4 @@ export function extractBearerToken(
 
   const match = authHeader.match(/^Bearer\s+(.+)$/i);
   return match?.[1] || null;
-}
-
-/**
- * Rate limiting key generator for Teams webhooks
- * Uses combination of app ID and service URL for more granular limiting
- */
-export function generateTeamsRateLimitKey(
-  appId: string,
-  serviceUrl: string,
-  clientIp: string
-): string {
-  // Create a hash to avoid exposing sensitive data in Redis keys
-  const hash = crypto
-    .createHash("sha256")
-    .update(`${appId}:${serviceUrl}:${clientIp}`)
-    .digest("hex")
-    .substring(0, 16);
-
-  return `teams_webhook:${hash}`;
 }

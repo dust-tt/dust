@@ -1,0 +1,7 @@
+POST /_aliases
+{
+  "actions": [
+    { "remove": { "index": "front.agent_message_analytics*", "alias": "front.agent_message_analytics" } },
+    { "add":    { "index": "front.agent_message_analytics_1", "alias": "front.agent_message_analytics" } }
+  ]
+}

@@ -462,6 +462,7 @@ const getProcessingFunction = ({
     case "text/x-groovy":
     case "text/x-perl":
     case "text/x-perl-script":
+    case "message/rfc822":
       if (
         [
           "conversation",

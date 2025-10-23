@@ -13,6 +13,7 @@ import {
   downloadSharepointFile,
   getSharepointFileInfo,
 } from "@connectors/connectors/microsoft/lib/files";
+import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 
 import { getTenantSpecificToken } from "./bot_messaging_utils";
@@ -24,7 +25,8 @@ const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
  * Used for direct Teams attachments (smba.trafficmanager.net URLs)
  */
 export async function downloadTeamsAttachment(
-  attachmentUrl: string
+  attachmentUrl: string,
+  localLogger: Logger
 ): Promise<Result<Buffer, Error>> {
   // Validate URL to prevent SSRF attacks
   const url = new URL(attachmentUrl);
@@ -71,7 +73,7 @@ export async function downloadTeamsAttachment(
   }
 
   const buffer = Buffer.from(response.data);
-  logger.info(
+  localLogger.info(
     {
       attachmentUrl,
       fileSize: buffer.length,
@@ -87,7 +89,8 @@ export async function downloadTeamsAttachment(
 export async function processFileAttachments(
   attachments: ChatMessageAttachment[],
   dustAPI: DustAPI,
-  microsoftGraphClient: Client
+  microsoftGraphClient: Client,
+  localLogger: Logger
 ): Promise<PublicPostContentFragmentRequestBody[]> {
   const contentFragments: PublicPostContentFragmentRequestBody[] = [];
 
@@ -101,7 +104,7 @@ export async function processFileAttachments(
       const fileExtension = fileName.split(".").pop()?.toLowerCase();
       // actualContentType =
       //   getFileTypeFromExtension(fileExtension) || "application/octet-stream";
-      logger.info(
+      localLogger.info(
         {
           fileName,
           fileExtension,
@@ -117,7 +120,7 @@ export async function processFileAttachments(
 
     if (attachment.contentType === "reference" && attachment.contentUrl) {
       // For SharePoint/OneDrive files, use Microsoft Graph API approach
-      logger.info(
+      localLogger.info(
         { fileName, contentUrl: attachment.contentUrl },
         "Downloading Teams reference file using Microsoft Graph API"
       );
@@ -129,7 +132,7 @@ export async function processFileAttachments(
       );
 
       if (sharepointFileInfoRes.isErr()) {
-        logger.warn(
+        localLogger.warn(
           {
             fileName,
             error: sharepointFileInfoRes.error,
@@ -150,7 +153,7 @@ export async function processFileAttachments(
       );
 
       if (downloadResult.isErr()) {
-        logger.warn(
+        localLogger.warn(
           {
             fileName,
             error: downloadResult.error,
@@ -165,16 +168,17 @@ export async function processFileAttachments(
       actualContentType = mimeType;
     } else if (attachment.contentUrl) {
       // For direct file attachments, use Bot Framework authentication
-      logger.info(
+      localLogger.info(
         { fileName, contentUrl: attachment },
         "Downloading direct Teams file attachment"
       );
 
       const downloadResult = await downloadTeamsAttachment(
-        attachment.contentUrl
+        attachment.contentUrl,
+        localLogger
       );
       if (downloadResult.isErr()) {
-        logger.warn(
+        localLogger.warn(
           {
             fileName,
             error: downloadResult.error,
@@ -198,7 +202,7 @@ export async function processFileAttachments(
         !fileName.toLowerCase().endsWith(`.${fileType.ext}`)
       ) {
         fileName = fileName + `.${fileType.ext}`;
-        logger.info(
+        localLogger.info(
           {
             originalFileName: attachment.name || "teams_file",
             newFileName: fileName,
@@ -208,7 +212,7 @@ export async function processFileAttachments(
         );
       }
 
-      logger.info(
+      localLogger.info(
         {
           fileName,
           detectedContentType: actualContentType,
@@ -220,7 +224,7 @@ export async function processFileAttachments(
     } else {
       // Check if this is an HTML content attachment (inline content, not a file)
       if (attachment.contentType === "text/html" || !attachment.contentUrl) {
-        logger.debug(
+        localLogger.debug(
           {
             fileName,
             contentType: attachment.contentType,
@@ -231,7 +235,7 @@ export async function processFileAttachments(
         continue;
       }
 
-      logger.warn(
+      localLogger.warn(
         { fileName, attachment },
         "Teams attachment has unknown type, skipping"
       );
@@ -240,7 +244,7 @@ export async function processFileAttachments(
 
     // Check if fileContent was successfully downloaded
     if (!fileContent || fileContent.length === 0) {
-      logger.warn(
+      localLogger.warn(
         {
           fileName,
           fileContentExists: !!fileContent,
@@ -252,7 +256,7 @@ export async function processFileAttachments(
     }
 
     if (fileContent.length > MAX_FILE_SIZE_TO_UPLOAD) {
-      logger.warn(
+      localLogger.warn(
         {
           fileName,
           fileSize: fileContent.length,
@@ -264,7 +268,7 @@ export async function processFileAttachments(
     }
 
     // Log the content type for debugging but proceed with upload
-    logger.info(
+    localLogger.info(
       { fileName, actualContentType, fileSize: fileContent.length },
       "Preparing Teams file attachment for Dust upload"
     );
@@ -278,7 +282,7 @@ export async function processFileAttachments(
         type: actualContentType,
       });
     } catch (fileCreationError) {
-      logger.error(
+      localLogger.error(
         {
           fileName,
           error: fileCreationError,
@@ -300,7 +304,7 @@ export async function processFileAttachments(
       fileObject,
     };
 
-    logger.info(
+    localLogger.info(
       {
         fileName,
         contentType: uploadParams.contentType,
@@ -319,12 +323,12 @@ export async function processFileAttachments(
         fileId: fileRes.value.sId,
         context: null,
       });
-      logger.info(
+      localLogger.info(
         { fileName, actualContentType, fileId: fileRes.value.sId },
         "Successfully uploaded Teams file attachment"
       );
     } else {
-      logger.error(
+      localLogger.error(
         { fileName, error: fileRes.error },
         "Failed to upload Teams file attachment to Dust"
       );

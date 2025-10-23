@@ -210,7 +210,7 @@ const PEOPLE: Record<
   gina: {
     name: "Gina Kabasakalis",
     title: "Go To Market",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U08FS7RK45B-0d9a6f5b000d-512",
+    image: "https://avatars.githubusercontent.com/u/202673816?v=4",
     linkedIn: "https://www.linkedin.com/in/ginakabasakalis/",
     github: "https://github.com/gina-dust/",
   },
@@ -252,7 +252,7 @@ const PEOPLE: Record<
   lena: {
     name: "Léna Caloud",
     title: "Customer Success",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U08S29YC36H-b53f68fd8f87-512",
+    image: "https://avatars.githubusercontent.com/u/212004840?v=4",
     github: "https://github.com/lcaloud",
     linkedIn: "https://www.linkedin.com/in/lenacaloud/",
   },
@@ -280,7 +280,7 @@ const PEOPLE: Record<
   louis: {
     name: "Louis Caulet",
     title: "Enterprise Account Executive",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U093VA5K3JQ-6e18517d0b48-512",
+    image: "https://avatars.githubusercontent.com/u/218741719?v=4",
     github: "https://github.com/louiscaulet",
     linkedIn: "https://www.linkedin.com/in/louiscaulet",
   },
@@ -301,9 +301,9 @@ const PEOPLE: Record<
   lauriane: {
     name: "Lauriane Paour",
     title: "Solution Engineer",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U096NGVETPD-0d8f0affddf6-512",
+    image: "https://avatars.githubusercontent.com/u/222254800?v=4",
     linkedIn: "https://www.linkedin.com/in/lauriane-paour-152760106/",
-    github: null,
+    github: "https://github.com/laurianepao",
   },
   landry: {
     name: "Landry Monga",
@@ -315,14 +315,14 @@ const PEOPLE: Record<
   come: {
     name: "Côme Lucien-Brun",
     title: "Account Executive",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U09ATL7UVB5-873d7e42eb96-512",
+    image: "https://avatars.githubusercontent.com/u/227444187?v=4",
     github: "https://github.com/come-lb",
     linkedIn: "https://www.linkedin.com/in/comelb",
   },
   theog: {
     name: "Théo Gantzer",
     title: "Data",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U09ATLHUB0B-6ab7143a82c5-512",
+    image: "https://avatars.githubusercontent.com/u/11852762?v=4",
     linkedIn: "https://www.linkedin.com/in/theo-gantzer",
     github: "https://github.com/theogz",
   },
@@ -350,7 +350,7 @@ const PEOPLE: Record<
   rcs: {
     name: "Rémy-Christophe Schermesser",
     title: "Software Engineer",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U09D77UR8S0-3af0e8ba603b-512",
+    image: "https://avatars.githubusercontent.com/u/16667?v=4",
     linkedIn: "https://www.linkedin.com/in/r%C3%A9my-christophe-s-0204834/",
     github: "https://github.com/ElPicador",
   },
@@ -364,17 +364,16 @@ const PEOPLE: Record<
   alex: {
     name: "Alexandre Casanova",
     title: "Enterprise Account Executive",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNHFS2C-9a2d6df66ced-512",
+    image: "https://avatars.githubusercontent.com/u/229972775?v=4",
     linkedIn: "https://www.linkedin.com/in/alexandre-casanova-a89927a5/",
     github: "https://github.com/AlexandreCasa",
   },
   neyla: {
     name: "Neyla Belmaachi",
     title: "Business Development Representative",
-    image:
-      "https://media.licdn.com/dms/image/v2/D4D03AQFOta7Ao6aodg/profile-displayphoto-shrink_800_800/B4DZeCQlSRH4Ac-/0/1750237075055?e=1759968000&v=beta&t=HR_yS-qenHyqOcrwWAXiqO3czAvb0KGRDpja8sutgIs",
+    image: "https://avatars.githubusercontent.com/u/129662164?v=4",
     linkedIn: "https://www.linkedin.com/in/neyla-belmaachi-4817b0166/",
-    github: null,
+    github: "https://github.com/neylabelmaachi",
   },
   leandre: {
     name: "Leandre Le Bizec",
@@ -410,6 +409,28 @@ const PEOPLE: Record<
     image: "https://avatars.githubusercontent.com/u/235716301?v=4",
     linkedIn: "https://www.linkedin.com/in/gianna-gard/",
     github: "https://github.com/giga-dust",
+  },
+  ece: {
+    name: "Ece İrem Yıldız",
+    title: "Business Development Representative",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09HS5HNBV3-f3ea5d8e657c-512",
+    linkedIn:
+      "https://www.linkedin.com/in/ece-irem-y%C4%B1ld%C4%B1z-590480219/",
+    github: null,
+  },
+  astrid: {
+    name: "Astrid Le Faucheur",
+    title: "Solution Engineer",
+    image: "https://avatars.githubusercontent.com/u/237970272?v=4",
+    linkedIn: "https://www.linkedin.com/in/astrid-le-faucheur-7946ab209/",
+    github: "https://github.com/astridlf",
+  },
+  margherita: {
+    name: "Margherita Zama",
+    title: "Customer Success",
+    image: "https://avatars.githubusercontent.com/u/237991722?v=4",
+    linkedIn: "https://www.linkedin.com/in/margheritazama/",
+    github: "https://github.com/margherita-ops",
   },
 };
 

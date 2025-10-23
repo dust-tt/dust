@@ -39,7 +39,7 @@ describe("GET /api/w/[wId]/webhook_sources/views/[viewId]", () => {
       await webhookSourceViewFactory.create(globalSpace);
 
     // Get the webhook source name from the toJSON() output since customName can be null
-    const webhookSourceName = webhookSourceView.toJSON().customName;
+    const webhookSourceName = webhookSourceView.toJSONForAdmin().customName;
 
     expect(webhookSourceView).not.toBeNull();
     req.query.viewId = webhookSourceView.sId;
@@ -273,7 +273,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
         .mockResolvedValue(
           new Err(new DustError("internal_error", "Test error"))
         ),
-      toJSON: vi.fn().mockReturnValue(webhookSourceView.toJSON()),
+      toJSON: vi.fn().mockReturnValue(webhookSourceView.toJSONForAdmin()),
     };
 
     const fetchByIdSpy = vi

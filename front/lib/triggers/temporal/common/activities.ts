@@ -9,6 +9,7 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
+import { mentionAgent } from "@app/lib/mentions";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -132,7 +133,7 @@ async function createConversationForAgentConfiguration({
   const messageRes = await postUserMessage(auth, {
     conversation: newConversation,
     content:
-      `:mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}}` +
+      mentionAgent(agentConfiguration) +
       (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : ""),
     mentions: [{ configurationId: agentConfiguration.sId }],
     context: baseContext,

@@ -1,5 +1,8 @@
 import { GithubLogo } from "@dust-tt/sparkle";
 
+import { CreateWebhookGithubConnection } from "@app/components/triggers/CreateWebhookGithubConnection";
+import { WebhookSourceGithubDetails } from "@app/components/triggers/WebhookSourceGithubDetails";
+import { GitHubWebhookService } from "@app/lib/triggers/services/github_webhook_service";
 import type {
   EventField,
   PresetWebhook,
@@ -523,4 +526,9 @@ export const GITHUB_WEBHOOK_PRESET: PresetWebhook = {
   description:
     "Receive events from GitHub such as creation or edition of issues or pull requests.",
   featureFlag: "hootl_dev_webhooks",
+  webhookService: new GitHubWebhookService(),
+  components: {
+    detailsComponent: WebhookSourceGithubDetails,
+    createFormComponent: CreateWebhookGithubConnection,
+  },
 };

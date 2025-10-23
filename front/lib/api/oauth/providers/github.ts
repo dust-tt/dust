@@ -40,7 +40,7 @@ export class GithubOAuthProvider implements BaseOAuthStrategyProvider {
         `client_id=${clientId}` +
         `&state=${connection.connection_id}` +
         `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-        `&scope=repo,admin:repo_hook,read:org`;
+        `&scope=repo,admin:repo_hook,read:org,admin:org_hook`;
 
       return url;
     }

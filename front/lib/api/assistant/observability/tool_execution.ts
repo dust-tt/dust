@@ -71,7 +71,7 @@ export async function fetchToolExecutionMetrics(
     },
   };
 
-  const result = await searchAnalytics<unknown, ToolExecutionAggs>(baseQuery, {
+  const result = await searchAnalytics<never, ToolExecutionAggs>(baseQuery, {
     aggregations: aggs,
     size: 0,
   });

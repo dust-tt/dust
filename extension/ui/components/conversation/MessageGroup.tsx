@@ -2,6 +2,7 @@ import type { MessageWithContentFragmentsType } from "@app/shared/lib/conversati
 import type { AgentMessageFeedbackType } from "@app/shared/lib/feedbacks";
 import type { StoredUser } from "@app/shared/services/auth";
 import MessageItem from "@app/ui/components/conversation/MessageItem";
+import type { AgentMessagePublicType, UserMessageType } from "@dust-tt/client";
 import type {
   ConversationMessageReactionsType,
   LightWorkspaceType,
@@ -15,6 +16,7 @@ interface MessageGroupProps {
   isInModal: boolean;
   isLastMessageGroup: boolean;
   messages: MessageWithContentFragmentsType[];
+  userAndAgentMessages: (UserMessageType | AgentMessagePublicType)[];
   owner: LightWorkspaceType;
   reactions: ConversationMessageReactionsType;
   user: StoredUser;
@@ -28,6 +30,7 @@ export const LAST_MESSAGE_GROUP_ID = "last-message-group";
 
 export default function MessageGroup({
   messages,
+  userAndAgentMessages,
   isLastMessageGroup,
   conversationId,
   feedbacks,
@@ -63,11 +66,11 @@ export default function MessageGroup({
       ref={isLastMessageGroup ? lastMessageGroupRef : undefined}
       style={{ minHeight }}
     >
-      {filteredMessages.map((message, index) => (
+      {filteredMessages.map((message) => (
         <MessageItem
           key={`message-${message.sId}`}
-          index={index}
           conversationId={conversationId}
+          userAndAgentMessages={userAndAgentMessages}
           messageFeedback={feedbacks.find(
             (feedback) => feedback.messageId === message.sId
           )}

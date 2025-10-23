@@ -40,25 +40,36 @@ export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
 
 export const WEBHOOK_SOURCE_KIND = ["custom", "github", "test"] as const;
 
+export function isWebhookSourceKind(
+  kind: string
+): kind is (typeof WEBHOOK_SOURCE_KIND)[number] {
+  return WEBHOOK_SOURCE_KIND.includes(
+    kind as (typeof WEBHOOK_SOURCE_KIND)[number]
+  );
+}
+
 export type WebhookSourceKind = (typeof WEBHOOK_SOURCE_KIND)[number];
 
 export type WebhookSourceType = {
   id: ModelId;
   sId: string;
   name: string;
-  urlSecret: string;
   kind: WebhookSourceKind;
-  secret: string | null;
-  signatureHeader: string | null;
-  signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
-  remoteMetadata: Record<string, any> | null;
-  oauthConnectionId: string | null;
   createdAt: number;
   updatedAt: number;
   subscribedEvents: string[];
 };
 
-export type WebhookSourceViewType = {
+export type WebhookSourceForAdminType = WebhookSourceType & {
+  urlSecret: string;
+  secret: string | null;
+  signatureHeader: string | null;
+  signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
+  remoteMetadata: Record<string, any> | null;
+  oauthConnectionId: string | null;
+};
+
+type BaseWebhookSourceViewType = {
   id: ModelId;
   sId: string;
   customName: string;
@@ -71,17 +82,20 @@ export type WebhookSourceViewType = {
   spaceId: string;
   editedByUser: EditedByUser | null;
 };
-
-export type WebhookSourceViewWithWebhookSourceType = WebhookSourceViewType & {
+export type WebhookSourceViewType = BaseWebhookSourceViewType & {
   webhookSource: WebhookSourceType;
 };
 
-export type WebhookSourceWithViewsType = WebhookSourceType & {
-  views: WebhookSourceViewWithWebhookSourceType[];
+export type WebhookSourceViewForAdminType = BaseWebhookSourceViewType & {
+  webhookSource: WebhookSourceForAdminType;
+};
+
+export type WebhookSourceWithViewsType = WebhookSourceForAdminType & {
+  views: WebhookSourceViewForAdminType[];
 };
 
 export type WebhookSourceWithSystemViewType = WebhookSourceWithViewsType & {
-  systemView: WebhookSourceViewWithWebhookSourceType | null;
+  systemView: WebhookSourceViewForAdminType | null;
 };
 
 export type WebhookSourceWithViewsAndUsageType = WebhookSourceWithViewsType & {
@@ -102,6 +116,9 @@ export const basePostWebhookSourcesSchema = z.object({
   includeGlobal: z.boolean().optional(),
   subscribedEvents: z.array(z.string()).default([]),
   kind: z.enum(WEBHOOK_SOURCE_KIND),
+  // Optional fields for creating remote webhooks
+  connectionId: z.string().optional(),
+  remoteMetadata: z.record(z.any()).optional(),
 });
 
 export const refineSubscribedEvents: [

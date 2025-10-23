@@ -43,7 +43,7 @@ export function MCPDeepDiveActionDetails({
   return (
     <ActionDetailsWrapper
       viewType={viewType}
-      actionName={`Deep dive`}
+      actionName="Hand off to Deep dive"
       visual={() => (
         <Avatar visual={DEEP_DIVE_AVATAR_URL} size="xs" busy={isBusy} />
       )}

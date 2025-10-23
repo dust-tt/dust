@@ -28,6 +28,7 @@ import {
   FreshserviceLogo,
   GcalLogo,
   GithubLogo,
+  GitlabLogo,
   GmailLogo,
   GoogleSpreadsheetLogo,
   HubspotLogo,
@@ -42,6 +43,7 @@ import {
   SalesforceLogo,
   SlackLogo,
   StripeLogo,
+  ValTownLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentProps, ComponentType } from "react";
 
@@ -95,6 +97,7 @@ export const InternalActionIcons = {
   ConfluenceLogo,
   GcalLogo,
   GithubLogo,
+  GitlabLogo,
   GmailLogo,
   GoogleSpreadsheetLogo,
   FreshserviceLogo,
@@ -111,6 +114,7 @@ export const InternalActionIcons = {
   SlackLogo,
   StripeLogo,
   DriveLogo,
+  ValTownLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);

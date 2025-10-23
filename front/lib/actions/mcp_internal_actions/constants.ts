@@ -86,7 +86,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "google_sheets",
   "hubspot",
   "image_generation",
-  "elevenlabs",
   "include_data",
   "interactive_content",
   "slideshow",
@@ -108,7 +107,10 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "salesforce",
   "slack",
   "slack_bot",
+  "sound_studio",
+  "speech_generator",
   "toolsets",
+  "val_town",
   "web_search_&_browse",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
@@ -930,20 +932,19 @@ The directive should be used to display a clickable version of the agent name in
   deep_dive: {
     id: 29,
     availability: "auto",
-    isRestricted: ({ featureFlags, isDeepDiveDisabled }) => {
-      return (
-        !featureFlags.includes("deep_research_as_a_tool") || isDeepDiveDisabled
-      );
+    isRestricted: ({ isDeepDiveDisabled }) => {
+      // If the workspace has disable the deep dive agent, the tool is not available.
+      return isDeepDiveDisabled;
     },
     allowMultipleInstances: false,
-    isPreview: true,
+    isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "deep_dive",
       version: "0.1.0",
-      description: `Launch a handoff of the user's query to the @${DEEP_DIVE_NAME} agent.`,
+      description: `Hand off complex questions to the @${DEEP_DIVE_NAME} agent for comprehensive analysis across company data, databases, and web sources—thorough analysis that may take several minutes.`,
       authorization: null,
       icon: "ActionAtomIcon",
       documentationUrl: null,
@@ -1044,7 +1045,7 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
-  elevenlabs: {
+  speech_generator: {
     id: 34,
     availability: "manual",
     allowMultipleInstances: false,
@@ -1054,14 +1055,14 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: {
       text_to_speech: "low",
-      generate_music: "low",
+      text_to_discussion: "low",
     },
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
-      name: "elevenlabs",
+      name: "speech_generator",
       version: "1.0.0",
-      description: "Generate speech audio and music with ElevenLabs.",
+      description: "Turn written text into spoken audio or dialog",
       authorization: null,
       icon: "ActionMegaphoneIcon",
       documentationUrl: null,
@@ -1109,22 +1110,52 @@ The directive should be used to display a clickable version of the agent name in
     },
     isPreview: false,
     tools_stakes: {
-      search_messages: "never_ask",
+      search_messages_content: "never_ask",
+      list_teams: "never_ask",
+      list_users: "never_ask",
+      list_channels: "never_ask",
+      list_chats: "never_ask",
+      list_messages: "never_ask",
+      post_message: "low",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "microsoft_teams",
       version: "1.0.0",
-      description: "Search messages in Microsoft Teams.",
+      description: "Microsoft Teams for searching and posting messages.",
       authorization: {
         provider: "microsoft_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
         scope:
-          "User.Read Chat.Read ChatMessage.Read ChannelMessage.Read.All" as const,
+          "User.Read User.ReadBasic.All Team.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send" as const,
       },
       icon: "MicrosoftTeamsLogo",
       documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
+      instructions: null,
+    },
+  },
+  sound_studio: {
+    id: 37,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("elevenlabs_tool");
+    },
+    isPreview: false,
+    tools_stakes: {
+      generate_music: "low",
+      generate_sound_effects: "low",
+    },
+    tools_retry_policies: { default: "retry_on_interrupt" },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "sound_studio",
+      version: "1.0.0",
+      description: "Create music tracks and sound effects",
+      authorization: null,
+      icon: "ActionMegaphoneIcon",
+      documentationUrl: null,
       instructions: null,
     },
   },
@@ -1349,6 +1380,38 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ActionLightbulbIcon",
       documentationUrl: null,
       instructions: null,
+    },
+  },
+  val_town: {
+    id: 1014,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_stakes: {
+      create_val: "low",
+      get_file_content: "low",
+      delete_file: "low",
+      update_file_content: "low",
+      write_file: "low",
+      create_file: "low",
+      call_http_endpoint: "low",
+      get_val: "never_ask",
+      list_vals: "never_ask",
+      search_vals: "never_ask",
+      list_val_files: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "val_town",
+      version: "1.0.0",
+      description: "Create and execute vals in Val Town.",
+      authorization: null,
+      icon: "ValTownLogo",
+      documentationUrl: "https://docs.dust.tt/docs/val-town",
+      instructions: null,
+      requiresSecret: true,
     },
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.

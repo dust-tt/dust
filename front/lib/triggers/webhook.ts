@@ -18,7 +18,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, errorToString, Ok } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
-import type { WebhookSourceType } from "@app/types/triggers/webhooks";
+import type { WebhookSourceForAdminType } from "@app/types/triggers/webhooks";
 
 const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10% of workspace message limit
 const HEADERS_ALLOWED_LIST = ["x-github-event"]; // To avoid storing all headers in GCS, they might contain sensitive information
@@ -117,7 +117,7 @@ export const processWebhookRequest = async (
     headers,
     body,
   }: {
-    webhookSource: WebhookSourceType;
+    webhookSource: WebhookSourceForAdminType;
     headers: IncomingHttpHeaders;
     body: any;
   }

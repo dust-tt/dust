@@ -449,7 +449,19 @@ async function handler(
       }
       const conversations =
         await ConversationResource.listConversationsForUser(auth);
-      res.status(200).json({ conversations });
+      res.status(200).json({
+        conversations: conversations.map((c) => ({
+          ...c,
+
+          // Theses 2 properties are excluded from the ConversationWithoutContentType used internally (as they are not needed anywhere).
+          // They are still returned for the public API to stay backward compatible.
+          visibility: "unlisted", // Hardcoded as "deleted" conversations are not returned by the API
+          owner: auth.getNonNullableWorkspace(),
+
+          // This one is no excluded (yet)
+          requestedGroupIds: [], // No need to leak to the public API. Hardcoded as an empty array. Can be removed once the chrome extension is updated.
+        })),
+      });
       return;
 
     default:

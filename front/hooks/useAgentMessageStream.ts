@@ -170,7 +170,7 @@ export function useAgentMessageStream({
           // end of the stream to the client. So we just return.
           return;
         case "tool_approve_execution":
-          return;
+          break;
 
         case "generation_tokens":
           if (

@@ -167,6 +167,10 @@ export function asDisplayToolName(name?: string | null) {
     return "Create Slideshows";
   }
 
+  if (name === "deep_dive") {
+    return `Go deep`;
+  }
+
   return formatAsDisplayName(name);
 }
 

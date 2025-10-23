@@ -168,6 +168,7 @@ export const supportedOtherFileFormats = {
   "application/vnd.ms-excel": [".xls"],
   "application/pdf": [".pdf"],
   "application/vnd.dust.section.json": [".json"],
+  "message/rfc822": [".eml"],
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
   "text/markdown": [".md", ".markdown"],
@@ -652,7 +653,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_opus_feature"
   | "co_edition"
   | "confluence_tool"
-  | "deep_research_as_a_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
@@ -678,7 +678,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
-  | "research_agent"
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "salesforce_tool_write"
@@ -698,6 +697,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "legacy_dust_apps"
   | "dust_default_haiku_feature"
   | "llm_router_direct_requests"
+  | "mentions_v2"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1038,6 +1038,8 @@ export type ConversationVisibility = z.infer<
   typeof ConversationVisibilitySchema
 >;
 
+// Beware when you add anything to this schema as it will be difficult to remove it later.
+// It do NOT need to be a perfect match with the internal ConversationWithoutContentType, only keep the subset that makes sense for the public api.
 const ConversationWithoutContentSchema = z.object({
   id: ModelIdSchema,
   created: z.number(),
@@ -1049,7 +1051,7 @@ const ConversationWithoutContentSchema = z.object({
   title: z.string().nullable(),
   visibility: ConversationVisibilitySchema,
   groupIds: z.array(z.string()).optional(),
-  requestedGroupIds: z.array(z.array(z.string())),
+  requestedGroupIds: z.array(z.array(z.string())).optional(), // Same as groupIds, should be removed once the chrome extension is updated
 });
 
 export const ConversationSchema = ConversationWithoutContentSchema.extend({
@@ -2813,6 +2815,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "DriveLogo"
   | "GcalLogo"
   | "GithubLogo"
+  | "GitlabLogo"
   | "GmailLogo"
   | "GoogleSpreadsheetLogo"
   | "FreshserviceLogo"
@@ -2828,6 +2831,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SlackLogo"
   | "StripeLogo"
   | "OpenaiLogo"
+  | "ValTownLogo"
 >();
 
 const CustomServerIconSchema = FlexibleEnumSchema<

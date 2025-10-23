@@ -3,7 +3,7 @@ import type { TurnContext } from "botbuilder";
 import { sendTextMessage } from "@connectors/api/webhooks/teams/bot_messaging_utils";
 import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
 import { isActiveMemberOfWorkspace } from "@connectors/lib/bot/user_validation";
-import logger from "@connectors/logger/logger";
+import type { Logger } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export interface TeamsUserInfo {
@@ -14,14 +14,15 @@ export interface TeamsUserInfo {
 
 export async function validateTeamsUser(
   context: TurnContext,
-  connector: ConnectorResource
+  connector: ConnectorResource,
+  localLogger: Logger
 ): Promise<TeamsUserInfo | null> {
   const {
     from: { aadObjectId: userAadObjectId },
   } = context.activity;
 
   if (!userAadObjectId) {
-    logger.error("No user AAD object ID found in Teams context");
+    localLogger.error("No user AAD object ID found in Teams context");
     await sendTextMessage(
       context,
       "❌ Unable to identify user for this Teams message"
@@ -37,7 +38,7 @@ export async function validateTeamsUser(
   try {
     userInfo = await client.api(`/users/${userAadObjectId}`).get();
   } catch (error) {
-    logger.error(
+    localLogger.error(
       { error, userAadObjectId, connectorId: connector.id },
       "Failed to get user info from Microsoft Graph"
     );
@@ -49,7 +50,7 @@ export async function validateTeamsUser(
   const email = userInfo?.mail;
 
   if (!email) {
-    logger.warn(
+    localLogger.warn(
       { userAadObjectId, displayName, connectorId: connector.id },
       "No email found for Teams user"
     );
@@ -64,7 +65,7 @@ export async function validateTeamsUser(
   const isActiveMember = await isActiveMemberOfWorkspace(connector, email);
 
   if (!isActiveMember) {
-    logger.info(
+    localLogger.info(
       {
         connectorId: connector.id,
         userEmail: email,
@@ -79,16 +80,6 @@ export async function validateTeamsUser(
     );
     return null;
   }
-
-  logger.info(
-    {
-      connectorId: connector.id,
-      userEmail: email,
-      displayName,
-      userAadObjectId,
-    },
-    "Teams user validated successfully"
-  );
 
   return {
     email,
