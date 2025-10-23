@@ -155,7 +155,7 @@ export function WebhookEditionFilters({
   }, [filterGenerationStatus, filterErrorMessage, filterField.value]);
 
   return (
-    <>
+    <div className="space-y-1">
       {selectedPreset && availableEvents.length > 0 && (
         <>
           <Label htmlFor="webhook-filter-description">
@@ -209,6 +209,6 @@ export function WebhookEditionFilters({
       )}
 
       <div className="pt-2">{filterGenerationResult}</div>
-    </>
+    </div>
   );
 }
