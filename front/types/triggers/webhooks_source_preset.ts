@@ -1,6 +1,11 @@
 import type { Icon } from "@dust-tt/sparkle";
 import { GithubLogo, JiraLogo } from "@dust-tt/sparkle";
+import type React from "react";
 
+import type {
+  WebhookCreateFormComponentProps,
+  WebhookDetailsComponentProps,
+} from "@app/components/triggers/webhook_preset_components";
 import type { RemoteWebhookService } from "@app/lib/triggers/services/remote_webhook_service";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
@@ -53,4 +58,8 @@ export type PresetWebhook = {
   description: string;
   featureFlag?: WhitelistableFeature;
   webhookService: RemoteWebhookService;
+  components: {
+    detailsComponent: React.ComponentType<WebhookDetailsComponentProps>;
+    createFormComponent: React.ComponentType<WebhookCreateFormComponentProps>;
+  };
 };

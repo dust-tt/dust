@@ -148,6 +148,7 @@ function WebhookSourceSheetContent({
   const [isSaving, setIsSaving] = useState(false);
   const [remoteProviderData, setRemoteProviderData] =
     useState<RemoteProviderData | null>(null);
+  const [connectionId, setConnectionId] = useState<string | null>(null);
   const [isPresetReadyToSubmit, setIsPresetReadyToSubmit] = useState(true);
 
   const { spaces } = useSpacesAsAdmin({
@@ -243,18 +244,14 @@ function WebhookSourceSheetContent({
   const onCreateSubmit = useCallback(
     async (
       data: CreateWebhookSourceFormData,
-      providerData?: RemoteProviderData
+      connectionId?: string,
+      remoteMetadata?: RemoteProviderData
     ) => {
-      const { connectionId, ...remoteMetadata } = providerData ?? {};
-
       const apiData = {
         ...data,
         includeGlobal: true,
-        // Include provider data if available for remote webhook creation
-        ...(connectionId && {
-          connectionId,
-          remoteMetadata,
-        }),
+        ...(remoteMetadata ? { remoteMetadata } : {}),
+        ...(connectionId ? { connectionId } : {}),
       };
 
       await createWebhookSource(apiData);
@@ -500,7 +497,11 @@ function WebhookSourceSheetContent({
           disabled: createForm.formState.isSubmitting || !isPresetReadyToSubmit,
           onClick: () => {
             void createForm.handleSubmit((data) =>
-              onCreateSubmit(data, remoteProviderData ?? undefined)
+              onCreateSubmit(
+                data,
+                connectionId ?? undefined,
+                remoteProviderData ?? undefined
+              )
             )();
           },
         },
@@ -539,6 +540,7 @@ function WebhookSourceSheetContent({
     onEditSave,
     isPresetReadyToSubmit,
     remoteProviderData,
+    connectionId,
   ]);
 
   const pages: MultiPageSheetPage[] = useMemo(
@@ -555,7 +557,10 @@ function WebhookSourceSheetContent({
                 form={createForm}
                 kind={mode.kind}
                 owner={owner}
-                onRemoteProviderDataChange={setRemoteProviderData}
+                onRemoteProviderDataChange={(data) => {
+                  setRemoteProviderData(data?.remoteMetadata ?? null);
+                  setConnectionId(data?.connectionId ?? null);
+                }}
                 onPresetReadyToSubmitChange={setIsPresetReadyToSubmit}
               />
             </div>
