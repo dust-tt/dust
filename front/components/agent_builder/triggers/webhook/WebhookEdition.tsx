@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -49,18 +49,15 @@ export function WebhookEdition({
   const form = useForm<WebhookFormValues>({
     defaultValues,
     resolver: webhookSourceView ? zodResolver(WebhookFormSchema) : undefined,
+    mode: "onSubmit",
   });
 
   useEffect(() => {
     form.reset(defaultValues);
   }, [form, defaultValues]);
 
-  const onSheetSave = async (): Promise<boolean> => {
-    if (!webhookSourceView) {
-      return false;
-    }
-
-    await form.handleSubmit(async (values: WebhookFormValues) => {
+  const handleSubmit = useCallback(
+    async (values: WebhookFormValues) => {
       if (!user) {
         return;
       }
@@ -100,7 +97,16 @@ export function WebhookEdition({
 
       onSave(triggerData);
       onClose();
-    })();
+    },
+    [form, onClose, onSave, trigger, user, webhookSourceView]
+  );
+
+  const onSheetSave = async (): Promise<boolean> => {
+    if (!webhookSourceView) {
+      return false;
+    }
+
+    await form.handleSubmit(handleSubmit)();
 
     return true;
   };
@@ -111,7 +117,7 @@ export function WebhookEdition({
   };
 
   return (
-    <FormProvider form={form}>
+    <FormProvider form={form} onSubmit={handleSubmit}>
       <WebhookEditionSheet
         owner={owner}
         trigger={trigger}

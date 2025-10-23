@@ -156,39 +156,40 @@ export function WebhookEditionFilters({
 
   return (
     <>
-      {selectedPreset && availableEvents.length > 0 && (
-        <>
-          <Label htmlFor="trigger-filter-description">
-            Filter Description (optional)
-          </Label>
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Describe in natural language the conditions under which the agent
-            should trigger. Will always trigger if left empty.
-          </p>
-          <TextArea
-            id="trigger-filter-description"
-            placeholder='e.g. "New pull requests that changes more than 500 lines of code, or have the `auto-review` label."'
-            rows={3}
-            value={naturalDescription}
-            disabled={!isEditor}
-            onChange={(e) => {
-              if (!selectedEvent || !selectedPreset) {
-                setError("event", {
-                  type: "manual",
-                  message: "Please select an event first",
-                });
-                return;
-              }
+      {selectedPreset && (
+          <>
+            <Label htmlFor="webhook-filter-description">
+              Filter Description (optional)
+            </Label>
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Describe in natural language the conditions under which the agent
+              should trigger. Will always trigger if left empty.
+            </p>
+            <TextArea
+              id="webhook-filter-description"
+              placeholder='e.g. "New pull requests that changes more than 500 lines of code, or have the `auto-review` label."'
+              rows={3}
+              value={naturalDescription}
+              disabled={!isEditor}
+              onChange={(e) => {
+                if (!selectedEvent || !selectedPreset) {
+                  setError("event", {
+                    type: "manual",
+                    message: "Please select an event first",
+                  });
+                  return;
+                }
 
-              handleNaturalDescriptionChange(e.target.value);
-            }}
-          />
-        </>
-      )}
+                handleNaturalDescriptionChange(e.target.value);
+              }}
+            />
+          </>
+        ) &&
+        availableEvents.length > 0}
 
       {webhookSourceView?.kind === "custom" && (
         <>
-          <Label htmlFor="trigger-filter-description">
+          <Label htmlFor="webhook-filter-description">
             Filter Expression (optional)
           </Label>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -196,7 +197,7 @@ export function WebhookEditionFilters({
             Will always trigger if left empty.
           </p>
           <TextArea
-            id="trigger-filter-description"
+            id="webhook-filter-description"
             placeholder={
               'example:\n\n(and\n  (eq "action" "opened")\n  (exists "pull_request")\n)'
             }

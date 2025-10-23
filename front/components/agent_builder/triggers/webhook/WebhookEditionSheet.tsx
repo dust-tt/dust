@@ -46,7 +46,7 @@ function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
 
   return (
     <div className="space-y-1">
-      <Label htmlFor="trigger-name">Name</Label>
+      <Label htmlFor="webhook-name">Name</Label>
       <Input
         id="trigger-name"
         placeholder="Enter trigger name"
@@ -198,7 +198,7 @@ function WebhookEditionMessageInput({
 
   return (
     <div className="space-y-1">
-      <Label htmlFor="trigger-prompt">Message (Optional)</Label>
+      <Label htmlFor="webhook-prompt">Message (Optional)</Label>
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         Add context or instructions for the agent when the trigger runs.
       </p>
