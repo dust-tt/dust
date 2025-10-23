@@ -100,7 +100,7 @@ export function WebhookEditionFilters({
       try {
         const result = await generateFilter({
           naturalDescription: debouncedDescription,
-          eventSchema: selectedEventSchema.fields,
+          eventSchema: selectedEventSchema,
         });
         filterField.onChange(result.filter);
         setFilterGenerationStatus("idle");
