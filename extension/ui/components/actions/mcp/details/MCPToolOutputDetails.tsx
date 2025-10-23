@@ -66,35 +66,18 @@ export function ReasoningSuccessBlock({
 
 interface SearchResultProps {
   actionName: string;
-  defaultQuery?: string;
+  query: string | null;
   visual: React.ComponentType<{ className?: string }>;
-  actionOutput: CallToolResult["content"] | null;
   viewType: "conversation" | "sidebar";
 }
 
 export function SearchResultDetails({
   actionName,
-  defaultQuery,
+  query,
   visual,
   viewType,
-  actionOutput,
 }: SearchResultProps) {
-  const query =
-    actionOutput
-      ?.map((r) => {
-        if (
-          isSearchQueryResourceType(r) ||
-          isWebsearchQueryResourceType(r) ||
-          isIncludeQueryResourceType(r)
-        ) {
-          return r.resource.text.trim();
-        }
-        return null;
-      })
-      .filter(Boolean)
-      .join("\n") ||
-    defaultQuery ||
-    "No query provided";
+  const displayQuery = query || "No query provided";
 
   return (
     <ActionDetailsWrapper
@@ -103,7 +86,7 @@ export function SearchResultDetails({
       visual={visual}
     >
       <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-        {query}
+        {displayQuery}
       </div>
     </ActionDetailsWrapper>
   );
