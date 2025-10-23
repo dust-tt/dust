@@ -19,24 +19,35 @@ export class DiscordOAuthProvider implements BaseOAuthStrategyProvider {
     useCase: OAuthUseCase;
     _extraConfig?: ExtraConfigType;
   }) {
-    if (useCase !== "bot") {
-      throw new Error(
-        `Discord OAuth only supports "bot" use case, got: ${useCase}`
+    const clientId = config.getOAuthDiscordClientId();
+
+    if (useCase === "bot") {
+      const bot_scopes = ["bot"];
+
+      return (
+        `https://discord.com/api/oauth2/authorize?` +
+        `client_id=${clientId}` +
+        `&scope=${encodeURIComponent(bot_scopes.join("+"))}` +
+        `&permissions=83968` + // Allows the bot to read message history, embed links, and send messages
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("discord"))}` +
+        `&response_type=code` +
+        `&state=${connection.connection_id}`
+      );
+    } else if (useCase === "personal_actions") {
+      const personal_scopes = ["identify", "email"];
+
+      return (
+        `https://discord.com/api/oauth2/authorize?` +
+        `client_id=${clientId}` +
+        `&scope=${encodeURIComponent(personal_scopes.join(" "))}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("discord"))}` +
+        `&response_type=code` +
+        `&state=${connection.connection_id}`
       );
     }
 
-    const bot_scopes = ["bot"];
-
-    const clientId = config.getOAuthDiscordClientId();
-
-    return (
-      `https://discord.com/api/oauth2/authorize?` +
-      `client_id=${clientId}` +
-      `&scope=${encodeURIComponent(bot_scopes.join("+"))}` +
-      `&permissions=83968` + // Allows the bot to read message history, embed links, and send messages
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("discord"))}` +
-      `&response_type=code` +
-      `&state=${connection.connection_id}`
+    throw new Error(
+      `Discord OAuth only supports "bot" and "personal_actions" use cases, got: ${useCase}`
     );
   }
 
