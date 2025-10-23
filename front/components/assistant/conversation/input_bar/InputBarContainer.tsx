@@ -349,6 +349,7 @@ const InputBarContainer = ({
             break;
           case "mention":
             editorService.insertMention({
+              type: "agent",
               id: message.id,
               label: message.name,
             });
@@ -587,9 +588,11 @@ const InputBarContainer = ({
                   size={buttonSize}
                   onItemClick={(c) => {
                     editorService.insertMention({
+                      type: "agent",
                       id: c.sId,
                       label: c.name,
                       description: c.description,
+                      pictureUrl: c.pictureUrl,
                     });
                   }}
                   assistants={allAssistants}
