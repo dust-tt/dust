@@ -1,8 +1,4 @@
-import {
-  Client,
-  isFullDataSource,
-  isFullPage,
-} from "@notionhq/client";
+import { Client, isFullDataSource, isFullPage } from "@notionhq/client";
 import { Op } from "sequelize";
 
 import { getNotionAccessToken } from "@connectors/connectors/notion/lib/access_token";
