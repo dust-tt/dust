@@ -455,11 +455,18 @@ export const ConversationViewer = ({
 
       const placeholderAgentMsgs: VirtuosoMessage[] = [];
       for (const mention of mentions) {
+        const pictureUrl =
+          ref.current.data
+            .get()
+            .filter(isMessageTemporayState)
+            .find((m) => m.message.configuration.sId === mention.id)?.message
+            .configuration.pictureUrl ?? "";
+
         // +1 per agent message mentionned
         rank += 1;
         placeholderAgentMsgs.push(
           createPlaceholderAgentMessage({
-            mention,
+            mention: { ...mention, pictureUrl },
             rank,
           })
         );

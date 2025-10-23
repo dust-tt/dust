@@ -145,7 +145,7 @@ export function createPlaceholderAgentMessage({
   mention,
   rank,
 }: {
-  mention: EditorMention;
+  mention: EditorMention & { pictureUrl: string };
   rank: number;
 }): MessageTemporaryState {
   const createdAt = new Date().getTime();
@@ -166,7 +166,7 @@ export function createPlaceholderAgentMessage({
       configuration: {
         sId: mention.id,
         name: mention.label,
-        pictureUrl: "",
+        pictureUrl: mention.pictureUrl,
         status: "active",
         canRead: true,
         // TODO(2025-10-17 thomas): Remove.
