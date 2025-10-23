@@ -39,6 +39,7 @@ export async function getLLM(
 
   switch (modelId) {
     case "mistral-large-latest":
+      return hasFeature ? new MistralLLM({ model: modelConfiguration }) : null;
     case "mistral-small-latest":
       return options?.bypassFeatureFlag ?? hasFeature
         ? new MistralLLM({ model: modelConfiguration })
