@@ -203,7 +203,7 @@ function WebhookEditionMessageInput({
         Add context or instructions for the agent when the trigger runs.
       </p>
       <TextArea
-        id="trigger-prompt"
+        id="webhook-prompt"
         minRows={4}
         disabled={!isEditor}
         {...field}
