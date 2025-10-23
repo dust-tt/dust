@@ -49,7 +49,7 @@ export async function fetchUsageMetrics(
     },
   };
 
-  const result = await searchAnalytics<unknown, UsageMetricsAggs>(baseQuery, {
+  const result = await searchAnalytics<never, UsageMetricsAggs>(baseQuery, {
     aggregations: aggs,
     size: 0,
   });

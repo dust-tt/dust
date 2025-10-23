@@ -88,7 +88,7 @@ export async function fetchToolLatencyMetrics(
     },
   };
 
-  const result = await searchAnalytics<unknown, ToolLatencyAggs>(baseQuery, {
+  const result = await searchAnalytics<never, ToolLatencyAggs>(baseQuery, {
     aggregations: aggs,
     size: 0,
   });

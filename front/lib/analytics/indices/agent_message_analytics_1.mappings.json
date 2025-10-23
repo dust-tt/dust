@@ -41,6 +41,9 @@
         },
         "cached": {
           "type": "integer"
+        },
+        "cost_cents": {
+          "type": "short"
         }
       }
     },
