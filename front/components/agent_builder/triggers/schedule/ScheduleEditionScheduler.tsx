@@ -74,6 +74,7 @@ export function ScheduleEditionScheduler({
   const [generatedTimezone, setGeneratedTimezone] = useState<string | null>(
     null
   );
+  // TODO(2025-10-23 aubin): refactor this debounce to useDebounce.
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const abortControllerRef = useRef<AbortController | null>(null);
 
