@@ -156,14 +156,10 @@ export async function updateAnalyticsDocById({
   id,
   scriptSource,
   params,
-  ifSeqNo,
-  ifPrimaryTerm,
 }: {
   id: string;
   scriptSource: string;
   params?: estypes.Script["params"];
-  ifSeqNo?: number;
-  ifPrimaryTerm?: number;
 }): Promise<Result<estypes.UpdateResponse, ElasticsearchError>> {
   return withEs((client) =>
     client.update({
@@ -174,8 +170,6 @@ export async function updateAnalyticsDocById({
         source: scriptSource,
         params,
       },
-      if_seq_no: ifSeqNo,
-      if_primary_term: ifPrimaryTerm,
     })
   );
 }
