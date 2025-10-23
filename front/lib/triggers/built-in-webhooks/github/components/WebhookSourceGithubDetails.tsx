@@ -1,7 +1,7 @@
 import { ExternalLinkIcon, Page } from "@dust-tt/sparkle";
 
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
-import { GithubAdditionalDataSchema } from "@app/lib/triggers/services/github_service_types";
+import { GithubAdditionalDataSchema } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
 
 export function WebhookSourceGithubDetails({
   webhookSource,

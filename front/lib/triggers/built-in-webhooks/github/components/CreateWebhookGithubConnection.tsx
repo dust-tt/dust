@@ -20,8 +20,8 @@ import type {
   GithubAdditionalData,
   GithubOrganization,
   GithubRepository,
-} from "@app/lib/triggers/services/github_service_types";
-import { GithubAdditionalDataSchema } from "@app/lib/triggers/services/github_service_types";
+} from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
+import { GithubAdditionalDataSchema } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
 import type { OAuthConnectionType } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
 
