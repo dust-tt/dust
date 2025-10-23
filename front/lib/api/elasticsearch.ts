@@ -17,11 +17,26 @@ export interface ElasticsearchBaseDocument {
   [key: string]: unknown;
 }
 
-export type ElasticsearchError = {
-  type: "connection_error" | "query_error" | "unknown_error";
-  message: string;
+type ElasticSearchErrorType =
+  | "connection_error"
+  | "query_error"
+  | "unknown_error";
+
+export class ElasticsearchError extends Error {
+  type: ElasticSearchErrorType;
   statusCode?: number;
-};
+
+  constructor(
+    type: ElasticSearchErrorType,
+    message: string,
+    statusCode?: number
+  ) {
+    super(message);
+    this.name = "ElasticsearchError";
+    this.type = type;
+    this.statusCode = statusCode;
+  }
+}
 
 type SearchParams = estypes.SearchRequest;
 
@@ -47,15 +62,15 @@ function toElasticsearchError(err: unknown): ElasticsearchError {
   if (err instanceof esErrors.ResponseError) {
     const statusCode = err.statusCode ?? undefined;
     const reason = extractErrorReason(err);
-    return { type: "query_error", message: reason, statusCode };
+    return new ElasticsearchError("query_error", reason, statusCode);
   }
   if (err instanceof esErrors.ConnectionError) {
-    return {
-      type: "connection_error",
-      message: "Failed to connect to Elasticsearch",
-    };
+    return new ElasticsearchError(
+      "connection_error",
+      "Failed to connect to Elasticsearch"
+    );
   }
-  return { type: "unknown_error", message: normalizeError(err).message };
+  return new ElasticsearchError("unknown_error", normalizeError(err).message);
 }
 
 async function withEs<T>(
