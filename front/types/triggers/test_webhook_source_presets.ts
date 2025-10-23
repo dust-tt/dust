@@ -14,18 +14,21 @@ const TEST_EVENT: WebhookEvent = {
   name: "Test event",
   value: "test_event",
   description: "A simple test event with two string fields.",
-  fields: [
-    {
-      name: "A",
-      description: "Field A - a string field.",
-      type: "string",
+  schema: {
+    type: "object",
+    properties: {
+      A: {
+        type: "string",
+        description: "Field A - a string field.",
+      },
+      B: {
+        type: "string",
+        description: "Field B - a string field.",
+      },
     },
-    {
-      name: "B",
-      description: "Field B - a string field.",
-      type: "string",
-    },
-  ],
+    required: ["A", "B"],
+    additionalProperties: false,
+  },
 };
 
 class TestWebhookService implements RemoteWebhookService {

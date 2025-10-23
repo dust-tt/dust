@@ -59,7 +59,7 @@ export function useWebhookFilterGeneration({
       try {
         const result = await generateFilter({
           naturalDescription: debouncedDescription,
-          eventSchema: eventSchema.fields,
+          eventSchema: eventSchema,
         });
         setGeneratedFilter(result.filter);
         setStatus("idle");
