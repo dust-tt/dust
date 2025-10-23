@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 import type {
   EditorMention,
+  EditorMentionAgent,
   EditorService,
 } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import type { AgentMention, LightAgentConfigurationType } from "@app/types";
@@ -40,9 +41,11 @@ const useHandleAgentMentions = (
         );
         if (agentConfiguration) {
           mentionsToInsert.push({
+            type: "agent",
             id: agentConfiguration.sId,
             label: agentConfiguration.name,
             description: agentConfiguration.description,
+            pictureUrl: agentConfiguration.pictureUrl,
           });
         }
       }
@@ -67,10 +70,12 @@ const useHandleAgentMentions = (
         return;
       }
 
-      const mention = {
+      const mention: EditorMentionAgent = {
+        type: "agent",
         id: agentConfiguration.sId,
         label: agentConfiguration.name,
         description: agentConfiguration.description,
+        pictureUrl: agentConfiguration.pictureUrl,
       };
 
       if (!editorService.hasMention(mention)) {

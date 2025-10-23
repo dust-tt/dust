@@ -83,9 +83,11 @@ export const useMentionAgentDropdown = (
           .insertContent({
             type: "mention",
             attrs: {
+              type: "agent",
               id: suggestion.id,
               label: suggestion.label,
               description: suggestion.description,
+              pictureUrl: suggestion.pictureUrl,
             },
           })
           .insertContent(" ") // Add space after mention

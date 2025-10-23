@@ -12,12 +12,12 @@ function makeEditorSuggestionAgents(
     .filter((a) => a.status === "active")
     .sort(compareAgentsForSort)
     .map((agent) => ({
+      type: "agent",
       id: agent.sId,
       label: agent.name,
       pictureUrl: agent.pictureUrl,
       userFavorite: agent.userFavorite,
       description: agent.description,
-      type: "agent",
     }));
 }
 

@@ -75,8 +75,8 @@ export const AssistantInputBar = ({
   }, [lastUserMessage, context.agentBuilderContext?.draftAgent]);
 
   const { bottomOffset } = useVirtuosoLocation();
-  const distanceUntilButtonVisibe = 100;
-  const showScrollToBottomButton = bottomOffset >= distanceUntilButtonVisibe;
+  const distanceUntilButtonVisible = 100;
+  const showScrollToBottomButton = bottomOffset >= distanceUntilButtonVisible;
   const showClearButton =
     context.agentBuilderContext?.resetConversation && !isGenerating;
   const showStopButton = generationContext.generatingMessages.some(

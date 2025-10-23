@@ -25,10 +25,21 @@ import type { WorkspaceType } from "@app/types";
 
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
 
-export interface EditorMention {
+export type EditorMention = EditorMentionAgent | EditorMentionUser;
+
+interface BaseEditorMention {
   id: string;
   label: string;
-  description?: string;
+  pictureUrl: string;
+  description: string;
+}
+
+export interface EditorMentionAgent extends BaseEditorMention {
+  type: "agent";
+}
+
+export interface EditorMentionUser extends BaseEditorMention {
+  type: "user";
 }
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
@@ -56,6 +67,9 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
     mentions.push({
       id: node.attrs?.id,
       label: node.attrs?.label,
+      type: node.attrs?.type,
+      pictureUrl: node.attrs?.pictureUrl,
+      description: node.attrs?.description,
     });
   }
 
@@ -105,13 +119,17 @@ const useEditorService = (editor: Editor | null) => {
       },
       // Insert mention helper function.
       insertMention: ({
+        type,
         id,
         label,
         description,
+        pictureUrl,
       }: {
+        type: "agent" | "user";
         id: string;
         label: string;
         description?: string;
+        pictureUrl?: string;
       }) => {
         const shouldAddSpaceBeforeMention =
           !editor?.isEmpty &&
@@ -122,7 +140,7 @@ const useEditorService = (editor: Editor | null) => {
           .insertContent(shouldAddSpaceBeforeMention ? " " : "") // Add an extra space before the mention.
           .insertContent({
             type: "mention",
-            attrs: { id, label, description },
+            attrs: { type, id, label, description, pictureUrl },
           })
           .insertContent(" ") // Add an extra space after the mention.
           .run();
@@ -192,7 +210,9 @@ const useEditorService = (editor: Editor | null) => {
 
       hasMention(mention: EditorMention) {
         const { mentions } = this.getTextAndMentions();
-        return mentions.some((m) => m.id === mention.id);
+        return mentions.some(
+          (m) => m.id === mention.id && m.type === mention.type
+        );
       },
 
       getTrimmedText() {
