@@ -50,12 +50,12 @@ function extractErrorMessage(error: unknown): string {
 
 interface ScheduleEditionSchedulerProps {
   isEditor: boolean;
-  workspace: LightWorkspaceType;
+  owner: LightWorkspaceType;
 }
 
 export function ScheduleEditionScheduler({
   isEditor,
-  workspace,
+  owner,
 }: ScheduleEditionSchedulerProps) {
   const { control, setValue } = useFormContext<ScheduleFormValues>();
   const {
@@ -77,7 +77,7 @@ export function ScheduleEditionScheduler({
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const textAsCronRule = useTextAsCronRule({ workspace });
+  const textAsCronRule = useTextAsCronRule({ workspace: owner });
 
   const cronDescription = useMemo(() => {
     switch (generationStatus) {
