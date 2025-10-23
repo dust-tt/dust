@@ -184,7 +184,9 @@ const GongPaginatedResults = <C extends t.Mixed, F extends string>(
   ]);
 
 // https://help.gong.io/docs/what-the-gong-api-provides
-const GONG_RATE_LIMIT = { limit: 3, windowInMs: 1_000 };
+// The doc says 3/sec and 10,000/day.
+// TODO (2025-10-23 yuka): we are experimenting the number to avoid hitting the rate limit.
+const GONG_RATE_LIMIT = { limit: 1, windowInMs: 8_000 };
 
 export class GongClient {
   private readonly baseUrl = "https://api.gong.io/v2";
@@ -365,7 +367,8 @@ export class GongClient {
           Array.from(response.headers.entries()).filter(
             ([key]) =>
               key.toLowerCase().startsWith("x-") ||
-              key.toLowerCase().startsWith("rate-")
+              key.toLowerCase().startsWith("rate-") ||
+              key.toLowerCase() === "retry-after"
           )
         );
 
@@ -374,6 +377,7 @@ export class GongClient {
             connectorId: this.connectorId,
             endpoint,
             headers,
+            retryAfter: response.headers.get("Retry-After"),
             provider: "gong",
           },
           "Rate limit hit on Gong API."

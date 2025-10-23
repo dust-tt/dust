@@ -1,7 +1,7 @@
 import { Octokit } from "@octokit/core";
 
-import type { GithubOrganization } from "@app/lib/triggers/services/github_service_types";
-import { isGithubOrganization } from "@app/lib/triggers/services/github_service_types";
+import type { GithubOrganization } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
+import { isGithubOrganization } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
 
 const ORGS_PER_PAGE = 100; // GitHub max is 100
 
@@ -21,15 +21,12 @@ export async function getGithubOrganizations(
   });
 
   return orgs.map((org: any): GithubOrganization => {
-    const result = {
-      id: org.id,
-      login: org.login,
-    };
-    if (!isGithubOrganization(result)) {
+    const organization = { name: org.login };
+    if (!isGithubOrganization(organization)) {
       throw new Error(
-        `Invalid GithubOrganization data: ${JSON.stringify(org)}`
+        `Invalid GithubOrganization data: ${JSON.stringify(organization)}`
       );
     }
-    return result;
+    return organization;
   });
 }

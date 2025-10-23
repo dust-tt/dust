@@ -1,15 +1,14 @@
 import { Octokit } from "@octokit/core";
 
 import config from "@app/lib/api/config";
-import { getGithubOrganizations } from "@app/lib/api/webhooks/github/orgs";
-import { getGithubRepositories } from "@app/lib/api/webhooks/github/repos";
 import type { Authenticator } from "@app/lib/auth";
-import type { GithubAdditionalData } from "@app/lib/triggers/services/github_service_types";
+import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
+import { getGithubOrganizations } from "@app/lib/triggers/built-in-webhooks/github/orgs";
+import { getGithubRepositories } from "@app/lib/triggers/built-in-webhooks/github/repos";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isString, OAuthAPI, Ok } from "@app/types";
-
-import type { RemoteWebhookService } from "./remote_webhook_service";
+import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 
 export class GitHubWebhookService implements RemoteWebhookService {
   async getServiceData(
@@ -33,7 +32,7 @@ export class GitHubWebhookService implements RemoteWebhookService {
   }: {
     auth: Authenticator;
     connectionId: string;
-    remoteMetadata: Record<string, any>;
+    remoteMetadata: GithubAdditionalData;
     webhookUrl: string;
     events: string[];
     secret?: string;
@@ -97,15 +96,11 @@ export class GitHubWebhookService implements RemoteWebhookService {
 
       // Create webhooks for repositories
       for (const repository of repositories) {
-        if (!isString(repository)) {
-          errors.push(`Invalid repository format: ${repository}`);
-          continue;
-        }
-
-        const [owner, repo] = repository.split("/");
+        const fullName = repository.fullName;
+        const [owner, repo] = fullName.split("/");
         if (!owner || !repo) {
           errors.push(
-            `Invalid repository format: ${repository}. Expected format: owner/repo`
+            `Invalid repository format: ${fullName}. Expected format: owner/repo`
           );
           continue;
         }
@@ -126,7 +121,7 @@ export class GitHubWebhookService implements RemoteWebhookService {
           // Check if user has admin permissions
           if (!repoData.permissions?.admin) {
             errors.push(
-              `You need admin permissions on ${repository} to create webhooks. Current permissions: ${JSON.stringify(repoData.permissions)}. Token scopes: ${scopes}`
+              `You need admin permissions on ${fullName} to create webhooks. Current permissions: ${JSON.stringify(repoData.permissions)}. Token scopes: ${scopes}`
             );
             continue;
           }
@@ -148,26 +143,22 @@ export class GitHubWebhookService implements RemoteWebhookService {
             }
           );
 
-          webhookIds[repository] = String(webhook.id);
+          webhookIds[fullName] = String(webhook.id);
         } catch (error: any) {
           errors.push(
-            `Failed to create webhook for ${repository}: ${error.message}`
+            `Failed to create webhook for ${fullName}: ${error.message}`
           );
         }
       }
 
       // Create webhooks for organizations
       for (const organization of organizations) {
-        if (!isString(organization)) {
-          errors.push(`Invalid organization format: ${organization}`);
-          continue;
-        }
-
+        const orgName = organization.name;
         try {
           const { data: webhook } = await octokit.request(
             "POST /orgs/{org}/hooks",
             {
-              org: organization,
+              org: orgName,
               name: "web",
               active: true,
               events,
@@ -180,10 +171,10 @@ export class GitHubWebhookService implements RemoteWebhookService {
             }
           );
 
-          webhookIds[organization] = String(webhook.id);
+          webhookIds[orgName] = String(webhook.id);
         } catch (error: any) {
           errors.push(
-            `Failed to create webhook for organization ${organization}: ${error.message}`
+            `Failed to create webhook for organization ${orgName}: ${error.message}`
           );
         }
       }

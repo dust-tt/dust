@@ -12,11 +12,11 @@ import React, {
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { MentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/MentionDropdown";
-import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
+import useAgentSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAgentSuggestions";
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
-import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
-import { useMentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
+import useHandleAgentMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleAgentMentions";
+import { useMentionAgentDropdown } from "@app/components/assistant/conversation/input_bar/editor/useMentionAgentDropdown";
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -98,7 +98,7 @@ const InputBarContainer = ({
   selectedMCPServerViews,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
-  const suggestions = useAssistantSuggestions(agentConfigurations, owner);
+  const agentSuggestions = useAgentSuggestions(agentConfigurations, owner);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
@@ -260,14 +260,17 @@ const InputBarContainer = ({
   );
 
   // Pass the editor ref to the mention dropdown hook
-  const mentionDropdown = useMentionDropdown(suggestions, editorRef);
+  const agentMentionDropdown = useMentionAgentDropdown(
+    agentSuggestions,
+    editorRef
+  );
 
   const { editor, editorService } = useCustomEditor({
-    suggestions,
+    suggestions: agentSuggestions,
     onEnterKeyDown,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
-    suggestionHandler: mentionDropdown.getSuggestionHandler(),
+    suggestionHandler: agentMentionDropdown.getSuggestionHandler(),
     owner,
     onInlineText: handleInlineText,
     onLongTextPaste: async ({ text, from, to }) => {
@@ -346,6 +349,7 @@ const InputBarContainer = ({
             break;
           case "mention":
             editorService.insertMention({
+              type: "agent",
               id: message.id,
               label: message.name,
             });
@@ -458,7 +462,7 @@ const InputBarContainer = ({
     sendNotification,
   ]);
 
-  // When input bar animation is requested it means the new button was clicked (removing focus from
+  // When input bar animation is requested, it means the new button was clicked (removing focus from
   // the input bar), we grab it back.
   const { animate } = useContext(InputBarContext);
   useEffect(() => {
@@ -467,7 +471,7 @@ const InputBarContainer = ({
     }
   }, [animate, editorService]);
 
-  useHandleMentions(
+  useHandleAgentMentions(
     editorService,
     agentConfigurations,
     stickyMentions,
@@ -584,9 +588,11 @@ const InputBarContainer = ({
                   size={buttonSize}
                   onItemClick={(c) => {
                     editorService.insertMention({
+                      type: "agent",
                       id: c.sId,
                       label: c.name,
                       description: c.description,
+                      pictureUrl: c.pictureUrl,
                     });
                   }}
                   assistants={allAssistants}
@@ -648,7 +654,7 @@ const InputBarContainer = ({
         </div>
       </div>
 
-      <MentionDropdown mentionDropdownState={mentionDropdown} />
+      <MentionDropdown mentionDropdownState={agentMentionDropdown} />
     </div>
   );
 };

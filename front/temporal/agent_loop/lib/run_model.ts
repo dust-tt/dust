@@ -26,6 +26,7 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
+import { getLLM } from "@app/lib/api/llm";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -37,7 +38,9 @@ import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { getOutputFromAction } from "@app/temporal/agent_loop/lib/get_output_from_action";
+import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
+import type { GetOutputResponse } from "@app/temporal/agent_loop/lib/types";
 import type { AgentActionsEvent, ModelId } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -421,22 +424,45 @@ export async function runModelActivity(
     getDelimitersConfiguration({ agentConfiguration })
   );
 
-  const getOutputFromActionResponse = await getOutputFromAction(auth, {
-    modelConversationRes,
-    conversation,
-    userMessage,
-    runConfig,
-    specifications,
-    flushParserTokens,
-    contentParser,
-    agentMessageRow,
-    step,
-    agentConfiguration,
-    agentMessage,
-    model,
-    publishAgentError,
-    prompt,
-  });
+  let getOutputFromActionResponse: GetOutputResponse;
+  const llm = await getLLM(auth, { modelId: model.modelId });
+
+  if (llm === null) {
+    getOutputFromActionResponse = await getOutputFromAction(auth, {
+      modelConversationRes,
+      conversation,
+      userMessage,
+      runConfig,
+      specifications,
+      flushParserTokens,
+      contentParser,
+      agentMessageRow,
+      step,
+      agentConfiguration,
+      agentMessage,
+      model,
+      publishAgentError,
+      prompt,
+    });
+  } else {
+    getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
+      modelConversationRes,
+      conversation,
+      userMessage,
+      runConfig,
+      specifications,
+      flushParserTokens,
+      contentParser,
+      agentMessageRow,
+      step,
+      agentConfiguration,
+      agentMessage,
+      model,
+      publishAgentError,
+      prompt,
+      llm,
+    });
+  }
 
   if (getOutputFromActionResponse.isErr()) {
     const error = getOutputFromActionResponse.error;

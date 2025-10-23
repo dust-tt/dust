@@ -1060,6 +1060,17 @@ export async function fetchDeltaForRootNodesInDrive({
     return { gcsFilePath: null };
   }
 
+  logger.info(
+    {
+      connectorId,
+      driveId,
+      gcsFilePath,
+      resultsCount: results.length,
+      totalItems: sortedChangedItems.length,
+    },
+    "Uploading to GCS delta file."
+  );
+
   const deltaData: DeltaDataInGCS = {
     deltaLink,
     rootNodeIds,
@@ -1067,7 +1078,16 @@ export async function fetchDeltaForRootNodesInDrive({
     totalItems: sortedChangedItems.length,
   };
 
-  await file.save(JSON.stringify(deltaData), {
+  const jsonData = JSON.stringify(deltaData);
+
+  logger.info(
+    {
+      jsonDataSize: jsonData.length,
+    },
+    "Delta file size."
+  );
+
+  await file.save(jsonData, {
     metadata: {
       contentType: "application/json",
       metadata: {

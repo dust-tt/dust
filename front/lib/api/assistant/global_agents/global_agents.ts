@@ -570,12 +570,6 @@ export async function getGlobalAgents(
     );
   }
 
-  if (!flags.includes("research_agent")) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DEEP_DIVE
-    );
-  }
-
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
   const agentCandidates = agentsIdsToFetch.map((sId) =>

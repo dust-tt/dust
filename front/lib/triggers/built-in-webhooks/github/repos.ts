@@ -1,7 +1,7 @@
 import { Octokit } from "@octokit/core";
 
-import type { GithubRepository } from "@app/lib/triggers/services/github_service_types";
-import { isGithubRepository } from "@app/lib/triggers/services/github_service_types";
+import type { GithubRepository } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
+import { isGithubRepository } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
 import logger from "@app/logger/logger";
 
 const MAX_PAGES = 5; // Limit to first 500 repos to avoid infinite loops
@@ -87,17 +87,13 @@ export async function getGithubRepositories(
   allRepos.sort((a, b) => a.full_name.localeCompare(b.full_name));
 
   return allRepos.map((repo: any): GithubRepository => {
-    const parsed = {
-      id: repo.id,
-      full_name: repo.full_name,
-    };
+    const repoFullName = { fullName: repo.full_name };
 
-    if (!isGithubRepository(parsed)) {
+    if (!isGithubRepository(repoFullName)) {
       throw new Error(
-        `Invalid GithubRepository data: ${JSON.stringify(parsed)}`
+        `Invalid GithubRepository data: ${JSON.stringify(repoFullName)}`
       );
     }
-
-    return parsed;
+    return repoFullName;
   });
 }

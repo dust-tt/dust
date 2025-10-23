@@ -1,6 +1,7 @@
 import type {
   DataSourceFilesystemFindInputType,
   DataSourceFilesystemListInputType,
+  IncludeInputType,
   SearchInputTypeWithTags,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import type { TimeFrame } from "@app/types";
@@ -93,8 +94,6 @@ export function makeQueryTextForList({
 
 export function makeQueryTextForInclude({
   timeFrame,
-}: {
-  timeFrame: TimeFrame | null;
-}): string {
-  return renderRelativeTimeFrame(timeFrame);
+}: IncludeInputType): string {
+  return `Requested to include documents ${renderRelativeTimeFrame(timeFrame ?? null)}`;
 }
