@@ -74,10 +74,8 @@ export function ScheduleEdition({
     [user, trigger, onSave]
   );
 
-  const onSheetSave = async (): Promise<boolean> => {
-    await form.handleSubmit(handleSubmit)();
-
-    return true;
+  const onSheetSave = () => {
+    return form.handleSubmit(handleSubmit);
   };
 
   const onCancel = () => {
