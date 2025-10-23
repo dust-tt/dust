@@ -79,7 +79,8 @@ export type MCPServerType = {
   availability: MCPServerAvailability;
   allowMultipleInstances: boolean;
   documentationUrl: string | null;
-  requiresSecret?: boolean;
+  developerSecretSelection?: DeveloperSecretSelectionType | null;
+  developerSecretSelectionDescription?: string;
 };
 
 export type RemoteMCPServerType = MCPServerType & {
@@ -136,3 +137,5 @@ export type InternalMCPServerDefinitionType = Omit<
 export type MCPServerTypeWithViews = MCPServerType & {
   views: MCPServerViewType[];
 };
+
+export type DeveloperSecretSelectionType = "required" | "optional";

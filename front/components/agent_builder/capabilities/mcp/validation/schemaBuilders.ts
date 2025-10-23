@@ -70,10 +70,12 @@ export function createDynamicConfigurationFields(
           message: VALIDATION_MESSAGES.dustApp.required,
         })
       : z.null(),
-    secretName: requirements.requiresSecretConfiguration
-      ? secretNameSchema.refine((val) => val !== null, {
-          message: VALIDATION_MESSAGES.secret.required,
-        })
+    secretName: requirements.developerSecretSelection
+      ? requirements.developerSecretSelection === "required"
+        ? secretNameSchema.refine((val) => val !== null, {
+            message: VALIDATION_MESSAGES.secret.required,
+          })
+        : secretNameSchema
       : z.null(),
     additionalConfiguration: createAdditionalConfigurationSchema(requirements),
   };
