@@ -60,18 +60,20 @@ export function CreateWebhookGithubConnection({
   const [showRepoDropdown, setShowRepoDropdown] = useState(false);
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
 
-  const filteredRepositories = useMemo(() => {
+  const { githubRepositories, filteredRepositories } = useMemo(() => {
     const githubRepositories = githubData?.repositories ?? [];
-    return githubRepositories.filter((repo) =>
+    const filteredRepositories = githubRepositories.filter((repo) =>
       repo.fullName.toLowerCase().includes(repoSearchQuery.toLowerCase())
     );
+    return { githubRepositories, filteredRepositories };
   }, [githubData, repoSearchQuery]);
 
-  const filteredOrganizations = useMemo(() => {
+  const { githubOrganizations, filteredOrganizations } = useMemo(() => {
     const githubOrganizations = githubData?.organizations ?? [];
-    return githubOrganizations.filter((org) =>
+    const filteredOrganizations = githubOrganizations.filter((org) =>
       org.name.toLowerCase().includes(orgSearchQuery.toLowerCase())
     );
+    return { githubOrganizations, filteredOrganizations };
   }, [githubData, orgSearchQuery]);
 
   const repositoriesInDropdown = useMemo(
@@ -264,7 +266,7 @@ export function CreateWebhookGithubConnection({
                       />
                     </div>
                   ))}
-                  {repositoriesInDropdown.length > 0 && (
+                  {githubRepositories.length > 0 && (
                     <DropdownMenu
                       open={showRepoDropdown}
                       onOpenChange={setShowRepoDropdown}
@@ -343,7 +345,7 @@ export function CreateWebhookGithubConnection({
                       />
                     </div>
                   ))}
-                  {organizationsInDropdown.length > 0 && (
+                  {githubOrganizations.length > 0 && (
                     <DropdownMenu
                       open={showOrgDropdown}
                       onOpenChange={setShowOrgDropdown}
