@@ -321,7 +321,7 @@ function createServer(
         );
 
         if (validationResult.isErr()) {
-          return validationResult.error;
+          return validationResult;
         }
 
         const { validatedNodes, dataSourceId } = validationResult.value;
@@ -436,7 +436,7 @@ function createServer(
         );
 
         if (validationResult.isErr()) {
-          return validationResult.error;
+          return validationResult;
         }
 
         const { validatedNodes, dataSourceId } = validationResult.value;
