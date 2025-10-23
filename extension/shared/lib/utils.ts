@@ -157,16 +157,24 @@ function spreadLength(a: string, b: string) {
 export function filterAndSortAgents(
   agents: LightAgentConfigurationType[],
   searchText: string
-) {
+): LightAgentConfigurationType[];
+export function filterAndSortAgents(
+  agents: { id: string; label: string; userFavorite: boolean }[],
+  searchText: string
+): { id: string; label: string; userFavorite: boolean }[];
+export function filterAndSortAgents(agents: any[], searchText: string) {
   const lowerCaseSearchText = searchText.toLowerCase();
 
+  const getName = (a: any) => ("name" in a ? a.name : a.label ?? "");
+
   const filtered = agents.filter((a) =>
-    subFilter(lowerCaseSearchText, a.name.toLowerCase())
+    subFilter(lowerCaseSearchText, getName(a).toLowerCase())
   );
 
   if (searchText.length > 0) {
     filtered.sort((a, b) =>
-      compareForFuzzySort(lowerCaseSearchText, a.name, b.name)
+      compareForFuzzySort(lowerCaseSearchText, getName(a), getName(b)) ||
+      compareAgentsForSort(a, b)
     );
   }
 
@@ -182,10 +190,21 @@ export const isEqualNode = (
 
 // This function implements our general strategy to sort agents to users (input bar, agent list,
 // agent suggestions...).
+type AgentLikeForSort =
+  | LightAgentConfigurationType
+  | { id: string; label: string; userFavorite: boolean; scope?: string };
+
 export function compareAgentsForSort(
-  a: LightAgentConfigurationType,
-  b: LightAgentConfigurationType
+  a: AgentLikeForSort,
+  b: AgentLikeForSort
 ) {
+  const aId = (a as any).sId ?? (a as any).id;
+  const bId = (b as any).sId ?? (b as any).id;
+  const aName = (a as any).name ?? (a as any).label ?? "";
+  const bName = (b as any).name ?? (b as any).label ?? "";
+  const aScope: string | undefined = (a as any).scope;
+  const bScope: string | undefined = (b as any).scope;
+
   if (a.userFavorite && !b.userFavorite) {
     return -1;
   }
@@ -193,51 +212,51 @@ export function compareAgentsForSort(
     return 1;
   }
 
-  if (a.sId === GLOBAL_AGENTS_SID.DUST) {
+  if (aId === GLOBAL_AGENTS_SID.DUST) {
     return -1;
   }
-  if (b.sId === GLOBAL_AGENTS_SID.DUST) {
+  if (bId === GLOBAL_AGENTS_SID.DUST) {
     return 1;
   }
 
-  if (a.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
+  if (aId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return -1;
   }
-  if (b.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
+  if (bId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return 1;
   }
 
-  if (a.sId === GLOBAL_AGENTS_SID.CLAUDE_4_SONNET) {
+  if (aId === GLOBAL_AGENTS_SID.CLAUDE_4_SONNET) {
     return -1;
   }
-  if (b.sId === GLOBAL_AGENTS_SID.CLAUDE_4_SONNET) {
+  if (bId === GLOBAL_AGENTS_SID.CLAUDE_4_SONNET) {
     return 1;
   }
 
-  if (a.sId === GLOBAL_AGENTS_SID.GPT5) {
+  if (aId === GLOBAL_AGENTS_SID.GPT5) {
     return -1;
   }
-  if (b.sId === GLOBAL_AGENTS_SID.GPT5) {
+  if (bId === GLOBAL_AGENTS_SID.GPT5) {
     return 1;
   }
 
-  if (a.sId === GLOBAL_AGENTS_SID.GPT4) {
+  if (aId === GLOBAL_AGENTS_SID.GPT4) {
     return -1;
   }
-  if (b.sId === GLOBAL_AGENTS_SID.GPT4) {
+  if (bId === GLOBAL_AGENTS_SID.GPT4) {
     return 1;
   }
 
   // Check for agents with non-global 'scope'.
-  if (a.scope !== "global" && b.scope === "global") {
+  if (aScope !== "global" && bScope === "global") {
     return -1;
   }
-  if (b.scope !== "global" && a.scope === "global") {
+  if (bScope !== "global" && aScope === "global") {
     return 1;
   }
 
   // Default: sort alphabetically.
-  return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
+  return aName.localeCompare(bName, "en", { sensitivity: "base" });
 }
 
 export const formatTimestring = (timestamp: number): string => {
