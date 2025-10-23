@@ -16,19 +16,16 @@ import type { ModelId, ResourcePermission } from "@app/types";
 export function createSpaceIdToGroupsMap(
   auth: Authenticator,
   allFetchedSpaces: SpaceResource[]
-): Map<ModelId, string[][]> {
+): Map<ModelId, string[]> {
   const workspaceId = auth.getNonNullableWorkspace().id;
-  const spaceIdToGroupsMap = new Map<ModelId, string[][]>();
+  const spaceIdToGroupsMap = new Map<ModelId, string[]>();
 
   for (const space of allFetchedSpaces) {
-    const permissions = space.requestedPermissions();
-    const groupIds = permissions.map((permission) =>
-      permission.groups.map((group) =>
-        GroupResource.modelIdToSId({
-          id: group.id,
-          workspaceId,
-        })
-      )
+    const groupIds = space.groups.map((group) =>
+      GroupResource.modelIdToSId({
+        id: group.id,
+        workspaceId,
+      })
     );
     spaceIdToGroupsMap.set(space.id, groupIds);
   }
@@ -45,7 +42,7 @@ export function createSpaceIdToGroupsMap(
  * @returns Array of ResourcePermission objects for use with Authenticator permission methods
  */
 export function createResourcePermissionsFromSpacesWithMap(
-  spaceIdToGroupsMap: Map<ModelId, string[][]>,
+  spaceIdToGroupsMap: Map<ModelId, string[]>,
   requestedSpaceIds: ModelId[]
 ): ResourcePermission[] {
   const resolvedGroupIds: string[][] = [];
@@ -53,9 +50,8 @@ export function createResourcePermissionsFromSpacesWithMap(
   for (const spaceId of requestedSpaceIds) {
     const groupIds = spaceIdToGroupsMap.get(spaceId);
     assert(groupIds, `No group IDs found for space ID ${spaceId}`);
-    resolvedGroupIds.push(...groupIds);
+    resolvedGroupIds.push(groupIds);
   }
 
   return Authenticator.createResourcePermissionsFromGroupIds(resolvedGroupIds);
 }
-

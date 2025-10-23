@@ -447,7 +447,7 @@ describe("ConversationResource", () => {
     let auth: Authenticator;
     let globalSpace: SpaceResource;
     let regularSpace: SpaceResource;
-    let spaceIdToGroupsMap: Map<number, string[][]>;
+    let spaceIdToGroupsMap: Map<number, string[]>;
 
     beforeEach(async () => {
       const {
