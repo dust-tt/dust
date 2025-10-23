@@ -6,28 +6,20 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ModelId, ResourcePermission } from "@app/types";
 
 /**
- * Creates ResourcePermission objects from space ids by resolving them to their corresponding group
- * requirements.
+ * Creates a space id to group ids mapping for efficient permission resolution.
+ * This should be called once and reused for multiple permission checks.
  *
- * This utility function:
- * 1. Maps each space to its group requirements using space.requestedPermissions()
- * 2. Resolves the requested space ids to their corresponding group ids
- * 3. Returns ResourcePermission objects compatible with Authenticator.canRead(), canWrite(), etc.
- *
- * @param requestedSpaceIds - Array of space ids that need permission resolution
- * @param allFetchedSpaces - All SpaceResource objects that were fetched (must include all requestedSpaceIds)
- * @returns Array of ResourcePermission objects for use with Authenticator permission methods
+ * @param auth - Authenticator instance
+ * @param allFetchedSpaces - All SpaceResource objects that were fetched
+ * @returns Map from space id to group ids arrays for permission resolution
  */
-export function createResourcePermissionsFromSpaces(
+export function createSpaceIdToGroupsMap(
   auth: Authenticator,
-  allFetchedSpaces: SpaceResource[],
-  { requestedSpaceIds }: { requestedSpaceIds: ModelId[] }
-): ResourcePermission[] {
+  allFetchedSpaces: SpaceResource[]
+): Map<ModelId, string[][]> {
   const workspaceId = auth.getNonNullableWorkspace().id;
-
-  // Build space id to groups mapping.
-  // TODO: Map must be done before calling this function, as it's called in a loop.
   const spaceIdToGroupsMap = new Map<ModelId, string[][]>();
+
   for (const space of allFetchedSpaces) {
     const permissions = space.requestedPermissions();
     const groupIds = permissions.map((permission) =>
@@ -41,14 +33,29 @@ export function createResourcePermissionsFromSpaces(
     spaceIdToGroupsMap.set(space.id, groupIds);
   }
 
-  // Resolve requested space ids to group ids.
+  return spaceIdToGroupsMap;
+}
+
+/**
+ * Creates ResourcePermission objects from space ids using a pre-built space-to-groups mapping.
+ * This is the optimized version that avoids rebuilding the map on each call.
+ *
+ * @param spaceIdToGroupsMap - Pre-built mapping from space ids to group IDs
+ * @param requestedSpaceIds - Array of space ids that need permission resolution
+ * @returns Array of ResourcePermission objects for use with Authenticator permission methods
+ */
+export function createResourcePermissionsFromSpacesWithMap(
+  spaceIdToGroupsMap: Map<ModelId, string[][]>,
+  requestedSpaceIds: ModelId[]
+): ResourcePermission[] {
   const resolvedGroupIds: string[][] = [];
+
   for (const spaceId of requestedSpaceIds) {
     const groupIds = spaceIdToGroupsMap.get(spaceId);
     assert(groupIds, `No group IDs found for space ID ${spaceId}`);
-
     resolvedGroupIds.push(...groupIds);
   }
 
   return Authenticator.createResourcePermissionsFromGroupIds(resolvedGroupIds);
 }
+

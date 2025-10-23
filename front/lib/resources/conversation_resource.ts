@@ -18,7 +18,10 @@ import {
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { createResourcePermissionsFromSpaces } from "@app/lib/resources/permission_utils";
+import {
+  createResourcePermissionsFromSpacesWithMap,
+  createSpaceIdToGroupsMap,
+} from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -136,12 +139,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     }
 
+    // Create space-to-groups mapping once for efficient permission checks.
+    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
+
     const accessibleConversations = conversations.filter((c) =>
       auth.canRead(
-        createResourcePermissionsFromSpaces(auth, spaces, {
+        createResourcePermissionsFromSpacesWithMap(
+          spaceIdToGroupsMap,
           // Parse as Number since Sequelize array of BigInts are returned as strings.
-          requestedSpaceIds: c.requestedSpaceIds.map((id) => Number(id)),
-        })
+          c.requestedSpaceIds.map((id) => Number(id))
+        )
       )
     );
 
@@ -154,7 +161,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         );
       }
 
-      // Otherwise, log a warning and return all conversations.
+      // Otherwise, log a warning and return all conversations for now.
       logger.warn(
         {
           workspaceId: workspace.sId,

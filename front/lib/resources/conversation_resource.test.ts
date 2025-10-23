@@ -12,7 +12,10 @@ import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { createResourcePermissionsFromSpaces } from "@app/lib/resources/permission_utils";
+import {
+  createResourcePermissionsFromSpacesWithMap,
+  createSpaceIdToGroupsMap,
+} from "@app/lib/resources/permission_utils";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -440,27 +443,34 @@ describe("ConversationResource", () => {
     });
   });
 
-  describe("createResourcePermissionsFromSpaces", () => {
+  describe("createResourcePermissionsFromSpacesWithMap", () => {
     let auth: Authenticator;
-    let spaces: SpaceResource[];
+    let globalSpace: SpaceResource;
+    let regularSpace: SpaceResource;
+    let spaceIdToGroupsMap: Map<number, string[][]>;
 
     beforeEach(async () => {
-      const { authenticator, globalSpace, workspace } =
-        await createResourceTest({
-          role: "admin",
-        });
+      const {
+        authenticator,
+        globalSpace: gs,
+        workspace,
+      } = await createResourceTest({
+        role: "admin",
+      });
 
       auth = authenticator;
+      globalSpace = gs;
+      regularSpace = await SpaceFactory.regular(workspace);
 
-      const regularSpace = await SpaceFactory.regular(workspace);
-
-      spaces = [globalSpace, regularSpace];
+      const allSpaces = [globalSpace, regularSpace];
+      spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, allSpaces);
     });
 
     it("should resolve space ids to group permissions", () => {
-      const permissions = createResourcePermissionsFromSpaces(auth, spaces, {
-        requestedSpaceIds: [spaces[0].id],
-      });
+      const permissions = createResourcePermissionsFromSpacesWithMap(
+        spaceIdToGroupsMap,
+        [globalSpace.id]
+      );
 
       expect(permissions).toBeDefined();
       expect(Array.isArray(permissions)).toBe(true);
@@ -469,9 +479,10 @@ describe("ConversationResource", () => {
     });
 
     it("should handle multiple space ids", () => {
-      const permissions = createResourcePermissionsFromSpaces(auth, spaces, {
-        requestedSpaceIds: [spaces[0].id, spaces[1].id],
-      });
+      const permissions = createResourcePermissionsFromSpacesWithMap(
+        spaceIdToGroupsMap,
+        [globalSpace.id, regularSpace.id]
+      );
 
       expect(permissions).toBeDefined();
       expect(permissions.length).toBeGreaterThan(0);
@@ -479,16 +490,18 @@ describe("ConversationResource", () => {
 
     it("should throw assertion error for missing spaces", () => {
       expect(() =>
-        createResourcePermissionsFromSpaces(auth, spaces, {
-          requestedSpaceIds: [99999], // Non-existent space Id.
-        })
+        createResourcePermissionsFromSpacesWithMap(
+          spaceIdToGroupsMap,
+          [99999] // Non-existent space Id.
+        )
       ).toThrow("No group IDs found for space ID 99999");
     });
 
     it("should handle empty space ids array", () => {
-      const permissions = createResourcePermissionsFromSpaces(auth, spaces, {
-        requestedSpaceIds: [],
-      });
+      const permissions = createResourcePermissionsFromSpacesWithMap(
+        spaceIdToGroupsMap,
+        []
+      );
 
       expect(permissions).toBeDefined();
       expect(permissions).toEqual([]);
@@ -500,7 +513,8 @@ describe("ConversationResource", () => {
     let userAuth: Authenticator;
     let workspace: LightWorkspaceType;
     let agents: LightAgentConfigurationType[];
-    let spaces: SpaceResource[];
+    let globalSpace: SpaceResource;
+    let restrictedSpace: SpaceResource;
     let conversations: {
       accessible: string[];
       restricted: string[];
@@ -509,7 +523,7 @@ describe("ConversationResource", () => {
     beforeEach(async () => {
       const {
         authenticator,
-        globalSpace,
+        globalSpace: gs,
         user,
         workspace: w,
       } = await createResourceTest({
@@ -517,6 +531,7 @@ describe("ConversationResource", () => {
       });
 
       workspace = w;
+      globalSpace = gs;
 
       // Create different users with different access levels.
       const adminUser = user;
@@ -533,7 +548,7 @@ describe("ConversationResource", () => {
 
       // Set up spaces and agents.
       // Create a restricted space only accessible to the admin user.
-      const restrictedSpace = await SpaceFactory.regular(workspace);
+      restrictedSpace = await SpaceFactory.regular(workspace);
       const res = await restrictedSpace.addMembers(adminAuth, {
         userIds: [adminUser.sId],
       });
@@ -544,7 +559,6 @@ describe("ConversationResource", () => {
         workspace.sId
       );
 
-      spaces = [globalSpace, restrictedSpace];
       agents = await setupTestAgents(workspace, adminUser);
 
       // Create conversations with different space access patterns.
@@ -629,7 +643,7 @@ describe("ConversationResource", () => {
       it("should handle conversations with multiple space IDs", async () => {
         const multiSpaceConvo = await ConversationFactory.create(adminAuth, {
           agentConfigurationId: agents[0].sId,
-          requestedSpaceIds: [spaces[0].id, spaces[1].id], // Both global and restricted spaces.
+          requestedSpaceIds: [globalSpace.id, restrictedSpace.id], // Both global and restricted spaces.
           messagesCreatedAt: [dateFromDaysAgo(5)],
         });
 
