@@ -184,7 +184,8 @@ const GongPaginatedResults = <C extends t.Mixed, F extends string>(
   ]);
 
 // https://help.gong.io/docs/what-the-gong-api-provides
-const GONG_RATE_LIMIT = { limit: 3, windowInMs: 1_000 };
+// The doc says 3/sec, let's be pessimistic and do 3/2 seconds
+const GONG_RATE_LIMIT = { limit: 3, windowInMs: 2_000 };
 
 export class GongClient {
   private readonly baseUrl = "https://api.gong.io/v2";
