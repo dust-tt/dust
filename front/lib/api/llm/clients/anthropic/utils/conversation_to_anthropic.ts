@@ -18,7 +18,7 @@ import type {
   ModelMessageTypeMultiActionsWithoutContentFragment,
   UserMessageTypeModel,
 } from "@app/types";
-import { isFunctionMessage, isString } from "@app/types";
+import { isString } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
@@ -87,25 +87,23 @@ function toolResultToContent(
   };
 }
 
-function toUserMessage(
-  message: UserMessageTypeModel | FunctionMessageTypeModel
-): MessageParam {
-  if (isFunctionMessage(message)) {
-    return {
-      role: "user",
-      content: [toolResultToContent(message)],
-    };
-  } else {
-    return {
-      role: "user",
-      content: isString(message.content)
-        ? [{ type: "text", text: message.content }]
-        : message.content.map(toContentChunk),
-    };
-  }
+function functionMessage(message: FunctionMessageTypeModel): MessageParam {
+  return {
+    role: "user",
+    content: [toolResultToContent(message)],
+  };
 }
 
-function toAssistantMessage(
+function userMessage(message: UserMessageTypeModel): MessageParam {
+  return {
+    role: "user",
+    content: isString(message.content)
+      ? [{ type: "text", text: message.content }]
+      : message.content.map(toContentChunk),
+  };
+}
+
+function assistantMessage(
   message:
     | AssistantFunctionCallMessageTypeModel
     | AssistantContentMessageTypeModel
@@ -122,10 +120,11 @@ export function toMessage(
 ): MessageParam {
   switch (message.role) {
     case "user":
+      return userMessage(message);
     case "function":
-      return toUserMessage(message);
+      return functionMessage(message);
     case "assistant":
-      return toAssistantMessage(message);
+      return assistantMessage(message);
   }
 }
 

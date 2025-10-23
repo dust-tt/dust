@@ -84,12 +84,6 @@ export interface FunctionMessageTypeModel {
   content: string | Content[];
 }
 
-export function isFunctionMessage(
-  message: ModelMessageTypeMultiActions
-): message is FunctionMessageTypeModel {
-  return message.role === "function";
-}
-
 export type ModelMessageTypeMultiActionsWithoutContentFragment =
   | UserMessageTypeModel
   | AssistantFunctionCallMessageTypeModel
