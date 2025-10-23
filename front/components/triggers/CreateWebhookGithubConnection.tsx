@@ -59,11 +59,11 @@ export function CreateWebhookGithubConnection({
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
 
   const filteredRepositories = githubRepositories.filter((repo) =>
-    repo.full_name.toLowerCase().includes(repoSearchQuery.toLowerCase())
+    repo.toLowerCase().includes(repoSearchQuery.toLowerCase())
   );
 
   const filteredOrganizations = githubOrganizations.filter((org) =>
-    org.login.toLowerCase().includes(orgSearchQuery.toLowerCase())
+    org.toLowerCase().includes(orgSearchQuery.toLowerCase())
   );
 
   // Notify parent component when data changes
@@ -261,17 +261,14 @@ export function CreateWebhookGithubConnection({
                           {filteredRepositories.length > 0 ? (
                             filteredRepositories
                               .filter(
-                                (repo) =>
-                                  !selectedRepositories.includes(repo.full_name)
+                                (repo) => !selectedRepositories.includes(repo)
                               )
                               .map((repo) => (
                                 <DropdownMenuItem
-                                  key={repo.id}
-                                  onClick={() =>
-                                    handleAddRepository(repo.full_name)
-                                  }
+                                  key={repo}
+                                  onClick={() => handleAddRepository(repo)}
                                 >
-                                  {repo.full_name}
+                                  {repo}
                                 </DropdownMenuItem>
                               ))
                           ) : (
@@ -347,17 +344,14 @@ export function CreateWebhookGithubConnection({
                           {filteredOrganizations.length > 0 ? (
                             filteredOrganizations
                               .filter(
-                                (org) =>
-                                  !selectedOrganizations.includes(org.login)
+                                (org) => !selectedOrganizations.includes(org)
                               )
                               .map((org) => (
                                 <DropdownMenuItem
-                                  key={org.id}
-                                  onClick={() =>
-                                    handleAddOrganization(org.login)
-                                  }
+                                  key={org}
+                                  onClick={() => handleAddOrganization(org)}
                                 >
-                                  {org.login}
+                                  {org}
                                 </DropdownMenuItem>
                               ))
                           ) : (

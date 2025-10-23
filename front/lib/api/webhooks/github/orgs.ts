@@ -21,15 +21,12 @@ export async function getGithubOrganizations(
   });
 
   return orgs.map((org: any): GithubOrganization => {
-    const result = {
-      id: org.id,
-      login: org.login,
-    };
-    if (!isGithubOrganization(result)) {
+    const organization = org.login;
+    if (!isGithubOrganization(organization)) {
       throw new Error(
-        `Invalid GithubOrganization data: ${JSON.stringify(org)}`
+        `Invalid GithubOrganization data: ${JSON.stringify(organization)}`
       );
     }
-    return result;
+    return organization;
   });
 }

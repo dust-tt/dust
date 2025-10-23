@@ -70,15 +70,9 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
     const mockAccessToken = "gho_mockToken123";
 
     // Mock the GitHub data
-    const mockRepositories = [
-      { id: 1, full_name: "owner/repo1" },
-      { id: 2, full_name: "owner/repo2" },
-    ];
+    const mockRepositories = ["owner/repo1", "owner/repo2"];
 
-    const mockOrganizations = [
-      { id: 100, login: "org1" },
-      { id: 200, login: "org2" },
-    ];
+    const mockOrganizations = ["org1", "org2"];
 
     vi.mocked(getGithubRepositories).mockResolvedValue(mockRepositories);
     vi.mocked(getGithubOrganizations).mockResolvedValue(mockOrganizations);
