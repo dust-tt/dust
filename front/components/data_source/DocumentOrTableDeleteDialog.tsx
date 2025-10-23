@@ -18,7 +18,11 @@ import type {
   LightContentNode,
   LightWorkspaceType,
 } from "@app/types";
-import { DocumentDeletionKey } from "@app/types";
+import {
+  DocumentDeletionKey,
+  isSpreadsheetFolderContentNode,
+} from "@app/types";
+import { DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE } from "@dust-tt/client";
 
 interface DocumentOrTableDeleteDialogProps {
   dataSourceView: DataSourceViewType | null;
@@ -60,7 +64,10 @@ export const DocumentOrTableDeleteDialog = ({
     if (
       !contentNode ||
       !dataSourceView ||
-      !["table", "document"].includes(contentNode.type)
+      !(
+        isSpreadsheetFolderContentNode(contentNode) ||
+        ["table", "document"].includes(contentNode.type)
+      )
     ) {
       return;
     }
