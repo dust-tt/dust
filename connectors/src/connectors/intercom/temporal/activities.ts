@@ -592,7 +592,7 @@ export async function getNextConversationBatchToSyncActivity({
 
   const accessToken = await getIntercomAccessToken(connector.connectionId);
   const closedAfter = lastHourOnly
-    ? new Date(Date.now() - 1 * 60 * 60 * 1000).getTime()
+    ? Math.floor((Date.now() - 1 * 60 * 60 * 1000) / 1000)
     : undefined;
 
   if (teamId) {
