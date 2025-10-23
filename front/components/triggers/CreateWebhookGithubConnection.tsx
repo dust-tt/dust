@@ -39,7 +39,7 @@ export function CreateWebhookGithubConnection({
   onFetchServiceData,
   onDataToCreateWebhookChange,
   onReadyToSubmitChange,
-}: WebhookCreateFormComponentProps) {
+}: WebhookCreateFormComponentProps<"github">) {
   const sendNotification = useSendNotification();
   const [githubConnection, setGithubConnection] =
     useState<OAuthConnectionType | null>(null);

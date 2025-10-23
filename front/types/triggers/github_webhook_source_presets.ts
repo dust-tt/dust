@@ -515,7 +515,7 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
   ],
 };
 
-export const GITHUB_WEBHOOK_PRESET: PresetWebhook = {
+export const GITHUB_WEBHOOK_PRESET: PresetWebhook<"github"> = {
   name: "GitHub",
   eventCheck: {
     type: "headers",

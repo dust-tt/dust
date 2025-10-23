@@ -6,6 +6,7 @@ import type {
   CustomResourceIconType,
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
+import type { GithubAdditionalData } from "@app/lib/triggers/services/github_service_types";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -23,10 +24,9 @@ export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
 export type WebhookSourceSignatureAlgorithm =
   (typeof WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS)[number];
 
-export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
-  Exclude<WebhookSourceKind, "custom">,
-  PresetWebhook
-> & {
+export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: {
+  [T in Exclude<WebhookSourceKind, "custom">]: PresetWebhook<T>;
+} & {
   custom: {
     name: string;
     icon: typeof Icon;
@@ -48,6 +48,7 @@ export function isWebhookSourceKind(
   );
 }
 
+// TODO: should be renamed to WebhookSourceKindType
 export type WebhookSourceKind = (typeof WEBHOOK_SOURCE_KIND)[number];
 
 export type WebhookSourceType = {
@@ -106,6 +107,10 @@ export type WebhookSourceWithSystemViewAndUsageType =
   WebhookSourceWithSystemViewType & {
     usage: AgentsUsageType | null;
   };
+
+export type ServiceDataType<T extends WebhookSourceKind> = T extends "github"
+  ? GithubAdditionalData
+  : Record<string, unknown>;
 
 export const basePostWebhookSourcesSchema = z.object({
   name: z.string().min(1, "Name is required"),

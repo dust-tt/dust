@@ -11,7 +11,7 @@ import { Err, isString, OAuthAPI, Ok } from "@app/types";
 
 import type { RemoteWebhookService } from "./remote_webhook_service";
 
-export class GitHubWebhookService implements RemoteWebhookService {
+export class GitHubWebhookService implements RemoteWebhookService<"github"> {
   async getServiceData(
     oauthToken: string
   ): Promise<Result<GithubAdditionalData, Error>> {

@@ -1,5 +1,9 @@
 import type { LightWorkspaceType } from "@app/types";
-import type { WebhookSourceForAdminType } from "@app/types/triggers/webhooks";
+import type {
+  ServiceDataType,
+  WebhookSourceForAdminType,
+  WebhookSourceKind,
+} from "@app/types/triggers/webhooks";
 
 /**
  * Props interface for webhook details components.
@@ -13,7 +17,7 @@ export interface WebhookDetailsComponentProps {
  * Props interface for webhook creation form components.
  * These components handle service-specific configuration during webhook creation.
  */
-export interface WebhookCreateFormComponentProps {
+export interface WebhookCreateFormComponentProps<T extends WebhookSourceKind> {
   owner: LightWorkspaceType;
   serviceData: Record<string, unknown> | null;
   isFetchingServiceData: boolean;
@@ -21,7 +25,7 @@ export interface WebhookCreateFormComponentProps {
   onDataToCreateWebhookChange?: (
     data: {
       connectionId: string;
-      remoteMetadata: Record<string, unknown>;
+      remoteMetadata: ServiceDataType<T>;
     } | null
   ) => void;
   onReadyToSubmitChange?: (isReady: boolean) => void;
