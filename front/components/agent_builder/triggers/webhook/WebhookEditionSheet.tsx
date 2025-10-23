@@ -48,7 +48,7 @@ function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
     <div className="space-y-1">
       <Label htmlFor="webhook-name">Name</Label>
       <Input
-        id="trigger-name"
+        id="webhook-name"
         placeholder="Enter trigger name"
         disabled={!isEditor}
         {...field}
