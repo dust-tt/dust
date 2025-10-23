@@ -4,16 +4,10 @@ import type {
   ThinkingOutputType,
 } from "@dust-tt/client";
 import {
-  isIncludeQueryResourceType,
-  isSearchQueryResourceType,
-  isWebsearchQueryResourceType,
-} from "@dust-tt/client";
-import {
   ContentMessage,
   InformationCircleIcon,
   Markdown,
 } from "@dust-tt/sparkle";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 interface ThinkingBlockProps {
   resource: ThinkingOutputType;
@@ -77,8 +71,6 @@ export function SearchResultDetails({
   visual,
   viewType,
 }: SearchResultProps) {
-  const displayQuery = query || "No query provided";
-
   return (
     <ActionDetailsWrapper
       viewType={viewType}
@@ -86,7 +78,7 @@ export function SearchResultDetails({
       visual={visual}
     >
       <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-        {displayQuery}
+        {query ?? "No query provided"}
       </div>
     </ActionDetailsWrapper>
   );
