@@ -26,24 +26,22 @@ export async function getLLM(
     return null;
   }
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const hasFeature = featureFlags.includes("llm_router_direct_requests");
-
   const modelConfiguration = SUPPORTED_MODEL_CONFIGS.find(
     (config) => config.modelId === modelId
   );
-
   if (!modelConfiguration) {
     return null;
   }
 
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const hasFeature =
+    options?.bypassFeatureFlag ??
+    featureFlags.includes("llm_router_direct_requests");
+
   switch (modelId) {
     case "mistral-large-latest":
-      return hasFeature ? new MistralLLM({ model: modelConfiguration }) : null;
     case "mistral-small-latest":
-      return options?.bypassFeatureFlag ?? hasFeature
-        ? new MistralLLM({ model: modelConfiguration })
-        : null;
+      return hasFeature ? new MistralLLM({ model: modelConfiguration }) : null;
     default:
       return null;
   }
