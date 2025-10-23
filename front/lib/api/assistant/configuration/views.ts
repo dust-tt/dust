@@ -8,7 +8,7 @@ import type {
 } from "@app/lib/api/assistant/configuration/types";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import {
   AgentConfiguration,
   AgentUserRelation,
@@ -271,12 +271,14 @@ async function fetchWorkspaceAgentConfigurationsForView(
     limit,
     sort,
     variant,
+    dangerouslySkipPermissionFiltering,
   }: {
     agentPrefix?: string;
     agentsGetView: Exclude<AgentsGetViewType, "global">;
     limit?: number;
     sort?: SortStrategyType;
     variant: AgentFetchVariant;
+    dangerouslySkipPermissionFiltering?: boolean;
   }
 ) {
   const user = auth.user();
@@ -304,10 +306,10 @@ async function fetchWorkspaceAgentConfigurationsForView(
       sort,
     });
 
-  const allowedAgentConfigurations = await filterAgentsByRequestedSpace(
-    auth,
-    agentConfigurations
-  );
+  const allowedAgentConfigurations = dangerouslySkipPermissionFiltering
+    ? agentConfigurations
+    : await filterAgentsByRequestedSpace(auth, agentConfigurations);
+
   return enrichAgentConfigurations(auth, allowedAgentConfigurations, {
     variant,
     agentIdsForUserAsEditor,
@@ -389,25 +391,9 @@ export async function getAgentConfigurationsForView<
       limit,
       sort,
       variant,
+      dangerouslySkipPermissionFiltering,
     }),
   ]);
 
-  // Filter out agents that the user does not have access to user should be in all groups that are
-  // in the agent's groupIds
-  const allowedAgentConfigurations = dangerouslySkipPermissionFiltering
-    ? allAgentConfigurations
-    : allAgentConfigurations.flat().filter(
-        (a) =>
-          auth.canRead(
-            Authenticator.createResourcePermissionsFromGroupIds(
-              a.requestedGroupIds
-            )
-          )
-        // TODO(2025-10-17 thomas): Update permission to use space requirements.
-        // auth.canRead(
-        //   Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
-        // )
-      );
-
-  return applySortAndLimit(allowedAgentConfigurations.flat());
+  return applySortAndLimit(allAgentConfigurations.flat());
 }
