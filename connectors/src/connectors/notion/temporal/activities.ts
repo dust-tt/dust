@@ -22,6 +22,7 @@ import {
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import {
   getBlockParentMemoized,
+  getDatabaseDataSources,
   getPageOrBlockParent,
   getPagesAndDatabasesEditedSince,
   getParsedDatabase,
@@ -297,7 +298,7 @@ export async function getPagesAndDatabasesToSync({
   };
   excludeUpToDatePages: boolean;
   loggerArgs: Record<string, string | number>;
-  filter?: "page" | "database";
+  filter?: "page" | "data_source";
 }): Promise<{
   pageIds: string[];
   databaseIds: string[];
@@ -1663,7 +1664,43 @@ export async function cacheBlockChildren({
   let parsedBlocks: ParsedNotionBlock[] = [];
   for (const block of resultPage.results) {
     if (isFullBlock(block)) {
-      parsedBlocks.push(parsePageBlock(block));
+      // In the new Notion API, a database can contain multiple data_sources
+      // We want to enumerate the data_sources instead of using the database itself
+      if (block.type === "child_database") {
+        const databaseId = block.id;
+        try {
+          const dataSources = await getDatabaseDataSources(
+            accessToken,
+            databaseId,
+            loggerArgs
+          );
+
+          if (dataSources && dataSources.length > 0) {
+            // Create a parsed block for each data_source instead of the database
+            for (const dataSource of dataSources) {
+              parsedBlocks.push({
+                id: dataSource.id,
+                type: "child_database",
+                text: `Child Database: ${dataSource.name || "Untitled Database"}`,
+                hasChildren: false,
+                childDatabaseTitle: dataSource.name,
+              });
+            }
+          } else {
+            localLogger.warn(
+              { databaseId },
+              "No data sources found in database"
+            );
+          }
+        } catch (e) {
+          localLogger.warn(
+            { error: e, databaseId },
+            "Failed to retrieve data sources for child_database, using original block"
+          );
+        }
+      } else {
+        parsedBlocks.push(parsePageBlock(block));
+      }
     }
   }
 
@@ -3077,6 +3114,10 @@ export async function getParentPageOrDb({
     switch (page.parent.type) {
       case "database_id":
         return { parentId: page.parent.database_id, parentType: "database" };
+      case "data_source_id":
+        // In the new API, pages can be children of data_sources
+        // We treat the data_source_id as the database parent
+        return { parentId: page.parent.data_source_id, parentType: "database" };
       case "page_id":
         return { parentId: page.parent.page_id, parentType: "page" };
       case "workspace":

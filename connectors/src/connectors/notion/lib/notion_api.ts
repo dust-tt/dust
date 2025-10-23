@@ -5,13 +5,14 @@ import {
   Client,
   isFullBlock,
   isFullDatabase,
+  isFullDataSource,
   isFullPage,
   isNotionClientError,
   UnknownHTTPResponseError,
 } from "@notionhq/client";
 import type {
   BlockObjectResponse,
-  GetDatabaseResponse,
+  GetDataSourceResponse,
   GetPageResponse,
   ListBlockChildrenResponse,
   PageObjectResponse,
@@ -156,7 +157,7 @@ export async function getPagesAndDatabasesEditedSince({
   loggerArgs: Record<string, string | number>;
   skippedDatabaseIds: Set<string>;
   retry?: { retries: number; backoffFactor: number };
-  filter?: "page" | "database";
+  filter?: "page" | "data_source";
 }): Promise<{
   pages: { id: string; lastEditedTs: number }[];
   dbs: { id: string; lastEditedTs: number }[];
@@ -278,7 +279,7 @@ export async function getPagesAndDatabasesEditedSince({
         // We're still more recent than the sinceTs, add the page to the list of edited pages.
         editedPages[pageOrDb.id] = lastEditedTime;
       }
-    } else if (pageOrDb.object === "database") {
+    } else if (pageOrDb.object === "data_source") {
       if (skippedDatabaseIds.has(pageOrDb.id)) {
         localLogger.info(
           { databaseId: pageOrDb.id },
@@ -286,8 +287,8 @@ export async function getPagesAndDatabasesEditedSince({
         );
         continue;
       }
-      if (isFullDatabase(pageOrDb)) {
-        if (pageOrDb.archived) {
+      if (isFullDataSource(pageOrDb)) {
+        if (pageOrDb.in_trash) {
           continue;
         }
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
@@ -447,12 +448,13 @@ export async function isAccessibleAndUnarchived(
       return !page.archived;
     }
 
+    // What we call a "database" is actually a "data_source" in the new Notion API
     if (objectType === "database") {
       const db = await retryWithBackoff(
         () =>
           wrapNotionAPITokenErrors(async () =>
-            notionClient.databases.retrieve({
-              database_id: objectId,
+            notionClient.dataSources.retrieve({
+              data_source_id: objectId,
             })
           ),
         {
@@ -460,10 +462,10 @@ export async function isAccessibleAndUnarchived(
           operationName: "retrieve_database",
         }
       );
-      if (!isFullDatabase(db)) {
+      if (!isFullDataSource(db)) {
         return false;
       }
-      return !db.archived;
+      return !db.in_trash;
     }
   } catch (e) {
     if (APIResponseError.isAPIResponseError(e)) {
@@ -581,6 +583,50 @@ export const getBlockParentMemoized = cacheWithRedis(
   }
 );
 
+export async function getDatabaseDataSources(
+  notionAccessToken: string,
+  databaseId: string,
+  loggerArgs: Record<string, string | number> = {}
+): Promise<Array<{ id: string; name: string }> | null> {
+  const localLogger = logger.child({ ...loggerArgs, databaseId });
+
+  const notionClient = new Client({
+    auth: notionAccessToken,
+    logger: notionClientLogger,
+  });
+
+  try {
+    const database = await wrapNotionAPITokenErrors(async () =>
+      notionClient.databases.retrieve({
+        database_id: databaseId,
+      })
+    );
+
+    if (isFullDatabase(database) && database.data_sources) {
+      return database.data_sources;
+    }
+    return null;
+  } catch (e) {
+    if (
+      APIResponseError.isAPIResponseError(e) &&
+      (NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code) ||
+        NOTION_NOT_FOUND_ERROR_CODES.includes(e.code) ||
+        e.code === "validation_error")
+    ) {
+      localLogger.info("Database not found or inaccessible.");
+      return null;
+    }
+    localLogger.error(
+      {
+        databaseId,
+        error: e,
+      },
+      "Error when getting database data sources."
+    );
+    throw e;
+  }
+}
+
 export async function getParsedDatabase(
   notionAccessToken: string,
   databaseId: string,
@@ -593,12 +639,13 @@ export async function getParsedDatabase(
     logger: notionClientLogger,
   });
 
-  let database: GetDatabaseResponse | null = null;
+  let dataSource: GetDataSourceResponse | null = null;
 
   try {
-    database = await wrapNotionAPITokenErrors(async () =>
-      notionClient.databases.retrieve({
-        database_id: databaseId,
+    // In the new API, what we call "database" is actually a "data_source"
+    dataSource = await wrapNotionAPITokenErrors(async () =>
+      notionClient.dataSources.retrieve({
+        data_source_id: databaseId,
       })
     );
   } catch (e) {
@@ -623,16 +670,18 @@ export async function getParsedDatabase(
     throw e;
   }
 
-  if (!isFullDatabase(database)) {
-    localLogger.info("Database is not a full database.");
+  if (!isFullDataSource(dataSource)) {
+    localLogger.info("Database is not a full data source.");
     return null;
   }
 
-  const dbLogger = localLogger.child({ databaseUrl: database.url });
+  const dbLogger = localLogger.child({ databaseUrl: dataSource.url });
 
   dbLogger.info("Parsing database.");
 
-  const dbParent = database.parent;
+  // Use database_parent instead of parent to skip the database level
+  // parent points to the database container, database_parent points to the actual parent (page/workspace/etc)
+  const dbParent = dataSource.database_parent;
   let parentId: string;
   let parentType: string;
 
@@ -673,15 +722,15 @@ export async function getParsedDatabase(
       break;
   }
 
-  const title = database.title.map((t) => t.plain_text).join(" ");
+  const title = dataSource.title.map((t) => t.plain_text).join(" ");
 
   return {
-    id: database.id,
-    url: database.url,
+    id: dataSource.id,
+    url: dataSource.url,
     title,
     parentId,
     parentType: parentType as ParsedNotionPage["parentType"],
-    archived: database.archived,
+    archived: dataSource.in_trash,
   };
 }
 
@@ -848,6 +897,13 @@ export function getPageOrBlockParent(
       return {
         type: "database",
         id: pageOrBlock.parent.database_id,
+      };
+    case "data_source_id":
+      // In the new API, pages/blocks can be children of data_sources
+      // We treat the data_source_id as a database
+      return {
+        type: "database",
+        id: pageOrBlock.parent.data_source_id,
       };
     case "page_id":
       return {
@@ -1041,9 +1097,10 @@ export async function retrieveDatabaseChildrenResultPage({
 
   localLogger.info("Fetching database children result page from Notion API.");
   try {
+    // In the new API, what we call "database" is actually a "data_source"
     const resultPage = await wrapNotionAPITokenErrors(async () =>
-      notionClient.databases.query({
-        database_id: databaseId,
+      notionClient.dataSources.query({
+        data_source_id: databaseId,
         start_cursor: cursor || undefined,
       })
     );
