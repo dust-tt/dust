@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@datadog/browser-logs": "^6.13.0",
+    "@daytonaio/sdk": "^0.111.1",
     "@dust-tt/client": "file:../sdks/js",
     "@dust-tt/sparkle": "^0.3.18",
     "@elastic/elasticsearch": "^8.15.0",

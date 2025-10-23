@@ -294,6 +294,9 @@ const config = {
       password: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_PASSWORD"),
     };
   },
+  getDaytonaAPIKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("DAYTONA_API_KEY");
+  },
 };
 
 export default config;

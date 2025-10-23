@@ -710,6 +710,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_global_agent_memory"
   | "dust_global_data_source_file_system"
   | "http_client_tool"
+  | "sandbox_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
