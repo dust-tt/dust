@@ -11,17 +11,20 @@ import {
   Label,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import type React from "react";
+import { useCallback, useState } from "react";
 import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { useWebhookServiceData } from "@app/lib/swr/useWebhookServiceData";
 import type { LightWorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
-import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
+import type {
+  WebhookSourceKind,
+  WebhookSourceWithPresetKind,
+} from "@app/types/triggers/webhooks";
 import {
   basePostWebhookSourcesSchema,
-  isWebhookSourceKind,
   refineSubscribedEvents,
   WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
@@ -56,6 +59,52 @@ type CreateWebhookSourceFormContentProps = {
   onPresetReadyToSubmitChange?: (isReady: boolean) => void;
 };
 
+function PresetFormWrapper<K extends WebhookSourceWithPresetKind>({
+  kind,
+  owner,
+  onRemoteProviderDataChange,
+  onPresetReadyToSubmitChange,
+}: {
+  kind: K;
+  owner: LightWorkspaceType;
+  onRemoteProviderDataChange?: (
+    data: { connectionId: string; remoteMetadata: RemoteProviderData } | null
+  ) => void;
+  onPresetReadyToSubmitChange?: (isReady: boolean) => void;
+}) {
+  const [connectionId, setConnectionId] = useState<string | null>(null);
+
+  const { serviceData, isServiceDataLoading, mutateServiceData } =
+    useWebhookServiceData({
+      owner,
+      kind,
+      connectionId,
+      disabled: false,
+    });
+
+  const preset = WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind];
+  const CreateFormComponent = preset.components.createFormComponent;
+
+  const handleFetchServiceData = useCallback(
+    async (newConnectionId: string) => {
+      setConnectionId(newConnectionId);
+      await mutateServiceData();
+    },
+    [mutateServiceData]
+  );
+
+  return (
+    <CreateFormComponent
+      owner={owner}
+      serviceData={serviceData} // TYPE MISMATCH HERE
+      isFetchingServiceData={isServiceDataLoading}
+      onFetchServiceData={handleFetchServiceData}
+      onDataToCreateWebhookChange={onRemoteProviderDataChange}
+      onReadyToSubmitChange={onPresetReadyToSubmitChange}
+    />
+  );
+}
+
 export function CreateWebhookSourceFormContent({
   form,
   kind,
@@ -68,20 +117,8 @@ export function CreateWebhookSourceFormContent({
     name: "subscribedEvents",
   });
 
-  const { serviceData, isFetchingServiceData, fetchServiceData } =
-    useWebhookServiceData(owner ?? null, kind);
-
-  const isCustom = (() => {
-    switch (kind) {
-      case "custom":
-      case "test":
-        return true; // These are not OAuth-based kinds
-      case "github":
-        return false;
-      default:
-        assertNever(kind);
-    }
-  })();
+  const isCustom = kind === "custom";
+  const preset = !isCustom ? WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind] : null;
 
   return (
     <>
@@ -101,85 +138,70 @@ export function CreateWebhookSourceFormContent({
         )}
       />
 
-      {kind !== "custom" &&
-        WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].events.length > 0 && (
-          <Controller
-            control={form.control}
-            name="subscribedEvents"
-            render={({ fieldState }) => (
-              <div className="space-y-3">
-                <Label htmlFor="subscribedEvents">Subscribed events</Label>
-                <div className="space-y-2">
-                  {WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].events.map(
-                    (event) => {
-                      const isSelected = selectedEvents.includes(event.value);
-                      return (
-                        <div
-                          key={event.value}
-                          className="flex items-center space-x-3"
+      {preset && preset.events.length > 0 && (
+        <Controller
+          control={form.control}
+          name="subscribedEvents"
+          render={({ fieldState }) => (
+            <div className="space-y-3">
+              <Label htmlFor="subscribedEvents">Subscribed events</Label>
+              <div className="space-y-2">
+                {preset.events.map((event) => {
+                  const isSelected = selectedEvents.includes(event.value);
+                  return (
+                    <div
+                      key={event.value}
+                      className="flex items-center space-x-3"
+                    >
+                      <Checkbox
+                        id={`${kind}-event-${event.value}`}
+                        checked={isSelected}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            form.setValue(
+                              "subscribedEvents",
+                              [...selectedEvents, event.value],
+                              { shouldValidate: true, shouldDirty: true }
+                            );
+                          } else {
+                            form.setValue(
+                              "subscribedEvents",
+                              selectedEvents.filter((e) => e !== event.value),
+                              { shouldValidate: true, shouldDirty: true }
+                            );
+                          }
+                        }}
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <label
+                          htmlFor={`${kind}-event-${event.value}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
-                          <Checkbox
-                            id={`${kind}-event-${event.value}`}
-                            checked={isSelected}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                form.setValue(
-                                  "subscribedEvents",
-                                  [...selectedEvents, event.value],
-                                  { shouldValidate: true, shouldDirty: true }
-                                );
-                              } else {
-                                form.setValue(
-                                  "subscribedEvents",
-                                  selectedEvents.filter(
-                                    (e) => e !== event.value
-                                  ),
-                                  { shouldValidate: true, shouldDirty: true }
-                                );
-                              }
-                            }}
-                          />
-                          <div className="grid gap-1.5 leading-none">
-                            <label
-                              htmlFor={`${kind}-event-${event.value}`}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                              {event.name}
-                            </label>
-                          </div>
-                        </div>
-                      );
-                    }
-                  )}
-                </div>
-                {fieldState.error && (
-                  <div className="dark:text-warning-night flex items-center gap-1 text-xs text-warning">
-                    {fieldState.error.message}
-                  </div>
-                )}
+                          {event.name}
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          />
-        )}
+              {fieldState.error && (
+                <div className="dark:text-warning-night flex items-center gap-1 text-xs text-warning">
+                  {fieldState.error.message}
+                </div>
+              )}
+            </div>
+          )}
+        />
+      )}
 
-      {owner &&
-        kind !== "custom" &&
-        isWebhookSourceKind(kind) &&
-        (() => {
-          const CreateFormComponent =
-            WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].components
-              .createFormComponent;
-          return (
-            <CreateFormComponent
-              owner={owner}
-              serviceData={serviceData}
-              isFetchingServiceData={isFetchingServiceData}
-              onFetchServiceData={fetchServiceData}
-              onDataToCreateWebhookChange={onRemoteProviderDataChange}
-              onReadyToSubmitChange={onPresetReadyToSubmitChange}
-            />
-          );
-        })()}
+      {owner && !isCustom && (
+        <PresetFormWrapper
+          kind={kind}
+          owner={owner}
+          onRemoteProviderDataChange={onRemoteProviderDataChange}
+          onPresetReadyToSubmitChange={onPresetReadyToSubmitChange}
+        />
+      )}
 
       {isCustom && (
         <div>

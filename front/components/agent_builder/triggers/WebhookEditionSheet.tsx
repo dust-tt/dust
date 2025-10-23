@@ -34,7 +34,7 @@ import { useUser } from "@app/lib/swr/user";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
-import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
+import type { ExtractAllPresets } from "@app/types/triggers/webhooks_source_preset";
 
 const webhookFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
@@ -92,7 +92,9 @@ export function WebhookEditionSheet({
 
   const isEditor = (trigger?.editor ?? user?.id) === user?.id;
 
-  const selectedPreset = useMemo((): PresetWebhook | null => {
+  const selectedPreset = useMemo((): ExtractAllPresets<
+    typeof WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP
+  > | null => {
     if (!webhookSourceView || webhookSourceView.kind === "custom") {
       return null;
     }

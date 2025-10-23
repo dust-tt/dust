@@ -8,13 +8,19 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString, OAuthAPI } from "@app/types";
+import type { WebhookSourceWithPresetKind } from "@app/types/triggers/webhooks";
 import {
   isWebhookSourceKind,
   WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
 } from "@app/types/triggers/webhooks";
+import type { ExtractServiceData } from "@app/types/triggers/webhooks_source_preset";
 
-export type GetServiceDataResponseType = {
-  serviceData: Record<string, unknown>;
+export type GetServiceDataResponseType<
+  K extends WebhookSourceWithPresetKind = WebhookSourceWithPresetKind,
+> = {
+  serviceData: ExtractServiceData<
+    (typeof WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP)[K]
+  >;
 };
 
 async function handler(
