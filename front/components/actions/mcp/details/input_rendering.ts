@@ -96,5 +96,5 @@ export function makeQueryTextForInclude({
 }: {
   timeFrame: TimeFrame | null;
 }): string {
-  return renderRelativeTimeFrame(timeFrame);
+  return `Requested to include documents ${renderRelativeTimeFrame(timeFrame)}`;
 }
