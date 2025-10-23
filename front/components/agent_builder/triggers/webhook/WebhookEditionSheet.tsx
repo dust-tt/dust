@@ -19,7 +19,7 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
-import { useController, useFormContext, useWatch } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
@@ -104,10 +104,11 @@ function WebhookEditionEventSelector({
   selectedPreset,
   availableEvents,
 }: WebhookEditionEventSelectorProps) {
-  const { setValue, control, getFieldState, formState } =
+  const { control, getFieldState, formState } =
     useFormContext<WebhookFormValues>();
-  // Using useWatch + setValue instead of useController to validate with shouldValidate.
-  const selectedEvent = useWatch({ control, name: "event" });
+  const {
+    field: { value: selectedEvent, onChange: setSelectedEvent },
+  } = useController({ control, name: "event" });
   const { error } = getFieldState("event", formState);
 
   if (!selectedPreset || availableEvents.length === 0) {
@@ -141,11 +142,7 @@ function WebhookEditionEventSelector({
               key={event.value}
               label={event.name}
               disabled={!isEditor}
-              onClick={() => {
-                setValue("event", event.value, {
-                  shouldValidate: true,
-                });
-              }}
+              onClick={() => setSelectedEvent(event.value)}
             />
           ))}
         </DropdownMenuContent>
