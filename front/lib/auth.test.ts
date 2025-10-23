@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
 import type { GroupResource } from "@app/lib/resources/group_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -20,8 +19,6 @@ describe("Authenticator.hasResourcePermission", () => {
   let otherWorkspace: WorkspaceType;
   let user: UserResource;
   let globalGroup: GroupResource;
-  let globalSpace: SpaceResource;
-  let regularSpace: SpaceResource;
   let authenticator: Authenticator;
 
   beforeEach(async () => {
@@ -37,13 +34,10 @@ describe("Authenticator.hasResourcePermission", () => {
     // Create membership for user in workspace
     await MembershipFactory.associate(workspace, user, { role: "user" });
 
-    const { globalGroup: gg, globalSpace: gs } =
-      await SpaceFactory.defaults(adminAuthenticator);
-    globalSpace = gs;
+    const { globalGroup: gg } = await SpaceFactory.defaults(adminAuthenticator);
     globalGroup = gg;
 
     const rs = await SpaceFactory.regular(workspace);
-    regularSpace = rs;
 
     // Add user to regular space group
     await rs.groups[0].addMembers(adminAuthenticator, [user.toJSON()]);
