@@ -63,6 +63,7 @@ import {
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isAgentBirthday } from "@app/lib/utils/agent_birthday";
 import { useCancelMessage } from "@app/lib/swr/conversations";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import { formatTimestring } from "@app/lib/utils/timestamps";
@@ -454,6 +455,9 @@ export function AgentMessage({
           canMention={canMention}
           isDisabled={isArchived}
         />
+        {isAgentBirthday(agentConfiguration.versionCreatedAt) && (
+          <Chip label="🎂 Birthday" size="xs" className="ml-1" color="golden" />
+        )}
         {parentAgent && (
           <Chip
             label={`handoff from @${parentAgent.name}`}
@@ -468,6 +472,7 @@ export function AgentMessage({
     [
       agentConfiguration.name,
       agentConfiguration.sId,
+      agentConfiguration.versionCreatedAt,
       canMention,
       isArchived,
       parentAgent,

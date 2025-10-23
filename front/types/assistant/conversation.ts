@@ -188,6 +188,7 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     canRead: boolean;
     requestedGroupIds: string[][];
     requestedSpaceIds: string[];
+    versionCreatedAt: string | null;
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];

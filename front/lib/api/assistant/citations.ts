@@ -151,6 +151,7 @@ export function getLightAgentMessageFromAgentMessage(
       // TODO(2025-10-17 thomas): Remove requestedGroupIds.
       requestedGroupIds: agentMessage.configuration.requestedGroupIds,
       requestedSpaceIds: agentMessage.configuration.requestedSpaceIds,
+      versionCreatedAt: agentMessage.configuration.versionCreatedAt,
     },
     citations: getCitationsFromActions(agentMessage.actions),
     generatedFiles: agentMessage.actions

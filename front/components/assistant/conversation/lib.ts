@@ -172,6 +172,7 @@ export function createPlaceholderAgentMessage({
         // TODO(2025-10-17 thomas): Remove.
         requestedGroupIds: [],
         requestedSpaceIds: [],
+        versionCreatedAt: null,
       },
       citations: {},
       generatedFiles: [],
