@@ -642,7 +642,7 @@ export async function getParsedDatabase(
   let dataSource: GetDataSourceResponse | null = null;
 
   try {
-    // In the new API, what we call "database" is actually a "data_source"
+    // In the new API, what we call "database" in Dust is actually a "data_source"
     dataSource = await wrapNotionAPITokenErrors(async () =>
       notionClient.dataSources.retrieve({
         data_source_id: databaseId,
@@ -1097,7 +1097,7 @@ export async function retrieveDatabaseChildrenResultPage({
 
   localLogger.info("Fetching database children result page from Notion API.");
   try {
-    // In the new API, what we call "database" is actually a "data_source"
+    // In the new API, what we call "database" in Dust is actually a "data_source"
     const resultPage = await wrapNotionAPITokenErrors(async () =>
       notionClient.dataSources.query({
         data_source_id: databaseId,
