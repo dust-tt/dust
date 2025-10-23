@@ -58,7 +58,7 @@ export class AnthropicLLM extends LLM {
 
     this.budgetTokens = calcBudget(options?.reasoningEffort ?? "none");
     this.client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
+      apiKey: ANTHROPIC_API_KEY,
     });
   }
 
