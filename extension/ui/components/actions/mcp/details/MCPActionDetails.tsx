@@ -1,4 +1,3 @@
-import { parseTimeFrame } from "@app/shared/lib/time_frame";
 import { asDisplayName } from "@app/shared/lib/utils";
 import {
   isDataSourceFilesystemFindInputType,
@@ -8,8 +7,8 @@ import {
   isWebsearchInputType,
   makeQueryTextForDataSourceSearch,
   makeQueryTextForFind,
+  makeQueryTextForInclude,
   makeQueryTextForList,
-  renderRelativeTimeFrame,
 } from "@app/shared/lib/tool_inputs";
 import { ActionDetailsWrapper } from "@app/ui/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/ui/components/actions/mcp/details/MCPBrowseActionDetails";
@@ -82,13 +81,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           visual={MagnifyingGlassIcon}
           query={
             isSearchInputType(params)
-              ? makeQueryTextForDataSourceSearch({
-                  query: params.query,
-                  timeFrame: parseTimeFrame(params.relativeTimeFrame),
-                  tagsIn: params.tagsIn,
-                  tagsNot: params.tagsNot,
-                  nodeIds: params.nodeIds,
-                })
+              ? makeQueryTextForDataSourceSearch(params)
               : null
           }
         />
@@ -138,13 +131,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           }
           visual={ClockIcon}
           query={
-            isIncludeInputType(params)
-              ? `Requested to include documents ${renderRelativeTimeFrame(
-                  params.timeFrame
-                    ? (parseTimeFrame(params.timeFrame) ?? null)
-                    : null
-                )}.`
-              : null
+            isIncludeInputType(params) ? makeQueryTextForInclude(params) : null
           }
         />
       );
