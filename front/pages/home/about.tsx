@@ -43,7 +43,7 @@ const PEOPLE: Record<
     title: string;
     image: string;
     linkedIn: string | null;
-    github: string | null;
+    github: string;
   }
 > = {
   spolu: {
@@ -413,10 +413,10 @@ const PEOPLE: Record<
   ece: {
     name: "Ece İrem Yıldız",
     title: "Business Development Representative",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U09HS5HNBV3-f3ea5d8e657c-512",
+    image: "https://avatars.githubusercontent.com/u/237274568?v=4",
     linkedIn:
       "https://www.linkedin.com/in/ece-irem-y%C4%B1ld%C4%B1z-590480219/",
-    github: null,
+    github: "https://github.com/ece-hue",
   },
   astrid: {
     name: "Astrid Le Faucheur",

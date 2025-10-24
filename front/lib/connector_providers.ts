@@ -507,6 +507,16 @@ export function isWebhookBasedProvider(provider: ConnectorProvider): boolean {
   return WEBHOOK_BASED_CONNECTORS.includes(provider);
 }
 
+const BOT_TYPE_CONNECTORS: ConnectorProvider[] = [
+  "slack_bot",
+  "microsoft_bot",
+  "discord_bot",
+];
+
+export function isBotTypeProvider(provider: ConnectorProvider): boolean {
+  return BOT_TYPE_CONNECTORS.includes(provider);
+}
+
 export const REMOTE_DATABASE_CONNECTOR_PROVIDERS: ConnectorProvider[] = [
   "snowflake",
   "bigquery",

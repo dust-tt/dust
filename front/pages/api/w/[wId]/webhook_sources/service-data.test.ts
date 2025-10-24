@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getGithubOrganizations } from "@app/lib/api/webhooks/github/orgs";
-import { getGithubRepositories } from "@app/lib/api/webhooks/github/repos";
+import { getGithubOrganizations } from "@app/lib/triggers/built-in-webhooks/github/orgs";
+import { getGithubRepositories } from "@app/lib/triggers/built-in-webhooks/github/repos";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Err, Ok } from "@app/types";
@@ -19,11 +19,11 @@ vi.mock("@app/lib/api/config", () => ({
 }));
 
 // Mock the GitHub service functions
-vi.mock("@app/lib/api/webhooks/github/repos", () => ({
+vi.mock("@app/lib/triggers/built-in-webhooks/github/repos", () => ({
   getGithubRepositories: vi.fn(),
 }));
 
-vi.mock("@app/lib/api/webhooks/github/orgs", () => ({
+vi.mock("@app/lib/triggers/built-in-webhooks/github/orgs", () => ({
   getGithubOrganizations: vi.fn(),
 }));
 
@@ -71,14 +71,11 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
 
     // Mock the GitHub data
     const mockRepositories = [
-      { id: 1, full_name: "owner/repo1" },
-      { id: 2, full_name: "owner/repo2" },
+      { fullName: "owner/repo1" },
+      { fullName: "owner/repo2" },
     ];
 
-    const mockOrganizations = [
-      { id: 100, login: "org1" },
-      { id: 200, login: "org2" },
-    ];
+    const mockOrganizations = [{ name: "org1" }, { name: "org2" }];
 
     vi.mocked(getGithubRepositories).mockResolvedValue(mockRepositories);
     vi.mocked(getGithubOrganizations).mockResolvedValue(mockOrganizations);

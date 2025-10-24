@@ -453,21 +453,18 @@ export const ConversationViewer = ({
         contentFragments,
       });
 
-      const placeholderAgentMsgs: VirtuosoMessage[] = [];
+      const placeholderAgentMessages: VirtuosoMessage[] = [];
       for (const mention of mentions) {
-        // +1 per agent message mentionned
+        // +1 per agent message mentioned
         rank += 1;
-        placeholderAgentMsgs.push(
-          createPlaceholderAgentMessage({
-            mention,
-            rank,
-          })
+        placeholderAgentMessages.push(
+          createPlaceholderAgentMessage({ mention, rank })
         );
       }
 
       const nbMessages = ref.current.data.get().length;
       ref.current.data.append(
-        [placeholderUserMsg, ...placeholderAgentMsgs],
+        [placeholderUserMsg, ...placeholderAgentMessages],
         () => {
           return {
             index: nbMessages, // Avoid jumping around when the agent message is generated.

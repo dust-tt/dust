@@ -1,34 +1,14 @@
 import type { Icon } from "@dust-tt/sparkle";
 import { GithubLogo, JiraLogo } from "@dust-tt/sparkle";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type React from "react";
 
 import type {
   WebhookCreateFormComponentProps,
   WebhookDetailsComponentProps,
 } from "@app/components/triggers/webhook_preset_components";
-import type { RemoteWebhookService } from "@app/lib/triggers/services/remote_webhook_service";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-
-type EventFieldBase = {
-  name: string;
-  description: string;
-};
-
-export type EventField = EventFieldBase &
-  (
-    | {
-        type: "string" | "number" | "boolean" | "array" | "null";
-      }
-    | {
-        type: "enum";
-        enumValues: string[];
-      }
-    | {
-        type: "object";
-        isArray: boolean;
-        childrenFields: EventField[];
-      }
-  );
+import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 
 export type EventCheck = {
   type: "headers" | "body";
@@ -39,7 +19,7 @@ export type WebhookEvent = {
   name: string;
   value: string;
   description: string;
-  fields: EventField[];
+  schema: JSONSchema;
 };
 
 const WebhookPresetIcons = {

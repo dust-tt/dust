@@ -193,11 +193,11 @@ export const InputBar = React.memo(function InputBar({
     }
 
     const { mentions: rawMentions, markdown } = markdownAndMentions;
-    const mentions: EditorMention[] = _.uniqBy(rawMentions, "id");
+    const mentions = _.uniqBy(rawMentions, "id");
 
     const uploadedFiles = fileUploaderService.getFileBlobs();
     const mentionedAgents = agentConfigurations.filter((a) =>
-      mentions.some((m) => m.id === a.sId)
+      mentions.some((m) => m.id === a.sId && m.type === "agent")
     );
 
     trackEvent({

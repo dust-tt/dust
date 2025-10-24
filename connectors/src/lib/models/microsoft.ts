@@ -165,6 +165,7 @@ MicrosoftNodeModel.init(
       { fields: ["internalId", "connectorId"], unique: true },
       { fields: ["connectorId", "nodeType"], unique: false },
       { fields: ["parentInternalId", "connectorId"], concurrently: true },
+      { fields: ["connectorId", "id"], unique: false },
     ],
   }
 );
