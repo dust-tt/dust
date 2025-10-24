@@ -8,6 +8,8 @@ import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/g
 import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/github/github_webhook_source_presets";
 import type { TestServiceData } from "@app/lib/triggers/built-in-webhooks/test/test_webhook_source_presets";
 import { TEST_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/test/test_webhook_source_presets";
+import type { ZendeskAdditionalData } from "@app/lib/triggers/built-in-webhooks/zendesk/zendesk_service_types";
+import { ZENDESK_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/zendesk/zendesk_webhook_source_presets";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
@@ -22,7 +24,7 @@ export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
 export type WebhookSourceSignatureAlgorithm =
   (typeof WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS)[number];
 
-export const WEBHOOK_PROVIDERS = ["test", "github"] as const;
+export const WEBHOOK_PROVIDERS = ["test", "github", "zendesk"] as const;
 
 export type WebhookProvider = (typeof WEBHOOK_PROVIDERS)[number];
 
@@ -35,6 +37,7 @@ export function isWebhookProvider(
 type WebhookProviderServiceDataMap = {
   github: GithubAdditionalData;
   test: TestServiceData;
+  zendesk: ZendeskAdditionalData;
 };
 
 export type WebhookServiceDataForProvider<P extends WebhookProvider> =
@@ -43,6 +46,7 @@ export type WebhookServiceDataForProvider<P extends WebhookProvider> =
 export const WEBHOOK_PRESETS = {
   github: GITHUB_WEBHOOK_PRESET,
   test: TEST_WEBHOOK_PRESET,
+  zendesk: ZENDESK_WEBHOOK_PRESET,
 } satisfies {
   [P in WebhookProvider]: PresetWebhook<P>;
 };

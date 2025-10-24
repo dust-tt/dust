@@ -7,6 +7,7 @@ import type {
   WebhookCreateFormComponentProps,
   WebhookDetailsComponentProps,
 } from "@app/components/triggers/webhook_preset_components";
+import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
@@ -43,5 +44,6 @@ export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
   components: {
     detailsComponent: React.ComponentType<WebhookDetailsComponentProps>;
     createFormComponent: React.ComponentType<WebhookCreateFormComponentProps>;
+    oauthExtraConfigInput?: React.ComponentType<ConnectorOauthExtraConfigProps>;
   };
 };
