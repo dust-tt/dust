@@ -138,7 +138,7 @@ async function updateAgentRequestedGroupIds(
       isArrayEqual2DUnordered(
         normalizedNewGroupIds,
         normalizedCurrentGroupIds
-      ) ||
+      ) &&
       isEqual(newSpaceIds.sort(), currentRequestedSpaceIds.sort())
     ) {
       logger.info(
