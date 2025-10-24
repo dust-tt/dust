@@ -1,3 +1,4 @@
+import type { ThumbReaction } from "@app/components/assistant/conversation/FeedbackSelector";
 import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
 import type { AgentMessageType } from "@app/types";
 
@@ -24,7 +25,7 @@ export interface AgentMessageAnalyticsToolUsed {
 export interface AgentMessageAnalyticsFeedback {
   feedback_id: number;
   user_id: string;
-  thumb_direction: "up" | "down";
+  thumb_direction: ThumbReaction;
   content?: string;
   is_conversation_shared: boolean;
   created_at: string; // ISO date string.

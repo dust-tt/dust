@@ -71,7 +71,7 @@
       "type": "nested",
       "properties": {
         "feedback_id": {
-          "type": "integer"
+          "type": "keyword"
         },
         "user_id": {
           "type": "keyword"
