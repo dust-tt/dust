@@ -43,20 +43,29 @@ export class AnthropicLLM extends LLM {
     }
     this.temperature =
       options?.temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced;
-    const calcBudget = (effort: AgentReasoningEffort) => {
+
+    const isClaude4 =
+      model.modelId.startsWith("claude-4") ||
+      model.modelId.startsWith("claude-sonnet-4");
+    const calcBudget = (effort: AgentReasoningEffort, isClaude4: boolean) => {
+      if (!isClaude4) {
+        return 0;
+      }
       switch (effort) {
         case "none":
-          return 0;
         case "light":
-          return 4000;
+          return 0;
         case "medium":
-          return 8000;
+          return 1024;
         case "high":
-          return 16000;
+          return 4096;
       }
     };
 
-    this.budgetTokens = calcBudget(options?.reasoningEffort ?? "none");
+    this.budgetTokens = calcBudget(
+      options?.reasoningEffort ?? "none",
+      isClaude4
+    );
     this.client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,
     });
@@ -86,7 +95,7 @@ export class AnthropicLLM extends LLM {
       temperature: this.temperature,
       stream: true,
       tools: specifications.map(toTool),
-      max_tokens: 64000,
+      max_tokens: this.model.generationTokensCount,
     });
 
     yield* streamLLMEvents({
