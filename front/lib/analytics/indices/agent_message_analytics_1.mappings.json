@@ -80,7 +80,8 @@
           "type": "keyword"
         },
         "content": {
-          "type": "text"
+          "type": "text",
+          "index": "false"
         },
         "is_conversation_shared": {
           "type": "boolean"
