@@ -7,6 +7,7 @@ import type {
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
 import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/github/github_webhook_source_presets";
+import { HUBSPOT_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/hubspot/hubspot_webhook_source_presets";
 import { TEST_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/test/test_webhook_source_presets";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -34,11 +35,12 @@ export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
   };
 } = {
   github: GITHUB_WEBHOOK_PRESET,
+  hubspot: HUBSPOT_WEBHOOK_PRESET,
   test: TEST_WEBHOOK_PRESET,
   custom: { name: "Custom", icon: ActionGlobeAltIcon },
 } as const;
 
-export const WEBHOOK_SOURCE_KIND = ["custom", "github", "test"] as const;
+export const WEBHOOK_SOURCE_KIND = ["custom", "github", "hubspot", "test"] as const;
 
 export function isWebhookSourceKind(
   kind: string

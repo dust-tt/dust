@@ -199,6 +199,9 @@ const config = {
   getOAuthHubspotClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_HUBSPOT_CLIENT_ID");
   },
+  getOAuthHubspotAppWebhooksClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_HUBSPOT_APP_WEBHOOKS_CLIENT_ID");
+  },
   getOAuthFreshserviceClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_FRESHWORKS_CLIENT_ID");
   },

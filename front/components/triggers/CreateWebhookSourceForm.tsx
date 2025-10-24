@@ -77,6 +77,7 @@ export function CreateWebhookSourceFormContent({
       case "test":
         return true; // These are not OAuth-based kinds
       case "github":
+      case "hubspot":
         return false;
       default:
         assertNever(kind);
