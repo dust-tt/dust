@@ -23,6 +23,8 @@ export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
 export type WebhookSourceSignatureAlgorithm =
   (typeof WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS)[number];
 
+export const CUSTOM_WEBHOOK_SOURCE_ICON = ActionGlobeAltIcon;
+
 export const WEBHOOK_PROVIDERS = ["test", "github"] as const;
 
 export type WebhookProvider = (typeof WEBHOOK_PROVIDERS)[number];
@@ -39,16 +41,9 @@ export type CustomPresetType = {
   featureFlag?: WhitelistableFeature;
 };
 
-export const WEBHOOK_PRESETS: Record<WebhookProvider, PresetWebhook> & {
-  custom: {
-    name: string;
-    icon: typeof Icon;
-    featureFlag?: WhitelistableFeature;
-  };
-} = {
+export const WEBHOOK_PRESETS: Record<WebhookProvider, PresetWebhook> = {
   github: GITHUB_WEBHOOK_PRESET,
   test: TEST_WEBHOOK_PRESET,
-  custom: { name: "Custom", icon: ActionGlobeAltIcon },
 } as const;
 
 export type WebhookSourceType = {

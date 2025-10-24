@@ -1,5 +1,4 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import { ActionGlobeAltIcon } from "@dust-tt/sparkle";
 import {
   Button,
   InformationCircleIcon,
@@ -48,7 +47,10 @@ import type {
   WebhookProvider,
   WebhookSourceWithSystemViewType,
 } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import {
+  CUSTOM_WEBHOOK_SOURCE_ICON,
+  WEBHOOK_PRESETS,
+} from "@app/types/triggers/webhooks";
 
 export type WebhookSourceSheetMode = { provider: WebhookProvider | null } & (
   | { type: "create" }
@@ -549,7 +551,7 @@ function WebhookSourceSheetContent({
         description: "",
         icon: mode.provider
           ? WEBHOOK_PRESETS[mode.provider].icon
-          : ActionGlobeAltIcon,
+          : CUSTOM_WEBHOOK_SOURCE_ICON,
         content: (
           <FormProvider {...createForm}>
             <div className="space-y-4">
@@ -575,7 +577,9 @@ function WebhookSourceSheetContent({
         description: "Webhook source for triggering assistants.",
         icon: systemView
           ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />
-          : WEBHOOK_PRESETS[mode.provider].icon,
+          : mode.provider
+            ? WEBHOOK_PRESETS[mode.provider].icon
+            : CUSTOM_WEBHOOK_SOURCE_ICON,
         content:
           systemView && webhookSource ? (
             <FormProvider {...editForm}>
