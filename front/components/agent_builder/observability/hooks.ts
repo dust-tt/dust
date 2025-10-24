@@ -1,6 +1,12 @@
-import { MAX_TOOLS_DISPLAYED, PERCENTAGE_MULTIPLIER } from "@app/components/agent_builder/observability/constants";
+import {
+  MAX_TOOLS_DISPLAYED,
+  PERCENTAGE_MULTIPLIER,
+} from "@app/components/agent_builder/observability/constants";
 import { computeTopToolsFromCounts } from "@app/components/agent_builder/observability/utils";
-import { useAgentToolExecution, useAgentToolStepIndex } from "@app/lib/swr/assistants";
+import {
+  useAgentToolExecution,
+  useAgentToolStepIndex,
+} from "@app/lib/swr/assistants";
 import type { ChartDatum, Mode } from "./types";
 
 export function useToolUsageData(params: {
@@ -24,7 +30,10 @@ export function useToolUsageData(params: {
     disabled: !workspaceId || !agentConfigurationId || mode !== "step",
   });
 
-  const isLoading = mode === "version" ? exec.isToolExecutionLoading : step.isToolStepIndexLoading;
+  const isLoading =
+    mode === "version"
+      ? exec.isToolExecutionLoading
+      : step.isToolStepIndexLoading;
   const errorMessage =
     mode === "version"
       ? exec.isToolExecutionError
@@ -59,7 +68,11 @@ export function useToolUsageData(params: {
       const values: Record<string, number> = {};
       for (const t of topTools) {
         const td = v.tools[t];
-        values[t] = td ? (total > 0 ? Math.round((td.count / total) * PERCENTAGE_MULTIPLIER) : 0) : 0;
+        values[t] = td
+          ? total > 0
+            ? Math.round((td.count / total) * PERCENTAGE_MULTIPLIER)
+            : 0
+          : 0;
       }
       return { label: `v${v.version}`, values };
     });
@@ -97,7 +110,11 @@ export function useToolUsageData(params: {
       const values: Record<string, number> = {};
       for (const t of topTools) {
         const td = s.tools[t];
-        values[t] = td ? (total > 0 ? Math.round((td.count / total) * PERCENTAGE_MULTIPLIER) : 0) : 0;
+        values[t] = td
+          ? total > 0
+            ? Math.round((td.count / total) * PERCENTAGE_MULTIPLIER)
+            : 0
+          : 0;
       }
       return { label: s.step, values };
     });
@@ -112,4 +129,3 @@ export function useToolUsageData(params: {
     };
   }
 }
-
