@@ -3,6 +3,44 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI, Err, Ok } from "@app/types";
 
+function extractGoogleDriveFileId(input: string): string | null {
+  const trimmedInput = input.trim();
+
+  // If it's already a file ID (alphanumeric, hyphens, underscores), return it
+  if (/^[a-zA-Z0-9_-]+$/.test(trimmedInput)) {
+    return trimmedInput;
+  }
+
+  try {
+    const url = new URL(trimmedInput);
+
+    // Handle docs.google.com URLs: /document/d/FILE_ID/, /spreadsheets/d/FILE_ID/, /presentation/d/FILE_ID/
+    const docsMatch = url.pathname.match(
+      /^\/(document|spreadsheets|presentation|forms)\/d\/([a-zA-Z0-9_-]+)/
+    );
+    if (docsMatch) {
+      return docsMatch[2];
+    }
+
+    // Handle drive.google.com URLs: /file/d/FILE_ID/, /open?id=FILE_ID
+    const driveMatch = url.pathname.match(/^\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (driveMatch) {
+      return driveMatch[1];
+    }
+
+    // Handle drive.google.com/open?id=FILE_ID
+    const idParam = url.searchParams.get("id");
+    if (idParam) {
+      return idParam;
+    }
+
+    return null;
+  } catch {
+    // If URL parsing fails, it's not a valid URL
+    return null;
+  }
+}
+
 export const googleDriveSyncFilePlugin = createPlugin({
   manifest: {
     id: "google-drive-sync-file",
@@ -41,6 +79,15 @@ export const googleDriveSyncFilePlugin = createPlugin({
       return new Err(new Error("fileId is required"));
     }
 
+    const extractedFileId = extractGoogleDriveFileId(fileId);
+    if (!extractedFileId) {
+      return new Err(
+        new Error(
+          "Invalid Google Drive file ID or URL. Please provide a valid file ID or URL."
+        )
+      );
+    }
+
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
       logger
@@ -54,7 +101,7 @@ export const googleDriveSyncFilePlugin = createPlugin({
       args: {
         wId: workspace.sId,
         connectorId: connectorId.toString(),
-        fileId: fileId.trim(),
+        fileId: extractedFileId,
       },
     });
 
@@ -64,7 +111,7 @@ export const googleDriveSyncFilePlugin = createPlugin({
 
     return new Ok({
       display: "text",
-      value: `Successfully synced Google Drive file: ${fileId}`,
+      value: `Successfully synced Google Drive file: ${extractedFileId}`,
     });
   },
 });
