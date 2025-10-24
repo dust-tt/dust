@@ -6,7 +6,6 @@ import type { LLMEvent, ProviderMetadata } from "@app/lib/api/llm/types/events";
 import type { LLMOptions } from "@app/lib/api/llm/types/options";
 import {
   dustManagedCredentials,
-  type AgentReasoningEffort,
   type ModelConfigurationType,
   type ModelConversationTypeMultiActions,
 } from "@app/types";
@@ -15,7 +14,7 @@ import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages/m
 import { streamLLMEvents } from "./utils/anthropic_to_events";
 import { toMessage, toTool } from "./utils/conversation_to_anthropic";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
-import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
+import { CLAUDE_4_THINKING_BUDGET_TOKENS, isClaude4 } from "./utils";
 
 export class AnthropicLLM extends LLM {
   private client: Anthropic;
@@ -24,10 +23,7 @@ export class AnthropicLLM extends LLM {
     modelId: this.model.modelId,
   };
   private temperature: number;
-  private budgetTokens: number;
-  private get isThinking(): boolean {
-    return this.budgetTokens > 0;
-  }
+  private thinkingConfig?: ThinkingConfigParam;
 
   constructor({
     model,
@@ -44,28 +40,15 @@ export class AnthropicLLM extends LLM {
     this.temperature =
       options?.temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced;
 
-    const isClaude4 =
-      model.modelId.startsWith("claude-4") ||
-      model.modelId.startsWith("claude-sonnet-4");
-    const calcBudget = (effort: AgentReasoningEffort, isClaude4: boolean) => {
-      if (!isClaude4) {
-        return 0;
-      }
-      switch (effort) {
-        case "none":
-        case "light":
-          return 0;
-        case "medium":
-          return 1024;
-        case "high":
-          return 4096;
-      }
-    };
-
-    this.budgetTokens = calcBudget(
-      options?.reasoningEffort ?? "none",
-      isClaude4
-    );
+    if (this.options?.reasoningEffort) {
+      const effort = this.options?.reasoningEffort;
+      this.thinkingConfig = {
+        type: "enabled",
+        budget_tokens: isClaude4(this.model)
+          ? CLAUDE_4_THINKING_BUDGET_TOKENS[effort]
+          : 0,
+      };
+    }
     this.client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,
     });
@@ -80,16 +63,9 @@ export class AnthropicLLM extends LLM {
     prompt: string;
     specifications: AgentActionSpecification[];
   }): AsyncGenerator<LLMEvent> {
-    const thinking: ThinkingConfigParam | undefined = this.isThinking
-      ? {
-          type: "enabled",
-          budget_tokens: this.budgetTokens,
-        }
-      : undefined;
-
     const events = this.client.messages.stream({
       model: this.model.modelId,
-      thinking,
+      thinking: this.thinkingConfig,
       system: prompt,
       messages: conversation.messages.map(toMessage),
       temperature: this.temperature,
@@ -98,9 +74,6 @@ export class AnthropicLLM extends LLM {
       max_tokens: this.model.generationTokensCount,
     });
 
-    yield* streamLLMEvents({
-      messageStreamEvents: events,
-      metadata: this.metadata,
-    });
+    yield* streamLLMEvents(events, this.metadata);
   }
 }

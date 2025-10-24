@@ -18,13 +18,10 @@ import type {
   ToolCallEvent,
 } from "@app/lib/api/llm/types/events";
 
-export async function* streamLLMEvents({
-  messageStreamEvents,
-  metadata,
-}: {
-  messageStreamEvents: AsyncIterable<MessageStreamEvent>;
-  metadata: ProviderMetadata;
-}): AsyncGenerator<LLMEvent> {
+export async function* streamLLMEvents(
+  messageStreamEvents: AsyncIterable<MessageStreamEvent>,
+  metadata: ProviderMetadata
+): AsyncGenerator<LLMEvent> {
   let finalEvents: LLMEvent[] = [];
   for await (const messageStreamEvent of messageStreamEvents) {
     if (messageStreamEvent.type === "message_start") {
@@ -207,7 +204,9 @@ function toEvents({
           case "end_turn":
           case "stop_sequence":
           case "tool_use":
-          // pause simply stops a long run but it can be resumed
+          /* When the assistant pauses the conversation, the stop reason is simply due to a long run, there was no error
+           * the model simply decided to take a break here. It should simply be prompted to continue what it was doing.
+           */
           case "pause_turn":
             break;
           case "max_tokens":

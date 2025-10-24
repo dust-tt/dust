@@ -25,6 +25,26 @@ import type {
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 
+function toBasicContentChunk(
+  content: Content
+): TextBlockParam | ImageBlockParam {
+  switch (content.type) {
+    case "text":
+      return {
+        type: "text",
+        text: content.text,
+      };
+    case "image_url":
+      return {
+        type: "image",
+        source: {
+          type: "url",
+          url: content.image_url.url,
+        },
+      };
+  }
+}
+
 function toContentChunk(
   content:
     | Content
@@ -34,10 +54,8 @@ function toContentChunk(
 ): TextBlockParam | ImageBlockParam | ThinkingBlockParam | ToolUseBlockParam {
   switch (content.type) {
     case "text":
-      return {
-        type: "text",
-        text: content.text,
-      };
+    case "image_url":
+      return toBasicContentChunk(content);
     case "text_content":
       return {
         type: "text",
@@ -51,14 +69,6 @@ function toContentChunk(
         /** @todo: signatures should be stored in AnthropicLLM's metadata of
          * thinking events and re-extracted */
         signature: "",
-      };
-    case "image_url":
-      return {
-        type: "image",
-        source: {
-          type: "url",
-          url: content.image_url.url,
-        },
       };
     case "function_call":
       return {
@@ -78,12 +88,7 @@ function toolResultToContent(
     tool_use_id: message.function_call_id,
     content: isString(message.content)
       ? message.content
-      : message.content
-          .map(toContentChunk)
-          .filter(
-            (c): c is TextBlockParam | ImageBlockParam =>
-              c.type !== "thinking" && c.type !== "tool_use"
-          ),
+      : message.content.map(toBasicContentChunk),
   };
 }
 
@@ -108,7 +113,6 @@ function assistantMessage(
     | AssistantFunctionCallMessageTypeModel
     | AssistantContentMessageTypeModel
 ): MessageParam {
-  assert(message.contents, "Assistant message is missing contents");
   return {
     role: "assistant",
     content: message.contents.map(toContentChunk),
