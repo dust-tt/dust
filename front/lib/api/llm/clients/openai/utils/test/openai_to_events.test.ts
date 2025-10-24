@@ -41,14 +41,14 @@ const modelOutputEvents: ResponseStreamEvent[] = [
     delta: "how are you ?",
   },
   {
-    type: "response.output_item.done",\
+    type: "response.output_item.done",
     output_index: 0,
-    item:  {
+    item: {
       type: "function_call",
       name: "web_search_browse__websearch",
       arguments: '{"query":"Paris France weather forecast October 23 2025"}',
       call_id: "DdHr7L197",
-    }
+    },
   },
   {
     type: "response.completed",
