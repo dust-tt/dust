@@ -29,8 +29,9 @@ export function CreateWebhookSourceWithProviderForm({
   onReadyToSubmitChange,
 }: CreateWebhookSourceWithProviderFormProps) {
   const sendNotification = useSendNotification();
-  const [oauthConnection, setOauthConnection] =
-    useState<OAuthConnectionType | null>(null);
+  const [connection, setConnection] = useState<OAuthConnectionType | null>(
+    null
+  );
   const [isConnectingProvider, setIsConnectingToProvider] = useState(false);
 
   const preset = WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind];
@@ -58,7 +59,7 @@ export function CreateWebhookSourceWithProviderForm({
           description: connectionRes.error.message,
         });
       } else {
-        setOauthConnection(connectionRes.value);
+        setConnection(connectionRes.value);
         sendNotification({
           type: "success",
           title: `Connected to ${kindName}`,
@@ -88,15 +89,13 @@ export function CreateWebhookSourceWithProviderForm({
           <Button
             variant={"outline"}
             label={
-              oauthConnection
-                ? `Connected to ${kindName}`
-                : `Connect to ${kindName}`
+              connection ? `Connected to ${kindName}` : `Connect to ${kindName}`
             }
             icon={preset.icon}
             onClick={handleConnectToProvider}
-            disabled={isConnectingProvider || !!oauthConnection}
+            disabled={isConnectingProvider || !!connection}
           />
-          {oauthConnection && preset.webhookPageUrl && (
+          {connection && preset.webhookPageUrl && (
             <a
               href={preset.webhookPageUrl}
               target="_blank"
@@ -111,7 +110,7 @@ export function CreateWebhookSourceWithProviderForm({
         </div>
       </div>
 
-      {oauthConnection &&
+      {connection &&
         (() => {
           const CreateFormComponent =
             WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].components
@@ -122,7 +121,7 @@ export function CreateWebhookSourceWithProviderForm({
               kind={kind}
               onDataToCreateWebhookChange={onDataToCreateWebhookChange}
               onReadyToSubmitChange={onReadyToSubmitChange}
-              connectionId={oauthConnection.connection_id}
+              connectionId={connection.connection_id}
             />
           );
         })()}
