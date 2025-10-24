@@ -369,7 +369,7 @@ function createServer(
         } else if (rootNodeId) {
           viewFilter = viewFilter.map((view) => ({
             ...view,
-            view_filter: [rootNodeId],
+            filter: [rootNodeId],
           }));
         }
 
