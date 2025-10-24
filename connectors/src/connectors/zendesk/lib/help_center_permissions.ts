@@ -1,8 +1,5 @@
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import {
-  fetchZendeskBrand,
-  fetchZendeskCategory,
-} from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { ZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import {
   ZendeskBrandResource,
@@ -27,6 +24,10 @@ export async function allowSyncZendeskHelpCenter({
 }): Promise<boolean> {
   const { subdomain, accessToken } =
     await getZendeskSubdomainAndAccessToken(connectionId);
+  const zendeskClient = await ZendeskClient.createClient(
+    accessToken,
+    connectorId
+  );
   const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
@@ -36,10 +37,9 @@ export async function allowSyncZendeskHelpCenter({
     await brand.grantHelpCenterPermissions();
   } else {
     // fetching the brand from Zendesk
-    const fetchedBrand = await fetchZendeskBrand({
+    const fetchedBrand = await zendeskClient.fetchBrand({
       brandId,
       subdomain,
-      accessToken,
     });
 
     if (!fetchedBrand) {
@@ -120,14 +120,17 @@ export async function allowSyncZendeskCategory({
   } else {
     const { accessToken, subdomain } =
       await getZendeskSubdomainAndAccessToken(connectionId);
+    const zendeskClient = await ZendeskClient.createClient(
+      accessToken,
+      connectorId
+    );
     /// creating the brand if missing
     let brand = await ZendeskBrandResource.fetchByBrandId({
       connectorId,
       brandId,
     });
     if (!brand) {
-      const fetchedBrand = await fetchZendeskBrand({
-        accessToken,
+      const fetchedBrand = await zendeskClient.fetchBrand({
         subdomain,
         brandId,
       });
@@ -153,9 +156,8 @@ export async function allowSyncZendeskCategory({
       });
     }
 
-    const fetchedCategory = await fetchZendeskCategory({
+    const fetchedCategory = await zendeskClient.fetchCategory({
       brandSubdomain: brand.subdomain,
-      accessToken,
       categoryId,
     });
     if (fetchedCategory) {
