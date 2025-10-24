@@ -1,5 +1,6 @@
 import { usePlatform } from "@app/shared/context/PlatformContext";
 import { retryMessage } from "@app/shared/lib/conversation";
+import { useDustAPI } from "@app/shared/lib/dust_api";
 import { formatTimestring } from "@app/shared/lib/utils";
 import type { StoredUser } from "@app/shared/services/auth";
 import type {
@@ -40,6 +41,7 @@ import {
   isWebsearchResultResourceType,
   removeNulls,
 } from "@dust-tt/client";
+import type { ActionGeneratedFileType } from "@dust-tt/client/src/types";
 import {
   ArrowPathIcon,
   Button,
@@ -220,6 +222,7 @@ export function AgentMessage({
   user,
 }: AgentMessageProps) {
   const platform = usePlatform();
+  const dustAPI = useDustAPI();
   const sendNotification = useSendNotification();
 
   const [messageStreamState, dispatch] = useReducer(
@@ -698,6 +701,67 @@ export function AgentMessage({
       );
     }
 
+    const generatedFiles = agentMessage.actions
+      .flatMap((action) => action.generatedFiles ?? [])
+      .filter((file) => !file.hidden);
+
+    const downloadGeneratedFile = async (file: ActionGeneratedFileType) => {
+      try {
+        const token = await platform.auth.getAccessToken();
+
+        const response = await fetch(
+          `${user.dustDomain}/api/v1/w/${owner.sId}/files/${file.fileId}?action=view`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          sendNotification({
+            type: "error",
+            title: "Download failed",
+            description: `We could not retrieve the generated file: ${response.statusText}.`,
+          });
+          return;
+        }
+
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const filename = file.title || file.fileId;
+
+        chrome.downloads.download(
+          {
+            url: objectUrl,
+            filename,
+            saveAs: false,
+          },
+          () => {
+            if (chrome.runtime.lastError) {
+              const anchor = document.createElement("a");
+              anchor.href = objectUrl;
+              anchor.download = filename;
+              anchor.rel = "noopener";
+              document.body.appendChild(anchor);
+              anchor.click();
+              document.body.removeChild(anchor);
+            }
+
+            setTimeout(() => {
+              URL.revokeObjectURL(objectUrl);
+            }, 30000);
+          }
+        );
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Download failed",
+          description: `An unexpected error occurred while downloading the file: ${error instanceof Error ? error.message : "Try again later."}.`,
+        });
+      }
+    };
+
     return (
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions
@@ -731,6 +795,27 @@ export function AgentMessage({
                 />
               </CitationsContext.Provider>
             )}
+          </div>
+        )}
+        {generatedFiles.length > 0 && (
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {generatedFiles.map((file) => {
+              return (
+                <Citation
+                  key={file.fileId}
+                  tooltip={file.title}
+                  onClick={async (event) => {
+                    event.preventDefault();
+                    await downloadGeneratedFile(file);
+                  }}
+                >
+                  <CitationIcons>
+                    <DocumentPileIcon className="h-4 w-4" />
+                  </CitationIcons>
+                  <CitationTitle>{file.title}</CitationTitle>
+                </Citation>
+              );
+            })}
           </div>
         )}
         {agentMessage.status === "cancelled" && (
