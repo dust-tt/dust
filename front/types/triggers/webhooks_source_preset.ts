@@ -36,6 +36,7 @@ export type PresetWebhook = {
   events: WebhookEvent[];
   icon: typeof Icon;
   description: string;
+  webhookPageUrl?: string;
   featureFlag?: WhitelistableFeature;
   webhookService: RemoteWebhookService;
   components: {

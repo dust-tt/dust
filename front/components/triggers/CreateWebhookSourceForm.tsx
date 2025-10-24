@@ -15,8 +15,8 @@ import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 
+import { CreateWebhookSourceWithProviderForm } from "@app/components/triggers/CreateWebhookSourceWithProviderForm";
 import type { LightWorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 import {
   basePostWebhookSourcesSchema,
@@ -66,18 +66,6 @@ export function CreateWebhookSourceFormContent({
     control: form.control,
     name: "subscribedEvents",
   });
-
-  const isCustom = (() => {
-    switch (kind) {
-      case "custom":
-      case "test":
-        return true; // These are not OAuth-based kinds
-      case "github":
-        return false;
-      default:
-        assertNever(kind);
-    }
-  })();
 
   return (
     <>
@@ -160,22 +148,17 @@ export function CreateWebhookSourceFormContent({
 
       {owner &&
         kind !== "custom" &&
-        isWebhookSourceKind(kind) &&
-        (() => {
-          const CreateFormComponent =
-            WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].components
-              .createFormComponent;
-          return (
-            <CreateFormComponent
-              owner={owner}
-              kind={kind}
-              onDataToCreateWebhookChange={onRemoteProviderDataChange}
-              onReadyToSubmitChange={onPresetReadyToSubmitChange}
-            />
-          );
-        })()}
+        kind !== "test" &&
+        isWebhookSourceKind(kind) && (
+          <CreateWebhookSourceWithProviderForm
+            owner={owner}
+            kind={kind}
+            onDataToCreateWebhookChange={onRemoteProviderDataChange}
+            onReadyToSubmitChange={onPresetReadyToSubmitChange}
+          />
+        )}
 
-      {isCustom && (
+      {kind === "custom" && (
         <div>
           <CollapsibleComponent
             rootProps={{ defaultOpen: false }}
