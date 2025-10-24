@@ -26,4 +26,5 @@ export interface WebhookCreateFormComponentProps {
     } | null
   ) => void;
   onReadyToSubmitChange?: (isReady: boolean) => void;
+  connectionId: string;
 }
