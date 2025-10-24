@@ -2,7 +2,7 @@ import { Page, SliderToggle } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 import type { KeyedMutator } from "swr";
 
-import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdateTranscriptsConfiguration } from "@app/lib/swr/labs";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
@@ -100,11 +100,11 @@ export function ProcessingConfiguration({
       <Page.Layout direction="vertical">
         <Page.Layout direction="vertical">
           <Page.Layout direction="horizontal">
-            <AssistantPicker
+            <AgentPicker
               owner={owner}
               size="sm"
               onItemClick={(assistant) => handleSelectAssistant(assistant)}
-              assistants={agents}
+              agents={agents}
               showFooterButtons={false}
             />
             {assistantSelected && (

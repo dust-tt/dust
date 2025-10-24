@@ -33,8 +33,7 @@ interface MentionComponentProps {
 
 export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
   const router = useRouter();
-  const { onOpenChange: onOpenChangeAssistantModal } =
-    useURLSheet("agentDetails");
+  const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
 
   const { id: agentSId, label: agentName, description } = node.attrs;
 
@@ -48,7 +47,7 @@ export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
   };
 
   const handleSeeDetails = () => {
-    onOpenChangeAssistantModal(true);
+    onOpenChangeAgentModal(true);
     setQueryParam(router, "agentDetails", agentSId);
   };
 

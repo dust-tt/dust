@@ -15,7 +15,7 @@ import React, {
   useState,
 } from "react";
 
-import { AssistantInputBar } from "@app/components/assistant/conversation/AssistantInputBar";
+import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
@@ -95,7 +95,7 @@ function customSmoothScroll() {
 }
 /**
  *
- * @param isInModal is the conversation happening in a side modal, i.e. when testing an assistant?
+ * @param isInModal is the conversation happening in a side modal, i.e. when testing an agent?
  * @returns
  */
 export const ConversationViewer = ({
@@ -628,7 +628,7 @@ export const ConversationViewer = ({
           }}
           ref={ref}
           ItemContent={MessageItem}
-          StickyFooter={AssistantInputBar}
+          StickyFooter={AgentInputBar}
           // Note: do NOT put any verticalpadding here as it will mess with the auto scroll to bottom.
           className={classNames(
             "dd-privacy-mask",

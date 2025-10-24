@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
+import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { AdminTriggersList } from "@app/components/triggers/AdminTriggersList";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
@@ -47,10 +47,10 @@ export const SystemSpaceTriggersList = ({
 
   return (
     <>
-      <AssistantDetails
+      <AgentDetails
         owner={owner}
         user={user}
-        assistantId={agentSId}
+        agentId={agentSId}
         onClose={() => setAgentSId(null)}
       />
       <AdminTriggersList

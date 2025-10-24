@@ -447,7 +447,7 @@ export function AgentMessage({
     () => (
       <span className="inline-flex items-center">
         <AgentHandle
-          assistant={{
+          agent={{
             sId: agentConfiguration.sId,
             name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
           }}

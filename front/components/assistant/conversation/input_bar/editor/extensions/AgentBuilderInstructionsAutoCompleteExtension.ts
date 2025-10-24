@@ -5,7 +5,7 @@ import type { EditorView } from "@tiptap/pm/view";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import debounce from "lodash/debounce";
 
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import type { AgentBuilderState } from "@app/components/assistant_builder/types";
 import type { LightWorkspaceType } from "@app/types";
 
 export const AGENT_BUILDER_INSTRUCTIONS_AUTO_COMPLETE_EXTENSION_NAME =
@@ -26,7 +26,7 @@ const MINIMUM_TEXT_LENGTH_FOR_SUGGESTIONS = 3;
 const fetchAgentBuilderSuggestions = async (
   currentText: string,
   owner: LightWorkspaceType | null,
-  builderState: AssistantBuilderState | null
+  builderState: AgentBuilderState | null
 ): Promise<string[]> => {
   if (!owner || currentText.length < MINIMUM_TEXT_LENGTH_FOR_SUGGESTIONS) {
     return [];
@@ -257,7 +257,7 @@ interface AgentBuilderInstructionsAutoCompleteExtensionOptions {
 }
 
 interface AgentBuilderInstructionsAutoCompleteExtensionStorage {
-  builderState: AssistantBuilderState | null;
+  builderState: AgentBuilderState | null;
   currentSuggestion: string | null;
   suggestions: string[];
   normalizedOriginalText: string | null; // Normalized original text for efficient comparison

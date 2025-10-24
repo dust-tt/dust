@@ -31,7 +31,7 @@ import React, {
 import { useInView } from "react-intersection-observer";
 
 import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
-import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
+import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/details/AssistantDetailsButtonBar";
 import { rankAgentsByPopularity } from "@app/components/assistant/helpers/agents";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
@@ -192,15 +192,15 @@ interface AssistantBrowserProps {
   owner: WorkspaceType;
   agentConfigurations: LightAgentConfigurationType[];
   isLoading: boolean;
-  handleAssistantClick: (agent: LightAgentConfigurationType) => void;
+  handleAgentClick: (agent: LightAgentConfigurationType) => void;
   user: UserType;
 }
 
-export function AssistantBrowser({
+export function AgentBrowser({
   owner,
   agentConfigurations,
   isLoading,
-  handleAssistantClick,
+  handleAgentClick,
   user,
 }: AssistantBrowserProps) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
@@ -433,7 +433,7 @@ export function AssistantBrowser({
                 <DropdownMenuItem
                   key={agent.sId}
                   onClick={() => {
-                    handleAssistantClick(agent);
+                    handleAgentClick(agent);
                     setAssistantSearch("");
                   }}
                   truncateText
@@ -485,10 +485,10 @@ export function AssistantBrowser({
         </div>
       </div>
 
-      <AssistantDetails
+      <AgentDetails
         owner={owner}
         user={user}
-        assistantId={displayedAssistantId}
+        agentId={displayedAssistantId}
         onClose={() => setDisplayedAssistantId(null)}
       />
 
@@ -593,7 +593,7 @@ export function AssistantBrowser({
                           ))
                       );
                     })}
-                    handleAssistantClick={handleAssistantClick}
+                    handleAssistantClick={handleAgentClick}
                     handleMoreClick={setDisplayedAssistantId}
                     owner={owner}
                   />
@@ -605,7 +605,7 @@ export function AssistantBrowser({
         viewTab && (
           <AgentGrid
             agentConfigurations={agentsByTab[viewTab]}
-            handleAssistantClick={handleAssistantClick}
+            handleAssistantClick={handleAgentClick}
             handleMoreClick={setDisplayedAssistantId}
             owner={owner}
           />

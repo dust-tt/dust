@@ -15,10 +15,10 @@ import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
 import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 
-interface AssistantPickerProps {
+interface AgentPickerProps {
   owner: WorkspaceType;
-  assistants: LightAgentConfigurationType[];
-  onItemClick: (assistant: LightAgentConfigurationType) => void;
+  agents: LightAgentConfigurationType[];
+  onItemClick: (agent: LightAgentConfigurationType) => void;
   pickerButton?: React.ReactNode;
   showDropdownArrow?: boolean;
   showFooterButtons?: boolean;
@@ -28,9 +28,9 @@ interface AssistantPickerProps {
   mountPortal?: boolean;
 }
 
-export function AssistantPicker({
+export function AgentPicker({
   owner,
-  assistants,
+  agents,
   onItemClick,
   pickerButton,
   showDropdownArrow = true,
@@ -38,11 +38,11 @@ export function AssistantPicker({
   size = "md",
   isLoading = false,
   disabled = false,
-}: AssistantPickerProps) {
+}: AgentPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  const searchedAssistants = filterAndSortAgents(assistants, searchText);
+  const searchedAgents = filterAndSortAgents(agents, searchText);
 
   return (
     <DropdownMenu
@@ -75,13 +75,13 @@ export function AssistantPicker({
           <>
             <DropdownMenuSearchbar
               autoFocus
-              name="search-assistants"
+              name="search-agents"
               placeholder="Search Agents"
               value={searchText}
               onChange={setSearchText}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && searchedAssistants.length > 0) {
-                  onItemClick(searchedAssistants[0]);
+                if (e.key === "Enter" && searchedAgents.length > 0) {
+                  onItemClick(searchedAgents[0]);
                   setSearchText("");
                   setIsOpen(false);
                 }
@@ -96,10 +96,10 @@ export function AssistantPicker({
           </>
         }
       >
-        {searchedAssistants.length > 0 ? (
-          searchedAssistants.map((c) => (
+        {searchedAgents.length > 0 ? (
+          searchedAgents.map((c) => (
             <DropdownMenuItem
-              key={`assistant-picker-${c.sId}`}
+              key={`agent-picker-${c.sId}`}
               icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
               label={c.name}
               truncateText

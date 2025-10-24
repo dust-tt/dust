@@ -7,14 +7,14 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo } from "react";
 
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import type { AgentBuilderState } from "@app/components/assistant_builder/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { asDisplayName, REASONING_EFFORT_IDS } from "@app/types";
 
 interface ReasoningEffortSubmenuProps {
-  generationSettings: AssistantBuilderState["generationSettings"];
+  generationSettings: AgentBuilderState["generationSettings"];
   setGenerationSettings: (
-    settings: AssistantBuilderState["generationSettings"]
+    settings: AgentBuilderState["generationSettings"]
   ) => void;
 }
 

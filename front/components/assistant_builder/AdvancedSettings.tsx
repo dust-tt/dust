@@ -16,7 +16,7 @@ import dynamic from "next/dynamic";
 import React from "react";
 
 import { ReasoningEffortSubmenu } from "@app/components/assistant_builder/instructions/ReasoningEffortSubmenu";
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import type { AgentBuilderState } from "@app/components/assistant_builder/types";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -72,9 +72,9 @@ const isInvalidJson = (value: string | null | undefined): boolean => {
 };
 
 interface AdvancedSettingsProps {
-  generationSettings: AssistantBuilderState["generationSettings"];
+  generationSettings: AgentBuilderState["generationSettings"];
   setGenerationSettings: (
-    generationSettingsSettings: AssistantBuilderState["generationSettings"]
+    generationSettingsSettings: AgentBuilderState["generationSettings"]
   ) => void;
   models: ModelConfigurationType[];
 }
