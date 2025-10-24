@@ -44,6 +44,7 @@ function handleTestConnectionError(
 ): "INVALID_CONFIGURATION" {
   switch (e.code) {
     case "INVALID_CREDENTIALS":
+    case "INVALID_ACCOUNT":
     case "NOT_READONLY":
     case "NO_TABLES":
       return "INVALID_CONFIGURATION";
@@ -160,7 +161,8 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       },
       { where: { connectorId: c.id } }
     );
-    // We launch the workflow again so it syncs immediately.
+
+    // We launch the workflow, so it syncs immediately.
     await launchSnowflakeSyncWorkflow(c.id);
 
     return new Ok(c.id.toString());
