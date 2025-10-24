@@ -23,6 +23,15 @@ async function updateAgentRequestedSpaceIds(
   execute: boolean,
   logger: Logger
 ): Promise<{ updated: boolean; error?: string }> {
+  // Skip if requestedSpaceIds is already populated
+  if (agent.requestedSpaceIds.length > 0) {
+    logger.info(
+      { agentId: agent.sId },
+      "Agent already has requestedSpaceIds, skipping"
+    );
+    return { updated: false };
+  }
+
   // Get the full agent configuration with actions
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: agent.sId,
@@ -40,6 +49,18 @@ async function updateAgentRequestedSpaceIds(
     auth,
     { actions: agentConfiguration.actions }
   );
+
+  // Skip if no space IDs are required
+  if (
+    !requirements.requestedSpaceIds ||
+    requirements.requestedSpaceIds.length === 0
+  ) {
+    logger.info(
+      { agentId: agent.sId },
+      "Agent has no space requirements, skipping"
+    );
+    return { updated: false };
+  }
 
   logger.info(
     {
@@ -99,6 +120,7 @@ async function updateAgentsForWorkspace(
       status: {
         [Op.in]: ["active", "archived"],
       },
+      requestedSpaceIds: [],
     },
     attributes: [
       "id",
