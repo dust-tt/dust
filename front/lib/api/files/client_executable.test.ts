@@ -14,16 +14,9 @@ import {
 import type { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 
-// Mock the AgentMCPActionOutputItem.findAll method
-vi.mock("@app/lib/models/assistant/actions/mcp", () => ({
-  AgentMCPActionOutputItem: {
-    findAll: vi.fn(),
-  },
-}));
-
-const mockAgentMCPActionOutputItemFindAll = vi.mocked(
-  AgentMCPActionOutputItem.findAll
-);
+const mockAgentMCPActionOutputItemFindAll = vi
+  .spyOn(AgentMCPActionOutputItem, "findAll")
+  .mockImplementation(() => Promise.resolve([]));
 
 const createEditAction = (
   id: string,
