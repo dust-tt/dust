@@ -1,4 +1,5 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
+import { ActionGlobeAltIcon } from "@dust-tt/sparkle";
 import {
   Button,
   InformationCircleIcon,
@@ -49,7 +50,7 @@ import type {
 } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
-export type WebhookSourceSheetMode = { provider: WebhookProvider } & (
+export type WebhookSourceSheetMode = { provider: WebhookProvider | null } & (
   | { type: "create" }
   | {
       type: "edit";
@@ -191,7 +192,7 @@ function WebhookSourceSheetContent({
       secret: "",
       autoGenerate: true,
       signatureHeader: "",
-      signatureAlgorithm: "sha256",
+      signatureAlgorithm: "sha256" as const,
       provider: mode.provider,
       subscribedEvents: mode.provider
         ? WEBHOOK_PRESETS[mode.provider].events.map((e) => e.value)
@@ -544,9 +545,11 @@ function WebhookSourceSheetContent({
     () => [
       {
         id: "create",
-        title: `Create ${WEBHOOK_PRESETS[mode.provider].name} Webhook Source`,
+        title: `Create ${mode.provider ? WEBHOOK_PRESETS[mode.provider].name : "Custom"} Webhook Source`,
         description: "",
-        icon: WEBHOOK_PRESETS[mode.provider].icon,
+        icon: mode.provider
+          ? WEBHOOK_PRESETS[mode.provider].icon
+          : ActionGlobeAltIcon,
         content: (
           <FormProvider {...createForm}>
             <div className="space-y-4">

@@ -46,7 +46,7 @@ export type RemoteProviderData = Record<string, unknown>;
 
 type CreateWebhookSourceFormContentProps = {
   form: ReturnType<typeof useForm<CreateWebhookSourceFormData>>;
-  provider: WebhookProvider;
+  provider: WebhookProvider | null;
   owner: LightWorkspaceType;
   onRemoteProviderDataChange?: (
     data: { connectionId: string; remoteMetadata: RemoteProviderData } | null

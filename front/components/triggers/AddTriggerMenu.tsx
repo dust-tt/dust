@@ -10,14 +10,14 @@ import {
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
-import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import {
   WEBHOOK_PRESETS,
-  WEBHOOK_SOURCE_KIND,
+  WEBHOOK_PROVIDERS,
 } from "@app/types/triggers/webhooks";
 type AddTriggerMenuProps = {
   owner: WorkspaceType;
-  createWebhook: (kind: WebhookSourceKind) => void;
+  createWebhook: (provider: WebhookProvider) => void;
 };
 
 export const AddTriggerMenu = ({
@@ -39,8 +39,9 @@ export const AddTriggerMenu = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {WEBHOOK_SOURCE_KIND.filter((kind) => {
-          const preset = WEBHOOK_PRESETS[kind];
+        {/* TODO(HOOTL): use the object directly instead */}
+        {WEBHOOK_PROVIDERS.filter((provider) => {
+          const preset = WEBHOOK_PRESETS[provider];
           return (
             preset.featureFlag === undefined || hasFeature(preset.featureFlag)
           );
