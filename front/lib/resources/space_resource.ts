@@ -329,17 +329,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     sId: string,
     { includeDeleted }: { includeDeleted?: boolean } = {}
   ): Promise<SpaceResource | null> {
-    const spaceModelId = getResourceIdFromSId(sId);
-    if (!spaceModelId) {
-      return null;
-    }
-
-    const [space] = await this.baseFetch(auth, {
-      where: { id: spaceModelId },
-      includeDeleted,
-    });
-
-    return space;
+    const [space] = await this.fetchByIds(auth, [sId], { includeDeleted });
+    return space ?? null;
   }
 
   static async fetchByIds(
