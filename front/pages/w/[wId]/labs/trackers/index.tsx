@@ -17,7 +17,7 @@ import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
@@ -184,7 +184,7 @@ export default function TrackerConfigurations({
         subscription={subscription}
         owner={owner}
         pageTitle="Dust - Trackers"
-        navChildren={<AssistantSidebarMenu owner={owner} />}
+        navChildren={<AgentSidebarMenu owner={owner} />}
       >
         <div className="mb-4">
           <Breadcrumbs items={items} />

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 
 interface AgentHandleProps {
-  assistant: {
+  agent: {
     sId: string;
     name: string;
   };
@@ -12,7 +12,7 @@ interface AgentHandleProps {
 }
 
 export function AgentHandle({
-  assistant,
+  agent,
   canMention = true,
   isDisabled = false,
 }: AgentHandleProps) {
@@ -20,11 +20,11 @@ export function AgentHandle({
 
   const href = {
     pathname: router.pathname,
-    query: { ...router.query, agentDetails: assistant.sId },
+    query: { ...router.query, agentDetails: agent.sId },
   };
 
   if (!canMention) {
-    return <span>{assistant.name}</span>;
+    return <span>{agent.name}</span>;
   }
 
   return (
@@ -36,7 +36,7 @@ export function AgentHandle({
         isDisabled && "text-gray-600 text-opacity-75"
       )}
     >
-      {assistant.name}
+      {agent.name}
     </Link>
   );
 }

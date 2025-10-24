@@ -3,7 +3,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { DeleteProviderDialog } from "@app/components/labs/transcripts/DeleteProviderDialog";
 import { ProcessingConfiguration } from "@app/components/labs/transcripts/ProcessingConfiguration";
 import { ProviderSelection } from "@app/components/labs/transcripts/ProviderSelection";
@@ -154,7 +154,7 @@ export default function LabsTranscriptsIndex({
         subscription={subscription}
         owner={owner}
         pageTitle="Dust - Transcripts processing"
-        navChildren={<AssistantSidebarMenu owner={owner} />}
+        navChildren={<AgentSidebarMenu owner={owner} />}
       >
         <Breadcrumbs items={items} />
         <DeleteProviderDialog

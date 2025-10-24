@@ -18,8 +18,8 @@ import { ConversationTitle } from "@app/components/assistant/conversation/Conver
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
@@ -87,8 +87,7 @@ const ConversationLayoutContent = ({
   isAdmin,
 }: ConversationLayoutContentProps) => {
   const router = useRouter();
-  const { onOpenChange: onOpenChangeAssistantModal } =
-    useURLSheet("agentDetails");
+  const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
   const { activeConversationId } = useConversationsNavigation();
   const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
@@ -104,7 +103,7 @@ const ConversationLayoutContent = ({
     [hasFeature]
   );
 
-  const assistantSId = useMemo(() => {
+  const agentSId = useMemo(() => {
     const sid = router.query.agentDetails ?? [];
     if (isString(sid)) {
       return sid;
@@ -139,13 +138,13 @@ const ConversationLayoutContent = ({
               ? `Dust - ${conversation?.title}`
               : `Dust - New Conversation`
           }
-          navChildren={<AssistantSidebarMenu owner={owner} />}
+          navChildren={<AgentSidebarMenu owner={owner} />}
         >
-          <AssistantDetails
+          <AgentDetails
             owner={owner}
             user={user}
-            assistantId={assistantSId}
-            onClose={() => onOpenChangeAssistantModal(false)}
+            agentId={agentSId}
+            onClose={() => onOpenChangeAgentModal(false)}
           />
 
           <CoEditionProvider

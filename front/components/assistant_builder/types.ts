@@ -48,7 +48,7 @@ export type AssistantBuilderMCPConfigurationWithId =
     id: string;
   };
 
-export type AssistantBuilderState = {
+export type AgentBuilderState = {
   handle: string | null;
   description: string | null;
   scope: Exclude<AgentConfigurationScope, "global">;
