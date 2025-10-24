@@ -1,0 +1,166 @@
+import {
+  Button,
+  ContextItem,
+  Input,
+  ZendeskLogo,
+  ZendeskWhiteLogo,
+} from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
+
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
+import { useConnectorConfig } from "@app/lib/swr/connectors";
+import type { DataSourceType, WorkspaceType } from "@app/types";
+
+export function ZendeskRateLimitConfig({
+  owner,
+  readOnly,
+  isAdmin,
+  dataSource,
+}: {
+  owner: WorkspaceType;
+  readOnly: boolean;
+  isAdmin: boolean;
+  dataSource: DataSourceType;
+}) {
+  const { isDark } = useTheme();
+  const sendNotification = useSendNotification();
+  const [loading, setLoading] = useState(false);
+  const [rateLimitInput, setRateLimitInput] = useState("");
+
+  const {
+    configValue: rateLimitTransactionsPerSecond,
+    mutateConfig: mutateRateLimitConfig,
+  } = useConnectorConfig({
+    owner,
+    dataSource,
+    configKey: ZENDESK_CONFIG_KEYS.RATE_LIMIT_TPS,
+  });
+
+  // Initialize input state based on current config
+  useEffect(() => {
+    if (rateLimitTransactionsPerSecond) {
+      setRateLimitInput(rateLimitTransactionsPerSecond);
+    } else {
+      setRateLimitInput("");
+    }
+  }, [rateLimitTransactionsPerSecond]);
+
+  const handleSetNewConfig = async (
+    configKey: string,
+    configValue: number | string
+  ) => {
+    setLoading(true);
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
+      {
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+        body: JSON.stringify({ configValue: configValue.toString() }),
+      }
+    );
+    if (res.ok) {
+      await mutateRateLimitConfig();
+      setLoading(false);
+      sendNotification({
+        type: "success",
+        title: "Rate limit transactions per second updated",
+        description: `The rate limit transactions per second has been updated to ${configValue}.`,
+      });
+    } else {
+      setLoading(false);
+      const err = await res.json();
+      sendNotification({
+        type: "info",
+        title: "Failed to edit Zendesk configuration",
+        description:
+          err.error?.connectors_error.message || "An unknown error occurred",
+      });
+    }
+    return true;
+  };
+
+  const handleRateLimitTransactionsPerSecondSave = async () => {
+    const value = rateLimitInput.trim();
+    if (value === "") {
+      sendNotification({
+        type: "info",
+        title: "Rate limit required",
+        description:
+          "Please enter a rate limit value or Select Disable to disable rate limiting.",
+      });
+      return;
+    }
+
+    const numValue = parseInt(value, 10);
+    if (isNaN(numValue) || numValue < 1) {
+      sendNotification({
+        type: "info",
+        title: "Invalid rate limit transactions per second",
+        description:
+          "Rate limit transactions per second must be a positive integer.",
+      });
+      return;
+    }
+
+    await handleSetNewConfig(ZENDESK_CONFIG_KEYS.RATE_LIMIT_TPS, numValue);
+  };
+
+  const handleDisableRateLimit = async () => {
+    await handleSetNewConfig(ZENDESK_CONFIG_KEYS.RATE_LIMIT_TPS, "");
+  };
+
+  return (
+    <ContextItem
+      title="Rate Limit Transactions Per Second"
+      visual={
+        <ContextItem.Visual visual={isDark ? ZendeskWhiteLogo : ZendeskLogo} />
+      }
+    >
+      <ContextItem.Description>
+        <div className="mb-4 flex items-start justify-between gap-4 text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-sm text-muted-foreground">
+            Set the maximum number of transactions per second when hitting
+            Zendesk rate limits. Select disable to remove the rate limiting
+            entirely.
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              value={rateLimitInput}
+              type="number"
+              onChange={(e) => setRateLimitInput(e.target.value)}
+              disabled={readOnly || !isAdmin || loading}
+              placeholder={
+                rateLimitTransactionsPerSecond
+                  ? `${rateLimitTransactionsPerSecond} tps`
+                  : "Disabled"
+              }
+              className="w-24"
+            />
+            <span className="text-sm text-muted-foreground">
+              transactions per second
+            </span>
+            <Button
+              size="sm"
+              onClick={handleRateLimitTransactionsPerSecondSave}
+              disabled={
+                readOnly ||
+                !isAdmin ||
+                loading ||
+                rateLimitInput === rateLimitTransactionsPerSecond?.toString()
+              }
+              label="Save"
+            />
+            <Button
+              size="sm"
+              onClick={handleDisableRateLimit}
+              disabled={readOnly || !isAdmin || loading}
+              label="Disable"
+            />
+          </div>
+        </div>
+      </ContextItem.Description>
+    </ContextItem>
+  );
+}
