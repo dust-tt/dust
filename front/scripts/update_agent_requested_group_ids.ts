@@ -1,3 +1,4 @@
+import isEqual from "lodash/isEqual";
 import type { WhereOptions } from "sequelize";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -113,15 +114,32 @@ async function updateAgentRequestedGroupIds(
         })
     );
 
+    const currentRequestedSpaceIds = agentConfiguration.requestedSpaceIds.map(
+      (spaceSId) => {
+        const modelId = getResourceIdFromSId(spaceSId);
+        if (modelId === null) {
+          throw new Error(
+            `Invalid space sId: ${spaceSId} for agent ${agent.sId}`
+          );
+        }
+        return modelId;
+      }
+    );
+
     // Normalize the arrays for comparison
     const normalizedNewGroupIds = normalizeArrays(
       newRequirements.requestedGroupIds
     );
     const normalizedCurrentGroupIds = normalizeArrays(currentRequestedGroupIds);
+    const newSpaceIds = newRequirements.requestedSpaceIds;
 
     // Check if the group IDs have changed
     if (
-      isArrayEqual2DUnordered(normalizedNewGroupIds, normalizedCurrentGroupIds)
+      isArrayEqual2DUnordered(
+        normalizedNewGroupIds,
+        normalizedCurrentGroupIds
+      ) ||
+      isEqual(newSpaceIds.sort(), currentRequestedSpaceIds.sort())
     ) {
       logger.info(
         {
@@ -140,16 +158,21 @@ async function updateAgentRequestedGroupIds(
         agentName: agent.name,
         currentGroupIds: normalizedCurrentGroupIds,
         newGroupIds: normalizedNewGroupIds,
+        newSpaceIds: newSpaceIds,
+        currentSpaceIds: currentRequestedSpaceIds,
         execute,
       },
       execute
-        ? "Updating agent requestedGroupIds"
-        : "[DRY RUN] Would update agent requestedGroupIds"
+        ? "Updating agent requestedGroupIds and requestedSpaceIds"
+        : "[DRY RUN] Would update agent requestedGroupIds and requestedSpaceIds"
     );
 
     if (execute) {
       await AgentConfiguration.update(
-        { requestedGroupIds: normalizedNewGroupIds },
+        {
+          requestedGroupIds: normalizedNewGroupIds,
+          requestedSpaceIds: newSpaceIds,
+        },
         {
           where: {
             sId: agent.sId,
