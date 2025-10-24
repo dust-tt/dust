@@ -134,21 +134,27 @@ export async function runTriggerWebhookActivity({
   }
 
   // Filter out non-subscribed events
+  let receivedEventName: string | undefined;
   if (webhookSource.provider) {
     const { type, field } = WEBHOOK_PRESETS[webhookSource.provider].eventCheck;
+    let receivedEventValue: string | undefined;
 
     // Node http module behavior is to lowercase all headers keys
-    let receivedEventName: string | undefined;
     switch (type) {
       case "headers":
-        receivedEventName = headers[field.toLowerCase()];
+        receivedEventValue = headers[field.toLowerCase()];
         break;
       case "body":
-        receivedEventName = body[field.toLowerCase()];
+        receivedEventValue = body[field.toLowerCase()];
         break;
       default:
         assertNever(type);
     }
+
+    // we received the event value but store the event names, so we need to map it
+    receivedEventName = WEBHOOK_PRESETS[webhookSource.provider].events.find(
+      (event) => event.value === receivedEventValue
+    )?.name;
 
     if (
       receivedEventName === undefined ||
@@ -200,6 +206,12 @@ export async function runTriggerWebhookActivity({
   const filteredTriggers: WebhookTriggerType[] = [];
 
   for (const t of triggers) {
+    if (t.configuration.event && t.configuration.event !== receivedEventName) {
+      // Received event doesn't match the trigger's event, skip this trigger
+      await webhookRequest.markRelatedTrigger(t, "not_matched");
+      continue;
+    }
+
     if (!t.configuration.filter) {
       // No filter, add the trigger
       filteredTriggers.push(t);
