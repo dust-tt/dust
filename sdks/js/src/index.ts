@@ -1227,7 +1227,10 @@ export class DustAPI {
 
   private _validateRedirectUrl(url: string): boolean {
     const urlObj = new URL(url);
-    if (urlObj.protocol !== 'https:' || urlObj.hostname !== 'storage.googleapis.com') {
+    if (
+      urlObj.protocol !== "https:" ||
+      urlObj.hostname !== "storage.googleapis.com"
+    ) {
       return false;
     }
     return true;
@@ -1238,7 +1241,7 @@ export class DustAPI {
       method: "GET",
       path: `files/${fileID}?action=download`,
     });
-    
+
     if (res.isErr()) {
       return res;
     }
@@ -1246,7 +1249,7 @@ export class DustAPI {
     // Handle redirect response (the API redirects to a signed URL)
     if (res.value.response.status >= 200 && res.value.response.status < 400) {
       const redirectUrl = res.value.response.url;
-      
+
       // Validate the redirect URL format to prevent SSRF attacks
       if (!this._validateRedirectUrl(redirectUrl)) {
         return new Err({
@@ -1254,7 +1257,7 @@ export class DustAPI {
           message: `Invalid redirect URL format. Expected format: https://storage.googleapis.com/... Got: ${redirectUrl}`,
         });
       }
-      
+
       // Fetch the actual file content from the signed URL
       try {
         const fileResponse = await fetch(redirectUrl);
@@ -1264,7 +1267,7 @@ export class DustAPI {
             message: `Failed to download file from signed URL: ${fileResponse.status}`,
           });
         }
-        
+
         const buffer = Buffer.from(await fileResponse.arrayBuffer());
         return new Ok(buffer);
       } catch (error) {
@@ -1273,6 +1276,63 @@ export class DustAPI {
           message: `Failed to download file: ${error}`,
         });
       }
+    }
+  }
+
+  async getFileBlob({ fileID }: { fileID: string }) {
+    const res = await this.request({
+      method: "GET",
+      path: `files/${fileID}`,
+      query: new URLSearchParams({ action: "view" }),
+      stream: true,
+    });
+
+    if (!res || res.isErr()) {
+      return res;
+    }
+
+    const { body } = res.value.response;
+
+    // when action is view, the body is always a readable stream
+    if (typeof body === "string") {
+      return new Err({
+        type: "unexpected_network_error",
+        message: "Expected a stream response but got a string",
+      });
+    }
+
+    try {
+      const reader = body.getReader();
+      const chunks: Uint8Array[] = [];
+
+      let done = false;
+
+      while (!done) {
+        const { done: doneReading, value } = await reader.read();
+
+        if (value) {
+          chunks.push(value);
+        }
+
+        done = doneReading;
+      }
+
+      const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+      const result = new Uint8Array(totalLength);
+
+      let offset = 0;
+
+      for (const chunk of chunks) {
+        result.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      return new Ok(new Blob([result]));
+    } catch (error) {
+      return new Err({
+        type: "unexpected_network_error",
+        message: `Failed to read file stream: ${error}`,
+      });
     }
   }
 
