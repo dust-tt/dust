@@ -391,6 +391,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await concurrentExecutor(
       this.groups,
       async (group) => {
+        // Provisioned groups are not tied to any space, we don't delete them.
+        if (group.kind === "provisioned") {
+          return;
+        }
         // As the model allows it, ensure the group is not associated with any other space.
         const count = await GroupSpaceModel.count({
           where: {
