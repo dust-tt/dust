@@ -216,8 +216,8 @@ makeScript(
   {
     workspaceId: {
       type: "string",
-      demandOption: true,
       description: "The workspace ID (sId) to update agents for",
+      required: false,
     },
     onlyActive: {
       type: "boolean",
