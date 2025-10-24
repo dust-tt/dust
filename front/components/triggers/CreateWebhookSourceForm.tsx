@@ -15,7 +15,6 @@ import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 
-import { useWebhookServiceData } from "@app/lib/swr/useWebhookServiceData";
 import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
@@ -49,7 +48,7 @@ export type RemoteProviderData = Record<string, unknown>;
 type CreateWebhookSourceFormContentProps = {
   form: ReturnType<typeof useForm<CreateWebhookSourceFormData>>;
   kind: WebhookSourceKind;
-  owner?: LightWorkspaceType;
+  owner: LightWorkspaceType;
   onRemoteProviderDataChange?: (
     data: { connectionId: string; remoteMetadata: RemoteProviderData } | null
   ) => void;
@@ -67,9 +66,6 @@ export function CreateWebhookSourceFormContent({
     control: form.control,
     name: "subscribedEvents",
   });
-
-  const { serviceData, isFetchingServiceData, fetchServiceData } =
-    useWebhookServiceData(owner ?? null, kind);
 
   const isCustom = (() => {
     switch (kind) {
@@ -172,9 +168,7 @@ export function CreateWebhookSourceFormContent({
           return (
             <CreateFormComponent
               owner={owner}
-              serviceData={serviceData}
-              isFetchingServiceData={isFetchingServiceData}
-              onFetchServiceData={fetchServiceData}
+              kind={kind}
               onDataToCreateWebhookChange={onRemoteProviderDataChange}
               onReadyToSubmitChange={onPresetReadyToSubmitChange}
             />

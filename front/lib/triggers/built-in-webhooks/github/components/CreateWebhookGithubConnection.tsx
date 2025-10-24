@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useWebhookServiceData } from "@app/lib/swr/useWebhookServiceData";
 import type {
   GithubAdditionalData,
   GithubOrganization,
@@ -38,9 +39,7 @@ function isGithubAdditionalData(
 
 export function CreateWebhookGithubConnection({
   owner,
-  serviceData,
-  isFetchingServiceData,
-  onFetchServiceData,
+  kind,
   onDataToCreateWebhookChange,
   onReadyToSubmitChange,
 }: WebhookCreateFormComponentProps) {
@@ -55,6 +54,13 @@ export function CreateWebhookGithubConnection({
     GithubOrganization[]
   >([]);
   const [repoSearchQuery, setRepoSearchQuery] = useState("");
+
+  const { serviceData, isServiceDataLoading } = useWebhookServiceData({
+    owner,
+    connectionId: githubConnection?.connection_id ?? "",
+    kind,
+  });
+
   const githubData = isGithubAdditionalData(serviceData) ? serviceData : null;
   const [orgSearchQuery, setOrgSearchQuery] = useState("");
   const [showRepoDropdown, setShowRepoDropdown] = useState(false);
@@ -152,8 +158,6 @@ export function CreateWebhookGithubConnection({
           title: "Connected to GitHub",
           description: "Fetching your repositories and organizations...",
         });
-        // Fetch repositories after successful connection
-        await onFetchServiceData(connectionRes.value.connection_id);
       }
     } catch (error) {
       sendNotification({
@@ -240,7 +244,7 @@ export function CreateWebhookGithubConnection({
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Select repositories to monitor for events
             </p>
-            {isFetchingServiceData ? (
+            {isServiceDataLoading ? (
               <div className="mt-2 flex items-center gap-2 py-2">
                 <Spinner size="sm" />
                 <span className="text-sm text-muted-foreground">
@@ -321,7 +325,7 @@ export function CreateWebhookGithubConnection({
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Select organizations to monitor all their repositories
             </p>
-            {isFetchingServiceData ? (
+            {isServiceDataLoading ? (
               <div className="mt-2 flex items-center gap-2 py-2">
                 <Spinner size="sm" />
                 <span className="text-sm text-muted-foreground">
