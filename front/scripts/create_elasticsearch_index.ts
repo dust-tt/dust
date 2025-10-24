@@ -3,9 +3,8 @@ import * as path from "path";
 import * as readline from "readline";
 
 import { getClient } from "@app/lib/api/elasticsearch";
+import { makeScript } from "@app/scripts/helpers";
 import { EnvironmentConfig } from "@app/types";
-
-import { makeScript } from "./helpers";
 
 /**
  * Script to create an ElasticSearch index for front service
@@ -40,12 +39,10 @@ makeScript(
       default: false,
     },
   },
-  async ({
-    indexName,
-    indexVersion,
-    skipConfirmation,
-    removePreviousAlias,
-  }) => {
+  async (
+    { indexName, indexVersion, skipConfirmation, removePreviousAlias },
+    logger
+  ) => {
     if (removePreviousAlias && indexVersion === 1) {
       throw new Error("Cannot remove previous alias for version 1");
     }
@@ -59,15 +56,14 @@ makeScript(
         ? "local"
         : EnvironmentConfig.getEnvVariable("DUST_REGION");
 
-    console.log("Configuration:");
-    console.log(`  Index name: ${indexFullname}`);
-    console.log(`  Alias: ${indexAlias}`);
-    console.log(`  Region: ${region}`);
-    console.log(`  Remove previous alias: ${removePreviousAlias}`);
+    logger.info("Configuration:");
+    logger.info(`  Index name: ${indexFullname}`);
+    logger.info(`  Alias: ${indexAlias}`);
+    logger.info(`  Region: ${region}`);
+    logger.info(`  Remove previous alias: ${removePreviousAlias}`);
     if (removePreviousAlias) {
-      console.log(`  Previous index: ${indexPreviousFullname}`);
+      logger.info(`  Previous index: ${indexPreviousFullname}`);
     }
-    console.log();
 
     const client = await getClient();
 
@@ -127,7 +123,7 @@ makeScript(
     }
 
     if (!skipConfirmation) {
-      console.log(
+      logger.info(
         `CHECK: Create index '${indexFullname}' with alias '${indexAlias}' in region '${region}' (remove previous alias: ${removePreviousAlias})? (y to confirm)`
       );
 
@@ -148,7 +144,7 @@ makeScript(
       }
     }
 
-    console.log(`Creating index ${indexFullname}...`);
+    logger.info(`Creating index ${indexFullname}...`);
 
     const indexCreationResponse = await client.indices.create({
       index: indexFullname,
@@ -162,7 +158,7 @@ makeScript(
       );
     }
 
-    console.log(`✅ Index created: ${indexFullname}`);
+    logger.info(`✅ Index created: ${indexFullname}`);
 
     const aliasActions: Array<
       | { add: { index: string; alias: string; is_write_index: boolean } }
@@ -186,7 +182,7 @@ makeScript(
       });
     }
 
-    console.log(`Creating alias ${indexAlias}...`);
+    logger.info(`Creating alias ${indexAlias}...`);
 
     const aliasCreationResponse = await client.indices.updateAliases({
       actions: aliasActions,
@@ -198,8 +194,7 @@ makeScript(
       );
     }
 
-    console.log(`✅ Alias created: ${indexAlias}`);
-    console.log();
-    console.log("🎉 Index creation complete!");
+    logger.info(`✅ Alias created: ${indexAlias}`);
+    logger.info("🎉 Index creation complete!");
   }
 );
