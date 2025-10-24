@@ -815,6 +815,24 @@ export async function deleteDatabase({
       notionDatabaseId: databaseId,
     },
   });
+
+  // If there are pages that have this database as parent, delete them too. Normally,
+  // this should only happen during migration to the new Notion API, where we previously
+  // used the database ID, and now use the data source ID as parent.
+  // REVIEW: actually, even outside of migration, if a database is deleted, we'll end up
+  // deleting its pages here, instead of going through their normal deletion process. Is that problematic?
+  const deletedPages = await NotionPage.destroy({
+    where: {
+      connectorId,
+      parentId: databaseId,
+    },
+  });
+  if (deletedPages > 0) {
+    logger.info(
+      { deletedPages },
+      "Deleted pages after deleting their parent database. This should only happen during migration to the new Notion API."
+    );
+  }
 }
 
 // - for all pages/database that have a lastSeenTs < runTimestamp
