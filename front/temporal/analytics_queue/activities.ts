@@ -2,6 +2,7 @@ import assert from "assert";
 
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
 import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
@@ -54,8 +55,12 @@ export async function storeAgentAnalyticsActivity(
   // Collect token usage from run data.
   const tokens = await collectTokenUsage(auth, agentMessageRow);
 
+  logger.info({ tokens }, "Tokens");
+
   // Collect tool usage data from the agent message actions.
   const toolsUsed = await collectToolUsageFromMessage(auth, agentMessage);
+
+  logger.info({ toolsUsed }, "Tools used");
 
   // Build the complete analytics document.
   const document: AgentMessageAnalyticsData = {
@@ -120,6 +125,9 @@ async function collectTokenUsage(
     async (runResource) => runResource.listRunUsages(auth),
     { concurrency: 5 }
   );
+
+  logger.info({ runResources }, "Run resources");
+  logger.info({ runUsages }, "Run usages");
 
   return runUsages.flat().reduce(
     (acc, usage) => {
@@ -211,6 +219,53 @@ async function storeToElasticsearch(
       "Failed to index document in Elasticsearch"
     );
 
+    throw error;
+  }
+}
+
+export async function storeAgentMessageFeedbackActivity(
+  authType: AuthenticatorType,
+  feedback: AgentMessageFeedbackType
+): Promise<void> {
+  const auth = await Authenticator.fromJSON(authType);
+  const workspace = auth.getNonNullableWorkspace();
+
+  const esClient = await getClient();
+
+  let analyticsDocumentId: string | undefined;
+
+  try {
+    const searchParamsBase = {
+      index: ANALYTICS_ALIAS_NAME,
+      size: 1,
+      sort: [{ timestamp: { order: "desc" } }],
+      track_total_hits: true as const,
+    };
+
+    const primarySearch = await esClient.search<AgentMessageAnalyticsData>({
+      ...searchParamsBase,
+      query: {
+        bool: {
+          filter: [
+            { term: { workspace_id: workspace.sId } },
+            { term: { message_id: feedback.messageId } },
+          ],
+        },
+      },
+    });
+
+    logger.info({ primarySearch }, "Primary search");
+  } catch (error) {
+    logger.error(
+      {
+        analyticsDocumentId,
+        feedbackId: feedback.id,
+        messageId: feedback.messageId,
+        workspaceId: workspace.sId,
+        error: normalizeError(error),
+      },
+      "Failed to store agent message feedback analytics"
+    );
     throw error;
   }
 }

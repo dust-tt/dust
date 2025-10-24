@@ -2,8 +2,11 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
+import { launchStoreAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
 import type {
   ConversationType,
   ConversationWithoutContentType,
@@ -87,7 +90,7 @@ export async function upsertMessageFeedback(
     content?: string;
     isConversationShared?: boolean;
   }
-) {
+): Promise<Result<AgentMessageFeedbackType, Error>> {
   const feedbackWithConversationContext =
     await AgentMessageFeedbackResource.getFeedbackWithConversationContext({
       auth,
@@ -100,8 +103,13 @@ export async function upsertMessageFeedback(
     return feedbackWithConversationContext;
   }
 
-  const { agentMessage, feedback, agentConfiguration, isGlobalAgent } =
-    feedbackWithConversationContext.value;
+  const {
+    agentMessage,
+    feedback,
+    agentConfiguration,
+    isGlobalAgent,
+    message,
+  } = feedbackWithConversationContext.value;
 
   if (feedback) {
     await feedback.updateFields({
@@ -109,11 +117,18 @@ export async function upsertMessageFeedback(
       thumbDirection,
       isConversationShared,
     });
-    return new Ok(undefined);
+
+    const serializedFeedback = serializeFeedback({
+      feedbackResource: feedback,
+      messageSId: message.sId,
+      userId: user.id,
+    });
+
+    return new Ok(serializedFeedback);
   }
 
   try {
-    await AgentMessageFeedbackResource.makeNew({
+    const newFeedback = await AgentMessageFeedbackResource.makeNew({
       workspaceId: auth.getNonNullableWorkspace().id,
       // If the agent is global, we use the agent configuration id from the agent message
       // Otherwise, we use the agent configuration id from the agent configuration
@@ -128,10 +143,17 @@ export async function upsertMessageFeedback(
       isConversationShared: isConversationShared ?? false,
       dismissed: false,
     });
+
+    const serializedFeedback = serializeFeedback({
+      feedbackResource: newFeedback,
+      messageSId: message.sId,
+      userId: user.id,
+    });
+
+    return new Ok(serializedFeedback);
   } catch (e) {
     return new Err(normalizeError(e));
   }
-  return new Ok(undefined);
 }
 
 /**
@@ -182,6 +204,69 @@ export async function deleteMessageFeedback(
   }
 
   return new Ok(undefined);
+}
+
+export async function triggerAgentMessageFeedbackWorkflow({
+  auth,
+  feedback,
+}: {
+  auth: Authenticator;
+  feedback: AgentMessageFeedbackType;
+}): Promise<void> {
+  if (!feedback.messageId) {
+    logger.warn(
+      { feedbackId: feedback.id },
+      "Skipping agent message feedback workflow launch: missing messageId"
+    );
+    return;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const featureFlags = await getFeatureFlags(workspace);
+
+  if (!featureFlags.includes("agent_builder_observability")) {
+    return;
+  }
+
+  const launchResult = await launchStoreAgentMessageFeedbackWorkflow({
+    authType: auth.toJSON(),
+    feedback,
+  });
+
+  if (launchResult.isErr()) {
+    logger.warn(
+      {
+        feedbackId: feedback.id,
+        messageId: feedback.messageId,
+        workspaceId: workspace.sId,
+        error: launchResult.error,
+      },
+      "Failed to launch store agent message feedback workflow"
+    );
+  }
+}
+
+function serializeFeedback({
+  feedbackResource,
+  messageSId,
+  userId,
+}: {
+  feedbackResource: AgentMessageFeedbackResource;
+  messageSId: string;
+  userId: number;
+}): AgentMessageFeedbackType {
+  return {
+    id: feedbackResource.id,
+    messageId: messageSId,
+    agentMessageId: feedbackResource.agentMessageId,
+    userId,
+    thumbDirection: feedbackResource.thumbDirection,
+    content: feedbackResource.content,
+    createdAt: feedbackResource.createdAt,
+    agentConfigurationId: feedbackResource.agentConfigurationId,
+    agentConfigurationVersion: feedbackResource.agentConfigurationVersion,
+    isConversationShared: feedbackResource.isConversationShared,
+  };
 }
 
 export async function getAgentFeedbacks({

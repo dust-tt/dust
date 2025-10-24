@@ -8,6 +8,7 @@ import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conve
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import {
   deleteMessageFeedback,
+  triggerAgentMessageFeedbackWorkflow,
   upsertMessageFeedback,
 } from "@app/lib/api/assistant/feedback";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -249,6 +250,12 @@ async function handler(
           },
         });
       }
+
+      await triggerAgentMessageFeedbackWorkflow({
+        auth,
+        feedback: created.value,
+      });
+
       res.status(200).json({ success: true });
       return;
 
