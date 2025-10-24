@@ -169,19 +169,28 @@ export async function searchAnalytics<
  */
 export async function appendFeedbackToAnalyticsDoc({
   id,
+  workspaceId,
   feedback,
 }: {
   id: string;
+  workspaceId: string;
   feedback: AgentMessageAnalyticsFeedback;
 }): Promise<Result<estypes.UpdateResponse, ElasticsearchError>> {
   return withEs(async (client) => {
     const getRes = await client.get<{
+      workspace_id?: string;
       feedbacks?: AgentMessageAnalyticsFeedback[];
     }>({
       index: ANALYTICS_ALIAS_NAME,
       id,
-      _source_includes: ["feedbacks"],
+      _source_includes: ["workspace_id", "feedbacks"],
     });
+
+    if (getRes._source?.workspace_id !== workspaceId) {
+      throw new Error(
+        `Document ${id} does not belong to workspace ${workspaceId}`
+      );
+    }
 
     const seqNo = getRes._seq_no;
     const primaryTerm = getRes._primary_term;
