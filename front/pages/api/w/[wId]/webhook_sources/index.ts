@@ -19,7 +19,7 @@ import type {
 } from "@app/types/triggers/webhooks";
 import {
   postWebhookSourcesSchema,
-  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
+  WEBHOOK_PRESETS,
 } from "@app/types/triggers/webhooks";
 
 export type GetWebhookSourcesResponseBody = {
@@ -188,8 +188,7 @@ async function handler(
             workspaceId: workspace.sId,
             webhookSource: webhookSource.toJSONForAdmin(),
           });
-          const service =
-            WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].webhookService;
+          const service = WEBHOOK_PRESETS[kind].webhookService;
           const result = await service.createWebhooks({
             auth,
             connectionId,

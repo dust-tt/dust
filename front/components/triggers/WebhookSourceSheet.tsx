@@ -43,11 +43,8 @@ import {
 } from "@app/lib/swr/webhook_source";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
-import type {
-  WebhookSourceKind,
-  WebhookSourceWithSystemViewType,
-} from "@app/types/triggers/webhooks";
-import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import type { WebhookSourceWithSystemViewType } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 export type WebhookSourceSheetMode = { kind: WebhookSourceKind } & (
   | { type: "create" }
@@ -196,9 +193,7 @@ function WebhookSourceSheetContent({
       subscribedEvents:
         mode.kind === "custom"
           ? []
-          : WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].events.map(
-              (e) => e.value
-            ),
+          : WEBHOOK_PRESETS[mode.kind].events.map((e) => e.value),
     }),
     [mode.kind]
   );
@@ -547,9 +542,9 @@ function WebhookSourceSheetContent({
     () => [
       {
         id: "create",
-        title: `Create ${WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].name} Webhook Source`,
+        title: `Create ${WEBHOOK_PRESETS[mode.kind].name} Webhook Source`,
         description: "",
-        icon: WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].icon,
+        icon: WEBHOOK_PRESETS[mode.kind].icon,
         content: (
           <FormProvider {...createForm}>
             <div className="space-y-4">
@@ -575,7 +570,7 @@ function WebhookSourceSheetContent({
         description: "Webhook source for triggering assistants.",
         icon: systemView
           ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />
-          : WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].icon,
+          : WEBHOOK_PRESETS[mode.kind].icon,
         content:
           systemView && webhookSource ? (
             <FormProvider {...editForm}>

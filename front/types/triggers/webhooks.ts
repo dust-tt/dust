@@ -39,10 +39,7 @@ export type CustomPresetType = {
   featureFlag?: WhitelistableFeature;
 };
 
-export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
-  WebhookProvider,
-  PresetWebhook
-> & {
+export const WEBHOOK_PRESETS: Record<WebhookProvider, PresetWebhook> & {
   custom: {
     name: string;
     icon: typeof Icon;

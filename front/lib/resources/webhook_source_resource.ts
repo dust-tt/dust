@@ -23,7 +23,7 @@ import type {
   WebhookSourceForAdminType as WebhookSourceForAdminType,
   WebhookSourceType,
 } from "@app/types/triggers/webhooks";
-import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
@@ -180,8 +180,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     const owner = auth.getNonNullableWorkspace();
 
     if (this.provider && this.remoteMetadata && this.oauthConnectionId) {
-      const service =
-        WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[this.provider].webhookService;
+      const service = WEBHOOK_PRESETS[this.provider].webhookService;
       try {
         const result = await service.deleteWebhooks({
           auth,

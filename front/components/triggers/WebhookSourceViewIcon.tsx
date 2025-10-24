@@ -6,7 +6,7 @@ import {
   ResourceAvatar,
 } from "@app/components/resources/resources_icons";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 export const WebhookSourceViewIcon = ({
   webhookSourceView,
@@ -21,10 +21,5 @@ export const WebhookSourceViewIcon = ({
     return getAvatarFromIcon(webhookSourceView.icon, size);
   }
 
-  return (
-    <ResourceAvatar
-      icon={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].icon}
-      size={size}
-    />
-  );
+  return <ResourceAvatar icon={WEBHOOK_PRESETS[kind].icon} size={size} />;
 };

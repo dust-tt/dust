@@ -10,7 +10,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 import { isString, OAuthAPI } from "@app/types";
 import {
   isWebhookSourceKind,
-  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
+  WEBHOOK_PRESETS,
 } from "@app/types/triggers/webhooks";
 
 export type GetServiceDataResponseType = {
@@ -66,7 +66,7 @@ async function handler(
           },
         });
       }
-      const preset = WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind];
+      const preset = WEBHOOK_PRESETS[kind];
 
       // Verify the connection belongs to this user and workspace
       const ownershipCheck = await checkConnectionOwnership(auth, connectionId);

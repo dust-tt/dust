@@ -22,7 +22,7 @@ import {
   basePostWebhookSourcesSchema,
   isWebhookSourceKind,
   refineSubscribedEvents,
-  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
+  WEBHOOK_PRESETS,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
 } from "@app/types/triggers/webhooks";
 
@@ -85,78 +85,77 @@ export function CreateWebhookSourceFormContent({
         )}
       />
 
-      {kind !== "custom" &&
-        WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].events.length > 0 && (
-          <Controller
-            control={form.control}
-            name="subscribedEvents"
-            render={({ fieldState }) => (
-              <div className="space-y-3">
-                <Label htmlFor="subscribedEvents">Subscribed events</Label>
-                <div className="space-y-2">
-                  {WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].events.map(
-                    (event) => {
-                      const isSelected = selectedEvents.includes(event.value);
-                      return (
-                        <div
-                          key={event.value}
-                          className="flex items-center space-x-3"
+      {kind !== "custom" && WEBHOOK_PRESETS[kind].events.length > 0 && (
+        <Controller
+          control={form.control}
+          name="subscribedEvents"
+          render={({ fieldState }) => (
+            <div className="space-y-3">
+              <Label htmlFor="subscribedEvents">Subscribed events</Label>
+              <div className="space-y-2">
+                {WEBHOOK_PRESETS[kind].events.map((event) => {
+                  const isSelected = selectedEvents.includes(event.value);
+                  return (
+                    <div
+                      key={event.value}
+                      className="flex items-center space-x-3"
+                    >
+                      <Checkbox
+                        id={`${kind}-event-${event.value}`}
+                        checked={isSelected}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            form.setValue(
+                              "subscribedEvents",
+                              [...selectedEvents, event.value],
+                              { shouldValidate: true, shouldDirty: true }
+                            );
+                          } else {
+                            form.setValue(
+                              "subscribedEvents",
+                              selectedEvents.filter((e) => e !== event.value),
+                              { shouldValidate: true, shouldDirty: true }
+                            );
+                          }
+                        }}
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <label
+                          htmlFor={`${kind}-event-${event.value}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
-                          <Checkbox
-                            id={`${kind}-event-${event.value}`}
-                            checked={isSelected}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                form.setValue(
-                                  "subscribedEvents",
-                                  [...selectedEvents, event.value],
-                                  { shouldValidate: true, shouldDirty: true }
-                                );
-                              } else {
-                                form.setValue(
-                                  "subscribedEvents",
-                                  selectedEvents.filter(
-                                    (e) => e !== event.value
-                                  ),
-                                  { shouldValidate: true, shouldDirty: true }
-                                );
-                              }
-                            }}
-                          />
-                          <div className="grid gap-1.5 leading-none">
-                            <label
-                              htmlFor={`${kind}-event-${event.value}`}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                              {event.name}
-                            </label>
-                          </div>
-                        </div>
-                      );
-                    }
-                  )}
-                </div>
-                {fieldState.error && (
-                  <div className="dark:text-warning-night flex items-center gap-1 text-xs text-warning">
-                    {fieldState.error.message}
-                  </div>
-                )}
+                          {event.name}
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          />
-        )}
+              {fieldState.error && (
+                <div className="dark:text-warning-night flex items-center gap-1 text-xs text-warning">
+                  {fieldState.error.message}
+                </div>
+              )}
+            </div>
+          )}
+        />
+      )}
 
       {owner &&
         kind !== "custom" &&
-        kind !== "test" &&
-        isWebhookSourceKind(kind) && (
-          <CreateWebhookSourceWithProviderForm
-            owner={owner}
-            kind={kind}
-            onDataToCreateWebhookChange={onRemoteProviderDataChange}
-            onReadyToSubmitChange={onPresetReadyToSubmitChange}
-          />
-        )}
+        isWebhookSourceKind(kind) &&
+        (() => {
+          const CreateFormComponent =
+            WEBHOOK_PRESETS[kind].components.createFormComponent;
+          return (
+            <CreateFormComponent
+              owner={owner}
+              kind={kind}
+              onDataToCreateWebhookChange={onRemoteProviderDataChange}
+              onReadyToSubmitChange={onPresetReadyToSubmitChange}
+            />
+          );
+        })()}
 
       {kind === "custom" && (
         <div>

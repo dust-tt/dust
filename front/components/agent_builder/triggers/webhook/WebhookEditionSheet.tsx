@@ -27,7 +27,7 @@ import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/we
 import type { WebhookFormValues } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import type {
   PresetWebhook,
   WebhookEvent,
@@ -239,7 +239,7 @@ export function WebhookEditionSheet({
     if (!webhookSourceView || webhookSourceView.kind === "custom") {
       return null;
     }
-    return WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[webhookSourceView.kind];
+    return WEBHOOK_PRESETS[webhookSourceView.kind];
   }, [webhookSourceView]);
 
   const availableEvents = useMemo(() => {
