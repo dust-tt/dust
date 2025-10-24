@@ -52,7 +52,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "kind is required",
+            message: "provider is required",
           },
         });
       }
