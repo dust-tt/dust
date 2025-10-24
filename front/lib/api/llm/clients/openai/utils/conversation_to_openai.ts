@@ -34,7 +34,7 @@ export function toOpenAIReasoningEffort(
       : reasoningEffort;
 }
 
-function toUser(content: Content): ResponseInputContent {
+function toUserContent(content: Content): ResponseInputContent {
   switch (content.type) {
     case "text":
       return { type: "input_text", text: content.text };
@@ -47,7 +47,7 @@ function toUser(content: Content): ResponseInputContent {
   }
 }
 
-function toAssistant(content: AgentContentItemType): ResponseInputItem {
+function toAssistantItem(content: AgentContentItemType): ResponseInputItem {
   switch (content.type) {
     case "text_content":
       return {
@@ -89,7 +89,7 @@ function systemPrompt(prompt: string): ResponseInputItem.Message {
 function userMessage(message: UserMessageTypeModel): ResponseInputItem.Message {
   return {
     role: "user",
-    content: message.content.map(toUser),
+    content: message.content.map(toUserContent),
   };
 }
 
@@ -98,7 +98,7 @@ function assistantMessages(
     | AssistantContentMessageTypeModel
     | AssistantFunctionCallMessageTypeModel
 ): ResponseInputItem[] {
-  return message.contents.map(toAssistant);
+  return message.contents.map(toAssistantItem);
 }
 
 function functionMessage(
@@ -141,7 +141,7 @@ export function toInput(
 export function toTool(tool: AgentActionSpecification): FunctionTool {
   const parameters: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(tool.inputSchema)) {
-    parameters[key] = value.default;
+    parameters[key] = value;
   }
   return {
     type: "function",

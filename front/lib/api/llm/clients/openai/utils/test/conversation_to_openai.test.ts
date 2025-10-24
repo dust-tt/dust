@@ -19,7 +19,7 @@ const conversationMessages: ModelMessageTypeMultiActionsWithoutContentFragment[]
   [
     {
       role: "user",
-      name: "Pierre Milliotte",
+      name: "John Smith",
       content: [
         {
           type: "text",
