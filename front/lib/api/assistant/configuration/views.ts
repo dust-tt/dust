@@ -381,6 +381,8 @@ export async function getAgentConfigurationsForView<
     return applySortAndLimit(allGlobalAgents);
   }
 
+  // Only workspace agents are filtered by requested spaces (unless dangerouslySkipPermissionFiltering is true)
+  // Global agents are not linked to any space.
   const allAgentConfigurations = await Promise.all([
     fetchGlobalAgentConfigurationForView(auth, {
       agentPrefix,
