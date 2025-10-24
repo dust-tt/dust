@@ -212,11 +212,16 @@ const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.NOOP,
 ];
 
+export type AgentConfigurationForSort = Pick<
+  LightAgentConfigurationType,
+  "name" | "sId" | "userFavorite" | "scope" | "pictureUrl" | "description"
+>;
+
 // This function implements our general strategy to sort agents to users (input bar, agent list,
 // agent suggestions...).
 export function compareAgentsForSort(
-  a: LightAgentConfigurationType,
-  b: LightAgentConfigurationType
+  a: AgentConfigurationForSort,
+  b: AgentConfigurationForSort
 ) {
   if (a.userFavorite && !b.userFavorite) {
     return -1;
