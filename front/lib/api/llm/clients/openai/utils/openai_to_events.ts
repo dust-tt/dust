@@ -10,6 +10,8 @@ import type {
   ProviderMetadata,
 } from "@app/lib/api/llm/types/events";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import { assertNever } from "@app/types";
+import { compact } from "lodash";
 
 export async function* streamLLMEvents({
   responseStreamEvents,
@@ -118,19 +120,27 @@ function responseCompleted(
   response: Response,
   metadata: ProviderMetadata
 ): LLMEvent[] {
-  const events: LLMEvent[] = response.output
-    .map((item) => itemToEvent(item, metadata))
-    .filter((item): item is LLMEvent => item !== undefined);
+  const events: LLMEvent[] = compact(
+    response.output.map((i) => itemToEvent(i, metadata))
+  );
 
   if (response.usage) {
+    const {
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      total_tokens: totalTokens,
+    } = response.usage;
+    const { cached_tokens: cachedTokens } = response.usage.input_tokens_details;
+    const { reasoning_tokens: reasoningTokens } =
+      response.usage.output_tokens_details;
     events.push({
       type: "token_usage",
       content: {
-        inputTokens: response.usage.input_tokens,
-        cachedTokens: response.usage.input_tokens_details.cached_tokens,
-        reasoningTokens: response.usage.output_tokens_details.reasoning_tokens,
-        outputTokens: response.usage.output_tokens,
-        totalTokens: response.usage.total_tokens,
+        inputTokens,
+        cachedTokens,
+        reasoningTokens,
+        outputTokens,
+        totalTokens,
       },
       metadata,
     });
@@ -145,23 +155,16 @@ function toEvents({
   event: ResponseStreamEvent;
   metadata: ProviderMetadata;
 }): LLMEvent[] {
-  const events: LLMEvent[] = [];
-
   switch (event.type) {
     case "response.output_text.delta":
-      events.push(textDelta(event.delta, metadata));
-      break;
+      return [textDelta(event.delta, metadata)];
     case "response.reasoning_summary_text.delta":
-      events.push(reasoningDelta(event.delta, metadata));
-      break;
+      return [reasoningDelta(event.delta, metadata)];
     case "response.output_item.done":
-      events.push(...toolCall(event, metadata));
-      break;
+      return toolCall(event, metadata);
     case "response.completed":
-      events.push(...responseCompleted(event.response, metadata));
-      break;
+      return responseCompleted(event.response, metadata);
     default:
-      break;
+      return [];
   }
-  return events;
 }
