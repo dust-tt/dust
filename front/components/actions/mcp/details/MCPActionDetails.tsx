@@ -32,6 +32,7 @@ import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/M
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import { MCPToolsetsEnableActionDetails } from "@app/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import {
@@ -248,6 +249,9 @@ export function MCPActionDetails({
   }
 
   if (isInternalMCPServerOfName(mcpServerId, "toolsets")) {
+    if (toolName === "enable") {
+      return <MCPToolsetsEnableActionDetails {...toolOutputDetailsProps} />;
+    }
     return <MCPListToolsActionDetails {...toolOutputDetailsProps} />;
   }
 
