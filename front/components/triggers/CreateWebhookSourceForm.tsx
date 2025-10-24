@@ -15,7 +15,6 @@ import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 
-import { CreateWebhookSourceWithProviderForm } from "@app/components/triggers/CreateWebhookSourceWithProviderForm";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import {
@@ -142,6 +141,7 @@ export function CreateWebhookSourceFormContent({
 
       {owner &&
         provider &&
+        provider !== "test" &&
         (() => {
           const CreateFormComponent =
             WEBHOOK_PRESETS[provider].components.createFormComponent;
