@@ -6,6 +6,7 @@ import type {
   CustomResourceIconType,
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
+import { FATHOM_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_webhook_source_presets";
 import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/github/github_webhook_source_presets";
 import { TEST_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/test/test_webhook_source_presets";
 import type { AgentsUsageType } from "@app/types/data_source";
@@ -33,12 +34,13 @@ export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
     featureFlag?: WhitelistableFeature;
   };
 } = {
+  fathom: FATHOM_WEBHOOK_PRESET,
   github: GITHUB_WEBHOOK_PRESET,
   test: TEST_WEBHOOK_PRESET,
   custom: { name: "Custom", icon: ActionGlobeAltIcon },
 } as const;
 
-export const WEBHOOK_SOURCE_KIND = ["custom", "github", "test"] as const;
+export const WEBHOOK_SOURCE_KIND = ["custom", "fathom", "github", "test"] as const;
 
 export function isWebhookSourceKind(
   kind: string

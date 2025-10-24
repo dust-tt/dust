@@ -76,6 +76,7 @@ export function CreateWebhookSourceFormContent({
       case "custom":
       case "test":
         return true; // These are not OAuth-based kinds
+      case "fathom":
       case "github":
         return false;
       default:

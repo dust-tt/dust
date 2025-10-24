@@ -28,6 +28,7 @@ export const OAUTH_PROVIDERS = [
   "confluence",
   "confluence_tools",
   "discord",
+  "fathom",
   "freshservice",
   "github",
   "google_drive",
@@ -51,6 +52,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   confluence_tools: "Confluence Tools",
   discord: "Discord",
+  fathom: "Fathom",
   freshservice: "Freshservice",
   github: "GitHub",
   gmail: "Gmail",
@@ -191,6 +193,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "notion":
     case "confluence":
     case "confluence_tools":
+    case "fathom":
     case "github":
     case "google_drive":
     case "intercom":

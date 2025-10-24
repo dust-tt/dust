@@ -8,6 +8,7 @@ import type {
 import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence";
 import { ConfluenceToolsOAuthProvider } from "@app/lib/api/oauth/providers/confluence_tools";
 import { DiscordOAuthProvider } from "@app/lib/api/oauth/providers/discord";
+import { FathomOAuthProvider } from "@app/lib/api/oauth/providers/fathom";
 import { FreshserviceOAuthProvider } from "@app/lib/api/oauth/providers/freshservice";
 import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
 import { GmailOAuthProvider } from "@app/lib/api/oauth/providers/gmail";
@@ -52,6 +53,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   confluence: new ConfluenceOAuthProvider(),
   confluence_tools: new ConfluenceToolsOAuthProvider(),
   discord: new DiscordOAuthProvider(),
+  fathom: new FathomOAuthProvider(),
   freshservice: new FreshserviceOAuthProvider(),
   github: new GithubOAuthProvider(),
   gmail: new GmailOAuthProvider(),
