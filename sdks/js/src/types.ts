@@ -943,7 +943,15 @@ const AgentMentionSchema = z.object({
   configurationId: z.string(),
 });
 
+const UserMentionSchema = z.object({
+  userId: z.string(),
+});
+
+const MentionSchema = z.union([AgentMentionSchema, UserMentionSchema]);
+
 export type AgentMentionType = z.infer<typeof AgentMentionSchema>;
+
+export type UserMentionType = z.infer<typeof UserMentionSchema>;
 
 const UserMessageContextSchema = z.object({
   username: z.string(),
@@ -966,7 +974,7 @@ const UserMessageSchema = z.object({
   visibility: VisibilitySchema,
   version: z.number(),
   user: UserSchema.nullable(),
-  mentions: z.array(AgentMentionSchema),
+  mentions: z.array(MentionSchema),
   content: z.string(),
   context: UserMessageContextSchema,
 });

@@ -22,11 +22,11 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { mentionAgent } from "@app/lib/mentions";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type {
-  AgentMention,
   MentionType,
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
+import { isAgentMention } from "@app/types";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 
 export function HelpDropdown({
@@ -65,13 +65,12 @@ export function HelpDropdown({
           ? input
           : `@help ${input.trimStart()}`;
         const mentionsWithHelp = mentions.some(
-          (mention) => mention.configurationId === GLOBAL_AGENTS_SID.HELPER
+          (mention) =>
+            isAgentMention(mention) &&
+            mention.configurationId === GLOBAL_AGENTS_SID.HELPER
         )
           ? mentions
-          : [
-              ...mentions,
-              { configurationId: GLOBAL_AGENTS_SID.HELPER } as AgentMention,
-            ];
+          : [...mentions, { configurationId: GLOBAL_AGENTS_SID.HELPER }];
         const conversationRes = await createConversationWithMessage({
           owner,
           user,
