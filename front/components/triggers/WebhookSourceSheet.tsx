@@ -43,10 +43,13 @@ import {
 } from "@app/lib/swr/webhook_source";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
-import type { WebhookSourceWithSystemViewType } from "@app/types/triggers/webhooks";
+import type {
+  WebhookProvider,
+  WebhookSourceWithSystemViewType,
+} from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
-export type WebhookSourceSheetMode = { kind: WebhookSourceKind } & (
+export type WebhookSourceSheetMode = { provider: WebhookProvider } & (
   | { type: "create" }
   | {
       type: "edit";
@@ -189,13 +192,12 @@ function WebhookSourceSheetContent({
       autoGenerate: true,
       signatureHeader: "",
       signatureAlgorithm: "sha256",
-      kind: mode.kind,
-      subscribedEvents:
-        mode.kind === "custom"
-          ? []
-          : WEBHOOK_PRESETS[mode.kind].events.map((e) => e.value),
+      provider: mode.provider,
+      subscribedEvents: provider
+        ? WEBHOOK_PRESETS[mode.provider].events.map((e) => e.value)
+        : [],
     }),
-    [mode.kind]
+    [mode.provider]
   );
 
   const createForm = useForm<CreateWebhookSourceFormData>({

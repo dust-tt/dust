@@ -17,10 +17,9 @@ import { z } from "zod";
 
 import { CreateWebhookSourceWithProviderForm } from "@app/components/triggers/CreateWebhookSourceWithProviderForm";
 import type { LightWorkspaceType } from "@app/types";
-import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import {
   basePostWebhookSourcesSchema,
-  isWebhookSourceKind,
   refineSubscribedEvents,
   WEBHOOK_PRESETS,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
@@ -47,7 +46,7 @@ export type RemoteProviderData = Record<string, unknown>;
 
 type CreateWebhookSourceFormContentProps = {
   form: ReturnType<typeof useForm<CreateWebhookSourceFormData>>;
-  kind: WebhookSourceKind;
+  provider: WebhookProvider;
   owner: LightWorkspaceType;
   onRemoteProviderDataChange?: (
     data: { connectionId: string; remoteMetadata: RemoteProviderData } | null
@@ -57,7 +56,7 @@ type CreateWebhookSourceFormContentProps = {
 
 export function CreateWebhookSourceFormContent({
   form,
-  kind,
+  provider,
   owner,
   onRemoteProviderDataChange,
   onPresetReadyToSubmitChange,
@@ -66,6 +65,21 @@ export function CreateWebhookSourceFormContent({
     control: form.control,
     name: "subscribedEvents",
   });
+
+  const { serviceData, isFetchingServiceData, fetchServiceData } =
+    useWebhookServiceData(owner ?? null, provider);
+
+  const isCustom = (() => {
+    switch (kind) {
+      case "custom":
+      case "test":
+        return true; // These are not OAuth-based kinds
+      case "github":
+        return false;
+      default:
+        assertNever(kind);
+    }
+  })();
 
   return (
     <>
@@ -85,7 +99,7 @@ export function CreateWebhookSourceFormContent({
         )}
       />
 
-      {kind !== "custom" && WEBHOOK_PRESETS[kind].events.length > 0 && (
+      {provider && WEBHOOK_PRESETS[provider].events.length > 0 && (
         <Controller
           control={form.control}
           name="subscribedEvents"
@@ -93,7 +107,7 @@ export function CreateWebhookSourceFormContent({
             <div className="space-y-3">
               <Label htmlFor="subscribedEvents">Subscribed events</Label>
               <div className="space-y-2">
-                {WEBHOOK_PRESETS[kind].events.map((event) => {
+                {WEBHOOK_PRESETS[provider].events.map((event) => {
                   const isSelected = selectedEvents.includes(event.value);
                   return (
                     <div
@@ -101,7 +115,7 @@ export function CreateWebhookSourceFormContent({
                       className="flex items-center space-x-3"
                     >
                       <Checkbox
-                        id={`${kind}-event-${event.value}`}
+                        id={`${provider}-event-${event.value}`}
                         checked={isSelected}
                         onCheckedChange={(checked) => {
                           if (checked) {
@@ -121,7 +135,7 @@ export function CreateWebhookSourceFormContent({
                       />
                       <div className="grid gap-1.5 leading-none">
                         <label
-                          htmlFor={`${kind}-event-${event.value}`}
+                          htmlFor={`${provider}-event-${event.value}`}
                           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
                           {event.name}
@@ -142,11 +156,10 @@ export function CreateWebhookSourceFormContent({
       )}
 
       {owner &&
-        kind !== "custom" &&
-        isWebhookSourceKind(kind) &&
+        provider &&
         (() => {
           const CreateFormComponent =
-            WEBHOOK_PRESETS[kind].components.createFormComponent;
+            WEBHOOK_PRESETS[provider].components.createFormComponent;
           return (
             <CreateFormComponent
               owner={owner}
