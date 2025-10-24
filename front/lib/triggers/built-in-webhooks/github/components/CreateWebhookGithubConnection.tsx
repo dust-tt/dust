@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useWebhookServiceData } from "@app/lib/swr/useWebhookServiceData";
 import type {
   GithubAdditionalData,
   GithubOrganization,
@@ -38,9 +39,7 @@ function isGithubAdditionalData(
 
 export function CreateWebhookGithubConnection({
   owner,
-  serviceData,
-  isFetchingServiceData,
-  onFetchServiceData,
+  kind,
   onDataToCreateWebhookChange,
   onReadyToSubmitChange,
 }: WebhookCreateFormComponentProps) {
@@ -55,6 +54,13 @@ export function CreateWebhookGithubConnection({
     GithubOrganization[]
   >([]);
   const [repoSearchQuery, setRepoSearchQuery] = useState("");
+
+  const { serviceData, isServiceDataLoading } = useWebhookServiceData({
+    owner,
+    connectionId: githubConnection?.connection_id ?? "",
+    kind,
+  });
+
   const githubData = isGithubAdditionalData(serviceData) ? serviceData : null;
   const [orgSearchQuery, setOrgSearchQuery] = useState("");
   const [showRepoDropdown, setShowRepoDropdown] = useState(false);
@@ -152,8 +158,6 @@ export function CreateWebhookGithubConnection({
           title: "Connected to GitHub",
           description: "Fetching your repositories and organizations...",
         });
-        // Fetch repositories after successful connection
-        await onFetchServiceData(connectionRes.value.connection_id);
       }
     } catch (error) {
       sendNotification({
@@ -240,7 +244,7 @@ export function CreateWebhookGithubConnection({
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Select repositories to monitor for events
             </p>
-            {isFetchingServiceData ? (
+            {isServiceDataLoading ? (
               <div className="mt-2 flex items-center gap-2 py-2">
                 <Spinner size="sm" />
                 <span className="text-sm text-muted-foreground">
@@ -248,65 +252,61 @@ export function CreateWebhookGithubConnection({
                 </span>
               </div>
             ) : (
-              <>
-                <div className="mt-2 flex flex-col gap-2">
-                  {selectedRepositories.map((repo) => (
-                    <div
-                      key={repo.fullName}
-                      className="border-border-light bg-background-light dark:bg-background-dark flex items-center justify-between rounded border px-3 py-2 dark:border-border-dark"
-                    >
-                      <span className="text-sm font-medium">
-                        {repo.fullName}
-                      </span>
+              <div className="mt-2 flex flex-col gap-2">
+                {selectedRepositories.map((repo) => (
+                  <div
+                    key={repo.fullName}
+                    className="border-border-light bg-background-light dark:bg-background-dark flex items-center justify-between rounded border px-3 py-2 dark:border-border-dark"
+                  >
+                    <span className="text-sm font-medium">{repo.fullName}</span>
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      icon={XMarkIcon}
+                      onClick={() => handleRemoveRepository(repo)}
+                    />
+                  </div>
+                ))}
+                {githubRepositories.length > 0 && (
+                  <DropdownMenu
+                    open={showRepoDropdown}
+                    onOpenChange={setShowRepoDropdown}
+                  >
+                    <DropdownMenuTrigger asChild>
                       <Button
-                        size="xs"
-                        variant="ghost"
-                        icon={XMarkIcon}
-                        onClick={() => handleRemoveRepository(repo)}
+                        label="Add repository"
+                        variant="outline"
+                        icon={PlusIcon}
+                        className="w-full"
                       />
-                    </div>
-                  ))}
-                  {githubRepositories.length > 0 && (
-                    <DropdownMenu
-                      open={showRepoDropdown}
-                      onOpenChange={setShowRepoDropdown}
-                    >
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          label="Add repository"
-                          variant="outline"
-                          icon={PlusIcon}
-                          className="w-full"
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-80">
-                        <DropdownMenuSearchbar
-                          name="repository"
-                          placeholder="Search repositories..."
-                          value={repoSearchQuery}
-                          onChange={setRepoSearchQuery}
-                        />
-                        <div className="max-h-64 overflow-y-auto">
-                          {repositoriesInDropdown.length > 0 ? (
-                            repositoriesInDropdown.map((repo) => (
-                              <DropdownMenuItem
-                                key={repo.fullName}
-                                onClick={() => handleAddRepository(repo)}
-                              >
-                                {repo.fullName}
-                              </DropdownMenuItem>
-                            ))
-                          ) : (
-                            <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                              No repositories found
-                            </div>
-                          )}
-                        </div>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
-              </>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-80">
+                      <DropdownMenuSearchbar
+                        name="repository"
+                        placeholder="Search repositories..."
+                        value={repoSearchQuery}
+                        onChange={setRepoSearchQuery}
+                      />
+                      <div className="max-h-64 overflow-y-auto">
+                        {repositoriesInDropdown.length > 0 ? (
+                          repositoriesInDropdown.map((repo) => (
+                            <DropdownMenuItem
+                              key={repo.fullName}
+                              onClick={() => handleAddRepository(repo)}
+                            >
+                              {repo.fullName}
+                            </DropdownMenuItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                            No repositories found
+                          </div>
+                        )}
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             )}
           </div>
 
@@ -321,7 +321,7 @@ export function CreateWebhookGithubConnection({
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Select organizations to monitor all their repositories
             </p>
-            {isFetchingServiceData ? (
+            {isServiceDataLoading ? (
               <div className="mt-2 flex items-center gap-2 py-2">
                 <Spinner size="sm" />
                 <span className="text-sm text-muted-foreground">
@@ -329,63 +329,61 @@ export function CreateWebhookGithubConnection({
                 </span>
               </div>
             ) : (
-              <>
-                <div className="mt-2 flex flex-col gap-2">
-                  {selectedOrganizations.map((org) => (
-                    <div
-                      key={org.name}
-                      className="border-border-light bg-background-light dark:bg-background-dark flex items-center justify-between rounded border px-3 py-2 dark:border-border-dark"
-                    >
-                      <span className="text-sm font-medium">{org.name}</span>
+              <div className="mt-2 flex flex-col gap-2">
+                {selectedOrganizations.map((org) => (
+                  <div
+                    key={org.name}
+                    className="border-border-light bg-background-light dark:bg-background-dark flex items-center justify-between rounded border px-3 py-2 dark:border-border-dark"
+                  >
+                    <span className="text-sm font-medium">{org.name}</span>
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      icon={XMarkIcon}
+                      onClick={() => handleRemoveOrganization(org)}
+                    />
+                  </div>
+                ))}
+                {githubOrganizations.length > 0 && (
+                  <DropdownMenu
+                    open={showOrgDropdown}
+                    onOpenChange={setShowOrgDropdown}
+                  >
+                    <DropdownMenuTrigger asChild>
                       <Button
-                        size="xs"
-                        variant="ghost"
-                        icon={XMarkIcon}
-                        onClick={() => handleRemoveOrganization(org)}
+                        label="Add organization"
+                        variant="outline"
+                        icon={PlusIcon}
+                        className="w-full"
                       />
-                    </div>
-                  ))}
-                  {githubOrganizations.length > 0 && (
-                    <DropdownMenu
-                      open={showOrgDropdown}
-                      onOpenChange={setShowOrgDropdown}
-                    >
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          label="Add organization"
-                          variant="outline"
-                          icon={PlusIcon}
-                          className="w-full"
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-80">
-                        <DropdownMenuSearchbar
-                          name="organization"
-                          placeholder="Search organizations..."
-                          value={orgSearchQuery}
-                          onChange={setOrgSearchQuery}
-                        />
-                        <div className="max-h-64 overflow-y-auto">
-                          {organizationsInDropdown.length > 0 ? (
-                            organizationsInDropdown.map((org) => (
-                              <DropdownMenuItem
-                                key={org.name}
-                                onClick={() => handleAddOrganization(org)}
-                              >
-                                {org.name}
-                              </DropdownMenuItem>
-                            ))
-                          ) : (
-                            <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                              No organizations found
-                            </div>
-                          )}
-                        </div>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
-              </>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-80">
+                      <DropdownMenuSearchbar
+                        name="organization"
+                        placeholder="Search organizations..."
+                        value={orgSearchQuery}
+                        onChange={setOrgSearchQuery}
+                      />
+                      <div className="max-h-64 overflow-y-auto">
+                        {organizationsInDropdown.length > 0 ? (
+                          organizationsInDropdown.map((org) => (
+                            <DropdownMenuItem
+                              key={org.name}
+                              onClick={() => handleAddOrganization(org)}
+                            >
+                              {org.name}
+                            </DropdownMenuItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                            No organizations found
+                          </div>
+                        )}
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             )}
           </div>
 

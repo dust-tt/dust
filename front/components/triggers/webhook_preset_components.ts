@@ -1,5 +1,8 @@
 import type { LightWorkspaceType } from "@app/types";
-import type { WebhookSourceForAdminType } from "@app/types/triggers/webhooks";
+import type {
+  WebhookSourceForAdminType,
+  WebhookSourceKind,
+} from "@app/types/triggers/webhooks";
 
 /**
  * Props interface for webhook details components.
@@ -15,9 +18,7 @@ export interface WebhookDetailsComponentProps {
  */
 export interface WebhookCreateFormComponentProps {
   owner: LightWorkspaceType;
-  serviceData: Record<string, unknown> | null;
-  isFetchingServiceData: boolean;
-  onFetchServiceData: (connectionId: string) => Promise<void>;
+  kind: WebhookSourceKind;
   onDataToCreateWebhookChange?: (
     data: {
       connectionId: string;
