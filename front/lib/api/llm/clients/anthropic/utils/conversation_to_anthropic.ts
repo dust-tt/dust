@@ -48,7 +48,7 @@ function toContentChunk(
       return {
         type: "thinking",
         thinking: content.value.reasoning,
-        /** @todo: signatures should be stored in AnthropicLLM's metadata of
+       // TODO(DIRECT_LLM 2025-10-24) Signatures should be stored in AnthropicLLM's metadata of
          * thinking events and re-extracted */
         signature: "",
       };
