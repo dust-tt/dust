@@ -307,7 +307,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
     const webhookSourceResult = await webhookSourceFactory.create({
       name: "Test GitHub Webhook Source",
-      kind: "github",
+      provider: "github",
       subscribedEvents: ["issues"], // Subscribe to issues but not pull_request
     });
 

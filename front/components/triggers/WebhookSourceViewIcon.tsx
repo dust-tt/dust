@@ -15,11 +15,11 @@ export const WebhookSourceViewIcon = ({
   webhookSourceView: WebhookSourceViewType;
   size?: ComponentProps<typeof Avatar>["size"];
 }) => {
-  const kind = webhookSourceView.kind;
+  const { provider } = webhookSourceView;
 
-  if (kind === "custom") {
-    return getAvatarFromIcon(webhookSourceView.icon, size);
+  if (provider) {
+    return <ResourceAvatar icon={WEBHOOK_PRESETS[provider].icon} size={size} />;
   }
 
-  return <ResourceAvatar icon={WEBHOOK_PRESETS[kind].icon} size={size} />;
+  return getAvatarFromIcon(webhookSourceView.icon, size);
 };

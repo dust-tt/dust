@@ -119,7 +119,7 @@ async function handler(
         signatureAlgorithm,
         includeGlobal,
         subscribedEvents,
-        kind,
+        provider,
         connectionId,
         remoteMetadata,
       } = bodyValidation.data;
@@ -139,7 +139,7 @@ async function handler(
                 ? secret
                 : generateSecureSecret(64),
           urlSecret: generateSecureSecret(64),
-          kind,
+          provider,
           signatureHeader:
             trimmedSignatureHeader.length > 0 ? trimmedSignatureHeader : null,
           signatureAlgorithm,
@@ -179,7 +179,7 @@ async function handler(
           });
         }
 
-        if (kind !== "custom" && connectionId && remoteMetadata) {
+        if (provider && connectionId && remoteMetadata) {
           // Allow redirection to public URL in local dev for webhook registrations.
           const baseUrl =
             process.env.DUST_WEBHOOKS_PUBLIC_URL ?? config.getClientFacingUrl();
@@ -188,7 +188,7 @@ async function handler(
             workspaceId: workspace.sId,
             webhookSource: webhookSource.toJSONForAdmin(),
           });
-          const service = WEBHOOK_PRESETS[kind].webhookService;
+          const service = WEBHOOK_PRESETS[provider].webhookService;
           const result = await service.createWebhooks({
             auth,
             connectionId,
