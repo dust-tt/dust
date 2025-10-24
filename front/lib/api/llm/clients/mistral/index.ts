@@ -59,7 +59,7 @@ export class MistralLLM extends LLM {
       ...conversation.messages.map(toMessage),
     ];
 
-    const events = await this.client.chat.stream({
+    const completionEvents = await this.client.chat.stream({
       model: this.model.modelId,
       messages,
       temperature: this.temperature,
@@ -69,7 +69,7 @@ export class MistralLLM extends LLM {
     });
 
     yield* streamLLMEvents({
-      completionEvents: events,
+      completionEvents,
       metadata: this.metadata,
     });
   }

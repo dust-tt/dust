@@ -4,4 +4,5 @@ export type LLMOptions = {
   reasoningEffort?: AgentReasoningEffort;
   temperature?: number;
   bypassFeatureFlag?: boolean;
+  step?: number;
 };

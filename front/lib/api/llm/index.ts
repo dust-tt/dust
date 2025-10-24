@@ -1,3 +1,4 @@
+import { GoogleLLM } from "@app/lib/api/llm/clients/google";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMOptions } from "@app/lib/api/llm/types/options";
@@ -10,6 +11,7 @@ import type { ModelIdType } from "@app/types/assistant/models/types";
 const WHITELISTED_MODEL_IDS: ModelIdType[] = [
   "mistral-large-latest",
   "mistral-small-latest",
+  "gemini-2.5-pro",
 ];
 
 export async function getLLM(
@@ -42,6 +44,10 @@ export async function getLLM(
     case "mistral-large-latest":
     case "mistral-small-latest":
       return hasFeature ? new MistralLLM({ model: modelConfiguration }) : null;
+    case "gemini-2.5-pro":
+      return hasFeature
+        ? new GoogleLLM({ model: modelConfiguration, options })
+        : null;
     default:
       return null;
   }

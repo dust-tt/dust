@@ -36,12 +36,13 @@ function toContentChunk(
         type: "text",
         text: content.value,
       };
-    case "reasoning":
+    case "reasoning": {
       assert(content.value.reasoning, "Reasoning content is missing reasoning");
       return {
         type: "thinking",
         thinking: [{ type: "text", text: content.value.reasoning }],
       };
+    }
     default:
       assertNever(content);
   }
