@@ -21,6 +21,18 @@ export interface AgentMessageAnalyticsToolUsed {
   status: string;
 }
 
+export interface AgentMessageAnalyticsFeedback {
+  id: number;
+  direction: "positive" | "negative";
+  thumb_direction: "up" | "down";
+  content: string | null;
+  created_at: string;
+  user_id: number;
+  agent_configuration_id: string | null;
+  agent_configuration_version: number | null;
+  is_conversation_shared: boolean;
+}
+
 export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   agent_id: string;
   agent_version: string;
@@ -33,4 +45,5 @@ export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   tools_used: AgentMessageAnalyticsToolUsed[];
   user_id: string;
   workspace_id: string;
+  feedbacks?: AgentMessageAnalyticsFeedback[];
 }

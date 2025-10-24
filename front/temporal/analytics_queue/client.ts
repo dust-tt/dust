@@ -1,11 +1,12 @@
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/analytics_queue/config";
 import { makeAgentMessageAnalyticsWorkflowId } from "@app/temporal/analytics_queue/helpers";
-import { storeAgentAnalyticsWorkflow } from "@app/temporal/analytics_queue/workflows";
+import { storeAgentAnalyticsWorkflow, storeAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/workflows";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -52,6 +53,32 @@ export async function launchStoreAgentAnalyticsWorkflow({
       );
     }
 
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchStoreAgentMessageFeedbackWorkflow({
+  authType,
+  feedback,
+}: {
+  authType: AuthenticatorType;
+  feedback: AgentMessageFeedbackType;
+}): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClientForFrontNamespace();
+  const { workspaceId } = authType;
+  const { agentMessageId } = feedback;
+
+  const workflowId = `agent-message-feedback-${workspaceId}-${agentMessageId}`;
+
+  try {
+    await client.workflow.start(storeAgentMessageFeedbackWorkflow, {
+      args: [authType, { feedback }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+    });
+
+    return new Ok(undefined);
+  } catch (e) {
     return new Err(normalizeError(e));
   }
 }

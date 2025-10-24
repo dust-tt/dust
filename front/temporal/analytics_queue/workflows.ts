@@ -1,10 +1,11 @@
 import { proxyActivities } from "@temporalio/workflow";
 
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as activities from "@app/temporal/analytics_queue/activities";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
-const { storeAgentAnalyticsActivity } = proxyActivities<typeof activities>({
+const { storeAgentAnalyticsActivity, storeAgentMessageFeedbackActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
   retry: {
     // Analytics is best effort, only retry twice.
@@ -23,4 +24,15 @@ export async function storeAgentAnalyticsWorkflow(
   await storeAgentAnalyticsActivity(authType, {
     agentLoopArgs,
   });
+}
+
+export async function storeAgentMessageFeedbackWorkflow(
+  authType: AuthenticatorType,
+  {
+    feedback,
+  }: {
+    feedback: AgentMessageFeedbackType;
+  }
+): Promise<void> {
+  await storeAgentMessageFeedbackActivity(authType, feedback);
 }
