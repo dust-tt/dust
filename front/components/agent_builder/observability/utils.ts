@@ -24,3 +24,29 @@ export function calculateTopTools<T>(
     .slice(0, maxTools)
     .map(([toolName]) => toolName);
 }
+
+// Helpers for charts
+
+export function computeTopToolsFromCounts(
+  counts: Map<string, number>,
+  maxTools: number
+): string[] {
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, maxTools)
+    .map(([name]) => name);
+}
+
+export type ValuesPayload = { values: Record<string, number> };
+
+export function makeIsTopForPayload(topTools: string[]) {
+  return (payload: ValuesPayload, seriesIdx: number) => {
+    for (let k = seriesIdx + 1; k < topTools.length; k++) {
+      const nextTool = topTools[k];
+      if ((payload.values[nextTool] ?? 0) > 0) {
+        return false;
+      }
+    }
+    return true;
+  };
+}
