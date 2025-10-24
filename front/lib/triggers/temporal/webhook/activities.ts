@@ -134,8 +134,8 @@ export async function runTriggerWebhookActivity({
   }
 
   // Filter out non-subscribed events
-  if (webhookSource.kind !== "custom") {
-    const { type, field } = WEBHOOK_PRESETS[webhookSource.kind].eventCheck;
+  if (webhookSource.provider) {
+    const { type, field } = WEBHOOK_PRESETS[webhookSource.provider].eventCheck;
 
     // Node http module behavior is to lowercase all headers keys
     let receivedEventName: string | undefined;
@@ -153,7 +153,7 @@ export async function runTriggerWebhookActivity({
     if (
       receivedEventName === undefined ||
       // Event not in preset
-      !WEBHOOK_PRESETS[webhookSource.kind].events
+      !WEBHOOK_PRESETS[webhookSource.provider].events
         .map((event) => event.name)
         .includes(receivedEventName) ||
       // Event not subscribed

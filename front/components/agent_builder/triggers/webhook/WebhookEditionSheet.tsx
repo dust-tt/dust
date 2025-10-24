@@ -236,10 +236,10 @@ export function WebhookEditionSheet({
   } = useFormContext<WebhookFormValues>();
 
   const selectedPreset = useMemo((): PresetWebhook | null => {
-    if (!webhookSourceView || webhookSourceView.kind === "custom") {
+    if (!webhookSourceView || webhookSourceView.provider === null) {
       return null;
     }
-    return WEBHOOK_PRESETS[webhookSourceView.kind];
+    return WEBHOOK_PRESETS[webhookSourceView.provider];
   }, [webhookSourceView]);
 
   const availableEvents = useMemo(() => {
