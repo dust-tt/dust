@@ -92,3 +92,74 @@ export function MentionDisplay({
 
   return <MentionTrigger mention={mention} />;
 }
+
+/*
+=======
+  const router = useRouter();
+  const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
+
+  const { id, label, description, type: mentionType } = node.attrs;
+
+  const handleAgentStartConversation = async () => {
+    if (!owner) {
+      return;
+    }
+    await router.push(getConversationRoute(owner.sId, "new", `agent=${id}`));
+  };
+
+  const handleAgentSeeDetails = () => {
+    onOpenChangeAgentModal(true);
+    setQueryParam(router, "agentDetails", id);
+  };
+
+  const handleViewMembers = async () => {
+    if (!owner) {
+      return;
+    }
+    await router.push(`/w/${owner.sId}/members`);
+  };
+
+  const trigger = (
+    <DropdownMenuTrigger asChild>
+      <span className="inline-block cursor-pointer font-medium text-highlight-500">
+        @{label}
+      </span>
+    </DropdownMenuTrigger>
+  );
+
+  return (
+    <NodeViewWrapper className="inline-flex">
+      <TooltipProvider>
+        <DropdownMenu>
+          <TooltipRoot>
+            <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+            {description && <TooltipContent>{description}</TooltipContent>}
+          </TooltipRoot>
+          <DropdownMenuContent side="top" align="start">
+            {mentionType === "agent" ? (
+              <>
+                <DropdownMenuItem
+                  onClick={handleAgentStartConversation}
+                  icon={ChatBubbleBottomCenterTextIcon}
+                  label={`New conversation with @${label}`}
+                />
+                <DropdownMenuItem
+                  onClick={handleAgentSeeDetails}
+                  icon={EyeIcon}
+                  label={`About @${label}`}
+                />
+              </>
+            ) : (
+              <>
+                <DropdownMenuItem
+                  onClick={handleViewMembers}
+                  icon={EyeIcon}
+                  label={`View members`}
+                />
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TooltipProvider>
+
+ */
