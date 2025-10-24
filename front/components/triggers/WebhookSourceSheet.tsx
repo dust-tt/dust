@@ -193,7 +193,7 @@ function WebhookSourceSheetContent({
       signatureHeader: "",
       signatureAlgorithm: "sha256",
       provider: mode.provider,
-      subscribedEvents: provider
+      subscribedEvents: mode.provider
         ? WEBHOOK_PRESETS[mode.provider].events.map((e) => e.value)
         : [],
     }),
@@ -544,15 +544,15 @@ function WebhookSourceSheetContent({
     () => [
       {
         id: "create",
-        title: `Create ${WEBHOOK_PRESETS[mode.kind].name} Webhook Source`,
+        title: `Create ${WEBHOOK_PRESETS[mode.provider].name} Webhook Source`,
         description: "",
-        icon: WEBHOOK_PRESETS[mode.kind].icon,
+        icon: WEBHOOK_PRESETS[mode.provider].icon,
         content: (
           <FormProvider {...createForm}>
             <div className="space-y-4">
               <CreateWebhookSourceFormContent
                 form={createForm}
-                kind={mode.kind}
+                provider={mode.provider}
                 owner={owner}
                 onRemoteProviderDataChange={(data) => {
                   setRemoteProviderData(data?.remoteMetadata ?? null);
@@ -572,7 +572,7 @@ function WebhookSourceSheetContent({
         description: "Webhook source for triggering assistants.",
         icon: systemView
           ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />
-          : WEBHOOK_PRESETS[mode.kind].icon,
+          : WEBHOOK_PRESETS[mode.provider].icon,
         content:
           systemView && webhookSource ? (
             <FormProvider {...editForm}>

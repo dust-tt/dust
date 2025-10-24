@@ -66,21 +66,6 @@ export function CreateWebhookSourceFormContent({
     name: "subscribedEvents",
   });
 
-  const { serviceData, isFetchingServiceData, fetchServiceData } =
-    useWebhookServiceData(owner ?? null, provider);
-
-  const isCustom = (() => {
-    switch (kind) {
-      case "custom":
-      case "test":
-        return true; // These are not OAuth-based kinds
-      case "github":
-        return false;
-      default:
-        assertNever(kind);
-    }
-  })();
-
   return (
     <>
       <Controller
@@ -163,14 +148,13 @@ export function CreateWebhookSourceFormContent({
           return (
             <CreateFormComponent
               owner={owner}
-              kind={kind}
               onDataToCreateWebhookChange={onRemoteProviderDataChange}
               onReadyToSubmitChange={onPresetReadyToSubmitChange}
             />
           );
         })()}
 
-      {kind === "custom" && (
+      {!provider && (
         <div>
           <CollapsibleComponent
             rootProps={{ defaultOpen: false }}
