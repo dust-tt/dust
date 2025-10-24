@@ -114,6 +114,7 @@ async function createConversationForAgentConfiguration({
     title: conversationTitle,
     visibility: "unlisted",
     triggerId: trigger.id,
+    spaceId: null,
   });
 
   const baseContext = {

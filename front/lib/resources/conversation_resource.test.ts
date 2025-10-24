@@ -16,7 +16,8 @@ import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -702,6 +703,698 @@ describe("ConversationResource", () => {
           conversationId: tempSpaceConvo.sId,
         });
       });
+    });
+  });
+
+  describe("Space Handling", () => {
+    describe("makeNew with optional space", () => {
+      it("should create a conversation with a space when space is provided", async () => {
+        const { workspace, authenticator, user } = await createResourceTest({
+          role: "admin",
+        });
+
+        const space = await SpaceFactory.regular(workspace);
+
+        // Add user to the space
+        const addMembersRes = await space.addMembers(authenticator, {
+          userIds: [user.sId],
+        });
+        assert(addMembersRes.isOk(), "Failed to add user to space");
+
+        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
+        );
+
+        // Test makeNew with space
+        const testConversation = await ConversationResource.makeNew(
+          auth,
+          {
+            title: "Test conversation with space",
+            sId: generateRandomModelSId(),
+            requestedGroupIds: [],
+            requestedSpaceIds: [],
+          },
+          space
+        );
+
+        expect(testConversation).toBeDefined();
+        expect(testConversation.space).toBe(space);
+      });
+
+      it("should create a conversation without a space when space is null", async () => {
+        const { workspace, user } = await createResourceTest({
+          role: "admin",
+        });
+
+        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
+        );
+
+        const testConversation = await ConversationResource.makeNew(
+          auth,
+          {
+            title: "Test conversation without space",
+            sId: generateRandomModelSId(),
+            requestedGroupIds: [],
+            requestedSpaceIds: [],
+          },
+          null
+        );
+
+        expect(testConversation).toBeDefined();
+        expect(testConversation.space).toBeNull();
+      });
+
+      it("should create a conversation with the provided space and return it in the resource", async () => {
+        const { workspace, authenticator, user } = await createResourceTest({
+          role: "admin",
+        });
+
+        const space = await SpaceFactory.regular(workspace);
+
+        // Add user to the space
+        const addMembersRes = await space.addMembers(authenticator, {
+          userIds: [user.sId],
+        });
+        assert(addMembersRes.isOk(), "Failed to add user to space");
+
+        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
+        );
+
+        const testConversation = await ConversationResource.makeNew(
+          auth,
+          {
+            title: "Test conversation",
+            sId: generateRandomModelSId(),
+            requestedGroupIds: [],
+            requestedSpaceIds: [],
+          },
+          space
+        );
+
+        // Verify the space is accessible via the getter
+        expect(testConversation.space).toBeDefined();
+        expect(testConversation.space?.sId).toBe(space.sId);
+        expect(testConversation.space?.id).toBe(space.id);
+      });
+    });
+
+    describe("space getter", () => {
+      it("should return the space when space is provided and set", async () => {
+        const { workspace, authenticator, user } = await createResourceTest({
+          role: "admin",
+        });
+
+        const space = await SpaceFactory.regular(workspace);
+
+        // Add user to the space
+        const addMembersRes = await space.addMembers(authenticator, {
+          userIds: [user.sId],
+        });
+        assert(addMembersRes.isOk(), "Failed to add user to space");
+
+        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
+        );
+
+        const testConversation = await ConversationResource.makeNew(
+          auth,
+          {
+            title: "Test conversation",
+            sId: generateRandomModelSId(),
+            requestedGroupIds: [],
+            requestedSpaceIds: [],
+          },
+          space
+        );
+
+        expect(testConversation.space).toBe(space);
+      });
+
+      it("should return null when space is null", async () => {
+        const { workspace, user } = await createResourceTest({
+          role: "admin",
+        });
+
+        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
+        );
+
+        const testConversation = await ConversationResource.makeNew(
+          auth,
+          {
+            title: "Test conversation",
+            sId: generateRandomModelSId(),
+            requestedGroupIds: [],
+            requestedSpaceIds: [],
+          },
+          null
+        );
+
+        expect(testConversation.space).toBeNull();
+      });
+
+      it("should throw error when conversation has spaceId but space is not loaded", async () => {
+        const { workspace, user, globalSpace } = await createResourceTest({
+          role: "admin",
+        });
+
+        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
+        );
+
+        // Create a conversation with space but don't provide the space
+        const testConversation = await ConversationResource.makeNew(
+          auth,
+          {
+            title: "Test conversation",
+            sId: generateRandomModelSId(),
+            spaceId: globalSpace.id,
+            requestedGroupIds: [],
+            requestedSpaceIds: [],
+          },
+          null
+        );
+
+        expect(() => {
+          testConversation.space;
+        }).toThrow(
+          "This conversation is associated with a space but the related space is not loaded. Action: make sure to load the space when fetching the conversation."
+        );
+      });
+    });
+
+    describe("getRequestedSpaceIdsFromModel", () => {
+      it("should include the main space when space is set", async () => {
+        const { workspace, authenticator, user } = await createResourceTest({
+          role: "admin",
+        });
+
+        const space = await SpaceFactory.regular(workspace);
+
+        // Add user to the space
+        const addMembersRes = await space.addMembers(authenticator, {
+          userIds: [user.sId],
+        });
+        assert(addMembersRes.isOk(), "Failed to add user to space");
+
+        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
+        );
+
+        const testConversation = await ConversationResource.makeNew(
+          auth,
+          {
+            title: "Test conversation",
+            sId: generateRandomModelSId(),
+            requestedGroupIds: [],
+            requestedSpaceIds: [],
+          },
+          space
+        );
+
+        const spaceIds = testConversation.getRequestedSpaceIdsFromModel(auth);
+
+        expect(spaceIds).toContain(space.sId);
+      });
+
+      it("should not include the main space when space is null", async () => {
+        const { workspace, user } = await createResourceTest({
+          role: "admin",
+        });
+
+        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
+        );
+
+        const testConversation = await ConversationResource.makeNew(
+          auth,
+          {
+            title: "Test conversation",
+            sId: generateRandomModelSId(),
+            requestedGroupIds: [],
+            requestedSpaceIds: [],
+          },
+          null
+        );
+
+        const spaceIds = testConversation.getRequestedSpaceIdsFromModel(auth);
+
+        expect(spaceIds).toHaveLength(0);
+      });
+
+      it("should include both requested spaces and main space", async () => {
+        const { workspace, authenticator, user } = await createResourceTest({
+          role: "admin",
+        });
+
+        const mainSpace = await SpaceFactory.regular(workspace);
+        const additionalSpace = await SpaceFactory.regular(workspace);
+
+        // Add user to both spaces
+        const addMainRes = await mainSpace.addMembers(authenticator, {
+          userIds: [user.sId],
+        });
+        assert(addMainRes.isOk(), "Failed to add user to main space");
+
+        const addAdditionalRes = await additionalSpace.addMembers(
+          authenticator,
+          {
+            userIds: [user.sId],
+          }
+        );
+        assert(
+          addAdditionalRes.isOk(),
+          "Failed to add user to additional space"
+        );
+
+        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
+        );
+
+        const testConversation = await ConversationResource.makeNew(
+          auth,
+          {
+            title: "Test conversation",
+            sId: generateRandomModelSId(),
+            requestedGroupIds: [],
+            requestedSpaceIds: [additionalSpace.id],
+          },
+          mainSpace
+        );
+
+        const spaceIds = testConversation.getRequestedSpaceIdsFromModel(auth);
+
+        // Should include both the requested space and the main space
+        expect(spaceIds).toContain(
+          SpaceResource.modelIdToSId({
+            id: additionalSpace.id,
+            workspaceId: workspace.id,
+          })
+        );
+        expect(spaceIds).toContain(mainSpace.sId);
+        expect(spaceIds.length).toBe(2);
+      });
+    });
+
+    describe("getRequestedGroupIdsFromModel", () => {
+      it("should include groups from the main space when space is set", async () => {
+        const { workspace, authenticator, user } = await createResourceTest({
+          role: "admin",
+        });
+
+        const space = await SpaceFactory.regular(workspace);
+
+        // Add user to the space
+        const addMembersRes = await space.addMembers(authenticator, {
+          userIds: [user.sId],
+        });
+        assert(addMembersRes.isOk(), "Failed to add user to space");
+
+        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
+        );
+
+        const testConversation = await ConversationResource.makeNew(
+          auth,
+          {
+            title: "Test conversation",
+            sId: generateRandomModelSId(),
+            requestedGroupIds: [],
+            requestedSpaceIds: [],
+          },
+          space
+        );
+
+        const groupIds = testConversation.getRequestedGroupIdsFromModel(auth);
+
+        // The main space should have groups, so groupIds should include them
+        expect(Array.isArray(groupIds)).toBe(true);
+        expect(groupIds.length).toBeGreaterThan(0);
+
+        // The last element should be the groups from the main space
+        const spaceGroupIds = space.groups.map((g) => g.sId);
+        expect(groupIds[groupIds.length - 1]).toEqual(spaceGroupIds);
+      });
+
+      it("should not include space groups when space is null", async () => {
+        const { workspace, user } = await createResourceTest({
+          role: "admin",
+        });
+
+        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
+        );
+
+        const testConversation = await ConversationResource.makeNew(
+          auth,
+          {
+            title: "Test conversation",
+            sId: generateRandomModelSId(),
+            requestedGroupIds: [],
+            requestedSpaceIds: [],
+          },
+          null
+        );
+
+        const groupIds = testConversation.getRequestedGroupIdsFromModel(auth);
+
+        // Should be empty since no groups were added via requestedGroupIds and no space
+        expect(groupIds).toHaveLength(0);
+      });
+
+      it("should include both requested groups and main space groups", async () => {
+        const { workspace, authenticator, user } = await createResourceTest({
+          role: "admin",
+        });
+
+        const mainSpace = await SpaceFactory.regular(workspace);
+
+        // Add user to the space
+        const addMembersRes = await mainSpace.addMembers(authenticator, {
+          userIds: [user.sId],
+        });
+        assert(addMembersRes.isOk(), "Failed to add user to space");
+
+        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
+        );
+
+        // Create some requested group IDs (simulating groups)
+        const mockGroupId = 12345;
+        const testConversation = await ConversationResource.makeNew(
+          auth,
+          {
+            title: "Test conversation",
+            sId: generateRandomModelSId(),
+            requestedGroupIds: [[mockGroupId]],
+            requestedSpaceIds: [],
+          },
+          mainSpace
+        );
+
+        const groupIds = testConversation.getRequestedGroupIdsFromModel(auth);
+
+        // Should include both the requested group and the main space groups
+        expect(groupIds.length).toBeGreaterThan(1);
+        // Last element should be the main space groups
+        const spaceGroupIds = mainSpace.groups.map((g) => g.sId);
+        expect(groupIds[groupIds.length - 1]).toEqual(spaceGroupIds);
+      });
+    });
+  });
+
+  describe("Space Write Permissions", () => {
+    describe("makeNew with space access", () => {
+      it("should allow creating a conversation with a space when user has access", async () => {
+        const { workspace, authenticator, user } = await createResourceTest({
+          role: "admin",
+        });
+
+        const space = await SpaceFactory.regular(workspace);
+
+        // Add the user as a member of the space
+        const addMembersRes = await space.addMembers(authenticator, {
+          userIds: [user.sId],
+        });
+        assert(addMembersRes.isOk(), "Failed to add user to space");
+
+        // Refresh auth to get updated permissions
+        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
+        );
+
+        const conversation = await ConversationResource.makeNew(
+          auth,
+          {
+            title: "Test conversation with access",
+            sId: generateRandomModelSId(),
+            requestedGroupIds: [],
+            requestedSpaceIds: [],
+          },
+          space
+        );
+
+        expect(conversation).toBeDefined();
+        expect(conversation.space).toBe(space);
+      });
+
+      it("should throw error when creating a conversation in a space without access", async () => {
+        const { workspace } = await createResourceTest({
+          role: "admin",
+        });
+
+        // Create a space with restricted access
+        const restrictedSpace = await SpaceFactory.regular(workspace);
+
+        // Create a regular user without access to the space
+        const regularUser = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, regularUser, {
+          role: "user",
+        });
+
+        const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          regularUser.sId,
+          workspace.sId
+        );
+
+        // Try to create a conversation in the restricted space
+        const attempt = ConversationResource.makeNew(
+          userAuth,
+          {
+            title: "Test conversation without access",
+            sId: generateRandomModelSId(),
+            requestedGroupIds: [],
+            requestedSpaceIds: [],
+          },
+          restrictedSpace
+        );
+
+        await expect(attempt).rejects.toThrow(
+          "Cannot create conversation in a space you do not have access to."
+        );
+      });
+
+      it("should allow creating a conversation with no space regardless of permissions", async () => {
+        const { workspace } = await createResourceTest({
+          role: "admin",
+        });
+
+        // Create a regular user
+        const regularUser = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, regularUser, {
+          role: "user",
+        });
+
+        const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          regularUser.sId,
+          workspace.sId
+        );
+
+        // Creating a conversation with no space should work
+        const conversation = await ConversationResource.makeNew(
+          userAuth,
+          {
+            title: "Test conversation with no space",
+            sId: generateRandomModelSId(),
+            requestedGroupIds: [],
+            requestedSpaceIds: [],
+          },
+          null
+        );
+
+        expect(conversation).toBeDefined();
+        expect(conversation.space).toBeNull();
+      });
+    });
+  });
+
+  describe("Space Workspace Matching", () => {
+    it("should throw error when space belongs to a different workspace (access check happens first)", async () => {
+      const { workspace: workspace1, user: user1 } = await createResourceTest({
+        role: "admin",
+      });
+
+      // Create a second workspace - this properly sets up default groups
+      const { workspace: workspace2, authenticator: adminAuth2 } =
+        await createResourceTest({
+          role: "admin",
+        });
+
+      const spaceInWorkspace2 = await SpaceFactory.regular(workspace2);
+
+      // Add user1 to workspace2
+      await MembershipFactory.associate(workspace2, user1, {
+        role: "user",
+      });
+
+      // Add user1 as member of the space in workspace2 (using admin auth from workspace2)
+      const addMembersRes = await spaceInWorkspace2.addMembers(adminAuth2, {
+        userIds: [user1.sId],
+      });
+      assert(addMembersRes.isOk(), "Failed to add user to space");
+
+      // Get auth for user1 in workspace1
+      const user1AuthInWorkspace1 =
+        await Authenticator.fromUserIdAndWorkspaceId(user1.sId, workspace1.sId);
+
+      // Try to create a conversation in workspace1 using a space from workspace2
+      // Note: The access check will fail first because user1 doesn't have access to this space
+      // from the perspective of workspace1's authentication
+      const attempt = ConversationResource.makeNew(
+        user1AuthInWorkspace1,
+        {
+          title: "Test conversation with mismatched space",
+          sId: generateRandomModelSId(),
+          requestedGroupIds: [],
+          requestedSpaceIds: [],
+        },
+        spaceInWorkspace2
+      );
+
+      // This should throw an error (either access or workspace mismatch)
+      await expect(attempt).rejects.toThrow();
+    });
+
+    it("should allow creating conversation when space belongs to same workspace", async () => {
+      const { workspace, authenticator, user } = await createResourceTest({
+        role: "admin",
+      });
+
+      const space = await SpaceFactory.regular(workspace);
+
+      // Add user to the space
+      const addMembersRes = await space.addMembers(authenticator, {
+        userIds: [user.sId],
+      });
+      assert(addMembersRes.isOk(), "Failed to add user to space");
+
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      // This should succeed because the space is in the same workspace
+      const conversation = await ConversationResource.makeNew(
+        auth,
+        {
+          title: "Test conversation with matching workspace",
+          sId: generateRandomModelSId(),
+          requestedGroupIds: [],
+          requestedSpaceIds: [],
+        },
+        space
+      );
+
+      expect(conversation).toBeDefined();
+      expect(conversation.space?.id).toBe(space.id);
+    });
+  });
+
+  describe("makeNew order of operations", () => {
+    it("should not create conversation if space access check fails", async () => {
+      const { workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      // Create a restricted space
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+
+      // Create a user without access to the space
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, {
+        role: "user",
+      });
+
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      // Try to create a conversation - should fail before creating the object
+      const testSId = generateRandomModelSId();
+      const attempt = ConversationResource.makeNew(
+        userAuth,
+        {
+          title: "Should not be created",
+          sId: testSId,
+          requestedGroupIds: [],
+          requestedSpaceIds: [],
+        },
+        restrictedSpace
+      );
+
+      await expect(attempt).rejects.toThrow(
+        "Cannot create conversation in a space you do not have access to."
+      );
+
+      // Verify the conversation was not created by trying to fetch it
+      // (the conversation should not exist in the database)
+      const fetchedConversations = await ConversationResource.listAll(userAuth);
+      const foundConversation = fetchedConversations.some(
+        (c) => c.sId === testSId
+      );
+      expect(foundConversation).toBe(false);
+    });
+
+    it("should verify checks run before conversation creation", async () => {
+      const { workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      // Create a restricted space that the user doesn't have access to
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+
+      // Create another user without access
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "user",
+      });
+
+      const otherUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      const testSId = generateRandomModelSId();
+
+      // Attempt should fail at validation, not at creation
+      const attempt = ConversationResource.makeNew(
+        otherUserAuth,
+        {
+          title: "Should not be created",
+          sId: testSId,
+          requestedGroupIds: [],
+          requestedSpaceIds: [],
+        },
+        restrictedSpace
+      );
+
+      await expect(attempt).rejects.toThrow(
+        "Cannot create conversation in a space you do not have access to."
+      );
+
+      // Verify the conversation was never created in the database
+      const fetchedConversations =
+        await ConversationResource.listAll(otherUserAuth);
+      const foundConversation = fetchedConversations.some(
+        (c) => c.sId === testSId
+      );
+      expect(foundConversation).toBe(false);
     });
   });
 });

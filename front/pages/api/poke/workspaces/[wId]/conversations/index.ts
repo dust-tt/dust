@@ -79,6 +79,7 @@ async function handler(
           hasError: c.hasError,
           requestedGroupIds: c.getRequestedGroupIdsFromModel(auth),
           requestedSpaceIds: c.getRequestedSpaceIdsFromModel(auth),
+          spaceId: c.space?.sId ?? null,
         };
       });
 

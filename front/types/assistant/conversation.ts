@@ -234,6 +234,7 @@ export type ConversationWithoutContentType = {
   hasError: boolean;
   sId: string;
   title: string | null;
+  spaceId: string | null;
 
   // Ideally, theses 2 properties should be moved to the ConversationType.
   requestedGroupIds: string[][];
