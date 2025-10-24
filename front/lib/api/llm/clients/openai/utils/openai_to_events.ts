@@ -5,14 +5,9 @@ import type {
 } from "openai/resources/responses/responses";
 import type { Response } from "openai/resources/responses/responses";
 
-import type {
-  LLMOutputItem,
-  ProviderMetadata,
-} from "@app/lib/api/llm/types/events";
+import type { ProviderMetadata } from "@app/lib/api/llm/types/events";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import { assertNever } from "@app/types";
 import { compact } from "lodash";
-import assert from "assert";
 
 export async function* streamLLMEvents({
   responseStreamEvents,
@@ -20,7 +15,7 @@ export async function* streamLLMEvents({
 }: {
   responseStreamEvents: AsyncIterable<ResponseStreamEvent>;
   metadata: ProviderMetadata;
-}) {
+}): AsyncGenerator<LLMEvent, void, undefined> {
   for await (const event of responseStreamEvents) {
     yield* toEvents({
       event,
