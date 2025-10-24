@@ -17,6 +17,7 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 
 import { ConfirmContext } from "@app/components/Confirm";
+import { getIcon } from "@app/components/resources/resources_icons";
 import type {
   CreateWebhookSourceFormData,
   RemoteProviderData,
@@ -41,16 +42,14 @@ import {
   useDeleteWebhookSource,
   useWebhookSourcesWithViews,
 } from "@app/lib/swr/webhook_source";
+import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
 import type {
   WebhookProvider,
   WebhookSourceWithSystemViewType,
 } from "@app/types/triggers/webhooks";
-import {
-  CUSTOM_WEBHOOK_SOURCE_ICON,
-  WEBHOOK_PRESETS,
-} from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 export type WebhookSourceSheetMode = { provider: WebhookProvider | null } & (
   | { type: "create" }
@@ -551,7 +550,7 @@ function WebhookSourceSheetContent({
         description: "",
         icon: mode.provider
           ? WEBHOOK_PRESETS[mode.provider].icon
-          : CUSTOM_WEBHOOK_SOURCE_ICON,
+          : getIcon(DEFAULT_WEBHOOK_ICON),
         content: (
           <FormProvider {...createForm}>
             <div className="space-y-4">
@@ -579,7 +578,7 @@ function WebhookSourceSheetContent({
           ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />
           : mode.provider
             ? WEBHOOK_PRESETS[mode.provider].icon
-            : CUSTOM_WEBHOOK_SOURCE_ICON,
+            : getIcon(DEFAULT_WEBHOOK_ICON),
         content:
           systemView && webhookSource ? (
             <FormProvider {...editForm}>

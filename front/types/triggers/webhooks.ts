@@ -1,5 +1,4 @@
 import type { Icon } from "@dust-tt/sparkle";
-import { ActionGlobeAltIcon } from "@dust-tt/sparkle";
 import { z } from "zod";
 
 import type {
@@ -22,8 +21,6 @@ export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
 
 export type WebhookSourceSignatureAlgorithm =
   (typeof WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS)[number];
-
-export const CUSTOM_WEBHOOK_SOURCE_ICON = ActionGlobeAltIcon;
 
 export const WEBHOOK_PROVIDERS = ["test", "github"] as const;
 
