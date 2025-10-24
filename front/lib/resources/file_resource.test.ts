@@ -50,7 +50,6 @@ describe("FileResource", () => {
       });
 
       await frameFile.markAsReady();
-      await frameFile.markAsReady();
 
       const frameShareInfo = await frameFile.getShareInfo();
 
@@ -86,7 +85,6 @@ describe("FileResource", () => {
         useCaseMetadata: { conversationId: conversation.sId },
       });
 
-      await frameFile.markAsReady();
       await frameFile.markAsReady();
 
       const frameShareInfo = await frameFile.getShareInfo();
