@@ -15,8 +15,8 @@ import { PastedAttachmentExtension } from "@app/components/assistant/conversatio
 import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import type { SuggestionProps } from "@app/components/assistant/conversation/input_bar/editor/useMentionAgentDropdown";
-import { mentionPluginKey } from "@app/components/assistant/conversation/input_bar/editor/useMentionAgentDropdown";
+import type { SuggestionProps } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
+import { mentionPluginKey } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions";

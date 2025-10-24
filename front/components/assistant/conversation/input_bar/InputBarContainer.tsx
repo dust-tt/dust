@@ -16,7 +16,7 @@ import useAgentSuggestions from "@app/components/assistant/conversation/input_ba
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleAgentMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleAgentMentions";
-import { useMentionAgentDropdown } from "@app/components/assistant/conversation/input_bar/editor/useMentionAgentDropdown";
+import useMemberSuggestions from "@app/components/assistant/conversation/input_bar/editor/useMemberSuggestions";
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -37,6 +37,7 @@ import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -46,6 +47,8 @@ import type {
 } from "@app/types";
 import { assertNever, normalizeError } from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
+
+import { useMentionAgentDropdown } from "./editor/useMentionDropdown";
 
 export const INPUT_BAR_ACTIONS = [
   "tools",
@@ -98,6 +101,14 @@ const InputBarContainer = ({
   selectedMCPServerViews,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const memberSuggestions = useMemberSuggestions(
+    owner,
+    "",
+    !featureFlags.includes("mentions_v2")
+  );
   const agentSuggestions = useAgentSuggestions(agentConfigurations, owner);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
@@ -260,13 +271,35 @@ const InputBarContainer = ({
   );
 
   // Pass the editor ref to the mention dropdown hook
+  const combinedSuggestions = useMemo(
+    () => ({
+      suggestions: [
+        ...agentSuggestions.suggestions,
+        ...memberSuggestions.suggestions,
+      ],
+      fallbackSuggestions: [
+        ...agentSuggestions.fallbackSuggestions,
+        ...memberSuggestions.fallbackSuggestions,
+      ],
+      isLoading: agentSuggestions.isLoading || memberSuggestions.isLoading,
+    }),
+    [
+      agentSuggestions.suggestions,
+      memberSuggestions.suggestions,
+      agentSuggestions.fallbackSuggestions,
+      memberSuggestions.fallbackSuggestions,
+      agentSuggestions.isLoading,
+      memberSuggestions.isLoading,
+    ]
+  );
+
   const agentMentionDropdown = useMentionAgentDropdown(
-    agentSuggestions,
+    combinedSuggestions,
     editorRef
   );
 
   const { editor, editorService } = useCustomEditor({
-    suggestions: agentSuggestions,
+    suggestions: combinedSuggestions,
     onEnterKeyDown,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
