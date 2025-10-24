@@ -2,130 +2,200 @@ import {
   MAX_TOOLS_DISPLAYED,
   PERCENTAGE_MULTIPLIER,
 } from "@app/components/agent_builder/observability/constants";
+import type {
+  ChartDatum,
+  Mode,
+} from "@app/components/agent_builder/observability/types";
 import { computeTopToolsFromCounts } from "@app/components/agent_builder/observability/utils";
+import type { ToolExecutionByVersion } from "@app/lib/api/assistant/observability/tool_execution";
+import type { ToolStepIndexByStep } from "@app/lib/api/assistant/observability/tool_step_index";
 import {
   useAgentToolExecution,
   useAgentToolStepIndex,
 } from "@app/lib/swr/assistants";
-import type { ChartDatum, Mode } from "./types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+
+type ToolUsageResult = {
+  chartData: ChartDatum[];
+  topTools: string[];
+  xAxisLabel: string;
+  emptyMessage: string;
+  legendDescription: string;
+  isLoading: boolean;
+  errorMessage: string | undefined;
+};
+
+type ToolDataItem = {
+  label: string | number;
+  tools: Record<string, { count: number }>;
+  total?: number;
+};
+
+function calculatePercentage(count: number, total: number): number {
+  if (total === 0) {
+    return 0;
+  }
+  return Math.round((count / total) * PERCENTAGE_MULTIPLIER);
+}
+
+function aggregateToolCounts(items: ToolDataItem[]): Map<string, number> {
+  const counts = new Map<string, number>();
+
+  for (const item of items) {
+    for (const [toolName, toolData] of Object.entries(item.tools)) {
+      const currentCount = counts.get(toolName) ?? 0;
+      counts.set(toolName, currentCount + toolData.count);
+    }
+  }
+
+  return counts;
+}
+
+function createChartData(
+  items: ToolDataItem[],
+  topTools: string[]
+): ChartDatum[] {
+  return items.map((item) => {
+    const total =
+      item.total ??
+      Object.values(item.tools).reduce((acc, tool) => acc + tool.count, 0);
+
+    const values: Record<string, number> = {};
+    for (const toolName of topTools) {
+      const toolData = item.tools[toolName];
+      const count = toolData?.count ?? 0;
+      values[toolName] = calculatePercentage(count, total);
+    }
+
+    return { label: item.label, values };
+  });
+}
+
+function normalizeVersionData(data: ToolExecutionByVersion[]): ToolDataItem[] {
+  return data.map((item) => ({
+    label: `v${item.version}`,
+    tools: item.tools,
+  }));
+}
+
+function normalizeStepData(data: ToolStepIndexByStep[]): ToolDataItem[] {
+  return data.map((item) => ({
+    label: item.step,
+    tools: item.tools,
+    total: item.total,
+  }));
+}
+
+function createEmptyResult(
+  xAxisLabel: string,
+  emptyMessage: string,
+  legendDescription: string,
+  isLoading: boolean,
+  errorMessage: string | undefined
+): ToolUsageResult {
+  return {
+    chartData: [],
+    topTools: [],
+    xAxisLabel,
+    emptyMessage,
+    legendDescription,
+    isLoading,
+    errorMessage,
+  };
+}
+
+function processToolUsageData(
+  data: ToolDataItem[],
+  xAxisLabel: string,
+  emptyMessage: string,
+  legendDescription: string,
+  isLoading: boolean,
+  errorMessage: string | undefined
+): ToolUsageResult {
+  if (data.length === 0) {
+    return createEmptyResult(
+      xAxisLabel,
+      emptyMessage,
+      legendDescription,
+      isLoading,
+      errorMessage
+    );
+  }
+
+  const counts = aggregateToolCounts(data);
+  const topTools = computeTopToolsFromCounts(counts, MAX_TOOLS_DISPLAYED);
+  const chartData = createChartData(data, topTools);
+
+  return {
+    chartData,
+    topTools,
+    xAxisLabel,
+    emptyMessage,
+    legendDescription,
+    isLoading,
+    errorMessage,
+  };
+}
 
 export function useToolUsageData(params: {
   workspaceId: string;
   agentConfigurationId: string;
   period: number;
   mode: Mode;
-}) {
+}): ToolUsageResult {
   const { workspaceId, agentConfigurationId, period, mode } = params;
 
   const exec = useAgentToolExecution({
     workspaceId,
     agentConfigurationId,
     days: period,
-    disabled: !workspaceId || !agentConfigurationId || mode !== "version",
+    disabled: mode !== "version",
   });
   const step = useAgentToolStepIndex({
     workspaceId,
     agentConfigurationId,
     days: period,
-    disabled: !workspaceId || !agentConfigurationId || mode !== "step",
+    disabled: mode !== "step",
   });
 
-  const isLoading =
-    mode === "version"
-      ? exec.isToolExecutionLoading
-      : step.isToolStepIndexLoading;
-  const errorMessage =
-    mode === "version"
-      ? exec.isToolExecutionError
+  switch (mode) {
+    case "version": {
+      const rawData = exec.toolExecutionByVersion ?? [];
+      const normalizedData = normalizeVersionData(rawData);
+      const isLoading = exec.isToolExecutionLoading;
+      const errorMessage = exec.isToolExecutionError
         ? "Failed to load tool execution data."
-        : undefined
-      : step.isToolStepIndexError
+        : undefined;
+
+      return processToolUsageData(
+        normalizedData,
+        "Version",
+        "No tool execution data available for this period.",
+        `Shows the relative usage frequency (%) of the top ${MAX_TOOLS_DISPLAYED} tools for each agent version.`,
+        isLoading,
+        errorMessage
+      );
+    }
+
+    case "step": {
+      const rawData = step.toolStepIndexByStep ?? [];
+      const normalizedData = normalizeStepData(rawData);
+      const isLoading = step.isToolStepIndexLoading;
+      const errorMessage = step.isToolStepIndexError
         ? "Failed to load step index distribution."
         : undefined;
 
-  if (mode === "version") {
-    const data = exec.toolExecutionByVersion ?? [];
-    if (data.length === 0) {
-      return {
-        chartData: [] as ChartDatum[],
-        topTools: [] as string[],
-        xAxisLabel: "Version",
-        emptyMessage: "No tool execution data available for this period.",
-        legendDescription: `Shows the relative usage frequency (%) of the top ${MAX_TOOLS_DISPLAYED} tools for each agent version.`,
+      return processToolUsageData(
+        normalizedData,
+        "Step",
+        "No tool usage by step index for this period.",
+        `Shows relative usage (%) of top ${MAX_TOOLS_DISPLAYED} tools per step index within a message.`,
         isLoading,
-        errorMessage,
-      };
+        errorMessage
+      );
     }
-    const counts = new Map<string, number>();
-    for (const v of data) {
-      for (const [toolName, toolData] of Object.entries(v.tools)) {
-        counts.set(toolName, (counts.get(toolName) ?? 0) + toolData.count);
-      }
-    }
-    const topTools = computeTopToolsFromCounts(counts, MAX_TOOLS_DISPLAYED);
-    const chartData: ChartDatum[] = data.map((v) => {
-      const total = Object.values(v.tools).reduce((acc, t) => acc + t.count, 0);
-      const values: Record<string, number> = {};
-      for (const t of topTools) {
-        const td = v.tools[t];
-        values[t] = td
-          ? total > 0
-            ? Math.round((td.count / total) * PERCENTAGE_MULTIPLIER)
-            : 0
-          : 0;
-      }
-      return { label: `v${v.version}`, values };
-    });
-    return {
-      chartData,
-      topTools,
-      xAxisLabel: "Version",
-      emptyMessage: "No tool execution data available for this period.",
-      legendDescription: `Shows the relative usage frequency (%) of the top ${MAX_TOOLS_DISPLAYED} tools for each agent version.`,
-      isLoading,
-      errorMessage,
-    };
-  } else {
-    const data = step.toolStepIndexByStep ?? [];
-    if (data.length === 0) {
-      return {
-        chartData: [] as ChartDatum[],
-        topTools: [] as string[],
-        xAxisLabel: "Step",
-        emptyMessage: "No tool usage by step index for this period.",
-        legendDescription: `Shows relative usage (%) of top ${MAX_TOOLS_DISPLAYED} tools per step index within a message.`,
-        isLoading,
-        errorMessage,
-      };
-    }
-    const counts = new Map<string, number>();
-    for (const s of data) {
-      for (const [toolName, toolData] of Object.entries(s.tools)) {
-        counts.set(toolName, (counts.get(toolName) ?? 0) + toolData.count);
-      }
-    }
-    const topTools = computeTopToolsFromCounts(counts, MAX_TOOLS_DISPLAYED);
-    const chartData: ChartDatum[] = data.map((s) => {
-      const total = s.total > 0 ? s.total : 0;
-      const values: Record<string, number> = {};
-      for (const t of topTools) {
-        const td = s.tools[t];
-        values[t] = td
-          ? total > 0
-            ? Math.round((td.count / total) * PERCENTAGE_MULTIPLIER)
-            : 0
-          : 0;
-      }
-      return { label: s.step, values };
-    });
-    return {
-      chartData,
-      topTools,
-      xAxisLabel: "Step",
-      emptyMessage: "No tool usage by step index for this period.",
-      legendDescription: `Shows relative usage (%) of top ${MAX_TOOLS_DISPLAYED} tools per step index within a message.`,
-      isLoading,
-      errorMessage,
-    };
+
+    default:
+      assertNever(mode);
   }
 }
