@@ -10,9 +10,9 @@ import {
   contentNodeMentionDirective,
 } from "@app/ui/components/markdown/ContentNodeMentionBlock";
 import {
-  MentionBlock,
-  mentionDirective,
-} from "@app/ui/components/markdown/MentionBlock";
+  AgentMentionBlock,
+  agentMentionDirective,
+} from "@app/ui/components/markdown/AgentMentionBlock";
 import type { LightWorkspaceType, UserMessageType } from "@dust-tt/client";
 import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
 import { useMemo } from "react";
@@ -37,14 +37,19 @@ export function UserMessage({
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       sup: CiteBlock,
-      mention: MentionBlock,
+      // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
+      mention: AgentMentionBlock,
       content_node_mention: ContentNodeMentionBlock,
     }),
     []
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective(), mentionDirective, contentNodeMentionDirective],
+    () => [
+      getCiteDirective(),
+      agentMentionDirective,
+      contentNodeMentionDirective,
+    ],
     []
   );
 
