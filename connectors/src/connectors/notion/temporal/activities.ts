@@ -304,12 +304,6 @@ export async function getPagesAndDatabasesToSync({
   databaseIds: string[];
   nextCursor: string | null;
 }> {
-  // The code never passes "database", but it could happen when replying existing workflows.
-  // Eventually we can remove this check.
-  if (filter == "database") {
-    filter = "data_source";
-  }
-
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("Could not find connector");
@@ -321,6 +315,15 @@ export async function getPagesAndDatabasesToSync({
     dataSourceId: connector.dataSourceId,
     workspaceId: connector.workspaceId,
   });
+
+  // The code never passes "database", but it could happen when replying existing workflows.
+  // Eventually we can remove this check.
+  if (filter == "database") {
+    filter = "data_source";
+    localLogger.warn(
+      "getPagesAndDatabasesToSync was called with filter=database. Should only happen when replaying old workflows."
+    );
+  }
 
   const accessToken = await getNotionAccessToken(connector.id);
 
