@@ -135,6 +135,7 @@ function toolUseContentBlockToToolCallEvent({
     metadata,
   };
 }
+
 function contentBlockToEvents({
   content,
   metadata,
