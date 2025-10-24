@@ -10,6 +10,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isArrayEqual2DUnordered, normalizeArrays } from "@app/lib/utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
 async function updateAgentRequestedGroupIds(
   workspaceId: string,
@@ -231,9 +232,23 @@ makeScript(
     },
   },
   async ({ workspaceId, execute, onlyActive, agentIds }, logger) => {
-    await updateAgentRequestedGroupIds(workspaceId, execute, logger, {
-      onlyActive,
-      agentIds: agentIds.map(String),
-    });
+    if (workspaceId) {
+      // Process specific workspace
+      await updateAgentRequestedGroupIds(workspaceId, execute, logger, {
+        onlyActive,
+        agentIds: agentIds.map(String),
+      });
+    } else {
+      // Process all workspaces
+      await runOnAllWorkspaces(
+        async (workspace) => {
+          await updateAgentRequestedGroupIds(workspace.sId, execute, logger, {
+            onlyActive,
+            agentIds: agentIds.map(String),
+          });
+        },
+        { concurrency: 3 }
+      );
+    }
   }
 );
