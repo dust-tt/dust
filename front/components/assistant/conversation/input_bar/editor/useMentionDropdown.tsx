@@ -6,13 +6,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
   EditorSuggestion,
-  EditorSuggestionAgent,
   EditorSuggestions,
 } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import {
-  filterSuggestionAgents,
-  isEditorSuggestionAgent,
-} from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import { filterSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 
 interface CommandFunction {
   (props: { id: string; label: string }): void;
@@ -33,7 +29,7 @@ export type SuggestionProps = {
 export interface MentionDropdownState {
   isOpen: boolean;
   query: string;
-  suggestionAgents: EditorSuggestionAgent[];
+  suggestionAgents: EditorSuggestion[];
   selectedIndex: number;
   triggerRect: DOMRect | null;
   isLoading: boolean;
@@ -85,7 +81,7 @@ export const useMentionAgentDropdown = (
           .insertContent({
             type: "mention",
             attrs: {
-              type: "agent",
+              type: suggestion.type,
               id: suggestion.id,
               label: suggestion.label,
               description: suggestion.description,
@@ -152,16 +148,16 @@ export const useMentionAgentDropdown = (
 
   // Single source of truth: filter suggestions whenever data or query changes
   useEffect(() => {
-    const filteredSuggestionAgents = filterSuggestionAgents(
+    const filtered = filterSuggestions(
       state.query,
-      editorSuggestions.suggestions.filter(isEditorSuggestionAgent),
-      editorSuggestions.fallbackSuggestions.filter(isEditorSuggestionAgent)
+      editorSuggestions.suggestions,
+      editorSuggestions.fallbackSuggestions
     );
 
     setState((prev) => ({
       ...prev,
       isLoading: editorSuggestions.isLoading,
-      suggestionAgents: filteredSuggestionAgents,
+      suggestionAgents: filtered,
     }));
   }, [
     editorSuggestions.suggestions,
