@@ -99,7 +99,6 @@ async function updateAgentsForWorkspace(
       status: {
         [Op.in]: ["active", "archived"],
       },
-      requestedSpaceIds: [],
     },
     attributes: [
       "id",
