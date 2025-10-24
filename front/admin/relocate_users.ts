@@ -37,6 +37,7 @@ function makeWorkOSThrottler<T>(logger: Logger) {
         const waitTime = (err.retryAfter + 1) * 1000;
         logger.info({ waitTime }, "Waiting");
         await new Promise((resolve) => setTimeout(resolve, waitTime));
+        // eslint-disable-next-line @typescript-eslint/return-await
         return await fn();
       } else {
         throw normalizeError(err);
