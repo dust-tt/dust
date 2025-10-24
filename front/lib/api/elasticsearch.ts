@@ -3,7 +3,6 @@ import { Client, errors as esErrors } from "@elastic/elasticsearch";
 
 import config from "@app/lib/api/config";
 import { normalizeError } from "@app/types";
-import type { AgentMessageAnalyticsFeedback } from "@app/types/assistant/analytics";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -73,7 +72,7 @@ function toElasticsearchError(err: unknown): ElasticsearchError {
   return new ElasticsearchError("unknown_error", normalizeError(err).message);
 }
 
-async function withEs<T>(
+export async function withEs<T>(
   fn: (client: Client) => Promise<T>
 ): Promise<Result<T, ElasticsearchError>> {
   const client = await getClient();
@@ -161,24 +160,5 @@ export async function searchAnalytics<
     size: options?.size,
     from: options?.from,
     sort: options?.sort,
-  });
-}
-
-/**
- * Updates the feedbacks array for an analytics document.
- */
-export async function appendFeedbackToAnalyticsDoc({
-  id,
-  feedbacks,
-}: {
-  id: string;
-  feedbacks: AgentMessageAnalyticsFeedback[];
-}): Promise<Result<estypes.UpdateResponse, ElasticsearchError>> {
-  return withEs(async (client) => {
-    return client.update({
-      index: ANALYTICS_ALIAS_NAME,
-      id,
-      doc: { feedbacks },
-    });
   });
 }
