@@ -2,6 +2,7 @@ import type { estypes } from "@elastic/elasticsearch";
 import { Client, errors as esErrors } from "@elastic/elasticsearch";
 
 import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import { normalizeError } from "@app/types";
 import type { AgentMessageAnalyticsFeedback } from "@app/types/assistant/analytics";
 import type { Result } from "@app/types/shared/result";
@@ -168,14 +169,16 @@ export async function searchAnalytics<
  * Append a feedback entry atomically to the `feedbacks` array.
  */
 export async function appendFeedbackToAnalyticsDoc({
+  auth,
   id,
-  workspaceId,
   feedback,
 }: {
+  auth: Authenticator;
   id: string;
-  workspaceId: string;
   feedback: AgentMessageAnalyticsFeedback;
 }): Promise<Result<estypes.UpdateResponse, ElasticsearchError>> {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+
   return withEs(async (client) => {
     const getRes = await client.get<{
       workspace_id?: string;
