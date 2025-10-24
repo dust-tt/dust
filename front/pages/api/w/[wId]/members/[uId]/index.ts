@@ -73,7 +73,12 @@ async function handler(
           switch (revokeResult.error.type) {
             case "not_found":
               logger.error(
-                { panic: true, revokeResult },
+                {
+                  panic: true,
+                  revokeResult,
+                  userId: user.sId,
+                  workspaceId: owner.sId,
+                },
                 "Failed to revoke membership and track usage."
               );
               return apiError(req, res, {
@@ -85,10 +90,6 @@ async function handler(
               });
             case "already_revoked":
             case "invalid_end_at":
-              logger.error(
-                { panic: true, revokeResult },
-                "Failed to revoke membership and track usage."
-              );
               break;
             default:
               assertNever(revokeResult.error.type);
