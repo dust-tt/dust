@@ -704,4 +704,176 @@ describe("ConversationResource", () => {
       });
     });
   });
+
+  describe("listConversationsForUser", () => {
+    let adminAuth: Authenticator;
+    let userAuth: Authenticator;
+    let workspace: LightWorkspaceType;
+    let agents: LightAgentConfigurationType[];
+    let conversationIds: string[];
+
+    beforeEach(async () => {
+      const {
+        authenticator,
+        user,
+        workspace: w,
+      } = await createResourceTest({
+        role: "admin",
+      });
+
+      workspace = w;
+      const adminUser = user;
+      const regularUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, regularUser, {
+        role: "user",
+      });
+
+      adminAuth = authenticator;
+      userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        regularUser.sId,
+        workspace.sId
+      );
+
+      agents = await setupTestAgents(workspace, adminUser);
+
+      // Create a single conversation for basic testing
+      const conversation = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      conversationIds = [conversation.sId];
+
+      // Add regular user as participant
+      await ConversationResource.upsertParticipation(userAuth, {
+        conversation,
+        action: "posted",
+      });
+    });
+
+    afterEach(async () => {
+      for (const sId of conversationIds) {
+        await destroyConversation(adminAuth, { conversationId: sId });
+      }
+    });
+
+    it("should return only conversations user participates in", async () => {
+      const userConversations =
+        await ConversationResource.listConversationsForUser(userAuth);
+
+      expect(userConversations).toHaveLength(1);
+      expect(userConversations[0].sId).toBe(conversationIds[0]);
+      expect(userConversations[0]).toBeInstanceOf(ConversationResource);
+    });
+
+    it("should return conversations with populated participation data", async () => {
+      // First, get the raw participation data from the database to compare
+      const { ConversationParticipantModel } = await import(
+        "@app/lib/models/assistant/conversation"
+      );
+      const participation = await ConversationParticipantModel.findOne({
+        where: {
+          conversationId: (await ConversationResource.fetchById(
+            adminAuth,
+            conversationIds[0]
+          ))!.id,
+          userId: userAuth.getNonNullableUser().id,
+          workspaceId: userAuth.getNonNullableWorkspace().id,
+        },
+      });
+      assert(participation, "Participation not found");
+
+      const userConversations =
+        await ConversationResource.listConversationsForUser(userAuth);
+
+      expect(userConversations).toHaveLength(1);
+      const conversationData = userConversations[0].toJSON();
+
+      // Verify participation data is used in toJSON.
+      expect(conversationData.updated).toBe(participation.updatedAt.getTime());
+      expect(conversationData.unread).toBe(participation.unread);
+      expect(conversationData.actionRequired).toBe(
+        participation.actionRequired
+      );
+
+      // Verify other fields are present.
+      expect(conversationData.id).toBeDefined();
+      expect(conversationData.sId).toBeDefined();
+      expect(conversationData.title).toBeDefined();
+      expect(conversationData.created).toBeDefined();
+      expect(Array.isArray(conversationData.requestedGroupIds)).toBe(true);
+      expect(Array.isArray(conversationData.requestedSpaceIds)).toBe(true);
+    });
+
+    it("should return conversations sorted by participation updated time", async () => {
+      // Create a new conversation with more recent participation
+      const recentConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        messagesCreatedAt: [new Date()],
+      });
+
+      await ConversationResource.upsertParticipation(userAuth, {
+        conversation: recentConvo,
+        action: "posted",
+      });
+
+      const userConversations =
+        await ConversationResource.listConversationsForUser(userAuth);
+
+      expect(userConversations).toHaveLength(2);
+      // Most recent participation should be first.
+      expect(userConversations[0].sId).toBe(recentConvo.sId);
+      expect(userConversations[1].sId).toBe(conversationIds[0]);
+
+      const serializedConvs = userConversations.map((c) => c.toJSON());
+
+      // Verify sorting by updated time.
+      expect(serializedConvs[0].updated).toBeGreaterThan(
+        serializedConvs[1].updated!
+      );
+
+      await destroyConversation(adminAuth, { conversationId: recentConvo.sId });
+    });
+
+    it("should handle empty participation list", async () => {
+      // Create a user with no participations.
+      const orphanUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, orphanUser, {
+        role: "user",
+      });
+      const orphanAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        orphanUser.sId,
+        workspace.sId
+      );
+
+      const conversations =
+        await ConversationResource.listConversationsForUser(orphanAuth);
+
+      expect(conversations).toHaveLength(0);
+    });
+
+    it("should handle visibility filters with includeDeleted option", async () => {
+      const conversation = await ConversationResource.fetchById(
+        userAuth,
+        conversationIds[0]
+      );
+      assert(conversation, "Conversation not found");
+
+      // Mark conversation as deleted.
+      await conversation.updateVisibilityToDeleted();
+
+      // Without includeDeleted, should not see deleted conversation.
+      let userConversations =
+        await ConversationResource.listConversationsForUser(userAuth);
+      expect(userConversations).toHaveLength(0);
+
+      // With includeDeleted, should see deleted conversation.
+      userConversations = await ConversationResource.listConversationsForUser(
+        userAuth,
+        { includeDeleted: true }
+      );
+      expect(userConversations).toHaveLength(1);
+      expect(userConversations[0].sId).toBe(conversationIds[0]);
+    });
+  });
 });
