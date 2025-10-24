@@ -35,6 +35,7 @@ export class ConversationFactory {
     const conversation = await createConversation(auth, {
       title: "Test Conversation",
       visibility: "unlisted",
+      spaceId: null,
     });
 
     if (conversationCreatedAt) {
