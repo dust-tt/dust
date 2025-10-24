@@ -189,7 +189,17 @@ export async function incrementalSync(
           `Invalid file. File is: ${JSON.stringify(change.file)}`
         );
       }
-      localLogger.info({ fileId: change.file.id }, "will sync file");
+      localLogger.info(
+        {
+          fileId: change.file.id,
+          createdTime: change.file.createdTime,
+          modifiedTime: change.file.modifiedTime,
+          trashed: change.file.trashed,
+          mimeType: change.file.mimeType,
+          size: change.file.size,
+        },
+        "will sync file"
+      );
 
       const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
