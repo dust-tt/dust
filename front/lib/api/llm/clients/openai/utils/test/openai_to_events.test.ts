@@ -132,6 +132,15 @@ const finishEvents = [
     metadata,
   },
   {
+    type: "tool_call",
+    content: {
+      id: "DdHr7L197",
+      name: "web_search_browse__websearch",
+      arguments: '{"query":"Paris France weather forecast October 23 2025"}',
+    },
+    metadata,
+  },
+  {
     type: "text_generated",
     content: {
       text: "Hello, how are you ?",
@@ -146,15 +155,6 @@ const finishEvents = [
       reasoningTokens: 45,
       outputTokens: 139,
       totalTokens: 6979,
-    },
-    metadata,
-  },
-  {
-    type: "tool_call",
-    content: {
-      id: "DdHr7L197",
-      name: "web_search_browse__websearch",
-      arguments: '{"query":"Paris France weather forecast October 23 2025"}',
     },
     metadata,
   },
