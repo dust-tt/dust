@@ -9,14 +9,15 @@ import { streamLLMEvents } from "@app/lib/api/llm/clients/openai/utils/openai_to
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent, ProviderMetadata } from "@app/lib/api/llm/types/events";
 import type { LLMOptions } from "@app/lib/api/llm/types/options";
-import type {
-  ModelConfigurationType,
-  ModelConversationTypeMultiActions,
+import {
+  dustManagedCredentials,
+  type ModelConfigurationType,
+  type ModelConversationTypeMultiActions,
 } from "@app/types";
 import { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { ReasoningEffort } from "openai/resources/shared.mjs";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
-import { baseURLFromProviderId } from "./utils/base_url";
+import { baseURLFromProviderId } from "./utils";
 
 export class OpenAILLM extends LLM {
   private client: OpenAI;
@@ -38,10 +39,11 @@ export class OpenAILLM extends LLM {
     this.reasoningEffort = toOpenAIReasoningEffort(
       options?.reasoningEffort ?? "none"
     );
+    const { OPENAI_API_KEY } = dustManagedCredentials();
     this.baseURL = baseURLFromProviderId(model.providerId);
     this.client = new OpenAI({
       baseURL: this.baseURL,
-      apiKey: process.env.OPENAI_API_KEY ?? "",
+      apiKey: OPENAI_API_KEY,
     });
     this.metadata = {
       providerId: "openai",
