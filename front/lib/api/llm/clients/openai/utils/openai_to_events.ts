@@ -12,6 +12,7 @@ import type {
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { assertNever } from "@app/types";
 import { compact } from "lodash";
+import assert from "assert";
 
 export async function* streamLLMEvents({
   responseStreamEvents,
@@ -76,7 +77,7 @@ function toolCall(
 function itemToEvent(
   item: ResponseOutputItem,
   metadata: ProviderMetadata
-): LLMEvent | undefined {
+): LLMEvent {
   switch (item.type) {
     case "message":
       return {
@@ -112,7 +113,7 @@ function itemToEvent(
         metadata,
       };
     default:
-      return undefined;
+      throw Error(`Unsupported OpenAI Response Item: ${item}`);
   }
 }
 
