@@ -1231,10 +1231,17 @@ export async function filterAgentsByRequestedSpaces(
           (spaceAgent) => spaceAgent.sId === groupAgent.sId
         )
     );
+    const allowedBySpaceIdsOnly = allowedBySpaceIds.filter(
+      (spaceAgent) =>
+        !allowedByGroupIds.some(
+          (groupAgent) => groupAgent.sId === spaceAgent.sId
+        )
+    );
     logger.warn(
       {
-        workspaceId: workspace.id,
+        workspaceId: workspace.sId,
         allowedByGroupIdsOnly: allowedByGroupIdsOnly.map((agent) => agent.sId),
+        allowedBySpaceIdsOnly: allowedBySpaceIdsOnly.map((agent) => agent.sId),
       },
       "[REQUESTED_SPACE_IDS] Allowed by group ids and space ids differ for agents"
     );
