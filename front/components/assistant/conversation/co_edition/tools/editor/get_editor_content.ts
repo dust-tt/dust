@@ -55,14 +55,16 @@ export function getEditorContentForModel(
           (mark) => mark.type === "userContent"
         );
 
+        const textContent = "text" in textNode ? textNode.text : "";
+
         segments.push({
-          text: textNode.text ?? "",
+          text: textContent,
           author: isUserContent ? "user" : "agent",
           startOffset: currentOffset,
-          endOffset: currentOffset + (textNode.text?.length ?? 0),
+          endOffset: currentOffset + textContent.length,
         });
 
-        currentOffset += textNode.text?.length ?? 0;
+        currentOffset += textContent.length;
       });
 
       return {
