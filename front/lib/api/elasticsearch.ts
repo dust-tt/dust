@@ -165,33 +165,7 @@ export async function searchAnalytics<
 }
 
 /**
- * Update a single analytics document by id using a painless script.
- * The update targets the analytics alias to ensure writes hit the active index.
- */
-export async function updateAnalyticsDocById({
-  id,
-  scriptSource,
-  params,
-}: {
-  id: string;
-  scriptSource: string;
-  params?: estypes.Script["params"];
-}): Promise<Result<estypes.UpdateResponse, ElasticsearchError>> {
-  return withEs((client) =>
-    client.update({
-      index: ANALYTICS_ALIAS_NAME,
-      id,
-      script: {
-        lang: "painless",
-        source: scriptSource,
-        params,
-      },
-    })
-  );
-}
-
-/**
- * Convenience: append a feedback entry atomically to the `feedbacks` array.
+ * Append a feedback entry atomically to the `feedbacks` array.
  */
 export async function appendFeedbackToAnalyticsDoc({
   id,
@@ -200,7 +174,28 @@ export async function appendFeedbackToAnalyticsDoc({
   id: string;
   feedback: AgentMessageAnalyticsFeedback;
 }): Promise<Result<estypes.UpdateResponse, ElasticsearchError>> {
-  const scriptSource =
-    "if (ctx._source.feedbacks == null) { ctx._source.feedbacks = []; } ctx._source.feedbacks.add(params.feedback);";
-  return updateAnalyticsDocById({ id, scriptSource, params: { feedback } });
+  return withEs(async (client) => {
+    const getRes = await client.get<{
+      feedbacks?: AgentMessageAnalyticsFeedback[];
+    }>({
+      index: ANALYTICS_ALIAS_NAME,
+      id,
+      _source_includes: ["feedbacks"],
+    });
+
+    const seqNo = getRes._seq_no;
+    const primaryTerm = getRes._primary_term;
+    const currentFeedback = getRes._source?.feedbacks ?? [];
+
+    const newFeedback = [...currentFeedback, feedback];
+
+    return client.update({
+      index: ANALYTICS_ALIAS_NAME,
+      id,
+      if_seq_no: seqNo,
+      if_primary_term: primaryTerm,
+      doc: { feedbacks: newFeedback },
+      refresh: "wait_for",
+    });
+  });
 }
