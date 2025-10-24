@@ -37,6 +37,7 @@ import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
   generateRandomModelSId,
@@ -97,23 +98,41 @@ export async function createConversation(
     visibility,
     depth = 0,
     triggerId,
+    spaceId,
   }: {
     title: string | null;
     visibility: ConversationVisibility;
     depth?: number;
     triggerId?: ModelId | null;
+    spaceId: ModelId | null;
   }
 ): Promise<ConversationType> {
   const owner = auth.getNonNullableWorkspace();
+  let space: SpaceResource | null = null;
 
-  const conversation = await ConversationResource.makeNew(auth, {
-    sId: generateRandomModelSId(),
-    title,
-    visibility,
-    depth,
-    triggerId,
-    requestedSpaceIds: [],
-  });
+  if (spaceId) {
+    const spaces = await SpaceResource.fetchByModelIds(auth, [spaceId]);
+
+    // Check if the space exists.
+    if (spaces.length < 1) {
+      throw new Error("Cannot create conversation in a non-existent space.");
+    }
+    space = spaces[0];
+  }
+
+  const conversation = await ConversationResource.makeNew(
+    auth,
+    {
+      sId: generateRandomModelSId(),
+      title,
+      visibility,
+      depth,
+      triggerId,
+      spaceId,
+      requestedSpaceIds: [],
+    },
+    space
+  );
 
   return {
     id: conversation.id,
@@ -128,7 +147,8 @@ export async function createConversation(
     actionRequired: false,
     hasError: false,
     visibility: conversation.visibility,
-    requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
+    requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
+    spaceId: space?.sId ?? null,
   };
 }
 
