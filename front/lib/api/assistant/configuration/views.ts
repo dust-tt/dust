@@ -296,21 +296,23 @@ async function fetchWorkspaceAgentConfigurationsForView(
     (g) => g.agentConfigurationId
   );
 
-  const agentConfigurations =
-    await fetchWorkspaceAgentConfigurationsWithoutActions(auth, {
+  const agentModels = await fetchWorkspaceAgentConfigurationsWithoutActions(
+    auth,
+    {
       agentPrefix,
       agentsGetView,
       agentIdsForUserAsEditor,
       limit,
       owner,
       sort,
-    });
+    }
+  );
 
-  const allowedAgentConfigurations = dangerouslySkipPermissionFiltering
-    ? agentConfigurations
-    : await filterAgentsByRequestedSpaces(auth, agentConfigurations);
+  const allowedAgentModels = dangerouslySkipPermissionFiltering
+    ? agentModels
+    : await filterAgentsByRequestedSpaces(auth, agentModels);
 
-  return enrichAgentConfigurations(auth, allowedAgentConfigurations, {
+  return enrichAgentConfigurations(auth, allowedAgentModels, {
     variant,
     agentIdsForUserAsEditor,
   });
