@@ -53,7 +53,8 @@ async function getSigningKey(jwksUri: string, kid: string): Promise<string> {
  * Verify a WorkOS token.
  */
 export async function verifyWorkOSToken(
-  accessToken: string
+  accessToken: string,
+  { ignoreExpiration }: { ignoreExpiration?: boolean } = {}
 ): Promise<Result<WorkOSJwtPayload, Error>> {
   const verify = `https://api.workos.com/sso/jwks/${config.getWorkOSClientId()}`;
   const issuer = config.getWorkOSIssuerURL();
@@ -75,6 +76,7 @@ export async function verifyWorkOSToken(
       {
         algorithms: ["RS256"],
         issuer: issuer,
+        ignoreExpiration,
       },
       (err, decoded) => {
         if (err) {
