@@ -30,6 +30,7 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 import type { TriggerKind } from "@app/types/assistant/triggers";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
 type DialogMode =
   | {
@@ -231,7 +232,11 @@ export function AgentBuilderTriggersBlock({
                   <DropdownMenuItem
                     key={view.sId}
                     label={view.customName}
-                    icon={getIcon(view.icon)}
+                    icon={
+                      view.kind === "custom"
+                        ? getIcon(view.icon)
+                        : WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[view.kind].icon
+                    }
                     onClick={() => handleCreateTrigger("webhook", view)}
                   />
                 ))}
@@ -272,7 +277,11 @@ export function AgentBuilderTriggersBlock({
                       <DropdownMenuItem
                         key={view.sId}
                         label={view.customName}
-                        icon={getIcon(view.icon)}
+                        icon={
+                          view.kind === "custom"
+                            ? getIcon(view.icon)
+                            : WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[view.kind].icon
+                        }
                         onClick={() => handleCreateTrigger("webhook", view)}
                       />
                     ))}
