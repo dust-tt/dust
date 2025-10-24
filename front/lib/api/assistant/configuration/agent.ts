@@ -1188,6 +1188,8 @@ export async function filterAgentsByRequestedSpaces(
   const spaces = await SpaceResource.fetchByModelIds(auth, uniqSpaceIds);
   const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
 
+  // Filter out agents that reference missing/deleted spaces.
+  // When a space is deleted, mcp actions are removed, and requestedSpaceIds are updated.
   const foundSpaceIds = new Set(spaces.map((s) => s.id));
   const validAgents = agents.filter((c) =>
     c.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
@@ -1197,6 +1199,7 @@ export async function filterAgentsByRequestedSpaces(
     auth.canRead(
       createResourcePermissionsFromSpacesWithMap(
         spaceIdToGroupsMap,
+        // Parse as Number since Sequelize array of BigInts are returned as strings.
         agent.requestedSpaceIds.map((id) => Number(id))
       )
     )
