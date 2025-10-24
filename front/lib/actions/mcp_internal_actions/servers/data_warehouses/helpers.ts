@@ -13,7 +13,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
-import type { CoreAPIContentNode, CoreAPIError, Result } from "@app/types";
+import type { CoreAPIContentNode, Result } from "@app/types";
 import { CoreAPI, DATA_SOURCE_NODE_ID, Err, Ok } from "@app/types";
 
 export async function getAvailableWarehouses(
@@ -237,7 +237,7 @@ export async function validateTables(
 ): Promise<
   Result<
     { validatedNodes: CoreAPIContentNode[]; dataSourceId: string },
-    Error | CoreAPIError
+    MCPError
   >
 > {
   if (tableIds.length === 0) {
@@ -250,8 +250,11 @@ export async function validateTables(
   for (const tableId of tableIds) {
     if (!tableId.startsWith("table-")) {
       return new Err(
-        new Error(
-          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`
+        new MCPError(
+          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`,
+          {
+            tracked: false,
+          }
         )
       );
     }
@@ -259,8 +262,11 @@ export async function validateTables(
     const parts = tableId.substring("table-".length).split("-");
     if (parts.length < 2) {
       return new Err(
-        new Error(
-          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`
+        new MCPError(
+          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`,
+          {
+            tracked: false,
+          }
         )
       );
     }
@@ -274,8 +280,11 @@ export async function validateTables(
 
   if (dataSourceIds.size > 1) {
     return new Err(
-      new Error(
-        `All tables must be from the same warehouse. Found tables from warehouses: ${Array.from(dataSourceIds).join(", ")}`
+      new MCPError(
+        `All tables must be from the same warehouse. Found tables from warehouses: ${Array.from(dataSourceIds).join(", ")}`,
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -283,7 +292,9 @@ export async function validateTables(
   const dataSourceId = Array.from(dataSourceIds)[0];
   const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
   if (!dataSource) {
-    return new Err(new Error(`Data source not found for ID: ${dataSourceId}`));
+    return new Err(
+      new MCPError(`Data source not found for ID: ${dataSourceId}`)
+    );
   }
 
   const relevantConfig = dataSourceConfigurations.find(
@@ -293,8 +304,11 @@ export async function validateTables(
 
   if (!relevantConfig) {
     return new Err(
-      new Error(
-        `Tables from warehouse ${dataSourceId} are not accessible with the current view filter`
+      new MCPError(
+        `Tables from warehouse ${dataSourceId} are not accessible with the current view filter`,
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -308,7 +322,7 @@ export async function validateTables(
   });
 
   if (searchResult.isErr()) {
-    return searchResult;
+    return new Err(new MCPError(searchResult.error.message));
   }
 
   const foundNodeIds = new Set(searchResult.value.nodes.map((n) => n.node_id));
@@ -316,10 +330,13 @@ export async function validateTables(
 
   if (missingTables.length > 0) {
     return new Err(
-      new Error(
+      new MCPError(
         `The following tables are not accessible with the current view filter: ${missingTables
           .map((t) => `table-${t.dataSourceId}-${t.nodeId}`)
-          .join(", ")}`
+          .join(", ")}`,
+        {
+          tracked: false,
+        }
       )
     );
   }
