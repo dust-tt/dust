@@ -33,10 +33,7 @@ import {
 } from "@app/lib/webhookSource";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
-import {
-  isWebhookProvider,
-  WEBHOOK_PRESETS,
-} from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsInfoProps = {
   webhookSourceView: WebhookSourceViewForAdminType;
@@ -135,7 +132,7 @@ export function WebhookSourceDetailsInfo({
                 placeholder={webhookSourceView.webhookSource.name}
               />
             </div>
-            {provider && (
+            {!provider && (
               <PopoverRoot open={isPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -195,7 +192,6 @@ export function WebhookSourceDetailsInfo({
         </div>
 
         {provider &&
-          isWebhookProvider(provider) &&
           (() => {
             const DetailsComponent =
               WEBHOOK_PRESETS[provider].components.detailsComponent;
