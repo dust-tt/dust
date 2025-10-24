@@ -16,9 +16,6 @@ function constructDocumentId(
   return `${workspace.sId}_${message.sId}_${timestamp}`;
 }
 
-/**
- * Updates the feedbacks array for an analytics document.
- */
 export async function updateAnalyticsFeedback({
   auth,
   message,
