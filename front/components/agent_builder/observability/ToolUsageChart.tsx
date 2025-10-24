@@ -1,17 +1,37 @@
-import {SliderToggle} from "@dust-tt/sparkle";
-import {useCallback, useMemo, useState} from "react";
-import {Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,} from "recharts";
-import type {TooltipContentProps} from "recharts/types/component/Tooltip";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@dust-tt/sparkle";
+import { useCallback, useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
-import {ChartContainer} from "@app/components/agent_builder/observability/ChartContainer";
-import {ChartLegend} from "@app/components/agent_builder/observability/ChartLegend";
-import {CHART_HEIGHT} from "@app/components/agent_builder/observability/constants";
-import {useToolUsageData} from "@app/components/agent_builder/observability/hooks";
-import {useObservability} from "@app/components/agent_builder/observability/ObservabilityContext";
-import {ToolUsageTooltip} from "@app/components/agent_builder/observability/ToolUsageTooltip";
-import type {ChartDatum, Mode,} from "@app/components/agent_builder/observability/types";
-import {getToolColor, makeIsTopForPayload,} from "@app/components/agent_builder/observability/utils";
-import {RoundedTopBarShape} from "@app/components/charts/ChartShapes";
+import { ChartContainer } from "@app/components/agent_builder/observability/ChartContainer";
+import { ChartLegend } from "@app/components/agent_builder/observability/ChartLegend";
+import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
+import { useToolUsageData } from "@app/components/agent_builder/observability/hooks";
+import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { ToolUsageTooltip } from "@app/components/agent_builder/observability/ToolUsageTooltip";
+import type {
+  ChartDatum,
+  Mode,
+} from "@app/components/agent_builder/observability/types";
+import {
+  getToolColor,
+  makeIsTopForPayload,
+} from "@app/components/agent_builder/observability/utils";
+import { RoundedTopBarShape } from "@app/components/charts/ChartShapes";
 
 export function ToolUsageChart({
   workspaceId,
@@ -49,15 +69,20 @@ export function ToolUsageChart({
   );
 
   const additionalControls = (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground">By Version</span>
-      <SliderToggle
-        size="xs"
-        selected={mode === "step"}
-        onClick={() => setMode(mode === "version" ? "step" : "version")}
-      />
-      <span className="text-xs text-muted-foreground">By Step</span>
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          size="xs"
+          variant="outline"
+          isSelect
+          label={mode === "version" ? "version" : "step"}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem label="version" onClick={() => setMode("version")} />
+        <DropdownMenuItem label="step" onClick={() => setMode("step")} />
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 
   const renderToolUsageTooltip = useCallback(

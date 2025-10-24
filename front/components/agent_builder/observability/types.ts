@@ -4,4 +4,3 @@ export type ChartDatum = {
   label: string | number;
   values: Record<string, number>;
 };
-
