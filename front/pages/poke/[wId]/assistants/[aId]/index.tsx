@@ -22,7 +22,6 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { decodeSqids } from "@app/lib/utils";
 import type {
@@ -55,16 +54,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   const lastVersionEditors = await getEditors(auth, agentConfigurations[0]);
   const [latestAgentConfiguration] = agentConfigurations;
 
-  // TODO(2025-10-17 thomas): Use requestedSpaceIds instead of requestedGroupIds.
-  const uniqueGroupIds = Array.from(
-    new Set(latestAgentConfiguration.requestedGroupIds.flat())
+  const spaces = await SpaceResource.fetchByIds(
+    auth,
+    latestAgentConfiguration.requestedSpaceIds
   );
-  const groupRes = await GroupResource.fetchByIds(auth, uniqueGroupIds);
-  if (groupRes.isErr()) {
-    throw new Error(`Failed to fetch groups: ${groupRes.error.message}`);
-  }
-
-  const spaces = await SpaceResource.listForGroups(auth, groupRes.value);
 
   return {
     props: {
