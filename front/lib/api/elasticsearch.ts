@@ -2,7 +2,6 @@ import type { estypes } from "@elastic/elasticsearch";
 import { Client, errors as esErrors } from "@elastic/elasticsearch";
 
 import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
 import { normalizeError } from "@app/types";
 import type { AgentMessageAnalyticsFeedback } from "@app/types/assistant/analytics";
 import type { Result } from "@app/types/shared/result";
@@ -166,48 +165,20 @@ export async function searchAnalytics<
 }
 
 /**
- * Append a feedback entry atomically to the `feedbacks` array.
+ * Updates the feedbacks array for an analytics document.
  */
 export async function appendFeedbackToAnalyticsDoc({
-  auth,
   id,
-  feedback,
+  feedbacks,
 }: {
-  auth: Authenticator;
   id: string;
-  feedback: AgentMessageAnalyticsFeedback;
+  feedbacks: AgentMessageAnalyticsFeedback[];
 }): Promise<Result<estypes.UpdateResponse, ElasticsearchError>> {
-  const workspaceId = auth.getNonNullableWorkspace().sId;
-
   return withEs(async (client) => {
-    const getRes = await client.get<{
-      workspace_id?: string;
-      feedbacks?: AgentMessageAnalyticsFeedback[];
-    }>({
-      index: ANALYTICS_ALIAS_NAME,
-      id,
-      _source_includes: ["workspace_id", "feedbacks"],
-    });
-
-    if (getRes._source?.workspace_id !== workspaceId) {
-      throw new Error(
-        `Document ${id} does not belong to workspace ${workspaceId}`
-      );
-    }
-
-    const seqNo = getRes._seq_no;
-    const primaryTerm = getRes._primary_term;
-    const currentFeedback = getRes._source?.feedbacks ?? [];
-
-    const newFeedback = [...currentFeedback, feedback];
-
     return client.update({
       index: ANALYTICS_ALIAS_NAME,
       id,
-      if_seq_no: seqNo,
-      if_primary_term: primaryTerm,
-      doc: { feedbacks: newFeedback },
-      refresh: "wait_for",
+      doc: { feedbacks },
     });
   });
 }
