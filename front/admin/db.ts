@@ -115,6 +115,13 @@ async function main() {
   await DustAppSecret.sync({ alter: true });
   await GroupSpaceModel.sync({ alter: true });
 
+  await WebhookSourceModel.sync({ alter: true });
+  await WebhookSourcesViewModel.sync({ alter: true });
+  await TriggerModel.sync({ alter: true });
+  await TriggerSubscriberModel.sync({ alter: true });
+  await WebhookRequestModel.sync({ alter: true });
+  await WebhookRequestTriggerModel.sync({ alter: true });
+
   await ConversationModel.sync({ alter: true });
   await ConversationParticipantModel.sync({ alter: true });
 
@@ -144,13 +151,6 @@ async function main() {
   await MCPServerViewModel.sync({ alter: true });
   await MCPServerConnection.sync({ alter: true });
   await RemoteMCPServerToolMetadataModel.sync({ alter: true });
-
-  await WebhookSourceModel.sync({ alter: true });
-  await WebhookSourcesViewModel.sync({ alter: true });
-  await TriggerModel.sync({ alter: true });
-  await TriggerSubscriberModel.sync({ alter: true });
-  await WebhookRequestModel.sync({ alter: true });
-  await WebhookRequestTriggerModel.sync({ alter: true });
 
   await ConversationMCPServerViewModel.sync({ alter: true });
 
