@@ -40,19 +40,19 @@ export type CustomPresetType = {
   featureFlag?: WhitelistableFeature;
 };
 
-export type WebhookProviderServiceDataMap = {
+type WebhookProviderServiceDataMap = {
   github: GithubAdditionalData;
   test: TestServiceData;
 };
 
-export type ServiceDataForProvider<P extends WebhookProvider> =
+export type WebhookServiceDataForProvider<P extends WebhookProvider> =
   WebhookProviderServiceDataMap[P];
 
-export const WEBHOOK_PRESETS: {
-  [P in WebhookProvider]: PresetWebhook<P>;
-} = {
+export const WEBHOOK_PRESETS = {
   github: GITHUB_WEBHOOK_PRESET,
   test: TEST_WEBHOOK_PRESET,
+} satisfies {
+  [P in WebhookProvider]: PresetWebhook<P>;
 };
 
 export type WebhookSourceType = {
