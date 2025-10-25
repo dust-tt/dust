@@ -210,7 +210,8 @@ export class GongClient {
           Array.from(response.headers.entries()).filter(
             ([key]) =>
               key.toLowerCase().startsWith("x-") ||
-              key.toLowerCase().startsWith("rate-")
+              key.toLowerCase().startsWith("rate-") ||
+              key.toLowerCase() === "retry-after"
           )
         );
 
@@ -219,6 +220,7 @@ export class GongClient {
             connectorId: this.connectorId,
             endpoint,
             headers,
+            retryAfter: response.headers.get("Retry-After"),
             provider: "gong",
           },
           "Rate limit hit on Gong API."
