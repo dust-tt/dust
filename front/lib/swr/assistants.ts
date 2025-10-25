@@ -21,6 +21,7 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
 import type { GetAgentConfigurationAnalyticsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/analytics";
 import type { GetToolExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-execution";
 import type { GetToolLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-latency";
+import type { GetToolStepIndexResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-step-index";
 import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/usage-metrics";
 import type { GetVersionMarkersResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/version-markers";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
@@ -877,5 +878,32 @@ export function useAgentToolLatency({
     isToolLatencyLoading: !error && !data && !disabled,
     isToolLatencyError: error,
     isToolLatencyValidating: isValidating,
+  };
+}
+
+export function useAgentToolStepIndex({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetToolStepIndexResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-step-index?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    toolStepIndexByStep: data?.byStep ?? null,
+    isToolStepIndexLoading: !error && !data && !disabled,
+    isToolStepIndexError: error,
+    isToolStepIndexValidating: isValidating,
   };
 }
