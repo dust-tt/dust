@@ -15,22 +15,9 @@ import { useEffect, useMemo, useState } from "react";
 import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { useWebhookServiceData } from "@app/lib/swr/useWebhookServiceData";
 import type {
-  GithubAdditionalData,
   GithubOrganization,
   GithubRepository,
 } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
-import { GithubAdditionalDataSchema } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
-
-function isGithubAdditionalData(
-  data: Record<string, unknown> | null
-): data is GithubAdditionalData {
-  if (!data) {
-    return false;
-  }
-
-  const result = GithubAdditionalDataSchema.safeParse(data);
-  return result.success;
-}
 
 export function CreateWebhookGithubConnection({
   owner,
@@ -46,13 +33,12 @@ export function CreateWebhookGithubConnection({
   >([]);
   const [repoSearchQuery, setRepoSearchQuery] = useState("");
 
-  const { serviceData, isServiceDataLoading } = useWebhookServiceData({
-    owner,
-    connectionId,
-    provider: "github",
-  });
-
-  const githubData = isGithubAdditionalData(serviceData) ? serviceData : null;
+  const { serviceData: githubData, isServiceDataLoading } =
+    useWebhookServiceData({
+      owner,
+      connectionId,
+      provider: "github",
+    });
   const [orgSearchQuery, setOrgSearchQuery] = useState("");
   const [showRepoDropdown, setShowRepoDropdown] = useState(false);
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
