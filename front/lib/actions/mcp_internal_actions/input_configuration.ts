@@ -30,7 +30,14 @@ import {
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
 import type { WhitelistableFeature, WorkspaceType } from "@app/types";
-import { assertNever, isString, removeNulls } from "@app/types";
+import {
+  assertNever,
+  DEFAULT_REASONING_MODEL_ID,
+  isString,
+  removeNulls,
+} from "@app/types";
+import { useModels } from "@app/lib/swr/models";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 
 function getDataSourceURI(config: DataSourceConfiguration): string {
   const { workspaceId, sId, dataSourceViewId, filter } = config;
@@ -112,11 +119,22 @@ function generateConfiguredInput({
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL: {
       const { reasoningModel } = actionConfiguration;
+      const { reasoningModels } = useModels({ owner });
       // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the reasoning model.
-      assert(
-        reasoningModel,
-        "Unreachable: missing reasoning model configuration."
-      );
+      if (!reasoningModel) {
+        const model =
+          reasoningModels.find(
+            (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
+          ) ?? reasoningModels[0];
+
+        return {
+          modelId: model.modelId,
+          providerId: model.providerId,
+          temperature: AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced,
+          reasoningEffort: model.defaultReasoningEffort,
+          mimeType,
+        };
+      }
       const { modelId, providerId, temperature, reasoningEffort } =
         reasoningModel;
       return { modelId, providerId, temperature, reasoningEffort, mimeType };
