@@ -6,13 +6,13 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
+  agentMentionDirective,
+  getAgentMentionPlugin,
+} from "@app/components/markdown/AgentMentionBlock";
+import {
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
-import {
-  getMentionPlugin,
-  mentionDirective,
-} from "@app/components/markdown/MentionBlock";
 import { isAgentPauseOutputResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { DEEP_DIVE_AVATAR_URL } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 export function MCPDeepDiveActionDetails({
@@ -28,14 +28,15 @@ export function MCPDeepDiveActionDetails({
   }, [handoffResource]);
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective(), mentionDirective],
+    () => [getCiteDirective(), agentMentionDirective],
     []
   );
 
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       sup: CiteBlock,
-      mention: getMentionPlugin(owner),
+      // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
+      mention: getAgentMentionPlugin(owner),
     }),
     [owner]
   );

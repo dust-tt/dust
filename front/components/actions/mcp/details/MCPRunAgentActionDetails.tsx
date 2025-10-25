@@ -22,16 +22,16 @@ import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapp
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
+  agentMentionDirective,
+  getAgentMentionPlugin,
+} from "@app/components/markdown/AgentMentionBlock";
+import {
   CitationsContext,
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getCitationIcon } from "@app/components/markdown/MCPReferenceCitation";
-import {
-  getMentionPlugin,
-  mentionDirective,
-} from "@app/components/markdown/MentionBlock";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -191,14 +191,15 @@ export function MCPRunAgentActionDetails({
     }
   };
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective(), mentionDirective],
+    () => [getCiteDirective(), agentMentionDirective],
     []
   );
 
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       sup: CiteBlock,
-      mention: getMentionPlugin(owner),
+      // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
+      mention: getAgentMentionPlugin(owner),
     }),
     [owner]
   );
