@@ -19,17 +19,22 @@ import { CreateWebhookSourceWithProviderForm } from "@app/components/triggers/Cr
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import {
-  basePostWebhookSourcesSchema,
-  refineSubscribedEvents,
   WEBHOOK_PRESETS,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
+  WebhookSourcesSchema,
 } from "@app/types/triggers/webhooks";
 
-export const CreateWebhookSourceSchema = basePostWebhookSourcesSchema
-  .extend({
-    autoGenerate: z.boolean().default(true),
-  })
-  .refine(...refineSubscribedEvents)
+export const CreateWebhookSourceSchema = WebhookSourcesSchema.extend({
+  autoGenerate: z.boolean().default(true),
+})
+  .refine(
+    ({ provider, subscribedEvents }) =>
+      !provider || subscribedEvents.length > 0,
+    {
+      message: "Subscribed events must not be empty.",
+      path: ["subscribedEvents"],
+    }
+  )
   .refine(
     (data) => data.autoGenerate || (data.secret ?? "").trim().length > 0,
     {

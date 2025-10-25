@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 import type {
   CustomResourceIconType,
@@ -14,7 +15,15 @@ import { apiError } from "@app/logger/withlogging";
 import type { Result, WithAPIErrorResponse } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import { patchWebhookSourceViewBodySchema } from "@app/types/triggers/webhooks";
+
+const PatchWebhookSourceViewBodySchema = z.object({
+  name: z.string().min(1, "Name is required."),
+  description: z
+    .string()
+    .max(4000, "Description must be at most 4000 characters.")
+    .optional(),
+  icon: z.string().optional(),
+});
 
 export type GetWebhookSourceViewResponseBody = {
   webhookSourceView: WebhookSourceViewType;
@@ -96,7 +105,7 @@ async function handler(
           },
         });
       }
-      const bodyValidation = patchWebhookSourceViewBodySchema.safeParse(
+      const bodyValidation = PatchWebhookSourceViewBodySchema.safeParse(
         req.body
       );
       if (!bodyValidation.success) {

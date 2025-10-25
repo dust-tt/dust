@@ -1,4 +1,3 @@
-import type { Icon } from "@dust-tt/sparkle";
 import { z } from "zod";
 
 import type {
@@ -10,7 +9,6 @@ import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/githu
 import type { TestServiceData } from "@app/lib/triggers/built-in-webhooks/test/test_webhook_source_presets";
 import { TEST_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/test/test_webhook_source_presets";
 import type { AgentsUsageType } from "@app/types/data_source";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
 import type { EditedByUser } from "@app/types/user";
@@ -33,12 +31,6 @@ export function isWebhookProvider(
 ): provider is WebhookProvider {
   return WEBHOOK_PROVIDERS.includes(provider as WebhookProvider);
 }
-
-export type CustomPresetType = {
-  name: string;
-  icon: typeof Icon;
-  featureFlag?: WhitelistableFeature;
-};
 
 type WebhookProviderServiceDataMap = {
   github: GithubAdditionalData;
@@ -87,6 +79,7 @@ type BaseWebhookSourceViewType = {
   spaceId: string;
   editedByUser: EditedByUser | null;
 };
+
 export type WebhookSourceViewType = BaseWebhookSourceViewType & {
   webhookSource: WebhookSourceType;
 };
@@ -112,7 +105,7 @@ export type WebhookSourceWithSystemViewAndUsageType =
     usage: AgentsUsageType | null;
   };
 
-export const basePostWebhookSourcesSchema = z.object({
+export const WebhookSourcesSchema = z.object({
   name: z.string().min(1, "Name is required"),
   // Secret can be omitted or empty when auto-generated server-side.
   secret: z.string().nullable(),
@@ -124,46 +117,4 @@ export const basePostWebhookSourcesSchema = z.object({
   // Optional fields for creating remote webhooks
   connectionId: z.string().optional(),
   remoteMetadata: z.record(z.any()).optional(),
-});
-
-export const refineSubscribedEvents: [
-  (data: {
-    provider: WebhookProvider | null;
-    subscribedEvents: string[];
-  }) => boolean,
-  {
-    message: string;
-    path: string[];
-  },
-] = [
-  ({
-    provider,
-    subscribedEvents,
-  }: {
-    provider: WebhookProvider | null;
-    subscribedEvents: string[];
-  }) => !provider || subscribedEvents.length > 0,
-  {
-    message: "Subscribed events must not be empty.",
-    path: ["subscribedEvents"],
-  },
-];
-
-export const postWebhookSourcesSchema = basePostWebhookSourcesSchema.refine(
-  ...refineSubscribedEvents
-);
-
-export type PostWebhookSourcesBody = z.infer<typeof postWebhookSourcesSchema>;
-
-export type PatchWebhookSourceViewBody = z.infer<
-  typeof patchWebhookSourceViewBodySchema
->;
-
-export const patchWebhookSourceViewBodySchema = z.object({
-  name: z.string().min(1, "Name is required."),
-  description: z
-    .string()
-    .max(4000, "Description must be at most 4000 characters.")
-    .optional(),
-  icon: z.string().optional(),
 });
