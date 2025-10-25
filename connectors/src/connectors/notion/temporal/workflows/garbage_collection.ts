@@ -112,7 +112,7 @@ export async function notionGarbageCollectionWorkflow({
             pageIndex,
             runType: "garbageCollection",
           },
-          filter: cursorType === "pages" ? "page" : "database",
+          filter: cursorType === "pages" ? "page" : "data_source",
         });
 
       // Update the cursors object to keep both the previous and last cursors.

@@ -448,7 +448,7 @@ export const NotionSearchPagesResponseSchema = t.type({
     t.type({
       id: t.string,
       title: t.union([t.string, t.undefined]),
-      type: t.union([t.literal("page"), t.literal("database")]),
+      type: t.union([t.literal("page"), t.literal("data_source")]),
       isSkipped: t.boolean,
       isFull: t.boolean,
     })

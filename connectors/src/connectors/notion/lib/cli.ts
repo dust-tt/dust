@@ -1,4 +1,4 @@
-import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
+import { Client, isFullDataSource, isFullPage } from "@notionhq/client";
 import { Op } from "sequelize";
 
 import { getNotionAccessToken } from "@connectors/connectors/notion/lib/access_token";
@@ -109,8 +109,8 @@ export async function searchNotionPagesForQuery({
     id: p.id,
     type: p.object,
     title: "title" in p ? p.title[0]?.plain_text : "<unknown>",
-    isSkipped: p.object === "database" && skippedDatabaseIds.has(p.id),
-    isFull: p.object === "database" ? isFullDatabase(p) : isFullPage(p),
+    isSkipped: p.object === "data_source" && skippedDatabaseIds.has(p.id),
+    isFull: p.object === "data_source" ? isFullDataSource(p) : isFullPage(p),
   }));
 }
 

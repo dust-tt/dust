@@ -22,6 +22,7 @@ import {
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import {
   getBlockParentMemoized,
+  getDatabaseDataSources,
   getPageOrBlockParent,
   getPagesAndDatabasesEditedSince,
   getParsedDatabase,
@@ -297,7 +298,7 @@ export async function getPagesAndDatabasesToSync({
   };
   excludeUpToDatePages: boolean;
   loggerArgs: Record<string, string | number>;
-  filter?: "page" | "database";
+  filter?: "page" | "data_source" | "database";
 }): Promise<{
   pageIds: string[];
   databaseIds: string[];
@@ -314,6 +315,15 @@ export async function getPagesAndDatabasesToSync({
     dataSourceId: connector.dataSourceId,
     workspaceId: connector.workspaceId,
   });
+
+  // The code never passes "database", but it could happen when replying existing workflows.
+  // Eventually we can remove this check.
+  if (filter == "database") {
+    filter = "data_source";
+    localLogger.warn(
+      "getPagesAndDatabasesToSync was called with filter=database. Should only happen when replaying old workflows."
+    );
+  }
 
   const accessToken = await getNotionAccessToken(connector.id);
 
@@ -805,6 +815,24 @@ export async function deleteDatabase({
       notionDatabaseId: databaseId,
     },
   });
+
+  // If there are pages that have this database as parent, delete them too. Normally,
+  // this should only happen during migration to the new Notion API, where we previously
+  // used the database ID, and now use the data source ID as parent.
+  // REVIEW: actually, even outside of migration, if a database is deleted, we'll end up
+  // deleting its pages here, instead of going through their normal deletion process. Is that problematic?
+  const deletedPages = await NotionPage.destroy({
+    where: {
+      connectorId,
+      parentId: databaseId,
+    },
+  });
+  if (deletedPages > 0) {
+    logger.info(
+      { deletedPages },
+      "Deleted pages after deleting their parent database. This should only happen during migration to the new Notion API."
+    );
+  }
 }
 
 // - for all pages/database that have a lastSeenTs < runTimestamp
@@ -1663,7 +1691,43 @@ export async function cacheBlockChildren({
   let parsedBlocks: ParsedNotionBlock[] = [];
   for (const block of resultPage.results) {
     if (isFullBlock(block)) {
-      parsedBlocks.push(parsePageBlock(block));
+      // In the new Notion API, a database can contain multiple data_sources
+      // We want to enumerate the data_sources instead of using the database itself
+      if (block.type === "child_database") {
+        const databaseId = block.id;
+        try {
+          const dataSources = await getDatabaseDataSources(
+            accessToken,
+            databaseId,
+            loggerArgs
+          );
+
+          if (dataSources && dataSources.length > 0) {
+            // Create a parsed block for each data_source instead of the database
+            for (const dataSource of dataSources) {
+              parsedBlocks.push({
+                id: dataSource.id,
+                type: "child_database",
+                text: `Child Database: ${dataSource.name || "Untitled Database"}`,
+                hasChildren: false,
+                childDatabaseTitle: dataSource.name,
+              });
+            }
+          } else {
+            localLogger.warn(
+              { databaseId },
+              "No data sources found in database"
+            );
+          }
+        } catch (e) {
+          localLogger.warn(
+            { error: e, databaseId },
+            "Failed to retrieve data sources for child_database, using original block"
+          );
+        }
+      } else {
+        parsedBlocks.push(parsePageBlock(block));
+      }
     }
   }
 
@@ -3076,7 +3140,15 @@ export async function getParentPageOrDb({
   if (page) {
     switch (page.parent.type) {
       case "database_id":
+        logger.warn(
+          { parentId: page.parent.database_id },
+          "Pages should not have database parents. Should instead be a data_source."
+        );
         return { parentId: page.parent.database_id, parentType: "database" };
+      case "data_source_id":
+        // In the new API, pages can be children of data_sources
+        // We treat the data_source_id as the database parent
+        return { parentId: page.parent.data_source_id, parentType: "database" };
       case "page_id":
         return { parentId: page.parent.page_id, parentType: "page" };
       case "workspace":
