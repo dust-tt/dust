@@ -1,4 +1,3 @@
-import type { Icon } from "@dust-tt/sparkle";
 import { z } from "zod";
 
 import type {
@@ -10,7 +9,6 @@ import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/githu
 import type { TestServiceData } from "@app/lib/triggers/built-in-webhooks/test/test_webhook_source_presets";
 import { TEST_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/test/test_webhook_source_presets";
 import type { AgentsUsageType } from "@app/types/data_source";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
 import type { EditedByUser } from "@app/types/user";
@@ -33,12 +31,6 @@ export function isWebhookProvider(
 ): provider is WebhookProvider {
   return WEBHOOK_PROVIDERS.includes(provider as WebhookProvider);
 }
-
-export type CustomPresetType = {
-  name: string;
-  icon: typeof Icon;
-  featureFlag?: WhitelistableFeature;
-};
 
 type WebhookProviderServiceDataMap = {
   github: GithubAdditionalData;
@@ -87,6 +79,7 @@ type BaseWebhookSourceViewType = {
   spaceId: string;
   editedByUser: EditedByUser | null;
 };
+
 export type WebhookSourceViewType = BaseWebhookSourceViewType & {
   webhookSource: WebhookSourceType;
 };
