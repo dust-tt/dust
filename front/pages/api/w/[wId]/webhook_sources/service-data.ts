@@ -8,19 +8,19 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString, OAuthAPI } from "@app/types";
+import type {
+  WebhookProvider,
+  WebhookServiceDataForProvider,
+} from "@app/types/triggers/webhooks";
 import {
   isWebhookProvider,
   WEBHOOK_PRESETS,
-} from "@app/types/triggers/webhooks";
-import type {
-  ServiceDataForProvider,
-  WebhookProvider,
 } from "@app/types/triggers/webhooks";
 
 export type GetServiceDataResponseType<
   P extends WebhookProvider = WebhookProvider,
 > = {
-  serviceData: ServiceDataForProvider<P>;
+  serviceData: WebhookServiceDataForProvider<P>;
 };
 
 async function handler(
