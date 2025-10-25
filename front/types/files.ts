@@ -377,6 +377,11 @@ export type AllSupportedFileContentType =
   | InteractiveContentFileContentType
   | SupportedFileContentType;
 
+export type AllSupportedWithDustSpecificFileContentType =
+  | AllSupportedFileContentType
+  | "application/vnd.dust.tool-output.data-source-search-result"
+  | "application/vnd.dust.tool-output.websearch-result";
+
 export type SupportedImageContentType = {
   [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
     cat: "image";

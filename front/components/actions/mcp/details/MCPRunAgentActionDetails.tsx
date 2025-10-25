@@ -2,11 +2,7 @@ import {
   AttachmentChip,
   Avatar,
   Button,
-  Citation,
   CitationGrid,
-  CitationIcons,
-  CitationIndex,
-  CitationTitle,
   CollapsibleComponent,
   ContentMessage,
   DocumentIcon,
@@ -14,26 +10,26 @@ import {
   Markdown,
   RobotIcon,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import {
   CitationsContext,
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
-import { getCitationIcon } from "@app/components/markdown/MCPReferenceCitation";
 import {
   getMentionPlugin,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
 import { getIcon } from "@app/components/resources/resources_icons";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
   isAgentPauseOutputResourceType,
@@ -48,7 +44,7 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
-import type { AllSupportedFileContentType } from "@app/types";
+import type { AllSupportedWithDustSpecificFileContentType } from "@app/types";
 
 export function MCPRunAgentActionDetails({
   lastNotification,
@@ -57,8 +53,6 @@ export function MCPRunAgentActionDetails({
   toolParams,
   viewType,
 }: ToolExecutionDetailsProps) {
-  const { isDark } = useTheme();
-
   const addedMCPServerViewIds: string[] = useMemo(() => {
     if (!toolParams["toolsetsToAdd"]) {
       return emptyArray();
@@ -166,23 +160,18 @@ export function MCPRunAgentActionDetails({
     }
     const mcpReferenceCitations: { [key: string]: MCPReferenceCitation } = {};
     Object.entries(resultResource.resource.refs).forEach(([key, citation]) => {
-      const IconComponent = getCitationIcon(
-        citation.provider,
-        isDark,
-        undefined,
-        citation.href
-      );
       mcpReferenceCitations[key] = {
-        contentType: citation.contentType as AllSupportedFileContentType,
+        provider: citation.provider,
+        contentType:
+          citation.contentType as AllSupportedWithDustSpecificFileContentType,
         title: citation.title,
         href: citation.href,
         description: citation.description,
-        icon: <IconComponent />,
         fileId: key,
       };
     });
     return mcpReferenceCitations;
-  }, [resultResource, isDark]);
+  }, [resultResource]);
 
   const updateActiveReferences = (doc: MCPReferenceCitation, index: number) => {
     const existingIndex = activeReferences.find((r) => r.index === index);
@@ -355,30 +344,37 @@ export function MCPRunAgentActionDetails({
                                   {activeReferences
                                     .sort((a, b) => a.index - b.index)
                                     .map(({ document, index }) => (
-                                      <Citation
+                                      <AttachmentCitation
                                         key={index}
-                                        onClick={
-                                          document.href
-                                            ? () =>
-                                                window.open(
-                                                  document.href,
-                                                  "_blank"
-                                                )
-                                            : undefined
-                                        }
-                                        tooltip={
-                                          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                                          document.description || document.title
-                                        }
-                                      >
-                                        <CitationIcons>
-                                          <CitationIndex>{index}</CitationIndex>
-                                          {document.icon}
-                                        </CitationIcons>
-                                        <CitationTitle>
-                                          {document.title}
-                                        </CitationTitle>
-                                      </Citation>
+                                        attachmentCitation={markdownCitationToAttachmentCitation(
+                                          document
+                                        )}
+                                        owner={owner}
+                                        conversationId={null}
+                                      />
+                                      // <Citation
+                                      //   key={index}
+                                      //   onClick={
+                                      //     document.href
+                                      //       ? () =>
+                                      //           window.open(
+                                      //             document.href,
+                                      //             "_blank"
+                                      //           )
+                                      //       : undefined
+                                      //   }
+                                      //   tooltip={
+                                      //     document.description ?? document.title
+                                      //   }
+                                      // >
+                                      //   <CitationIcons>
+                                      //     <CitationIndex>{index}</CitationIndex>
+                                      //     {document.icon}
+                                      //   </CitationIcons>
+                                      //   <CitationTitle>
+                                      //     {document.title}
+                                      //   </CitationTitle>
+                                      // </Citation>
                                     ))}
                                 </CitationGrid>
                               </div>
