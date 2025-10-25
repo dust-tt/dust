@@ -5,7 +5,9 @@ import type {
   CustomResourceIconType,
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
+import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
 import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/github/github_webhook_source_presets";
+import type { TestServiceData } from "@app/lib/triggers/built-in-webhooks/test/test_webhook_source_presets";
 import { TEST_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/test/test_webhook_source_presets";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -38,10 +40,20 @@ export type CustomPresetType = {
   featureFlag?: WhitelistableFeature;
 };
 
-export const WEBHOOK_PRESETS: Record<WebhookProvider, PresetWebhook> = {
+export type WebhookProviderServiceDataMap = {
+  github: GithubAdditionalData;
+  test: TestServiceData;
+};
+
+export type ServiceDataForProvider<P extends WebhookProvider> =
+  WebhookProviderServiceDataMap[P];
+
+export const WEBHOOK_PRESETS: {
+  [P in WebhookProvider]: PresetWebhook<P>;
+} = {
   github: GITHUB_WEBHOOK_PRESET,
   test: TEST_WEBHOOK_PRESET,
-} as const;
+};
 
 export type WebhookSourceType = {
   id: ModelId;

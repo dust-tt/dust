@@ -12,9 +12,15 @@ import {
   isWebhookProvider,
   WEBHOOK_PRESETS,
 } from "@app/types/triggers/webhooks";
+import type {
+  ServiceDataForProvider,
+  WebhookProvider,
+} from "@app/types/triggers/webhooks";
 
-export type GetServiceDataResponseType = {
-  serviceData: Record<string, unknown>;
+export type GetServiceDataResponseType<
+  P extends WebhookProvider = WebhookProvider,
+> = {
+  serviceData: ServiceDataForProvider<P>;
 };
 
 async function handler(
