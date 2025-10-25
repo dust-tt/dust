@@ -1,3 +1,4 @@
+import isEqual from "lodash/isEqual";
 import type { WhereOptions } from "sequelize";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -9,6 +10,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isArrayEqual2DUnordered, normalizeArrays } from "@app/lib/utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
 async function updateAgentRequestedGroupIds(
   workspaceId: string,
@@ -113,15 +115,32 @@ async function updateAgentRequestedGroupIds(
         })
     );
 
+    const currentRequestedSpaceIds = agentConfiguration.requestedSpaceIds.map(
+      (spaceSId) => {
+        const modelId = getResourceIdFromSId(spaceSId);
+        if (modelId === null) {
+          throw new Error(
+            `Invalid space sId: ${spaceSId} for agent ${agent.sId}`
+          );
+        }
+        return modelId;
+      }
+    );
+
     // Normalize the arrays for comparison
     const normalizedNewGroupIds = normalizeArrays(
       newRequirements.requestedGroupIds
     );
     const normalizedCurrentGroupIds = normalizeArrays(currentRequestedGroupIds);
+    const newSpaceIds = newRequirements.requestedSpaceIds;
 
     // Check if the group IDs have changed
     if (
-      isArrayEqual2DUnordered(normalizedNewGroupIds, normalizedCurrentGroupIds)
+      isArrayEqual2DUnordered(
+        normalizedNewGroupIds,
+        normalizedCurrentGroupIds
+      ) &&
+      isEqual(newSpaceIds.sort(), currentRequestedSpaceIds.sort())
     ) {
       logger.info(
         {
@@ -140,16 +159,21 @@ async function updateAgentRequestedGroupIds(
         agentName: agent.name,
         currentGroupIds: normalizedCurrentGroupIds,
         newGroupIds: normalizedNewGroupIds,
+        newSpaceIds: newSpaceIds,
+        currentSpaceIds: currentRequestedSpaceIds,
         execute,
       },
       execute
-        ? "Updating agent requestedGroupIds"
-        : "[DRY RUN] Would update agent requestedGroupIds"
+        ? "Updating agent requestedGroupIds and requestedSpaceIds"
+        : "[DRY RUN] Would update agent requestedGroupIds and requestedSpaceIds"
     );
 
     if (execute) {
       await AgentConfiguration.update(
-        { requestedGroupIds: normalizedNewGroupIds },
+        {
+          requestedGroupIds: normalizedNewGroupIds,
+          requestedSpaceIds: newSpaceIds,
+        },
         {
           where: {
             sId: agent.sId,
@@ -192,8 +216,8 @@ makeScript(
   {
     workspaceId: {
       type: "string",
-      demandOption: true,
       description: "The workspace ID (sId) to update agents for",
+      required: false,
     },
     onlyActive: {
       type: "boolean",
@@ -208,9 +232,23 @@ makeScript(
     },
   },
   async ({ workspaceId, execute, onlyActive, agentIds }, logger) => {
-    await updateAgentRequestedGroupIds(workspaceId, execute, logger, {
-      onlyActive,
-      agentIds: agentIds.map(String),
-    });
+    if (workspaceId) {
+      // Process specific workspace
+      await updateAgentRequestedGroupIds(workspaceId, execute, logger, {
+        onlyActive,
+        agentIds: agentIds.map(String),
+      });
+    } else {
+      // Process all workspaces
+      await runOnAllWorkspaces(
+        async (workspace) => {
+          await updateAgentRequestedGroupIds(workspace.sId, execute, logger, {
+            onlyActive,
+            agentIds: agentIds.map(String),
+          });
+        },
+        { concurrency: 3 }
+      );
+    }
   }
 );
