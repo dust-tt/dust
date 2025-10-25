@@ -27,7 +27,7 @@ export function useWebhookServiceData({
   return {
     serviceData: data?.serviceData ?? null,
     isServiceDataLoading: !error && !data && connectionId,
-    isTagsError: !!error,
+    isServiceDataError: !!error,
     mutateServiceData: mutate,
   };
 }
