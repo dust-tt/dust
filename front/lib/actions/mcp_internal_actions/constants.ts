@@ -79,6 +79,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "extract_data",
   "file_generation",
   "freshservice",
+  "front",
   "github",
   "gmail",
   "google_calendar",
@@ -879,6 +880,50 @@ The directive should be used to display a clickable version of the agent name in
       },
       documentationUrl: null,
       instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
+    },
+  },
+  front: {
+    id: 34,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: {
+      search_conversations: "never_ask",
+      get_conversation: "never_ask",
+      get_conversation_messages: "never_ask",
+      get_contact: "never_ask",
+      send_message: "never_ask",
+      add_tags: "never_ask",
+      assign_conversation: "never_ask",
+      update_conversation_status: "high",
+      list_tags: "never_ask",
+      list_teammates: "never_ask",
+      create_draft: "never_ask",
+      add_comment: "never_ask",
+      get_customer_history: "never_ask",
+      list_inboxes: "never_ask",
+      create_conversation: "never_ask",
+      add_links: "never_ask",
+    },
+    tools_retry_policies: { default: "retry_on_interrupt" },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "front",
+      version: "1.0.0",
+      description:
+        "Manage support conversations, messages, and customer interactions.",
+      authorization: null,
+      icon: "ActionDocumentTextIcon",
+      documentationUrl: "https://dev.frontapp.com/reference/introduction",
+      instructions:
+        "When handling support tickets:\n" +
+        "- Always check customer history before replying using get_customer_history\n" +
+        "- Auto-tag conversations based on issue type (bug, feature-request, billing)\n" +
+        "- Assign to teammate 'ilias' if T1 cannot resolve after three attempts\n" +
+        "- Use LLM-friendly timeline format for conversation data\n" +
+        "- Include full context (metadata, custom fields) in responses",
+      requiresSecret: true,
     },
   },
   google_drive: {
