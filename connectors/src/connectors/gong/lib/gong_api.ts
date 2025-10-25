@@ -220,7 +220,6 @@ export class GongClient {
             connectorId: this.connectorId,
             endpoint,
             headers,
-            retryAfter: response.headers.get("Retry-After"),
             provider: "gong",
           },
           "Rate limit hit on Gong API."
