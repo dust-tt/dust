@@ -4,6 +4,7 @@ export * from "./compute_statistics";
 export * from "./confluence_page_checker";
 export * from "./delete_data_source";
 export * from "./garbage_collect_google_drive_document";
+export * from "./google_drive_sync_file";
 export * from "./mark_connector_as_error";
 export * from "./notion_unstuck_syncing_nodes";
 export * from "./notion_update_orphaned_resources_parents";
