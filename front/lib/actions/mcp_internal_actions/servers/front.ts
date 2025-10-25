@@ -2,10 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  makeInternalMCPServer,
-  makeMCPToolTextSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
@@ -156,9 +153,9 @@ function formatConversationForLLM(conversation: any): string {
   ASSIGNEE: ${conversation.assignee ? conversation.assignee.email : "Unassigned"}
   INBOX: ${conversation.inbox?.name || "Unknown"}
   TAGS: ${conversation.tags?.map((t: any) => t.name).join(", ") || "None"}
-  CREATED: ${new Date(conversation.created_at * 1000).toISOString()}
-  LAST_MESSAGE: ${new Date(conversation.last_message.received_at * 1000).toISOString()}
-  RECIPIENT: ${conversation.recipient.handle || conversation.recipient.name}
+  CREATED: ${conversation.created_at ? new Date(conversation.created_at * 1000).toISOString() : "Unknown"}
+  LAST_MESSAGE: ${conversation.last_message?.received_at ? new Date(conversation.last_message.received_at * 1000).toISOString() : "None"}
+  RECIPIENT: ${conversation.recipient ? conversation.recipient.handle || conversation.recipient.name : "Unknown"}
   </conversation>`;
 
   return metadata;
@@ -243,7 +240,7 @@ const createServer = (
 
           const data = await makeFrontAPIRequest({
             method: "GET",
-            endpoint: "conversations/search",
+            endpoint: "conversations",
             apiToken,
             params: { q, limit: Math.min(limit, 100) },
           });
@@ -251,23 +248,27 @@ const createServer = (
           const conversations = data._results || [];
 
           if (conversations.length === 0) {
-            return new Ok(
-              makeMCPToolTextSuccess({
-                message: `No conversations found for query: "${q}"`,
-              }).content
-            );
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `No conversations found for query: "${q}"`,
+              },
+            ]);
           }
 
           const formatted = conversations
             .map((conv: any) => formatConversationForLLM(conv))
             .join("\n\n");
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Found ${conversations.length} conversation(s)`,
-              result: formatted,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text:
+                `Found ${conversations.length} conversation(s)` +
+                "\n\n" +
+                formatted,
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);
@@ -309,12 +310,15 @@ const createServer = (
 
           const formatted = formatConversationForLLM(data);
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Retrieved conversation ${conversation_id}`,
-              result: formatted,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text:
+                `Retrieved conversation ${conversation_id}` +
+                "\n\n" +
+                formatted,
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);
@@ -357,12 +361,15 @@ const createServer = (
           const messages = data._results || [];
           const formatted = formatMessagesForLLM(messages);
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Retrieved ${messages.length} message(s) from conversation ${conversation_id}`,
-              result: formatted,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text:
+                `Retrieved ${messages.length} message(s) from conversation ${conversation_id}` +
+                "\n\n" +
+                formatted,
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);
@@ -417,23 +424,27 @@ const createServer = (
             });
             const contacts = searchData._results || [];
             if (contacts.length === 0) {
-              return new Ok(
-                makeMCPToolTextSuccess({
-                  message: `No contact found with email: ${email}`,
-                }).content
-              );
+              return new Ok([
+                {
+                  type: "text" as const,
+                  text: `No contact found with email: ${email}`,
+                },
+              ]);
             }
             data = contacts[0];
           } else {
             throw new MCPError("Either email or contact_id must be provided");
           }
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Retrieved contact information`,
-              result: JSON.stringify(data, null, 2),
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text:
+                `Retrieved contact information` +
+                "\n\n" +
+                JSON.stringify(data, null, 2),
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);
@@ -498,11 +509,12 @@ const createServer = (
             body: requestBody,
           });
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `${type === "comment" ? "Internal comment" : "Reply"} sent successfully to conversation ${conversation_id}`,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `${type === "comment" ? "Internal comment" : "Reply"} sent successfully to conversation ${conversation_id}`,
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);
@@ -543,11 +555,12 @@ const createServer = (
             body: { tag_ids },
           });
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Added ${tag_ids.length} tag(s) to conversation ${conversation_id}`,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Added ${tag_ids.length} tag(s) to conversation ${conversation_id}`,
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);
@@ -584,11 +597,12 @@ const createServer = (
             body: { assignee_id: teammate_id },
           });
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Assigned conversation ${conversation_id} to teammate ${teammate_id}`,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Assigned conversation ${conversation_id} to teammate ${teammate_id}`,
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);
@@ -631,11 +645,12 @@ const createServer = (
             body: { status },
           });
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Updated conversation ${conversation_id} status to: ${status}`,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Updated conversation ${conversation_id} status to: ${status}`,
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);
@@ -678,12 +693,12 @@ const createServer = (
             )
             .join("\n");
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Found ${tags.length} tag(s)`,
-              result: formatted,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Found ${tags.length} tag(s)` + "\n\n" + formatted,
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);
@@ -726,12 +741,13 @@ const createServer = (
             )
             .join("\n");
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Found ${teammates.length} teammate(s)`,
-              result: formatted,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text:
+                `Found ${teammates.length} teammate(s)` + "\n\n" + formatted,
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);
@@ -778,11 +794,12 @@ const createServer = (
             },
           });
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Draft created for conversation ${conversation_id}`,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Draft created for conversation ${conversation_id}`,
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);
@@ -828,11 +845,12 @@ const createServer = (
             },
           });
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Internal comment added to conversation ${conversation_id}`,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Internal comment added to conversation ${conversation_id}`,
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);
@@ -875,7 +893,7 @@ const createServer = (
           // Search for conversations from this customer.
           const data = await makeFrontAPIRequest({
             method: "GET",
-            endpoint: "conversations/search",
+            endpoint: "conversations",
             apiToken,
             params: {
               q: `from:${customer_email}`,
@@ -886,23 +904,27 @@ const createServer = (
           const conversations = data._results || [];
 
           if (conversations.length === 0) {
-            return new Ok(
-              makeMCPToolTextSuccess({
-                message: `No past conversations found for customer: ${customer_email}`,
-              }).content
-            );
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `No past conversations found for customer: ${customer_email}`,
+              },
+            ]);
           }
 
           const formatted = conversations
             .map((conv: any) => formatConversationForLLM(conv))
             .join("\n\n");
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Found ${conversations.length} past conversation(s) with ${customer_email}`,
-              result: formatted,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text:
+                `Found ${conversations.length} past conversation(s) with ${customer_email}` +
+                "\n\n" +
+                formatted,
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);
@@ -945,12 +967,12 @@ const createServer = (
             )
             .join("\n");
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Found ${inboxes.length} inbox(es)`,
-              result: formatted,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Found ${inboxes.length} inbox(es)` + "\n\n" + formatted,
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);
@@ -1002,12 +1024,15 @@ const createServer = (
             },
           });
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Outbound conversation created successfully`,
-              result: JSON.stringify(data, null, 2),
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text:
+                `Outbound conversation created successfully` +
+                "\n\n" +
+                JSON.stringify(data, null, 2),
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);
@@ -1048,11 +1073,12 @@ const createServer = (
             body: { conversation_ids: linked_conversation_ids },
           });
 
-          return new Ok(
-            makeMCPToolTextSuccess({
-              message: `Linked ${linked_conversation_ids.length} conversation(s) to ${conversation_id}`,
-            }).content
-          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Linked ${linked_conversation_ids.length} conversation(s) to ${conversation_id}`,
+            },
+          ]);
         } catch (error) {
           if (error instanceof MCPError) {
             return new Err(error);

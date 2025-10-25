@@ -883,7 +883,7 @@ The directive should be used to display a clickable version of the agent name in
     },
   },
   front: {
-    id: 34,
+    id: 1018,
     availability: "manual",
     allowMultipleInstances: false,
     isRestricted: undefined,
