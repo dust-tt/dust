@@ -23,7 +23,7 @@ import type {
   WebhookSourceForAdminType as WebhookSourceForAdminType,
   WebhookSourceType,
 } from "@app/types/triggers/webhooks";
-import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
@@ -179,13 +179,8 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
 
     const owner = auth.getNonNullableWorkspace();
 
-    if (
-      this.kind !== "custom" &&
-      this.remoteMetadata &&
-      this.oauthConnectionId
-    ) {
-      const service =
-        WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[this.kind].webhookService;
+    if (this.provider && this.remoteMetadata && this.oauthConnectionId) {
+      const service = WEBHOOK_PRESETS[this.provider].webhookService;
       try {
         const result = await service.deleteWebhooks({
           auth,
@@ -195,14 +190,14 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
 
         if (result.isErr()) {
           logger.error(
-            `Failed to delete remote webhook on ${this.kind}`,
-            result.error.message
+            { error: result.error },
+            `Failed to delete remote webhook on ${this.provider}`
           );
         }
       } catch (error) {
         logger.error(
-          `Failed to delete remote webhook on ${this.kind}`,
-          error instanceof Error ? error.message : error
+          { error },
+          `Failed to delete remote webhook on ${this.provider}`
         );
         // Continue with local deletion even if remote deletion fails
       }
@@ -295,7 +290,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
       id: this.id,
       sId: this.sId(),
       name: this.name,
-      kind: this.kind,
+      provider: this.provider,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       subscribedEvents: this.subscribedEvents,

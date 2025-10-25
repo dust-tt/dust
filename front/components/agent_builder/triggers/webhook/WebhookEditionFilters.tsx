@@ -186,7 +186,7 @@ export function WebhookEditionFilters({
         </>
       )}
 
-      {webhookSourceView?.kind === "custom" && (
+      {webhookSourceView?.provider === null && (
         <>
           <Label htmlFor="webhook-filter-description">
             Filter Expression (optional)

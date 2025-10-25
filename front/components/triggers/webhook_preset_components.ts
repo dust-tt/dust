@@ -1,8 +1,5 @@
 import type { LightWorkspaceType } from "@app/types";
-import type {
-  WebhookSourceForAdminType,
-  WebhookSourceKind,
-} from "@app/types/triggers/webhooks";
+import type { WebhookSourceForAdminType } from "@app/types/triggers/webhooks";
 
 /**
  * Props interface for webhook details components.
@@ -18,7 +15,6 @@ export interface WebhookDetailsComponentProps {
  */
 export interface WebhookCreateFormComponentProps {
   owner: LightWorkspaceType;
-  kind: WebhookSourceKind;
   onDataToCreateWebhookChange?: (
     data: {
       connectionId: string;

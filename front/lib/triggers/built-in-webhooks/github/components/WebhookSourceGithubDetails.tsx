@@ -6,7 +6,7 @@ import { GithubAdditionalDataSchema } from "@app/lib/triggers/built-in-webhooks/
 export function WebhookSourceGithubDetails({
   webhookSource,
 }: WebhookDetailsComponentProps) {
-  if (webhookSource.kind !== "github" || !webhookSource.remoteMetadata) {
+  if (webhookSource.provider !== "github" || !webhookSource.remoteMetadata) {
     return null;
   }
 

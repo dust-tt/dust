@@ -34,7 +34,6 @@ function isGithubAdditionalData(
 
 export function CreateWebhookGithubConnection({
   owner,
-  kind,
   onDataToCreateWebhookChange,
   onReadyToSubmitChange,
   connectionId,
@@ -50,7 +49,7 @@ export function CreateWebhookGithubConnection({
   const { serviceData, isServiceDataLoading } = useWebhookServiceData({
     owner,
     connectionId,
-    kind,
+    provider: "github",
   });
 
   const githubData = isGithubAdditionalData(serviceData) ? serviceData : null;

@@ -1,5 +1,4 @@
 import type { Icon } from "@dust-tt/sparkle";
-import { ActionGlobeAltIcon } from "@dust-tt/sparkle";
 import { z } from "zod";
 
 import type {
@@ -23,38 +22,32 @@ export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
 export type WebhookSourceSignatureAlgorithm =
   (typeof WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS)[number];
 
-export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
-  Exclude<WebhookSourceKind, "custom">,
-  PresetWebhook
-> & {
-  custom: {
-    name: string;
-    icon: typeof Icon;
-    featureFlag?: WhitelistableFeature;
-  };
-} = {
-  github: GITHUB_WEBHOOK_PRESET,
-  test: TEST_WEBHOOK_PRESET,
-  custom: { name: "Custom", icon: ActionGlobeAltIcon },
-} as const;
+export const WEBHOOK_PROVIDERS = ["test", "github"] as const;
 
-export const WEBHOOK_SOURCE_KIND = ["custom", "github", "test"] as const;
+export type WebhookProvider = (typeof WEBHOOK_PROVIDERS)[number];
 
-export function isWebhookSourceKind(
-  kind: string
-): kind is (typeof WEBHOOK_SOURCE_KIND)[number] {
-  return WEBHOOK_SOURCE_KIND.includes(
-    kind as (typeof WEBHOOK_SOURCE_KIND)[number]
-  );
+export function isWebhookProvider(
+  provider: string
+): provider is WebhookProvider {
+  return WEBHOOK_PROVIDERS.includes(provider as WebhookProvider);
 }
 
-export type WebhookSourceKind = (typeof WEBHOOK_SOURCE_KIND)[number];
+export type CustomPresetType = {
+  name: string;
+  icon: typeof Icon;
+  featureFlag?: WhitelistableFeature;
+};
+
+export const WEBHOOK_PRESETS: Record<WebhookProvider, PresetWebhook> = {
+  github: GITHUB_WEBHOOK_PRESET,
+  test: TEST_WEBHOOK_PRESET,
+} as const;
 
 export type WebhookSourceType = {
   id: ModelId;
   sId: string;
   name: string;
-  kind: WebhookSourceKind;
+  provider: WebhookProvider | null;
   createdAt: number;
   updatedAt: number;
   subscribedEvents: string[];
@@ -75,7 +68,7 @@ type BaseWebhookSourceViewType = {
   customName: string;
   description: string;
   icon: InternalAllowedIconType | CustomResourceIconType;
-  kind: WebhookSourceKind;
+  provider: WebhookProvider | null;
   subscribedEvents: string[];
   createdAt: number;
   updatedAt: number;
@@ -115,26 +108,29 @@ export const basePostWebhookSourcesSchema = z.object({
   signatureAlgorithm: z.enum(WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS),
   includeGlobal: z.boolean().optional(),
   subscribedEvents: z.array(z.string()).default([]),
-  kind: z.enum(WEBHOOK_SOURCE_KIND),
+  provider: z.enum(WEBHOOK_PROVIDERS).nullable(),
   // Optional fields for creating remote webhooks
   connectionId: z.string().optional(),
   remoteMetadata: z.record(z.any()).optional(),
 });
 
 export const refineSubscribedEvents: [
-  (data: { kind: WebhookSourceKind; subscribedEvents: string[] }) => boolean,
+  (data: {
+    provider: WebhookProvider | null;
+    subscribedEvents: string[];
+  }) => boolean,
   {
     message: string;
     path: string[];
   },
 ] = [
   ({
-    kind,
+    provider,
     subscribedEvents,
   }: {
-    kind: WebhookSourceKind;
+    provider: WebhookProvider | null;
     subscribedEvents: string[];
-  }) => kind === "custom" || subscribedEvents.length > 0,
+  }) => !provider || subscribedEvents.length > 0,
   {
     message: "Subscribed events must not be empty.",
     path: ["subscribedEvents"],

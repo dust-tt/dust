@@ -4,12 +4,12 @@ import { useState } from "react";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
-import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
-import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 type CreateWebhookSourceWithProviderFormProps = {
   owner: LightWorkspaceType;
-  kind: Exclude<WebhookSourceKind, "custom" | "test">;
+  provider: Exclude<WebhookProvider, "test">;
   onDataToCreateWebhookChange?: (
     data: {
       connectionId: string;
@@ -24,7 +24,7 @@ type CreateWebhookSourceWithProviderFormProps = {
  */
 export function CreateWebhookSourceWithProviderForm({
   owner,
-  kind,
+  provider,
   onDataToCreateWebhookChange,
   onReadyToSubmitChange,
 }: CreateWebhookSourceWithProviderFormProps) {
@@ -34,7 +34,7 @@ export function CreateWebhookSourceWithProviderForm({
   );
   const [isConnectingProvider, setIsConnectingToProvider] = useState(false);
 
-  const preset = WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind];
+  const preset = WEBHOOK_PRESETS[provider];
   const kindName = preset.name;
 
   const handleConnectToProvider = async () => {
@@ -47,7 +47,7 @@ export function CreateWebhookSourceWithProviderForm({
       const connectionRes = await setupOAuthConnection({
         dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
         owner,
-        provider: kind,
+        provider,
         useCase: "webhooks",
         extraConfig: {},
       });
@@ -113,12 +113,10 @@ export function CreateWebhookSourceWithProviderForm({
       {connection &&
         (() => {
           const CreateFormComponent =
-            WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].components
-              .createFormComponent;
+            WEBHOOK_PRESETS[provider].components.createFormComponent;
           return (
             <CreateFormComponent
               owner={owner}
-              kind={kind}
               onDataToCreateWebhookChange={onDataToCreateWebhookChange}
               onReadyToSubmitChange={onReadyToSubmitChange}
               connectionId={connection.connection_id}

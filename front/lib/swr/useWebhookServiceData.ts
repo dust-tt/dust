@@ -3,21 +3,21 @@ import type { Fetcher } from "swr";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetServiceDataResponseType } from "@app/pages/api/w/[wId]/webhook_sources/service-data";
 import type { LightWorkspaceType } from "@app/types";
-import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 
 export function useWebhookServiceData({
   owner,
   connectionId,
-  kind,
+  provider,
 }: {
   owner: LightWorkspaceType;
   connectionId: string | null;
-  kind: WebhookSourceKind;
+  provider: WebhookProvider;
 }) {
   const serviceDataFetcher: Fetcher<GetServiceDataResponseType> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/webhook_sources/service-data?connectionId=${connectionId}&kind=${kind}`,
+    `/api/w/${owner.sId}/webhook_sources/service-data?connectionId=${connectionId}&provider=${provider}`,
     serviceDataFetcher,
     {
       disabled: !connectionId,

@@ -4,7 +4,7 @@ import { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import type { WorkspaceType } from "@app/types";
 import type {
-  WebhookSourceKind,
+  WebhookProvider,
   WebhookSourceSignatureAlgorithm,
 } from "@app/types/triggers/webhooks";
 
@@ -22,7 +22,7 @@ export class WebhookSourceFactory {
       urlSecret?: string;
       signatureHeader?: string;
       signatureAlgorithm?: WebhookSourceSignatureAlgorithm;
-      kind?: WebhookSourceKind;
+      provider?: WebhookProvider;
       subscribedEvents?: string[];
     } = {}
   ) {
@@ -40,7 +40,7 @@ export class WebhookSourceFactory {
       secret: options.secret ?? null,
       signatureHeader: options.signatureHeader ?? null,
       signatureAlgorithm: options.signatureAlgorithm ?? null,
-      kind: options.kind ?? "custom",
+      provider: options.provider ?? null,
       subscribedEvents: options.subscribedEvents ?? [],
     });
 
