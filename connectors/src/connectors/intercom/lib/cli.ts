@@ -268,7 +268,12 @@ export const intercom = async ({
           slidingWindow: workspace.conversationsSlidingWindow,
           cursor,
           pageSize: 50,
-          closedAfter: args.closedAfter,
+          filterOptions: args.closedAfter
+            ? {
+                filterType: "closedAfter",
+                value: args.closedAfter,
+              }
+            : undefined,
           state: args.state,
         });
 
