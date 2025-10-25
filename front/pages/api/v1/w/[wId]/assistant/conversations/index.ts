@@ -451,7 +451,7 @@ async function handler(
         await ConversationResource.listConversationsForUser(auth);
       res.status(200).json({
         conversations: conversations.map((c) => ({
-          ...c,
+          ...c.toJSON(),
 
           // Theses 2 properties are excluded from the ConversationWithoutContentType used internally (as they are not needed anywhere).
           // They are still returned for the public API to stay backward compatible.
