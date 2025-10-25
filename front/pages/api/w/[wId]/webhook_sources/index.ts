@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import type { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
@@ -18,9 +19,13 @@ import type {
   WebhookSourceWithViewsAndUsageType,
 } from "@app/types/triggers/webhooks";
 import {
-  postWebhookSourcesSchema,
   WEBHOOK_PRESETS,
+  WebhookSourcesSchema,
 } from "@app/types/triggers/webhooks";
+
+export const PostWebhookSourcesSchema = WebhookSourcesSchema;
+
+export type PostWebhookSourcesBody = z.infer<typeof PostWebhookSourcesSchema>;
 
 export type GetWebhookSourcesResponseBody = {
   success: true;
@@ -98,7 +103,7 @@ async function handler(
     }
 
     case "POST": {
-      const bodyValidation = postWebhookSourcesSchema.safeParse(req.body);
+      const bodyValidation = PostWebhookSourcesSchema.safeParse(req.body);
 
       if (!bodyValidation.success) {
         const pathError = fromError(bodyValidation.error).toString();
@@ -123,6 +128,16 @@ async function handler(
         connectionId,
         remoteMetadata,
       } = bodyValidation.data;
+
+      if (provider && subscribedEvents.length === 0) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Subscribed events must not be empty.",
+          },
+        });
+      }
 
       const workspace = auth.getNonNullableWorkspace();
 

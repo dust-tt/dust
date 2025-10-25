@@ -112,7 +112,7 @@ export type WebhookSourceWithSystemViewAndUsageType =
     usage: AgentsUsageType | null;
   };
 
-export const basePostWebhookSourcesSchema = z.object({
+export const WebhookSourcesSchema = z.object({
   name: z.string().min(1, "Name is required"),
   // Secret can be omitted or empty when auto-generated server-side.
   secret: z.string().nullable(),
@@ -124,46 +124,4 @@ export const basePostWebhookSourcesSchema = z.object({
   // Optional fields for creating remote webhooks
   connectionId: z.string().optional(),
   remoteMetadata: z.record(z.any()).optional(),
-});
-
-export const refineSubscribedEvents: [
-  (data: {
-    provider: WebhookProvider | null;
-    subscribedEvents: string[];
-  }) => boolean,
-  {
-    message: string;
-    path: string[];
-  },
-] = [
-  ({
-    provider,
-    subscribedEvents,
-  }: {
-    provider: WebhookProvider | null;
-    subscribedEvents: string[];
-  }) => !provider || subscribedEvents.length > 0,
-  {
-    message: "Subscribed events must not be empty.",
-    path: ["subscribedEvents"],
-  },
-];
-
-export const postWebhookSourcesSchema = basePostWebhookSourcesSchema.refine(
-  ...refineSubscribedEvents
-);
-
-export type PostWebhookSourcesBody = z.infer<typeof postWebhookSourcesSchema>;
-
-export type PatchWebhookSourceViewBody = z.infer<
-  typeof patchWebhookSourceViewBodySchema
->;
-
-export const patchWebhookSourceViewBodySchema = z.object({
-  name: z.string().min(1, "Name is required."),
-  description: z
-    .string()
-    .max(4000, "Description must be at most 4000 characters.")
-    .optional(),
-  icon: z.string().optional(),
 });
