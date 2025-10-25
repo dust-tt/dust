@@ -1,6 +1,8 @@
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -15,7 +17,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import { getHeaderFromGroupIds, Ok } from "@app/types";
+import { Err, getHeaderFromGroupIds, Ok } from "@app/types";
 
 function createServer(
   auth: Authenticator,
@@ -85,6 +87,70 @@ function createServer(
             },
           }))
         );
+      }
+    )
+  );
+
+  server.tool(
+    "enable",
+    "Enable a toolset for this conversation.",
+    {
+      toolsetId: z.string(),
+    },
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "enable_toolset", agentLoopContext },
+      async ({ toolsetId }) => {
+        const conversationId = agentLoopContext?.runContext?.conversation.sId;
+        if (!conversationId) {
+          return new Err(
+            new MCPError("No active conversation context", { tracked: false })
+          );
+        }
+
+        const owner = auth.getNonNullableWorkspace();
+        const user = auth.user();
+        if (!user) {
+          return new Err(new MCPError("User not found", { tracked: false }));
+        }
+
+        const requestedGroupIds = auth.groups().map((g) => g.sId);
+        const prodCredentials = await prodAPICredentialsForOwner(owner);
+        const config = apiConfig.getDustAPIConfig();
+
+        const api = new DustAPI(
+          config,
+          {
+            ...prodCredentials,
+            extraHeaders: {
+              ...getHeaderFromGroupIds(requestedGroupIds),
+              "x-api-user-email": user.email,
+            },
+          },
+          logger,
+          config.nodeEnv === "development" ? "http://localhost:3000" : null
+        );
+
+        const res = await api.postConversationTools({
+          conversationId,
+          action: "add",
+          mcpServerViewId: toolsetId,
+        });
+
+        if (res.isErr() || !res.value.success) {
+          return new Err(
+            new MCPError(`Failed to enable toolset`, {
+              tracked: false,
+            })
+          );
+        }
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Successfully enabled toolset ${toolsetId}`,
+          },
+        ]);
       }
     )
   );

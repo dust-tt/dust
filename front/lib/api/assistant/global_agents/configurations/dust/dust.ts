@@ -11,6 +11,7 @@ import {
   _getAgentRouterToolsConfiguration,
   _getDefaultWebActionsForGlobalAgent,
   _getInteractiveContentToolConfiguration,
+  _getToolsetsToolsConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -39,6 +40,7 @@ export function _getDustGlobalAgent(
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
     searchMCPServerView,
+    toolsetsMCPServerView,
     deepDiveMCPServerView,
     interactiveContentMCPServerView,
     featureFlags,
@@ -48,6 +50,7 @@ export function _getDustGlobalAgent(
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     searchMCPServerView: MCPServerViewResource | null;
+    toolsetsMCPServerView: MCPServerViewResource | null;
     deepDiveMCPServerView: MCPServerViewResource | null;
     interactiveContentMCPServerView: MCPServerViewResource | null;
     featureFlags: WhitelistableFeature[];
@@ -134,6 +137,12 @@ export function _getDustGlobalAgent(
   let instructions = `<primary_goal>
   You are an AI agent created by Dust to answer questions using your internal knowledge, the public internet and the user's internal company data sources.
   </primary_goal>
+
+  <toolsets_guidelines>
+  The "toolsets" tools allow listing and enabling additional tools.
+  At the start of each conversation or when encountering any request that might benefit from specialized tools, use \`toolsets__list\` to discover available toolsets.
+  Enable relevant toolsets before attempting to fulfill the request. Never assume or reply that you cannot do something before checking the toolsets available.
+  </toolsets_guidelines>
 
   <general_guidelines>
   ${globalAgentGuidelines}
@@ -276,6 +285,10 @@ export function _getDustGlobalAgent(
     ..._getDefaultWebActionsForGlobalAgent({
       agentId: GLOBAL_AGENTS_SID.DUST,
       webSearchBrowseMCPServerView,
+    }),
+    ..._getToolsetsToolsConfiguration({
+      agentId: GLOBAL_AGENTS_SID.DUST,
+      toolsetsMcpServerView: toolsetsMCPServerView,
     }),
     ..._getAgentRouterToolsConfiguration(
       GLOBAL_AGENTS_SID.DUST,
