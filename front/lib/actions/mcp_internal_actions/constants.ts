@@ -914,7 +914,7 @@ The directive should be used to display a clickable version of the agent name in
       description:
         "Manage support conversations, messages, and customer interactions.",
       authorization: null,
-      icon: "ActionDocumentTextIcon",
+      icon: "FrontLogo",
       documentationUrl: "https://dev.frontapp.com/reference/introduction",
       instructions:
         "When handling support tickets:\n" +
