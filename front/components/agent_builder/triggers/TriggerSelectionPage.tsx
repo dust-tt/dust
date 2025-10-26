@@ -61,9 +61,7 @@ export function TriggerSelectionPage({
 
         {showSchedule && (
           <div className="flex flex-col gap-3">
-            <span className="text-element-900 text-lg font-semibold">
-              Top triggers
-            </span>
+            <span className="text-lg font-semibold">Top triggers</span>
             <div className="grid grid-cols-2 gap-3">
               <ToolCard
                 icon={TimeIcon}
@@ -80,9 +78,7 @@ export function TriggerSelectionPage({
 
         {filteredWebhookSourceViews.length > 0 && (
           <div className="flex flex-col gap-3">
-            <span className="text-element-900 text-lg font-semibold">
-              Webhooks
-            </span>
+            <span className="text-lg font-semibold">Webhooks</span>
             <div className="grid grid-cols-2 gap-3">
               {filteredWebhookSourceViews.map((view) => {
                 const icon = isCustomResourceIconType(view.icon)
@@ -107,7 +103,7 @@ export function TriggerSelectionPage({
         )}
 
         {!showSchedule && filteredWebhookSourceViews.length === 0 && (
-          <div className="text-element-600 flex h-32 items-center justify-center text-sm">
+          <div className="flex h-32 items-center justify-center text-sm">
             No triggers found matching your search
           </div>
         )}
