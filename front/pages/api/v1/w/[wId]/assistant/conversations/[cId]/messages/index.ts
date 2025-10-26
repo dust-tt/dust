@@ -205,6 +205,7 @@ async function handler(
         return apiError(req, res, messageRes.error);
       }
 
+      // eslint-disable-next-line dust/require-schema-validation -- internal data source, no external pass-through
       res.status(200).json({
         message: messageRes.value.userMessage,
         agentMessages: messageRes.value.agentMessages,
