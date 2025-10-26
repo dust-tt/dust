@@ -1,4 +1,3 @@
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@dust-tt/sparkle";
 import React, { useCallback, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -158,21 +157,13 @@ export function TriggerViewsSheet({
 
   return (
     <>
-      <Sheet
-        open={isSelectionSheetOpen}
-        onOpenChange={(open) => !open && handleSelectionSheetClose()}
-      >
-        <SheetContent size="lg">
-          <SheetHeader>
-            <SheetTitle>Add triggers</SheetTitle>
-          </SheetHeader>
-          <TriggerSelectionPage
-            onScheduleSelect={handleScheduleSelect}
-            onWebhookSelect={handleWebhookSelect}
-            webhookSourceViews={webhookSourceViews}
-          />
-        </SheetContent>
-      </Sheet>
+      <TriggerSelectionPage
+        isOpen={isSelectionSheetOpen}
+        onClose={handleSelectionSheetClose}
+        onScheduleSelect={handleScheduleSelect}
+        onWebhookSelect={handleWebhookSelect}
+        webhookSourceViews={webhookSourceViews}
+      />
 
       <ScheduleEdition
         owner={owner}

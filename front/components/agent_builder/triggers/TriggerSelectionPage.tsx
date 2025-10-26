@@ -2,6 +2,11 @@ import {
   ActionIcons,
   Page,
   SearchInput,
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   TimeIcon,
   ToolCard,
 } from "@dust-tt/sparkle";
@@ -14,12 +19,16 @@ import {
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 interface TriggerSelectionPageProps {
+  isOpen: boolean;
+  onClose: () => void;
   onScheduleSelect: () => void;
   onWebhookSelect: (webhookSourceView: WebhookSourceViewType) => void;
   webhookSourceViews: WebhookSourceViewType[];
 }
 
 export function TriggerSelectionPage({
+  isOpen,
+  onClose,
   onScheduleSelect,
   onWebhookSelect,
   webhookSourceViews,
@@ -54,64 +63,78 @@ export function TriggerSelectionPage({
   }, [searchTerm]);
 
   return (
-    <Page.Vertical sizing="grow">
-      <div className="flex flex-col gap-4 px-6 py-4">
-        <SearchInput
-          placeholder="Search triggers..."
-          value={searchTerm}
-          onChange={setSearchTerm}
-          name="triggerSearch"
-        />
+    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent size="lg">
+        <SheetHeader>
+          <SheetTitle>Add triggers</SheetTitle>
+        </SheetHeader>
+        <Page.Vertical sizing="grow">
+          <div className="flex flex-col gap-4 px-6 py-4">
+            <SearchInput
+              placeholder="Search triggers..."
+              value={searchTerm}
+              onChange={setSearchTerm}
+              name="triggerSearch"
+            />
 
-        {showSchedule && (
-          <div className="flex flex-col gap-3">
-            <span className="text-lg font-semibold">Top triggers</span>
-            <div className="grid grid-cols-2 gap-3">
-              <ToolCard
-                icon={TimeIcon}
-                label="Schedule"
-                description="Trigger this agent on a schedule"
-                isSelected={false}
-                canAdd={true}
-                onClick={onScheduleSelect}
-                cardContainerClassName="h-36"
-              />
-            </div>
-          </div>
-        )}
-
-        {filteredWebhookSourceViews.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <span className="text-lg font-semibold">Webhooks</span>
-            <div className="grid grid-cols-2 gap-3">
-              {filteredWebhookSourceViews.map((view) => {
-                const icon = isCustomResourceIconType(view.icon)
-                  ? ActionIcons[view.icon]
-                  : InternalActionIcons[view.icon];
-
-                return (
+            {showSchedule && (
+              <div className="flex flex-col gap-3">
+                <span className="text-lg font-semibold">Top triggers</span>
+                <div className="grid grid-cols-2 gap-3">
                   <ToolCard
-                    key={view.sId}
-                    icon={icon}
-                    label={view.customName}
-                    description={view.description}
+                    icon={TimeIcon}
+                    label="Schedule"
+                    description="Trigger this agent on a schedule"
                     isSelected={false}
                     canAdd={true}
-                    onClick={() => onWebhookSelect(view)}
+                    onClick={onScheduleSelect}
                     cardContainerClassName="h-36"
                   />
-                );
-              })}
-            </div>
-          </div>
-        )}
+                </div>
+              </div>
+            )}
 
-        {!showSchedule && filteredWebhookSourceViews.length === 0 && (
-          <div className="flex h-32 items-center justify-center text-sm">
-            No triggers found matching your search
+            {filteredWebhookSourceViews.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <span className="text-lg font-semibold">Webhooks</span>
+                <div className="grid grid-cols-2 gap-3">
+                  {filteredWebhookSourceViews.map((view) => {
+                    const icon = isCustomResourceIconType(view.icon)
+                      ? ActionIcons[view.icon]
+                      : InternalActionIcons[view.icon];
+
+                    return (
+                      <ToolCard
+                        key={view.sId}
+                        icon={icon}
+                        label={view.customName}
+                        description={view.description}
+                        isSelected={false}
+                        canAdd={true}
+                        onClick={() => onWebhookSelect(view)}
+                        cardContainerClassName="h-36"
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {!showSchedule && filteredWebhookSourceViews.length === 0 && (
+              <div className="flex h-32 items-center justify-center text-sm">
+                No triggers found matching your search
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    </Page.Vertical>
+        </Page.Vertical>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Close",
+            variant: "outline",
+            onClick: onClose,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }
