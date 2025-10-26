@@ -60,7 +60,10 @@ export const categorizeAgentErrorMessage = (error: {
             "Anthropic (Claude's provider) encountered an error. Please try again.",
         };
       }
-    } else if (error.message.includes("OpenAIError")) {
+    } else if (
+      error.message.includes("OpenAIError") ||
+      error.message.includes("OpenAI: Response failed")
+    ) {
       if (error.message.includes("maximum context length")) {
         return {
           category: "context_window_exceeded",
@@ -80,6 +83,19 @@ export const categorizeAgentErrorMessage = (error: {
       } else if (error.message.includes("server_error")) {
         return {
           category: "provider_internal_error",
+          errorTitle: "OpenAI server error",
+          publicMessage: "OpenAI encountered an error. Please try again.",
+        };
+      } else if (
+        error.message.includes(
+          "An error occurred while processing your request."
+        ) &&
+        error.message.includes(
+          "contact us through our help center at help.openai.com if the error persists"
+        )
+      ) {
+        return {
+          category: "retryable_model_error",
           errorTitle: "OpenAI server error",
           publicMessage: "OpenAI encountered an error. Please try again.",
         };
