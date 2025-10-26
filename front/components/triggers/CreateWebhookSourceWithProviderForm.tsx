@@ -8,7 +8,7 @@ import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
-import { setupOAuthConnection } from "@app/types";
+import { normalizeError, setupOAuthConnection } from "@app/types";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
@@ -71,13 +71,14 @@ export function CreateWebhookSourceWithProviderForm({
         sendNotification({
           type: "success",
           title: `Connected to ${kindName}`,
+          description: "Fetching additional data for configuration...",
         });
       }
     } catch (error) {
       sendNotification({
         type: "error",
         title: `Failed to connect to ${kindName}`,
-        description: error instanceof Error ? error.message : "Unknown error",
+        description: normalizeError(error).message,
       });
     } finally {
       setIsConnectingToProvider(false);
