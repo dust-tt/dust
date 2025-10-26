@@ -5,6 +5,7 @@ import {
   Client,
   isFullBlock,
   isFullDatabase,
+  isFullDataSource,
   isFullPage,
   isNotionClientError,
   UnknownHTTPResponseError,
@@ -131,7 +132,7 @@ async function refreshLastPageCursor(
  * page of results will be returned.
  * @param loggerArgs arguments to pass to the logger
  * @param retry options for retrying the request
- * @param filter (pages | databases) to filter the results (only return pages or databases)
+ * @param filter (pages | data_sources) to filter the results (only return pages or data sources)
  * @returns a promise that resolves to an array of page IDs, an array of database IDs and the next
  * cursor
  */
@@ -156,7 +157,7 @@ export async function getPagesAndDatabasesEditedSince({
   loggerArgs: Record<string, string | number>;
   skippedDatabaseIds: Set<string>;
   retry?: { retries: number; backoffFactor: number };
-  filter?: "page" | "database";
+  filter?: "page" | "data_source";
 }): Promise<{
   pages: { id: string; lastEditedTs: number }[];
   dbs: { id: string; lastEditedTs: number }[];
@@ -278,25 +279,36 @@ export async function getPagesAndDatabasesEditedSince({
         // We're still more recent than the sinceTs, add the page to the list of edited pages.
         editedPages[pageOrDb.id] = lastEditedTime;
       }
-    } else if (pageOrDb.object === "database") {
-      if (skippedDatabaseIds.has(pageOrDb.id)) {
-        localLogger.info(
-          { databaseId: pageOrDb.id },
-          "Skipping database that is marked as skipped."
-        );
-        continue;
-      }
-      if (isFullDatabase(pageOrDb)) {
+    } else if (pageOrDb.object === "data_source") {
+      // Data sources represent what we call databases in our codebase
+      // We need to get the parent database ID to check if it's skipped
+      if (isFullDataSource(pageOrDb)) {
+        // Get the database parent ID
+        const databaseId =
+          pageOrDb.parent.type === "database_id"
+            ? pageOrDb.parent.database_id
+            : pageOrDb.database_parent.type === "database_id"
+              ? pageOrDb.database_parent.database_id
+              : null;
+
+        if (databaseId && skippedDatabaseIds.has(databaseId)) {
+          localLogger.info(
+            { databaseId, dataSourceId: pageOrDb.id },
+            "Skipping data source whose database is marked as skipped."
+          );
+          continue;
+        }
+
         if (pageOrDb.archived) {
           continue;
         }
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
 
-        // skip databases that have a `lastEditedTime` in the future
+        // skip data sources that have a `lastEditedTime` in the future
         if (lastEditedTime > Date.now()) {
           localLogger.warn(
-            { pageId: pageOrDb.id, lastEditedTime },
-            "Database has last edited time in the future."
+            { dataSourceId: pageOrDb.id, lastEditedTime },
+            "Data source has last edited time in the future."
           );
           continue;
         }
@@ -316,9 +328,11 @@ export async function getPagesAndDatabasesEditedSince({
           };
         }
 
-        // We're still more recent than the sinceTs, add the db to the list of edited dbs and loop
-        // through its pages.
-        editedDbs[pageOrDb.id] = lastEditedTime;
+        // We're still more recent than the sinceTs, add the db to the list of edited dbs
+        // We store the database ID (not the data source ID) per the user's requirements
+        if (databaseId) {
+          editedDbs[databaseId] = lastEditedTime;
+        }
       }
     }
   }
@@ -463,7 +477,8 @@ export async function isAccessibleAndUnarchived(
       if (!isFullDatabase(db)) {
         return false;
       }
-      return !db.archived;
+      // REVIEW: this is not great. We should be checking archived on the data source level
+      return !db.in_trash;
     }
   } catch (e) {
     if (APIResponseError.isAPIResponseError(e)) {
@@ -681,7 +696,8 @@ export async function getParsedDatabase(
     title,
     parentId,
     parentType: parentType as ParsedNotionPage["parentType"],
-    archived: database.archived,
+    // REVIEW: this is not great. We should be checking archived on the data source level
+    archived: database.in_trash,
   };
 }
 
@@ -848,6 +864,12 @@ export function getPageOrBlockParent(
       return {
         type: "database",
         id: pageOrBlock.parent.database_id,
+      };
+    case "data_source_id":
+      // Data sources represent databases in our system
+      return {
+        type: "database",
+        id: pageOrBlock.parent.data_source_id,
       };
     case "page_id":
       return {
@@ -1041,9 +1063,43 @@ export async function retrieveDatabaseChildrenResultPage({
 
   localLogger.info("Fetching database children result page from Notion API.");
   try {
-    const resultPage = await wrapNotionAPITokenErrors(async () =>
-      notionClient.databases.query({
+    // First, retrieve the database to get its data sources
+    const database = await wrapNotionAPITokenErrors(async () =>
+      notionClient.databases.retrieve({
         database_id: databaseId,
+      })
+    );
+
+    if (!isFullDatabase(database)) {
+      localLogger.info("Database is not a full database.");
+      return null;
+    }
+
+    // Get the first data source (if there are multiple, we only support one)
+    if (!database.data_sources || database.data_sources.length === 0) {
+      localLogger.info("Database has no data sources.");
+      return null;
+    }
+
+    const dataSourceId = database.data_sources[0]?.id;
+    if (!dataSourceId) {
+      localLogger.info("Database has no valid data source ID.");
+      return null;
+    }
+    if (database.data_sources.length > 1) {
+      localLogger.info(
+        {
+          dataSourceCount: database.data_sources.length,
+          selectedDataSourceId: dataSourceId,
+        },
+        "Database has multiple data sources, using the first one."
+      );
+    }
+
+    // Now query the data source
+    const resultPage = await wrapNotionAPITokenErrors(async () =>
+      notionClient.dataSources.query({
+        data_source_id: dataSourceId,
         start_cursor: cursor || undefined,
       })
     );

@@ -297,7 +297,7 @@ export async function getPagesAndDatabasesToSync({
   };
   excludeUpToDatePages: boolean;
   loggerArgs: Record<string, string | number>;
-  filter?: "page" | "database";
+  filter?: "page" | "data_source";
 }): Promise<{
   pageIds: string[];
   databaseIds: string[];
@@ -3077,6 +3077,9 @@ export async function getParentPageOrDb({
     switch (page.parent.type) {
       case "database_id":
         return { parentId: page.parent.database_id, parentType: "database" };
+      case "data_source_id":
+        // Data sources are what we call databases, so return database as parent type
+        return { parentId: page.parent.data_source_id, parentType: "database" };
       case "page_id":
         return { parentId: page.parent.page_id, parentType: "page" };
       case "workspace":
