@@ -14,7 +14,7 @@ import { WebhookEdition } from "@app/components/agent_builder/triggers/webhook/W
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
-type SheetMode =
+export type SheetMode =
   | { type: "add" }
   | {
       type: "edit";

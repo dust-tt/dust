@@ -16,21 +16,13 @@ import type {
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
+import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { TriggerViewsSheet } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-
-type SheetMode =
-  | { type: "add" }
-  | {
-      type: "edit";
-      trigger: AgentBuilderTriggerType;
-      index: number;
-      webhookSourceView: WebhookSourceViewType | null;
-    };
 
 interface AgentBuilderTriggersBlockProps {
   owner: LightWorkspaceType;
