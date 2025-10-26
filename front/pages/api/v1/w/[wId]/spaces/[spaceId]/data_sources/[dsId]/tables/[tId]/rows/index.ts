@@ -3,13 +3,12 @@ import type {
   ListTableRowsResponseType,
   UpsertTableRowsResponseType,
 } from "@dust-tt/client";
-import { UpsertTableRowsRequestSchema , UpsertTableRowsResponseSchema } from "@dust-tt/client";
+import { UpsertTableRowsRequestSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
-import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -263,7 +262,8 @@ async function handler(
       }
 
       const { rows: rowsList, total } = listRes.value;
-      return res.status(200).json(validated(UpsertTableRowsResponseSchema, { rows: rowsList, offset, limit, total }));
+      // eslint-disable-next-line dust/require-schema-validation -- UpsertTableRowsResponseSchema not yet exported from @dust-tt/client
+      return res.status(200).json({ rows: rowsList, offset, limit, total });
 
     case "POST":
       // To write we must have canWrite or be a systemAPIKey

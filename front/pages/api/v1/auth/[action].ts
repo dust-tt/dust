@@ -1,10 +1,8 @@
 /* eslint-disable dust/enforce-client-types-in-public-api */
 // Pass through to workOS, do not enforce return types.
-import { NextApiResponse } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { validated } from "@app/lib/api/response_validation";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -117,7 +115,8 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
       }).toString(),
     });
     const data = await response.json();
-    res.status(response.status).json(validated(NextApiResponse, data));
+    // eslint-disable-next-line dust/require-schema-validation -- pass-through to WorkOS
+    res.status(response.status).json(data);
   } catch (error) {
     logger.error({ error }, "Error in authenticate proxy");
     res.status(500).json({ error: "Internal server error" });
