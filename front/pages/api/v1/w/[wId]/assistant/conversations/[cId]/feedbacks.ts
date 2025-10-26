@@ -1,9 +1,11 @@
 import type { GetFeedbacksResponseType } from "@dust-tt/client";
+import { GetFeedbacksResponseSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getConversationFeedbacksForUser } from "@app/lib/api/assistant/feedback";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -138,7 +140,7 @@ async function handler(
         isConversationShared: feedback.isConversationShared,
       }));
 
-      res.status(200).json({ feedbacks });
+      res.status(200).json(validated(GetFeedbacksResponseSchema, { feedbacks }));
       return;
 
     default:

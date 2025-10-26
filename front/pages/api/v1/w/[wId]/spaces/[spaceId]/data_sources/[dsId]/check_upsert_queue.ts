@@ -1,7 +1,9 @@
 import type { CheckUpsertQueueResponseType } from "@dust-tt/client";
+import { CheckUpsertQueueResponseSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { checkRunningUpsertWorkflows } from "@app/lib/temporal";
@@ -124,7 +126,7 @@ async function handler(
           "[CheckUpsertQueue] Checked upsert queue status"
         );
 
-        return res.status(200).json({ running_count: runningCount });
+        return res.status(200).json(validated(CheckUpsertQueueResponseSchema, { running_count: runningCount }));
       } catch (error) {
         logger.error(
           {

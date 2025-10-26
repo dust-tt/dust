@@ -1,7 +1,9 @@
 import type { MeResponseType } from "@dust-tt/client";
+import { MeResponseSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withTokenAuthentication } from "@app/lib/api/auth_wrappers";
+import { validated } from "@app/lib/api/response_validation";
 import { apiError } from "@app/logger/withlogging";
 import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 
@@ -18,7 +20,7 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      return res.status(200).json({ user });
+      return res.status(200).json(validated(MeResponseSchema, { user }));
 
     default:
       return apiError(req, res, {

@@ -1,11 +1,12 @@
 import type { AppsCheckResponseType } from "@dust-tt/client";
-import { AppsCheckRequestSchema } from "@dust-tt/client";
+import { AppsCheckRequestSchema , AppsCheckResponseSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
+import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -70,9 +71,9 @@ async function handler(
         { concurrency: 5 }
       );
 
-      res.status(200).json({
+      res.status(200).json(validated(AppsCheckResponseSchema, {
         apps,
-      });
+      }));
       return;
 
     default:

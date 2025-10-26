@@ -1,11 +1,12 @@
 import type { DataSourceSearchResponseType } from "@dust-tt/client";
-import { DataSourceSearchQuerySchema } from "@dust-tt/client";
+import { DataSourceSearchQuerySchema , DataSourceSearchResponseSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { handleDataSourceSearch } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
+import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -211,7 +212,7 @@ async function handler(
         }
       }
 
-      return res.status(200).json(s.value);
+      return res.status(200).json(validated(DataSourceSearchResponseSchema, s.value));
     }
 
     default:

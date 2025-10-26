@@ -1,4 +1,5 @@
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
+import { GetAgentConfigurationsResponseSchema } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -7,6 +8,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -151,9 +153,9 @@ async function handler(
         );
       }
 
-      return res.status(200).json({
+      return res.status(200).json(validated(GetAgentConfigurationsResponseSchema, {
         agentConfigurations,
-      });
+      }));
     }
     default:
       return apiError(req, res, {

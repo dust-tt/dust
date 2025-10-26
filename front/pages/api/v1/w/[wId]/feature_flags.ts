@@ -1,7 +1,9 @@
 import type { GetWorkspaceFeatureFlagsResponseType } from "@dust-tt/client";
+import { GetWorkspaceFeatureFlagsResponseSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -33,7 +35,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       const feature_flags = await getFeatureFlags(owner);
-      return res.status(200).json({ feature_flags });
+      return res.status(200).json(validated(GetWorkspaceFeatureFlagsResponseSchema, { feature_flags }));
 
     default:
       return apiError(req, res, {

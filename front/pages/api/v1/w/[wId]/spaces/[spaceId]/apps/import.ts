@@ -1,10 +1,11 @@
 import type { ImportAppsResponseType } from "@dust-tt/client";
-import { PostAppsRequestSchema } from "@dust-tt/client";
+import { ImportAppsResponseSchema,PostAppsRequestSchema  } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
+import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { importApps } from "@app/lib/utils/apps";
@@ -46,7 +47,7 @@ async function handler(
       }
       const result = await importApps(auth, space, r.data.apps);
 
-      return res.status(200).json({ apps: result });
+      return res.status(200).json(validated(ImportAppsResponseSchema, { apps: result }));
 
     default:
       return apiError(req, res, {

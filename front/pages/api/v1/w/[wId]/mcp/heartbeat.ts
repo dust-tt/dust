@@ -1,10 +1,11 @@
 import type { HeartbeatMCPResponseType } from "@dust-tt/client";
-import { PublicHeartbeatMCPRequestBodySchema } from "@dust-tt/client";
+import { HeartbeatMCPResponseSchema,PublicHeartbeatMCPRequestBodySchema  } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { updateMCPServerHeartbeat } from "@app/lib/api/actions/mcp/client_side_registry";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -97,7 +98,7 @@ async function handler(
     });
   }
 
-  res.status(200).json(result);
+  res.status(200).json(validated(HeartbeatMCPResponseSchema, result));
 }
 
 export default withPublicAPIAuthentication(handler);

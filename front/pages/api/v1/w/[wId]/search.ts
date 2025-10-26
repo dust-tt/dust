@@ -1,9 +1,10 @@
 import type { PostWorkspaceSearchResponseBodyType } from "@dust-tt/client";
-import { SearchRequestBodySchema } from "@dust-tt/client";
+import { PostWorkspaceSearchResponseBodySchema,SearchRequestBodySchema  } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { validated } from "@app/lib/api/response_validation";
 import { handleSearch } from "@app/lib/api/search";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -107,7 +108,7 @@ async function handler(
     });
   }
 
-  return res.status(200).json(searchResult.value);
+  return res.status(200).json(validated(PostWorkspaceSearchResponseBodySchema, searchResult.value));
 }
 
 export default withPublicAPIAuthentication(handler);
