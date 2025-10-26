@@ -41,17 +41,10 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
     );
 
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
 
-    if (result.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${result.error.message}`
-      );
-    }
-
-    const webhookSource = result.value;
     req.query.webhookSourceId = webhookSource.sId();
 
     // Create additional views for the webhook source
@@ -85,17 +78,10 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
     const { req, res, workspace } = await setupTest("admin", "GET");
 
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
 
-    if (result.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${result.error.message}`
-      );
-    }
-
-    const webhookSource = result.value;
     req.query.webhookSourceId = webhookSource.sId();
 
     await handler(req, res);
@@ -150,17 +136,10 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
     const { req, res, workspace } = await setupTest("admin", "GET");
 
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
 
-    if (result.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${result.error.message}`
-      );
-    }
-
-    const webhookSource = result.value;
     req.query.webhookSourceId = webhookSource.sId();
 
     // Mock the listByWebhookSource method to simulate failure
@@ -188,17 +167,10 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
     const { req, res, workspace } = await setupTest("user", "GET");
 
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
 
-    if (result.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${result.error.message}`
-      );
-    }
-
-    const webhookSource = result.value;
     req.query.webhookSourceId = webhookSource.sId();
 
     await handler(req, res);
@@ -216,17 +188,10 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
     const { req, res, workspace } = await setupTest("builder", "GET");
 
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
 
-    if (result.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${result.error.message}`
-      );
-    }
-
-    const webhookSource = result.value;
     req.query.webhookSourceId = webhookSource.sId();
 
     await handler(req, res);
@@ -254,17 +219,10 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
 
     // Create a webhook source in the other workspace
     const webhookSourceFactory = new WebhookSourceFactory(otherWorkspace);
-    const result = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source in Other Workspace",
     });
 
-    if (result.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${result.error.message}`
-      );
-    }
-
-    const webhookSource = result.value;
     req.query.webhookSourceId = webhookSource.sId();
 
     await handler(req, res);
@@ -284,17 +242,10 @@ describe("Method Support /api/w/[wId]/webhook_sources/[webhookSourceId]/views", 
     const { req, res, workspace } = await setupTest("admin", "POST");
 
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
 
-    if (result.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${result.error.message}`
-      );
-    }
-
-    const webhookSource = result.value;
     req.query.webhookSourceId = webhookSource.sId();
 
     await handler(req, res);

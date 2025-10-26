@@ -6,6 +6,7 @@ import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resourc
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
+import type { WorkspaceType } from "@app/types";
 
 import handler from "./index";
 
@@ -28,15 +29,9 @@ async function setupTest(
   return { req, res, workspace, authenticator };
 }
 
-async function createWebhookSource(workspace: any, name: string) {
+async function createWebhookSource(workspace: WorkspaceType, name: string) {
   const webhookSourceFactory = new WebhookSourceFactory(workspace);
-  const result = await webhookSourceFactory.create({ name });
-
-  if (result.isErr()) {
-    throw new Error(`Failed to create webhook source: ${result.error.message}`);
-  }
-
-  return result.value;
+  return webhookSourceFactory.create({ name });
 }
 
 describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
