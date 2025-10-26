@@ -2,7 +2,18 @@
   "name": "eslint-plugin-dust",
   "version": "0.0.0",
   "license": "MIT",
+  "main": "index.js",
   "files": [
-    "eslint-plugin-dust.js"
-  ]
+    "index.js",
+    "rules/**/*.js"
+  ],
+  "scripts": {
+    "test": "node __tests__/require-schema-validation.test.js"
+  },
+  "peerDependencies": {
+    "eslint": ">=7.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1"
+  }
 }
