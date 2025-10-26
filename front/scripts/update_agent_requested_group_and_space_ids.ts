@@ -1,7 +1,10 @@
 import isEqual from "lodash/isEqual";
 import type { WhereOptions } from "sequelize";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  archiveAgentConfiguration,
+  getAgentConfiguration,
+} from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -87,6 +90,9 @@ async function updateAgentRequestedGroupIds(
         { agentId: agent.sId, agentName: agent.name },
         "Agent configuration not found, skipping"
       );
+      if (execute && agent.status === "active") {
+        await archiveAgentConfiguration(auth, agent.sId);
+      }
       errorCount++;
       continue;
     }
