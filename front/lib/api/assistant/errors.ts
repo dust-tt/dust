@@ -30,7 +30,7 @@ export const categorizeAgentErrorMessage = (error: {
   errorTitle: string;
   publicMessage: string;
 } => {
-  if (error.code == "multi_actions_error") {
+  if (error.code === "multi_actions_error") {
     if (error.message.includes("AnthropicError")) {
       if (
         error.message.includes("overloaded_error") ||
