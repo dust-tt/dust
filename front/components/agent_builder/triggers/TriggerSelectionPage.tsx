@@ -33,6 +33,7 @@ export function TriggerSelectionPage({
     });
   }, [searchTerm, webhookSourceViews]);
 
+  // Adding a few useful shortcut keywords for schedules.
   const showSchedule = useMemo(() => {
     if (!searchTerm.trim()) {
       return true;
