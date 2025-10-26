@@ -125,30 +125,33 @@ export default async function handler(req, res) {
 
 #### Autofix Support
 
-This rule supports automatic fixing with `eslint --fix`. When a violation is detected, the autofix will:
+This rule supports **automatic fixing** with `eslint --fix`. The autofix will:
 
-1. Wrap the unvalidated expression with `validated(SchemaName, expression)`
-2. Infer the correct schema name from the response type annotation
+1. **Wrap** the unvalidated expression with `validated(SchemaName, expression)`
+2. **Infer** the correct schema name from the response type annotation
+3. **Add** missing imports automatically:
+   - Schema from `@dust-tt/client`
+   - `validated` helper from `@app/lib/api/response_validation`
 
 **Example:**
 ```bash
 # Before autofix
+import type { MeResponseType } from "@dust-tt/client";
+
 return res.status(200).json(userData);
 
 # Run autofix
 npx eslint --fix pages/api/v1/me.ts
 
 # After autofix
+import type { MeResponseType } from "@dust-tt/client";
+import { MeResponseSchema } from "@dust-tt/client";
+import { validated } from "@app/lib/api/response_validation";
+
 return res.status(200).json(validated(MeResponseSchema, userData));
 ```
 
-**Note:** You'll need to manually add the imports:
-```typescript
-import { MeResponseSchema } from "@dust-tt/client";
-import { validated } from "@app/lib/api/response_validation";
-```
-
-Most IDEs will automatically suggest these imports after the autofix is applied.
+**Note:** Run `prettier --write` after autofix to format the imports nicely, or use an IDE with auto-formatting enabled.
 
 #### Configuration
 
