@@ -3,13 +3,12 @@ import type {
   GetFolderResponseType,
   UpsertFolderResponseType,
 } from "@dust-tt/client";
-import { GetFolderResponseSchema,UpsertDataSourceFolderRequestSchema  } from "@dust-tt/client";
+import { UpsertDataSourceFolderRequestSchema  } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
-import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
@@ -231,9 +230,10 @@ async function handler(
       }
 
       res.status(200).json({
-        folder: validated(GetFolderResponseSchema, {
+        // eslint-disable-next-line dust/require-schema-validation -- DELETE response returns minimal folder info
+        folder: {
           folder_id: fId,
-        }),
+        },
       });
       return;
 

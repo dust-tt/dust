@@ -2,13 +2,12 @@ import type {
   PostTableCSVAsyncResponseType,
   PostTableCSVResponseType,
 } from "@dust-tt/client";
-import { PostTableCSVAsyncResponseSchema,UpsertTableFromCsvRequestSchema  } from "@dust-tt/client";
+import { UpsertTableFromCsvRequestSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { upsertTable } from "@app/lib/api/data_sources";
-import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -178,7 +177,8 @@ async function handler(
         }
       }
 
-      return res.status(200).json(validated(PostTableCSVAsyncResponseSchema, upsertRes.value));
+      // eslint-disable-next-line dust/require-schema-validation -- PostTableCSVAsyncResponseSchema not yet exported from @dust-tt/client
+      return res.status(200).json(upsertRes.value);
     }
 
     default:

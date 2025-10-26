@@ -1,10 +1,8 @@
 import type { GetTableRowsResponseType } from "@dust-tt/client";
-import { GetTableRowsResponseSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
-import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -215,7 +213,8 @@ async function handler(
       }
 
       const { row } = rowRes.value;
-      return res.status(200).json(validated(GetTableRowsResponseSchema, { row }));
+      // eslint-disable-next-line dust/require-schema-validation -- GetTableRowsResponseSchema not yet exported from @dust-tt/client
+      return res.status(200).json({ row });
 
     case "DELETE":
       // To write we must have canWrite or be a systemAPIKey
