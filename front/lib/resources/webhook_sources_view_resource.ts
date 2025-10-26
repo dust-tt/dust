@@ -496,7 +496,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
   }
 
   get webhookSourceSId(): string {
-    return this.getWebhookSourceResource().sId;
+    return this.getWebhookSourceResource().sId();
   }
 
   static modelIdToSId({
