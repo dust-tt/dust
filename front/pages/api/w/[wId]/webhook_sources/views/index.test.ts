@@ -40,19 +40,12 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
 
     // Create webhook sources and views
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result1 = await webhookSourceFactory.create({
+    const webhookSource1 = await webhookSourceFactory.create({
       name: "Test Webhook Source 1",
     });
-    const result2 = await webhookSourceFactory.create({
+    const webhookSource2 = await webhookSourceFactory.create({
       name: "Test Webhook Source 2",
     });
-
-    if (result1.isErr() || result2.isErr()) {
-      throw new Error("Failed to create webhook sources");
-    }
-
-    const webhookSource1 = result1.value;
-    const webhookSource2 = result2.value;
 
     // Get the existing spaces
     const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
@@ -108,15 +101,9 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
 
     // Create webhook source
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
-
-    if (result.isErr()) {
-      throw new Error("Failed to create webhook source");
-    }
-
-    const webhookSource = result.value;
 
     // Get existing spaces
     const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
@@ -205,13 +192,9 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
     );
 
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result = await webhookSourceFactory.create({
+    await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
-
-    if (result.isErr()) {
-      throw new Error("Failed to create webhook source");
-    }
 
     const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
     const globalSpace = spaces.find((s) => s.kind === "global");
@@ -239,13 +222,9 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
     );
 
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result = await webhookSourceFactory.create({
+    await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
-
-    if (result.isErr()) {
-      throw new Error("Failed to create webhook source");
-    }
 
     const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
     const globalSpace = spaces.find((s) => s.kind === "global");
@@ -274,15 +253,9 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
 
     // Create webhook source
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
-
-    if (result.isErr()) {
-      throw new Error("Failed to create webhook source");
-    }
-
-    const webhookSource = result.value;
 
     // Get spaces
     const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);

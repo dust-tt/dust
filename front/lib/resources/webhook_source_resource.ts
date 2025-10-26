@@ -47,40 +47,36 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     auth: Authenticator,
     blob: CreationAttributes<WebhookSourceModel>,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<WebhookSourceResource, Error>> {
+  ): Promise<WebhookSourceResource> {
     assert(
       await SpaceResource.canAdministrateSystemSpace(auth),
       "The user is not authorized to create a webhook source"
     );
 
-    try {
-      const webhookSource = await WebhookSourceModel.create(blob, {
+    const webhookSource = await WebhookSourceModel.create(blob, {
+      transaction,
+    });
+
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+
+    // Immediately create a view for the webhook source in the system space.
+    await WebhookSourcesViewModel.create(
+      {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: systemSpace.id,
+        editedAt: new Date(),
+        editedByUserId: auth.user()?.id,
+        webhookSourceId: webhookSource.id,
+        // on creation there is no custom icon or description
+        description: "",
+        icon: DEFAULT_WEBHOOK_ICON,
+      },
+      {
         transaction,
-      });
+      }
+    );
 
-      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-
-      // Immediately create a view for the webhook source in the system space.
-      await WebhookSourcesViewModel.create(
-        {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          vaultId: systemSpace.id,
-          editedAt: new Date(),
-          editedByUserId: auth.user()?.id,
-          webhookSourceId: webhookSource.id,
-          // on creation there is no custom icon or description
-          description: "",
-          icon: DEFAULT_WEBHOOK_ICON,
-        },
-        {
-          transaction,
-        }
-      );
-
-      return new Ok(new this(WebhookSourceModel, webhookSource.get()));
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
+    return new this(WebhookSourceModel, webhookSource.get());
   }
 
   private static async baseFetch(
