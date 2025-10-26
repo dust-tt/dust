@@ -2,11 +2,6 @@ import {
   BoltIcon,
   Button,
   CardGrid,
-  ClockIcon,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   EmptyCTA,
   Hoverable,
   Spinner,
@@ -20,28 +15,21 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import { ScheduleEdition } from "@app/components/agent_builder/triggers/schedule/ScheduleEdition";
 import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
-import { WebhookEdition } from "@app/components/agent_builder/triggers/webhook/WebhookEdition";
-import { getIcon } from "@app/components/resources/resources_icons";
+import { TriggerViewsSheet } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
-import type { TriggerKind } from "@app/types/assistant/triggers";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
-type DialogMode =
-  | {
-      type: "add";
-      kind: TriggerKind;
-      webhookSourceView?: WebhookSourceViewType;
-    }
+type SheetMode =
+  | { type: "selection" }
   | {
       type: "edit";
       trigger: AgentBuilderTriggerType;
       index: number;
-      webhookSourceView?: WebhookSourceViewType;
+      webhookSourceView: WebhookSourceViewType | null;
     };
 
 interface AgentBuilderTriggersBlockProps {
@@ -56,13 +44,10 @@ export function AgentBuilderTriggersBlock({
   agentConfigurationId,
 }: AgentBuilderTriggersBlockProps) {
   const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const {
     fields: triggersToCreate,
     remove: removeFromCreate,
-    append: appendToCreate,
-    update: updateInCreate,
   } = useFieldArray<AgentBuilderFormData, "triggersToCreate">({
     name: "triggersToCreate",
   });
@@ -70,8 +55,6 @@ export function AgentBuilderTriggersBlock({
   const {
     fields: triggersToUpdate,
     remove: removeFromUpdate,
-    append: appendToUpdate,
-    update: updateInUpdate,
   } = useFieldArray<AgentBuilderFormData, "triggersToUpdate">({
     name: "triggersToUpdate",
   });
@@ -79,7 +62,7 @@ export function AgentBuilderTriggersBlock({
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const sendNotification = useSendNotification();
-  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
+  const [sheetMode, setSheetMode] = useState<SheetMode | null>(null);
 
   const { spaces } = useSpacesContext();
   const { webhookSourceViews } = useWebhookSourceViewsFromSpaces(
@@ -113,59 +96,30 @@ export function AgentBuilderTriggersBlock({
     })),
   ];
 
-  const handleCreateTrigger = (
-    kind: TriggerKind,
-    webhookSourceView?: WebhookSourceViewType
-  ) => {
-    setIsDropdownOpen(false);
-    setDialogMode({
-      type: "add",
-      kind,
-      webhookSourceView,
-    });
+  const handleAddTriggersClick = () => {
+    setSheetMode({ type: "selection" });
   };
 
   const handleTriggerEdit = (
     trigger: AgentBuilderTriggerType,
     displayIndex: number
   ) => {
+    const displayItem = allTriggers[displayIndex];
+    let webhookSourceView: WebhookSourceViewType | null = null;
+
     if (trigger.kind === "webhook") {
-      const webhookSourceView = accessibleWebhookSourceViews.find(
-        (view) => view.sId === trigger.webhookSourceViewSId
-      );
-      setDialogMode({
-        type: "edit",
-        trigger,
-        index: displayIndex,
-        webhookSourceView,
-      });
-      return;
+      webhookSourceView =
+        accessibleWebhookSourceViews.find(
+          (view) => view.sId === trigger.webhookSourceViewSId
+        ) ?? null;
     }
-    setDialogMode({ type: "edit", trigger, index: displayIndex });
-  };
 
-  const handleCloseModal = () => {
-    setDialogMode(null);
-  };
-
-  const handleTriggerSave = (trigger: AgentBuilderTriggerType) => {
-    if (dialogMode?.type === "edit") {
-      // Find the trigger in either create or update arrays
-      const displayItem = allTriggers[dialogMode.index];
-      if (displayItem.source === "create") {
-        updateInCreate(displayItem.index, trigger);
-      } else {
-        updateInUpdate(displayItem.index, trigger);
-      }
-    } else {
-      // New trigger - determine if it should go to create or update
-      if (trigger.sId) {
-        appendToUpdate(trigger);
-      } else {
-        appendToCreate(trigger);
-      }
-    }
-    handleCloseModal();
+    setSheetMode({
+      type: "edit",
+      trigger,
+      index: displayItem.index,
+      webhookSourceView,
+    });
   };
 
   const handleTriggerRemove = (
@@ -211,32 +165,12 @@ export function AgentBuilderTriggersBlock({
       }
       headerActions={
         allTriggers.length > 0 && (
-          <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                label="Add Trigger"
-                isSelect
-                type="button"
-                icon={BoltIcon}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem
-                label="Schedule"
-                icon={ClockIcon}
-                onClick={() => handleCreateTrigger("schedule")}
-              />
-              {hasFeature("hootl_webhooks") &&
-                accessibleWebhookSourceViews.map((view) => (
-                  <DropdownMenuItem
-                    key={view.sId}
-                    label={view.customName}
-                    icon={getIcon(view.icon)}
-                    onClick={() => handleCreateTrigger("webhook", view)}
-                  />
-                ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            label="Add triggers"
+            type="button"
+            icon={BoltIcon}
+            onClick={handleAddTriggersClick}
+          />
         )
       }
       isBeta
@@ -249,35 +183,12 @@ export function AgentBuilderTriggersBlock({
         ) : allTriggers.length === 0 ? (
           <EmptyCTA
             action={
-              <DropdownMenu
-                open={isDropdownOpen}
-                onOpenChange={setIsDropdownOpen}
-              >
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    label="Add Trigger"
-                    isSelect
-                    type="button"
-                    icon={BoltIcon}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem
-                    label="Schedule"
-                    icon={ClockIcon}
-                    onClick={() => handleCreateTrigger("schedule")}
-                  />
-                  {hasFeature("hootl_webhooks") &&
-                    accessibleWebhookSourceViews.map((view) => (
-                      <DropdownMenuItem
-                        key={view.sId}
-                        label={view.customName}
-                        icon={getIcon(view.icon)}
-                        onClick={() => handleCreateTrigger("webhook", view)}
-                      />
-                    ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button
+                label="Add triggers"
+                type="button"
+                icon={BoltIcon}
+                onClick={handleAddTriggersClick}
+              />
             }
             className="py-4"
           />
@@ -295,39 +206,12 @@ export function AgentBuilderTriggersBlock({
         )}
       </div>
 
-      {/* Create/Edit Schedule Modal */}
-      <ScheduleEdition
+      <TriggerViewsSheet
         owner={owner}
-        trigger={
-          dialogMode?.type === "edit" && dialogMode.trigger.kind === "schedule"
-            ? dialogMode.trigger
-            : null
-        }
-        isOpen={
-          (dialogMode?.type === "add" && dialogMode.kind === "schedule") ||
-          (dialogMode?.type === "edit" &&
-            dialogMode.trigger.kind === "schedule")
-        }
-        onClose={handleCloseModal}
-        onSave={handleTriggerSave}
-      />
-
-      {/* Create/Edit Webhook Modal */}
-      <WebhookEdition
-        owner={owner}
-        trigger={
-          dialogMode?.type === "edit" && dialogMode.trigger.kind === "webhook"
-            ? dialogMode.trigger
-            : null
-        }
-        isOpen={
-          (dialogMode?.type === "add" && dialogMode.kind === "webhook") ||
-          (dialogMode?.type === "edit" && dialogMode.trigger.kind === "webhook")
-        }
-        onClose={handleCloseModal}
-        onSave={handleTriggerSave}
+        mode={sheetMode}
+        onModeChange={setSheetMode}
+        webhookSourceViews={accessibleWebhookSourceViews}
         agentConfigurationId={agentConfigurationId}
-        webhookSourceView={dialogMode?.webhookSourceView ?? null}
       />
     </AgentBuilderSectionContainer>
   );
