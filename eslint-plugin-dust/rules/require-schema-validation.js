@@ -402,6 +402,9 @@ module.exports = {
 
       // If it's an object literal, check each property
       if (argument.type === "ObjectExpression") {
+        let hasUnvalidatedData = false;
+        let schemaName = null;
+
         argument.properties.forEach((prop) => {
           if (prop.type === "Property" && prop.value) {
             const value = prop.value;
@@ -425,14 +428,10 @@ module.exports = {
             if (value.type === "Identifier") {
               const varName = value.name;
               if (looksLikeApiData(varName)) {
-                context.report({
-                  node: value,
-                  messageId: "missingValidation",
-                  data: {
-                    schema: getExpectedSchemaName(value),
-                    variable: varName,
-                  },
-                });
+                hasUnvalidatedData = true;
+                if (!schemaName) {
+                  schemaName = getExpectedSchemaName(value);
+                }
               }
             }
 
@@ -464,6 +463,25 @@ module.exports = {
             }
           }
         });
+
+        // If we found unvalidated data in the object, report on the whole object
+        if (hasUnvalidatedData && schemaName) {
+          // Get a variable name from the first property for the error message
+          const firstProp = argument.properties.find(
+            (p) => p.type === "Property" && p.value && p.value.type === "Identifier"
+          );
+          const varName = firstProp && firstProp.value ? firstProp.value.name : "data";
+
+          context.report({
+            node: argument,
+            messageId: "missingValidation",
+            data: {
+              schema: schemaName,
+              variable: varName,
+            },
+            fix: createValidationFixer(argument, schemaName),
+          });
+        }
         return;
       }
 
