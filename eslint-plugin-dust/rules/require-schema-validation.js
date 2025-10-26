@@ -22,6 +22,7 @@ module.exports = {
       category: "Best Practices",
       recommended: true,
     },
+    fixable: "code",
     schema: [
       {
         type: "object",
@@ -374,6 +375,18 @@ module.exports = {
     }
 
     /**
+     * Create a fixer function that wraps an expression with validated()
+     */
+    function createValidationFixer(node, schemaName) {
+      return (fixer) => {
+        const sourceCode = context.getSourceCode();
+        const text = sourceCode.getText(node);
+        const wrappedText = `validated(${schemaName}, ${text})`;
+        return fixer.replaceText(node, wrappedText);
+      };
+    }
+
+    /**
      * Check if an argument passed to res.json/send needs validation
      */
     function checkArgumentValidation(argument) {
@@ -457,13 +470,15 @@ module.exports = {
       // For identifiers, check if they look like API data
       if (argument.type === "Identifier") {
         if (looksLikeApiData(argument.name)) {
+          const schemaName = getExpectedSchemaName(argument);
           context.report({
             node: argument,
             messageId: "missingValidation",
             data: {
-              schema: getExpectedSchemaName(argument),
+              schema: schemaName,
               variable: argument.name,
             },
+            fix: createValidationFixer(argument, schemaName),
           });
         }
         return;
@@ -472,13 +487,15 @@ module.exports = {
       // For member expressions (e.g., result.data from safeParse)
       if (argument.type === "MemberExpression") {
         const varName = getVariableName(argument) || "data";
+        const schemaName = getExpectedSchemaName(argument);
         context.report({
           node: argument,
           messageId: "missingValidation",
           data: {
-            schema: getExpectedSchemaName(argument),
+            schema: schemaName,
             variable: varName,
           },
+          fix: createValidationFixer(argument, schemaName),
         });
         return;
       }
@@ -486,13 +503,15 @@ module.exports = {
       // For call expressions that aren't validated
       if (argument.type === "CallExpression") {
         const varName = getVariableName(argument) || "data";
+        const schemaName = getExpectedSchemaName(argument);
         context.report({
           node: argument,
           messageId: "missingValidation",
           data: {
-            schema: getExpectedSchemaName(argument),
+            schema: schemaName,
             variable: varName,
           },
+          fix: createValidationFixer(argument, schemaName),
         });
       }
     }
