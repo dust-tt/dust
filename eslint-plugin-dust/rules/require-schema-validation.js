@@ -376,13 +376,126 @@ module.exports = {
 
     /**
      * Create a fixer function that wraps an expression with validated()
+     * and adds necessary imports
      */
     function createValidationFixer(node, schemaName) {
       return (fixer) => {
         const sourceCode = context.getSourceCode();
         const text = sourceCode.getText(node);
         const wrappedText = `validated(${schemaName}, ${text})`;
-        return fixer.replaceText(node, wrappedText);
+        const fixes = [fixer.replaceText(node, wrappedText)];
+
+        // Get the program node to access imports
+        const program = sourceCode.ast;
+        const imports = program.body.filter((n) => n.type === "ImportDeclaration");
+
+        // Check if schema is imported from @dust-tt/client
+        const hasSchemaImport = imports.some((imp) => {
+          if (imp.source.value === "@dust-tt/client") {
+            return imp.specifiers.some(
+              (spec) =>
+                (spec.type === "ImportSpecifier" &&
+                  spec.imported.name === schemaName) ||
+                (spec.type === "ImportDefaultSpecifier" &&
+                  spec.local.name === schemaName)
+            );
+          }
+          return false;
+        });
+
+        // Check if validated is imported from response_validation
+        const hasValidatedImport = imports.some((imp) => {
+          if (
+            imp.source.value === "@app/lib/api/response_validation"
+          ) {
+            return imp.specifiers.some(
+              (spec) =>
+                spec.type === "ImportSpecifier" &&
+                spec.imported.name === "validated"
+            );
+          }
+          return false;
+        });
+
+        // Find existing @dust-tt/client import to add schema to it
+        const clientImport = imports.find(
+          (imp) => imp.source.value === "@dust-tt/client"
+        );
+
+        // Find existing response_validation import to add validated to it
+        const responseValidationImport = imports.find(
+          (imp) => imp.source.value === "@app/lib/api/response_validation"
+        );
+
+        // Add schema import if missing
+        if (!hasSchemaImport) {
+          // Check if there's a non-type-only @dust-tt/client import
+          const regularClientImport = imports.find(
+            (imp) =>
+              imp.source.value === "@dust-tt/client" &&
+              imp.importKind !== "type"
+          );
+
+          if (regularClientImport) {
+            // Add to existing regular import
+            const lastSpecifier = regularClientImport.specifiers[regularClientImport.specifiers.length - 1];
+            if (lastSpecifier) {
+              fixes.push(
+                fixer.insertTextAfter(lastSpecifier, ` , ${schemaName}`)
+              );
+            }
+          } else {
+            // Create new import statement (not type-only)
+            const importText = `import { ${schemaName} } from "@dust-tt/client";\n`;
+            // Find the last @dust-tt/client import (type or regular) to insert after it
+            const lastDustImport = imports
+              .filter((imp) => imp.source.value === "@dust-tt/client")
+              .pop();
+
+            if (lastDustImport) {
+              fixes.push(fixer.insertTextAfter(lastDustImport, "\n" + importText));
+            } else {
+              const firstImport = imports[0];
+              if (firstImport) {
+                fixes.push(fixer.insertTextBefore(firstImport, importText));
+              } else {
+                fixes.push(fixer.insertTextBefore(program.body[0], importText));
+              }
+            }
+          }
+        }
+
+        // Add validated import if missing
+        if (!hasValidatedImport) {
+          if (responseValidationImport) {
+            // Add to existing import
+            const lastSpecifier = responseValidationImport.specifiers[responseValidationImport.specifiers.length - 1];
+            if (lastSpecifier) {
+              fixes.push(
+                fixer.insertTextAfter(lastSpecifier, ", validated")
+              );
+            }
+          } else {
+            // Create new import statement after client imports
+            const importText = `import { validated } from "@app/lib/api/response_validation";\n`;
+            const lastClientImport = imports
+              .filter((imp) => imp.source.value.startsWith("@dust-tt/"))
+              .pop();
+
+            if (lastClientImport) {
+              fixes.push(fixer.insertTextAfter(lastClientImport, "\n" + importText));
+            } else {
+              const firstImport = imports[0];
+              if (firstImport) {
+                fixes.push(fixer.insertTextBefore(firstImport, importText));
+              } else {
+                fixes.push(fixer.insertTextBefore(program.body[0], importText));
+              }
+            }
+          }
+        }
+
+        return fixes;
       };
     }
 
