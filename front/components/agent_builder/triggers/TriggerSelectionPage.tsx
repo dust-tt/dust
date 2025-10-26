@@ -1,4 +1,10 @@
-import { ActionIcons, Input, Page, TimeIcon, ToolCard } from "@dust-tt/sparkle";
+import {
+  ActionIcons,
+  Page,
+  SearchInput,
+  TimeIcon,
+  ToolCard,
+} from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 
 import {
@@ -50,12 +56,10 @@ export function TriggerSelectionPage({
   return (
     <Page.Vertical sizing="grow">
       <div className="flex flex-col gap-4 px-6 py-4">
-        <Input
+        <SearchInput
           placeholder="Search triggers..."
           value={searchTerm}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setSearchTerm(e.target.value)
-          }
+          onChange={setSearchTerm}
           name="triggerSearch"
         />
 
