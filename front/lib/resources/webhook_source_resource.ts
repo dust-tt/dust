@@ -258,7 +258,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     });
   }
 
-  sId(): string {
+  get sId(): string {
     return WebhookSourceResource.modelIdToSId({
       id: this.id,
       workspaceId: this.workspaceId,
@@ -284,7 +284,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
   toJSON(): WebhookSourceType {
     return {
       id: this.id,
-      sId: this.sId(),
+      sId: this.sId,
       name: this.name,
       provider: this.provider,
       createdAt: this.createdAt.getTime(),
