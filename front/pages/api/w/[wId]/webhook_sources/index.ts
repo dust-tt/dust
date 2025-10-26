@@ -134,6 +134,18 @@ async function handler(
 
       const trimmedSignatureHeader = signatureHeader.trim();
 
+      const existingWebhookSourceWithSameName =
+        await WebhookSourceResource.fetchByName(auth, name);
+      if (existingWebhookSourceWithSameName) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "A webhook source with the same name already exists.",
+          },
+        });
+      }
+
       const webhookSource = await WebhookSourceResource.makeNew(auth, {
         workspaceId: workspace.id,
         name,
