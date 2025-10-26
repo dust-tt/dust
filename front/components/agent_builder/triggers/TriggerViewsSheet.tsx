@@ -1,9 +1,4 @@
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@dust-tt/sparkle";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@dust-tt/sparkle";
 import React, { useCallback, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -20,7 +15,7 @@ import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 type SheetMode =
-  | { type: "selection" }
+  | { type: "add" }
   | {
       type: "edit";
       trigger: AgentBuilderTriggerType;
@@ -67,7 +62,7 @@ export function TriggerViewsSheet({
     webhookSourceView: WebhookSourceViewType | null;
   } | null>(null);
 
-  const isSelectionSheetOpen = mode?.type === "selection";
+  const isSelectionSheetOpen = mode?.type === "add";
 
   const handleSelectionSheetClose = useCallback(() => {
     onModeChange(null);

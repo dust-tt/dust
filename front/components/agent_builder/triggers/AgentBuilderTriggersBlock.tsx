@@ -24,7 +24,7 @@ import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 type SheetMode =
-  | { type: "selection" }
+  | { type: "add" }
   | {
       type: "edit";
       trigger: AgentBuilderTriggerType;
@@ -45,17 +45,17 @@ export function AgentBuilderTriggersBlock({
 }: AgentBuilderTriggersBlockProps) {
   const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
 
-  const {
-    fields: triggersToCreate,
-    remove: removeFromCreate,
-  } = useFieldArray<AgentBuilderFormData, "triggersToCreate">({
+  const { fields: triggersToCreate, remove: removeFromCreate } = useFieldArray<
+    AgentBuilderFormData,
+    "triggersToCreate"
+  >({
     name: "triggersToCreate",
   });
 
-  const {
-    fields: triggersToUpdate,
-    remove: removeFromUpdate,
-  } = useFieldArray<AgentBuilderFormData, "triggersToUpdate">({
+  const { fields: triggersToUpdate, remove: removeFromUpdate } = useFieldArray<
+    AgentBuilderFormData,
+    "triggersToUpdate"
+  >({
     name: "triggersToUpdate",
   });
 
@@ -97,7 +97,7 @@ export function AgentBuilderTriggersBlock({
   ];
 
   const handleAddTriggersClick = () => {
-    setSheetMode({ type: "selection" });
+    setSheetMode({ type: "add" });
   };
 
   const handleTriggerEdit = (
