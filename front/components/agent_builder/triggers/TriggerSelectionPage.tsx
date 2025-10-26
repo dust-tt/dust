@@ -1,10 +1,4 @@
-import {
-  ActionIcons,
-  Input,
-  Page,
-  TimeIcon,
-  ToolCard,
-} from "@dust-tt/sparkle";
+import { ActionIcons, Input, Page, TimeIcon, ToolCard } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 
 import {
@@ -66,7 +60,7 @@ export function TriggerSelectionPage({
 
         {showSchedule && (
           <div className="flex flex-col gap-3">
-            <span className="text-lg font-semibold text-element-900">
+            <span className="text-element-900 text-lg font-semibold">
               Top triggers
             </span>
             <div className="grid grid-cols-2 gap-3">
@@ -85,7 +79,7 @@ export function TriggerSelectionPage({
 
         {filteredWebhookSourceViews.length > 0 && (
           <div className="flex flex-col gap-3">
-            <span className="text-lg font-semibold text-element-900">
+            <span className="text-element-900 text-lg font-semibold">
               Webhooks
             </span>
             <div className="grid grid-cols-2 gap-3">
@@ -112,7 +106,7 @@ export function TriggerSelectionPage({
         )}
 
         {!showSchedule && filteredWebhookSourceViews.length === 0 && (
-          <div className="flex h-32 items-center justify-center text-sm text-element-700">
+          <div className="text-element-600 flex h-32 items-center justify-center text-sm">
             No triggers found matching your search
           </div>
         )}
