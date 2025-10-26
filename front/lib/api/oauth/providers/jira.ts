@@ -23,6 +23,9 @@ export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
       // Write permissions
       "write:jira-work",
 
+      // Webhook management
+      "manage:jira-webhook",
+
       // Required for OAuth refresh token
       "offline_access",
     ];
