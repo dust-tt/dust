@@ -77,48 +77,50 @@ export function TriggerSelectionPage({
             className="mt-4"
           />
 
-          {showSchedule && (
-            <div className="flex flex-col gap-4 py-2">
-              <span className="text-lg font-semibold">Top triggers</span>
-              <div className="grid grid-cols-2 gap-3">
-                <ToolCard
-                  icon={TimeIcon}
-                  label="Schedule"
-                  description="Trigger this agent on a schedule"
-                  isSelected={false}
-                  canAdd={true}
-                  onClick={onScheduleSelect}
-                  cardContainerClassName="h-36"
-                />
-              </div>
-            </div>
-          )}
+          <div className="flex flex-col gap-4 py-2">
+            {showSchedule && (
+              <>
+                <span className="text-lg font-semibold">Top triggers</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <ToolCard
+                    icon={TimeIcon}
+                    label="Schedule"
+                    description="Trigger this agent on a schedule"
+                    isSelected={false}
+                    canAdd={true}
+                    onClick={onScheduleSelect}
+                    cardContainerClassName="h-36"
+                  />
+                </div>
+              </>
+            )}
 
-          {filteredWebhookSourceViews.length > 0 && (
-            <div className="flex flex-col gap-4">
-              <span className="text-lg font-semibold">Other triggers</span>
-              <div className="grid grid-cols-2 gap-3">
-                {filteredWebhookSourceViews.map((view) => {
-                  const icon = isCustomResourceIconType(view.icon)
-                    ? ActionIcons[view.icon]
-                    : InternalActionIcons[view.icon];
+            {filteredWebhookSourceViews.length > 0 && (
+              <div className="flex flex-col gap-4">
+                <span className="text-lg font-semibold">Other triggers</span>
+                <div className="grid grid-cols-2 gap-3">
+                  {filteredWebhookSourceViews.map((view) => {
+                    const icon = isCustomResourceIconType(view.icon)
+                      ? ActionIcons[view.icon]
+                      : InternalActionIcons[view.icon];
 
-                  return (
-                    <ToolCard
-                      key={view.sId}
-                      icon={icon}
-                      label={view.customName}
-                      description={view.description}
-                      isSelected={false}
-                      canAdd={true}
-                      onClick={() => onWebhookSelect(view)}
-                      cardContainerClassName="h-36"
-                    />
-                  );
-                })}
+                    return (
+                      <ToolCard
+                        key={view.sId}
+                        icon={icon}
+                        label={view.customName}
+                        description={view.description}
+                        isSelected={false}
+                        canAdd={true}
+                        onClick={() => onWebhookSelect(view)}
+                        cardContainerClassName="h-36"
+                      />
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {!showSchedule && filteredWebhookSourceViews.length === 0 && (
             <div className="flex h-32 items-center justify-center text-sm">
