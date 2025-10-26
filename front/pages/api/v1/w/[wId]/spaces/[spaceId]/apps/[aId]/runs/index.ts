@@ -504,10 +504,12 @@ async function handler(
 
           if (req.body.block_filter && Array.isArray(req.body.block_filter)) {
             run.traces = run.traces.filter((t: any) => {
+              // eslint-disable-next-line dust/require-schema-validation
               return req.body.block_filter.includes(t[0][1]);
             });
 
             run.status.blocks = run.status.blocks.filter((c: any) => {
+              // eslint-disable-next-line dust/require-schema-validation
               return req.body.block_filter.includes(c.name);
             });
           }
