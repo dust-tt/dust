@@ -39,6 +39,7 @@ import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/s
 import { default as openaiUsageServer } from "@app/lib/actions/mcp_internal_actions/servers/openai_usage";
 import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
+import { default as promptGuardServer } from "@app/lib/actions/mcp_internal_actions/servers/prompt_guard";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as extractDataServer } from "@app/lib/actions/mcp_internal_actions/servers/process";
 import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
@@ -208,7 +209,9 @@ export async function getInternalMCPServer(
       return frontServer(auth, agentLoopContext);
     case "zendesk":
       return zendeskServer(auth, agentLoopContext);
-    default:
+    case "prompt_guard":
+      return promptGuardServer(auth, agentLoopContext);
+      default:
       assertNever(internalMCPServerName);
   }
 }
