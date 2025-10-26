@@ -64,7 +64,7 @@ export function TriggerSelectionPage({
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent size="xl">
+      <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>Add triggers</SheetTitle>
         </SheetHeader>
