@@ -64,7 +64,7 @@ export function TriggerSelectionPage({
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent size="lg">
+      <SheetContent size="xl">
         <SheetHeader>
           <SheetTitle>Add triggers</SheetTitle>
         </SheetHeader>
@@ -74,10 +74,11 @@ export function TriggerSelectionPage({
             value={searchTerm}
             onChange={setSearchTerm}
             name="triggerSearch"
+            className="mt-4"
           />
 
           {showSchedule && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4 py-2">
               <span className="text-lg font-semibold">Top triggers</span>
               <div className="grid grid-cols-2 gap-3">
                 <ToolCard
@@ -94,8 +95,8 @@ export function TriggerSelectionPage({
           )}
 
           {filteredWebhookSourceViews.length > 0 && (
-            <div className="flex flex-col gap-3">
-              <span className="text-lg font-semibold">Webhooks</span>
+            <div className="flex flex-col gap-4">
+              <span className="text-lg font-semibold">Other triggers</span>
               <div className="grid grid-cols-2 gap-3">
                 {filteredWebhookSourceViews.map((view) => {
                   const icon = isCustomResourceIconType(view.icon)
