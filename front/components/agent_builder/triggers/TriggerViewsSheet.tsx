@@ -87,11 +87,7 @@ export function TriggerViewsSheet({
 
   const handleScheduleSave = useCallback(
     (trigger: AgentBuilderScheduleTriggerType) => {
-      if (
-        scheduleEditionState &&
-        scheduleEditionState.index !== null &&
-        scheduleEditionState.index !== undefined
-      ) {
+      if (scheduleEditionState?.index) {
         if (scheduleEditionState.trigger?.sId) {
           appendTriggerToUpdate(trigger);
         } else {
@@ -112,11 +108,7 @@ export function TriggerViewsSheet({
 
   const handleWebhookSave = useCallback(
     (trigger: AgentBuilderWebhookTriggerType) => {
-      if (
-        webhookEditionState &&
-        webhookEditionState.index !== null &&
-        webhookEditionState.index !== undefined
-      ) {
+      if (webhookEditionState?.index) {
         if (webhookEditionState.trigger?.sId) {
           appendTriggerToUpdate(trigger);
         } else {
