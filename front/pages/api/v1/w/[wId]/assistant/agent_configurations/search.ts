@@ -1,8 +1,10 @@
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
+import { GetAgentConfigurationsResponseSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration/agent";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -77,9 +79,9 @@ async function handler(
         auth,
         q
       );
-      return res.status(200).json({
+      return res.status(200).json(validated(GetAgentConfigurationsResponseSchema, {
         agentConfigurations,
-      });
+      }));
     }
     default:
       return apiError(req, res, {

@@ -1,7 +1,9 @@
 import type { GetWorkspaceVerifiedDomainsResponseType } from "@dust-tt/client";
+import { GetWorkspaceVerifiedDomainsResponseSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { validated } from "@app/lib/api/response_validation";
 import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -35,7 +37,7 @@ async function handler(
         auth.getNonNullableWorkspace()
       );
 
-      return res.status(200).json({ verified_domains: verifiedDomains });
+      return res.status(200).json(validated(GetWorkspaceVerifiedDomainsResponseSchema, { verified_domains: verifiedDomains }));
 
     default:
       return apiError(req, res, {

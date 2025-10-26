@@ -2,7 +2,7 @@ import type {
   GetConversationsResponseType,
   PostConversationsResponseType,
 } from "@dust-tt/client";
-import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
+import { PostConversationsResponseSchema,PublicPostConversationsRequestBodySchema  } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -21,6 +21,7 @@ import {
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
+import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -430,11 +431,11 @@ async function handler(
         conversation = updatedRes.value;
       }
 
-      res.status(200).json({
+      res.status(200).json(validated(PostConversationsResponseSchema, {
         conversation,
         message: newMessage ?? undefined,
         contentFragment: newContentFragment ?? undefined,
-      });
+      }));
       return;
     case "GET":
       if (!auth.user()) {

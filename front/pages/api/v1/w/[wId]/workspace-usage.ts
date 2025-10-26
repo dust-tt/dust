@@ -3,7 +3,7 @@ import type {
   GetWorkspaceUsageResponseType,
   UsageTableType,
 } from "@dust-tt/client";
-import { GetWorkspaceUsageRequestSchema } from "@dust-tt/client";
+import { GetWorkspaceUsageRequestSchema , GetWorkspaceUsageResponseSchema } from "@dust-tt/client";
 import { parse as parseCSV } from "csv-parse/sync";
 import { endOfMonth } from "date-fns/endOfMonth";
 import JSZip from "jszip";
@@ -11,6 +11,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
@@ -177,7 +178,7 @@ async function handler(
         });
 
         res.setHeader("Content-Type", "application/json");
-        res.status(200).json(records);
+        res.status(200).json(validated(GetWorkspaceUsageResponseSchema, records));
         return;
       }
 
@@ -201,7 +202,7 @@ async function handler(
           "Content-Disposition",
           `attachment; filename="usage.zip"`
         );
-        res.status(200).send(zipContent);
+        res.status(200).send(validated(GetWorkspaceUsageResponseSchema, zipContent));
       } else {
         res.setHeader("Content-Type", "text/csv");
         res.setHeader(
@@ -209,7 +210,7 @@ async function handler(
           `attachment; filename="${query.table}.csv"`
         );
         const csvData = data[query.table];
-        res.status(200).send(csvData);
+        res.status(200).send(validated(GetWorkspaceUsageResponseSchema, csvData));
       }
       return;
 

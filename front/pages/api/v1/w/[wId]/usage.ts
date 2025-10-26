@@ -1,10 +1,12 @@
 import type { GetWorkspaceUsageResponseType } from "@dust-tt/client";
+import { GetWorkspaceUsageResponseSchema } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { unsafeGetUsageData } from "@app/lib/workspace_usage";
@@ -70,7 +72,7 @@ async function handler(
         owner
       );
       res.setHeader("Content-Type", "text/csv");
-      res.status(200).send(csvData);
+      res.status(200).send(validated(GetWorkspaceUsageResponseSchema, csvData));
       return;
 
     default:
