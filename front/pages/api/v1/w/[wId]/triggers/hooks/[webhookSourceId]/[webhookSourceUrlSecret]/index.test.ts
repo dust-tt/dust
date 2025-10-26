@@ -54,7 +54,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     req.query = {
       wId: workspace.sId,
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
       webhookSourceUrlSecret: webhookSource.urlSecret,
     };
     req.body = { any: "payload" };
@@ -153,7 +153,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     req.query = {
       wId: workspace.sId,
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
       webhookSourceUrlSecret: "invalid-secret", // Using wrong secret
     };
     req.body = { any: "payload" };
@@ -186,7 +186,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     req.query = {
       wId: workspace.sId,
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
       // Missing webhookSourceUrlSecret parameter (it will be undefined)
     };
     req.body = { any: "payload" };
@@ -223,7 +223,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     req.query = {
       wId: workspace.sId,
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
       webhookSourceUrlSecret: customUrlSecret, // Using the correct secret
     };
     req.body = { any: "payload" };
@@ -281,7 +281,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     req.query = {
       wId: workspace.sId,
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
       webhookSourceUrlSecret: webhookSource.urlSecret,
     };
     req.body = {
