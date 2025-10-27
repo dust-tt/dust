@@ -91,6 +91,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "slideshow",
   "jira",
   "microsoft_drive",
+  "microsoft_excel",
   "microsoft_teams",
   "missing_action_catcher",
   "monday",
@@ -1092,7 +1093,7 @@ The directive should be used to display a clickable version of the agent name in
         provider: "microsoft_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
         scope:
-          "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All" as const,
+          "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All offline_access" as const,
       },
       icon: "MicrosoftLogo",
       documentationUrl: "https://docs.dust.tt/docs/microsoft-drive-tool-setup",
@@ -1126,7 +1127,7 @@ The directive should be used to display a clickable version of the agent name in
         provider: "microsoft_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
         scope:
-          "User.Read User.ReadBasic.All Team.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send" as const,
+          "User.Read User.ReadBasic.All Team.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access" as const,
       },
       icon: "MicrosoftTeamsLogo",
       documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
@@ -1151,6 +1152,39 @@ The directive should be used to display a clickable version of the agent name in
       description: "Create music tracks and sound effects",
       authorization: null,
       icon: "ActionMegaphoneIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  microsoft_excel: {
+    id: 38,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("microsoft_excel_mcp_server");
+    },
+    isPreview: false,
+    tools_stakes: {
+      list_excel_files: "never_ask",
+      get_worksheets: "never_ask",
+      read_worksheet: "never_ask",
+      write_worksheet: "high",
+      create_worksheet: "low",
+      clear_range: "high",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "microsoft_excel",
+      version: "1.0.0",
+      description: "Work with Excel files in SharePoint.",
+      authorization: {
+        provider: "microsoft_tools" as const,
+        supported_use_cases: ["personal_actions"] as const,
+        scope:
+          "User.Read Files.ReadWrite.All Sites.Read.All offline_access" as const,
+      },
+      icon: "MicrosoftExcelLogo",
       documentationUrl: null,
       instructions: null,
     },
