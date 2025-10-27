@@ -8,10 +8,13 @@ import {
   GARBAGE_COLLECT_QUEUE_NAME,
   QUEUE_NAME,
 } from "@connectors/connectors/notion/temporal/config";
+import type { NotionWebhookEvent } from "@connectors/connectors/notion/temporal/signals";
+import { notionWebhookSignal } from "@connectors/connectors/notion/temporal/signals";
 import {
+  notionProcessWebhooksWorkflow,
   notionSyncWorkflow,
-  updateOrphanedResourcesParentsWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/";
+import { updateOrphanedResourcesParentsWorkflow } from "@connectors/connectors/notion/temporal/workflows/";
 import { notionGarbageCollectionWorkflow } from "@connectors/connectors/notion/temporal/workflows/garbage_collection";
 import { processDatabaseUpsertQueueWorkflow } from "@connectors/connectors/notion/temporal/workflows/upsert_database_queue";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -336,6 +339,29 @@ export async function launchProcessDatabaseUpsertQueueWorkflow(
     { connectorId },
     "launchProcessDatabaseUpsertQueueWorkflow: Started Notion process database upsert queue workflow."
   );
+}
+
+export async function launchNotionWebhookProcessingWorkflow(
+  connectorId: ModelId,
+  event: NotionWebhookEvent
+) {
+  const client = await getTemporalClient();
+
+  await client.workflow.signalWithStart(notionProcessWebhooksWorkflow, {
+    args: [{ connectorId }],
+    taskQueue: QUEUE_NAME,
+    workflowId: getNotionWorkflowId(connectorId, "process-webhooks"),
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
+    signal: notionWebhookSignal,
+    signalArgs: [event],
+    memo: {
+      connectorId,
+    },
+  });
+
+  logger.info({ connectorId }, "Signaled Notion webhook processing workflow");
 }
 
 export async function getSyncWorkflow(connectorId: ModelId): Promise<{
