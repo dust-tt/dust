@@ -1,3 +1,4 @@
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -5,12 +6,20 @@ import logger from "@app/logger/logger";
 import { launchStoreAgentAnalyticsWorkflow } from "@app/temporal/analytics_queue/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
+export type AgentUsageAnalyticsArgs = {
+  type: "agent_message"
+  content: AgentLoopArgs
+} | {
+  type: "agent_message_feedback"
+  content: AgentMessageFeedbackType & Pick<AgentLoopArgs, "conversationId">
+}
+
 /**
  * Launch agent message analytics workflow in fire-and-forget mode.
  */
 export async function launchAgentMessageAnalyticsActivity(
   authType: AuthenticatorType,
-  agentLoopArgs: AgentLoopArgs
+  agentUsageAnalyticsArgs: AgentUsageAnalyticsArgs
 ): Promise<void> {
   // Use `getWorkspaceInfos` for lightweight workspace info.
   const owner = await getWorkspaceInfos(authType.workspaceId);
@@ -19,6 +28,7 @@ export async function launchAgentMessageAnalyticsActivity(
       { workspaceId: authType.workspaceId },
       "Failed to fetch workspace infos for agent message analytics"
     );
+
     return;
   }
 
@@ -29,17 +39,17 @@ export async function launchAgentMessageAnalyticsActivity(
 
   const result = await launchStoreAgentAnalyticsWorkflow({
     authType,
-    agentLoopArgs,
+    agentUsageAnalyticsArgs,
   });
 
   if (result.isErr()) {
     logger.warn(
       {
-        agentMessageId: agentLoopArgs.agentMessageId,
+        agentMessageId: agentUsageAnalyticsArgs.content.agentMessageId,
         error: result.error,
         workspaceId: authType.workspaceId,
       },
-      "Failed to launch agent message analytics workflow"
+      `Failed to launch ${agentUsageAnalyticsArgs.type} analytics workflow`
     );
   }
 }

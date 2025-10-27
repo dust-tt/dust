@@ -221,7 +221,10 @@ export async function agentLoopWorkflow({
         },
       });
 
-      await launchAgentMessageAnalyticsActivity(authType, agentLoopArgs);
+      await launchAgentMessageAnalyticsActivity(authType, {
+        type: "agent_message",
+        content: agentLoopArgs,
+      });
     });
 
     if (childWorkflowHandle) {
@@ -298,17 +301,17 @@ async function executeStepIteration({
     actionBlobs.map(({ actionId, retryPolicy }) =>
       retryPolicy === "no_retry"
         ? runToolActivity(authType, {
-            actionId,
-            runAgentArgs: agentLoopArgs,
-            step: currentStep,
-            runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-          })
+          actionId,
+          runAgentArgs: agentLoopArgs,
+          step: currentStep,
+          runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+        })
         : runRetryableToolActivity(authType, {
-            actionId,
-            runAgentArgs: agentLoopArgs,
-            step: currentStep,
-            runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-          })
+          actionId,
+          runAgentArgs: agentLoopArgs,
+          step: currentStep,
+          runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+        })
     )
   );
 
