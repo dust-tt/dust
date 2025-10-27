@@ -207,32 +207,41 @@ async function updateConversationRequestedGroupIds(
 
       // Calculate new requestedGroupIds from agents
       // Note: agents.requestedGroupIds is string[][] (sIds) from the API after enrichment
-      const agentRequirements: string[][] = agents.flatMap(
+      const agentGroupRequirements: string[][] = agents.flatMap(
         (agent: LightAgentConfigurationType) => agent.requestedGroupIds
+      );
+      const agentSpaceRequirements: string[] = agents.flatMap(
+        (agent: LightAgentConfigurationType) => agent.requestedSpaceIds
       );
 
       logger.info(
         {
           conversationId: conversation.sId,
-          agentRequirements,
+          agentGroupRequirements,
+          agentSpaceRequirements,
           agentsWithGroupIds: agents.map((a: LightAgentConfigurationType) => ({
             sId: a.sId,
             version: a.version,
             requestedGroupIds: a.requestedGroupIds,
+            requestedSpaceIds: a.requestedSpaceIds,
           })),
         },
         "Agent requirements extracted"
       );
 
       // Remove duplicates and sort each requirement
-      const uniqueRequirements = agentRequirements
+      const uniqueGroupRequirements = agentGroupRequirements
         .map((r) => sortBy(r))
         .filter(
           (req, index, self) => self.findIndex((r) => isEqual(r, req)) === index
         );
 
+      const uniqueSpaceRequirements = agentSpaceRequirements.filter(
+        (req, index, self) => self.findIndex((r) => isEqual(r, req)) === index
+      );
+
       // Convert sIds to modelIds
-      const newRequestedGroupIds: ModelId[][] = uniqueRequirements.map(
+      const newRequestedGroupIds: ModelId[][] = uniqueGroupRequirements.map(
         (groupSIds) =>
           groupSIds.map((groupSId) => {
             const modelId = getResourceIdFromSId(groupSId);
@@ -245,6 +254,18 @@ async function updateConversationRequestedGroupIds(
           })
       );
 
+      const newRequestedSpaceIds: ModelId[] = uniqueSpaceRequirements.map(
+        (spaceSId) => {
+          const modelId = getResourceIdFromSId(spaceSId);
+          if (modelId === null) {
+            throw new Error(
+              `Invalid group sId: ${spaceSId} for conversation ${conversation.sId}`
+            );
+          }
+          return modelId;
+        }
+      );
+
       // Convert current requestedGroupIds (stored as BIGINT, returned as strings by Sequelize)
       // Parse strings to numbers for proper comparison
       const currentRequestedGroupIds = conversation.requestedGroupIds.map(
@@ -252,6 +273,11 @@ async function updateConversationRequestedGroupIds(
           groupArray.map((groupId) =>
             typeof groupId === "string" ? parseInt(groupId, 10) : groupId
           )
+      );
+
+      const currentRequestedSpaceIds = conversation.requestedSpaceIds.map(
+        (spaceId) =>
+          typeof spaceId === "string" ? parseInt(spaceId, 10) : spaceId
       );
 
       // Normalize for comparison
@@ -265,7 +291,8 @@ async function updateConversationRequestedGroupIds(
         isArrayEqual2DUnordered(
           normalizedNewGroupIds,
           normalizedCurrentGroupIds
-        )
+        ) &&
+        isEqual(newRequestedSpaceIds.sort(), currentRequestedSpaceIds.sort())
       ) {
         logger.info(
           {
@@ -285,16 +312,21 @@ async function updateConversationRequestedGroupIds(
           agentCount: agents.length,
           currentGroupIds: normalizedCurrentGroupIds,
           newGroupIds: normalizedNewGroupIds,
+          currentSpaceIds: currentRequestedSpaceIds,
+          newSpaceIds: newRequestedSpaceIds,
           execute,
         },
         execute
-          ? "Updating conversation requestedGroupIds"
-          : "[DRY RUN] Would update conversation requestedGroupIds"
+          ? "Updating conversation requestedGroupIds/requestedSpaceIds"
+          : "[DRY RUN] Would update conversation requestedGroupIds/requestedSpaceIds"
       );
 
       if (execute) {
         await ConversationModel.update(
-          { requestedGroupIds: normalizedNewGroupIds },
+          {
+            requestedGroupIds: normalizedNewGroupIds,
+            requestedSpaceIds: newRequestedSpaceIds,
+          },
           {
             where: {
               id: conversation.id,
