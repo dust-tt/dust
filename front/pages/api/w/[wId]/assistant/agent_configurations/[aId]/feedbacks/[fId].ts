@@ -41,6 +41,16 @@ async function handler(
 
   switch (req.method) {
     case "PATCH":
+      if (!agentConfiguration.canEdit && !auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: "Only editors can modify agent feedback.",
+          },
+        });
+      }
+
       const feedbackId = parseInt(fId, 10);
       if (isNaN(feedbackId)) {
         return apiError(req, res, {
@@ -70,7 +80,7 @@ async function handler(
         return apiError(req, res, {
           status_code: 403,
           api_error: {
-            type: "unauthorized",
+            type: "agent_configuration_not_found",
             message: "The feedback does not belong to this agent.",
           },
         });
