@@ -6,7 +6,7 @@ import logger from "@app/logger/logger";
 import { launchStoreAgentAnalyticsWorkflow } from "@app/temporal/analytics_queue/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
-export type AgentUsageAnalyticsArgs =
+export type AgentMessageAnalyticsArgs =
   | {
       type: "agent_message";
       message: AgentLoopArgs;
@@ -25,7 +25,7 @@ export type AgentUsageAnalyticsArgs =
  */
 export async function launchAgentMessageAnalyticsActivity(
   authType: AuthenticatorType,
-  agentUsageAnalyticsArgs: AgentUsageAnalyticsArgs
+  agentMessageAnalyticsArgs: AgentMessageAnalyticsArgs
 ): Promise<void> {
   // Use `getWorkspaceInfos` for lightweight workspace info.
   const owner = await getWorkspaceInfos(authType.workspaceId);
@@ -45,17 +45,17 @@ export async function launchAgentMessageAnalyticsActivity(
 
   const result = await launchStoreAgentAnalyticsWorkflow({
     authType,
-    agentUsageAnalyticsArgs,
+    agentMessageAnalyticsArgs,
   });
 
   if (result.isErr()) {
     logger.warn(
       {
-        agentMessageId: agentUsageAnalyticsArgs.message.agentMessageId,
+        agentMessageId: agentMessageAnalyticsArgs.message.agentMessageId,
         error: result.error,
         workspaceId: authType.workspaceId,
       },
-      `Failed to launch ${agentUsageAnalyticsArgs.type} analytics workflow`
+      `Failed to launch ${agentMessageAnalyticsArgs.type} analytics workflow`
     );
   }
 }

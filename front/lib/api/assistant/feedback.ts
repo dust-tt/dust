@@ -103,13 +103,8 @@ export async function upsertMessageFeedback(
     return feedbackWithConversationContext;
   }
 
-  const {
-    agentMessage,
-    feedback,
-    agentConfiguration,
-    isGlobalAgent,
-    message,
-  } = feedbackWithConversationContext.value;
+  const { agentMessage, feedback, agentConfiguration, isGlobalAgent, message } =
+    feedbackWithConversationContext.value;
 
   if (feedback) {
     await feedback.updateFields({
@@ -118,13 +113,13 @@ export async function upsertMessageFeedback(
       isConversationShared,
     });
 
-    const serializedFeedback = toAgentMessageFeedback({
+    const updatedFeedback = toAgentMessageFeedback({
       feedbackResource: feedback,
       messageSId: message.sId,
       userId: user.id,
     });
 
-    return new Ok(serializedFeedback);
+    return new Ok(updatedFeedback);
   }
 
   try {
@@ -144,13 +139,13 @@ export async function upsertMessageFeedback(
       dismissed: false,
     });
 
-    const serializedFeedback = toAgentMessageFeedback({
+    const createdFeedback = toAgentMessageFeedback({
       feedbackResource: newFeedback,
       messageSId: message.sId,
       userId: user.id,
     });
 
-    return new Ok(serializedFeedback);
+    return new Ok(createdFeedback);
   } catch (e) {
     return new Err(normalizeError(e));
   }
@@ -204,47 +199,6 @@ export async function deleteMessageFeedback(
   }
 
   return new Ok(undefined);
-}
-
-export async function triggerAgentMessageFeedbackWorkflow(auth: Authenticator, {
-  feedback,
-  messageId,
-  conversationId,
-}: {
-  feedback: AgentMessageFeedbackType;
-  messageId: string;
-  conversationId: string;
-}): Promise<void> {
-  const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
-
-  if (!featureFlags.includes("agent_builder_observability")) {
-    return;
-  }
-
-  const launchResult = await launchStoreAgentAnalyticsWorkflow({
-    authType: auth.toJSON(),
-    agentUsageAnalyticsArgs: {
-      type: "agent_message_feedback",
-      feedback,
-      message: {
-        agentMessageId: messageId,
-        conversationId,
-      },
-    },
-  });
-
-  if (launchResult.isErr()) {
-    logger.warn(
-      {
-        feedbackId: feedback.id,
-        messageId: feedback.messageId,
-        workspaceId: workspace.sId,
-        error: launchResult.error,
-      },
-      "Failed to launch store agent message feedback workflow"
-    );
-  }
 }
 
 function toAgentMessageFeedback({
@@ -325,4 +279,48 @@ export async function getAgentFeedbacks({
   return new Ok(
     feedbacksWithHiddenConversationId as AgentMessageFeedbackWithMetadataType[]
   );
+}
+
+export async function triggerAgentMessageFeedbackWorkflow(
+  auth: Authenticator,
+  {
+    feedback,
+    messageId,
+    conversationId,
+  }: {
+    feedback: AgentMessageFeedbackType;
+    messageId: string;
+    conversationId: string;
+  }
+): Promise<void> {
+  const workspace = auth.getNonNullableWorkspace();
+  const featureFlags = await getFeatureFlags(workspace);
+
+  if (!featureFlags.includes("agent_builder_observability")) {
+    return;
+  }
+
+  const launchResult = await launchStoreAgentAnalyticsWorkflow({
+    authType: auth.toJSON(),
+    agentMessageAnalyticsArgs: {
+      type: "agent_message_feedback",
+      feedback,
+      message: {
+        agentMessageId: messageId,
+        conversationId,
+      },
+    },
+  });
+
+  if (launchResult.isErr()) {
+    logger.warn(
+      {
+        feedbackId: feedback.id,
+        messageId: feedback.messageId,
+        workspaceId: workspace.sId,
+        error: launchResult.error,
+      },
+      "Failed to launch store agent message feedback workflow"
+    );
+  }
 }

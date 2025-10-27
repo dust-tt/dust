@@ -3,7 +3,7 @@ import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import type { AgentUsageAnalyticsArgs } from "@app/temporal/agent_loop/activities/analytics";
+import type { AgentMessageAnalyticsArgs } from "@app/temporal/agent_loop/activities/analytics";
 import { QUEUE_NAME } from "@app/temporal/analytics_queue/config";
 import { makeAgentMessageAnalyticsWorkflowId } from "@app/temporal/analytics_queue/helpers";
 import {
@@ -15,14 +15,14 @@ import { Err, normalizeError, Ok } from "@app/types";
 
 export async function launchStoreAgentAnalyticsWorkflow({
   authType,
-  agentUsageAnalyticsArgs,
+  agentMessageAnalyticsArgs,
 }: {
   authType: AuthenticatorType;
-  agentUsageAnalyticsArgs: AgentUsageAnalyticsArgs;
+  agentMessageAnalyticsArgs: AgentMessageAnalyticsArgs;
 }): Promise<Result<undefined, Error>> {
   const { workspaceId } = authType;
 
-  const { agentMessageId, conversationId } = agentUsageAnalyticsArgs.message;
+  const { agentMessageId, conversationId } = agentMessageAnalyticsArgs.message;
 
   const client = await getTemporalClientForFrontNamespace();
 
@@ -33,9 +33,9 @@ export async function launchStoreAgentAnalyticsWorkflow({
   });
 
   try {
-    if (agentUsageAnalyticsArgs.type === "agent_message") {
+    if (agentMessageAnalyticsArgs.type === "agent_message") {
       await client.workflow.start(storeAgentAnalyticsWorkflow, {
-        args: [authType, { agentLoopArgs: agentUsageAnalyticsArgs.message }],
+        args: [authType, { agentLoopArgs: agentMessageAnalyticsArgs.message }],
         taskQueue: QUEUE_NAME,
         workflowId,
         memo: {
@@ -43,13 +43,13 @@ export async function launchStoreAgentAnalyticsWorkflow({
           workspaceId,
         },
       });
-    } else if (agentUsageAnalyticsArgs.type === "agent_message_feedback") {
+    } else if (agentMessageAnalyticsArgs.type === "agent_message_feedback") {
       await client.workflow.start(storeAgentMessageFeedbackWorkflow, {
         args: [
           authType,
           {
-            feedback: agentUsageAnalyticsArgs.feedback,
-            message: agentUsageAnalyticsArgs.message,
+            feedback: agentMessageAnalyticsArgs.feedback,
+            message: agentMessageAnalyticsArgs.message,
           },
         ],
         taskQueue: QUEUE_NAME,
@@ -67,7 +67,7 @@ export async function launchStoreAgentAnalyticsWorkflow({
       logger.error(
         {
           workflowId,
-          agentMessageId: agentUsageAnalyticsArgs.message.agentMessageId,
+          agentMessageId: agentMessageAnalyticsArgs.message.agentMessageId,
           error: e,
         },
         "Failed starting agent analytics workflow"

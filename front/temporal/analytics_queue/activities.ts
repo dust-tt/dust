@@ -14,7 +14,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { AgentMessageType, LightAgentConfigurationType } from "@app/types";
+import type { AgentMessageType } from "@app/types";
 import { normalizeError } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
@@ -60,8 +60,6 @@ export async function storeAgentAnalyticsActivity(
 
   // Collect tool usage data from the agent message actions.
   const toolsUsed = await collectToolUsageFromMessage(auth, agentMessage);
-
-  logger.info({ toolsUsed }, "Tools used");
 
   // Build the complete analytics document.
   const document: AgentMessageAnalyticsData = {
@@ -223,67 +221,6 @@ async function storeToElasticsearch(
   }
 }
 
-async function fetchMessageByAgentMessageId(
-  auth: Authenticator,
-  agentMessageId: string,
-  conversationSId: string
-): Promise<AgentMessageType | null> {
-  // First, get the conversation resource to get the numeric ID from the sId
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    conversationSId
-  );
-
-  if (!conversation) {
-    return null;
-  }
-
-  const message = await Message.findOne({
-    where: {
-      sId: agentMessageId,
-      conversationId: conversation.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-    include: [
-      {
-        model: AgentMessage,
-        as: "agentMessage",
-        required: true,
-      },
-    ],
-  });
-
-  if (!message?.agentMessage) {
-    return null;
-  }
-
-  return {
-    sId: message.sId,
-    type: "agent_message" as const,
-    version: message.version,
-    rank: message.rank,
-    created:
-      Math.floor(new Date(message.agentMessage.createdAt).getTime() / 1000) *
-      1000,
-    completedTs: message.agentMessage.completedAt?.getTime() ?? null,
-    parentMessageId: message.parentId?.toString() ?? null,
-    parentAgentMessageId: null,
-    status: "succeeded" as const,
-    content: null,
-    chainOfThought: null,
-    error: null,
-    id: message.agentMessage.id,
-    agentMessageId: message.agentMessage.id,
-    visibility: message.visibility,
-    configuration: {} as unknown as LightAgentConfigurationType,
-    skipToolsValidation: message.agentMessage.skipToolsValidation,
-    actions: [],
-    rawContents: [],
-    contents: [],
-    parsedContents: {},
-  } satisfies AgentMessageType;
-}
-
 export async function storeAgentMessageFeedbackActivity(
   authType: AuthenticatorType,
   {
@@ -298,38 +235,45 @@ export async function storeAgentMessageFeedbackActivity(
   }
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
+  const workspace = auth.getNonNullableWorkspace();
 
-  const agentMessage = await fetchMessageByAgentMessageId(
+  const conversation = await ConversationResource.fetchById(
     auth,
-    message.agentMessageId,
     message.conversationId
   );
 
-  if (!agentMessage) {
-    throw new Error(
-      `Message not found for agentMessageId: ${message.agentMessageId}`
-    );
+  if (!conversation) {
+    throw new Error(`Conversation not found: ${message.conversationId}`);
   }
 
-  // Find the agent message by ID to get the numeric ID
-  const agentMessageRecord = await AgentMessage.findOne({
+  const messageRecord = await Message.findOne({
     where: {
-      id: agentMessage.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
+      sId: message.agentMessageId,
+      conversationId: conversation.id,
+      workspaceId: workspace.id,
     },
+    include: [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: true,
+      },
+    ],
   });
 
-  if (!agentMessageRecord) {
-    throw new Error(
-      `Agent message record not found for agentMessageId: ${message.agentMessageId}`
-    );
+  if (!messageRecord?.agentMessage) {
+    throw new Error(`Message not found: ${message.agentMessageId}`);
   }
 
-  // Fetch all existing feedbacks for this agent message
+  const messageCreated =
+    Math.floor(
+      new Date(messageRecord.agentMessage.createdAt).getTime() / 1000
+    ) * 1000;
+
   const existingFeedbacks =
     await AgentMessageFeedbackResource.listByAgentMessageId(
       auth,
-      agentMessageRecord.id
+      messageRecord.agentMessage.id
     );
 
   // Convert existing feedbacks to analytics format
@@ -358,7 +302,8 @@ export async function storeAgentMessageFeedbackActivity(
   );
 
   await updateAnalyticsFeedback(auth, {
-    message: agentMessage,
+    messageSId: message.agentMessageId,
+    messageCreated,
     feedbacks: allFeedbacks,
   });
 }
