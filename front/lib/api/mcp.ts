@@ -1,4 +1,4 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
 import type {
   CustomResourceIconType,
@@ -43,7 +43,7 @@ export function getRetryPolicyFromToolConfiguration(
 export type MCPToolType = {
   name: string;
   description: string;
-  inputSchema?: JSONSchema;
+  inputSchema?: Tool["inputSchema"];
 };
 
 export type MCPToolWithAvailabilityType = MCPToolType & {
