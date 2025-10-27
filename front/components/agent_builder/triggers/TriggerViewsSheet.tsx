@@ -20,6 +20,15 @@ import { WebhookEdition } from "@app/components/agent_builder/triggers/webhook/W
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
+const TRIGGERS_SHEET_PAGE_IDS = {
+  SELECTION: "trigger-selection",
+  SCHEDULE: "schedule-edition",
+  WEBHOOK: "webhook-edition",
+} as const;
+
+type PageId =
+  (typeof TRIGGERS_SHEET_PAGE_IDS)[keyof typeof TRIGGERS_SHEET_PAGE_IDS];
+
 export type SheetMode =
   | { type: "add" }
   | {
@@ -36,8 +45,6 @@ interface TriggerViewsSheetProps {
   webhookSourceViews: WebhookSourceViewType[];
   agentConfigurationId: string | null;
 }
-
-type PageId = "trigger-selection" | "schedule-edition" | "webhook-edition";
 
 export function TriggerViewsSheet({
   owner,
@@ -59,8 +66,9 @@ export function TriggerViewsSheet({
     name: "triggersToUpdate",
   });
 
-  const [currentPageId, setCurrentPageId] =
-    useState<PageId>("trigger-selection");
+  const [currentPageId, setCurrentPageId] = useState<PageId>(
+    TRIGGERS_SHEET_PAGE_IDS.SELECTION
+  );
 
   const [scheduleEditionState, setScheduleEditionState] = useState<{
     trigger: AgentBuilderScheduleTriggerType | null;
@@ -76,7 +84,7 @@ export function TriggerViewsSheet({
   const isSheetOpen = mode !== null;
 
   const handleSheetClose = useCallback(() => {
-    setCurrentPageId("trigger-selection");
+    setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SELECTION);
     setScheduleEditionState(null);
     setWebhookEditionState(null);
     onModeChange(null);
@@ -84,7 +92,7 @@ export function TriggerViewsSheet({
 
   const handleScheduleSelect = useCallback(() => {
     setScheduleEditionState({ trigger: null, index: null });
-    setCurrentPageId("schedule-edition");
+    setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SCHEDULE);
   }, []);
 
   const handleWebhookSelect = useCallback(
@@ -94,7 +102,7 @@ export function TriggerViewsSheet({
         index: null,
         webhookSourceView,
       });
-      setCurrentPageId("webhook-edition");
+      setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.WEBHOOK);
     },
     []
   );
@@ -152,12 +160,12 @@ export function TriggerViewsSheet({
   );
 
   const handleScheduleCancel = useCallback(() => {
-    setCurrentPageId("trigger-selection");
+    setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SELECTION);
     setScheduleEditionState(null);
   }, []);
 
   const handleWebhookCancel = useCallback(() => {
-    setCurrentPageId("trigger-selection");
+    setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SELECTION);
     setWebhookEditionState(null);
   }, []);
 
@@ -168,7 +176,7 @@ export function TriggerViewsSheet({
           trigger: mode.trigger,
           index: mode.index,
         });
-        setCurrentPageId("schedule-edition");
+        setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SCHEDULE);
         onModeChange(null);
       }
     } else if (mode.trigger.kind === "webhook") {
@@ -178,7 +186,7 @@ export function TriggerViewsSheet({
           index: mode.index,
           webhookSourceView: mode.webhookSourceView,
         });
-        setCurrentPageId("webhook-edition");
+        setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.WEBHOOK);
         onModeChange(null);
       }
     }
@@ -222,7 +230,7 @@ export function TriggerViewsSheet({
 
   const pages: MultiPageSheetPage[] = [
     {
-      id: "trigger-selection",
+      id: TRIGGERS_SHEET_PAGE_IDS.SELECTION,
       title: "Add triggers",
       icon: PlusIcon,
       content: (
@@ -234,7 +242,7 @@ export function TriggerViewsSheet({
       ),
     },
     {
-      id: "schedule-edition",
+      id: TRIGGERS_SHEET_PAGE_IDS.SCHEDULE,
       title: scheduleTitle,
       icon: TimeIcon,
       content: (
@@ -246,7 +254,7 @@ export function TriggerViewsSheet({
       ),
     },
     {
-      id: "webhook-edition",
+      id: TRIGGERS_SHEET_PAGE_IDS.WEBHOOK,
       title: webhookTitle,
       icon: webhookIcon,
       content: (
@@ -275,14 +283,16 @@ export function TriggerViewsSheet({
         showHeaderNavigation={false}
         showNavigation={false}
         leftButton={
-          currentPageId !== "trigger-selection"
+          currentPageId !== TRIGGERS_SHEET_PAGE_IDS.SELECTION
             ? {
                 label: "Cancel",
                 variant: "outline",
                 onClick: () => {
-                  if (currentPageId === "schedule-edition") {
+                  if (currentPageId === TRIGGERS_SHEET_PAGE_IDS.SCHEDULE) {
                     handleScheduleCancel();
-                  } else if (currentPageId === "webhook-edition") {
+                  } else if (
+                    currentPageId === TRIGGERS_SHEET_PAGE_IDS.WEBHOOK
+                  ) {
                     handleWebhookCancel();
                   }
                 },
