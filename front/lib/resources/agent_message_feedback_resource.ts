@@ -19,7 +19,7 @@ import {
   Message,
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { UserModel } from "@app/lib/resources/storage/models/user";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -42,7 +42,7 @@ import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMessageFeedbackResource
-  extends ReadonlyAttributesType<AgentMessageFeedback> {}
+  extends ReadonlyAttributesType<AgentMessageFeedback> { }
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedback> {
   static model: ModelStatic<AgentMessageFeedback> = AgentMessageFeedback;
@@ -479,9 +479,9 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
     const agentMessageFeedbackResource = agentMessageFeedback
       ? new AgentMessageFeedbackResource(
-          AgentMessageFeedback,
-          agentMessageFeedback.get()
-        )
+        AgentMessageFeedback,
+        agentMessageFeedback.get()
+      )
       : null;
 
     const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
@@ -543,6 +543,38 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
   }
 
+  static async listByAgentMessageId(
+    auth: Authenticator,
+    agentMessageId: number
+  ): Promise<AgentMessageFeedbackResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const feedbacks = await AgentMessageFeedback.findAll({
+      where: {
+        agentMessageId,
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: UserModel,
+          as: "user",
+          attributes: ["id", "name", "email", "imageUrl"],
+        },
+      ],
+      order: [["createdAt", "ASC"]],
+    });
+
+    return feedbacks.map((feedback) => {
+      return new AgentMessageFeedbackResource(
+        AgentMessageFeedback,
+        feedback.get(),
+        {
+          user: feedback.user?.get(),
+        }
+      );
+    });
+  }
+
   toJSON() {
     return {
       id: this.id,
@@ -560,10 +592,10 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       conversationId: this.conversationId,
       ...(this.user
         ? {
-            userName: this.user.name,
-            userEmail: this.user.email,
-            userImageUrl: this.user.imageUrl,
-          }
+          userName: this.user.name,
+          userEmail: this.user.email,
+          userImageUrl: this.user.imageUrl,
+        }
         : {}),
     };
   }

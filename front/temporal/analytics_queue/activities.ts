@@ -2,22 +2,28 @@ import assert from "assert";
 
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
-import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
+import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
 import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import {
+  AgentMessage,
+  Message,
+} from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { AgentMessageType } from "@app/types";
+import type { AgentMessageType, LightAgentConfigurationType } from "@app/types";
 import { normalizeError } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageAnalyticsData,
+  AgentMessageAnalyticsFeedback,
   AgentMessageAnalyticsTokens,
   AgentMessageAnalyticsToolUsed,
 } from "@app/types/assistant/analytics";
@@ -71,7 +77,7 @@ export async function storeAgentAnalyticsActivity(
     latency_ms: 0,
     message_id: agentMessage.sId,
     status: agentMessage.status,
-    timestamp: new Date(userMessage.created).toISOString(),
+    timestamp: new Date(Math.floor(agentMessage.created / 1000) * 1000).toISOString(),
     tokens,
     tools_used: toolsUsed,
     user_id: userMessage.user?.sId ?? "unknown",
@@ -223,49 +229,134 @@ async function storeToElasticsearch(
   }
 }
 
+async function fetchMessageByAgentMessageId(
+  auth: Authenticator,
+  agentMessageId: string,
+  conversationSId: string
+): Promise<AgentMessageType | null> {
+  // First, get the conversation resource to get the numeric ID from the sId
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationSId
+  );
+
+  if (!conversation) {
+    return null;
+  }
+
+  const message = await Message.findOne({
+    where: {
+      sId: agentMessageId,
+      conversationId: conversation.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    include: [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!message?.agentMessage) {
+    return null;
+  }
+
+  return {
+    sId: message.sId,
+    type: "agent_message" as const,
+    version: message.version,
+    rank: message.rank,
+    created: Math.floor(new Date(message.agentMessage.createdAt).getTime() / 1000) * 1000,
+    completedTs: message.agentMessage.completedAt?.getTime() ?? null,
+    parentMessageId: message.parentId?.toString() ?? null,
+    parentAgentMessageId: null,
+    status: "succeeded" as const,
+    content: null,
+    chainOfThought: null,
+    error: null,
+    id: message.agentMessage.id,
+    agentMessageId: message.agentMessage.id,
+    visibility: message.visibility,
+    configuration: {} as unknown as LightAgentConfigurationType,
+    skipToolsValidation: message.agentMessage.skipToolsValidation,
+    actions: [],
+    rawContents: [],
+    contents: [],
+    parsedContents: {},
+  } satisfies AgentMessageType;
+}
+
 export async function storeAgentMessageFeedbackActivity(
   authType: AuthenticatorType,
-  feedback: AgentMessageFeedbackType
+  {
+    message,
+    feedback,
+  }: {
+    message: {
+      agentMessageId: string;
+      conversationId: string;
+    };
+    feedback: AgentMessageAnalyticsFeedback;
+  }
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
-  const workspace = auth.getNonNullableWorkspace();
 
-  const esClient = await getClient();
+  const agentMessage = await fetchMessageByAgentMessageId(
+    auth,
+    message.agentMessageId,
+    message.conversationId
+  );
 
-  let analyticsDocumentId: string | undefined;
-
-  try {
-    const searchParamsBase = {
-      index: ANALYTICS_ALIAS_NAME,
-      size: 1,
-      sort: [{ timestamp: { order: "desc" } }],
-      track_total_hits: true as const,
-    };
-
-    const primarySearch = await esClient.search<AgentMessageAnalyticsData>({
-      ...searchParamsBase,
-      query: {
-        bool: {
-          filter: [
-            { term: { workspace_id: workspace.sId } },
-            { term: { message_id: feedback.messageId } },
-          ],
-        },
-      },
-    });
-
-    logger.info({ primarySearch }, "Primary search");
-  } catch (error) {
-    logger.error(
-      {
-        analyticsDocumentId,
-        feedbackId: feedback.id,
-        messageId: feedback.messageId,
-        workspaceId: workspace.sId,
-        error: normalizeError(error),
-      },
-      "Failed to store agent message feedback analytics"
-    );
-    throw error;
+  if (!agentMessage) {
+    throw new Error(`Message not found for agentMessageId: ${message.agentMessageId}`);
   }
+
+  // Find the agent message by ID to get the numeric ID
+  const agentMessageRecord = await AgentMessage.findOne({
+    where: {
+      id: agentMessage.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+  });
+
+  if (!agentMessageRecord) {
+    throw new Error(`Agent message record not found for agentMessageId: ${message.agentMessageId}`);
+  }
+
+  // Fetch all existing feedbacks for this agent message
+  const existingFeedbacks = await AgentMessageFeedbackResource.listByAgentMessageId(
+    auth,
+    agentMessageRecord.id
+  );
+
+  // Convert existing feedbacks to analytics format
+  const existingAnalyticsFeedbacks = existingFeedbacks
+    .filter((existingFeedback) => existingFeedback.id !== feedback.feedback_id).map((existingFeedback) => ({
+      feedback_id: existingFeedback.id,
+      user_id: existingFeedback.user?.id?.toString() ?? "unknown",
+      thumb_direction: existingFeedback.thumbDirection as "up" | "down",
+      content: existingFeedback.content ?? undefined,
+      is_conversation_shared: existingFeedback.isConversationShared,
+      created_at: existingFeedback.createdAt.toISOString(),
+    }));
+
+  // Combine existing feedbacks with the new feedback
+  const allFeedbacks = [...existingAnalyticsFeedbacks, feedback];
+
+  logger.info(
+    {
+      agentMessageId: message.agentMessageId,
+      existingCount: existingAnalyticsFeedbacks.length,
+      newFeedback: feedback,
+      totalCount: allFeedbacks.length
+    },
+    "Storing agent message feedback activity with all feedbacks"
+  );
+
+  await updateAnalyticsFeedback(auth, {
+    message: agentMessage,
+    feedbacks: allFeedbacks
+  });
 }

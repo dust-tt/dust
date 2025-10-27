@@ -30,9 +30,24 @@ export async function storeAgentMessageFeedbackWorkflow(
   authType: AuthenticatorType,
   {
     feedback,
+    message,
   }: {
     feedback: AgentMessageFeedbackType;
+    message: {
+      agentMessageId: string;
+      conversationId: string;
+    };
   }
 ): Promise<void> {
-  await storeAgentMessageFeedbackActivity(authType, feedback);
+  await storeAgentMessageFeedbackActivity(authType, {
+    message,
+    feedback: {
+      feedback_id: feedback.id,
+      user_id: feedback.userId.toString(),
+      thumb_direction: feedback.thumbDirection,
+      content: feedback.content ?? undefined,
+      is_conversation_shared: feedback.isConversationShared,
+      created_at: feedback.createdAt.toString(),
+    }
+  });
 }

@@ -253,8 +253,8 @@ async function handler(
 
       await triggerAgentMessageFeedbackWorkflow(auth, {
         feedback: created.value,
+        messageId,
         conversationId: conversation.sId,
-        messageId: messageId,
       });
 
       res.status(200).json({ success: true });

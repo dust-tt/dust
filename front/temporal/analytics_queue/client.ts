@@ -42,9 +42,16 @@ export async function launchStoreAgentAnalyticsWorkflow({
       });
     } else if (agentUsageAnalyticsArgs.type === "agent_message_feedback") {
       await client.workflow.start(storeAgentMessageFeedbackWorkflow, {
-        args: [authType, { feedback: agentUsageAnalyticsArgs.feedback }],
+        args: [authType, {
+          feedback: agentUsageAnalyticsArgs.feedback,
+          message: agentUsageAnalyticsArgs.message
+        }],
         taskQueue: QUEUE_NAME,
         workflowId,
+        memo: {
+          agentMessageId,
+          workspaceId,
+        },
       });
     }
 
