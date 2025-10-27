@@ -298,15 +298,10 @@ export async function syncTicket({
     );
 
     const metadata = [
-      `ticketId:${ticket.id}`,
       `priority:${ticket.priority}`,
       `ticketType:${ticket.type}`,
       `channel:${ticket.via?.channel}`,
       `status:${ticket.status}`,
-      ...(ticket.group_id ? [`groupId:${ticket.group_id}`] : []),
-      ...(ticket.organization_id
-        ? [`organizationId:${ticket.organization_id}`]
-        : []),
       ...(ticket.due_at
         ? [`dueDate:${new Date(ticket.due_at).toISOString()}`]
         : []),
@@ -314,6 +309,18 @@ export async function syncTicket({
         ? [`satisfactionRating:${ticket.satisfaction_rating.score}`]
         : []),
       `hasIncidents:${ticket.has_incidents ? "Yes" : "No"}`,
+    ];
+
+    // Tags are metadata plus some content that have no semantic meaning such as IDs.
+    const tags = [
+      ...metadata,
+      `updatedAt:${updatedAtDate.getTime()}`,
+      `createdAt:${createdAtDate.getTime()}`,
+      `ticketId:${ticket.id}`,
+      ...(ticket.group_id ? [`groupId:${ticket.group_id}`] : []),
+      ...(ticket.organization_id
+        ? [`organizationId:${ticket.organization_id}`]
+        : []),
     ];
 
     // Process custom field tags.
@@ -340,13 +347,7 @@ export async function syncTicket({
       createdAt: createdAtDate,
       updatedAt: updatedAtDate,
       additionalPrefixes: {
-        metadata: metadata
-          // We remove IDs from the prefixes since they do not hold any semantic meaning.
-          .filter(
-            (field) =>
-              !["ticketId", "organizationId", "groupId"].includes(field)
-          )
-          .join(", "),
+        metadata: metadata.join(", "),
         labels: ticket.tags.join(", ") || "none",
       },
     });
@@ -365,9 +366,7 @@ export async function syncTicket({
       documentUrl: ticketUrl,
       timestampMs: updatedAtDate.getTime(),
       tags: [
-        `updatedAt:${updatedAtDate.getTime()}`,
-        `createdAt:${createdAtDate.getTime()}`,
-        ...metadata,
+        ...tags,
         ...filterCustomTags(ticket.tags, logger),
         ...customFieldTags,
       ],
