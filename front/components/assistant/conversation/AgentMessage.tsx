@@ -60,6 +60,10 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  getUserMentionPlugin,
+  userMentionDirective,
+} from "@app/lib/mentions/markdown/plugin";
 import { useCancelMessage } from "@app/lib/swr/conversations";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import { formatTimestring } from "@app/lib/utils/timestamps";
@@ -602,6 +606,7 @@ function AgentMessageContent({
       sup: CiteBlock,
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: getAgentMentionPlugin(owner),
+      mention_user: getUserMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
     }),
     [owner, conversationId, sId, agentConfiguration.sId]
@@ -610,6 +615,7 @@ function AgentMessageContent({
   const additionalMarkdownPlugins: PluggableList = React.useMemo(
     () => [
       agentMentionDirective,
+      userMentionDirective,
       getCiteDirective(),
       visualizationDirective,
       imgDirective,
