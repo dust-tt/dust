@@ -47,6 +47,7 @@ import { ConversationError, Err, normalizeError, Ok } from "@app/types";
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
   includeTest?: boolean;
+  dangerouslySkipPermissionFiltering?: boolean;
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -117,6 +118,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       uniqueSpaceIds.length === 0
         ? []
         : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds);
+
+    if (fetchConversationOptions?.dangerouslySkipPermissionFiltering) {
+      return conversations.map((c) => new this(this.model, c.get()));
+    }
 
     const featureFlags = await getFeatureFlags(workspace);
     const hasRequestedSpaceIdsFF = featureFlags.includes(
@@ -420,6 +425,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
     const conversation = await this.fetchById(auth, sId, {
       includeDeleted: options?.includeDeleted,
+      dangerouslySkipPermissionFiltering:
+        options?.dangerouslySkipPermissionFiltering,
     });
 
     if (!conversation) {
