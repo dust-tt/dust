@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 
 import {
   getAvatarFromIcon,
+  getIcon,
   ResourceAvatar,
 } from "@app/components/resources/resources_icons";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
@@ -18,7 +19,12 @@ export const WebhookSourceViewIcon = ({
   const { provider } = webhookSourceView;
 
   if (provider) {
-    return <ResourceAvatar icon={WEBHOOK_PRESETS[provider].icon} size={size} />;
+    return (
+      <ResourceAvatar
+        icon={getIcon(WEBHOOK_PRESETS[provider].icon)}
+        size={size}
+      />
+    );
   }
 
   return getAvatarFromIcon(webhookSourceView.icon, size);

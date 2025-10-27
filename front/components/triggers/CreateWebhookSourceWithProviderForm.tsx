@@ -1,6 +1,7 @@
 import { Button, ExternalLinkIcon, Label, Spinner } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { getIcon } from "@app/components/resources/resources_icons";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
@@ -91,7 +92,7 @@ export function CreateWebhookSourceWithProviderForm({
             label={
               connection ? `Connected to ${kindName}` : `Connect to ${kindName}`
             }
-            icon={preset.icon}
+            icon={getIcon(preset.icon)}
             onClick={handleConnectToProvider}
             disabled={isConnectingProvider || !!connection}
           />

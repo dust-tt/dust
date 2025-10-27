@@ -548,9 +548,11 @@ function WebhookSourceSheetContent({
         id: "create",
         title: `Create ${mode.provider ? WEBHOOK_PRESETS[mode.provider].name : "Custom"} Webhook Source`,
         description: "",
-        icon: mode.provider
-          ? WEBHOOK_PRESETS[mode.provider].icon
-          : getIcon(DEFAULT_WEBHOOK_ICON),
+        icon: getIcon(
+          mode.provider
+            ? WEBHOOK_PRESETS[mode.provider].icon
+            : DEFAULT_WEBHOOK_ICON
+        ),
         content: (
           <FormProvider {...createForm}>
             <div className="space-y-4">
@@ -576,9 +578,11 @@ function WebhookSourceSheetContent({
         description: "Webhook source for triggering assistants.",
         icon: systemView
           ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />
-          : mode.provider
-            ? WEBHOOK_PRESETS[mode.provider].icon
-            : getIcon(DEFAULT_WEBHOOK_ICON),
+          : getIcon(
+              mode.provider
+                ? WEBHOOK_PRESETS[mode.provider].icon
+                : DEFAULT_WEBHOOK_ICON
+            ),
         content:
           systemView && webhookSource ? (
             <FormProvider {...editForm}>
