@@ -13,7 +13,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EyeIcon,
-  UserIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React from "react";
@@ -77,17 +76,7 @@ export function MentionDropdown({
 
   // User mention actions.
   if (isRichUserMention(mention)) {
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
-        <DropdownMenuContent side="bottom" align="start">
-          <DropdownMenuItem
-            icon={UserIcon}
-            label={`Profile of @${mention.label}: ${mention.description || ""}`}
-          />
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
+    return <>{children}</>;
   }
 
   // Unsupported mention type, render children without dropdown.
