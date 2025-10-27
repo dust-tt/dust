@@ -34,11 +34,11 @@ export const ticketAgentAssignmentChangedSchema: JSONSchema = {
       description: "Event-specific data about the agent assignment change",
       properties: {
         current: {
-          type: "integer",
+          type: "string",
           description: "The user ID of the current assignee",
         },
         previous: {
-          type: "integer",
+          type: "string",
           description: "The user ID of the previous assignee",
         },
       },
@@ -48,12 +48,61 @@ export const ticketAgentAssignmentChangedSchema: JSONSchema = {
       description: "Details about the ticket",
       properties: {
         actor_id: {
-          type: "integer",
+          type: "string",
           description: "The ID of the user who performed the action",
         },
+        assignee_id: {
+          type: "string",
+          description: "The assignee ID",
+        },
+        brand_id: {
+          type: "string",
+          description: "The brand ID",
+        },
+        created_at: {
+          type: "string",
+          description: "When the ticket was created",
+        },
+        custom_status: {
+          type: "string",
+          description: "The custom status ID",
+        },
+        description: {
+          type: "string",
+          description: "The ticket description",
+        },
+        external_id: {
+          type: ["string", "null"],
+          description: "The external ID",
+        },
+        form_id: {
+          type: "string",
+          description: "The form ID",
+        },
+        group_id: {
+          type: "string",
+          description: "The group ID",
+        },
         id: {
-          type: "integer",
+          type: "string",
           description: "The ticket ID",
+        },
+        is_public: {
+          type: "boolean",
+          description: "Whether the ticket is public",
+        },
+        organization_id: {
+          type: ["string", "null"],
+          description: "The organization ID",
+        },
+        priority: {
+          type: "string",
+          description: "The ticket priority",
+          enum: ["LOW", "NORMAL", "HIGH", "URGENT"],
+        },
+        requester_id: {
+          type: "string",
+          description: "The requester ID",
         },
         status: {
           type: "string",
@@ -74,27 +123,9 @@ export const ticketAgentAssignmentChangedSchema: JSONSchema = {
           type: "string",
           description: "The ticket subject",
         },
-        description: {
+        submitter_id: {
           type: "string",
-          description: "The ticket description",
-        },
-        created_at: {
-          type: "string",
-          description: "When the ticket was created",
-        },
-        updated_at: {
-          type: "string",
-          description: "When the ticket was last updated",
-        },
-        priority: {
-          type: "string",
-          description: "The ticket priority",
-          enum: ["low", "normal", "high", "urgent"],
-        },
-        type: {
-          type: "string",
-          description: "The ticket type",
-          enum: ["problem", "incident", "question", "task"],
+          description: "The submitter ID",
         },
         tags: {
           type: "array",
@@ -103,21 +134,24 @@ export const ticketAgentAssignmentChangedSchema: JSONSchema = {
             type: "string",
           },
         },
-        organization_id: {
-          type: "integer",
-          description: "The organization ID",
+        type: {
+          type: "string",
+          description: "The ticket type",
+          enum: ["PROBLEM", "INCIDENT", "QUESTION", "TASK"],
         },
-        assignee_id: {
-          type: "integer",
-          description: "The assignee ID",
+        updated_at: {
+          type: "string",
+          description: "When the ticket was last updated",
         },
-        group_id: {
-          type: "integer",
-          description: "The group ID",
-        },
-        requester_id: {
-          type: "integer",
-          description: "The requester ID",
+        via: {
+          type: "object",
+          description: "Information about how the ticket was submitted",
+          properties: {
+            channel: {
+              type: "string",
+              description: "The channel through which the ticket was submitted",
+            },
+          },
         },
       },
     },

@@ -1,14 +1,67 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { ZendeskWebhookStoredMetadata } from "@app/lib/triggers/built-in-webhooks/zendesk/zendesk_service_types";
-import { ZENDESK_WEBHOOK_EVENTS } from "@app/lib/triggers/built-in-webhooks/zendesk/zendesk_webhook_events";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type { Result, WorkspaceType } from "@app/types";
 import { Err, OAuthAPI, Ok } from "@app/types";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 import type { NoAdditionalData } from "@app/types/triggers/webhooks";
 
 export class ZendeskWebhookService implements RemoteWebhookService<"zendesk"> {
+  async setupZendeskConnection({
+    connectionId,
+    auth,
+  }: {
+    connectionId: string;
+    auth: Authenticator;
+  }): Promise<
+    Result<
+      {
+        accessToken: string;
+        zendeskSubdomain: string;
+        workspace: WorkspaceType;
+      },
+      Error
+    >
+  > {
+    const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+
+    // Verify the connection belongs to this workspace
+    const metadataRes = await oauthAPI.getConnectionMetadata({
+      connectionId: connectionId,
+    });
+
+    if (metadataRes.isErr()) {
+      return new Err(new Error("Zendesk connection not found"));
+    }
+    const workspace = auth.getNonNullableWorkspace();
+
+    const workspaceId = metadataRes.value.connection.metadata.workspace_id;
+    if (!workspaceId || workspaceId !== workspace.sId) {
+      return new Err(new Error("Connection does not belong to this workspace"));
+    }
+
+    const zendeskSubdomain =
+      metadataRes.value.connection.metadata.zendesk_subdomain;
+    if (!zendeskSubdomain || typeof zendeskSubdomain !== "string") {
+      return new Err(new Error("Zendesk subdomain not found in connection"));
+    }
+
+    const tokenRes = await oauthAPI.getAccessToken({
+      connectionId: connectionId,
+    });
+
+    if (tokenRes.isErr()) {
+      return new Err(new Error("Failed to get Zendesk access token"));
+    }
+
+    return new Ok({
+      accessToken: tokenRes.value.access_token,
+      zendeskSubdomain: zendeskSubdomain,
+      workspace: workspace,
+    });
+  }
+
   async getServiceData(
     _oauthToken: string
   ): Promise<Result<NoAdditionalData, Error>> {
@@ -18,7 +71,6 @@ export class ZendeskWebhookService implements RemoteWebhookService<"zendesk"> {
   async createWebhooks({
     auth,
     connectionId,
-    remoteMetadata,
     webhookUrl,
     events,
     secret,
@@ -38,53 +90,27 @@ export class ZendeskWebhookService implements RemoteWebhookService<"zendesk"> {
       Error
     >
   > {
-    const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-
-    // Verify the connection belongs to this workspace
-    const metadataRes = await oauthAPI.getConnectionMetadata({
+    const connectionRes = await this.setupZendeskConnection({
       connectionId,
+      auth,
     });
 
-    if (metadataRes.isErr()) {
-      return new Err(new Error("Zendesk connection not found"));
+    if (connectionRes.isErr()) {
+      return connectionRes;
     }
 
+    const { accessToken, zendeskSubdomain } = connectionRes.value;
     const workspace = auth.getNonNullableWorkspace();
-
-    const workspaceId = metadataRes.value.connection.metadata.workspace_id;
-    if (!workspaceId || workspaceId !== workspace.sId) {
-      return new Err(new Error("Connection does not belong to this workspace"));
-    }
-
-    const zendeskSubdomain =
-      metadataRes.value.connection.metadata.zendesk_subdomain;
-    if (!zendeskSubdomain || typeof zendeskSubdomain !== "string") {
-      return new Err(new Error("Zendesk subdomain not found in connection"));
-    }
-
-    const tokenRes = await oauthAPI.getAccessToken({ connectionId });
-
-    if (tokenRes.isErr()) {
-      return new Err(new Error("Failed to get Zendesk access token"));
-    }
-
-    const accessToken = tokenRes.value.access_token;
-
-    // Map event names to Zendesk event type format using the preset
-    const eventMapping = Object.fromEntries(
-      ZENDESK_WEBHOOK_EVENTS.map((e) => [e.name, e.value])
-    );
-    const subscriptions = events.map((event) => eventMapping[event] || event);
 
     // Create the webhook in Zendesk
     const webhookPayload = {
       webhook: {
-        name: `Dust Webhook - ${workspace.name}`,
+        name: `Dust Webhook - ${workspace.name} - ${new Date().toISOString()}`,
         endpoint: webhookUrl,
         http_method: "POST",
         request_format: "json",
         status: "active",
-        subscriptions,
+        events,
         ...(secret && { signing_secret: { secret } }),
       },
     };
@@ -121,7 +147,6 @@ export class ZendeskWebhookService implements RemoteWebhookService<"zendesk"> {
 
     return new Ok({
       updatedRemoteMetadata: {
-        ...remoteMetadata,
         webhookId: String(webhookId),
         zendeskSubdomain,
       },
@@ -137,45 +162,21 @@ export class ZendeskWebhookService implements RemoteWebhookService<"zendesk"> {
     connectionId: string;
     remoteMetadata: ZendeskWebhookStoredMetadata;
   }): Promise<Result<void, Error>> {
-    const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-
-    // Verify the connection belongs to this workspace
-    const metadataRes = await oauthAPI.getConnectionMetadata({
+    const connectionRes = await this.setupZendeskConnection({
       connectionId,
+      auth,
     });
 
-    if (metadataRes.isErr()) {
-      return new Err(new Error("Zendesk connection not found"));
+    if (connectionRes.isErr()) {
+      return connectionRes;
     }
 
-    const workspace = auth.getNonNullableWorkspace();
-
-    const workspaceId = metadataRes.value.connection.metadata.workspace_id;
-    if (!workspaceId || workspaceId !== workspace.sId) {
-      return new Err(new Error("Connection does not belong to this workspace"));
-    }
-
-    const tokenRes = await oauthAPI.getAccessToken({
-      connectionId,
-    });
-
-    if (tokenRes.isErr()) {
-      return new Err(new Error("Failed to get Zendesk access token"));
-    }
-
-    const accessToken = tokenRes.value.access_token;
+    const { accessToken, zendeskSubdomain } = connectionRes.value;
 
     const webhookId = remoteMetadata.webhookId;
-    const zendeskSubdomain = remoteMetadata.zendeskSubdomain;
 
     if (!webhookId) {
       return new Err(new Error("Webhook ID not found in remote metadata"));
-    }
-
-    if (!zendeskSubdomain) {
-      return new Err(
-        new Error("Zendesk subdomain not found in remote metadata")
-      );
     }
 
     const response = await fetch(

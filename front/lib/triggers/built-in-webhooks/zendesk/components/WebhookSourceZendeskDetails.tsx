@@ -1,4 +1,4 @@
-import { ExternalLinkIcon, Page } from "@dust-tt/sparkle";
+import { ExternalLinkIcon, IconButton, Page } from "@dust-tt/sparkle";
 
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { ZendeskWebhookStoredMetadataSchema } from "@app/lib/triggers/built-in-webhooks/zendesk/zendesk_service_types";
@@ -27,8 +27,8 @@ export function WebhookSourceZendeskDetails({
     <div className="space-y-4">
       <div>
         <Page.H variant="h6">Zendesk Instance</Page.H>
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-sm text-foreground dark:text-foreground-night">
+        <div className="flex items-center space-x-2">
+          <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono">
             {zendeskSubdomain}.zendesk.com
           </span>
           {webhookId && (
@@ -38,8 +38,11 @@ export function WebhookSourceZendeskDetails({
               rel="noopener noreferrer"
               className="text-action-500 hover:text-action-600 dark:text-action-400 dark:hover:text-action-300 inline-flex items-center gap-1 text-xs"
             >
-              View webhook
-              <ExternalLinkIcon className="h-3 w-3" />
+              <IconButton
+                icon={ExternalLinkIcon}
+                size="xs"
+                tooltip="See webhook"
+              />{" "}
             </a>
           )}
         </div>
