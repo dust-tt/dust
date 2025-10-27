@@ -14,7 +14,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import { isAgentMention } from "@app/types";
+import { isAgentMention, isUserMention } from "@app/types";
 
 export const createAgentMessages = async ({
   mentions,
@@ -37,6 +37,21 @@ export const createAgentMessages = async ({
   conversation: ConversationType;
   userMessage: UserMessageType;
 }) => {
+  // Store user mentions (without creating agent messages).
+  await Promise.all(
+    mentions.filter(isUserMention).map((mention) =>
+      Mention.create(
+        {
+          messageId: message.id,
+          userId: mention.userId,
+          workspaceId: owner.id,
+        },
+        { transaction }
+      )
+    )
+  );
+
+  // Create agent messages for agent mentions.
   const results = await Promise.all(
     mentions.filter(isAgentMention).map((mention) => {
       // For each assistant/agent mention, create an "empty" agent message.

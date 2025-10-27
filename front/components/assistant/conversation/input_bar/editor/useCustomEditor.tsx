@@ -19,7 +19,7 @@ import type { SuggestionProps } from "@app/components/assistant/conversation/inp
 import { mentionPluginKey } from "@app/components/assistant/conversation/input_bar/editor/useMentionAgentDropdown";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
-import { mentionAgent } from "@app/lib/mentions";
+import { mentionAgent, mentionUser } from "@app/lib/mentions";
 import { isMobile } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 
@@ -59,15 +59,22 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
 
   // If the node is a 'mention', concatenate the mention label and add to mentions array.
   if (node.type === "mention") {
-    // TODO: We should not expose `sId` here.
-    textContent += mentionAgent({
-      name: node.attrs?.label,
-      sId: node.attrs?.id,
-    });
+    const mentionType = node.attrs?.type;
+    if (mentionType === "agent") {
+      textContent += mentionAgent({
+        name: node.attrs?.label,
+        sId: node.attrs?.id,
+      });
+    } else if (mentionType === "user") {
+      textContent += mentionUser({
+        fullName: node.attrs?.label,
+        id: parseInt(node.attrs?.id, 10),
+      });
+    }
     mentions.push({
       id: node.attrs?.id,
       label: node.attrs?.label,
-      type: node.attrs?.type,
+      type: mentionType,
       pictureUrl: node.attrs?.pictureUrl,
       description: node.attrs?.description,
     });

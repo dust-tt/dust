@@ -200,7 +200,12 @@ async function batchRenderUserMessages(
                 configurationId: m.agentConfigurationId,
               };
             }
-            throw new Error("Mention Must Be An Agent: Unreachable.");
+            if (m.userId) {
+              return {
+                userId: m.userId,
+              };
+            }
+            throw new Error("Mention must be either an agent or a user.");
           })
         : [],
       content: userMessage.content,

@@ -14,7 +14,7 @@ import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
 // Not exported, the one exported is getMentionPlugin since we need to pass the owner.
-function MentionBlock({
+function AgentMentionBlock({
   owner,
   agentName,
   agentSId,
@@ -61,16 +61,35 @@ function MentionBlock({
   );
 }
 
+function UserMentionBlock({ userName }: { userName: string }) {
+  return (
+    <span className="inline-block font-medium text-highlight-500">
+      @{userName}
+    </span>
+  );
+}
+
 export function mentionDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
       if (node.name === "mention" && node.children[0]) {
         const data = node.data || (node.data = {});
         data.hName = "mention";
-        data.hProperties = {
-          agentSId: node.attributes.sId,
-          agentName: node.children[0].value,
-        };
+
+        // Handle both agent mentions (sId) and user mentions (userId)
+        if (node.attributes.sId) {
+          data.hProperties = {
+            type: "agent",
+            agentSId: node.attributes.sId,
+            agentName: node.children[0].value,
+          };
+        } else if (node.attributes.userId) {
+          data.hProperties = {
+            type: "user",
+            userId: node.attributes.userId,
+            userName: node.children[0].value,
+          };
+        }
       }
     });
   };
@@ -78,15 +97,44 @@ export function mentionDirective() {
 
 export function getMentionPlugin(owner: WorkspaceType) {
   const MentionPlugin = ({
+    type,
     agentName,
     agentSId,
+    userName,
+    userId,
   }: {
-    agentName: string;
-    agentSId: string;
+    type?: string;
+    agentName?: string;
+    agentSId?: string;
+    userName?: string;
+    userId?: string;
   }) => {
-    return (
-      <MentionBlock owner={owner} agentName={agentName} agentSId={agentSId} />
-    );
+    if (type === "user" && userName) {
+      return <UserMentionBlock userName={userName} />;
+    }
+
+    if (type === "agent" && agentName && agentSId) {
+      return (
+        <AgentMentionBlock
+          owner={owner}
+          agentName={agentName}
+          agentSId={agentSId}
+        />
+      );
+    }
+
+    // Fallback for legacy mentions without type (assume agent)
+    if (agentName && agentSId) {
+      return (
+        <AgentMentionBlock
+          owner={owner}
+          agentName={agentName}
+          agentSId={agentSId}
+        />
+      );
+    }
+
+    return null;
   };
 
   return MentionPlugin;

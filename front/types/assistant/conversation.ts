@@ -21,12 +21,20 @@ export type AgentMention = {
   configurationId: string;
 };
 
-export type MentionType = AgentMention;
+export type UserMention = {
+  userId: ModelId;
+};
+
+export type MentionType = AgentMention | UserMention;
 
 export type MessageVisibility = "visible" | "deleted";
 
 export function isAgentMention(arg: MentionType): arg is AgentMention {
   return (arg as AgentMention).configurationId !== undefined;
+}
+
+export function isUserMention(arg: MentionType): arg is UserMention {
+  return (arg as UserMention).userId !== undefined;
 }
 
 export type ConversationMessageReactions = {

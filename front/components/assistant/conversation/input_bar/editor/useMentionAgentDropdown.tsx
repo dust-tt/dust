@@ -9,8 +9,7 @@ import type {
   EditorSuggestionAgent,
   EditorSuggestions,
 } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import { isEditorSuggestionAgent } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import { filterSuggestionAgents } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import { filterSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 
 interface CommandFunction {
   (props: { id: string; label: string }): void;
@@ -31,7 +30,7 @@ export type SuggestionProps = {
 export interface MentionDropdownState {
   isOpen: boolean;
   query: string;
-  suggestionAgents: EditorSuggestionAgent[];
+  suggestions: EditorSuggestion[];
   selectedIndex: number;
   triggerRect: DOMRect | null;
   isLoading: boolean;
@@ -46,7 +45,7 @@ export const useMentionAgentDropdown = (
   const [state, setState] = useState<MentionDropdownState>({
     isOpen: false,
     query: "",
-    suggestionAgents: [],
+    suggestions: [],
     selectedIndex: 0,
     triggerRect: null,
     isLoading: editorSuggestions.isLoading,
@@ -83,7 +82,7 @@ export const useMentionAgentDropdown = (
           .insertContent({
             type: "mention",
             attrs: {
-              type: "agent",
+              type: suggestion.type,
               id: suggestion.id,
               label: suggestion.label,
               description: suggestion.description,
@@ -150,16 +149,16 @@ export const useMentionAgentDropdown = (
 
   // Single source of truth: filter suggestions whenever data or query changes
   useEffect(() => {
-    const filteredSuggestionAgents = filterSuggestionAgents(
+    const filteredSuggestions = filterSuggestions(
       state.query,
-      editorSuggestions.suggestions.filter(isEditorSuggestionAgent),
-      editorSuggestions.fallbackSuggestions.filter(isEditorSuggestionAgent)
+      editorSuggestions.suggestions,
+      editorSuggestions.fallbackSuggestions
     );
 
     setState((prev) => ({
       ...prev,
       isLoading: editorSuggestions.isLoading,
-      suggestionAgents: filteredSuggestionAgents,
+      suggestions: filteredSuggestions,
     }));
   }, [
     editorSuggestions.suggestions,
@@ -225,7 +224,7 @@ export const useMentionAgentDropdown = (
                   selectedIndex:
                     prev.selectedIndex > 0
                       ? prev.selectedIndex - 1
-                      : prev.suggestionAgents.length - 1,
+                      : prev.suggestions.length - 1,
                 }));
                 return true;
               case "ArrowDown":
@@ -233,7 +232,7 @@ export const useMentionAgentDropdown = (
                 setState((prev) => ({
                   ...prev,
                   selectedIndex:
-                    prev.selectedIndex < prev.suggestionAgents.length - 1
+                    prev.selectedIndex < prev.suggestions.length - 1
                       ? prev.selectedIndex + 1
                       : 0,
                 }));
@@ -241,9 +240,9 @@ export const useMentionAgentDropdown = (
               case "Enter":
               case "Tab":
                 event.preventDefault();
-                if (currentState.suggestionAgents[currentState.selectedIndex]) {
+                if (currentState.suggestions[currentState.selectedIndex]) {
                   selectSuggestion(
-                    currentState.suggestionAgents[currentState.selectedIndex]
+                    currentState.suggestions[currentState.selectedIndex]
                   );
                 }
                 return true;
@@ -254,15 +253,15 @@ export const useMentionAgentDropdown = (
                 if (currentState.isOpen) {
                   event.preventDefault();
                   if (
-                    currentState.suggestionAgents[currentState.selectedIndex]
+                    currentState.suggestions[currentState.selectedIndex]
                   ) {
                     selectSuggestion(
-                      currentState.suggestionAgents[currentState.selectedIndex]
+                      currentState.suggestions[currentState.selectedIndex]
                     );
                   }
                   return true;
                 } else {
-                  const firstSuggestion = currentState.suggestionAgents[0];
+                  const firstSuggestion = currentState.suggestions[0];
                   if (
                     firstSuggestion &&
                     currentState.query === firstSuggestion.label
@@ -290,7 +289,7 @@ export const useMentionAgentDropdown = (
 
   return {
     isOpen: state.isOpen,
-    suggestions: state.suggestionAgents,
+    suggestions: state.suggestions,
     selectedIndex: state.selectedIndex,
     triggerRect: state.triggerRect,
     isLoading: state.isLoading,

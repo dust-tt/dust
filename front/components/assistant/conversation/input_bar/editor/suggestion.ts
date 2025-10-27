@@ -93,3 +93,76 @@ export function filterSuggestionAgents(
     SUGGESTION_DISPLAY_LIMIT
   );
 }
+
+function filterAndSortEditorSuggestions(
+  lowerCaseQuery: string,
+  suggestions: EditorSuggestion[]
+) {
+  return suggestions
+    .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
+    .sort((a, b) =>
+      compareForFuzzySort(
+        lowerCaseQuery,
+        a.label.toLocaleLowerCase(),
+        b.label.toLocaleLowerCase()
+      )
+    );
+}
+
+export function filterSuggestions(
+  query: string,
+  suggestions: EditorSuggestion[],
+  fallbackSuggestions: EditorSuggestion[]
+): EditorSuggestion[] {
+  // keeping the pre-defined order when queried without content
+  if (query === "") {
+    return suggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
+  }
+
+  const lowerCaseQuery = query.toLowerCase();
+
+  // Separate agents and users from suggestions
+  const agents = suggestions.filter(isEditorSuggestionAgent);
+  const users = suggestions.filter((s) => !isEditorSuggestionAgent(s));
+
+  // Filter agents with priority
+  const filteredAgents = filterAndSortEditorSuggestionAgents(
+    lowerCaseQuery,
+    agents
+  );
+
+  // Filter users alphabetically
+  const filteredUsers = filterAndSortEditorSuggestions(lowerCaseQuery, users);
+
+  // Combine: agents first (with priority), then users
+  const combined = [...filteredAgents, ...filteredUsers].slice(
+    0,
+    SUGGESTION_DISPLAY_LIMIT
+  );
+
+  if (combined.length >= SUGGESTION_DISPLAY_LIMIT) {
+    return combined;
+  }
+
+  // If not enough results, also search in fallback suggestions
+  const fallbackAgents = fallbackSuggestions.filter(isEditorSuggestionAgent);
+  const fallbackUsers = fallbackSuggestions.filter(
+    (s) => !isEditorSuggestionAgent(s)
+  );
+
+  const filteredFallbackAgents = filterAndSortEditorSuggestionAgents(
+    lowerCaseQuery,
+    fallbackAgents
+  ).filter((item) => !combined.find((i) => i.id === item.id));
+
+  const filteredFallbackUsers = filterAndSortEditorSuggestions(
+    lowerCaseQuery,
+    fallbackUsers
+  ).filter((item) => !combined.find((i) => i.id === item.id));
+
+  return [
+    ...combined,
+    ...filteredFallbackAgents,
+    ...filteredFallbackUsers,
+  ].slice(0, SUGGESTION_DISPLAY_LIMIT);
+}
