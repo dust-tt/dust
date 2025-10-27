@@ -208,7 +208,7 @@ export const AdminTriggersList = ({
     return columns;
   }, [setAgentSId]);
 
-  const createWebhook = (provider: WebhookProvider) => {
+  const createWebhook = (provider: WebhookProvider | null) => {
     setSheetMode({ type: "create", provider });
   };
 
