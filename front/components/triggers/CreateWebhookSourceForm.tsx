@@ -10,6 +10,7 @@ import {
   Input,
   Label,
   SliderToggle,
+  TextArea,
 } from "@dust-tt/sparkle";
 import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
@@ -86,6 +87,21 @@ export function CreateWebhookSourceFormContent({
             messageStatus="error"
             autoFocus
           />
+        )}
+      />
+      <Controller
+        control={form.control}
+        name="description"
+        render={({ field }) => (
+          <div className="space-y-2">
+            <Label htmlFor="trigger-description">Description</Label>
+            <TextArea
+              {...field}
+              id="trigger-description"
+              rows={3}
+              placeholder="Enter a description for this trigger"
+            />
+          </div>
         )}
       />
 

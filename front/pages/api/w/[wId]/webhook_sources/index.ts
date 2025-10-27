@@ -119,6 +119,7 @@ async function handler(
         connectionId,
         remoteMetadata,
         icon,
+        description,
       } = bodyValidation.data;
 
       if (provider && subscribedEvents.length === 0) {
@@ -165,7 +166,7 @@ async function handler(
           signatureAlgorithm,
           subscribedEvents,
         },
-        { icon }
+        { icon, description }
       );
 
       if (includeGlobal) {
