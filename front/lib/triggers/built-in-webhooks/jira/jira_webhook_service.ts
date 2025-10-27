@@ -1,8 +1,10 @@
 import config from "@app/lib/api/config";
+import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import type { JiraAdditionalData } from "@app/lib/triggers/built-in-webhooks/jira/jira_service_types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
+import { isString } from "@app/types";
 import { Err, OAuthAPI, Ok } from "@app/types";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 
@@ -78,20 +80,19 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
     const metadataRes = await oauthAPI.getConnectionMetadata({
       connectionId,
     });
-
     if (metadataRes.isErr()) {
       return new Err(new Error("Jira connection not found"));
     }
 
-    const workspace = auth.getNonNullableWorkspace();
-
-    const workspaceId = metadataRes.value.connection.metadata.workspace_id;
-    if (!workspaceId || workspaceId !== workspace.sId) {
-      return new Err(new Error("Connection does not belong to this workspace"));
+    const checkConnectionOwnershipResult = await checkConnectionOwnership(
+      auth,
+      connectionId
+    );
+    if (checkConnectionOwnershipResult.isErr()) {
+      return checkConnectionOwnershipResult;
     }
 
     const tokenRes = await oauthAPI.getAccessToken({ connectionId });
-
     if (tokenRes.isErr()) {
       return new Err(new Error("Failed to get Jira access token"));
     }
@@ -108,8 +109,6 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
       return new Err(new Error("No accessible Jira resources found"));
     }
 
-    const cloudId = resources[0].id;
-
     const projects = Array.isArray(remoteMetadata.projects)
       ? remoteMetadata.projects
       : [];
@@ -120,6 +119,7 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
       );
     }
 
+    const cloudId = resources[0].id;
     const webhookIds: Record<string, string> = {};
     const errors: string[] = [];
 
@@ -201,7 +201,7 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
     const accessToken = tokenRes.value.access_token;
     const cloudId = remoteMetadata.cloudId;
 
-    if (!cloudId || typeof cloudId !== "string") {
+    if (!isString(cloudId)) {
       return new Err(new Error("Remote metadata missing cloudId"));
     }
 
@@ -265,6 +265,7 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
       );
     }
 
+    // TODO(HOOTL): add validation here.
     const resources = (await response.json()) as JiraResource[];
     return new Ok(resources);
   }
@@ -290,6 +291,7 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
       );
     }
 
+    // TODO(HOOTL): add validation here.
     const data = (await response.json()) as { values: JiraProject[] };
     return new Ok(data.values || []);
   }
@@ -337,6 +339,7 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
       );
     }
 
+    // TODO(HOOTL): add validation here.
     const data = (await response.json()) as {
       webhookRegistrationResult: {
         createdWebhookId?: number;
