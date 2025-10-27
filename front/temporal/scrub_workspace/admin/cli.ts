@@ -1,5 +1,6 @@
 import parseArgs from "minimist";
 
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import {
   launchDowngradeFreeEndedWorkspacesWorkflow,
   stopDowngradeFreeEndedWorkspacesWorkflow,
@@ -11,6 +12,12 @@ const main = async () => {
   const [command] = argv._;
 
   switch (command) {
+    case "log-free-ended-workspaces":
+      const { workspaces } =
+        await SubscriptionResource.internalFetchWorkspacesWithFreeEndedSubscriptions();
+      console.log(`Found ${workspaces.length} free ended workspaces:`);
+      console.log(workspaces.map((w) => w.sId));
+      return;
     case "lauch-workflow-to-downgrade-free-ended-workspaces":
       await launchDowngradeFreeEndedWorkspacesWorkflow();
       return;
