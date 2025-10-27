@@ -12,15 +12,17 @@ describe("throttle", () => {
     const addTimestamp = vi.fn(async (timestamp: number) => {
       timestamps.push(timestamp);
     });
-    const removeTimestampsBatch = vi.fn(async (timestamps: number[]) => {
-      for (const timestamp of timestamps) {
-        const index = timestamps.indexOf(timestamp);
-        if (index > -1) {
-          timestamps.splice(index, 1);
-          removedTimestamps.push(timestamp);
+    const removeTimestampsBatch = vi.fn(
+      async (timestampsToRemove: number[]) => {
+        for (const timestamp of timestampsToRemove) {
+          const index = timestamps.indexOf(timestamp);
+          if (index > -1) {
+            timestamps.splice(index, 1);
+            removedTimestamps.push(timestamp);
+          }
         }
       }
-    });
+    );
 
     const acquireLock = vi.fn(async () => {});
     const releaseLock = vi.fn(async () => {});
@@ -153,7 +155,8 @@ describe("throttle", () => {
       expect(result).toEqual({ delay: 0, skip: false });
       expect(mocks.getTimestamps).toHaveBeenCalledOnce();
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
-      expect(mocks.removeTimestampsBatch).not.toHaveBeenCalled();
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledOnce();
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith([]);
       expect(mocks.acquireLock).toHaveBeenCalledOnce();
       expect(mocks.releaseLock).toHaveBeenCalledOnce();
     });
@@ -277,21 +280,13 @@ describe("throttle", () => {
         removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
-      // Should remove the 3 expired timestamps
-      expect(mocks.removeTimestampsBatch).toHaveBeenCalledTimes(3);
-      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(now - 70 * 1000);
-      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(now - 90 * 1000);
-      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(
-        now - 120 * 1000
-      );
-
-      // Should not remove valid timestamps
-      expect(mocks.removeTimestampsBatch).not.toHaveBeenCalledWith(
-        now - 30 * 1000
-      );
-      expect(mocks.removeTimestampsBatch).not.toHaveBeenCalledWith(
-        now - 45 * 1000
-      );
+      // Should remove the 3 expired timestamps.
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledTimes(1);
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith([
+        now - 70 * 1000,
+        now - 90 * 1000,
+        now - 120 * 1000,
+      ]);
     });
 
     it("should handle empty timestamp list", async () => {
@@ -310,7 +305,8 @@ describe("throttle", () => {
       });
 
       expect(result).toEqual({ delay: 0, skip: false });
-      expect(mocks.removeTimestampsBatch).not.toHaveBeenCalled();
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledOnce();
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith([]);
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
     });
   });
@@ -566,14 +562,12 @@ describe("throttle", () => {
 
       // All 3 timestamps should be removed because the condition is timestamp > windowStart
       // This means timestamps exactly at the boundary (==) are also removed
-      expect(mocks.removeTimestampsBatch).toHaveBeenCalledTimes(3);
-      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(
-        exactlyAtBoundary
-      );
-      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(
-        justOverBoundary
-      );
-      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(wayOverBoundary);
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledTimes(1);
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith([
+        exactlyAtBoundary,
+        justOverBoundary,
+        wayOverBoundary,
+      ]);
     });
 
     it("should handle duplicate timestamps", async () => {
@@ -602,7 +596,8 @@ describe("throttle", () => {
       expect(result).toEqual({ delay: 0, skip: false });
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
       // No timestamps should be removed (all are within the window)
-      expect(mocks.removeTimestampsBatch).not.toHaveBeenCalled();
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledOnce();
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith([]);
     });
   });
 
@@ -764,12 +759,12 @@ describe("throttle", () => {
       expect(result).toEqual({ delay: 0, skip: false });
 
       // Should remove 3 expired timestamps
-      expect(mocks.removeTimestampsBatch).toHaveBeenCalledTimes(3);
-      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(now - 70 * 1000);
-      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(now - 90 * 1000);
-      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(
-        now - 120 * 1000
-      );
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledTimes(1);
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith([
+        now - 70 * 1000,
+        now - 90 * 1000,
+        now - 120 * 1000,
+      ]);
 
       // Should add current timestamp
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
