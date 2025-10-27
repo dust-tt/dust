@@ -13,6 +13,7 @@ import type {
   TokenUsageEvent,
   ToolCallEvent,
 } from "@app/lib/api/llm/types/events";
+import { safeParseJSON } from "@app/types";
 
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<MessageStreamEvent>,
@@ -37,9 +38,8 @@ export async function* streamLLMEvents(
          * content_block_stop (makrs the end of the content block)
          */
         case "content_block_start":
-          currentBlockIsToolCall =
-            messageStreamEvent.content_block.type === "tool_use";
           if (messageStreamEvent.content_block.type === "tool_use") {
+            currentBlockIsToolCall = true;
             toolAccumulator = {
               id: messageStreamEvent.content_block.id,
               name: messageStreamEvent.content_block.name,
@@ -191,12 +191,16 @@ function toolCall({
   input: string;
   metadata: ProviderMetadata;
 }): ToolCallEvent {
+  const args = safeParseJSON(input);
+  if (args.isErr()) {
+    throw new Error(`Failed to parse tool call arguments: ${args.error}`);
+  }
   return {
     type: "tool_call",
     content: {
       id: id,
       name: name,
-      arguments: JSON.stringify(JSON.parse(input)),
+      arguments: JSON.stringify(args.value),
     },
     metadata,
   };

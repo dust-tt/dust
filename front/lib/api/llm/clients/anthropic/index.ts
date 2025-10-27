@@ -3,15 +3,6 @@ import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages/m
 
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { LLM } from "@app/lib/api/llm/llm";
-import type { LLMEvent, ProviderMetadata } from "@app/lib/api/llm/types/events";
-import type { LLMOptions } from "@app/lib/api/llm/types/options";
-import type {
-  ModelConfigurationType,
-  ModelConversationTypeMultiActions,
-} from "@app/types";
-import { dustManagedCredentials } from "@app/types";
-
 import {
   CLAUDE_4_THINKING_BUDGET_TOKENS,
   isClaude4,
@@ -21,6 +12,14 @@ import {
   toMessage,
   toTool,
 } from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
+import { LLM } from "@app/lib/api/llm/llm";
+import type { LLMEvent, ProviderMetadata } from "@app/lib/api/llm/types/events";
+import type { LLMOptions } from "@app/lib/api/llm/types/options";
+import type {
+  ModelConfigurationType,
+  ModelConversationTypeMultiActions,
+} from "@app/types";
+import { dustManagedCredentials } from "@app/types";
 
 export class AnthropicLLM extends LLM {
   private client: Anthropic;
@@ -74,7 +73,7 @@ export class AnthropicLLM extends LLM {
       thinking: this.thinkingConfig,
       system: prompt,
       messages: conversation.messages.map(toMessage),
-      temperature: this.temperature,
+      temperature: !this.thinkingConfig ? this.temperature : 1,
       stream: true,
       tools: specifications.map(toTool),
       max_tokens: this.model.generationTokensCount,

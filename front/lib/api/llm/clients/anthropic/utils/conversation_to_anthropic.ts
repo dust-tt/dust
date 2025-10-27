@@ -25,9 +25,7 @@ import type {
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 
-function toBasicContentChunk(
-  content: Content
-): TextBlockParam | ImageBlockParam {
+function toBasicBlockParam(content: Content): TextBlockParam | ImageBlockParam {
   switch (content.type) {
     case "text":
       return {
@@ -45,7 +43,7 @@ function toBasicContentChunk(
   }
 }
 
-function toContentChunk(
+function toBlockParam(
   content:
     | Content
     | TextContentType
@@ -55,7 +53,7 @@ function toContentChunk(
   switch (content.type) {
     case "text":
     case "image_url":
-      return toBasicContentChunk(content);
+      return toBasicBlockParam(content);
     case "text_content":
       return {
         type: "text",
@@ -88,7 +86,7 @@ function toolResultToContent(
     tool_use_id: message.function_call_id,
     content: isString(message.content)
       ? message.content
-      : message.content.map(toBasicContentChunk),
+      : message.content.map(toBasicBlockParam),
   };
 }
 
@@ -104,7 +102,7 @@ function userMessage(message: UserMessageTypeModel): MessageParam {
     role: "user",
     content: isString(message.content)
       ? [{ type: "text", text: message.content }]
-      : message.content.map(toContentChunk),
+      : message.content.map(toBlockParam),
   };
 }
 
@@ -115,7 +113,7 @@ function assistantMessage(
 ): MessageParam {
   return {
     role: "assistant",
-    content: message.contents.map(toContentChunk).sort((a, b) => {
+    content: message.contents.map(toBlockParam).sort((a, b) => {
       // We want to make sure the "tool_use" call is at the end of the contents
       // Because the following "tool_result" is expected to follow it immediately
       const A = a.type === "tool_use";
