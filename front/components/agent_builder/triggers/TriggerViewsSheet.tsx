@@ -271,7 +271,8 @@ export function TriggerViewsSheet({
         currentPageId={currentPageId}
         onPageChange={(pageId) => setCurrentPageId(pageId as PageId)}
         size="lg"
-        showHeaderNavigation={true}
+        showHeaderNavigation={false}
+        showNavigation={false}
         leftButton={
           currentPageId !== "trigger-selection"
             ? {
