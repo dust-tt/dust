@@ -109,6 +109,18 @@ export const mcpServersSortingFn = (
   return a.mcpServer.name.localeCompare(b.mcpServer.name);
 };
 
+export const mcpServerOrViewSortingFn = (
+  a: { mcpServer: MCPServerType; mcpServerView?: MCPServerViewType | null },
+  b: { mcpServer: MCPServerType; mcpServerView?: MCPServerViewType | null }
+) => {
+  const aName = getMcpServerOrViewDisplayName(a.mcpServer, a.mcpServerView);
+  const bName = getMcpServerOrViewDisplayName(b.mcpServer, b.mcpServerView);
+  return aName.localeCompare(bName, undefined, {
+    sensitivity: "base",
+    numeric: true,
+  });
+};
+
 export function isRemoteMCPServerType(
   server: MCPServerType
 ): server is RemoteMCPServerType {
@@ -127,6 +139,15 @@ function getIsPreviewServer(server: MCPServerType): boolean {
 
 export function getMcpServerViewDescription(view: MCPServerViewType): string {
   return view.description ?? view.server.description;
+}
+
+export function getMcpServerOrViewDisplayName(
+  mcpServer: MCPServerType,
+  mcpServerView?: MCPServerViewType | null
+): string {
+  return mcpServerView
+    ? getMcpServerViewDisplayName(mcpServerView)
+    : getMcpServerDisplayName(mcpServer);
 }
 
 export function getMcpServerViewDisplayName(
