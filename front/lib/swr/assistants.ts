@@ -256,14 +256,14 @@ interface AgentConfigurationFeedbacksByDescVersionProps {
   workspaceId: string;
   agentConfigurationId: string | null;
   limit: number;
-  filter?: "active" | "all";
+  filter?: "unseen" | "all";
 }
 
 export function useAgentConfigurationFeedbacksByDescVersion({
   workspaceId,
   agentConfigurationId,
   limit,
-  filter = "active",
+  filter = "unseen",
 }: AgentConfigurationFeedbacksByDescVersionProps) {
   const agentConfigurationFeedbacksFetcher: Fetcher<{
     feedbacks: (

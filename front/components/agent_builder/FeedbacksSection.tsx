@@ -37,7 +37,7 @@ import type {
 
 const FEEDBACKS_PAGE_SIZE = 50;
 
-type FeedbackFilter = "active" | "all";
+type FeedbackFilter = "unseen" | "all";
 
 interface FeedbacksSectionProps {
   owner: LightWorkspaceType;
@@ -49,7 +49,7 @@ export const FeedbacksSection = ({
   agentConfigurationId,
 }: FeedbacksSectionProps) => {
   const [feedbackFilter, setFeedbackFilter] =
-    useState<FeedbackFilter>("active");
+    useState<FeedbackFilter>("unseen");
 
   const {
     isAgentConfigurationFeedbacksLoading,
@@ -152,15 +152,15 @@ export const FeedbacksSection = ({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              label={feedbackFilter === "active" ? "Active" : "All"}
+              label={feedbackFilter === "unseen" ? "Unseen" : "All"}
               isSelect
               variant="outline"
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem
-              onClick={() => setFeedbackFilter("active")}
-              label="Active"
+              onClick={() => setFeedbackFilter("unseen")}
+              label="Unseen"
             />
             <DropdownMenuItem
               onClick={() => setFeedbackFilter("all")}
@@ -311,12 +311,8 @@ function FeedbackCard({
       if (!response.ok) {
         sendNotification({
           type: "error",
-          title: dismissed
-            ? "Failed to dismiss feedback"
-            : "Failed to restore feedback",
-          description: dismissed
-            ? "An error occurred while dismissing the feedback."
-            : "An error occurred while restoring the feedback.",
+          title: `Failed to mark feedback as ${dismissed ? "seen" : "unseen"}.`,
+          description: `An error occurred while marking feedback as ${dismissed ? "seen" : "unseen"}`,
         });
         setIsDismissing(false);
         return;
@@ -324,10 +320,8 @@ function FeedbackCard({
 
       sendNotification({
         type: "success",
-        title: dismissed ? "Feedback dismissed" : "Feedback restored",
-        description: dismissed
-          ? "The feedback has been dismissed."
-          : "The feedback has been restored.",
+        title: `Feedback marked as ${dismissed ? "seen" : "unseen"}.`,
+        description: `The feedback has been marked as ${dismissed ? "seen" : "unseen"}.`,
       });
 
       if (onDismiss) {
@@ -345,11 +339,7 @@ function FeedbackCard({
 
   return (
     <Card
-      className={cn(
-        "flex h-full flex-col",
-        feedback.dismissed && "opacity-60",
-        className
-      )}
+      className={cn("flex h-full flex-col", className)}
       action={
         <div className="flex gap-1">
           <CardActionButton
@@ -357,7 +347,7 @@ function FeedbackCard({
             icon={feedback.dismissed ? EyeIcon : EyeSlashIcon}
             onClick={() => handleToggleDismiss(!feedback.dismissed)}
             disabled={isDismissing}
-            tooltip={`${feedback.dismissed ? "Undismiss" : "Dismiss"} feedback`}
+            tooltip={`Mark feedback as ${feedback.dismissed ? "seen" : "unseen"}`}
           />
           {conversationUrl && (
             <CardActionButton
