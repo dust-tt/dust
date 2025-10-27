@@ -1,26 +1,26 @@
 import { describe, expect, it } from "vitest";
 
-import { mentionAgent, replaceMentionsByAt } from "@app/lib/mentions";
+import { replaceMentionsWithAt, serializeMention } from "./format";
 
-describe("mentionAgent", () => {
+describe("serializeMention", () => {
   it("mentions an agent", () => {
-    const res = mentionAgent({ name: "agent", sId: "youpi" });
+    const res = serializeMention({ name: "agent", sId: "youpi" });
     expect(res).toBe(":mention[agent]{sId=youpi}");
   });
 });
 
-describe("replaceMentionsByAt", () => {
-  describe("idempotency with mentionAgent", () => {
+describe("replaceMentionsWithAt", () => {
+  describe("idempotency with serializeMention", () => {
     it("should replace mentions", () => {
-      const res = replaceMentionsByAt(
-        mentionAgent({ name: "agent", sId: "youpi" })
+      const res = replaceMentionsWithAt(
+        serializeMention({ name: "agent", sId: "youpi" })
       );
       expect(res).toBe("@agent");
     });
 
     it("should replace mentions", () => {
-      const res = replaceMentionsByAt(
-        mentionAgent({ name: "agent", sId: "youpi" }) + " text"
+      const res = replaceMentionsWithAt(
+        serializeMention({ name: "agent", sId: "youpi" }) + " text"
       );
       expect(res).toBe("@agent text");
     });
@@ -28,21 +28,21 @@ describe("replaceMentionsByAt", () => {
 
   describe("mentions", () => {
     it("should replace mentions", () => {
-      const res = replaceMentionsByAt(
+      const res = replaceMentionsWithAt(
         ":mention[soupinou]{sId=youpi} :mention[pistache]{sId=youpi2} hello both"
       );
       expect(res).toBe("@soupinou @pistache hello both");
     });
 
     it("should replace mentions with text", () => {
-      const res = replaceMentionsByAt(
+      const res = replaceMentionsWithAt(
         ":mention[soupinou]{sId=youpi} hello :mention[pistache]{sId=youpi2} both"
       );
       expect(res).toBe("@soupinou hello @pistache both");
     });
 
     it("should replace mentions with spaces", () => {
-      const res = replaceMentionsByAt(
+      const res = replaceMentionsWithAt(
         "Hello :mention[John Doe]{user_123}, how are you?"
       );
       expect(res).toBe("Hello @John Doe, how are you?");
@@ -51,12 +51,12 @@ describe("replaceMentionsByAt", () => {
 
   describe("non-mentions", () => {
     it("should not extract pure text", () => {
-      const res = replaceMentionsByAt("youpi est en vacances");
+      const res = replaceMentionsWithAt("youpi est en vacances");
       expect(res).toBe("youpi est en vacances");
     });
 
     it("should not extract almost a mention", () => {
-      const res = replaceMentionsByAt(":mention[agent]");
+      const res = replaceMentionsWithAt(":mention[agent]");
       expect(res).toBe(":mention[agent]");
     });
   });
