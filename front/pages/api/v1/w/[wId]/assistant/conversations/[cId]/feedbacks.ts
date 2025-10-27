@@ -140,7 +140,9 @@ async function handler(
         isConversationShared: feedback.isConversationShared,
       }));
 
-      res.status(200).json(validated(GetFeedbacksResponseSchema, { feedbacks }));
+      res
+        .status(200)
+        .json(validated(GetFeedbacksResponseSchema, { feedbacks }));
       return;
 
     default:

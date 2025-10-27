@@ -1,5 +1,8 @@
 import type { HeartbeatMCPResponseType } from "@dust-tt/client";
-import { HeartbeatMCPResponseSchema,PublicHeartbeatMCPRequestBodySchema  } from "@dust-tt/client";
+import {
+  HeartbeatMCPResponseSchema,
+  PublicHeartbeatMCPRequestBodySchema,
+} from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 

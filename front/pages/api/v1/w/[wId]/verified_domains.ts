@@ -37,7 +37,11 @@ async function handler(
         auth.getNonNullableWorkspace()
       );
 
-      return res.status(200).json(validated(GetWorkspaceVerifiedDomainsResponseSchema, { verified_domains: verifiedDomains }));
+      return res.status(200).json(
+        validated(GetWorkspaceVerifiedDomainsResponseSchema, {
+          verified_domains: verifiedDomains,
+        })
+      );
 
     default:
       return apiError(req, res, {

@@ -141,19 +141,21 @@ async function handler(
     }
   }
 
-  res.status(200).json(validated(PublicFrameResponseBodySchema, {
-    content: fileContent,
-    file: file.toJSON(),
-    // Only return the conversation URL if the user is a participant of the conversation.
-    conversationUrl: isParticipant
-      ? getConversationRoute(
-          workspace.sId,
-          conversationId,
-          undefined,
-          config.getClientFacingUrl()
-        )
-      : null,
-  }));
+  res.status(200).json(
+    validated(PublicFrameResponseBodySchema, {
+      content: fileContent,
+      file: file.toJSON(),
+      // Only return the conversation URL if the user is a participant of the conversation.
+      conversationUrl: isParticipant
+        ? getConversationRoute(
+            workspace.sId,
+            conversationId,
+            undefined,
+            config.getClientFacingUrl()
+          )
+        : null,
+    })
+  );
 }
 
 export default withLogging(handler);

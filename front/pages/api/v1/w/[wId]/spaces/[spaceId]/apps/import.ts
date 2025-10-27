@@ -1,5 +1,8 @@
 import type { ImportAppsResponseType } from "@dust-tt/client";
-import { ImportAppsResponseSchema,PostAppsRequestSchema  } from "@dust-tt/client";
+import {
+  ImportAppsResponseSchema,
+  PostAppsRequestSchema,
+} from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -47,7 +50,9 @@ async function handler(
       }
       const result = await importApps(auth, space, r.data.apps);
 
-      return res.status(200).json(validated(ImportAppsResponseSchema, { apps: result }));
+      return res
+        .status(200)
+        .json(validated(ImportAppsResponseSchema, { apps: result }));
 
     default:
       return apiError(req, res, {

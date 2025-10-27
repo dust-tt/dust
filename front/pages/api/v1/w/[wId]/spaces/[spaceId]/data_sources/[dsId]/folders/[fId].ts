@@ -3,7 +3,7 @@ import type {
   GetFolderResponseType,
   UpsertFolderResponseType,
 } from "@dust-tt/client";
-import { UpsertDataSourceFolderRequestSchema  } from "@dust-tt/client";
+import { UpsertDataSourceFolderRequestSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";

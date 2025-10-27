@@ -79,9 +79,11 @@ async function handler(
         auth,
         q
       );
-      return res.status(200).json(validated(GetAgentConfigurationsResponseSchema, {
-        agentConfigurations,
-      }));
+      return res.status(200).json(
+        validated(GetAgentConfigurationsResponseSchema, {
+          agentConfigurations,
+        })
+      );
     }
     default:
       return apiError(req, res, {
