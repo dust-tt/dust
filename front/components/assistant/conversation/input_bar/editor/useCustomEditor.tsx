@@ -19,81 +19,26 @@ import type { SuggestionProps } from "@app/components/assistant/conversation/inp
 import { mentionPluginKey } from "@app/components/assistant/conversation/input_bar/editor/useMentionAgentDropdown";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
-import { mentionAgent } from "@app/lib/mentions";
+import type { RichMention } from "@app/lib/mentions";
+import { extractFromEditorJSON } from "@app/lib/mentions";
 import { isMobile } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
 
-export type EditorMention = EditorMentionAgent | EditorMentionUser;
-
-interface BaseEditorMention {
-  id: string;
-  label: string;
-  pictureUrl: string;
-  description: string;
-}
-
-export interface EditorMentionAgent extends BaseEditorMention {
-  type: "agent";
-}
-
-export interface EditorMentionUser extends BaseEditorMention {
-  type: "user";
-}
+// Type alias for backward compatibility with existing code.
+export type EditorMention = RichMention;
+export type EditorMentionAgent = RichMention & { type: "agent" };
+export type EditorMentionUser = RichMention & { type: "user" };
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 
+/**
+ * Extract text and mentions from editor JSON content.
+ * This is a wrapper around the centralized extractFromEditorJSON utility.
+ */
 function getTextAndMentionsFromNode(node?: JSONContent) {
-  let textContent = "";
-  let mentions: EditorMention[] = [];
-
-  if (!node) {
-    return { mentions, text: textContent };
-  }
-
-  // Check if the node is of type 'text' and concatenate its text.
-  if (node.type === "text") {
-    textContent += node.text;
-  }
-
-  // If the node is a 'mention', concatenate the mention label and add to mentions array.
-  if (node.type === "mention") {
-    // TODO: We should not expose `sId` here.
-    textContent += mentionAgent({
-      name: node.attrs?.label,
-      sId: node.attrs?.id,
-    });
-    mentions.push({
-      id: node.attrs?.id,
-      label: node.attrs?.label,
-      type: node.attrs?.type,
-      pictureUrl: node.attrs?.pictureUrl,
-      description: node.attrs?.description,
-    });
-  }
-
-  // If the node is a 'hardBreak' or a 'paragraph', add a newline character.
-  if (node.type && ["hardBreak", "paragraph"].includes(node.type)) {
-    textContent += "\n";
-  }
-
-  if (node.type === "pastedAttachment") {
-    const title = node.attrs?.title ?? "";
-    const fileId = node.attrs?.fileId ?? "";
-    textContent += `:pasted_attachment[${title}]{fileId=${fileId}}`;
-  }
-
-  // If the node has content, recursively get text and mentions from each child node
-  if (node.content) {
-    node.content.forEach((childNode) => {
-      const childResult = getTextAndMentionsFromNode(childNode);
-      textContent += childResult.text;
-      mentions = mentions.concat(childResult.mentions);
-    });
-  }
-
-  return { text: textContent, mentions: mentions };
+  return extractFromEditorJSON(node);
 }
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {

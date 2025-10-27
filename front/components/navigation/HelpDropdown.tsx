@@ -19,11 +19,11 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { mentionAgent } from "@app/lib/mentions";
+import type { MentionType} from "@app/lib/mentions";
+import { serializeMention } from "@app/lib/mentions";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   AgentMention,
-  MentionType,
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
@@ -78,7 +78,7 @@ export function HelpDropdown({
           messageData: {
             input: inputWithHelp.replace(
               "@help",
-              mentionAgent({ name: "help", sId: GLOBAL_AGENTS_SID.HELPER })
+              serializeMention({ name: "help", sId: GLOBAL_AGENTS_SID.HELPER })
             ),
             mentions: mentionsWithHelp,
             contentFragments: {

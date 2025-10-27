@@ -5,10 +5,10 @@ import {
 } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
+import type { MentionType } from "@app/lib/mentions";
 import type {
   AgentMessageType,
   ConversationType,
-  MentionType,
   PubSubError,
   Result,
   UserMessageContext,

@@ -1,5 +1,6 @@
 import type { Transaction } from "sequelize";
 
+import type { MentionType } from "@app/lib/mentions";
 import {
   AgentMessage,
   Mention,
@@ -10,7 +11,6 @@ import type {
   AgentMessageType,
   ConversationType,
   LightAgentConfigurationType,
-  MentionType,
   UserMessageType,
   WorkspaceType,
 } from "@app/types";

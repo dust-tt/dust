@@ -1,4 +1,4 @@
-import { mentionAgent } from "@app/lib/mentions";
+import { serializeMention } from "@app/lib/mentions";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 
 export const DEEP_DIVE_NAME = "deep-dive";
@@ -16,6 +16,6 @@ Once the tool is called, the current execution is stopped and the handoff is lau
 @${DEEP_DIVE_NAME}'s description is: ${DEEP_DIVE_DESC}.
 
 Guidelines:
-- Let the user know that the handoff is launched by mentionning it before calling the deep dive tool.
-- The valid way to mention the @${DEEP_DIVE_NAME} agent is using the mention directive: ${mentionAgent({ name: DEEP_DIVE_NAME, sId: GLOBAL_AGENTS_SID.DEEP_DIVE })}
+- Let the user know that the handoff is launched by mentioning it before calling the deep dive tool.
+- The valid way to mention the @${DEEP_DIVE_NAME} agent is using the mention directive: ${serializeMention({ name: DEEP_DIVE_NAME, sId: GLOBAL_AGENTS_SID.DEEP_DIVE })}
 `;

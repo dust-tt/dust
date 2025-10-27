@@ -27,6 +27,7 @@ import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import type { MentionType } from "@app/lib/mentions";
 import {
   AgentMessage,
   Message,
@@ -63,7 +64,6 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
-  MentionType,
   ModelId,
   PlanType,
   Result,

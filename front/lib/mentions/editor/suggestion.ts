@@ -1,6 +1,5 @@
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
-import { GLOBAL_AGENTS_SID } from "@app/types";
-
+import { GLOBAL_AGENTS_SID } from "../../../types";
+import { compareForFuzzySort, subFilter } from "../../utils";
 import type { RichAgentMention, RichMention } from "../types";
 import { isRichAgentMention } from "../types";
 

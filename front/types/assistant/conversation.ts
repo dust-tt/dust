@@ -1,5 +1,6 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type { MentionType } from "@app/lib/mentions";
 import type { AllSupportedFileContentType } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
@@ -13,21 +14,10 @@ import type {
 } from "./agent";
 import type { AgentContentItemType } from "./agent_message_content";
 
-/**
- * Mentions
- */
-
-export type AgentMention = {
-  configurationId: string;
-};
-
-export type MentionType = AgentMention;
+export type { AgentMention } from "@app/lib/mentions";
+export { isAgentMention } from "@app/lib/mentions";
 
 export type MessageVisibility = "visible" | "deleted";
-
-export function isAgentMention(arg: MentionType): arg is AgentMention {
-  return (arg as AgentMention).configurationId !== undefined;
-}
 
 export type ConversationMessageReactions = {
   messageId: string;

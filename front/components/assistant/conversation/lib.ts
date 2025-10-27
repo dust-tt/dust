@@ -3,6 +3,8 @@ import type * as t from "io-ts";
 
 import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
+import type { MentionType } from "@app/lib/mentions";
+import { toMentionType } from "@app/lib/mentions";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
@@ -13,7 +15,6 @@ import type {
   ConversationVisibility,
   FileContentFragmentType,
   InternalPostConversationsRequestBodySchema,
-  MentionType,
   Result,
   SubmitMessageError,
   SupportedContentFragmentType,
@@ -50,7 +51,7 @@ export function createPlaceholderUserMessage({
     id: -1,
     content: input,
     created: createdAt,
-    mentions: mentions.map((mention) => ({ configurationId: mention.id })),
+    mentions: mentions.map((mention) => toMentionType(mention)),
     user,
     visibility: "visible",
     type: "user_message",

@@ -1,27 +1,23 @@
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+/**
+ * Editor suggestion types and utilities.
+ *
+ * This file now uses the centralized mention module for filtering logic.
+ * Type aliases are provided for backward compatibility.
+ */
 
-export type EditorSuggestion = EditorSuggestionUser | EditorSuggestionAgent;
+import type {
+  RichAgentMention,
+  RichMention,
+  RichUserMention,
+} from "@app/lib/mentions";
+import { filterAgentSuggestions, isRichAgentMention } from "@app/lib/mentions";
 
-interface BaseEditorSuggestion {
-  id: string;
-  label: string;
-  pictureUrl: string;
-  description: string;
-}
+// Type aliases for backward compatibility with existing code.
+export type EditorSuggestionAgent = RichAgentMention;
+export type EditorSuggestionUser = RichUserMention;
+export type EditorSuggestion = RichMention;
 
-export interface EditorSuggestionUser extends BaseEditorSuggestion {
-  type: "user";
-}
-
-export interface EditorSuggestionAgent extends BaseEditorSuggestion {
-  type: "agent";
-  userFavorite: boolean;
-}
-
-export const isEditorSuggestionAgent = (
-  suggestion: EditorSuggestion
-): suggestion is EditorSuggestionAgent => suggestion.type === "agent";
+export const isEditorSuggestionAgent = isRichAgentMention;
 
 export interface EditorSuggestions {
   suggestions: EditorSuggestion[];
@@ -29,67 +25,5 @@ export interface EditorSuggestions {
   isLoading: boolean;
 }
 
-const SUGGESTION_DISPLAY_LIMIT = 7;
-
-const SUGGESTION_PRIORITY: Record<string, number> = {
-  [GLOBAL_AGENTS_SID.DUST]: 1,
-  [GLOBAL_AGENTS_SID.DEEP_DIVE]: 2,
-};
-
-function filterAndSortEditorSuggestionAgents(
-  lowerCaseQuery: string,
-  suggestions: EditorSuggestionAgent[]
-) {
-  return suggestions
-    .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
-    .sort((a, b) =>
-      compareForFuzzySort(
-        lowerCaseQuery,
-        a.label.toLocaleLowerCase(),
-        b.label.toLocaleLowerCase()
-      )
-    )
-    .sort((a, b) => {
-      // If within SUGGESTION_DISPLAY_LIMIT there's one from SUGGESTION_PRIORITY, we move it to the top.
-      const aPriority = SUGGESTION_PRIORITY[a.id] ?? Number.MAX_SAFE_INTEGER;
-      const bPriority = SUGGESTION_PRIORITY[b.id] ?? Number.MAX_SAFE_INTEGER;
-      return aPriority - bPriority;
-    });
-}
-
-export function filterSuggestionAgents(
-  query: string,
-  suggestions: EditorSuggestionAgent[],
-  fallbackSuggestions: EditorSuggestionAgent[]
-): EditorSuggestionAgent[] {
-  // keeping the pre-defined order when queried without content
-  if (query === "") {
-    return suggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
-  }
-
-  const lowerCaseQuery = query.toLowerCase();
-
-  const inListSuggestions = filterAndSortEditorSuggestionAgents(
-    lowerCaseQuery,
-    suggestions
-  ).slice(0, SUGGESTION_DISPLAY_LIMIT);
-
-  // If there are enough suggestions from the user's list, use them.
-  if (inListSuggestions.length >= SUGGESTION_DISPLAY_LIMIT) {
-    return inListSuggestions;
-  }
-
-  // Otherwise, fallback to all the suggestions.
-  const allSuggestionsNoDuplicates = filterAndSortEditorSuggestionAgents(
-    lowerCaseQuery,
-    fallbackSuggestions
-  ).filter((item) => !inListSuggestions.find((i) => i.id === item.id));
-
-  // Sorts user's list suggestions alphabetically first,
-  // then appends and sorts remaining suggestions alphabetically,
-  // without sorting the combined list again.
-  return [...inListSuggestions, ...allSuggestionsNoDuplicates].slice(
-    0,
-    SUGGESTION_DISPLAY_LIMIT
-  );
-}
+// Re-export the filtering function from centralized module.
+export const filterSuggestionAgents = filterAgentSuggestions;
