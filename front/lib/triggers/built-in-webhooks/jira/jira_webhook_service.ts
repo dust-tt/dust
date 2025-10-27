@@ -1,27 +1,21 @@
 import config from "@app/lib/api/config";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
+import type {
+  JiraProject,
+  JiraResource,
+} from "@app/lib/triggers/built-in-webhooks/jira/jira_api_schemas";
+import {
+  JiraCreateWebhookResponseSchema,
+  JiraProjectsResponseSchema,
+  JiraResourceSchema,
+} from "@app/lib/triggers/built-in-webhooks/jira/jira_api_schemas";
+import { validateJiraApiResponse } from "@app/lib/triggers/built-in-webhooks/jira/jira_api_validation";
 import type { JiraAdditionalData } from "@app/lib/triggers/built-in-webhooks/jira/jira_service_types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { isString } from "@app/types";
-import { Err, OAuthAPI, Ok } from "@app/types";
+import { Err, isString, OAuthAPI, Ok } from "@app/types";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
-
-interface JiraResource {
-  id: string;
-  name: string;
-  url: string;
-  scopes: string[];
-  avatarUrl: string;
-}
-
-interface JiraProject {
-  id: string;
-  key: string;
-  name: string;
-  self: string;
-}
 
 export class JiraWebhookService implements RemoteWebhookService<"jira"> {
   async getServiceData(
@@ -254,17 +248,20 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
       }
     );
 
-    if (!response.ok) {
+    const validationResult = await validateJiraApiResponse(
+      response,
+      JiraResourceSchema.array()
+    );
+
+    if (validationResult.isErr()) {
       return new Err(
         new Error(
-          `Failed to fetch accessible resources: ${response.statusText}`
+          `Failed to fetch accessible resources: ${validationResult.error.message}`
         )
       );
     }
 
-    // TODO(HOOTL): add validation here.
-    const resources = (await response.json()) as JiraResource[];
-    return new Ok(resources);
+    return new Ok(validationResult.value);
   }
 
   private async getProjects(
@@ -282,15 +279,18 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
       }
     );
 
-    if (!response.ok) {
+    const validationResult = await validateJiraApiResponse(
+      response,
+      JiraProjectsResponseSchema
+    );
+
+    if (validationResult.isErr()) {
       return new Err(
-        new Error(`Failed to fetch projects: ${response.statusText}`)
+        new Error(`Failed to fetch projects: ${validationResult.error.message}`)
       );
     }
 
-    // TODO(HOOTL): add validation here.
-    const data = (await response.json()) as { values: JiraProject[] };
-    return new Ok(data.values || []);
+    return new Ok(validationResult.value.values || []);
   }
 
   private async createWebhook({
@@ -320,30 +320,25 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
           webhooks: [
             {
               events,
-              jqlFilter: `project = "${projectKey.replace(/"/g, '\\"')}"`
+              jqlFilter: `project = "${projectKey.replace(/"/g, '\\"')}"`,
             },
           ],
         }),
       }
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    const validationResult = await validateJiraApiResponse(
+      response,
+      JiraCreateWebhookResponseSchema
+    );
+
+    if (validationResult.isErr()) {
       return new Err(
-        new Error(
-          `Failed to create webhook: ${response.statusText} - ${errorText}`
-        )
+        new Error(`Failed to create webhook: ${validationResult.error.message}`)
       );
     }
 
-    // TODO(HOOTL): add validation here.
-    const data = (await response.json()) as {
-      webhookRegistrationResult: {
-        createdWebhookId?: number;
-        errors?: string[];
-      }[];
-    };
-
+    const data = validationResult.value;
     const result = data.webhookRegistrationResult?.[0];
     if (!result?.createdWebhookId) {
       const errors = result?.errors?.join(", ") ?? "Unknown error";
