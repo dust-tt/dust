@@ -57,18 +57,17 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
     remoteMetadata,
     webhookUrl,
     events,
-    secret,
   }: {
     auth: Authenticator;
     connectionId: string;
-    remoteMetadata: Record<string, any>;
+    remoteMetadata: Record<string, unknown>;
     webhookUrl: string;
     events: string[];
     secret?: string;
   }): Promise<
     Result<
       {
-        updatedRemoteMetadata: Record<string, any>;
+        updatedRemoteMetadata: Record<string, unknown>;
         errors?: string[];
       },
       Error
@@ -88,9 +87,7 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
 
     const workspaceId = metadataRes.value.connection.metadata.workspace_id;
     if (!workspaceId || workspaceId !== workspace.sId) {
-      return new Err(
-        new Error("Connection does not belong to this workspace")
-      );
+      return new Err(new Error("Connection does not belong to this workspace"));
     }
 
     const tokenRes = await oauthAPI.getAccessToken({ connectionId });
@@ -119,9 +116,7 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
 
     if (projects.length === 0) {
       return new Err(
-        new Error(
-          "At least one project must be specified in remoteMetadata"
-        )
+        new Error("At least one project must be specified in remoteMetadata")
       );
     }
 
@@ -155,9 +150,7 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
 
     if (Object.keys(webhookIds).length === 0) {
       return new Err(
-        new Error(
-          `Failed to create any webhooks. Errors: ${errors.join(", ")}`
-        )
+        new Error(`Failed to create any webhooks. Errors: ${errors.join(", ")}`)
       );
     }
 
@@ -178,7 +171,7 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
   }: {
     auth: Authenticator;
     connectionId: string;
-    remoteMetadata: Record<string, any>;
+    remoteMetadata: Record<string, unknown>;
   }): Promise<Result<void, Error>> {
     const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), console);
 
@@ -190,16 +183,11 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
       return new Err(new Error("Jira connection not found"));
     }
 
-    const workspace = auth.workspace();
-    if (!workspace) {
-      return new Err(new Error("Workspace not found"));
-    }
+    const workspace = auth.getNonNullableWorkspace();
 
     const workspaceId = metadataRes.value.connection.metadata.workspace_id;
     if (!workspaceId || workspaceId !== workspace.sId) {
-      return new Err(
-        new Error("Connection does not belong to this workspace")
-      );
+      return new Err(new Error("Connection does not belong to this workspace"));
     }
 
     const tokenRes = await oauthAPI.getAccessToken({
@@ -350,15 +338,15 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
     }
 
     const data = (await response.json()) as {
-      webhookRegistrationResult: Array<{
+      webhookRegistrationResult: {
         createdWebhookId?: number;
         errors?: string[];
-      }>;
+      }[];
     };
 
     const result = data.webhookRegistrationResult?.[0];
     if (!result?.createdWebhookId) {
-      const errors = result?.errors?.join(", ") || "Unknown error";
+      const errors = result?.errors?.join(", ") ?? "Unknown error";
       return new Err(new Error(`Failed to create webhook: ${errors}`));
     }
 
