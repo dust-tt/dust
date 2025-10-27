@@ -80,11 +80,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
 
     // Create a webhook source first
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create();
-    if (webhookSourceResult.isErr()) {
-      throw webhookSourceResult.error;
-    }
-    const webhookSource = webhookSourceResult.value;
+    const webhookSource = await webhookSourceFactory.create();
 
     // Set request body
     req.body = {
@@ -120,11 +116,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
 
     // Create a webhook source first
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create();
-    if (webhookSourceResult.isErr()) {
-      throw webhookSourceResult.error;
-    }
-    const webhookSource = webhookSourceResult.value;
+    const webhookSource = await webhookSourceFactory.create();
 
     // Set request body
     req.body = {
@@ -155,11 +147,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
     const { req, res, workspace } = await setupTest("builder", "POST");
 
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create();
-    if (webhookSourceResult.isErr()) {
-      throw webhookSourceResult.error;
-    }
-    const webhookSource = webhookSourceResult.value;
+    const webhookSource = await webhookSourceFactory.create();
 
     // Set request body
     req.body = {
@@ -199,11 +187,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
 
     // Create a webhook source first
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create();
-    if (webhookSourceResult.isErr()) {
-      throw webhookSourceResult.error;
-    }
-    const webhookSource = webhookSourceResult.value;
+    const webhookSource = await webhookSourceFactory.create();
 
     // Set request body
     req.body = {

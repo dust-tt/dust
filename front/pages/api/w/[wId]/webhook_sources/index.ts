@@ -144,7 +144,7 @@ async function handler(
       const trimmedSignatureHeader = signatureHeader.trim();
 
       try {
-        const webhookSourceRes = await WebhookSourceResource.makeNew(auth, {
+        const webhookSource = await WebhookSourceResource.makeNew(auth, {
           workspaceId: workspace.id,
           name,
           secret:
@@ -160,12 +160,6 @@ async function handler(
           signatureAlgorithm,
           subscribedEvents,
         });
-
-        if (webhookSourceRes.isErr()) {
-          throw new Error(webhookSourceRes.error.message);
-        }
-
-        const webhookSource = webhookSourceRes.value;
 
         if (includeGlobal) {
           const systemView =
