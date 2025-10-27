@@ -282,19 +282,17 @@ export async function storeAgentMessageFeedbackActivity(
     .map((existingFeedback) => ({
       feedback_id: existingFeedback.id,
       user_id: existingFeedback.user?.id?.toString() ?? "unknown",
-      thumb_direction: existingFeedback.thumbDirection as "up" | "down",
+      thumb_direction: existingFeedback.thumbDirection,
       content: existingFeedback.content ?? undefined,
       is_conversation_shared: existingFeedback.isConversationShared,
       created_at: existingFeedback.createdAt.toISOString(),
     }));
 
-  // Combine existing feedbacks with the new feedback
   const allFeedbacks = [...existingAnalyticsFeedbacks, feedback];
 
   logger.info(
     {
       agentMessageId: message.agentMessageId,
-      existingCount: existingAnalyticsFeedbacks.length,
       newFeedback: feedback,
       totalCount: allFeedbacks.length,
     },

@@ -27,7 +27,7 @@ export async function launchStoreAgentAnalyticsWorkflow({
   const client = await getTemporalClientForFrontNamespace();
 
   const workflowId = makeAgentMessageAnalyticsWorkflowId({
-    agentMessageId: agentMessageId.toString(),
+    agentMessageId,
     conversationId,
     workspaceId,
   });
