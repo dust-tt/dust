@@ -454,6 +454,7 @@ export function extractMetadataFromServerVersion(
       requiresSecret: isInternalMCPServerDefinition(r)
         ? r.requiresSecret
         : undefined,
+      isPreview: isInternalMCPServerDefinition(r) ? r.isPreview : undefined,
     };
   }
 
@@ -465,6 +466,7 @@ export function extractMetadataFromServerVersion(
     authorization: null,
     documentationUrl: null,
     requiresSecret: undefined,
+    isPreview: undefined,
   };
 }
 

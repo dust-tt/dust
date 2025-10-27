@@ -106,16 +106,7 @@ export const mcpServersSortingFn = (
   a: { mcpServer: MCPServerType },
   b: { mcpServer: MCPServerType }
 ) => {
-  const { serverType: aServerType } = getServerTypeAndIdFromSId(
-    a.mcpServer.sId
-  );
-  const { serverType: bServerType } = getServerTypeAndIdFromSId(
-    b.mcpServer.sId
-  );
-  if (aServerType === bServerType) {
-    return a.mcpServer.name.localeCompare(b.mcpServer.name);
-  }
-  return aServerType < bServerType ? -1 : 1;
+  return a.mcpServer.name.localeCompare(b.mcpServer.name);
 };
 
 export function isRemoteMCPServerType(
@@ -123,6 +114,15 @@ export function isRemoteMCPServerType(
 ): server is RemoteMCPServerType {
   const serverType = getServerTypeAndIdFromSId(server.sId).serverType;
   return serverType === "remote";
+}
+
+function getIsPreviewServer(server: MCPServerType): boolean {
+  const res = getInternalMCPServerNameAndWorkspaceId(server.sId);
+  const isPreview = res.isOk()
+    ? INTERNAL_MCP_SERVERS[res.value.name].isPreview
+    : server.isPreview;
+
+  return isPreview === true;
 }
 
 export function getMcpServerViewDescription(view: MCPServerViewType): string {
@@ -136,10 +136,20 @@ export function getMcpServerViewDisplayName(
     | AgentBuilderAction
     | MCPServerConfigurationType
 ) {
+  let displayName: string;
+
   if (view.name) {
-    return asDisplayName(view.name);
+    displayName = asDisplayName(view.name);
+  } else {
+    return getMcpServerDisplayName(view.server, action);
   }
-  return getMcpServerDisplayName(view.server, action);
+
+  // For custom named views, we still need to append the preview suffix
+  if (getIsPreviewServer(view.server)) {
+    displayName += " (Preview)";
+  }
+
+  return displayName;
 }
 
 export function getMcpServerDisplayName(
@@ -161,16 +171,17 @@ export function getMcpServerDisplayName(
       displayName += " - " + asDisplayName(action.name);
     }
 
-    const serverConfig = INTERNAL_MCP_SERVERS[res.value.name];
-
-    if (serverConfig.isPreview === true) {
-      displayName += " (Preview)";
-    }
     // Will append Dust App name.
     if (res.value.name === "run_dust_app" && action) {
       displayName += " - " + action.name;
     }
   }
+
+  // Append (Preview) suffix for both internal and remote preview servers.
+  if (getIsPreviewServer(server)) {
+    displayName += " (Preview)";
+  }
+
   return displayName;
 }
 

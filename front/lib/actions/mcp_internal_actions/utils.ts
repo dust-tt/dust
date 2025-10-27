@@ -33,13 +33,20 @@ export function makeInternalMCPServer(
     augmentedInstructions?: string;
   }
 ): McpServer {
-  const { serverInfo } = INTERNAL_MCP_SERVERS[serverName];
+  const mcpServerConfig = INTERNAL_MCP_SERVERS[serverName];
+  const { serverInfo } = mcpServerConfig;
   const instructions =
     options?.augmentedInstructions ?? serverInfo.instructions ?? undefined;
 
-  return new McpServer(serverInfo, {
-    instructions,
-  });
+  return new McpServer(
+    {
+      ...serverInfo,
+      isPreview: mcpServerConfig.isPreview,
+    },
+    {
+      instructions,
+    }
+  );
 }
 
 export function makePersonalAuthenticationError(
