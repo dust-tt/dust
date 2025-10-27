@@ -6,7 +6,10 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { FileType, WithAPIErrorResponse } from "@app/types";
+import type {FileType, WithAPIErrorResponse} from "@app/types";
+import {
+  isConversationFileUseCase
+} from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -62,7 +65,7 @@ async function handler(
   }
 
   // Check permissions based on useCase and useCaseMetadata.
-  if (useCase === "conversation" && useCaseMetadata?.conversationId) {
+  if (isConversationFileUseCase(useCase) && useCaseMetadata?.conversationId) {
     const conversation = await ConversationResource.fetchById(
       auth,
       useCaseMetadata.conversationId
