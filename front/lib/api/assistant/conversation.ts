@@ -52,6 +52,7 @@ import {
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import type { MentionType } from "@app/types";
 import type {
   AgentMessageType,
   APIErrorWithStatusCode,
@@ -63,7 +64,6 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
-  MentionType,
   ModelId,
   PlanType,
   Result,

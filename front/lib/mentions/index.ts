@@ -9,30 +9,15 @@
  *   import { RichMention, mentionFormat, MentionDisplay } from "@app/lib/mentions";
  */
 
-// Types
-export type {
-  AgentMention,
-  MentionType,
-  RichAgentMention,
-  RichMention,
-  RichUserMention,
-  UserMention,
-} from "./types";
-export {
-  isAgentMention,
-  isRichAgentMention,
-  isRichUserMention,
-  toMentionType,
-  toRichMention,
-} from "./types";
-
 // Format utilities
 export {
   extractFromEditorJSON,
+  // TODO(rcs): remove this indirection
+  serializeMention as mentionAgent,
   mentionFormat,
   parseMentions,
-  replaceMentionsWithAt,
-  serializeMention,
+  // TODO(rcs): remove this indirection
+  replaceMentionsWithAt as replaceMentionsByAt,
 } from "./format";
 
 // UI components
