@@ -7,16 +7,6 @@ RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Install Poppler tools
-WORKDIR /tmp/
-COPY /connectors/admin/docker_build/install_poppler_tools.sh ./
-RUN chmod +x ./install_poppler_tools.sh && \
-    ./install_poppler_tools.sh && \
-    ldconfig
-
-# Set library path for Poppler
-ENV LD_LIBRARY_PATH=/usr/local/lib
-
 # Set the working directory to /dust
 WORKDIR /dust
 
