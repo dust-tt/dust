@@ -10,15 +10,15 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import {
   CHART_HEIGHT,
   USAGE_METRICS_LEGEND,
   USAGE_METRICS_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
 import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
+import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
+import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { useAgentUsageMetrics } from "@app/lib/swr/assistants";
 
 interface UsageMetricsData {
