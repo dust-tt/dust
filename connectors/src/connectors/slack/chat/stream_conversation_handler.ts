@@ -131,7 +131,10 @@ async function streamAgentAnswerToSlack(
 
   let answer = "";
   const actions: AgentActionPublicType[] = [];
-  const throttledPostSlackMessageUpdate = throttle(postSlackMessageUpdate, 500);
+  const throttledPostSlackMessageUpdate = throttle(
+    postSlackMessageUpdate,
+    1_000
+  );
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "tool_params":
@@ -575,7 +578,7 @@ async function postSlackMessageUpdate({
   const response = await throttleWithRedis(
     RATE_LIMITS["chat.update"],
     `${connector.id}-chat-update`,
-    canBeIgnored,
+    { canBeIgnored },
     async () =>
       slackClient.chat.update({
         ...makeMessageUpdateBlocksAndText(
