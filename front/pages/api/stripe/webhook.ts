@@ -433,9 +433,10 @@ async function handler(
             logger.error(
               {
                 stripeError: true,
-                event,
+                workspaceId: event.data.object.metadata?.workspaceId,
                 stripeSubscriptionId: stripeSubscription.id,
                 invalidity_message: validStatus.error.invalidity_message,
+                event,
               },
               "[Stripe Webhook] Received customer.subscription.created event with invalid subscription."
             );
@@ -620,9 +621,10 @@ async function handler(
             logger.error(
               {
                 stripeError: true,
-                event,
+                workspaceId: event.data.object.metadata?.workspaceId,
                 stripeSubscriptionId: stripeSubscription.id,
                 invalidity_message: validStatus.error.invalidity_message,
+                event,
               },
               "[Stripe Webhook] Received customer.subscription.updated event with invalid subscription."
             );
@@ -702,7 +704,12 @@ async function handler(
                 });
               if (scheduleScrubRes.isErr()) {
                 logger.error(
-                  { stripeError: true, error: scheduleScrubRes.error },
+                  {
+                    stripeError: true,
+                    workspaceId: matchingSubscription.workspace.sId,
+                    stripeSubscriptionId: stripeSubscription.id,
+                    error: scheduleScrubRes.error,
+                  },
                   "Error launching scrub workspace workflow"
                 );
                 return apiError(req, res, {
