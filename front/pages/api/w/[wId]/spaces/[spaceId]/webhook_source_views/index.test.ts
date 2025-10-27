@@ -84,7 +84,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
 
     // Set request body
     req.body = {
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
     };
 
     // Create regular space for the test
@@ -102,7 +102,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
         sId: expect.any(String),
         spaceId: regularSpace.sId,
         webhookSource: expect.objectContaining({
-          sId: webhookSource.sId(),
+          sId: webhookSource.sId,
         }),
       }),
     });
@@ -120,7 +120,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
 
     // Set request body
     req.body = {
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
     };
 
     req.query.spaceId = globalSpace.sId;
@@ -136,7 +136,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
         sId: expect.any(String),
         spaceId: globalSpace.sId,
         webhookSource: expect.objectContaining({
-          sId: webhookSource.sId(),
+          sId: webhookSource.sId,
         }),
       }),
     });
@@ -151,7 +151,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
 
     // Set request body
     req.body = {
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
     };
 
     await handler(req, res);
@@ -191,7 +191,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
 
     // Set request body
     req.body = {
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
     };
 
     // Get the system space from defaults (don't create a new one)

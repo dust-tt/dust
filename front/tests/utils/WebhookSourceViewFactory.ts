@@ -29,7 +29,7 @@ export class WebhookSourceViewFactory {
       const webhookSourceFactory = new WebhookSourceFactory(this.workspace);
       const webhookSource = await webhookSourceFactory.create();
 
-      webhookSourceId = webhookSource.sId();
+      webhookSourceId = webhookSource.sId;
     }
 
     const systemView =

@@ -354,7 +354,7 @@ function createServer(
 
         // If rootNodeId is provided and is a data source node ID, search only in
         // the data source. If rootNodeId is provided and is a regular node ID,
-        // reset all view_filters to this node, so only descendents of this node
+        // add this node to all filters so that only descendents of this node
         // are searched. It is not straightforward to guess which data source it
         // belongs to, this is why irrelevant data sources are not directly
         // filtered out.

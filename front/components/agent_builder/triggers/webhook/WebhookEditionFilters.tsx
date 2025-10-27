@@ -43,7 +43,7 @@ export function WebhookEditionFilters({
     }
 
     return (
-      selectedPreset.events.find((event) => event.name === selectedEvent) ??
+      selectedPreset.events.find((event) => event.value === selectedEvent) ??
       null
     );
   }, [selectedEvent, selectedPreset]);

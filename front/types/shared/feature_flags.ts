@@ -226,6 +226,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable mentions v2, aka mention users",
     stage: "on_demand",
   },
+  dust_global_agent_memory: {
+    description: "Enable agent memory tool on the @dust global agent",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
