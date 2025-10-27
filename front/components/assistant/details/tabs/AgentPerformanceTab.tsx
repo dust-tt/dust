@@ -30,13 +30,11 @@ const PERIODS = [
 interface AgentPerformanceTabProps {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
-  gridMode: boolean;
 }
 
 export function AgentPerformanceTab({
   agentConfiguration,
   owner,
-  gridMode,
 }: AgentPerformanceTabProps) {
   const [period, setPeriod] = useState(30);
   const { agentAnalytics, isAgentAnalyticsLoading } = useAgentAnalytics({
@@ -184,7 +182,6 @@ export function AgentPerformanceTab({
           <FeedbacksSection
             owner={owner}
             agentConfigurationId={agentConfiguration.sId}
-            gridMode={gridMode}
           />
         </div>
       )}

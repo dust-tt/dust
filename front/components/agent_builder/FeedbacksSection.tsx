@@ -1,19 +1,28 @@
 import {
   Avatar,
+  Button,
   Card,
   CardActionButton,
   cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   ExternalLinkIcon,
+  EyeIcon,
+  EyeSlashIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
   Hoverable,
   Icon,
   NavigationListLabel,
+  Page,
   Spinner,
 } from "@dust-tt/sparkle";
-import { memo, useCallback, useEffect } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import {
   useAgentConfigurationFeedbacksByDescVersion,
@@ -28,17 +37,20 @@ import type {
 
 const FEEDBACKS_PAGE_SIZE = 50;
 
+type FeedbackFilter = "active" | "all";
+
 interface FeedbacksSectionProps {
   owner: LightWorkspaceType;
   agentConfigurationId: string;
-  gridMode?: boolean;
 }
 
 export const FeedbacksSection = ({
   owner,
   agentConfigurationId,
-  gridMode = false,
 }: FeedbacksSectionProps) => {
+  const [feedbackFilter, setFeedbackFilter] =
+    useState<FeedbackFilter>("active");
+
   const {
     isAgentConfigurationFeedbacksLoading,
     isValidating,
@@ -46,10 +58,12 @@ export const FeedbacksSection = ({
     hasMore,
     setSize,
     size,
+    mutateAgentConfigurationFeedbacks,
   } = useAgentConfigurationFeedbacksByDescVersion({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfigurationId,
     limit: FEEDBACKS_PAGE_SIZE,
+    filter: feedbackFilter,
   });
 
   // Intersection observer to detect when the user has scrolled to the bottom of the list.
@@ -86,17 +100,6 @@ export const FeedbacksSection = ({
     return (
       <div className="w-full p-6">
         <Spinner variant="dark" />
-      </div>
-    );
-  }
-
-  if (
-    !isAgentConfigurationFeedbacksLoading &&
-    (!agentConfigurationFeedbacks || agentConfigurationFeedbacks.length === 0)
-  ) {
-    return (
-      <div className="mt-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
-        No feedback yet.
       </div>
     );
   }
@@ -144,7 +147,34 @@ export const FeedbacksSection = ({
 
   return (
     <>
-      {gridMode ? (
+      <div className="mb-4 flex items-center justify-between">
+        <Page.H variant="h5">Feedback</Page.H>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              label={feedbackFilter === "active" ? "Active" : "All"}
+              isSelect
+              variant="outline"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => setFeedbackFilter("active")}
+              label="Active"
+            />
+            <DropdownMenuItem
+              onClick={() => setFeedbackFilter("all")}
+              label="All"
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {!agentConfigurationFeedbacks ||
+      agentConfigurationFeedbacks.length === 0 ? (
+        <div className="mt-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          No feedback yet.
+        </div>
+      ) : (
         <div className="flex flex-col gap-4">
           {versionsInOrder.map((version) => {
             const versionFeedbacks = feedbacksByVersion[version];
@@ -168,38 +198,13 @@ export const FeedbacksSection = ({
                         feedback={
                           feedback as AgentMessageFeedbackWithMetadataType
                         }
+                        onDismiss={() =>
+                          void mutateAgentConfigurationFeedbacks()
+                        }
                       />
                     ))}
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {versionsInOrder.map((version) => {
-            const versionFeedbacks = feedbacksByVersion[version];
-            const agentConfig = agentConfigByVersion[version];
-            const isLatestVersion = version === latestVersion;
-
-            return (
-              <div key={version} className="flex flex-col gap-2">
-                <AgentConfigurationVersionHeader
-                  agentConfiguration={agentConfig}
-                  agentConfigurationVersion={version}
-                  isLatestVersion={isLatestVersion}
-                />
-                {versionFeedbacks?.map((feedback) => (
-                  <div key={feedback.id} className="animate-fadeIn">
-                    <MemoizedFeedbackCard
-                      owner={owner}
-                      feedback={
-                        feedback as AgentMessageFeedbackWithMetadataType
-                      }
-                    />
-                  </div>
-                ))}
               </div>
             );
           })}
@@ -210,11 +215,13 @@ export const FeedbacksSection = ({
     </>
   );
 };
+
 interface AgentConfigurationVersionHeaderProps {
   agentConfigurationVersion: number;
   agentConfiguration: LightAgentConfigurationType | undefined;
   isLatestVersion: boolean;
 }
+
 function AgentConfigurationVersionHeader({
   agentConfigurationVersion,
   agentConfiguration,
@@ -252,11 +259,20 @@ interface FeedbackCardProps {
   owner: LightWorkspaceType;
   feedback: AgentMessageFeedbackWithMetadataType;
   className?: string;
+  onDismiss?: () => void;
 }
 
 const MemoizedFeedbackCard = memo(FeedbackCard);
 
-function FeedbackCard({ owner, feedback, className }: FeedbackCardProps) {
+function FeedbackCard({
+  owner,
+  feedback,
+  className,
+  onDismiss,
+}: FeedbackCardProps) {
+  const [isDismissing, setIsDismissing] = useState(false);
+  const sendNotification = useSendNotification();
+
   const conversationUrl =
     feedback.conversationId &&
     feedback.messageId &&
@@ -278,20 +294,92 @@ function FeedbackCard({ owner, feedback, className }: FeedbackCardProps) {
     }
   );
 
+  const handleToggleDismiss = useCallback(
+    async (dismissed: boolean) => {
+      setIsDismissing(true);
+      const response = await fetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/${feedback.agentConfigurationId}/feedbacks/${feedback.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ dismissed }),
+        }
+      );
+
+      if (!response.ok) {
+        sendNotification({
+          type: "error",
+          title: dismissed
+            ? "Failed to dismiss feedback"
+            : "Failed to restore feedback",
+          description: dismissed
+            ? "An error occurred while dismissing the feedback."
+            : "An error occurred while restoring the feedback.",
+        });
+        setIsDismissing(false);
+        return;
+      }
+
+      sendNotification({
+        type: "success",
+        title: dismissed ? "Feedback dismissed" : "Feedback restored",
+        description: dismissed
+          ? "The feedback has been dismissed."
+          : "The feedback has been restored.",
+      });
+
+      if (onDismiss) {
+        onDismiss();
+      }
+    },
+    [
+      owner.sId,
+      feedback.agentConfigurationId,
+      feedback.id,
+      sendNotification,
+      onDismiss,
+    ]
+  );
+
   return (
     <Card
-      className={cn("flex h-full flex-col", className)} // Add className here
+      className={cn(
+        "flex h-full flex-col",
+        feedback.dismissed && "opacity-60",
+        className
+      )}
       action={
-        conversationUrl && (
-          <CardActionButton
-            size="mini"
-            icon={ExternalLinkIcon}
-            href={conversationUrl ?? ""}
-            disabled={!conversationUrl}
-            tooltip="View conversation"
-            target="_blank"
-          />
-        )
+        <div className="flex gap-1">
+          {feedback.dismissed ? (
+            <CardActionButton
+              size="mini"
+              icon={EyeIcon}
+              onClick={() => handleToggleDismiss(false)}
+              disabled={isDismissing}
+              tooltip="Undismiss feedback"
+            />
+          ) : (
+            <CardActionButton
+              size="mini"
+              icon={EyeSlashIcon}
+              onClick={() => handleToggleDismiss(true)}
+              disabled={isDismissing}
+              tooltip="Dismiss feedback"
+            />
+          )}
+          {conversationUrl && (
+            <CardActionButton
+              size="mini"
+              icon={ExternalLinkIcon}
+              href={conversationUrl ?? ""}
+              disabled={!conversationUrl}
+              tooltip="View conversation"
+              target="_blank"
+            />
+          )}
+        </div>
       }
     >
       <div className="flex flex-shrink-0 items-center gap-3 px-4 py-3">
