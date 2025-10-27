@@ -89,7 +89,7 @@ export function AgentBuilderTriggersBlock({
   ];
 
   const handleAddTriggersClick = () => {
-    setSheetMode({ type: "selection" });
+    setSheetMode({ type: "add" });
   };
 
   const handleTriggerEdit = (
