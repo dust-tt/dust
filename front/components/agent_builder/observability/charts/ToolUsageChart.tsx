@@ -70,28 +70,6 @@ export function ToolUsageChart({
     [topTools]
   );
 
-  const additionalControls = (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          size="xs"
-          variant="outline"
-          isSelect
-          label={mode === "version" ? "Version" : "Step"}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuRadioGroup
-          value={mode}
-          onValueChange={(value) => isToolChartMode(value) && setMode(value)}
-        >
-          <DropdownMenuRadioItem value="version">Version</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="step">Step</DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-
   const renderToolUsageTooltip = useCallback(
     (payload: TooltipContentProps<number, string>) => (
       <ToolUsageTooltip {...payload} mode={mode} topTools={topTools} />
@@ -105,7 +83,31 @@ export function ToolUsageChart({
       isLoading={isLoading}
       errorMessage={errorMessage}
       emptyMessage={chartData.length === 0 ? emptyMessage : undefined}
-      additionalControls={additionalControls}
+      additionalControls={
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="xs"
+              variant="outline"
+              isSelect
+              label={mode === "version" ? "Version" : "Step"}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuRadioGroup
+              value={mode}
+              onValueChange={(value) =>
+                isToolChartMode(value) && setMode(value)
+              }
+            >
+              <DropdownMenuRadioItem value="version">
+                Version
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="step">Step</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      }
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <BarChart
