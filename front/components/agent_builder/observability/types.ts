@@ -1,9 +1,9 @@
-const TOOL_CHART_MODES = ["version", "step"];
+const TOOL_CHART_MODES = ["version", "step"] as const;
 
 export type ToolChartModeType = (typeof TOOL_CHART_MODES)[number];
 
 export function isToolChartMode(mode: string): mode is ToolChartModeType {
-  return mode === "version" || mode === "step";
+  return TOOL_CHART_MODES.includes(mode as ToolChartModeType);
 }
 
 export type ChartDatum = {

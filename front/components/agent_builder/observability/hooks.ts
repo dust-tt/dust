@@ -4,9 +4,9 @@ import {
 } from "@app/components/agent_builder/observability/constants";
 import type {
   ChartDatum,
-  Mode,
+  ToolChartModeType,
 } from "@app/components/agent_builder/observability/types";
-import { computeTopToolsFromCounts } from "@app/components/agent_builder/observability/utils";
+import { selectTopTools } from "@app/components/agent_builder/observability/utils";
 import type { ToolExecutionByVersion } from "@app/lib/api/assistant/observability/tool_execution";
 import type { ToolStepIndexByStep } from "@app/lib/api/assistant/observability/tool_step_index";
 import {
@@ -123,7 +123,7 @@ function processToolUsageData(
   }
 
   const counts = aggregateToolCounts(data);
-  const topTools = computeTopToolsFromCounts(counts, MAX_TOOLS_DISPLAYED);
+  const topTools = selectTopTools(counts, MAX_TOOLS_DISPLAYED);
   const chartData = createChartData(data, topTools);
 
   return {
@@ -141,7 +141,7 @@ export function useToolUsageData(params: {
   workspaceId: string;
   agentConfigurationId: string;
   period: number;
-  mode: Mode;
+  mode: ToolChartModeType;
 }): ToolUsageResult {
   const { workspaceId, agentConfigurationId, period, mode } = params;
 
