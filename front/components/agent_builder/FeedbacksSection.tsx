@@ -352,23 +352,13 @@ function FeedbackCard({
       )}
       action={
         <div className="flex gap-1">
-          {feedback.dismissed ? (
-            <CardActionButton
-              size="mini"
-              icon={EyeIcon}
-              onClick={() => handleToggleDismiss(false)}
-              disabled={isDismissing}
-              tooltip="Undismiss feedback"
-            />
-          ) : (
-            <CardActionButton
-              size="mini"
-              icon={EyeSlashIcon}
-              onClick={() => handleToggleDismiss(true)}
-              disabled={isDismissing}
-              tooltip="Dismiss feedback"
-            />
-          )}
+          <CardActionButton
+            size="mini"
+            icon={feedback.dismissed ? EyeIcon : EyeSlashIcon}
+            onClick={() => handleToggleDismiss(!feedback.dismissed)}
+            disabled={isDismissing}
+            tooltip={`${feedback.dismissed ? "Undismiss" : "Dismiss"} feedback`}
+          />
           {conversationUrl && (
             <CardActionButton
               size="mini"
