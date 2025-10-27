@@ -195,6 +195,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Microsoft Teams MCP server",
     stage: "on_demand",
   },
+  microsoft_excel_mcp_server: {
+    description: "Microsoft Excel MCP server",
+    stage: "on_demand",
+  },
   agent_builder_observability: {
     description:
       "Observability tab in the Agent Builder (charts powered by Elasticsearch)",
