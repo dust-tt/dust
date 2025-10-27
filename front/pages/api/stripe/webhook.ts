@@ -426,15 +426,21 @@ async function handler(
 
         case "customer.subscription.created": {
           const stripeSubscription = event.data.object as Stripe.Subscription;
+          const priceId =
+            stripeSubscription.items.data.length > 0
+              ? stripeSubscription.items.data[0].price?.id
+              : null;
           // on the odd chance the change is not compatible with our logic, we panic
           const validStatus =
             assertStripeSubscriptionIsValid(stripeSubscription);
+
           if (validStatus.isErr()) {
             logger.error(
               {
                 stripeError: true,
                 workspaceId: event.data.object.metadata?.workspaceId,
                 stripeSubscriptionId: stripeSubscription.id,
+                priceId,
                 invalidity_message: validStatus.error.invalidity_message,
                 event,
               },
@@ -618,11 +624,16 @@ async function handler(
           const validStatus =
             assertStripeSubscriptionIsValid(stripeSubscription);
           if (validStatus.isErr()) {
+            const priceId =
+              stripeSubscription.items.data.length > 0
+                ? stripeSubscription.items.data[0].price?.id
+                : null;
             logger.error(
               {
                 stripeError: true,
                 workspaceId: event.data.object.metadata?.workspaceId,
                 stripeSubscriptionId: stripeSubscription.id,
+                priceId,
                 invalidity_message: validStatus.error.invalidity_message,
                 event,
               },
