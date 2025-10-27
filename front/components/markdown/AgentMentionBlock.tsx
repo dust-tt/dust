@@ -14,7 +14,7 @@ import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
 // Not exported, the one exported is getMentionPlugin since we need to pass the owner.
-function MentionBlock({
+function AgentMentionBlock({
   owner,
   agentName,
   agentSId,
@@ -61,9 +61,10 @@ function MentionBlock({
   );
 }
 
-export function mentionDirective() {
+export function agentMentionDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
+      // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       if (node.name === "mention" && node.children[0]) {
         const data = node.data || (node.data = {});
         data.hName = "mention";
@@ -76,8 +77,8 @@ export function mentionDirective() {
   };
 }
 
-export function getMentionPlugin(owner: WorkspaceType) {
-  const MentionPlugin = ({
+export function getAgentMentionPlugin(owner: WorkspaceType) {
+  const AgentMentionPlugin = ({
     agentName,
     agentSId,
   }: {
@@ -85,9 +86,13 @@ export function getMentionPlugin(owner: WorkspaceType) {
     agentSId: string;
   }) => {
     return (
-      <MentionBlock owner={owner} agentName={agentName} agentSId={agentSId} />
+      <AgentMentionBlock
+        owner={owner}
+        agentName={agentName}
+        agentSId={agentSId}
+      />
     );
   };
 
-  return MentionPlugin;
+  return AgentMentionPlugin;
 }
