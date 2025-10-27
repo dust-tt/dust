@@ -99,7 +99,7 @@ interface WebhookEditionEventSelectorProps {
   availableEvents: WebhookEvent[];
 }
 
-function WebhookEditionEventSelector({
+export function WebhookEditionEventSelector({
   isEditor,
   selectedPreset,
   availableEvents,
@@ -155,7 +155,7 @@ interface WebhookEditionIncludePayloadProps {
   isEditor: boolean;
 }
 
-function WebhookEditionIncludePayload({
+export function WebhookEditionIncludePayload({
   isEditor,
 }: WebhookEditionIncludePayloadProps) {
   const { control } = useFormContext<WebhookFormValues>();
@@ -186,7 +186,7 @@ interface WebhookEditionMessageInputProps {
   isEditor: boolean;
 }
 
-function WebhookEditionMessageInput({
+export function WebhookEditionMessageInput({
   isEditor,
 }: WebhookEditionMessageInputProps) {
   const { control } = useFormContext<WebhookFormValues>();
