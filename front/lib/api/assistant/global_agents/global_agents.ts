@@ -358,6 +358,7 @@ function getGlobalAgent({
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
         searchMCPServerView,
+        toolsetsMCPServerView,
         deepDiveMCPServerView,
         interactiveContentMCPServerView,
         agentMemoryMCPServerView,
