@@ -1,6 +1,7 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
+import { randomUUID } from "crypto";
 import { google } from "googleapis";
 import { z } from "zod";
 
@@ -11,7 +12,6 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { randomUUID } from "crypto";
 
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 const GOOGLE_CALENDAR_TOOL_NAME = "google_calendar";
