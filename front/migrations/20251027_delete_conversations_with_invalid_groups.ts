@@ -98,29 +98,14 @@ makeScript({}, async ({ execute }, logger) => {
       }
 
       for (const conversation of conversations) {
-        const checkConversation = await ConversationResource.fetchByModelId(
-          conversation.sId
-        );
-        if (checkConversation) {
-          logger.info(
-            {
-              sId: conversation.sId,
-              workspaceId: workspaceId,
-            },
-            "Conversation is still accessible, don't delete it"
-          );
-          // Conversation is accessible, don't delete it
-          continue;
-        }
-
         logger.info(
           {
             sId: conversation.sId,
             workspaceId: workspaceId,
           },
           execute
-            ? "Deleting conversation with all messages"
-            : "Would delete conversation with all messages (dry run)"
+            ? "Deleting conversation"
+            : "Would delete conversation (dry run)"
         );
 
         if (execute) {
