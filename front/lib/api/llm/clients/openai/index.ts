@@ -1,5 +1,8 @@
 import { OpenAI } from "openai";
+import { ReasoningEffort } from "openai/resources/shared.mjs";
 
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
+import { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import {
   toInput,
   toOpenAIReasoningEffort,
@@ -14,10 +17,8 @@ import {
   type ModelConfigurationType,
   type ModelConversationTypeMultiActions,
 } from "@app/types";
-import { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { ReasoningEffort } from "openai/resources/shared.mjs";
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
-import { baseURLFromProviderId } from "./utils";
+
+import { baseURLFromProviderId } from "@app/lib/api/llm/clients/openai/utils";
 
 export class OpenAILLM extends LLM {
   private client: OpenAI;

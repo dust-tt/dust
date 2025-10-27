@@ -7,6 +7,7 @@ import type {
 } from "openai/resources/responses/responses";
 import type { ReasoningEffort } from "openai/resources/shared";
 
+import * as agent from "@app/lib/actions/types/agent";
 import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
@@ -21,7 +22,6 @@ import type {
 } from "@app/types";
 import { isString } from "@app/types";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
-import * as agent from "@app/lib/actions/types/agent";
 
 export function toOpenAIReasoningEffort(
   reasoningEffort: AgentReasoningEffort
