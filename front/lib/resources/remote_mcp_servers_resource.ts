@@ -372,7 +372,6 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         : this.sharedSecret
       : null;
 
-    // Check if this is a default remote server to get its isPreview value
     const defaultConfig = getDefaultRemoteMCPServerByURL(this.url);
 
     return {
