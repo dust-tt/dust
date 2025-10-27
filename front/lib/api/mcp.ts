@@ -80,6 +80,7 @@ export type MCPServerType = {
   allowMultipleInstances: boolean;
   documentationUrl: string | null;
   requiresSecret?: boolean;
+  isPreview?: boolean;
 };
 
 export type RemoteMCPServerType = MCPServerType & {

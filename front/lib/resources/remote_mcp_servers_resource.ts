@@ -13,6 +13,7 @@ import type {
 } from "@app/components/resources/resources_icons";
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPToolType, RemoteMCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -371,6 +372,8 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         : this.sharedSecret
       : null;
 
+    const defaultConfig = getDefaultRemoteMCPServerByURL(this.url);
+
     return {
       sId: this.sId,
 
@@ -391,6 +394,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       sharedSecret: secret,
       customHeaders: this.customHeaders,
       documentationUrl: null,
+      isPreview: defaultConfig?.isPreview,
     };
   }
 }

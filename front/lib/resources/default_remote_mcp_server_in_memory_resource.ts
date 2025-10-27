@@ -73,6 +73,7 @@ export class DefaultRemoteMCPServerInMemoryResource {
       documentationUrl: this.config.documentationUrl || null,
       availability: "manual" as const,
       allowMultipleInstances: true,
+      isPreview: this.config.isPreview,
     };
   }
 }

@@ -18,7 +18,7 @@ import {
   getMcpServerDisplayName,
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
-  mcpServersSortingFn,
+  mcpServerOrViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
@@ -189,7 +189,7 @@ export const AdminActionsList = ({
             },
           };
         })
-        .sort(mcpServersSortingFn),
+        .sort(mcpServerOrViewSortingFn),
     [
       connections,
       mcpServers,
@@ -257,11 +257,8 @@ export const AdminActionsList = ({
             </DataTable.CellContent>
           );
         },
-        sortingFn: (rowA, rowB) => {
-          return rowA.original.mcpServer.name.localeCompare(
-            rowB.original.mcpServer.name
-          );
-        },
+        sortingFn: (rowA, rowB) =>
+          mcpServerOrViewSortingFn(rowA.original, rowB.original),
         meta: {
           className: "hidden w-28 @2xl:w-10 @sm:table-cell",
         },

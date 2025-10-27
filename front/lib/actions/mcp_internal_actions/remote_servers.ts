@@ -12,6 +12,7 @@ export type DefaultRemoteMCPServerConfig = {
   authMethod: "bearer" | "oauth-dynamic" | null;
   supportedOAuthUseCases?: MCPOAuthUseCase[];
   scope?: string;
+  isPreview?: boolean;
   toolStakes?: Record<string, "high" | "low" | "never_ask">;
 };
 
@@ -26,6 +27,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     connectionInstructions:
       "You will need to provide your Stripe API key as a bearer token. We recommend using restricted API keys to limit access to the functionality your agents require.",
     authMethod: "bearer",
+    isPreview: false,
     toolStakes: {
       search_documentation: "never_ask",
       list_customers: "low",
@@ -61,6 +63,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     icon: "LinearLogo",
     documentationUrl: "https://linear.app/docs",
     authMethod: "oauth-dynamic",
+    isPreview: false,
     toolStakes: {
       search_documentation: "never_ask",
       list_comments: "never_ask",
@@ -95,6 +98,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     documentationUrl:
       "https://developers.asana.com/docs/using-asanas-mcp-server",
     authMethod: "oauth-dynamic",
+    isPreview: false,
     toolStakes: {
       asana_get_attachment: "never_ask",
       asana_get_attachments_for_object: "never_ask",
@@ -144,7 +148,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     id: 10003,
     name: "gitlab",
     description:
-      "GitLab tools for repository management, issue tracking, and CI/CD operations.",
+      "GitLab tools for repository management, issue tracking, and CI/CD operations.\n\n This feature is available for testing, but not ready for production use. See GitLab's documentation for more details.",
     url: "https://gitlab.com/api/v4/mcp",
     icon: "GitlabLogo",
     documentationUrl:
@@ -153,6 +157,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       "GitLab uses OAuth authentication with the 'mcp' scope. The default URL connects to gitlab.com.",
     authMethod: "oauth-dynamic",
     scope: "mcp",
+    isPreview: true,
     toolStakes: {
       get_mcp_server_version: "never_ask",
       create_issue: "low",
