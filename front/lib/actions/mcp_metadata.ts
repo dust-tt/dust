@@ -6,7 +6,6 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { ProxyAgent } from "undici";
 
 import { isInternalAllowedIcon } from "@app/components/resources/resources_icons";
@@ -38,7 +37,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { getUntrustedEgressAgent } from "@app/lib/egress";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase, OAuthProvider, Result } from "@app/types";
 import {
@@ -472,20 +470,10 @@ export function extractMetadataFromServerVersion(
 
 export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
   return tools.map((tool) => {
-    let inputSchema: JSONSchema | undefined;
-
-    const { isValid, error } = validateJsonSchema(tool.inputSchema);
-    if (isValid) {
-      inputSchema = tool.inputSchema as JSONSchema;
-    } else {
-      logger.error(
-        `[MCP] Invalid input schema for tool: ${tool.name} (${error}).`
-      );
-    }
     return {
       name: tool.name,
       description: tool.description ?? "",
-      inputSchema,
+      inputSchema: tool.inputSchema,
     };
   });
 }
