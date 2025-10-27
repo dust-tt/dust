@@ -30,3 +30,26 @@ export async function runScrubWorkspaceQueueWorker() {
 
   await worker.run();
 }
+
+export async function runScrubWorkspaceQueueWorkerV1() {
+  const { connection, namespace } = await getTemporalWorkerConnection();
+  const worker = await Worker.create({
+    workflowsPath: require.resolve("./workflows"),
+    activities,
+    maxConcurrentActivityTaskExecutions: 2,
+    taskQueue: "scrub-workspace-queue-v1",
+    connection,
+    namespace,
+    interceptors: {
+      activity: [
+        (ctx: Context) => {
+          return {
+            inbound: new ActivityInboundLogInterceptor(ctx, logger),
+          };
+        },
+      ],
+    },
+  });
+
+  await worker.run();
+}
