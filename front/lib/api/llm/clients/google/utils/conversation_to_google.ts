@@ -2,6 +2,7 @@ import type { Content, FunctionResponse, Part, Tool } from "@google/genai";
 import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { fetchImageBase64 } from "@app/lib/api/llm/clients/google/utils/image_utils";
 import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
@@ -16,8 +17,6 @@ import type {
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
-
-import { fetchImageBase64 } from "./image_utils";
 
 async function contentToPart(
   content: TextContent | ImageContent
