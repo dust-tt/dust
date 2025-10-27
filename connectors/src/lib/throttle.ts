@@ -10,10 +10,7 @@ export type RateLimit = {
   windowInMs: number;
 };
 
-// Increased timeout to handle lock contention during high-traffic periods.
-// The throttle logic itself (Redis operations for timestamp management) can take several seconds
-// under load, requiring a longer timeout than the default 3 seconds.
-const ACQUIRE_LOCK_TIMEOUT_MS = 10_000;
+const ACQUIRE_LOCK_TIMEOUT_MS = 3_000;
 
 export async function throttleWithRedis<T>(
   rateLimit: RateLimit,
