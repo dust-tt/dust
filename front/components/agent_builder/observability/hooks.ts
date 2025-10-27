@@ -32,7 +32,7 @@ function calculatePercentage(count: number, total: number): number {
   if (total === 0) {
     return 0;
   }
-  return Math.round((count / total) * 10);
+  return Math.round((count / total) * 100);
 }
 
 function aggregateToolCounts(items: ToolDataItem[]): Map<string, number> {
