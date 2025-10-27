@@ -550,7 +550,7 @@ function createServer(
             worksheetName
           )}/range(address='${encodeURIComponent(range)}')/clear`;
 
-          const response = await makeExcelRequest(
+          await makeExcelRequest(
             client,
             itemId,
             apiPath,
@@ -562,7 +562,7 @@ function createServer(
             {
               type: "text" as const,
               text: JSON.stringify(
-                { success: true, clearedRange: range, ...response },
+                { success: true, clearedRange: range },
                 null,
                 2
               ),
