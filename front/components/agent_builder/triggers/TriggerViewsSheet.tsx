@@ -55,7 +55,7 @@ type TriggerSheetPageId =
   (typeof TRIGGER_SHEET_PAGE_IDS)[keyof typeof TRIGGER_SHEET_PAGE_IDS];
 
 export type SheetMode =
-  | { type: "add" }
+  | { type: "selection" }
   | {
       type: "edit";
       trigger: AgentBuilderTriggerType;
@@ -301,7 +301,7 @@ export function TriggerViewsSheet({
         setSelectedWebhookSourceView(mode.webhookSourceView);
         setCurrentPageId(TRIGGER_SHEET_PAGE_IDS.WEBHOOK_EDITION);
       }
-      onModeChange({ type: "add" });
+      onModeChange({ type: "selection" });
     }
   }, [mode, onModeChange]);
 
