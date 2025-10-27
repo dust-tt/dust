@@ -1,4 +1,4 @@
-import { ExternalLinkIcon, Page } from "@dust-tt/sparkle";
+import { ExternalLinkIcon, IconButton, Page } from "@dust-tt/sparkle";
 
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { GithubAdditionalDataSchema } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
@@ -42,9 +42,9 @@ export function WebhookSourceGithubDetails({
             {repositories.map((repository) => (
               <div
                 key={repository.fullName}
-                className="flex items-center gap-2"
+                className="flex items-center space-x-2"
               >
-                <span className="font-mono text-sm text-foreground dark:text-foreground-night">
+                <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono">
                   {repository.fullName}
                 </span>
                 <a
@@ -53,8 +53,7 @@ export function WebhookSourceGithubDetails({
                   rel="noopener noreferrer"
                   className="text-action-500 hover:text-action-600 dark:text-action-400 dark:hover:text-action-300 inline-flex items-center gap-1 text-xs"
                 >
-                  View webhooks
-                  <ExternalLinkIcon className="h-3 w-3" />
+                  <IconButton icon={ExternalLinkIcon} size="xs" />
                 </a>
               </div>
             ))}
@@ -70,8 +69,11 @@ export function WebhookSourceGithubDetails({
           </Page.H>
           <div className="space-y-2">
             {organizations.map((organization) => (
-              <div key={organization.name} className="flex items-center gap-2">
-                <span className="font-mono text-sm text-foreground dark:text-foreground-night">
+              <div
+                key={organization.name}
+                className="flex items-center space-x-2"
+              >
+                <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono">
                   {organization.name}
                 </span>
                 <a
@@ -80,8 +82,7 @@ export function WebhookSourceGithubDetails({
                   rel="noopener noreferrer"
                   className="text-action-500 hover:text-action-600 dark:text-action-400 dark:hover:text-action-300 inline-flex items-center gap-1 text-xs"
                 >
-                  View webhooks
-                  <ExternalLinkIcon className="h-3 w-3" />
+                  <IconButton icon={ExternalLinkIcon} size="xs" />
                 </a>
               </div>
             ))}
