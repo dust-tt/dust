@@ -9,18 +9,18 @@ import type { Response } from "openai/resources/responses/responses";
 import type { ProviderMetadata } from "@app/lib/api/llm/types/events";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 
-export async function* streamLLMEvents({
-  responseStreamEvents,
-  metadata,
-}: {
-  responseStreamEvents: AsyncIterable<ResponseStreamEvent>;
-  metadata: ProviderMetadata;
-}): AsyncGenerator<LLMEvent, void, undefined> {
+export async function* streamLLMEvents(
+  responseStreamEvents: AsyncIterable<ResponseStreamEvent>,
+  metadata: ProviderMetadata
+): AsyncGenerator<LLMEvent> {
   for await (const event of responseStreamEvents) {
-    yield* toEvents({
+    const outputEvents = toEvents({
       event,
       metadata,
     });
+    for (const outputEvent of outputEvents) {
+      yield outputEvent;
+    }
   }
 }
 

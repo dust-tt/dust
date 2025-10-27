@@ -70,9 +70,6 @@ export class OpenAILLM extends LLM {
       },
       tools: specifications.map(toTool),
     });
-    yield* streamLLMEvents({
-      responseStreamEvents: events,
-      metadata: this.metadata,
-    });
+    yield* streamLLMEvents(events, this.metadata);
   }
 }
