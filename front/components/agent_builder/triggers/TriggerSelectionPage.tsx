@@ -109,7 +109,7 @@ export function TriggerSelectionPage({
                         key={view.sId}
                         icon={icon}
                         label={view.customName}
-                        description={view.description}
+                        description={view.description ?? `Trigger this agent with ${view.customname}.`}
                         isSelected={false}
                         canAdd={true}
                         onClick={() => onWebhookSelect(view)}
