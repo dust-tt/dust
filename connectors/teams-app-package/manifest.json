@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "manifestVersion": "1.21",
   "id": "<MICROSOFT_BOT_APP_ID>",
-  "packageName": "com.dust.teams",
   "localizationInfo": {
     "defaultLanguageTag": "en-us"
   },
