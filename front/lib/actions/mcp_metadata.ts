@@ -469,11 +469,11 @@ export function extractMetadataFromServerVersion(
 }
 
 export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
-  return tools.map((tool) => {
+  return tools.map(({ name, description, inputSchema }) => {
     return {
-      name: tool.name,
-      description: tool.description ?? "",
-      inputSchema: tool.inputSchema,
+      name,
+      description: description ?? "",
+      inputSchema,
     };
   });
 }
