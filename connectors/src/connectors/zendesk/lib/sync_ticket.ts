@@ -316,7 +316,6 @@ export async function syncTicket({
       ...metadata,
       `updatedAt:${updatedAtDate.getTime()}`,
       `createdAt:${createdAtDate.getTime()}`,
-      `ticketId:${ticket.id}`,
       ...(ticket.group_id ? [`groupId:${ticket.group_id}`] : []),
       ...(ticket.organization_id
         ? [`organizationId:${ticket.organization_id}`]
