@@ -1,8 +1,8 @@
+import type { ResponseInput } from "openai/resources/responses/responses.mjs";
 import { describe, expect, it } from "vitest";
 
 import { toInput } from "@app/lib/api/llm/clients/openai/utils/conversation_to_openai";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types";
-import { ResponseInput } from "openai/resources/responses/responses.mjs";
 
 describe("toInput", () => {
   describe("user messages", () => {

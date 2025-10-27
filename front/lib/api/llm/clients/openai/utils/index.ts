@@ -1,4 +1,4 @@
-import { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
+import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 
 export function baseURLFromProviderId(
   providerId: ModelProviderIdType

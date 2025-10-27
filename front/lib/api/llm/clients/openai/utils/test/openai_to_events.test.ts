@@ -1,7 +1,7 @@
 import type { ResponseStreamEvent } from "openai/resources/responses/responses.mjs";
 import { describe, expect, it } from "vitest";
 
-import { streamLLMEvents } from "@app/lib/api/llm/clients/openai/utils/openai_to_events";
+import * as openai_to_events from "@app/lib/api/llm/clients/openai/utils/openai_to_events";
 
 async function* createAsyncGenerator<T>(items: T[]): AsyncGenerator<T> {
   for (const item of items) {
@@ -14,7 +14,7 @@ describe("streamLLMEvents", () => {
     const responseStreamEvents = createAsyncGenerator(modelOutputEvents);
     const result = [];
 
-    for await (const event of streamLLMEvents({
+    for await (const event of openai_to_events.streamLLMEvents({
       responseStreamEvents,
       metadata,
     })) {
