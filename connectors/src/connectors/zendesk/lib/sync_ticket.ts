@@ -348,7 +348,6 @@ export async function syncTicket({
       updatedAt: updatedAtDate,
       additionalPrefixes: {
         metadata: metadata.join(", "),
-        labels: ticket.tags.join(", ") || "none",
       },
     });
 
