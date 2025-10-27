@@ -51,37 +51,16 @@ async function handler(
         });
       }
 
-      const feedbackId = parseInt(fId, 10);
-      if (isNaN(feedbackId)) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid feedback ID.",
-          },
-        });
-      }
-
-      const feedback = await AgentMessageFeedbackResource.fetchByFeedbackId(
-        auth,
-        feedbackId
-      );
+      const feedback = await AgentMessageFeedbackResource.fetchById(auth, {
+        feedbackId: fId,
+        agentConfigurationId: aId,
+      });
       if (!feedback) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
             type: "agent_configuration_not_found",
             message: "The feedback was not found.",
-          },
-        });
-      }
-
-      if (feedback.agentConfigurationId !== aId) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "agent_configuration_not_found",
-            message: "The feedback does not belong to this agent.",
           },
         });
       }

@@ -128,16 +128,26 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     return this.update({ dismissed: false });
   }
 
-  static async fetchByFeedbackId(
+  static async fetchById(
     auth: Authenticator,
-    feedbackId: number
+    {
+      feedbackId,
+      agentConfigurationId,
+    }: {
+      feedbackId: string;
+      agentConfigurationId?: string;
+    }
   ): Promise<AgentMessageFeedbackResource | null> {
-    const feedback = await AgentMessageFeedback.findOne({
-      where: {
-        id: feedbackId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
+    const where: WhereOptions<AgentMessageFeedback> = {
+      id: parseInt(feedbackId, 10),
+      workspaceId: auth.getNonNullableWorkspace().id,
+    };
+
+    if (agentConfigurationId) {
+      where.agentConfigurationId = agentConfigurationId;
+    }
+
+    const feedback = await AgentMessageFeedback.findOne({ where });
 
     if (!feedback) {
       return null;

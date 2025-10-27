@@ -22,7 +22,7 @@ import {
 import { memo, useCallback, useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useDismissFeedback } from "@app/hooks/useDismissFeedback";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import {
   useAgentConfigurationFeedbacksByDescVersion,
@@ -270,8 +270,12 @@ function FeedbackCard({
   className,
   onDismiss,
 }: FeedbackCardProps) {
-  const [isDismissing, setIsDismissing] = useState(false);
-  const sendNotification = useSendNotification();
+  const { isDismissing, toggleDismiss } = useDismissFeedback({
+    workspaceId: owner.sId,
+    agentConfigurationId: feedback.agentConfigurationId,
+    feedbackId: feedback.id,
+    onSuccess: onDismiss,
+  });
 
   const conversationUrl =
     feedback.conversationId &&
@@ -294,49 +298,6 @@ function FeedbackCard({
     }
   );
 
-  const handleToggleDismiss = useCallback(
-    async (dismissed: boolean) => {
-      setIsDismissing(true);
-      const response = await fetch(
-        `/api/w/${owner.sId}/assistant/agent_configurations/${feedback.agentConfigurationId}/feedbacks/${feedback.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ dismissed }),
-        }
-      );
-
-      if (!response.ok) {
-        sendNotification({
-          type: "error",
-          title: `Failed to mark feedback as ${dismissed ? "seen" : "unseen"}.`,
-          description: `An error occurred while marking feedback as ${dismissed ? "seen" : "unseen"}`,
-        });
-        setIsDismissing(false);
-        return;
-      }
-
-      sendNotification({
-        type: "success",
-        title: `Feedback marked as ${dismissed ? "seen" : "unseen"}.`,
-        description: `The feedback has been marked as ${dismissed ? "seen" : "unseen"}.`,
-      });
-
-      if (onDismiss) {
-        onDismiss();
-      }
-    },
-    [
-      owner.sId,
-      feedback.agentConfigurationId,
-      feedback.id,
-      sendNotification,
-      onDismiss,
-    ]
-  );
-
   return (
     <Card
       className={cn("flex h-full flex-col", className)}
@@ -345,7 +306,7 @@ function FeedbackCard({
           <CardActionButton
             size="mini"
             icon={feedback.dismissed ? EyeIcon : EyeSlashIcon}
-            onClick={() => handleToggleDismiss(!feedback.dismissed)}
+            onClick={() => toggleDismiss(!feedback.dismissed)}
             disabled={isDismissing}
             tooltip={`Mark feedback as ${feedback.dismissed ? "seen" : "unseen"}`}
           />
