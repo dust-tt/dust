@@ -197,11 +197,6 @@ export function WebhookSourceDetailsInfo({
               />
             );
           })()}
-
-        <div>
-          <Page.H variant="h6">Source Name</Page.H>
-          <Page.P>{webhookSourceView.webhookSource.name}</Page.P>
-        </div>
         {provider && WEBHOOK_PRESETS[provider].events.length > 0 && (
           <div className="space-y-3">
             <Page.H variant="h6">Subscribed events</Page.H>
