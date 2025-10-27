@@ -14,10 +14,10 @@ describe("streamLLMEvents", () => {
     const responseStreamEvents = createAsyncGenerator(modelOutputEvents);
     const result = [];
 
-    for await (const event of openai_to_events.streamLLMEvents({
+    for await (const event of openai_to_events.streamLLMEvents(
       responseStreamEvents,
-      metadata,
-    })) {
+      metadata
+    )) {
       result.push(event);
     }
 
