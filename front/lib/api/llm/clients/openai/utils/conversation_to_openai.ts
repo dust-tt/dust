@@ -7,13 +7,12 @@ import type {
 } from "openai/resources/responses/responses";
 import type { ReasoningEffort } from "openai/resources/shared";
 
-import * as agent from "@app/lib/actions/types/agent";
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
   Content,
   FunctionMessageTypeModel,
-  ModelMessageTypeMultiActionsWithoutContentFragment as Message,
   UserMessageTypeModel,
 } from "@app/types";
 import type {
@@ -158,7 +157,7 @@ export function toInput(
   return inputs;
 }
 
-export function toTool(tool: agent.AgentActionSpecification): FunctionTool {
+export function toTool(tool: AgentActionSpecification): FunctionTool {
   const parameters: {
     type: "object";
     properties: Record<string, unknown>;

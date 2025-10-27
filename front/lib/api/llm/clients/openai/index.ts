@@ -1,8 +1,9 @@
 import { OpenAI } from "openai";
-import { ReasoningEffort } from "openai/resources/shared.mjs";
+import type { ReasoningEffort } from "openai/resources/shared.mjs";
 
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
-import { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { baseURLFromProviderId } from "@app/lib/api/llm/clients/openai/utils";
 import {
   toInput,
   toOpenAIReasoningEffort,
@@ -12,13 +13,11 @@ import { streamLLMEvents } from "@app/lib/api/llm/clients/openai/utils/openai_to
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent, ProviderMetadata } from "@app/lib/api/llm/types/events";
 import type { LLMOptions } from "@app/lib/api/llm/types/options";
-import {
-  dustManagedCredentials,
-  type ModelConfigurationType,
-  type ModelConversationTypeMultiActions,
+import type {
+  ModelConfigurationType,
+  ModelConversationTypeMultiActions,
 } from "@app/types";
-
-import { baseURLFromProviderId } from "@app/lib/api/llm/clients/openai/utils";
+import { dustManagedCredentials } from "@app/types";
 
 export class OpenAILLM extends LLM {
   private client: OpenAI;
