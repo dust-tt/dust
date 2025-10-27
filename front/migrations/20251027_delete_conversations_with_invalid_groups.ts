@@ -1,6 +1,5 @@
 import { QueryTypes } from "sequelize";
 
-import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -105,32 +104,12 @@ makeScript({}, async ({ execute }, logger) => {
             workspaceId: workspaceId,
           },
           execute
-            ? "Deleting conversation with all messages"
-            : "Would delete conversation with all messages (dry run)"
+            ? "Deleting conversation"
+            : "Would delete conversation (dry run)"
         );
 
         if (execute) {
-          const result = await destroyConversation(auth, {
-            conversationId: conversation.sId,
-          });
-          if (result.isErr()) {
-            logger.error(
-              {
-                sId: conversation.sId,
-                workspaceId: workspaceId,
-                error: result.error,
-              },
-              "Failed to delete conversation"
-            );
-          } else {
-            logger.info(
-              {
-                sId: conversation.sId,
-                workspaceId: workspaceId,
-              },
-              "Successfully deleted conversation with all messages"
-            );
-          }
+          await conversation.updateVisibilityToDeleted();
         }
       }
     },
