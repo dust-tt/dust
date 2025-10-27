@@ -1,4 +1,3 @@
-import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
   ContentMessage,
   Input,
@@ -9,6 +8,7 @@ import {
   SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
+import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useFieldArray, useForm, useFormContext } from "react-hook-form";
@@ -19,7 +19,6 @@ import type {
   AgentBuilderTriggerType,
   AgentBuilderWebhookTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
 import type { ScheduleFormValues } from "@app/components/agent_builder/triggers/schedule/scheduleEditionFormSchema";
 import {
   getScheduleFormDefaultValues,
@@ -27,7 +26,6 @@ import {
 } from "@app/components/agent_builder/triggers/schedule/scheduleEditionFormSchema";
 import { ScheduleEditionScheduler } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionScheduler";
 import { TriggerSelectionContent } from "@app/components/agent_builder/triggers/TriggerSelectionContent";
-import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
 import type { WebhookFormValues } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
 import {
   getWebhookFormDefaultValues,
@@ -38,6 +36,8 @@ import {
   WebhookEditionIncludePayload,
   WebhookEditionMessageInput,
 } from "@app/components/agent_builder/triggers/webhook/WebhookEditionSheet";
+import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
+import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useUser } from "@app/lib/swr/user";
 import type { LightWorkspaceType } from "@app/types";
@@ -504,16 +504,14 @@ export function TriggerViewsSheet({
     handleWebhookSelect,
     webhookSourceViews,
     editingTrigger,
-    scheduleForm,
-    handleScheduleSave,
     isScheduleEditor,
-    owner,
-    webhookForm,
-    handleWebhookSave,
     isWebhookEditor,
+    scheduleForm,
+    webhookForm,
+    owner,
     selectedWebhookSourceView,
-    selectedPreset,
-    availableEvents,
+    handleScheduleSave,
+    handleWebhookSave,
     agentConfigurationId,
   ]);
 
@@ -539,8 +537,7 @@ export function TriggerViewsSheet({
           ? {
               label: editingTrigger ? "Update Trigger" : "Add Trigger",
               variant: "primary" as const,
-              onClick: () =>
-                void scheduleForm.handleSubmit(handleScheduleSave)(),
+              onClick: () => void scheduleForm.handleSubmit(handleScheduleSave)(),
               disabled: scheduleForm.formState.isSubmitting,
             }
           : undefined,
