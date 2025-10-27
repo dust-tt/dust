@@ -10,7 +10,13 @@ import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup"
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
 export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
-  setupUri({ connection }: { connection: OAuthConnectionType }) {
+  setupUri({
+    connection,
+    useCase,
+  }: {
+    connection: OAuthConnectionType;
+    useCase: OAuthUseCase;
+  }) {
     const scopes = [
       // Read permissions
       "read:jira-work",
@@ -23,12 +29,14 @@ export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
       // Write permissions
       "write:jira-work",
 
-      // Webhook management
-      "manage:jira-webhook",
-
       // Required for OAuth refresh token
       "offline_access",
     ];
+
+    if (useCase === "webhooks") {
+      scopes.push("manage:jira-webhook");
+    }
+
     return (
       `https://auth.atlassian.com/authorize?audience=api.atlassian.com` +
       `&client_id=${config.getOAuthJiraClientId()}` +
