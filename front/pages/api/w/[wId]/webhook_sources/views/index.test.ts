@@ -57,10 +57,10 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
     // Create additional views for the webhook sources
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     await webhookSourceViewFactory.create(globalSpace, {
-      webhookSourceId: webhookSource1.sId(),
+      webhookSourceId: webhookSource1.sId,
     });
     await webhookSourceViewFactory.create(globalSpace, {
-      webhookSourceId: webhookSource2.sId(),
+      webhookSourceId: webhookSource2.sId,
     });
 
     // Query for views in the global space
@@ -117,7 +117,7 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
     // Create views in both spaces
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     await webhookSourceViewFactory.create(globalSpace, {
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
     });
 
     // Query for views in both spaces (comma-separated)
@@ -268,7 +268,7 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
     // Create view in global space
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     await webhookSourceViewFactory.create(globalSpace, {
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
     });
 
     // Try to query with both valid and invalid space IDs

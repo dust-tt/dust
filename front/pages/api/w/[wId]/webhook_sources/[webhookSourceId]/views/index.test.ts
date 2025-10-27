@@ -45,7 +45,7 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
       name: "Test Webhook Source",
     });
 
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
 
     // Create additional views for the webhook source
     // Get the existing global space instead of creating a new one
@@ -56,7 +56,7 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
     }
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     await webhookSourceViewFactory.create(globalSpace, {
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
     });
 
     await handler(req, res);
@@ -82,7 +82,7 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
       name: "Test Webhook Source",
     });
 
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
 
     await handler(req, res);
 
@@ -140,7 +140,7 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
       name: "Test Webhook Source",
     });
 
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
 
     // Mock the listByWebhookSource method to simulate failure
     const listSpy = vi
@@ -168,7 +168,7 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
       name: "Test Webhook Source",
     });
 
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
 
     await handler(req, res);
 
@@ -189,7 +189,7 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
       name: "Test Webhook Source",
     });
 
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
 
     await handler(req, res);
 
@@ -220,7 +220,7 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
       name: "Test Webhook Source in Other Workspace",
     });
 
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
 
     await handler(req, res);
 
@@ -243,7 +243,7 @@ describe("Method Support /api/w/[wId]/webhook_sources/[webhookSourceId]/views", 
       name: "Test Webhook Source",
     });
 
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
 
     await handler(req, res);
 
