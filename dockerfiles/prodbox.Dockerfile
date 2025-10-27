@@ -1,7 +1,7 @@
 FROM node:20.19.2 as base
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop curl libpq-dev build-essential
+RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop curl libpq-dev build-essential tmux
 
 # Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -19,6 +19,11 @@ ENV LD_LIBRARY_PATH=/usr/local/lib
 
 # Set the working directory to /dust
 WORKDIR /dust
+
+RUN mkdir -p ~/.ssh
+RUN chmod 700 ~/.ssh
+RUN ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+RUN git fetch
 
 COPY . .
 

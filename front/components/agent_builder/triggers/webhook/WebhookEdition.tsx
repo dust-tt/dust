@@ -63,11 +63,7 @@ export function WebhookEdition({
       }
 
       // Validate that event is selected for preset webhooks (not custom)
-      if (
-        webhookSourceView &&
-        webhookSourceView.kind !== "custom" &&
-        !values.event
-      ) {
+      if (webhookSourceView && webhookSourceView.provider && !values.event) {
         form.setError("event", {
           type: "manual",
           message: "Please select an event",
@@ -80,10 +76,9 @@ export function WebhookEdition({
         enabled: values.enabled,
         name: values.name.trim(),
         customPrompt: values.customPrompt?.trim() ?? null,
-        naturalLanguageDescription:
-          webhookSourceView?.kind !== "custom"
-            ? values.naturalDescription?.trim() ?? null
-            : null,
+        naturalLanguageDescription: webhookSourceView?.provider
+          ? values.naturalDescription?.trim() ?? null
+          : null,
         kind: "webhook",
         configuration: {
           includePayload: values.includePayload,

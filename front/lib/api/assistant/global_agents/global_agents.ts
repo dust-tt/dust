@@ -84,6 +84,7 @@ function getGlobalAgent({
   dataWarehousesMCPServerView,
   slideshowMCPServerView,
   deepDiveMCPServerView,
+  agentMemoryMCPServerView,
   featureFlags,
 }: {
   auth: Authenticator;
@@ -101,6 +102,7 @@ function getGlobalAgent({
   dataWarehousesMCPServerView: MCPServerViewResource | null;
   slideshowMCPServerView: MCPServerViewResource | null;
   deepDiveMCPServerView: MCPServerViewResource | null;
+  agentMemoryMCPServerView: MCPServerViewResource | null;
   featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType | null {
   const settings =
@@ -358,6 +360,7 @@ function getGlobalAgent({
         searchMCPServerView,
         deepDiveMCPServerView,
         interactiveContentMCPServerView,
+        agentMemoryMCPServerView,
         featureFlags,
       });
       break;
@@ -470,6 +473,7 @@ export async function getGlobalAgents(
     dataWarehousesMCPServerView,
     slideshowMCPServerView,
     deepDiveMCPServerView,
+    agentMemoryMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -538,6 +542,12 @@ export async function getGlobalAgents(
           "deep_dive"
         )
       : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "agent_memory"
+        )
+      : null,
   ]);
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
@@ -589,6 +599,7 @@ export async function getGlobalAgents(
       dataWarehousesMCPServerView,
       slideshowMCPServerView,
       deepDiveMCPServerView,
+      agentMemoryMCPServerView,
       featureFlags: flags,
     })
   );

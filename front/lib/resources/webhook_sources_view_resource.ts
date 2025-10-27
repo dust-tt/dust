@@ -496,7 +496,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
   }
 
   get webhookSourceSId(): string {
-    return this.getWebhookSourceResource().sId();
+    return this.getWebhookSourceResource().sId;
   }
 
   static modelIdToSId({
@@ -544,7 +544,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       customName: this.customName ?? webhookSource.name,
       description: this.description,
       icon: normalizeWebhookIcon(this.icon),
-      kind: webhookSource.kind,
+      provider: webhookSource.provider,
       subscribedEvents: webhookSource.subscribedEvents,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
@@ -566,7 +566,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       customName: this.customName ?? webhookSource.name,
       description: this.description,
       icon: normalizeWebhookIcon(this.icon),
-      kind: webhookSource.kind,
+      provider: webhookSource.provider,
       subscribedEvents: webhookSource.subscribedEvents,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),

@@ -71,6 +71,7 @@ export async function storeAgentAnalyticsActivity(
     tools_used: toolsUsed,
     user_id: userMessage.user?.sId ?? "unknown",
     workspace_id: workspace.sId,
+    feedbacks: [],
   };
 
   await storeToElasticsearch(document);

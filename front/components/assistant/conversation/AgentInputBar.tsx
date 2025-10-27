@@ -25,7 +25,7 @@ import { isAgentMention } from "@app/types";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
-export const AssistantInputBar = ({
+export const AgentInputBar = ({
   context,
 }: {
   context: VirtuosoMessageListContext;

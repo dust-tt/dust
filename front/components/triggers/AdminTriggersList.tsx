@@ -15,7 +15,7 @@ import { filterWebhookSource } from "@app/lib/webhookSource";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
 import type {
-  WebhookSourceKind,
+  WebhookProvider,
   WebhookSourceWithSystemViewAndUsageType,
 } from "@app/types/triggers/webhooks";
 
@@ -89,7 +89,7 @@ export const AdminTriggersList = ({
               setSheetMode({
                 type: "edit",
                 webhookSource,
-                kind: webhookSource.kind,
+                provider: webhookSource.provider,
               });
             };
 
@@ -208,8 +208,8 @@ export const AdminTriggersList = ({
     return columns;
   }, [setAgentSId]);
 
-  const createWebhook = (kind: WebhookSourceKind) => {
-    setSheetMode({ type: "create", kind });
+  const createWebhook = (provider: WebhookProvider) => {
+    setSheetMode({ type: "create", provider });
   };
 
   if (isWebhookSourcesWithViewsLoading) {

@@ -9,6 +9,7 @@ import type {
 } from "@app/components/triggers/webhook_preset_components";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 
 export type EventCheck = {
   type: "headers" | "body";
@@ -30,14 +31,15 @@ const WebhookPresetIcons = {
 export type WebhookPresetIcon =
   (typeof WebhookPresetIcons)[keyof typeof WebhookPresetIcons];
 
-export type PresetWebhook = {
+export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
   name: string;
   eventCheck: EventCheck;
   events: WebhookEvent[];
   icon: typeof Icon;
   description: string;
+  webhookPageUrl?: string;
   featureFlag?: WhitelistableFeature;
-  webhookService: RemoteWebhookService;
+  webhookService: RemoteWebhookService<P>;
   components: {
     detailsComponent: React.ComponentType<WebhookDetailsComponentProps>;
     createFormComponent: React.ComponentType<WebhookCreateFormComponentProps>;

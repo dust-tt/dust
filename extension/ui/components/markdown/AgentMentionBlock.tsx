@@ -3,7 +3,7 @@ import { classNames } from "@dust-tt/sparkle";
 import { useContext } from "react";
 import { visit } from "unist-util-visit";
 
-export function MentionBlock({
+export function AgentMentionBlock({
   agentName,
   agentSId,
 }: {
@@ -28,9 +28,10 @@ export function MentionBlock({
   );
 }
 
-export function mentionDirective() {
+export function agentMentionDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
+      // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       if (node.name === "mention" && node.children[0]) {
         const data = node.data || (node.data = {});
         data.hName = "mention";

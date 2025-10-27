@@ -10,6 +10,8 @@ import type {
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
 
+export type TestServiceData = Record<string, unknown>;
+
 const TEST_EVENT: WebhookEvent = {
   name: "Test event",
   value: "test_event",
@@ -31,10 +33,10 @@ const TEST_EVENT: WebhookEvent = {
   },
 };
 
-class TestWebhookService implements RemoteWebhookService {
+class TestWebhookService implements RemoteWebhookService<"test"> {
   async getServiceData(
     oauthToken: string
-  ): Promise<Result<Record<string, unknown>, Error>> {
+  ): Promise<Result<TestServiceData, Error>> {
     logger.info("Fetching service data with oauthToken:", oauthToken);
     return new Ok({
       info: "This is test service data",
@@ -94,7 +96,7 @@ class TestWebhookService implements RemoteWebhookService {
   }
 }
 
-export const TEST_WEBHOOK_PRESET: PresetWebhook = {
+export const TEST_WEBHOOK_PRESET: PresetWebhook<"test"> = {
   name: "Test",
   eventCheck: {
     type: "headers",

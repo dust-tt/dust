@@ -15,7 +15,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -95,7 +95,7 @@ export default function MCPActionsDashboard({
         subscription={subscription}
         owner={owner}
         pageTitle="Dust - MCP Actions Dashboard"
-        navChildren={<AssistantSidebarMenu owner={owner} />}
+        navChildren={<AgentSidebarMenu owner={owner} />}
       >
         <div className="mb-4">
           <Breadcrumbs items={items} />

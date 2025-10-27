@@ -8,13 +8,19 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString, OAuthAPI } from "@app/types";
+import type {
+  WebhookProvider,
+  WebhookServiceDataForProvider,
+} from "@app/types/triggers/webhooks";
 import {
-  isWebhookSourceKind,
-  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
+  isWebhookProvider,
+  WEBHOOK_PRESETS,
 } from "@app/types/triggers/webhooks";
 
-export type GetServiceDataResponseType = {
-  serviceData: Record<string, unknown>;
+export type GetServiceDataResponseType<
+  P extends WebhookProvider = WebhookProvider,
+> = {
+  serviceData: WebhookServiceDataForProvider<P>;
 };
 
 async function handler(
@@ -35,9 +41,9 @@ async function handler(
   }
   switch (req.method) {
     case "GET":
-      const { connectionId, kind } = req.query;
+      const { connectionId, provider } = req.query;
 
-      if (!connectionId || !isString(connectionId)) {
+      if (!isString(connectionId)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -47,26 +53,25 @@ async function handler(
         });
       }
 
-      if (!kind || !isString(kind)) {
+      if (!isString(provider)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "kind is required",
+            message: "provider is required",
           },
         });
       }
 
-      if (!isWebhookSourceKind(kind) || kind === "custom") {
+      if (!isWebhookProvider(provider)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid kind: ${kind}. Must be a valid webhook preset kind.`,
+            message: `Invalid provider: ${provider}. Must be a valid webhook provider.`,
           },
         });
       }
-      const preset = WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind];
 
       // Verify the connection belongs to this user and workspace
       const ownershipCheck = await checkConnectionOwnership(auth, connectionId);
@@ -98,7 +103,7 @@ async function handler(
         });
       }
 
-      if (metadataRes.value.connection.provider !== kind) {
+      if (metadataRes.value.connection.provider !== provider) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -124,7 +129,9 @@ async function handler(
 
       // Call getServiceData on the webhook service
       const serviceDataResult =
-        await preset.webhookService.getServiceData(accessToken);
+        await WEBHOOK_PRESETS[provider].webhookService.getServiceData(
+          accessToken
+        );
 
       if (serviceDataResult.isErr()) {
         return apiError(req, res, {

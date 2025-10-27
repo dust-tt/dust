@@ -112,8 +112,7 @@ export const InputBar = React.memo(function InputBar({
   }, [baseAgentConfigurations, additionalAgentConfiguration]);
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const { animate, setAnimate, selectedAssistant } =
-    useContext(InputBarContext);
+  const { animate, setAnimate, selectedAgent } = useContext(InputBarContext);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -320,10 +319,10 @@ export const InputBar = React.memo(function InputBar({
           <InputBarContainer
             actions={actions}
             disableAutoFocus={disableAutoFocus}
-            allAssistants={activeAgents}
+            allAgents={activeAgents}
             agentConfigurations={agentConfigurations}
             owner={owner}
-            selectedAssistant={selectedAssistant}
+            selectedAgent={selectedAgent}
             onEnterKeyDown={handleSubmit}
             stickyMentions={stickyMentions}
             fileUploaderService={fileUploaderService}

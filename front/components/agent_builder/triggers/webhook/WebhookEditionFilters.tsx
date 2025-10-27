@@ -43,7 +43,7 @@ export function WebhookEditionFilters({
     }
 
     return (
-      selectedPreset.events.find((event) => event.name === selectedEvent) ??
+      selectedPreset.events.find((event) => event.value === selectedEvent) ??
       null
     );
   }, [selectedEvent, selectedPreset]);
@@ -186,7 +186,7 @@ export function WebhookEditionFilters({
         </>
       )}
 
-      {webhookSourceView?.kind === "custom" && (
+      {webhookSourceView?.provider === null && (
         <>
           <Label htmlFor="webhook-filter-description">
             Filter Expression (optional)

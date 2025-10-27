@@ -15,9 +15,6 @@ export interface WebhookDetailsComponentProps {
  */
 export interface WebhookCreateFormComponentProps {
   owner: LightWorkspaceType;
-  serviceData: Record<string, unknown> | null;
-  isFetchingServiceData: boolean;
-  onFetchServiceData: (connectionId: string) => Promise<void>;
   onDataToCreateWebhookChange?: (
     data: {
       connectionId: string;
@@ -25,4 +22,5 @@ export interface WebhookCreateFormComponentProps {
     } | null
   ) => void;
   onReadyToSubmitChange?: (isReady: boolean) => void;
+  connectionId: string;
 }

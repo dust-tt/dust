@@ -10,7 +10,7 @@ import React, {
   useState,
 } from "react";
 
-import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { MentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/MentionDropdown";
 import useAgentSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAgentSuggestions";
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
@@ -50,8 +50,8 @@ import { getSupportedFileExtensions } from "@app/types";
 export const INPUT_BAR_ACTIONS = [
   "tools",
   "attachment",
-  "assistants-list",
-  "assistants-list-with-actions",
+  "agents-list",
+  "agents-list-with-actions",
   "voice",
   "fullscreen",
 ] as const;
@@ -59,11 +59,11 @@ export const INPUT_BAR_ACTIONS = [
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
 export interface InputBarContainerProps {
-  allAssistants: LightAgentConfigurationType[];
+  allAgents: LightAgentConfigurationType[];
   agentConfigurations: LightAgentConfigurationType[];
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   owner: WorkspaceType;
-  selectedAssistant: AgentMention | null;
+  selectedAgent: AgentMention | null;
   stickyMentions?: AgentMention[];
   actions: InputBarAction[];
   disableAutoFocus: boolean;
@@ -79,11 +79,11 @@ export interface InputBarContainerProps {
 }
 
 const InputBarContainer = ({
-  allAssistants,
+  allAgents,
   agentConfigurations,
   onEnterKeyDown,
   owner,
-  selectedAssistant,
+  selectedAgent,
   stickyMentions,
   actions,
   disableAutoFocus,
@@ -475,7 +475,7 @@ const InputBarContainer = ({
     editorService,
     agentConfigurations,
     stickyMentions,
-    selectedAssistant,
+    selectedAgent,
     disableAutoFocus
   );
 
@@ -581,9 +581,9 @@ const InputBarContainer = ({
                   buttonSize={buttonSize}
                 />
               )}
-              {(actions.includes("assistants-list") ||
-                actions.includes("assistants-list-with-actions")) && (
-                <AssistantPicker
+              {(actions.includes("agents-list") ||
+                actions.includes("agents-list-with-actions")) && (
+                <AgentPicker
                   owner={owner}
                   size={buttonSize}
                   onItemClick={(c) => {
@@ -595,10 +595,10 @@ const InputBarContainer = ({
                       pictureUrl: c.pictureUrl,
                     });
                   }}
-                  assistants={allAssistants}
+                  agents={allAgents}
                   showDropdownArrow={false}
                   showFooterButtons={actions.includes(
-                    "assistants-list-with-actions"
+                    "agents-list-with-actions"
                   )}
                   disabled={disableTextInput}
                 />

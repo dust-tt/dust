@@ -40,19 +40,12 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
 
     // Create webhook sources and views
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result1 = await webhookSourceFactory.create({
+    const webhookSource1 = await webhookSourceFactory.create({
       name: "Test Webhook Source 1",
     });
-    const result2 = await webhookSourceFactory.create({
+    const webhookSource2 = await webhookSourceFactory.create({
       name: "Test Webhook Source 2",
     });
-
-    if (result1.isErr() || result2.isErr()) {
-      throw new Error("Failed to create webhook sources");
-    }
-
-    const webhookSource1 = result1.value;
-    const webhookSource2 = result2.value;
 
     // Get the existing spaces
     const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
@@ -64,10 +57,10 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
     // Create additional views for the webhook sources
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     await webhookSourceViewFactory.create(globalSpace, {
-      webhookSourceId: webhookSource1.sId(),
+      webhookSourceId: webhookSource1.sId,
     });
     await webhookSourceViewFactory.create(globalSpace, {
-      webhookSourceId: webhookSource2.sId(),
+      webhookSourceId: webhookSource2.sId,
     });
 
     // Query for views in the global space
@@ -92,7 +85,7 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
     expect(firstView).toHaveProperty("customName");
     expect(firstView).toHaveProperty("description");
     expect(firstView).toHaveProperty("icon");
-    expect(firstView).toHaveProperty("kind");
+    expect(firstView).toHaveProperty("provider");
     expect(firstView).toHaveProperty("subscribedEvents");
     expect(firstView).toHaveProperty("spaceId");
     expect(firstView).toHaveProperty("createdAt");
@@ -108,15 +101,9 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
 
     // Create webhook source
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
-
-    if (result.isErr()) {
-      throw new Error("Failed to create webhook source");
-    }
-
-    const webhookSource = result.value;
 
     // Get existing spaces
     const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
@@ -130,7 +117,7 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
     // Create views in both spaces
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     await webhookSourceViewFactory.create(globalSpace, {
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
     });
 
     // Query for views in both spaces (comma-separated)
@@ -205,13 +192,9 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
     );
 
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result = await webhookSourceFactory.create({
+    await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
-
-    if (result.isErr()) {
-      throw new Error("Failed to create webhook source");
-    }
 
     const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
     const globalSpace = spaces.find((s) => s.kind === "global");
@@ -239,13 +222,9 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
     );
 
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result = await webhookSourceFactory.create({
+    await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
-
-    if (result.isErr()) {
-      throw new Error("Failed to create webhook source");
-    }
 
     const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
     const globalSpace = spaces.find((s) => s.kind === "global");
@@ -274,15 +253,9 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
 
     // Create webhook source
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const result = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
-
-    if (result.isErr()) {
-      throw new Error("Failed to create webhook source");
-    }
-
-    const webhookSource = result.value;
 
     // Get spaces
     const spaces = await SpaceResource.listWorkspaceSpaces(authenticator);
@@ -295,7 +268,7 @@ describe("GET /api/w/[wId]/webhook_sources/views", () => {
     // Create view in global space
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     await webhookSourceViewFactory.create(globalSpace, {
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
     });
 
     // Try to query with both valid and invalid space IDs

@@ -76,7 +76,7 @@ WebCrawlerConfigurationModel.init(
   },
   {
     sequelize: connectorsSequelize,
-    indexes: [],
+    indexes: [{ fields: ["connectorId"] }],
     modelName: "webcrawler_configurations",
   }
 );

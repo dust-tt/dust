@@ -17,7 +17,7 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
-import { SCOPE_INFO } from "@app/components/assistant/details/AssistantDetails";
+import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetails";
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";

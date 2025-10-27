@@ -17,6 +17,7 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 
 import { ConfirmContext } from "@app/components/Confirm";
+import { getIcon } from "@app/components/resources/resources_icons";
 import type {
   CreateWebhookSourceFormData,
   RemoteProviderData,
@@ -41,15 +42,16 @@ import {
   useDeleteWebhookSource,
   useWebhookSourcesWithViews,
 } from "@app/lib/swr/webhook_source";
+import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
 import type {
-  WebhookSourceKind,
+  WebhookProvider,
   WebhookSourceWithSystemViewType,
 } from "@app/types/triggers/webhooks";
-import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
-export type WebhookSourceSheetMode = { kind: WebhookSourceKind } & (
+export type WebhookSourceSheetMode = { provider: WebhookProvider | null } & (
   | { type: "create" }
   | {
       type: "edit";
@@ -191,16 +193,13 @@ function WebhookSourceSheetContent({
       secret: "",
       autoGenerate: true,
       signatureHeader: "",
-      signatureAlgorithm: "sha256",
-      kind: mode.kind,
-      subscribedEvents:
-        mode.kind === "custom"
-          ? []
-          : WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].events.map(
-              (e) => e.value
-            ),
+      signatureAlgorithm: "sha256" as const,
+      provider: mode.provider,
+      subscribedEvents: mode.provider
+        ? WEBHOOK_PRESETS[mode.provider].events.map((e) => e.value)
+        : [],
     }),
-    [mode.kind]
+    [mode.provider]
   );
 
   const createForm = useForm<CreateWebhookSourceFormData>({
@@ -547,15 +546,17 @@ function WebhookSourceSheetContent({
     () => [
       {
         id: "create",
-        title: `Create ${WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].name} Webhook Source`,
+        title: `Create ${mode.provider ? WEBHOOK_PRESETS[mode.provider].name : "Custom"} Webhook Source`,
         description: "",
-        icon: WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].icon,
+        icon: mode.provider
+          ? WEBHOOK_PRESETS[mode.provider].icon
+          : getIcon(DEFAULT_WEBHOOK_ICON),
         content: (
           <FormProvider {...createForm}>
             <div className="space-y-4">
               <CreateWebhookSourceFormContent
                 form={createForm}
-                kind={mode.kind}
+                provider={mode.provider}
                 owner={owner}
                 onRemoteProviderDataChange={(data) => {
                   setRemoteProviderData(data?.remoteMetadata ?? null);
@@ -575,7 +576,9 @@ function WebhookSourceSheetContent({
         description: "Webhook source for triggering assistants.",
         icon: systemView
           ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />
-          : WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].icon,
+          : mode.provider
+            ? WEBHOOK_PRESETS[mode.provider].icon
+            : getIcon(DEFAULT_WEBHOOK_ICON),
         content:
           systemView && webhookSource ? (
             <FormProvider {...editForm}>

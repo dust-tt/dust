@@ -1,59 +1,32 @@
-import { useCallback, useState } from "react";
-
-import { useSendNotification } from "@app/hooks/useNotification";
+import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetServiceDataResponseType } from "@app/pages/api/w/[wId]/webhook_sources/service-data";
 import type { LightWorkspaceType } from "@app/types";
-import { normalizeError } from "@app/types";
-import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 
-export function useWebhookServiceData(
-  owner: LightWorkspaceType | null,
-  kind: WebhookSourceKind
-) {
-  const sendNotification = useSendNotification();
-  const [serviceData, setServiceData] = useState<Record<
+export function useWebhookServiceData<P extends WebhookProvider>({
+  owner,
+  connectionId,
+  provider,
+}: {
+  owner: LightWorkspaceType;
+  connectionId: string | null;
+  provider: P;
+}) {
+  const { data, error, mutate } = useSWRWithDefaults<
     string,
-    unknown
-  > | null>(null);
-  const [isFetchingServiceData, setIsFetchingServiceData] = useState(false);
-
-  const fetchServiceData = useCallback(
-    async (connectionId: string) => {
-      if (!owner) {
-        return;
-      }
-
-      setIsFetchingServiceData(true);
-      try {
-        const response = await fetch(
-          `/api/w/${owner.sId}/webhook_sources/service-data?connectionId=${connectionId}&kind=${kind}`
-        );
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            errorData.error?.message || "Failed to fetch service data"
-          );
-        }
-
-        const data = await response.json();
-        setServiceData(data.serviceData || null);
-      } catch (error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to fetch service data",
-          description: normalizeError(error).message,
-        });
-        setServiceData(null);
-      } finally {
-        setIsFetchingServiceData(false);
-      }
-    },
-    [owner, kind, sendNotification]
+    GetServiceDataResponseType<P>
+  >(
+    `/api/w/${owner.sId}/webhook_sources/service-data?connectionId=${connectionId}&provider=${provider}`,
+    fetcher,
+    {
+      disabled: !connectionId,
+    }
   );
 
   return {
-    serviceData,
-    isFetchingServiceData,
-    fetchServiceData,
+    serviceData: data?.serviceData ?? null,
+    isServiceDataLoading: !error && !data && connectionId,
+    isServiceDataError: !!error,
+    mutateServiceData: mutate,
   };
 }

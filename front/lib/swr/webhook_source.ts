@@ -5,16 +5,18 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWebhookRequestsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers/[tId]/webhook_requests";
 import type { GetWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/webhook_source_views";
-import type { GetWebhookSourcesResponseBody } from "@app/pages/api/w/[wId]/webhook_sources";
+import type {
+  GetWebhookSourcesResponseBody,
+  PostWebhookSourcesBody,
+} from "@app/pages/api/w/[wId]/webhook_sources";
 import type { DeleteWebhookSourceResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]";
 import type { GetWebhookSourceViewsResponseBody as GetSpecificWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/views";
 import type { GetWebhookSourceViewsListResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/views";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type {
-  PostWebhookSourcesBody,
   WebhookSourceForAdminType,
   WebhookSourceViewForAdminType,
+  WebhookSourceViewType,
 } from "@app/types/triggers/webhooks";
 
 export function useWebhookSourceViews({

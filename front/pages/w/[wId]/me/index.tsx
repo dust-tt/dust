@@ -12,7 +12,7 @@ import {
 import type { InferGetServerSidePropsType } from "next";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AccountSettings } from "@app/components/me/AccountSettings";
 import { ProfileTriggersTab } from "@app/components/me/ProfileTriggersTab";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
@@ -57,7 +57,7 @@ export default function ProfilePage({
         subscription={subscription}
         owner={owner}
         pageTitle="Dust - Profile"
-        navChildren={<AssistantSidebarMenu owner={owner} />}
+        navChildren={<AgentSidebarMenu owner={owner} />}
       >
         <Page>
           <Page.Header title="Profile Settings" icon={UserIcon} />

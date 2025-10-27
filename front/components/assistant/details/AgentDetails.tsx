@@ -74,12 +74,12 @@ export const SCOPE_INFO: Record<
 type AssistantDetailsProps = {
   owner: WorkspaceType;
   onClose: () => void;
-  assistantId: string | null;
+  agentId: string | null;
   user: UserType;
 };
 
-export function AssistantDetails({
-  assistantId,
+export function AgentDetails({
+  agentId,
   onClose,
   owner,
   user,
@@ -98,22 +98,22 @@ export function AssistantDetails({
     isAgentConfigurationError,
   } = useAgentConfiguration({
     workspaceId: owner.sId,
-    agentConfigurationId: assistantId,
+    agentConfigurationId: agentId,
   });
 
   useEffect(() => {
     // Reset to info tab when we open/close the modal
     setSelectedTab("info");
-  }, [assistantId]);
+  }, [agentId]);
 
   const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
     agentConfiguration?.sId as GLOBAL_AGENTS_SID
   );
 
   const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const showEditorsTabs = assistantId != null && !isGlobalAgent;
+  const showEditorsTabs = agentId != null && !isGlobalAgent;
   const showTriggersTabs =
-    assistantId != null &&
+    agentId != null &&
     !isGlobalAgent &&
     featureFlags.includes("hootl_subscriptions");
   const showAgentMemory = !!agentConfiguration?.actions.find(
@@ -123,7 +123,7 @@ export function AssistantDetails({
   const showPerformanceTabs =
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (agentConfiguration?.canEdit || isAdmin(owner)) &&
-    assistantId != null &&
+    agentId != null &&
     !isGlobalAgent;
 
   const DescriptionSection = () => (
@@ -196,7 +196,7 @@ export function AssistantDetails({
   );
 
   return (
-    <Sheet open={!!assistantId} onOpenChange={onClose}>
+    <Sheet open={!!agentId} onOpenChange={onClose}>
       <SheetContent size="lg">
         <VisuallyHidden>
           <SheetTitle />
@@ -211,7 +211,7 @@ export function AssistantDetails({
               <DescriptionSection />
             </SheetHeader>
             <SheetContainer className="pb-4">
-              {showEditorsTabs || showPerformanceTabs ? (
+              {showEditorsTabs || showPerformanceTabs || showAgentMemory ? (
                 <Tabs value={selectedTab}>
                   <TabsList border={false}>
                     <TabsTrigger

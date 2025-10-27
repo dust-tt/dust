@@ -10,7 +10,7 @@ import { useMemo, useState } from "react";
 
 import { AddToolsMenu } from "@app/components/actions/mcp/AddToolsMenu";
 import { CreateMCPServerSheet } from "@app/components/actions/mcp/CreateMCPServerSheet";
-import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
+import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
@@ -309,10 +309,10 @@ export const AdminActionsList = ({
 
   return (
     <>
-      <AssistantDetails
+      <AgentDetails
         owner={owner}
         user={user}
-        assistantId={assistantSId}
+        agentId={assistantSId}
         onClose={() => setAssistantSId(null)}
       />
       <CreateMCPServerSheet
