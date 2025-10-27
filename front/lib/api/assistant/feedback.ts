@@ -113,13 +113,7 @@ export async function upsertMessageFeedback(
       isConversationShared,
     });
 
-    const updatedFeedback = toAgentMessageFeedback({
-      feedbackResource: feedback,
-      messageSId: message.sId,
-      userId: user.id,
-    });
-
-    return new Ok(updatedFeedback);
+    return new Ok({ ...feedback.toJSON(), messageId: message.sId });
   }
 
   try {
@@ -139,13 +133,7 @@ export async function upsertMessageFeedback(
       dismissed: false,
     });
 
-    const createdFeedback = toAgentMessageFeedback({
-      feedbackResource: newFeedback,
-      messageSId: message.sId,
-      userId: user.id,
-    });
-
-    return new Ok(createdFeedback);
+    return new Ok({ ...newFeedback.toJSON(), messageId: message.sId });
   } catch (e) {
     return new Err(normalizeError(e));
   }
@@ -199,29 +187,6 @@ export async function deleteMessageFeedback(
   }
 
   return new Ok(undefined);
-}
-
-function toAgentMessageFeedback({
-  feedbackResource,
-  messageSId,
-  userId,
-}: {
-  feedbackResource: AgentMessageFeedbackResource;
-  messageSId: string;
-  userId: number;
-}): AgentMessageFeedbackType {
-  return {
-    id: feedbackResource.id,
-    messageId: messageSId,
-    agentMessageId: feedbackResource.agentMessageId,
-    userId,
-    thumbDirection: feedbackResource.thumbDirection,
-    content: feedbackResource.content,
-    createdAt: feedbackResource.createdAt,
-    agentConfigurationId: feedbackResource.agentConfigurationId,
-    agentConfigurationVersion: feedbackResource.agentConfigurationVersion,
-    isConversationShared: feedbackResource.isConversationShared,
-  };
 }
 
 export async function getAgentFeedbacks({
