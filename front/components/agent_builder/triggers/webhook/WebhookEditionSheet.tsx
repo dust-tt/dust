@@ -214,7 +214,7 @@ interface WebhookEditionSheetProps {
   isOpen: boolean;
   onCancel: () => void;
   onClose: () => void;
-  onSave: (trigger: AgentBuilderWebhookTriggerType) => void;
+  onSave: () => (e?: React.BaseSyntheticEvent) => Promise<void>;
   agentConfigurationId: string | null;
   webhookSourceView: WebhookSourceViewType | null;
   isEditor: boolean;

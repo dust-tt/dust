@@ -96,15 +96,7 @@ export function WebhookEdition({
     [form, onClose, onSave, trigger, user, webhookSourceView]
   );
 
-  const onSheetSave = async (): Promise<boolean> => {
-    if (!webhookSourceView) {
-      return false;
-    }
-
-    await form.handleSubmit(handleSubmit)();
-
-    return true;
-  };
+  const onSheetSave = () => form.handleSubmit(handleSubmit);
 
   const onCancel = () => {
     form.reset(defaultValues);

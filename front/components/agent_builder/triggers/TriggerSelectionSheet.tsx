@@ -18,7 +18,7 @@ import {
 } from "@app/components/resources/resources_icons";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
-interface TriggerSelectionPageProps {
+interface TriggerSelectionSheetProps {
   isOpen: boolean;
   onClose: () => void;
   onScheduleSelect: () => void;
@@ -26,13 +26,13 @@ interface TriggerSelectionPageProps {
   webhookSourceViews: WebhookSourceViewType[];
 }
 
-export function TriggerSelectionPage({
+export function TriggerSelectionSheet({
   isOpen,
   onClose,
   onScheduleSelect,
   onWebhookSelect,
   webhookSourceViews,
-}: TriggerSelectionPageProps) {
+}: TriggerSelectionSheetProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredWebhookSourceViews = useMemo(() => {
