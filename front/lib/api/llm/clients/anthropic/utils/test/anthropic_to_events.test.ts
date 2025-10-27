@@ -10,10 +10,7 @@ describe("streamLLMEvents", () => {
     const messageStreamEvents = createAsyncGenerator(modelOutputEvents);
     const result = [];
 
-    for await (const event of streamLLMEvents({
-      messageStreamEvents,
-      metadata,
-    })) {
+    for await (const event of streamLLMEvents(messageStreamEvents, metadata)) {
       result.push(event);
     }
 
@@ -31,21 +28,7 @@ const modelOutputEvents: MessageStreamEvent[] = [
       model: "claude-sonnet-4-20250514",
       id: "msg_017KE6ziN29Ks5KyL3jGE7RR",
       role: "assistant",
-      content: [
-        {
-          type: "text",
-          text: "Hello, how are you ?",
-          citations: null,
-        },
-        {
-          type: "tool_use",
-          id: "DdHr7L197",
-          name: "web_search_browse__websearch",
-          input: {
-            query: "Paris France weather forecast October 23 2025",
-          },
-        },
-      ],
+      content: [],
       stop_reason: "tool_use",
       stop_sequence: null,
       usage: {
@@ -77,6 +60,28 @@ const modelOutputEvents: MessageStreamEvent[] = [
       type: "text_delta",
       text: "how are you ?",
     },
+  },
+  {
+    type: "content_block_start", // Only tool use reads content_block_start and content_block_stop
+    index: 0,
+    content_block: {
+      type: "tool_use",
+      id: "DdHr7L197",
+      name: "web_search_browse__websearch",
+      input: "",
+    },
+  },
+  {
+    type: "content_block_delta",
+    index: 0,
+    delta: {
+      type: "input_json_delta",
+      partial_json: '{"query":"Paris France weather forecast October 23 2025"}',
+    },
+  },
+  {
+    type: "content_block_stop", // Only tool use reads content_block_start and content_block_stop
+    index: 0,
   },
   {
     type: "message_delta",
@@ -118,6 +123,15 @@ const finishLLMEvents = [
     metadata,
   },
   {
+    type: "tool_call",
+    content: {
+      id: "DdHr7L197",
+      name: "web_search_browse__websearch",
+      arguments: '{"query":"Paris France weather forecast October 23 2025"}',
+    },
+    metadata,
+  },
+  {
     type: "token_usage",
     content: {
       inputTokens: 1766,
@@ -131,15 +145,6 @@ const finishLLMEvents = [
     type: "text_generated",
     content: {
       text: "Hello, how are you ?",
-    },
-    metadata,
-  },
-  {
-    type: "tool_call",
-    content: {
-      id: "DdHr7L197",
-      name: "web_search_browse__websearch",
-      arguments: '{"query":"Paris France weather forecast October 23 2025"}',
     },
     metadata,
   },

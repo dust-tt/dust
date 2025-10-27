@@ -82,7 +82,9 @@ const inputMessages = [
         type: "tool_use",
         id: "DdHr7L197",
         name: "web_search_browse__websearch",
-        input: '{"query":"Paris France weather forecast October 23 2025"}',
+        input: JSON.parse(
+          '{"query":"Paris France weather forecast October 23 2025"}'
+        ),
       },
     ],
   },

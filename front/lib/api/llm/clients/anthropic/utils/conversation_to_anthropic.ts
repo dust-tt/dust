@@ -15,6 +15,7 @@ import type {
   AssistantFunctionCallMessageTypeModel,
   Content,
   FunctionMessageTypeModel,
+  GPT_4_1_MINI_MODEL_CONFIG,
   ModelMessageTypeMultiActionsWithoutContentFragment,
   UserMessageTypeModel,
 } from "@app/types";
@@ -66,7 +67,7 @@ function toContentChunk(
       return {
         type: "thinking",
         thinking: content.value.reasoning,
-       // TODO(DIRECT_LLM 2025-10-24) Signatures should be stored in AnthropicLLM's metadata of
+        /*TODO(DIRECT_LLM 2025-10-24) Signatures should be stored in AnthropicLLM's metadata of
          * thinking events and re-extracted */
         signature: "",
       };
@@ -75,7 +76,7 @@ function toContentChunk(
         type: "tool_use",
         id: content.value.id,
         name: content.value.name,
-        input: content.value.arguments,
+        input: JSON.parse(content.value.arguments),
       };
   }
 }
@@ -115,7 +116,14 @@ function assistantMessage(
 ): MessageParam {
   return {
     role: "assistant",
-    content: message.contents.map(toContentChunk),
+    content: message.contents.map(toContentChunk).sort((a, b) => {
+      // We want to make sure the "tool_use" call is at the end of the contents
+      // Because the following "tool_result" is expected to follow it immediately
+      const A = a.type === "tool_use";
+      const B = b.type === "tool_use";
+
+      return A === B ? 0 : A ? 1 : -1;
+    }),
   };
 }
 
