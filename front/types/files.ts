@@ -33,7 +33,7 @@ export type FileUseCaseMetadata = {
 
 export function isConversationFileUseCase(
   useCase: string
-): useCase is "conversation" {
+): useCase is "conversation" | "tool_output" {
   return ["conversation", "tool_output"].includes(useCase);
 }
 
