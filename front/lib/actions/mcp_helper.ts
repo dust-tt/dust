@@ -115,10 +115,7 @@ export const mcpServerOrViewSortingFn = (
 ) => {
   const aName = getMcpServerOrViewDisplayName(a.mcpServer, a.mcpServerView);
   const bName = getMcpServerOrViewDisplayName(b.mcpServer, b.mcpServerView);
-  return aName.localeCompare(bName, undefined, {
-    sensitivity: "base",
-    numeric: true,
-  });
+  return aName.localeCompare(bName);
 };
 
 export function isRemoteMCPServerType(
