@@ -1,29 +1,15 @@
 import type { Icon } from "@dust-tt/sparkle";
 import { GithubLogo, JiraLogo } from "@dust-tt/sparkle";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type React from "react";
 
-import type { RemoteWebhookService } from "@app/lib/triggers/services/remote_webhook_service";
+import type {
+  WebhookCreateFormComponentProps,
+  WebhookDetailsComponentProps,
+} from "@app/components/triggers/webhook_preset_components";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-
-type EventFieldBase = {
-  name: string;
-  description: string;
-};
-
-export type EventField = EventFieldBase &
-  (
-    | {
-        type: "string" | "number" | "boolean" | "array" | "null";
-      }
-    | {
-        type: "enum";
-        enumValues: string[];
-      }
-    | {
-        type: "object";
-        isArray: boolean;
-        childrenFields: EventField[];
-      }
-  );
+import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 
 export type EventCheck = {
   type: "headers" | "body";
@@ -34,7 +20,7 @@ export type WebhookEvent = {
   name: string;
   value: string;
   description: string;
-  fields: EventField[];
+  schema: JSONSchema;
 };
 
 const WebhookPresetIcons = {
@@ -45,12 +31,17 @@ const WebhookPresetIcons = {
 export type WebhookPresetIcon =
   (typeof WebhookPresetIcons)[keyof typeof WebhookPresetIcons];
 
-export type PresetWebhook = {
+export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
   name: string;
   eventCheck: EventCheck;
   events: WebhookEvent[];
   icon: typeof Icon;
   description: string;
+  webhookPageUrl?: string;
   featureFlag?: WhitelistableFeature;
-  webhookService: RemoteWebhookService;
+  webhookService: RemoteWebhookService<P>;
+  components: {
+    detailsComponent: React.ComponentType<WebhookDetailsComponentProps>;
+    createFormComponent: React.ComponentType<WebhookCreateFormComponentProps>;
+  };
 };

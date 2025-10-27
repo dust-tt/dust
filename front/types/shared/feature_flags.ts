@@ -141,14 +141,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",
   },
-  research_agent: {
-    description: "Activate @deepDive agent.",
-    stage: "rolling_out",
-  },
-  deep_research_as_a_tool: {
-    description: "Activate Deep Dive tool",
-    stage: "dust_only",
-  },
   hootl_subscriptions: {
     description: "Subscription feature for Schedule & Triggers.",
     stage: "dust_only",
@@ -224,6 +216,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   llm_router_direct_requests: {
     description: "Use direct LLM call over Dust app run in a conversation.",
+    stage: "on_demand",
+  },
+  use_requested_space_ids: {
+    description: "Use requested spaces Ids for permissions checking.",
+    stage: "dust_only",
+  },
+  mentions_v2: {
+    description: "Enable mentions v2, aka mention users",
     stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;

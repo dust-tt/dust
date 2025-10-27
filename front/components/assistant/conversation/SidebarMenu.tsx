@@ -70,7 +70,7 @@ import {
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
 
-type AssistantSidebarMenuProps = {
+type AgentSidebarMenuProps = {
   owner: WorkspaceType;
 };
 
@@ -82,7 +82,7 @@ type GroupLabel =
   | "Last 12 Months"
   | "Older";
 
-export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
+export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const router = useRouter();
   const { conversationsNavigationRef } = useConversationsNavigation();
 

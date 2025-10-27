@@ -22,7 +22,7 @@ import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/config
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import config from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import type { DustError } from "@app/lib/error";
 import {
@@ -34,6 +34,10 @@ import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import {
+  createResourcePermissionsFromSpacesWithMap,
+  createSpaceIdToGroupsMap,
+} from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -58,11 +62,12 @@ import {
   Err,
   isAdmin,
   isBuilder,
+  isGlobalAgentId,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   normalizeAsInternalDustError,
   Ok,
+  removeNulls,
 } from "@app/types";
-import { isGlobalAgentId, removeNulls } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 /**
@@ -86,7 +91,7 @@ async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
 
   assert(!isGlobalAgentId(agentId), "Global agents are not versioned.");
 
-  const workspaceAgents = await AgentConfiguration.findAll({
+  const agentModels = await AgentConfiguration.findAll({
     where: {
       // Relies on the indexes (workspaceId), (sId, version).
       workspaceId: owner.id,
@@ -96,28 +101,20 @@ async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
     order: [["version", "DESC"]],
   });
 
-  const agents = await enrichAgentConfigurations(auth, workspaceAgents, {
+  const allowedAgentModels = await filterAgentsByRequestedSpaces(
+    auth,
+    agentModels
+  );
+  const agents = await enrichAgentConfigurations(auth, allowedAgentModels, {
     variant,
   });
 
-  const allowedAgents = agents.filter((a) =>
-    // TODO(2025-10-17 thomas): Update permission to use space requirements.
-    // auth.canRead(
-    //   Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
-    // )
-    auth.canRead(
-      Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
-    )
-  );
-
   return (
-    (allowedAgents[0] as V extends "light"
+    (agents[0] as V extends "light"
       ? LightAgentConfigurationType
       : AgentConfigurationType) || null
   );
 }
-
-// Main entry points for fetching agents.
 
 /**
  * Get all versions of a single agent.
@@ -135,34 +132,27 @@ export async function listsAgentConfigurationVersions<
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  let allAgents: AgentConfigurationType[];
+  let agents: AgentConfigurationType[];
   if (isGlobalAgentId(agentId)) {
-    allAgents = await getGlobalAgents(auth, [agentId], variant);
+    agents = await getGlobalAgents(auth, [agentId], variant);
   } else {
-    const workspaceAgents = await AgentConfiguration.findAll({
+    const agentModels = await AgentConfiguration.findAll({
       where: {
         workspaceId: owner.id,
         sId: agentId,
       },
       order: [["version", "DESC"]],
     });
-    allAgents = await enrichAgentConfigurations(auth, workspaceAgents, {
+    const allowedAgentModels = await filterAgentsByRequestedSpaces(
+      auth,
+      agentModels
+    );
+    agents = await enrichAgentConfigurations(auth, allowedAgentModels, {
       variant,
     });
   }
 
-  // Filter by permissions
-  const allowedAgents = allAgents.filter((a) =>
-    // TODO(2025-10-17 thomas): Update permission to use space requirements.
-    // auth.canRead(
-    //   Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
-    // )
-    auth.canRead(
-      Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
-    )
-  );
-
-  return allowedAgents as V extends "full"
+  return agents as V extends "full"
     ? AgentConfigurationType[]
     : LightAgentConfigurationType[];
 }
@@ -215,7 +205,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
         raw: true,
       })) as unknown as { sId: string; max_version: number }[];
 
-      const workspaceAgentConfigurations = await AgentConfiguration.findAll({
+      const agentModels = await AgentConfiguration.findAll({
         where: {
           workspaceId: owner.id,
           [Op.or]: latestVersions.map((v) => ({
@@ -225,27 +215,20 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
         },
         order: [["version", "DESC"]],
       });
+      const allowedAgentModels = await filterAgentsByRequestedSpaces(
+        auth,
+        agentModels
+      );
       workspaceAgents = await enrichAgentConfigurations(
         auth,
-        workspaceAgentConfigurations,
+        allowedAgentModels,
         { variant }
       );
     }
 
-    const allAgents = [...globalAgents, ...workspaceAgents];
+    const agents = [...globalAgents, ...workspaceAgents];
 
-    // Filter by permissions
-    const allowedAgents = allAgents.filter((a) =>
-      // TODO(2025-10-17 thomas): Update permission to use space requirements.
-      // auth.canRead(
-      //   Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
-      // )
-      auth.canRead(
-        Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
-      )
-    );
-
-    return allowedAgents as V extends "full"
+    return agents as V extends "full"
       ? AgentConfigurationType[]
       : LightAgentConfigurationType[];
   });
@@ -1186,4 +1169,83 @@ export async function updateAgentRequestedGroupIds(
   );
 
   return new Ok(updated[0] > 0);
+}
+
+export async function filterAgentsByRequestedSpaces(
+  auth: Authenticator,
+  agents: AgentConfiguration[]
+) {
+  const workspace = auth.getNonNullableWorkspace();
+  const featureFlags = await getFeatureFlags(workspace);
+  const hasRequestedSpaceIdsFF = featureFlags.includes(
+    "use_requested_space_ids"
+  );
+
+  const uniqSpaceIds = Array.from(
+    new Set(agents.flatMap((agent) => agent.requestedSpaceIds))
+  );
+
+  const spaces = await SpaceResource.fetchByModelIds(auth, uniqSpaceIds);
+  const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
+
+  // Filter out agents that reference missing/deleted spaces.
+  // When a space is deleted, mcp actions are removed, and requestedSpaceIds are updated.
+  const foundSpaceIds = new Set(spaces.map((s) => s.id));
+  const validAgents = agents.filter((c) =>
+    c.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
+  );
+
+  const allowedBySpaceIds = validAgents.filter((agent) =>
+    auth.canRead(
+      createResourcePermissionsFromSpacesWithMap(
+        spaceIdToGroupsMap,
+        // Parse as Number since Sequelize array of BigInts are returned as strings.
+        agent.requestedSpaceIds.map((id) => Number(id))
+      )
+    )
+  );
+
+  if (hasRequestedSpaceIdsFF) {
+    return allowedBySpaceIds;
+  }
+
+  const allowedByGroupIds = validAgents.filter((agent) =>
+    auth.canRead(
+      Authenticator.createResourcePermissionsFromGroupIds(
+        agent.requestedGroupIds.map((groupIds) =>
+          groupIds.map((groupId) =>
+            GroupResource.modelIdToSId({
+              id: groupId,
+              workspaceId: workspace.id,
+            })
+          )
+        )
+      )
+    )
+  );
+
+  if (allowedByGroupIds.length !== allowedBySpaceIds.length) {
+    const allowedByGroupIdsOnly = allowedByGroupIds.filter(
+      (groupAgent) =>
+        !allowedBySpaceIds.some(
+          (spaceAgent) => spaceAgent.sId === groupAgent.sId
+        )
+    );
+    const allowedBySpaceIdsOnly = allowedBySpaceIds.filter(
+      (spaceAgent) =>
+        !allowedByGroupIds.some(
+          (groupAgent) => groupAgent.sId === spaceAgent.sId
+        )
+    );
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        allowedByGroupIdsOnly: allowedByGroupIdsOnly.map((agent) => agent.sId),
+        allowedBySpaceIdsOnly: allowedBySpaceIdsOnly.map((agent) => agent.sId),
+      },
+      "[REQUESTED_SPACE_IDS] Allowed by group ids and space ids differ for agents"
+    );
+  }
+
+  return allowedByGroupIds;
 }

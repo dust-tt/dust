@@ -245,7 +245,7 @@ export const FILE_FORMATS = {
     exts: [],
     isSafeToDisplay: true,
   },
-
+  "message/rfc822": { cat: "data", exts: [".eml"], isSafeToDisplay: false },
   // Code - most code files are not safe to display by default.
   "text/xml": { cat: "data", exts: [".xml"], isSafeToDisplay: false },
   "application/xml": { cat: "data", exts: [".xml"], isSafeToDisplay: false },

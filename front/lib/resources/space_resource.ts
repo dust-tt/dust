@@ -32,7 +32,7 @@ import type {
   SpaceKind,
   SpaceType,
 } from "@app/types";
-import { Err, GLOBAL_SPACE_NAME, Ok } from "@app/types";
+import { Err, GLOBAL_SPACE_NAME, Ok, removeNulls } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -329,17 +329,33 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     sId: string,
     { includeDeleted }: { includeDeleted?: boolean } = {}
   ): Promise<SpaceResource | null> {
-    const spaceModelId = getResourceIdFromSId(sId);
-    if (!spaceModelId) {
-      return null;
-    }
+    const [space] = await this.fetchByIds(auth, [sId], { includeDeleted });
+    return space ?? null;
+  }
 
-    const [space] = await this.baseFetch(auth, {
-      where: { id: spaceModelId },
+  static async fetchByIds(
+    auth: Authenticator,
+    ids: string[],
+    { includeDeleted }: { includeDeleted?: boolean } = {}
+  ): Promise<SpaceResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        id: removeNulls(ids.map(getResourceIdFromSId)),
+      },
       includeDeleted,
     });
+  }
 
-    return space;
+  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+    const spaces = await this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: ids,
+        },
+      },
+    });
+
+    return spaces ?? [];
   }
 
   static async isNameAvailable(
@@ -379,6 +395,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await concurrentExecutor(
       this.groups,
       async (group) => {
+        // Provisioned groups are not tied to any space, we don't delete them.
+        if (group.kind === "provisioned") {
+          return;
+        }
         // As the model allows it, ensure the group is not associated with any other space.
         const count = await GroupSpaceModel.count({
           where: {

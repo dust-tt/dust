@@ -5,6 +5,7 @@ import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
+import { launchAgentMessageAnalyticsActivity } from "@app/temporal/agent_loop/activities/analytics";
 import {
   finalizeCancellationActivity,
   notifyWorkflowError,
@@ -30,11 +31,12 @@ export async function runAgentLoopWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities: {
       ensureConversationTitleActivity,
+      finalizeCancellationActivity,
+      launchAgentMessageAnalyticsActivity,
       logAgentLoopPhaseCompletionActivity,
       logAgentLoopPhaseStartActivity,
       logAgentLoopStepCompletionActivity,
       notifyWorkflowError,
-      finalizeCancellationActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,

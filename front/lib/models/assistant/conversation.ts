@@ -3,7 +3,7 @@ import { DataTypes, literal } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
-import type { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
+import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -71,11 +71,6 @@ ConversationModel.init(
       allowNull: false,
       defaultValue: [],
     },
-    triggerId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-      defaultValue: null,
-    },
     hasError: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -89,10 +84,31 @@ ConversationModel.init(
         unique: true,
         fields: ["workspaceId", "sId"],
       },
+      {
+        fields: ["workspaceId", "triggerId"],
+      },
     ],
     sequelize: frontSequelize,
   }
 );
+
+ConversationModel.belongsTo(TriggerModel, {
+  as: "trigger",
+  foreignKey: {
+    name: "triggerId",
+    allowNull: true,
+  },
+  onDelete: "SET NULL",
+});
+
+TriggerModel.hasMany(ConversationModel, {
+  as: "conversations",
+  foreignKey: {
+    name: "triggerId",
+    allowNull: true,
+  },
+  onDelete: "SET NULL",
+});
 
 export class ConversationParticipantModel extends WorkspaceAwareModel<ConversationParticipantModel> {
   declare createdAt: CreationOptional<Date>;

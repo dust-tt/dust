@@ -10,14 +10,15 @@ import {
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
-import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import {
-  WEBHOOK_SOURCE_KIND,
-  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
+  WEBHOOK_PRESETS,
+  WEBHOOK_PROVIDERS,
 } from "@app/types/triggers/webhooks";
+
 type AddTriggerMenuProps = {
   owner: WorkspaceType;
-  createWebhook: (kind: WebhookSourceKind) => void;
+  createWebhook: (provider: WebhookProvider) => void;
 };
 
 export const AddTriggerMenu = ({
@@ -39,22 +40,23 @@ export const AddTriggerMenu = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {WEBHOOK_SOURCE_KIND.filter((kind) => {
-          const preset = WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind];
+        {/* TODO(HOOTL): use the object directly instead */}
+        {WEBHOOK_PROVIDERS.filter((provider) => {
+          const preset = WEBHOOK_PRESETS[provider];
           return (
             preset.featureFlag === undefined || hasFeature(preset.featureFlag)
           );
         })
           .sort((kindA, kindB) =>
-            WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kindA].name.localeCompare(
-              WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kindB].name
+            WEBHOOK_PRESETS[kindA].name.localeCompare(
+              WEBHOOK_PRESETS[kindB].name
             )
           )
           .map((kind) => (
             <DropdownMenuItem
               key={kind}
-              label={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].name + " Webhook"}
-              icon={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].icon}
+              label={WEBHOOK_PRESETS[kind].name + " Webhook"}
+              icon={WEBHOOK_PRESETS[kind].icon}
               onClick={() => createWebhook(kind)}
             />
           ))}

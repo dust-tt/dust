@@ -30,24 +30,18 @@ describe("WebhookRequestResource", () => {
 
       // Create a webhook source
       const webhookSourceFactory = new WebhookSourceFactory(workspace);
-      const webhookSourceResult = await webhookSourceFactory.create({
+      const webhookSource = await webhookSourceFactory.create({
         name: "Test Webhook Source",
       });
 
-      if (webhookSourceResult.isErr()) {
-        throw webhookSourceResult.error;
-      }
-
-      const webhookSource = webhookSourceResult.value;
-
       // Create 4 webhook requests (exceeds custom limit of 3)
-      const requests: Array<{
+      const requests: {
         workspaceId: number;
         webhookSourceId: number;
         status: WebhookRequestStatus;
         createdAt: Date;
         updatedAt: Date;
-      }> = [];
+      }[] = [];
       for (let i = 0; i < 4; i++) {
         requests.push({
           workspaceId: workspace.id,
@@ -75,24 +69,18 @@ describe("WebhookRequestResource", () => {
 
       // Create a webhook source
       const webhookSourceFactory = new WebhookSourceFactory(workspace);
-      const webhookSourceResult = await webhookSourceFactory.create({
+      const webhookSource = await webhookSourceFactory.create({
         name: "Test Webhook Source",
       });
 
-      if (webhookSourceResult.isErr()) {
-        throw webhookSourceResult.error;
-      }
-
-      const webhookSource = webhookSourceResult.value;
-
       // Create 4 webhook requests
-      const requests: Array<{
+      const requests: {
         workspaceId: number;
         webhookSourceId: number;
         status: WebhookRequestStatus;
         createdAt: Date;
         updatedAt: Date;
-      }> = [];
+      }[] = [];
       for (let i = 0; i < 4; i++) {
         requests.push({
           workspaceId: workspace.id,
@@ -121,15 +109,9 @@ describe("WebhookRequestResource", () => {
 
       // Create a webhook source
       const webhookSourceFactory = new WebhookSourceFactory(workspace);
-      const webhookSourceResult = await webhookSourceFactory.create({
+      const webhookSource = await webhookSourceFactory.create({
         name: "Test Webhook Source",
       });
-
-      if (webhookSourceResult.isErr()) {
-        throw webhookSourceResult.error;
-      }
-
-      const webhookSource = webhookSourceResult.value;
 
       // Create a webhook request from 40 days ago (beyond 30 day TTL)
       const oldDate = new Date();
@@ -159,15 +141,9 @@ describe("WebhookRequestResource", () => {
 
       // Create a webhook source
       const webhookSourceFactory = new WebhookSourceFactory(workspace);
-      const webhookSourceResult = await webhookSourceFactory.create({
+      const webhookSource = await webhookSourceFactory.create({
         name: "Test Webhook Source",
       });
-
-      if (webhookSourceResult.isErr()) {
-        throw webhookSourceResult.error;
-      }
-
-      const webhookSource = webhookSourceResult.value;
 
       // Create a webhook request from 20 days ago (within 30 day TTL)
       const recentDate = new Date();
@@ -208,36 +184,24 @@ describe("WebhookRequestResource", () => {
       const factory2 = new WebhookSourceFactory(workspace2);
       const factory3 = new WebhookSourceFactory(workspace3);
 
-      const source1Result = await factory1.create({
+      const webhookSource1 = await factory1.create({
         name: "Test Webhook Source 1",
       });
-      const source2Result = await factory2.create({
+      const webhookSource2 = await factory2.create({
         name: "Test Webhook Source 2",
       });
-      const source3Result = await factory3.create({
+      const webhookSource3 = await factory3.create({
         name: "Test Webhook Source 3",
       });
 
-      if (
-        source1Result.isErr() ||
-        source2Result.isErr() ||
-        source3Result.isErr()
-      ) {
-        throw new Error("Failed to create webhook sources");
-      }
-
-      const webhookSource1 = source1Result.value;
-      const webhookSource2 = source2Result.value;
-      const webhookSource3 = source3Result.value;
-
       // Workspace 1: Create 4 requests (exceeds limit of 3)
-      const requests1: Array<{
+      const requests1: {
         workspaceId: number;
         webhookSourceId: number;
         status: WebhookRequestStatus;
         createdAt: Date;
         updatedAt: Date;
-      }> = [];
+      }[] = [];
       for (let i = 0; i < 4; i++) {
         requests1.push({
           workspaceId: workspace1.id,
@@ -250,13 +214,13 @@ describe("WebhookRequestResource", () => {
       await WebhookRequestModel.bulkCreate(requests1);
 
       // Workspace 2: Create 2 requests (within limit of 3)
-      const requests2: Array<{
+      const requests2: {
         workspaceId: number;
         webhookSourceId: number;
         status: WebhookRequestStatus;
         createdAt: Date;
         updatedAt: Date;
-      }> = [];
+      }[] = [];
       for (let i = 0; i < 2; i++) {
         requests2.push({
           workspaceId: workspace2.id,
@@ -304,19 +268,12 @@ describe("WebhookRequestResource", () => {
       const factory1 = new WebhookSourceFactory(workspace1);
       const factory2 = new WebhookSourceFactory(workspace2);
 
-      const source1Result = await factory1.create({
+      const webhookSource1 = await factory1.create({
         name: "Test Webhook Source 1",
       });
-      const source2Result = await factory2.create({
+      const webhookSource2 = await factory2.create({
         name: "Test Webhook Source 2",
       });
-
-      if (source1Result.isErr() || source2Result.isErr()) {
-        throw new Error("Failed to create webhook sources");
-      }
-
-      const webhookSource1 = source1Result.value;
-      const webhookSource2 = source2Result.value;
 
       // Create old requests in both workspaces
       const oldDate = new Date();
@@ -364,15 +321,9 @@ describe("WebhookRequestResource", () => {
 
       // Create a webhook source
       const webhookSourceFactory = new WebhookSourceFactory(workspace);
-      const webhookSourceResult = await webhookSourceFactory.create({
+      const webhookSource = await webhookSourceFactory.create({
         name: "Test Webhook Source",
       });
-
-      if (webhookSourceResult.isErr()) {
-        throw webhookSourceResult.error;
-      }
-
-      const webhookSource = webhookSourceResult.value;
 
       // Create requests with different statuses
       const statuses: WebhookRequestStatus[] = [
@@ -380,13 +331,13 @@ describe("WebhookRequestResource", () => {
         "processed",
         "failed",
       ];
-      const requests: Array<{
+      const requests: {
         workspaceId: number;
         webhookSourceId: number;
         status: WebhookRequestStatus;
         createdAt: Date;
         updatedAt: Date;
-      }> = [];
+      }[] = [];
       // Create 2 requests
       for (let i = 0; i < 2; i++) {
         requests.push({
@@ -427,24 +378,18 @@ describe("WebhookRequestResource", () => {
 
       // Create a webhook source
       const webhookSourceFactory = new WebhookSourceFactory(workspace);
-      const webhookSourceResult = await webhookSourceFactory.create({
+      const webhookSource = await webhookSourceFactory.create({
         name: "Test Webhook Source",
       });
 
-      if (webhookSourceResult.isErr()) {
-        throw webhookSourceResult.error;
-      }
-
-      const webhookSource = webhookSourceResult.value;
-
       // Create 4 requests
-      const requests: Array<{
+      const requests: {
         workspaceId: number;
         webhookSourceId: number;
         status: WebhookRequestStatus;
         createdAt: Date;
         updatedAt: Date;
-      }> = [];
+      }[] = [];
       for (let i = 0; i < 4; i++) {
         requests.push({
           workspaceId: workspace.id,
@@ -472,24 +417,18 @@ describe("WebhookRequestResource", () => {
 
       // Create a webhook source
       const webhookSourceFactory = new WebhookSourceFactory(workspace);
-      const webhookSourceResult = await webhookSourceFactory.create({
+      const webhookSource = await webhookSourceFactory.create({
         name: "Test Webhook Source",
       });
 
-      if (webhookSourceResult.isErr()) {
-        throw webhookSourceResult.error;
-      }
-
-      const webhookSource = webhookSourceResult.value;
-
       // Create exactly 3 requests (at the limit, should NOT be returned)
-      const requests: Array<{
+      const requests: {
         workspaceId: number;
         webhookSourceId: number;
         status: WebhookRequestStatus;
         createdAt: Date;
         updatedAt: Date;
-      }> = [];
+      }[] = [];
       for (let i = 0; i < 3; i++) {
         requests.push({
           workspaceId: workspace.id,
@@ -537,15 +476,9 @@ describe("WebhookRequestResource", () => {
 
       // Create a webhook source
       const webhookSourceFactory = new WebhookSourceFactory(workspace);
-      const webhookSourceResult = await webhookSourceFactory.create({
+      const webhookSource = await webhookSourceFactory.create({
         name: "Test Webhook Source",
       });
-
-      if (webhookSourceResult.isErr()) {
-        throw webhookSourceResult.error;
-      }
-
-      const webhookSource = webhookSourceResult.value;
 
       // Create a recent request (should NOT be deleted)
       const recentRequest = await WebhookRequestModel.create({
@@ -594,15 +527,9 @@ describe("WebhookRequestResource", () => {
 
       // Create a webhook source
       const webhookSourceFactory = new WebhookSourceFactory(workspace);
-      const webhookSourceResult = await webhookSourceFactory.create({
+      const webhookSource = await webhookSourceFactory.create({
         name: "Test Webhook Source",
       });
-
-      if (webhookSourceResult.isErr()) {
-        throw webhookSourceResult.error;
-      }
-
-      const webhookSource = webhookSourceResult.value;
 
       // Create 5 recent requests with distinct timestamps
       for (let i = 0; i < 5; i++) {
@@ -643,15 +570,9 @@ describe("WebhookRequestResource", () => {
 
       // Create a webhook source
       const webhookSourceFactory = new WebhookSourceFactory(workspace);
-      const webhookSourceResult = await webhookSourceFactory.create({
+      const webhookSource = await webhookSourceFactory.create({
         name: "Test Webhook Source",
       });
-
-      if (webhookSourceResult.isErr()) {
-        throw webhookSourceResult.error;
-      }
-
-      const webhookSource = webhookSourceResult.value;
 
       // Create 3 old requests
       const oldDate = new Date();
@@ -667,16 +588,14 @@ describe("WebhookRequestResource", () => {
       }
 
       // Create 5 recent requests
-      const recentIds: number[] = [];
       for (let i = 0; i < 5; i++) {
-        const request = await WebhookRequestModel.create({
+        await WebhookRequestModel.create({
           workspaceId: workspace.id,
           webhookSourceId: webhookSource.id,
           status: "received",
           createdAt: new Date(),
           updatedAt: new Date(),
         });
-        recentIds.push(request.id);
       }
 
       // Verify all 8 requests exist
@@ -705,15 +624,9 @@ describe("WebhookRequestResource", () => {
 
       // Create a webhook source
       const webhookSourceFactory = new WebhookSourceFactory(workspace);
-      const webhookSourceResult = await webhookSourceFactory.create({
+      const webhookSource = await webhookSourceFactory.create({
         name: "Test Webhook Source",
       });
-
-      if (webhookSourceResult.isErr()) {
-        throw webhookSourceResult.error;
-      }
-
-      const webhookSource = webhookSourceResult.value;
 
       // Create 2 recent requests (within default max of 1000)
       const requestIds: number[] = [];
@@ -755,15 +668,9 @@ describe("WebhookRequestResource", () => {
 
       // Create a webhook source
       const webhookSourceFactory = new WebhookSourceFactory(workspace);
-      const webhookSourceResult = await webhookSourceFactory.create({
+      const webhookSource = await webhookSourceFactory.create({
         name: "Test Webhook Source",
       });
-
-      if (webhookSourceResult.isErr()) {
-        throw webhookSourceResult.error;
-      }
-
-      const webhookSource = webhookSourceResult.value;
 
       // Create 2 recent requests
       for (let i = 0; i < 2; i++) {
@@ -806,19 +713,12 @@ describe("WebhookRequestResource", () => {
       const factory1 = new WebhookSourceFactory(workspace1);
       const factory2 = new WebhookSourceFactory(workspace2);
 
-      const source1Result = await factory1.create({
+      const webhookSource1 = await factory1.create({
         name: "Test Webhook Source 1",
       });
-      const source2Result = await factory2.create({
+      const webhookSource2 = await factory2.create({
         name: "Test Webhook Source 2",
       });
-
-      if (source1Result.isErr() || source2Result.isErr()) {
-        throw new Error("Failed to create webhook sources");
-      }
-
-      const webhookSource1 = source1Result.value;
-      const webhookSource2 = source2Result.value;
 
       // Create 3 old requests in workspace 1
       const oldDate = new Date();
@@ -902,15 +802,9 @@ describe("WebhookRequestResource", () => {
 
       // Create a webhook source
       const webhookSourceFactory = new WebhookSourceFactory(workspace);
-      const webhookSourceResult = await webhookSourceFactory.create({
+      const webhookSource = await webhookSourceFactory.create({
         name: "Test Webhook Source",
       });
-
-      if (webhookSourceResult.isErr()) {
-        throw webhookSourceResult.error;
-      }
-
-      const webhookSource = webhookSourceResult.value;
 
       // Create 5 requests with distinct timestamps in the past
       const creationTimes: Date[] = [];

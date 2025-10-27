@@ -44,6 +44,10 @@ import {
   isMessageTemporayState,
 } from "@app/components/assistant/conversation/types";
 import {
+  agentMentionDirective,
+  getAgentMentionPlugin,
+} from "@app/components/markdown/AgentMentionBlock";
+import {
   CitationsContext,
   CiteBlock,
   getCiteDirective,
@@ -51,10 +55,6 @@ import {
 import { getImgPlugin, imgDirective } from "@app/components/markdown/Image";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getCitationIcon } from "@app/components/markdown/MCPReferenceCitation";
-import {
-  getMentionPlugin,
-  mentionDirective,
-} from "@app/components/markdown/MentionBlock";
 import {
   getVisualizationPlugin,
   sanitizeVisualizationContent,
@@ -447,7 +447,7 @@ export function AgentMessage({
     () => (
       <span className="inline-flex items-center">
         <AgentHandle
-          assistant={{
+          agent={{
             sId: agentConfiguration.sId,
             name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
           }}
@@ -610,7 +610,8 @@ function AgentMessageContent({
         sId
       ),
       sup: CiteBlock,
-      mention: getMentionPlugin(owner),
+      // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
+      mention: getAgentMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
     }),
     [owner, conversationId, sId, agentConfiguration.sId]
@@ -618,7 +619,7 @@ function AgentMessageContent({
 
   const additionalMarkdownPlugins: PluggableList = React.useMemo(
     () => [
-      mentionDirective,
+      agentMentionDirective,
       getCiteDirective(),
       visualizationDirective,
       imgDirective,

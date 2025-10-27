@@ -48,17 +48,9 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     // Create a webhook source
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
-
-    if (webhookSourceResult.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${webhookSourceResult.error.message}`
-      );
-    }
-
-    const webhookSource = webhookSourceResult.value;
 
     req.query = {
       wId: workspace.sId,
@@ -155,17 +147,9 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     // Create a webhook source
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
-
-    if (webhookSourceResult.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${webhookSourceResult.error.message}`
-      );
-    }
-
-    const webhookSource = webhookSourceResult.value;
 
     req.query = {
       wId: workspace.sId,
@@ -196,17 +180,9 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     // Create a webhook source
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
-
-    if (webhookSourceResult.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${webhookSourceResult.error.message}`
-      );
-    }
-
-    const webhookSource = webhookSourceResult.value;
 
     req.query = {
       wId: workspace.sId,
@@ -240,18 +216,10 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
     // Create a webhook source with a custom URL secret
     const customUrlSecret = "my-custom-url-secret-123";
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source with URL Secret",
       urlSecret: customUrlSecret,
     });
-
-    if (webhookSourceResult.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${webhookSourceResult.error.message}`
-      );
-    }
-
-    const webhookSource = webhookSourceResult.value;
 
     req.query = {
       wId: workspace.sId,
@@ -305,19 +273,11 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     // Create a GitHub webhook source that doesn't subscribe to pull_request events
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test GitHub Webhook Source",
-      kind: "github",
+      provider: "github",
       subscribedEvents: ["issues"], // Subscribe to issues but not pull_request
     });
-
-    if (webhookSourceResult.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${webhookSourceResult.error.message}`
-      );
-    }
-
-    const webhookSource = webhookSourceResult.value;
 
     req.query = {
       wId: workspace.sId,

@@ -122,11 +122,10 @@ export function ConversationMenu({
   const router = useRouter();
   const sendNotification = useSendNotification();
 
-  const { onOpenChange: onOpenChangeAssistantModal } =
-    useURLSheet("agentDetails");
+  const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
 
   const handleSeeDetails = (agentId: string) => {
-    onOpenChangeAssistantModal(true);
+    onOpenChangeAgentModal(true);
     setQueryParam(router, "agentDetails", agentId);
   };
 

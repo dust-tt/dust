@@ -932,10 +932,9 @@ The directive should be used to display a clickable version of the agent name in
   deep_dive: {
     id: 29,
     availability: "auto",
-    isRestricted: ({ featureFlags, isDeepDiveDisabled }) => {
-      return (
-        !featureFlags.includes("deep_research_as_a_tool") || isDeepDiveDisabled
-      );
+    isRestricted: ({ isDeepDiveDisabled }) => {
+      // If the workspace has disable the deep dive agent, the tool is not available.
+      return isDeepDiveDisabled;
     },
     allowMultipleInstances: false,
     isPreview: false,
@@ -1050,10 +1049,8 @@ The directive should be used to display a clickable version of the agent name in
     id: 34,
     availability: "manual",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("elevenlabs_tool");
-    },
-    isPreview: false,
+    isRestricted: undefined,
+    isPreview: true,
     tools_stakes: {
       text_to_speech: "low",
       text_to_discussion: "low",
@@ -1140,10 +1137,8 @@ The directive should be used to display a clickable version of the agent name in
     id: 37,
     availability: "manual",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("elevenlabs_tool");
-    },
-    isPreview: false,
+    isRestricted: undefined,
+    isPreview: true,
     tools_stakes: {
       generate_music: "low",
       generate_sound_effects: "low",

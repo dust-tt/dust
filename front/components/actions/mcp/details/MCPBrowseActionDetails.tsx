@@ -8,6 +8,7 @@ import {
   isBrowseResultResourceType,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isWebbrowseInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 
 export function MCPBrowseActionDetails({
@@ -16,7 +17,8 @@ export function MCPBrowseActionDetails({
   viewType,
   owner,
 }: ToolExecutionDetailsProps) {
-  const urls = toolParams.urls as string[];
+  const urls = isWebbrowseInputType(toolParams) ? toolParams.urls : null;
+
   const browseResults =
     toolOutput?.filter(isBrowseResultResourceType).map((o) => o.resource) ?? [];
   const generatedFiles =

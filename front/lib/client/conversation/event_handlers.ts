@@ -44,40 +44,6 @@ export function updateMessagePagesWithOptimisticData(
   return updatedMessages;
 }
 
-// Function to update the message pages with the new message from the event.
-export function getUpdatedMessagesFromEvent(
-  currentMessagePages: FetchConversationMessagesResponse[] | undefined,
-  event: AgentMessageNewEvent | UserMessageNewEvent
-) {
-  if (!currentMessagePages) {
-    return undefined;
-  }
-
-  // Check if the message already exists in the cache.
-  const isMessageAlreadyInCache = currentMessagePages.some((page) =>
-    page.messages.some((message) => message.sId === event.message.sId)
-  );
-
-  // If the message is already in the cache, ignore the event.
-  if (isMessageAlreadyInCache) {
-    return currentMessagePages;
-  }
-
-  const { rank } = event.message;
-
-  // We only support adding at the end of the first page.
-  const [firstPage] = currentMessagePages;
-  const firstPageLastMessage = firstPage.messages.at(-1);
-  if (firstPageLastMessage && firstPageLastMessage.rank < rank) {
-    return updateMessagePagesWithOptimisticData(
-      currentMessagePages,
-      event.message
-    );
-  }
-
-  return currentMessagePages;
-}
-
 // Function to update the participants with the new message from the event.
 export function getUpdatedParticipantsFromEvent(
   participants: FetchConversationParticipantsResponse | undefined,

@@ -20,7 +20,7 @@ import type { ContentFragmentInputWithFileIdType } from "@app/types";
 import { assertNever, errorToString, normalizeError } from "@app/types";
 import type { WebhookTriggerType } from "@app/types/assistant/triggers";
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
-import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 class TriggerNonRetryableError extends Error {}
 
@@ -134,9 +134,8 @@ export async function runTriggerWebhookActivity({
   }
 
   // Filter out non-subscribed events
-  if (webhookSource.kind !== "custom") {
-    const { type, field } =
-      WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[webhookSource.kind].eventCheck;
+  if (webhookSource.provider) {
+    const { type, field } = WEBHOOK_PRESETS[webhookSource.provider].eventCheck;
 
     // Node http module behavior is to lowercase all headers keys
     let receivedEventName: string | undefined;
@@ -154,7 +153,7 @@ export async function runTriggerWebhookActivity({
     if (
       receivedEventName === undefined ||
       // Event not in preset
-      !WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[webhookSource.kind].events
+      !WEBHOOK_PRESETS[webhookSource.provider].events
         .map((event) => event.name)
         .includes(receivedEventName) ||
       // Event not subscribed

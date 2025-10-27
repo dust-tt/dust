@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getGithubOrganizations } from "@app/lib/api/webhooks/github/orgs";
-import { getGithubRepositories } from "@app/lib/api/webhooks/github/repos";
+import { getGithubOrganizations } from "@app/lib/triggers/built-in-webhooks/github/orgs";
+import { getGithubRepositories } from "@app/lib/triggers/built-in-webhooks/github/repos";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Err, Ok } from "@app/types";
@@ -19,11 +19,11 @@ vi.mock("@app/lib/api/config", () => ({
 }));
 
 // Mock the GitHub service functions
-vi.mock("@app/lib/api/webhooks/github/repos", () => ({
+vi.mock("@app/lib/triggers/built-in-webhooks/github/repos", () => ({
   getGithubRepositories: vi.fn(),
 }));
 
-vi.mock("@app/lib/api/webhooks/github/orgs", () => ({
+vi.mock("@app/lib/triggers/built-in-webhooks/github/orgs", () => ({
   getGithubOrganizations: vi.fn(),
 }));
 
@@ -71,14 +71,11 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
 
     // Mock the GitHub data
     const mockRepositories = [
-      { id: 1, full_name: "owner/repo1" },
-      { id: 2, full_name: "owner/repo2" },
+      { fullName: "owner/repo1" },
+      { fullName: "owner/repo2" },
     ];
 
-    const mockOrganizations = [
-      { id: 100, login: "org1" },
-      { id: 200, login: "org2" },
-    ];
+    const mockOrganizations = [{ name: "org1" }, { name: "org2" }];
 
     vi.mocked(getGithubRepositories).mockResolvedValue(mockRepositories);
     vi.mocked(getGithubOrganizations).mockResolvedValue(mockOrganizations);
@@ -111,7 +108,7 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
     );
 
     req.query.connectionId = mockConnectionId;
-    req.query.kind = "github";
+    req.query.provider = "github";
 
     await handler(req, res);
 
@@ -128,7 +125,7 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
   it("should return 400 when connectionId is missing", async () => {
     const { req, res } = await setupTest();
 
-    req.query.kind = "github";
+    req.query.provider = "github";
     // No connectionId set
 
     await handler(req, res);
@@ -140,11 +137,11 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
     expect(responseData.error.message).toBe("connectionId is required");
   });
 
-  it("should return 400 when kind is missing", async () => {
+  it("should return 400 when provider is missing", async () => {
     const { req, res } = await setupTest();
 
     req.query.connectionId = "conn_123456";
-    // No kind set
+    // No provider set
 
     await handler(req, res);
 
@@ -152,14 +149,14 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
     const responseData = res._getJSONData();
     expect(responseData.error).toBeDefined();
     expect(responseData.error.type).toBe("invalid_request_error");
-    expect(responseData.error.message).toBe("kind is required");
+    expect(responseData.error.message).toBe("provider is required");
   });
 
-  it("should return 400 when kind is invalid", async () => {
+  it("should return 400 when provider is invalid", async () => {
     const { req, res } = await setupTest();
 
     req.query.connectionId = "conn_123456";
-    req.query.kind = "invalid_kind";
+    req.query.provider = "invalid_provider";
 
     await handler(req, res);
 
@@ -167,14 +164,14 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
     const responseData = res._getJSONData();
     expect(responseData.error).toBeDefined();
     expect(responseData.error.type).toBe("invalid_request_error");
-    expect(responseData.error.message).toContain("Invalid kind");
+    expect(responseData.error.message).toContain("Invalid provider");
   });
 
-  it("should return 400 when kind is custom", async () => {
+  it("should return 400 when provider is custom", async () => {
     const { req, res } = await setupTest();
 
     req.query.connectionId = "conn_123456";
-    req.query.kind = "custom";
+    req.query.provider = "custom";
 
     await handler(req, res);
 
@@ -182,7 +179,7 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
     const responseData = res._getJSONData();
     expect(responseData.error).toBeDefined();
     expect(responseData.error.type).toBe("invalid_request_error");
-    expect(responseData.error.message).toContain("Invalid kind");
+    expect(responseData.error.message).toContain("Invalid provider");
   });
 
   it("should return 403 when connection does not belong to workspace", async () => {
@@ -205,7 +202,7 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
     );
 
     req.query.connectionId = "con_123456";
-    req.query.kind = "github";
+    req.query.provider = "github";
 
     await handler(req, res);
 
@@ -238,7 +235,7 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
     );
 
     req.query.connectionId = "con_123456";
-    req.query.kind = "github";
+    req.query.provider = "github";
 
     await handler(req, res);
 
@@ -251,7 +248,7 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
     );
   });
 
-  it("should return 403 when connection provider does not match kind", async () => {
+  it("should return 403 when connection provider does not match provider", async () => {
     const { req, res, workspace } = await setupTest();
 
     mockGetConnectionMetadata.mockResolvedValue(
@@ -267,7 +264,7 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
     );
 
     req.query.connectionId = "conn_123456";
-    req.query.kind = "github";
+    req.query.provider = "github";
 
     await handler(req, res);
 
@@ -298,7 +295,7 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
     mockGetAccessToken.mockResolvedValue(new Err(new Error("Token error")));
 
     req.query.connectionId = "conn_123456";
-    req.query.kind = "github";
+    req.query.provider = "github";
 
     await handler(req, res);
 
@@ -319,7 +316,7 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
     await SpaceFactory.defaults(authenticator);
     req.query.wId = workspace.sId;
     req.query.connectionId = "conn_123456";
-    req.query.kind = "github";
+    req.query.provider = "github";
 
     await handler(req, res);
 
@@ -361,7 +358,7 @@ describe("GET /api/w/[wId]/webhook_sources/service-data", () => {
     );
 
     req.query.connectionId = mockConnectionId;
-    req.query.kind = "github";
+    req.query.provider = "github";
 
     await handler(req, res);
 

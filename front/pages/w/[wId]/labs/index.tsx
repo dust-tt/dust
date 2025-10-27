@@ -10,7 +10,7 @@ import {
 import type { InferGetServerSidePropsType } from "next";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
@@ -104,7 +104,7 @@ export default function LabsTranscriptsIndex({
         subscription={subscription}
         owner={owner}
         pageTitle="Dust - Exploratory features"
-        navChildren={<AssistantSidebarMenu owner={owner} />}
+        navChildren={<AgentSidebarMenu owner={owner} />}
       >
         <Page.Header
           title="Exploratory features"

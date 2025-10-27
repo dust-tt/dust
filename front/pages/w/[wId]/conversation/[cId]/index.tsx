@@ -90,7 +90,7 @@ export default function AgentConversation({
 
   const { activeConversationId } = useConversationsNavigation();
 
-  const { setSelectedAssistant } = useContext(InputBarContext);
+  const { setSelectedAgent } = useContext(InputBarContext);
 
   const { agent } = router.query;
 
@@ -109,16 +109,16 @@ export default function AgentConversation({
 
     const agentId = agent ?? null;
     if (agentId && typeof agentId === "string") {
-      setSelectedAssistant({ configurationId: agentId });
+      setSelectedAgent({ configurationId: agentId });
     } else {
-      setSelectedAssistant(null);
+      setSelectedAgent(null);
     }
   }, [
     agent,
     setConversationKey,
     initialConversationId,
     activeConversationId,
-    setSelectedAssistant,
+    setSelectedAgent,
   ]);
 
   return (

@@ -852,6 +852,7 @@ export default async function createServer(
             if (agentMessage && agentMessage.status === "succeeded") {
               const { finalText, cot, refsFromAgent, files } =
                 getFinishedContent(agentMessage);
+              /* eslint-disable-next-line @typescript-eslint/return-await */
               return await finalizeAndReturn(
                 new Ok(
                   buildSuccessContent({
@@ -869,6 +870,7 @@ export default async function createServer(
           const normalizedError = normalizeError(streamError);
           const isNotConnected = normalizedError.message === "Not connected";
           const errorMessage = `Error processing agent stream: ${normalizedError.message}`;
+          /* eslint-disable-next-line @typescript-eslint/return-await */
           return await finalizeAndReturn(
             new Err(
               new MCPError(errorMessage, {

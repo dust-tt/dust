@@ -16,12 +16,12 @@ import type {
 } from "@app/types";
 import { isAgentMention } from "@app/types";
 
-export const handleMentions = async ({
+export const createAgentMessages = async ({
   mentions,
   agentConfigurations,
-  m,
+  message,
   owner,
-  t,
+  transaction,
   skipToolsValidation,
   nextMessageRank,
   conversation,
@@ -29,9 +29,9 @@ export const handleMentions = async ({
 }: {
   mentions: MentionType[];
   agentConfigurations: LightAgentConfigurationType[];
-  m: Message;
+  message: Message;
   owner: WorkspaceType;
-  t: Transaction;
+  transaction: Transaction;
   skipToolsValidation: boolean;
   nextMessageRank: number;
   conversation: ConversationType;
@@ -52,11 +52,11 @@ export const handleMentions = async ({
 
         await Mention.create(
           {
-            messageId: m.id,
+            messageId: message.id,
             agentConfigurationId: configuration.sId,
             workspaceId: owner.id,
           },
-          { transaction: t }
+          { transaction }
         );
 
         const agentMessageRow = await AgentMessage.create(
@@ -67,7 +67,7 @@ export const handleMentions = async ({
             workspaceId: owner.id,
             skipToolsValidation,
           },
-          { transaction: t }
+          { transaction }
         );
         const messageRow = await Message.create(
           {
@@ -78,9 +78,7 @@ export const handleMentions = async ({
             agentMessageId: agentMessageRow.id,
             workspaceId: owner.id,
           },
-          {
-            transaction: t,
-          }
+          { transaction }
         );
 
         const parentAgentMessageId =

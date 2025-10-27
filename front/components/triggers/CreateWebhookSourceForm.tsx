@@ -15,23 +15,26 @@ import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 
-import { CreateWebhookGithubConnection } from "@app/components/triggers/CreateWebhookGithubConnection";
-import { useWebhookServiceData } from "@app/lib/swr/useWebhookServiceData";
+import { CreateWebhookSourceWithProviderForm } from "@app/components/triggers/CreateWebhookSourceWithProviderForm";
 import type { LightWorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
-import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import {
-  basePostWebhookSourcesSchema,
-  refineSubscribedEvents,
-  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
+  WEBHOOK_PRESETS,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
+  WebhookSourcesSchema,
 } from "@app/types/triggers/webhooks";
 
-export const CreateWebhookSourceSchema = basePostWebhookSourcesSchema
-  .extend({
-    autoGenerate: z.boolean().default(true),
-  })
-  .refine(...refineSubscribedEvents)
+export const CreateWebhookSourceSchema = WebhookSourcesSchema.extend({
+  autoGenerate: z.boolean().default(true),
+})
+  .refine(
+    ({ provider, subscribedEvents }) =>
+      !provider || subscribedEvents.length > 0,
+    {
+      message: "Subscribed events must not be empty.",
+      path: ["subscribedEvents"],
+    }
+  )
   .refine(
     (data) => data.autoGenerate || (data.secret ?? "").trim().length > 0,
     {
@@ -44,28 +47,21 @@ export type CreateWebhookSourceFormData = z.infer<
   typeof CreateWebhookSourceSchema
 >;
 
-export type BaseRemoteData = {
-  connectionId: string;
-};
-
-export type RemoteGithubData = BaseRemoteData & {
-  repositories: string[];
-  organizations: string[];
-};
-
-export type RemoteProviderData = RemoteGithubData;
+export type RemoteProviderData = Record<string, unknown>;
 
 type CreateWebhookSourceFormContentProps = {
   form: ReturnType<typeof useForm<CreateWebhookSourceFormData>>;
-  kind: WebhookSourceKind;
-  owner?: LightWorkspaceType;
-  onRemoteProviderDataChange?: (data: RemoteProviderData | null) => void;
+  provider: WebhookProvider | null;
+  owner: LightWorkspaceType;
+  onRemoteProviderDataChange?: (
+    data: { connectionId: string; remoteMetadata: RemoteProviderData } | null
+  ) => void;
   onPresetReadyToSubmitChange?: (isReady: boolean) => void;
 };
 
 export function CreateWebhookSourceFormContent({
   form,
-  kind,
+  provider,
   owner,
   onRemoteProviderDataChange,
   onPresetReadyToSubmitChange,
@@ -74,22 +70,6 @@ export function CreateWebhookSourceFormContent({
     control: form.control,
     name: "subscribedEvents",
   });
-
-  const { serviceData, isFetchingServiceData, fetchServiceData } =
-    useWebhookServiceData(owner ?? null, kind);
-
-  const isGithub = kind === "github";
-  const isCustom = (() => {
-    switch (kind) {
-      case "custom":
-      case "test":
-        return true; // These are not OAuth-based kinds
-      case "github":
-        return false;
-      default:
-        assertNever(kind);
-    }
-  })();
 
   return (
     <>
@@ -109,79 +89,72 @@ export function CreateWebhookSourceFormContent({
         )}
       />
 
-      {kind !== "custom" &&
-        WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].events.length > 0 && (
-          <Controller
-            control={form.control}
-            name="subscribedEvents"
-            render={({ fieldState }) => (
-              <div className="space-y-3">
-                <Label htmlFor="subscribedEvents">Subscribed events</Label>
-                <div className="space-y-2">
-                  {WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].events.map(
-                    (event) => {
-                      const isSelected = selectedEvents.includes(event.value);
-                      return (
-                        <div
-                          key={event.value}
-                          className="flex items-center space-x-3"
+      {provider && WEBHOOK_PRESETS[provider].events.length > 0 && (
+        <Controller
+          control={form.control}
+          name="subscribedEvents"
+          render={({ fieldState }) => (
+            <div className="space-y-3">
+              <Label htmlFor="subscribedEvents">Subscribed events</Label>
+              <div className="space-y-2">
+                {WEBHOOK_PRESETS[provider].events.map((event) => {
+                  const isSelected = selectedEvents.includes(event.value);
+                  return (
+                    <div
+                      key={event.value}
+                      className="flex items-center space-x-3"
+                    >
+                      <Checkbox
+                        id={`${provider}-event-${event.value}`}
+                        checked={isSelected}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            form.setValue(
+                              "subscribedEvents",
+                              [...selectedEvents, event.value],
+                              { shouldValidate: true, shouldDirty: true }
+                            );
+                          } else {
+                            form.setValue(
+                              "subscribedEvents",
+                              selectedEvents.filter((e) => e !== event.value),
+                              { shouldValidate: true, shouldDirty: true }
+                            );
+                          }
+                        }}
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <label
+                          htmlFor={`${provider}-event-${event.value}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
-                          <Checkbox
-                            id={`${kind}-event-${event.value}`}
-                            checked={isSelected}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                form.setValue(
-                                  "subscribedEvents",
-                                  [...selectedEvents, event.value],
-                                  { shouldValidate: true, shouldDirty: true }
-                                );
-                              } else {
-                                form.setValue(
-                                  "subscribedEvents",
-                                  selectedEvents.filter(
-                                    (e) => e !== event.value
-                                  ),
-                                  { shouldValidate: true, shouldDirty: true }
-                                );
-                              }
-                            }}
-                          />
-                          <div className="grid gap-1.5 leading-none">
-                            <label
-                              htmlFor={`${kind}-event-${event.value}`}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                              {event.name}
-                            </label>
-                          </div>
-                        </div>
-                      );
-                    }
-                  )}
-                </div>
-                {fieldState.error && (
-                  <div className="dark:text-warning-night flex items-center gap-1 text-xs text-warning">
-                    {fieldState.error.message}
-                  </div>
-                )}
+                          {event.name}
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          />
-        )}
+              {fieldState.error && (
+                <div className="dark:text-warning-night flex items-center gap-1 text-xs text-warning">
+                  {fieldState.error.message}
+                </div>
+              )}
+            </div>
+          )}
+        />
+      )}
 
-      {isGithub && owner && (
-        <CreateWebhookGithubConnection
+      {provider && provider !== "test" && (
+        <CreateWebhookSourceWithProviderForm
           owner={owner}
-          serviceData={serviceData}
-          isFetchingServiceData={isFetchingServiceData}
-          onFetchServiceData={fetchServiceData}
-          onGithubDataChange={onRemoteProviderDataChange}
+          provider={provider}
+          onDataToCreateWebhookChange={onRemoteProviderDataChange}
           onReadyToSubmitChange={onPresetReadyToSubmitChange}
         />
       )}
 
-      {isCustom && (
+      {!provider && (
         <div>
           <CollapsibleComponent
             rootProps={{ defaultOpen: false }}

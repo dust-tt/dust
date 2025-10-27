@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import type { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
@@ -18,9 +19,13 @@ import type {
   WebhookSourceWithViewsAndUsageType,
 } from "@app/types/triggers/webhooks";
 import {
-  postWebhookSourcesSchema,
-  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
+  WEBHOOK_PRESETS,
+  WebhookSourcesSchema,
 } from "@app/types/triggers/webhooks";
+
+export const PostWebhookSourcesSchema = WebhookSourcesSchema;
+
+export type PostWebhookSourcesBody = z.infer<typeof PostWebhookSourcesSchema>;
 
 export type GetWebhookSourcesResponseBody = {
   success: true;
@@ -98,7 +103,7 @@ async function handler(
     }
 
     case "POST": {
-      const bodyValidation = postWebhookSourcesSchema.safeParse(req.body);
+      const bodyValidation = PostWebhookSourcesSchema.safeParse(req.body);
 
       if (!bodyValidation.success) {
         const pathError = fromError(bodyValidation.error).toString();
@@ -119,17 +124,27 @@ async function handler(
         signatureAlgorithm,
         includeGlobal,
         subscribedEvents,
-        kind,
+        provider,
         connectionId,
         remoteMetadata,
       } = bodyValidation.data;
+
+      if (provider && subscribedEvents.length === 0) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Subscribed events must not be empty.",
+          },
+        });
+      }
 
       const workspace = auth.getNonNullableWorkspace();
 
       const trimmedSignatureHeader = signatureHeader.trim();
 
       try {
-        const webhookSourceRes = await WebhookSourceResource.makeNew(auth, {
+        const webhookSource = await WebhookSourceResource.makeNew(auth, {
           workspaceId: workspace.id,
           name,
           secret:
@@ -139,18 +154,12 @@ async function handler(
                 ? secret
                 : generateSecureSecret(64),
           urlSecret: generateSecureSecret(64),
-          kind,
+          provider,
           signatureHeader:
             trimmedSignatureHeader.length > 0 ? trimmedSignatureHeader : null,
           signatureAlgorithm,
           subscribedEvents,
         });
-
-        if (webhookSourceRes.isErr()) {
-          throw new Error(webhookSourceRes.error.message);
-        }
-
-        const webhookSource = webhookSourceRes.value;
 
         if (includeGlobal) {
           const systemView =
@@ -179,7 +188,7 @@ async function handler(
           });
         }
 
-        if (kind !== "custom" && connectionId && remoteMetadata) {
+        if (provider && connectionId && remoteMetadata) {
           // Allow redirection to public URL in local dev for webhook registrations.
           const baseUrl =
             process.env.DUST_WEBHOOKS_PUBLIC_URL ?? config.getClientFacingUrl();
@@ -188,8 +197,7 @@ async function handler(
             workspaceId: workspace.sId,
             webhookSource: webhookSource.toJSONForAdmin(),
           });
-          const service =
-            WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].webhookService;
+          const service = WEBHOOK_PRESETS[provider].webhookService;
           const result = await service.createWebhooks({
             auth,
             connectionId,

@@ -24,7 +24,6 @@ import { useController, useFormContext } from "react-hook-form";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
-import { WebhookSourceGithubDetails } from "@app/components/triggers/WebhookSourceGithubDetails";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import {
@@ -34,7 +33,7 @@ import {
 } from "@app/lib/webhookSource";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
-import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsInfoProps = {
   webhookSourceView: WebhookSourceViewForAdminType;
@@ -108,7 +107,7 @@ export function WebhookSourceDetailsInfo({
     });
   }, [owner.sId, webhookSourceView.webhookSource]);
 
-  const isCustomKind = webhookSourceView.webhookSource.kind === "custom";
+  const { provider } = webhookSourceView.webhookSource;
 
   return (
     <div className="flex flex-col gap-2">
@@ -121,7 +120,7 @@ export function WebhookSourceDetailsInfo({
       <div className="space-y-5 text-foreground dark:text-foreground-night">
         <div className="space-y-2">
           <Label htmlFor="trigger-name-icon">
-            {isCustomKind ? "Name & Icon" : "Name"}
+            {provider ? "Name" : "Name & Icon"}
           </Label>
           <div className="flex items-end space-x-2">
             <div className="flex-grow">
@@ -133,7 +132,7 @@ export function WebhookSourceDetailsInfo({
                 placeholder={webhookSourceView.webhookSource.name}
               />
             </div>
-            {isCustomKind && (
+            {!provider && (
               <PopoverRoot open={isPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -192,54 +191,54 @@ export function WebhookSourceDetailsInfo({
           </div>
         </div>
 
-        {webhookSourceView.webhookSource.kind === "github" && (
-          <WebhookSourceGithubDetails
-            webhookSource={webhookSourceView.webhookSource}
-          />
-        )}
+        {provider &&
+          (() => {
+            const DetailsComponent =
+              WEBHOOK_PRESETS[provider].components.detailsComponent;
+            return (
+              <DetailsComponent
+                webhookSource={webhookSourceView.webhookSource}
+              />
+            );
+          })()}
 
         <div>
           <Page.H variant="h6">Source Name</Page.H>
           <Page.P>{webhookSourceView.webhookSource.name}</Page.P>
         </div>
-        {webhookSourceView.webhookSource.kind !== "custom" &&
-          WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[
-            webhookSourceView.webhookSource.kind
-          ].events.length > 0 && (
-            <div className="space-y-3">
-              <Page.H variant="h6">Subscribed events</Page.H>
-              <div className="space-y-2">
-                {WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[
-                  webhookSourceView.webhookSource.kind
-                ].events.map((event) => {
-                  const isSubscribed =
-                    webhookSourceView.webhookSource.subscribedEvents.includes(
-                      event.value
-                    );
-                  return (
-                    <div
-                      key={event.value}
-                      className="flex items-center space-x-3"
-                    >
-                      <Checkbox
-                        id={`${webhookSourceView.webhookSource.kind}-event-${event.value}`}
-                        checked={isSubscribed}
-                        disabled
-                      />
-                      <div className="grid gap-1.5 leading-none">
-                        <label
-                          htmlFor={`${webhookSourceView.webhookSource.kind}-event-${event.value}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {event.name}
-                        </label>
-                      </div>
-                    </div>
+        {provider && WEBHOOK_PRESETS[provider].events.length > 0 && (
+          <div className="space-y-3">
+            <Page.H variant="h6">Subscribed events</Page.H>
+            <div className="space-y-2">
+              {WEBHOOK_PRESETS[provider].events.map((event) => {
+                const isSubscribed =
+                  webhookSourceView.webhookSource.subscribedEvents.includes(
+                    event.value
                   );
-                })}
-              </div>
+                return (
+                  <div
+                    key={event.value}
+                    className="flex items-center space-x-3"
+                  >
+                    <Checkbox
+                      id={`${provider}-event-${event.value}`}
+                      checked={isSubscribed}
+                      disabled
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <label
+                        htmlFor={`${provider}-event-${event.value}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {event.name}
+                      </label>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </div>
+        )}
         {webhookSourceView.webhookSource.secret && (
           <div>
             <Page.H variant="h6">Secret</Page.H>

@@ -15,7 +15,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useCallback } from "react";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
@@ -158,7 +158,7 @@ export default function AgentMCPActions({
         subscription={subscription}
         owner={owner}
         pageTitle={`Dust - MCP Actions for ${agent.name}`}
-        navChildren={<AssistantSidebarMenu owner={owner} />}
+        navChildren={<AgentSidebarMenu owner={owner} />}
       >
         <div className="mb-4">
           <Breadcrumbs items={items} />
