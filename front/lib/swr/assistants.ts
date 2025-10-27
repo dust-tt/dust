@@ -272,14 +272,6 @@ export function useAgentConfigurationFeedbacksByDescVersion({
     )[];
   }> = fetcher;
 
-  const urlParams = new URLSearchParams({
-    limit: limit.toString(),
-    orderColumn: "id",
-    orderDirection: "desc",
-    withMetadata: "true",
-    filter,
-  });
-
   const [hasMore, setHasMore] = useState(true);
 
   const { data, error, mutate, size, setSize, isLoading, isValidating } =
@@ -295,6 +287,15 @@ export function useAgentConfigurationFeedbacksByDescVersion({
           setHasMore(false);
           return null;
         }
+
+        // Build URLSearchParams fresh for each page to avoid param accumulation.
+        const urlParams = new URLSearchParams({
+          limit: limit.toString(),
+          orderColumn: "id",
+          orderDirection: "desc",
+          withMetadata: "true",
+          filter,
+        });
 
         if (previousPageData !== null) {
           const lastIdValue =

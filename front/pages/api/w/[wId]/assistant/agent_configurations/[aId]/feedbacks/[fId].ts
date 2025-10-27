@@ -70,7 +70,7 @@ async function handler(
         return apiError(req, res, {
           status_code: 403,
           api_error: {
-            type: "agent_configuration_not_found",
+            type: "unauthorized",
             message: "The feedback does not belong to this agent.",
           },
         });
