@@ -27,6 +27,7 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
+import { isAgentMention } from "@app/types";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 
 export function HelpDropdown({
@@ -65,7 +66,9 @@ export function HelpDropdown({
           ? input
           : `@help ${input.trimStart()}`;
         const mentionsWithHelp = mentions.some(
-          (mention) => mention.configurationId === GLOBAL_AGENTS_SID.HELPER
+          (mention) =>
+            isAgentMention(mention) &&
+            mention.configurationId === GLOBAL_AGENTS_SID.HELPER
         )
           ? mentions
           : [

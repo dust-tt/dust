@@ -13,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EyeIcon,
+  UserIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React from "react";
@@ -22,6 +23,8 @@ import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
 import type { RichMention } from "../types";
+import { isRichUserMention } from "../types";
+import { isRichAgentMention } from "../types";
 
 interface MentionDropdownProps {
   mention: RichMention;
@@ -30,8 +33,10 @@ interface MentionDropdownProps {
 }
 
 /**
- * Dropdown menu component for agent mentions.
- * Provides actions to start a new conversation or view agent details.
+ * Dropdown menu component for mentions.
+ * Provides actions based on the mention type:
+ * - Agent mentions: start a conversation or view details
+ * - User mentions: view user profile
  */
 export function MentionDropdown({
   mention,
@@ -41,37 +46,53 @@ export function MentionDropdown({
   const router = useRouter();
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
 
-  // Only support agent mentions for now.
-  if (mention.type !== "agent") {
-    return <>{children}</>;
+  // Agent mention actions.
+  if (isRichAgentMention(mention)) {
+    const handleStartConversation = async () => {
+      await router.push(
+        getConversationRoute(owner.sId, "new", `agent=${mention.id}`)
+      );
+    };
+
+    const handleSeeDetails = () => {
+      onOpenChangeAgentModal(true);
+      setQueryParam(router, "agentDetails", mention.id);
+    };
+
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+        <DropdownMenuContent side="bottom" align="start">
+          <DropdownMenuItem
+            onClick={handleStartConversation}
+            icon={ChatBubbleBottomCenterTextIcon}
+            label={`New conversation with @${mention.label}`}
+          />
+          <DropdownMenuItem
+            onClick={handleSeeDetails}
+            icon={EyeIcon}
+            label={`About @${mention.label}`}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
   }
 
-  const handleStartConversation = async () => {
-    await router.push(
-      getConversationRoute(owner.sId, "new", `agent=${mention.id}`)
+  // User mention actions.
+  if (isRichUserMention(mention)) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+        <DropdownMenuContent side="bottom" align="start">
+          <DropdownMenuItem
+            icon={UserIcon}
+            label={`Profile of @${mention.label}: ${mention.description || ""}`}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
-  };
+  }
 
-  const handleSeeDetails = () => {
-    onOpenChangeAgentModal(true);
-    setQueryParam(router, "agentDetails", mention.id);
-  };
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
-      <DropdownMenuContent side="bottom" align="start">
-        <DropdownMenuItem
-          onClick={handleStartConversation}
-          icon={ChatBubbleBottomCenterTextIcon}
-          label={`New conversation with @${mention.label}`}
-        />
-        <DropdownMenuItem
-          onClick={handleSeeDetails}
-          icon={EyeIcon}
-          label={`About @${mention.label}`}
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+  // Unsupported mention type, render children without dropdown.
+  return <>{children}</>;
 }

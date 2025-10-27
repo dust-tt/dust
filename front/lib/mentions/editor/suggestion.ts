@@ -1,7 +1,8 @@
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 
-import type { RichAgentMention, RichMention } from "../types";
+import { compareForFuzzySort, subFilter } from "../../utils";
+import type { RichAgentMention, RichMention, RichUserMention } from "../types";
+import { isRichUserMention } from "../types";
 import { isRichAgentMention } from "../types";
 
 /**
@@ -93,10 +94,74 @@ export function filterAgentSuggestions(
 }
 
 /**
+ * Filters and sorts user mention suggestions based on a query string.
+ */
+function filterAndSortUserSuggestions(
+  lowerCaseQuery: string,
+  suggestions: RichUserMention[]
+): RichUserMention[] {
+  return suggestions
+    .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
+    .sort((a, b) =>
+      compareForFuzzySort(
+        lowerCaseQuery,
+        a.label.toLocaleLowerCase(),
+        b.label.toLocaleLowerCase()
+      )
+    );
+}
+
+/**
+ * Filters user suggestions based on a query, with fallback support.
+ *
+ * When the query is empty, returns suggestions in their pre-defined order.
+ * When the query is non-empty, filters and sorts both primary and fallback
+ * suggestions, prioritizing results from the user's list.
+ *
+ * @param query - The search query string
+ * @param suggestions - Primary suggestions (e.g., recent/favorite users)
+ * @param fallbackSuggestions - Fallback suggestions (e.g., all workspace users)
+ * @returns Filtered and sorted suggestions, up to SUGGESTION_DISPLAY_LIMIT
+ */
+export function filterUserSuggestions(
+  query: string,
+  suggestions: RichUserMention[],
+  fallbackSuggestions: RichUserMention[]
+): RichUserMention[] {
+  // When queried without content, keep the pre-defined order.
+  if (query === "") {
+    return suggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
+  }
+
+  const lowerCaseQuery = query.toLowerCase();
+
+  const inListSuggestions = filterAndSortUserSuggestions(
+    lowerCaseQuery,
+    suggestions
+  ).slice(0, SUGGESTION_DISPLAY_LIMIT);
+
+  // If there are enough suggestions from the user's list, use them.
+  if (inListSuggestions.length >= SUGGESTION_DISPLAY_LIMIT) {
+    return inListSuggestions;
+  }
+
+  // Otherwise, fallback to all suggestions.
+  const allSuggestionsNoDuplicates = filterAndSortUserSuggestions(
+    lowerCaseQuery,
+    fallbackSuggestions
+  ).filter((item) => !inListSuggestions.find((i) => i.id === item.id));
+
+  return [...inListSuggestions, ...allSuggestionsNoDuplicates].slice(
+    0,
+    SUGGESTION_DISPLAY_LIMIT
+  );
+}
+
+/**
  * Filters all mention suggestions (agents and users) based on a query.
  *
- * Currently only supports agent suggestions, but structured to support
- * user mentions in the future.
+ * Supports both agent and user suggestions. User suggestions are only
+ * returned when the mentions_v2 feature flag is enabled (controlled by caller).
  */
 export function filterMentionSuggestions(
   query: string,
@@ -105,15 +170,28 @@ export function filterMentionSuggestions(
 ): RichMention[] {
   // Separate agent and user suggestions.
   const agentSuggestions = suggestions.filter(isRichAgentMention);
+  const userSuggestions = suggestions.filter(isRichUserMention);
   const fallbackAgentSuggestions =
     fallbackSuggestions.filter(isRichAgentMention);
+  const fallbackUserSuggestions = fallbackSuggestions.filter(isRichUserMention);
 
-  // For now, only filter agents.
-  return filterAgentSuggestions(
+  // Filter both agents and users.
+  const filteredAgents = filterAgentSuggestions(
     query,
     agentSuggestions,
     fallbackAgentSuggestions
   );
+
+  const filteredUsers = filterUserSuggestions(
+    query,
+    userSuggestions,
+    fallbackUserSuggestions
+  );
+
+  // Combine results: agents first, then users.
+  // If we have too many results, we prioritize agents.
+  const totalResults = [...filteredAgents, ...filteredUsers];
+  return totalResults.slice(0, SUGGESTION_DISPLAY_LIMIT);
 }
 
 /**
@@ -122,6 +200,7 @@ export function filterMentionSuggestions(
 export const mentionSuggestions = {
   filter: filterMentionSuggestions,
   filterAgents: filterAgentSuggestions,
+  filterUsers: filterUserSuggestions,
   displayLimit: SUGGESTION_DISPLAY_LIMIT,
   priorities: SUGGESTION_PRIORITY,
 };

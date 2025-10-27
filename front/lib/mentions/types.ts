@@ -25,7 +25,7 @@ export type UserMention = {
  * Union type of all supported mention types.
  * Currently only agent mentions are supported in the API layer.
  */
-export type MentionType = AgentMention;
+export type MentionType = AgentMention | UserMention;
 
 /**
  * Rich mention type with full display metadata.
@@ -69,6 +69,19 @@ export function isRichAgentMention(
   mention: RichMention
 ): mention is RichAgentMention {
   return mention.type === "agent";
+}
+
+/**
+ * Type guard to check if a mention is a user mention.
+ */
+export function isUserMention(mention: MentionType): mention is UserMention {
+  return (
+    mention &&
+    "type" in mention &&
+    mention.type === "user" &&
+    "userId" in mention &&
+    mention.userId !== undefined
+  );
 }
 
 /**
@@ -117,6 +130,16 @@ export function toRichMention(
       description: metadata.description,
       userFavorite: metadata.userFavorite,
     } satisfies RichAgentMention;
+  }
+
+  if (isUserMention(mention)) {
+    return {
+      id: mention.userId,
+      type: "user",
+      label: metadata.label,
+      pictureUrl: metadata.pictureUrl,
+      description: metadata.description,
+    } satisfies RichUserMention;
   }
 
   throw new Error("Unsupported mention type");
