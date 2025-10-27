@@ -6,10 +6,8 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {FileType, WithAPIErrorResponse} from "@app/types";
-import {
-  isConversationFileUseCase
-} from "@app/types";
+import type { FileType, WithAPIErrorResponse } from "@app/types";
+import { isConversationFileUseCase } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
