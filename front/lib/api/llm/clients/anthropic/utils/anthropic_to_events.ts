@@ -26,7 +26,6 @@ export async function* streamLLMEvents(
     name: "",
     input: "",
   };
-  let finalEvents: LLMEvent[] = [];
   for await (const messageStreamEvent of messageStreamEvents) {
     if (messageStreamEvent.type === "message_start") {
       metadata["messageId"] = messageStreamEvent.message.id;
@@ -60,6 +59,7 @@ export async function* streamLLMEvents(
               break;
             case "input_json_delta":
               toolAccumulator.input += messageStreamEvent.delta.partial_json;
+              break;
             default:
               continue;
           }
@@ -76,8 +76,11 @@ export async function* streamLLMEvents(
             const stopReason = messageStreamEvent.delta.stop_reason;
             switch (stopReason) {
               case "end_turn":
+                break;
               case "stop_sequence":
+                break;
               case "tool_use":
+                break;
               /* When the assistant pauses the conversation, the stop reason is simply due to a long run, there was no error
                * the model simply decided to take a break here. It should simply be prompted to continue what it was doing.
                */
@@ -97,8 +100,6 @@ export async function* streamLLMEvents(
             }
           }
           break;
-        case "message_stop":
-
         default:
           continue;
       }

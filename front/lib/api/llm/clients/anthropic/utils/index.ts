@@ -1,4 +1,4 @@
-import { ModelConfigurationType } from "@app/types";
+import type { ModelConfigurationType } from "@app/types";
 
 export const CLAUDE_4_THINKING_BUDGET_TOKENS = {
   none: 0,

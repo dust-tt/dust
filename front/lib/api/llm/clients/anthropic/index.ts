@@ -1,20 +1,20 @@
 import Anthropic from "@anthropic-ai/sdk";
+import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent, ProviderMetadata } from "@app/lib/api/llm/types/events";
 import type { LLMOptions } from "@app/lib/api/llm/types/options";
-import {
-  dustManagedCredentials,
-  type ModelConfigurationType,
-  type ModelConversationTypeMultiActions,
+import type {
+  ModelConfigurationType,
+  ModelConversationTypeMultiActions,
 } from "@app/types";
-import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
+import { dustManagedCredentials } from "@app/types";
 
+import { CLAUDE_4_THINKING_BUDGET_TOKENS, isClaude4 } from "./utils";
 import { streamLLMEvents } from "./utils/anthropic_to_events";
 import { toMessage, toTool } from "./utils/conversation_to_anthropic";
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
-import { CLAUDE_4_THINKING_BUDGET_TOKENS, isClaude4 } from "./utils";
 
 export class AnthropicLLM extends LLM {
   private client: Anthropic;

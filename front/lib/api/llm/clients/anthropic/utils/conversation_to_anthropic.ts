@@ -15,7 +15,6 @@ import type {
   AssistantFunctionCallMessageTypeModel,
   Content,
   FunctionMessageTypeModel,
-  GPT_4_1_MINI_MODEL_CONFIG,
   ModelMessageTypeMultiActionsWithoutContentFragment,
   UserMessageTypeModel,
 } from "@app/types";
