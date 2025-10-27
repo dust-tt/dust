@@ -151,8 +151,6 @@ async function handler(
         subscribedEvents,
       });
 
-
-
       if (includeGlobal) {
         const systemView =
           await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
