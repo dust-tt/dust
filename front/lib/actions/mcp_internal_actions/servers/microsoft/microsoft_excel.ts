@@ -24,6 +24,7 @@ interface ExcelSession {
   expiresAt: number;
 }
 
+// Cache key format: "userId:driveItemId" to prevent cross-user session sharing
 const sessionCache = new Map<string, ExcelSession>();
 
 function createServer(
@@ -37,17 +38,26 @@ function createServer(
    */
   async function getExcelSession(
     client: Client,
-    driveItemId: string
+    driveItemId: string,
+    clientId: string
   ): Promise<string | null> {
     try {
+      // Validate clientId is provided
+      if (!clientId || clientId.trim() === "") {
+        throw new Error("Client ID is required for session management");
+      }
+
+      // Create composite cache key to prevent cross-user session sharing
+      const cacheKey = `${clientId}:${driveItemId}`;
+
       // Check cache
-      const cached = sessionCache.get(driveItemId);
+      const cached = sessionCache.get(cacheKey);
       if (cached) {
         if (cached.expiresAt > Date.now()) {
           return cached.sessionId;
         }
         // Remove expired entry
-        sessionCache.delete(driveItemId);
+        sessionCache.delete(cacheKey);
       }
 
       // Create new persistent session
@@ -61,7 +71,7 @@ function createServer(
       const sessionId = response.id;
       const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-      sessionCache.set(driveItemId, { sessionId, expiresAt });
+      sessionCache.set(cacheKey, { sessionId, expiresAt });
 
       return sessionId;
     } catch (err) {
@@ -76,11 +86,12 @@ function createServer(
   async function makeExcelRequest<T>(
     client: Client,
     driveItemId: string,
+    clientId: string,
     path: string,
     method: "get" | "post" | "patch" = "get",
     body?: unknown
   ): Promise<T> {
-    const sessionId = await getExcelSession(client, driveItemId);
+    const sessionId = await getExcelSession(client, driveItemId, clientId);
     const api = client.api(path);
 
     if (sessionId) {
@@ -194,6 +205,7 @@ function createServer(
           const response = await makeExcelRequest(
             client,
             itemId,
+            authInfo?.clientId ?? "",
             `${endpoint}/workbook/worksheets`,
             "get"
           );
@@ -271,6 +283,7 @@ function createServer(
           const response = await makeExcelRequest(
             client,
             itemId,
+            authInfo?.clientId ?? "",
             apiPath,
             "get"
           );
@@ -415,6 +428,7 @@ function createServer(
           const response = await makeExcelRequest(
             client,
             itemId,
+            authInfo?.clientId ?? "",
             apiPath,
             "patch",
             { values: data }
@@ -479,6 +493,7 @@ function createServer(
           const response = await makeExcelRequest(
             client,
             itemId,
+            authInfo?.clientId ?? "",
             apiPath,
             "post",
             { name: worksheetName }
@@ -554,7 +569,16 @@ function createServer(
             worksheetName
           )}/range(address='${encodeURIComponent(range)}')/clear`;
 
-          await makeExcelRequest(client, itemId, apiPath, "post", { applyTo });
+          await makeExcelRequest(
+            client,
+            itemId,
+            authInfo?.clientId ?? "",
+            apiPath,
+            "post",
+            {
+              applyTo,
+            }
+          );
 
           return new Ok([
             {
