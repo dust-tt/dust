@@ -6,7 +6,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import { launchStoreAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
+import { launchStoreAgentAnalyticsWorkflow } from "@app/temporal/analytics_queue/client";
 import type {
   ConversationType,
   ConversationWithoutContentType,
@@ -206,21 +206,15 @@ export async function deleteMessageFeedback(
   return new Ok(undefined);
 }
 
-export async function triggerAgentMessageFeedbackWorkflow({
-  auth,
+export async function triggerAgentMessageFeedbackWorkflow(auth: Authenticator, {
   feedback,
+  messageId,
+  conversationId,
 }: {
-  auth: Authenticator;
   feedback: AgentMessageFeedbackType;
+  messageId: string;
+  conversationId: string;
 }): Promise<void> {
-  if (!feedback.messageId) {
-    logger.warn(
-      { feedbackId: feedback.id },
-      "Skipping agent message feedback workflow launch: missing messageId"
-    );
-    return;
-  }
-
   const workspace = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(workspace);
 
@@ -228,9 +222,16 @@ export async function triggerAgentMessageFeedbackWorkflow({
     return;
   }
 
-  const launchResult = await launchStoreAgentMessageFeedbackWorkflow({
+  const launchResult = await launchStoreAgentAnalyticsWorkflow({
     authType: auth.toJSON(),
-    feedback,
+    agentUsageAnalyticsArgs: {
+      type: "agent_message_feedback",
+      feedback,
+      message: {
+        agentMessageId: messageId,
+        conversationId,
+      },
+    },
   });
 
   if (launchResult.isErr()) {

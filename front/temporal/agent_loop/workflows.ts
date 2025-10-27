@@ -223,7 +223,7 @@ export async function agentLoopWorkflow({
 
       await launchAgentMessageAnalyticsActivity(authType, {
         type: "agent_message",
-        content: agentLoopArgs,
+        message: agentLoopArgs,
       });
     });
 

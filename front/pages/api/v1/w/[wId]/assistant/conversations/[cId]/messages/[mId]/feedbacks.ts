@@ -8,6 +8,7 @@ import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conve
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import {
   deleteMessageFeedback,
+  triggerAgentMessageFeedbackWorkflow,
   upsertMessageFeedback,
 } from "@app/lib/api/assistant/feedback";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -16,7 +17,6 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
-import { launchAgentMessageAnalyticsActivity } from "@app/temporal/agent_loop/activities/analytics";
 import type { WithAPIErrorResponse } from "@app/types";
 import { getUserEmailFromHeaders } from "@app/types/user";
 
@@ -251,14 +251,11 @@ async function handler(
         });
       } ``
 
-      await launchAgentMessageAnalyticsActivity(auth.toJSON(),
-        {
-          type: "agent_message_feedback",
-          content: {
-            ...created.value,
-            conversationId,
-          },
-        });
+      await triggerAgentMessageFeedbackWorkflow(auth, {
+        feedback: created.value,
+        conversationId: conversation.sId,
+        messageId: messageId,
+      });
 
       res.status(200).json({ success: true });
       return;

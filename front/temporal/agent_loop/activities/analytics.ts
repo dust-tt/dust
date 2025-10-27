@@ -8,10 +8,14 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 export type AgentUsageAnalyticsArgs = {
   type: "agent_message"
-  content: AgentLoopArgs
+  message: AgentLoopArgs
 } | {
   type: "agent_message_feedback"
-  content: AgentMessageFeedbackType & Pick<AgentLoopArgs, "conversationId">
+  feedback: AgentMessageFeedbackType
+  message: {
+    agentMessageId: string;
+    conversationId: string;
+  }
 }
 
 /**
@@ -45,7 +49,7 @@ export async function launchAgentMessageAnalyticsActivity(
   if (result.isErr()) {
     logger.warn(
       {
-        agentMessageId: agentUsageAnalyticsArgs.content.agentMessageId,
+        agentMessageId: agentUsageAnalyticsArgs.message.agentMessageId,
         error: result.error,
         workspaceId: authType.workspaceId,
       },
