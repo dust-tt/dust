@@ -8,7 +8,6 @@ import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/g
 import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/github/github_webhook_source_presets";
 import type { TestServiceData } from "@app/lib/triggers/built-in-webhooks/test/test_webhook_source_presets";
 import { TEST_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/test/test_webhook_source_presets";
-import type { ZendeskAdditionalData } from "@app/lib/triggers/built-in-webhooks/zendesk/zendesk_service_types";
 import { ZENDESK_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/zendesk/zendesk_webhook_source_presets";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -34,10 +33,13 @@ export function isWebhookProvider(
   return WEBHOOK_PROVIDERS.includes(provider as WebhookProvider);
 }
 
+export const NoAdditionalDataSchema = z.object({});
+export type NoAdditionalData = z.infer<typeof NoAdditionalDataSchema>;
+
 type WebhookProviderServiceDataMap = {
   github: GithubAdditionalData;
   test: TestServiceData;
-  zendesk: ZendeskAdditionalData;
+  zendesk: NoAdditionalData;
 };
 
 export type WebhookServiceDataForProvider<P extends WebhookProvider> =

@@ -52,7 +52,7 @@ export function CreateWebhookSourceWithProviderForm({
         owner,
         provider,
         useCase: "webhooks",
-        extraConfig: extraConfig,
+        extraConfig,
       });
 
       if (connectionRes.isErr()) {

@@ -1,6 +1,7 @@
 import { ExternalLinkIcon, Page } from "@dust-tt/sparkle";
 
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
+import { ZendeskWebhookStoredMetadataSchema } from "@app/lib/triggers/built-in-webhooks/zendesk/zendesk_service_types";
 
 export function WebhookSourceZendeskDetails({
   webhookSource,
@@ -9,9 +10,14 @@ export function WebhookSourceZendeskDetails({
     return null;
   }
 
-  const metadata = webhookSource.remoteMetadata;
-  const zendeskSubdomain = metadata.zendeskSubdomain as string | undefined;
-  const webhookId = metadata.webhookId as string | undefined;
+  const parsed = ZendeskWebhookStoredMetadataSchema.safeParse(
+    webhookSource.remoteMetadata
+  );
+
+  const zendeskSubdomain = parsed.success
+    ? parsed.data.zendeskSubdomain
+    : undefined;
+  const webhookId = parsed.success ? parsed.data.webhookId : undefined;
 
   if (!zendeskSubdomain) {
     return null;
