@@ -4,7 +4,7 @@ import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -71,11 +71,7 @@ makeScript({}, async ({ execute }, logger) => {
   await concurrentExecutor(
     Array.from(conversationsPerWorkspace.entries()),
     async ([workspaceId, conversationIds]) => {
-      const workspace = await WorkspaceModel.findOne({
-        where: {
-          id: workspaceId,
-        },
-      });
+      const workspace = await WorkspaceResource.fetchByModelId(workspaceId);
 
       if (!workspace) {
         logger.error({ workspaceId }, "Workspace not found for conversation");
