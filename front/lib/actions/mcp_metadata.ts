@@ -6,6 +6,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { ProxyAgent } from "undici";
 
 import { isInternalAllowedIcon } from "@app/components/resources/resources_icons";
@@ -473,7 +474,9 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
     return {
       name,
       description: description ?? "",
-      inputSchema,
+      // TODO: the types are slightly incompatible: we have an unknown as the values of `properties`
+      //  whereas JSONSchema expects a JSONSchema7Definition.
+      inputSchema: inputSchema as JSONSchema,
     };
   });
 }
