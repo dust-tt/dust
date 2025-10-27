@@ -256,12 +256,14 @@ interface AgentConfigurationFeedbacksByDescVersionProps {
   workspaceId: string;
   agentConfigurationId: string | null;
   limit: number;
+  filter?: "active" | "all";
 }
 
 export function useAgentConfigurationFeedbacksByDescVersion({
   workspaceId,
   agentConfigurationId,
   limit,
+  filter = "active",
 }: AgentConfigurationFeedbacksByDescVersionProps) {
   const agentConfigurationFeedbacksFetcher: Fetcher<{
     feedbacks: (
@@ -275,6 +277,7 @@ export function useAgentConfigurationFeedbacksByDescVersion({
     orderColumn: "id",
     orderDirection: "desc",
     withMetadata: "true",
+    filter,
   });
 
   const [hasMore, setHasMore] = useState(true);

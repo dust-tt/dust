@@ -27,6 +27,7 @@ export type AgentMessageFeedbackType = {
   agentConfigurationId: string;
   agentConfigurationVersion: number;
   isConversationShared: boolean;
+  dismissed: boolean;
 };
 
 export type FeedbackUserInfo = {
@@ -124,6 +125,7 @@ export async function upsertMessageFeedback(
       thumbDirection,
       content,
       isConversationShared: isConversationShared ?? false,
+      dismissed: false,
     });
   } catch (e) {
     return new Err(normalizeError(e));
@@ -186,11 +188,13 @@ export async function getAgentFeedbacks({
   agentConfigurationId,
   withMetadata,
   paginationParams,
+  filter = "active",
 }: {
   auth: Authenticator;
   withMetadata: boolean;
   agentConfigurationId: string;
   paginationParams: PaginationParams;
+  filter?: "active" | "all";
 }): Promise<
   Result<
     (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[],
@@ -214,6 +218,7 @@ export async function getAgentFeedbacks({
         workspace: owner,
         agentConfiguration,
         paginationParams,
+        filter,
       }
     );
 

@@ -120,20 +120,55 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
   }
 
+  async dismiss() {
+    return this.update({ dismissed: true });
+  }
+
+  async undismiss() {
+    return this.update({ dismissed: false });
+  }
+
+  static async fetchByFeedbackId(
+    auth: Authenticator,
+    feedbackId: number
+  ): Promise<AgentMessageFeedbackResource | null> {
+    const feedback = await AgentMessageFeedback.findOne({
+      where: {
+        id: feedbackId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    if (!feedback) {
+      return null;
+    }
+
+    return new AgentMessageFeedbackResource(
+      AgentMessageFeedback,
+      feedback.get()
+    );
+  }
+
   static async getAgentConfigurationFeedbacksByDescVersion({
     workspace,
     agentConfiguration,
     paginationParams,
+    filter = "active",
   }: {
     workspace: WorkspaceType;
     agentConfiguration: LightAgentConfigurationType;
     paginationParams: PaginationParams;
+    filter?: "active" | "all";
   }) {
     const where: WhereOptions<AgentMessageFeedback> = {
       // Safety check: global models share ids across workspaces and some have had feedbacks.
       workspaceId: workspace.id,
       agentConfigurationId: agentConfiguration.sId,
     };
+
+    if (filter === "active") {
+      where.dismissed = false;
+    }
 
     if (paginationParams.lastValue) {
       const op = paginationParams.orderDirection === "desc" ? Op.lt : Op.gt;
@@ -480,6 +515,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       thumbDirection: this.thumbDirection,
       content: this.content ? this.content.replace(/\r?\n/g, "\\n") : null,
       isConversationShared: this.isConversationShared,
+      dismissed: this.dismissed,
       createdAt: this.createdAt,
       agentConfigurationId: this.agentConfigurationId,
       agentConfigurationVersion: this.agentConfigurationVersion,
