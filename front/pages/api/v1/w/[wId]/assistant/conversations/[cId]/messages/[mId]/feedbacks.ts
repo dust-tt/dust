@@ -249,7 +249,7 @@ async function handler(
             message: "Failed to upsert feedback",
           },
         });
-      } ``
+      }
 
       await triggerAgentMessageFeedbackWorkflow(auth, {
         feedback: created.value,

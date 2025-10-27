@@ -301,17 +301,17 @@ async function executeStepIteration({
     actionBlobs.map(({ actionId, retryPolicy }) =>
       retryPolicy === "no_retry"
         ? runToolActivity(authType, {
-          actionId,
-          runAgentArgs: agentLoopArgs,
-          step: currentStep,
-          runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-        })
+            actionId,
+            runAgentArgs: agentLoopArgs,
+            step: currentStep,
+            runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+          })
         : runRetryableToolActivity(authType, {
-          actionId,
-          runAgentArgs: agentLoopArgs,
-          step: currentStep,
-          runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-        })
+            actionId,
+            runAgentArgs: agentLoopArgs,
+            step: currentStep,
+            runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+          })
     )
   );
 

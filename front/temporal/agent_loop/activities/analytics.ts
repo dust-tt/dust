@@ -6,17 +6,19 @@ import logger from "@app/logger/logger";
 import { launchStoreAgentAnalyticsWorkflow } from "@app/temporal/analytics_queue/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
-export type AgentUsageAnalyticsArgs = {
-  type: "agent_message"
-  message: AgentLoopArgs
-} | {
-  type: "agent_message_feedback"
-  feedback: AgentMessageFeedbackType
-  message: {
-    agentMessageId: string;
-    conversationId: string;
-  }
-}
+export type AgentUsageAnalyticsArgs =
+  | {
+      type: "agent_message";
+      message: AgentLoopArgs;
+    }
+  | {
+      type: "agent_message_feedback";
+      feedback: AgentMessageFeedbackType;
+      message: {
+        agentMessageId: string;
+        conversationId: string;
+      };
+    };
 
 /**
  * Launch agent message analytics workflow in fire-and-forget mode.

@@ -118,7 +118,7 @@ export async function upsertMessageFeedback(
       isConversationShared,
     });
 
-    const serializedFeedback = serializeFeedback({
+    const serializedFeedback = toAgentMessageFeedback({
       feedbackResource: feedback,
       messageSId: message.sId,
       userId: user.id,
@@ -144,7 +144,7 @@ export async function upsertMessageFeedback(
       dismissed: false,
     });
 
-    const serializedFeedback = serializeFeedback({
+    const serializedFeedback = toAgentMessageFeedback({
       feedbackResource: newFeedback,
       messageSId: message.sId,
       userId: user.id,
@@ -247,7 +247,7 @@ export async function triggerAgentMessageFeedbackWorkflow(auth: Authenticator, {
   }
 }
 
-function serializeFeedback({
+function toAgentMessageFeedback({
   feedbackResource,
   messageSId,
   userId,

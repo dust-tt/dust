@@ -7,10 +7,7 @@ import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
 import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import {
-  AgentMessage,
-  Message,
-} from "@app/lib/models/assistant/conversation";
+import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -61,8 +58,6 @@ export async function storeAgentAnalyticsActivity(
   // Collect token usage from run data.
   const tokens = await collectTokenUsage(auth, agentMessageRow);
 
-  logger.info({ tokens }, "Tokens");
-
   // Collect tool usage data from the agent message actions.
   const toolsUsed = await collectToolUsageFromMessage(auth, agentMessage);
 
@@ -77,7 +72,9 @@ export async function storeAgentAnalyticsActivity(
     latency_ms: 0,
     message_id: agentMessage.sId,
     status: agentMessage.status,
-    timestamp: new Date(Math.floor(agentMessage.created / 1000) * 1000).toISOString(),
+    timestamp: new Date(
+      Math.floor(agentMessage.created / 1000) * 1000
+    ).toISOString(),
     tokens,
     tools_used: toolsUsed,
     user_id: userMessage.user?.sId ?? "unknown",
@@ -131,9 +128,6 @@ async function collectTokenUsage(
     async (runResource) => runResource.listRunUsages(auth),
     { concurrency: 5 }
   );
-
-  logger.info({ runResources }, "Run resources");
-  logger.info({ runUsages }, "Run usages");
 
   return runUsages.flat().reduce(
     (acc, usage) => {
@@ -268,7 +262,9 @@ async function fetchMessageByAgentMessageId(
     type: "agent_message" as const,
     version: message.version,
     rank: message.rank,
-    created: Math.floor(new Date(message.agentMessage.createdAt).getTime() / 1000) * 1000,
+    created:
+      Math.floor(new Date(message.agentMessage.createdAt).getTime() / 1000) *
+      1000,
     completedTs: message.agentMessage.completedAt?.getTime() ?? null,
     parentMessageId: message.parentId?.toString() ?? null,
     parentAgentMessageId: null,
@@ -310,7 +306,9 @@ export async function storeAgentMessageFeedbackActivity(
   );
 
   if (!agentMessage) {
-    throw new Error(`Message not found for agentMessageId: ${message.agentMessageId}`);
+    throw new Error(
+      `Message not found for agentMessageId: ${message.agentMessageId}`
+    );
   }
 
   // Find the agent message by ID to get the numeric ID
@@ -322,18 +320,22 @@ export async function storeAgentMessageFeedbackActivity(
   });
 
   if (!agentMessageRecord) {
-    throw new Error(`Agent message record not found for agentMessageId: ${message.agentMessageId}`);
+    throw new Error(
+      `Agent message record not found for agentMessageId: ${message.agentMessageId}`
+    );
   }
 
   // Fetch all existing feedbacks for this agent message
-  const existingFeedbacks = await AgentMessageFeedbackResource.listByAgentMessageId(
-    auth,
-    agentMessageRecord.id
-  );
+  const existingFeedbacks =
+    await AgentMessageFeedbackResource.listByAgentMessageId(
+      auth,
+      agentMessageRecord.id
+    );
 
   // Convert existing feedbacks to analytics format
   const existingAnalyticsFeedbacks = existingFeedbacks
-    .filter((existingFeedback) => existingFeedback.id !== feedback.feedback_id).map((existingFeedback) => ({
+    .filter((existingFeedback) => existingFeedback.id !== feedback.feedback_id)
+    .map((existingFeedback) => ({
       feedback_id: existingFeedback.id,
       user_id: existingFeedback.user?.id?.toString() ?? "unknown",
       thumb_direction: existingFeedback.thumbDirection as "up" | "down",
@@ -350,13 +352,13 @@ export async function storeAgentMessageFeedbackActivity(
       agentMessageId: message.agentMessageId,
       existingCount: existingAnalyticsFeedbacks.length,
       newFeedback: feedback,
-      totalCount: allFeedbacks.length
+      totalCount: allFeedbacks.length,
     },
     "Storing agent message feedback activity with all feedbacks"
   );
 
   await updateAnalyticsFeedback(auth, {
     message: agentMessage,
-    feedbacks: allFeedbacks
+    feedbacks: allFeedbacks,
   });
 }

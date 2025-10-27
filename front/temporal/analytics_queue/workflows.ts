@@ -5,13 +5,14 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import type * as activities from "@app/temporal/analytics_queue/activities";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
-const { storeAgentAnalyticsActivity, storeAgentMessageFeedbackActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "5 minutes",
-  retry: {
-    // Analytics is best effort, only retry twice.
-    maximumAttempts: 2,
-  },
-});
+const { storeAgentAnalyticsActivity, storeAgentMessageFeedbackActivity } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "5 minutes",
+    retry: {
+      // Analytics is best effort, only retry twice.
+      maximumAttempts: 2,
+    },
+  });
 
 export async function storeAgentAnalyticsWorkflow(
   authType: AuthenticatorType,
@@ -48,6 +49,6 @@ export async function storeAgentMessageFeedbackWorkflow(
       content: feedback.content ?? undefined,
       is_conversation_shared: feedback.isConversationShared,
       created_at: feedback.createdAt.toString(),
-    }
+    },
   });
 }
