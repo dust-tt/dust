@@ -12,11 +12,13 @@ describe("throttle", () => {
     const addTimestamp = vi.fn(async (timestamp: number) => {
       timestamps.push(timestamp);
     });
-    const removeTimestamp = vi.fn(async (timestamp: number) => {
-      const index = timestamps.indexOf(timestamp);
-      if (index > -1) {
-        timestamps.splice(index, 1);
-        removedTimestamps.push(timestamp);
+    const removeTimestampsBatch = vi.fn(async (timestamps: number[]) => {
+      for (const timestamp of timestamps) {
+        const index = timestamps.indexOf(timestamp);
+        if (index > -1) {
+          timestamps.splice(index, 1);
+          removedTimestamps.push(timestamp);
+        }
       }
     });
 
@@ -26,7 +28,7 @@ describe("throttle", () => {
     return {
       getTimestamps,
       addTimestamp,
-      removeTimestamp,
+      removeTimestampsBatch,
       acquireLock,
       releaseLock,
       getCurrentTimestamps: () => [...timestamps],
@@ -47,7 +49,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       expect(mocks.acquireLock).toHaveBeenCalledOnce();
@@ -72,7 +74,7 @@ describe("throttle", () => {
           releaseLock: mocks.releaseLock,
           getTimestamps: mocks.getTimestamps,
           addTimestamp: mocks.addTimestamp,
-          removeTimestamp: mocks.removeTimestamp,
+          removeTimestampsBatch: mocks.removeTimestampsBatch,
         })
       ).rejects.toThrow("Database error");
 
@@ -97,7 +99,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       expect(result).toEqual({ delay: undefined, skip: true });
@@ -122,7 +124,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       expect(result.delay).toBeGreaterThan(0);
@@ -145,13 +147,13 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       expect(result).toEqual({ delay: 0, skip: false });
       expect(mocks.getTimestamps).toHaveBeenCalledOnce();
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
-      expect(mocks.removeTimestamp).not.toHaveBeenCalled();
+      expect(mocks.removeTimestampsBatch).not.toHaveBeenCalled();
       expect(mocks.acquireLock).toHaveBeenCalledOnce();
       expect(mocks.releaseLock).toHaveBeenCalledOnce();
     });
@@ -173,7 +175,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       expect(result).toEqual({ delay: 0, skip: false });
@@ -197,7 +199,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       expect(result.delay).toBeGreaterThan(0);
@@ -240,7 +242,7 @@ describe("throttle", () => {
           releaseLock: mocks.releaseLock,
           getTimestamps: mocks.getTimestamps,
           addTimestamp: mocks.addTimestamp,
-          removeTimestamp: mocks.removeTimestamp,
+          removeTimestampsBatch: mocks.removeTimestampsBatch,
         });
 
         // When we have exactly the allowed number, adding one more should trigger throttling
@@ -272,18 +274,24 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       // Should remove the 3 expired timestamps
-      expect(mocks.removeTimestamp).toHaveBeenCalledTimes(3);
-      expect(mocks.removeTimestamp).toHaveBeenCalledWith(now - 70 * 1000);
-      expect(mocks.removeTimestamp).toHaveBeenCalledWith(now - 90 * 1000);
-      expect(mocks.removeTimestamp).toHaveBeenCalledWith(now - 120 * 1000);
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledTimes(3);
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(now - 70 * 1000);
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(now - 90 * 1000);
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(
+        now - 120 * 1000
+      );
 
       // Should not remove valid timestamps
-      expect(mocks.removeTimestamp).not.toHaveBeenCalledWith(now - 30 * 1000);
-      expect(mocks.removeTimestamp).not.toHaveBeenCalledWith(now - 45 * 1000);
+      expect(mocks.removeTimestampsBatch).not.toHaveBeenCalledWith(
+        now - 30 * 1000
+      );
+      expect(mocks.removeTimestampsBatch).not.toHaveBeenCalledWith(
+        now - 45 * 1000
+      );
     });
 
     it("should handle empty timestamp list", async () => {
@@ -298,11 +306,11 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       expect(result).toEqual({ delay: 0, skip: false });
-      expect(mocks.removeTimestamp).not.toHaveBeenCalled();
+      expect(mocks.removeTimestampsBatch).not.toHaveBeenCalled();
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
     });
   });
@@ -325,7 +333,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       expect(result).toEqual({ delay: undefined, skip: true });
@@ -347,7 +355,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       expect(result).toEqual({ delay: 0, skip: false });
@@ -371,7 +379,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       expect(result.delay).toBeGreaterThan(0);
@@ -402,7 +410,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       // With the algorithm, we wait for the oldest timestamp to expire
@@ -432,7 +440,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       // Math.max(0, delay) should ensure non-negative result
@@ -458,7 +466,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       expect(mocks.addTimestamp).toHaveBeenCalledOnce();
@@ -483,7 +491,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       expect(result).toEqual({ delay: 0, skip: false });
@@ -503,7 +511,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       expect(result.delay).toBeGreaterThan(0);
@@ -523,7 +531,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       expect(result).toEqual({ delay: 0, skip: false });
@@ -553,15 +561,19 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       // All 3 timestamps should be removed because the condition is timestamp > windowStart
       // This means timestamps exactly at the boundary (==) are also removed
-      expect(mocks.removeTimestamp).toHaveBeenCalledTimes(3);
-      expect(mocks.removeTimestamp).toHaveBeenCalledWith(exactlyAtBoundary);
-      expect(mocks.removeTimestamp).toHaveBeenCalledWith(justOverBoundary);
-      expect(mocks.removeTimestamp).toHaveBeenCalledWith(wayOverBoundary);
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledTimes(3);
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(
+        exactlyAtBoundary
+      );
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(
+        justOverBoundary
+      );
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(wayOverBoundary);
     });
 
     it("should handle duplicate timestamps", async () => {
@@ -584,13 +596,13 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       expect(result).toEqual({ delay: 0, skip: false });
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
       // No timestamps should be removed (all are within the window)
-      expect(mocks.removeTimestamp).not.toHaveBeenCalled();
+      expect(mocks.removeTimestampsBatch).not.toHaveBeenCalled();
     });
   });
 
@@ -624,7 +636,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       // The algorithm should:
@@ -666,7 +678,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       const sortedTimestamps = [...unsortedTimestamps].sort((a, b) => a - b);
@@ -706,7 +718,7 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       // Algorithm: sortedTimestamps[11-10] = sortedTimestamps[1] = 10000
@@ -745,17 +757,19 @@ describe("throttle", () => {
         releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
-        removeTimestamp: mocks.removeTimestamp,
+        removeTimestampsBatch: mocks.removeTimestampsBatch,
       });
 
       // Should allow the request (3 valid + 1 new = 4, well under 100)
       expect(result).toEqual({ delay: 0, skip: false });
 
       // Should remove 3 expired timestamps
-      expect(mocks.removeTimestamp).toHaveBeenCalledTimes(3);
-      expect(mocks.removeTimestamp).toHaveBeenCalledWith(now - 70 * 1000);
-      expect(mocks.removeTimestamp).toHaveBeenCalledWith(now - 90 * 1000);
-      expect(mocks.removeTimestamp).toHaveBeenCalledWith(now - 120 * 1000);
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledTimes(3);
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(now - 70 * 1000);
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(now - 90 * 1000);
+      expect(mocks.removeTimestampsBatch).toHaveBeenCalledWith(
+        now - 120 * 1000
+      );
 
       // Should add current timestamp
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
@@ -770,7 +784,7 @@ describe("throttle", () => {
         addTimestamp: vi.fn(async (timestamp: number) => {
           timestamps.push(timestamp);
         }),
-        removeTimestamp: vi.fn(async (timestamp: number) => {
+        removeTimestampsBatch: vi.fn(async (timestamp: number) => {
           const index = timestamps.indexOf(timestamp);
           if (index > -1) {
             timestamps.splice(index, 1);
@@ -793,7 +807,7 @@ describe("throttle", () => {
           releaseLock: mocks.releaseLock,
           getTimestamps: mocks.getTimestamps,
           addTimestamp: mocks.addTimestamp,
-          removeTimestamp: mocks.removeTimestamp,
+          removeTimestampsBatch: mocks.removeTimestampsBatch,
         });
 
         results.push(result);
