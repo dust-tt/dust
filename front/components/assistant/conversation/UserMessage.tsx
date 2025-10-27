@@ -11,10 +11,6 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import {
-  agentMentionDirective,
-  getAgentMentionPlugin,
-} from "@app/components/markdown/AgentMentionBlock";
-import {
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
@@ -26,6 +22,10 @@ import {
   PastedAttachmentBlock,
   pastedAttachmentDirective,
 } from "@app/components/markdown/PastedAttachmentBlock";
+import {
+  agentMentionDirective,
+  getAgentMentionPlugin,
+} from "@app/lib/mentions";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
 

@@ -22,10 +22,6 @@ import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapp
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
-  agentMentionDirective,
-  getAgentMentionPlugin,
-} from "@app/components/markdown/AgentMentionBlock";
-import {
   CitationsContext,
   CiteBlock,
   getCiteDirective,
@@ -44,6 +40,10 @@ import {
   isStoreResourceProgressOutput,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  agentMentionDirective,
+  getAgentMentionPlugin,
+} from "@app/lib/mentions";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";

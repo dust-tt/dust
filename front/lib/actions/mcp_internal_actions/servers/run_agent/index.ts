@@ -43,7 +43,7 @@ import { cancelMessageGenerationEvent } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
-import { mentionAgent } from "@app/lib/mentions";
+import { serializeMention } from "@app/lib/mentions";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -259,7 +259,7 @@ export default async function createServer(
   const isHandoffConfiguration = isRunAgentHandoffMode(agentLoopContext);
 
   const toolName = `run_${childAgentBlob.name}`;
-  const mentionChild = mentionAgent({
+  const mentionChild = serializeMention({
     name: childAgentBlob.name,
     sId: childAgentId!, // We are sure childAgentId is *not* undefined here, as we check for childAgentBlob above
   });
@@ -418,8 +418,8 @@ export default async function createServer(
         }
 
         if (isHandoff) {
-          const mentionMain = mentionAgent(mainAgent);
-          const mentionChild = mentionAgent({
+          const mentionMain = serializeMention(mainAgent);
+          const mentionChild = serializeMention({
             name: childAgentBlob.name,
             sId: childAgentId,
           });

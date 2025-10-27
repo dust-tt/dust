@@ -14,7 +14,6 @@ import ConversationSidePanelContent from "@app/components/assistant/conversation
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type { DustError } from "@app/lib/error";
 import { useUser } from "@app/lib/swr/user";
@@ -23,6 +22,7 @@ import type {
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   Result,
+  RichMention,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -69,7 +69,7 @@ interface PreviewContentProps {
   resetConversation: () => void;
   createConversation: (
     input: string,
-    mentions: EditorMention[],
+    mentions: RichMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
   draftAgent: LightAgentConfigurationType | null;

@@ -12,7 +12,7 @@ import { useCallback, useMemo, useState } from "react";
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { mentionAgent } from "@app/lib/mentions";
+import { serializeMention } from "@app/lib/mentions";
 import {
   useAgentConfigurations,
   useSuggestedAgentConfigurations,
@@ -63,7 +63,7 @@ export function AgentSuggestion({
 
   const { submit: handleSelectSuggestion } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
-      const editedContent = `${mentionAgent(agent)} ${userMessage.content}`;
+      const editedContent = `${serializeMention(agent)} ${userMessage.content}`;
       const mRes = await fetch(
         `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${userMessage.sId}/edit`,
         {
