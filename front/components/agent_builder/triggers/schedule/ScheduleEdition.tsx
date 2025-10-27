@@ -8,7 +8,7 @@ import {
   getScheduleFormDefaultValues,
   ScheduleFormSchema,
 } from "@app/components/agent_builder/triggers/schedule/scheduleEditionFormSchema";
-import { ScheduleEditionSheet } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionSheet";
+import { ScheduleEditionSheetContent } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionSheet";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useUser } from "@app/lib/swr/user";
 import type { LightWorkspaceType } from "@app/types";
@@ -16,16 +16,12 @@ import type { LightWorkspaceType } from "@app/types";
 interface ScheduleEditionProps {
   owner: LightWorkspaceType;
   trigger: AgentBuilderScheduleTriggerType | null;
-  isOpen: boolean;
-  onClose: () => void;
   onSave: (trigger: AgentBuilderScheduleTriggerType) => void;
 }
 
 export function ScheduleEdition({
   owner,
   trigger,
-  isOpen,
-  onClose,
   onSave,
 }: ScheduleEditionProps) {
   const { user } = useUser();
@@ -74,23 +70,11 @@ export function ScheduleEdition({
     [user, trigger, onSave]
   );
 
-  const onSheetSave = () => {
-    return form.handleSubmit(handleSubmit);
-  };
-
-  const onCancel = () => {
-    form.reset(defaultValues);
-  };
-
   return (
     <FormProvider form={form} onSubmit={handleSubmit}>
-      <ScheduleEditionSheet
+      <ScheduleEditionSheetContent
         owner={owner}
         trigger={trigger}
-        isOpen={isOpen}
-        onCancel={onCancel}
-        onClose={onClose}
-        onSave={onSheetSave}
         isEditor={isEditor}
       />
     </FormProvider>

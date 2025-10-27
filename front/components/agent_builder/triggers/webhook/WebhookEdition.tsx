@@ -8,7 +8,7 @@ import {
   getWebhookFormDefaultValues,
   WebhookFormSchema,
 } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
-import { WebhookEditionSheet } from "@app/components/agent_builder/triggers/webhook/WebhookEditionSheet";
+import { WebhookEditionSheetContent } from "@app/components/agent_builder/triggers/webhook/WebhookEditionSheet";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useUser } from "@app/lib/swr/user";
 import type { LightWorkspaceType } from "@app/types";
@@ -17,8 +17,6 @@ import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 interface WebhookEditionProps {
   owner: LightWorkspaceType;
   trigger: AgentBuilderWebhookTriggerType | null;
-  isOpen: boolean;
-  onClose: () => void;
   onSave: (trigger: AgentBuilderWebhookTriggerType) => void;
   agentConfigurationId: string | null;
   webhookSourceView: WebhookSourceViewType | null;
@@ -27,8 +25,6 @@ interface WebhookEditionProps {
 export function WebhookEdition({
   owner,
   trigger,
-  isOpen,
-  onClose,
   onSave,
   agentConfigurationId,
   webhookSourceView,
@@ -91,35 +87,15 @@ export function WebhookEdition({
       };
 
       onSave(triggerData);
-      onClose();
     },
-    [form, onClose, onSave, trigger, user, webhookSourceView]
+    [form, onSave, trigger, user, webhookSourceView]
   );
-
-  const onSheetSave = async (): Promise<boolean> => {
-    if (!webhookSourceView) {
-      return false;
-    }
-
-    await form.handleSubmit(handleSubmit)();
-
-    return true;
-  };
-
-  const onCancel = () => {
-    form.reset(defaultValues);
-    onClose();
-  };
 
   return (
     <FormProvider form={form} onSubmit={handleSubmit}>
-      <WebhookEditionSheet
+      <WebhookEditionSheetContent
         owner={owner}
         trigger={trigger}
-        isOpen={isOpen}
-        onCancel={onCancel}
-        onClose={onClose}
-        onSave={onSheetSave}
         agentConfigurationId={agentConfigurationId}
         webhookSourceView={webhookSourceView}
         isEditor={isEditor}

@@ -9,12 +9,6 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
   SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
@@ -208,33 +202,21 @@ function WebhookEditionMessageInput({
   );
 }
 
-interface WebhookEditionSheetProps {
+interface WebhookEditionSheetContentProps {
   owner: LightWorkspaceType;
   trigger: AgentBuilderWebhookTriggerType | null;
-  isOpen: boolean;
-  onCancel: () => void;
-  onClose: () => void;
-  onSave: (trigger: AgentBuilderWebhookTriggerType) => void;
   agentConfigurationId: string | null;
   webhookSourceView: WebhookSourceViewType | null;
   isEditor: boolean;
 }
 
-export function WebhookEditionSheet({
+export function WebhookEditionSheetContent({
   owner,
   trigger,
-  isOpen,
-  onCancel,
-  onClose,
-  onSave,
   agentConfigurationId,
   webhookSourceView,
   isEditor,
-}: WebhookEditionSheetProps) {
-  const {
-    formState: { isSubmitting },
-  } = useFormContext<WebhookFormValues>();
-
+}: WebhookEditionSheetContentProps) {
   const selectedPreset = useMemo((): PresetWebhook | null => {
     if (!webhookSourceView || webhookSourceView.provider === null) {
       return null;
@@ -252,99 +234,50 @@ export function WebhookEditionSheet({
     );
   }, [selectedPreset, webhookSourceView]);
 
-  const handleClose = () => {
-    // TODO(2025-10-23 aubin): see if we want to add a confirmation if unsaved changes here.
-    onCancel();
-    onClose();
-  };
-
-  const modalTitle = useMemo(() => {
-    if (trigger) {
-      return isEditor ? "Edit Webhook" : "View Webhook";
-    }
-    if (webhookSourceView) {
-      return `Create ${webhookSourceView.customName} Trigger`;
-    }
-    return "Create Webhook";
-  }, [trigger, isEditor, webhookSourceView]);
-
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <SheetContent size="xl">
-        <SheetHeader>
-          <SheetTitle>{modalTitle}</SheetTitle>
-        </SheetHeader>
+    <>
+      {trigger && !isEditor && (
+        <ContentMessage variant="info">
+          You cannot edit this trigger. It is managed by{" "}
+          <span className="font-semibold">
+            {trigger.editorName ?? "another user"}
+          </span>
+          .
+        </ContentMessage>
+      )}
+      <div className="space-y-5">
+        <WebhookEditionNameInput isEditor={isEditor} />
 
-        <SheetContainer>
-          {trigger && !isEditor && (
-            <ContentMessage variant="info">
-              You cannot edit this trigger. It is managed by{" "}
-              <span className="font-semibold">
-                {trigger.editorName ?? "another user"}
-              </span>
-              .
-            </ContentMessage>
-          )}
-          <div className="space-y-5">
-            <WebhookEditionNameInput isEditor={isEditor} />
+        <WebhookEditionStatusToggle isEditor={isEditor} />
 
-            <WebhookEditionStatusToggle isEditor={isEditor} />
-
-            <WebhookEditionEventSelector
-              isEditor={isEditor}
-              selectedPreset={selectedPreset}
-              availableEvents={availableEvents}
-            />
-
-            <WebhookEditionFilters
-              isEditor={isEditor}
-              webhookSourceView={webhookSourceView}
-              selectedPreset={selectedPreset}
-              availableEvents={availableEvents}
-              workspace={owner}
-            />
-
-            <WebhookEditionIncludePayload isEditor={isEditor} />
-
-            <WebhookEditionMessageInput isEditor={isEditor} />
-
-            {trigger && (
-              <div className="space-y-1">
-                <RecentWebhookRequests
-                  owner={owner}
-                  agentConfigurationId={agentConfigurationId}
-                  trigger={trigger}
-                />
-              </div>
-            )}
-          </div>
-        </SheetContainer>
-
-        <SheetFooter
-          leftButtonProps={
-            isEditor
-              ? {
-                  label: "Cancel",
-                  variant: "outline",
-                  onClick: handleClose,
-                }
-              : undefined
-          }
-          // TODO(2025-10-22 aubin): fix these labels (Close feels weird).
-          rightButtonProps={{
-            label: trigger
-              ? isEditor
-                ? "Update Webhook"
-                : "Close"
-              : webhookSourceView
-                ? `Add ${webhookSourceView.customName} Trigger`
-                : "Add Webhook",
-            variant: "primary",
-            onClick: isEditor ? onSave : handleClose,
-            disabled: isSubmitting,
-          }}
+        <WebhookEditionEventSelector
+          isEditor={isEditor}
+          selectedPreset={selectedPreset}
+          availableEvents={availableEvents}
         />
-      </SheetContent>
-    </Sheet>
+
+        <WebhookEditionFilters
+          isEditor={isEditor}
+          webhookSourceView={webhookSourceView}
+          selectedPreset={selectedPreset}
+          availableEvents={availableEvents}
+          workspace={owner}
+        />
+
+        <WebhookEditionIncludePayload isEditor={isEditor} />
+
+        <WebhookEditionMessageInput isEditor={isEditor} />
+
+        {trigger && (
+          <div className="space-y-1">
+            <RecentWebhookRequests
+              owner={owner}
+              agentConfigurationId={agentConfigurationId}
+              trigger={trigger}
+            />
+          </div>
+        )}
+      </div>
+    </>
   );
 }
