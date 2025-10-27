@@ -15,6 +15,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
@@ -230,6 +231,13 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
         hardDelete: true,
         transaction,
       });
+
+      // Directly delete the webhook requests associated with this webhook source
+      const webhookRequests =
+        await WebhookRequestResource.fetchByWebhookSourceId(auth, this.id);
+      for (const webhookRequest of webhookRequests) {
+        await webhookRequest.delete(auth, { transaction });
+      }
 
       // Then delete the webhook source itself
       await WebhookSourceModel.destroy({

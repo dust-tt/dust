@@ -130,20 +130,16 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     auth: Authenticator,
     webhookSourceId: ModelId,
     options: ResourceFindOptions<WebhookRequestModel> = {}
-  ): Promise<Result<WebhookRequestResource[], Error>> {
-    try {
-      const resources = await this.baseFetch(auth, {
-        ...options,
-        where: {
-          ...options.where,
-          webhookSourceId,
-        },
-      });
+  ): Promise<WebhookRequestResource[]> {
+    const resources = await this.baseFetch(auth, {
+      ...options,
+      where: {
+        ...options.where,
+        webhookSourceId,
+      },
+    });
 
-      return new Ok(resources);
-    } catch (error) {
-      return new Err(error as Error);
-    }
+    return resources;
   }
 
   static async getWorkspaceIdsWithTooManyRequests({
