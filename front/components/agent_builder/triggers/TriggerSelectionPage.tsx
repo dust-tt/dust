@@ -90,7 +90,7 @@ export function TriggerSelectionPageContent({
                     icon={icon}
                     label={view.customName}
                     description={
-                      view.description ??
+                      view.description ||
                       `Trigger this agent with ${view.customName}.`
                     }
                     isSelected={false}
