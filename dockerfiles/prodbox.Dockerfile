@@ -34,7 +34,6 @@ WORKDIR /dust
 
 # Wraning and prompt
 RUN echo "echo -e \"\033[0;31mWARNING: This is a PRODUCTION system!\033[0m\"" >> /root/.bashrc
-RUN echo "export PS1='\[\e[0;31m\]prodbox\[\e[0m\]:\w\$ '" >> /root/.bashrc
 
 ENV GIT_SSH_COMMAND="ssh -i ~/.ssh/github-deploykey-deploybox"
 
