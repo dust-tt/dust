@@ -87,7 +87,7 @@ export function TriggerSelectionPage({
                     label="Schedule"
                     description="Trigger this agent on a schedule"
                     isSelected={false}
-                    canAdd={true}
+                    canAdd
                     onClick={onScheduleSelect}
                     cardContainerClassName="h-36"
                   />
@@ -109,9 +109,12 @@ export function TriggerSelectionPage({
                         key={view.sId}
                         icon={icon}
                         label={view.customName}
-                        description={view.description ?? `Trigger this agent with ${view.customname}.`}
+                        description={
+                          view.description ??
+                          `Trigger this agent with ${view.customName}.`
+                        }
                         isSelected={false}
-                        canAdd={true}
+                        canAdd
                         onClick={() => onWebhookSelect(view)}
                         cardContainerClassName="h-36"
                       />
