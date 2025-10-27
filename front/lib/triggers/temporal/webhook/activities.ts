@@ -20,7 +20,7 @@ import type { ContentFragmentInputWithFileIdType } from "@app/types";
 import { assertNever, errorToString, normalizeError } from "@app/types";
 import type { WebhookTriggerType } from "@app/types/assistant/triggers";
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
-import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 class TriggerNonRetryableError extends Error {}
 
@@ -134,37 +134,36 @@ export async function runTriggerWebhookActivity({
   }
 
   // Filter out non-subscribed events
-  if (webhookSource.kind !== "custom") {
-    const { type, field } =
-      WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[webhookSource.kind].eventCheck;
+  let receivedEventValue: string | undefined;
+  if (webhookSource.provider) {
+    const { type, field } = WEBHOOK_PRESETS[webhookSource.provider].eventCheck;
 
     // Node http module behavior is to lowercase all headers keys
-    let receivedEventName: string | undefined;
     switch (type) {
       case "headers":
-        receivedEventName = headers[field.toLowerCase()];
+        receivedEventValue = headers[field.toLowerCase()];
         break;
       case "body":
-        receivedEventName = body[field.toLowerCase()];
+        receivedEventValue = body[field.toLowerCase()];
         break;
       default:
         assertNever(type);
     }
 
     if (
-      receivedEventName === undefined ||
+      receivedEventValue === undefined ||
       // Event not in preset
-      !WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[webhookSource.kind].events
-        .map((event) => event.name)
-        .includes(receivedEventName) ||
+      !WEBHOOK_PRESETS[webhookSource.provider].events
+        .map((event) => event.value)
+        .includes(receivedEventValue) ||
       // Event not subscribed
-      !webhookSource.subscribedEvents.includes(receivedEventName)
+      !webhookSource.subscribedEvents.includes(receivedEventValue)
     ) {
       const errorMessage =
         "Webhook event not subscribed or not in preset. Potential cause: the events selection was manually modified on the service.";
       await webhookRequest.markAsFailed(errorMessage);
       logger.error(
-        { workspaceId, webhookRequestId, eventName: receivedEventName },
+        { workspaceId, webhookRequestId, eventValue: receivedEventValue },
         errorMessage
       );
       throw new TriggerNonRetryableError(errorMessage);
@@ -201,6 +200,12 @@ export async function runTriggerWebhookActivity({
   const filteredTriggers: WebhookTriggerType[] = [];
 
   for (const t of triggers) {
+    if (t.configuration.event && t.configuration.event !== receivedEventValue) {
+      // Received event doesn't match the trigger's event, skip this trigger
+      await webhookRequest.markRelatedTrigger(t, "not_matched");
+      continue;
+    }
+
     if (!t.configuration.filter) {
       // No filter, add the trigger
       filteredTriggers.push(t);

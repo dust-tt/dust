@@ -52,7 +52,7 @@ export function ConversationContainerVirtuoso({
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
 
-  const { setSelectedAssistant } = useContext(InputBarContext);
+  const { setSelectedAgent } = useContext(InputBarContext);
 
   const { hasBlockedActions, totalBlockedActions, showBlockedActionsDialog } =
     useActionValidationContext();
@@ -223,7 +223,7 @@ export function ConversationContainerVirtuoso({
       ) : (
         <>
           <div
-            id="assistant-input-header"
+            id="agent-input-header"
             className="flex h-fit min-h-[20vh] w-full max-w-3xl flex-col justify-end gap-8 py-4"
             ref={startConversationRef}
           >
@@ -246,7 +246,7 @@ export function ConversationContainerVirtuoso({
           </div>
           <AgentBrowserContainer
             onAgentConfigurationClick={(agentId) => {
-              setSelectedAssistant({ configurationId: agentId });
+              setSelectedAgent({ configurationId: agentId });
             }}
             owner={owner}
             user={user}

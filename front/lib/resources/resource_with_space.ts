@@ -84,8 +84,9 @@ export abstract class ResourceWithSpace<
       return [];
     }
 
-    // We use the model directly here; it's a very rare case where we don't check the workspace, which in this case
-    // is due to the fact that we may need to fetch data from public workspaces as well as the current workspace.
+    // We use the model directly here; it's a very rare case where we don't check the workspace,
+    // which in this case is due to the fact that we may need to fetch data from public workspaces
+    // as well as the current workspace.
     const spaces = await SpaceModel.findAll({
       where: {
         id: blobs.map((b) => b.vaultId),

@@ -126,7 +126,6 @@ function getWorkflowId(workspaceId: string) {
   return `schedule-workspace-scrub-${workspaceId}`;
 }
 
-// Do not remove it @PopDaph needs this
 export async function launchDowngradeFreeEndedWorkspacesWorkflow(): Promise<
   Result<undefined, Error>
 > {
@@ -143,7 +142,6 @@ export async function launchDowngradeFreeEndedWorkspacesWorkflow(): Promise<
   return new Ok(undefined);
 }
 
-// Do not remove it @PopDaph needs this
 export async function stopDowngradeFreeEndedWorkspacesWorkflow() {
   const client = await getTemporalClientForFrontNamespace();
 

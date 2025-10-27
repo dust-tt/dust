@@ -15,7 +15,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok, redactString } from "@app/types";
@@ -23,7 +23,7 @@ import type {
   WebhookSourceForAdminType as WebhookSourceForAdminType,
   WebhookSourceType,
 } from "@app/types/triggers/webhooks";
-import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
@@ -46,41 +46,37 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
   static async makeNew(
     auth: Authenticator,
     blob: CreationAttributes<WebhookSourceModel>,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<WebhookSourceResource, Error>> {
+    { transaction, icon }: { transaction?: Transaction; icon?: string } = {}
+  ): Promise<WebhookSourceResource> {
     assert(
       await SpaceResource.canAdministrateSystemSpace(auth),
       "The user is not authorized to create a webhook source"
     );
 
-    try {
-      const webhookSource = await WebhookSourceModel.create(blob, {
+    const webhookSource = await WebhookSourceModel.create(blob, {
+      transaction,
+    });
+
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+
+    // Immediately create a view for the webhook source in the system space.
+    await WebhookSourcesViewModel.create(
+      {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: systemSpace.id,
+        editedAt: new Date(),
+        editedByUserId: auth.user()?.id,
+        webhookSourceId: webhookSource.id,
+        // on creation there is no custom icon or description
+        description: "",
+        icon: normalizeWebhookIcon(icon),
+      },
+      {
         transaction,
-      });
+      }
+    );
 
-      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-
-      // Immediately create a view for the webhook source in the system space.
-      await WebhookSourcesViewModel.create(
-        {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          vaultId: systemSpace.id,
-          editedAt: new Date(),
-          editedByUserId: auth.user()?.id,
-          webhookSourceId: webhookSource.id,
-          // on creation there is no custom icon or description
-          description: "",
-          icon: DEFAULT_WEBHOOK_ICON,
-        },
-        {
-          transaction,
-        }
-      );
-
-      return new Ok(new this(WebhookSourceModel, webhookSource.get()));
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
+    return new this(WebhookSourceModel, webhookSource.get());
   }
 
   private static async baseFetch(
@@ -179,13 +175,8 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
 
     const owner = auth.getNonNullableWorkspace();
 
-    if (
-      this.kind !== "custom" &&
-      this.remoteMetadata &&
-      this.oauthConnectionId
-    ) {
-      const service =
-        WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[this.kind].webhookService;
+    if (this.provider && this.remoteMetadata && this.oauthConnectionId) {
+      const service = WEBHOOK_PRESETS[this.provider].webhookService;
       try {
         const result = await service.deleteWebhooks({
           auth,
@@ -195,14 +186,14 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
 
         if (result.isErr()) {
           logger.error(
-            `Failed to delete remote webhook on ${this.kind}`,
-            result.error.message
+            { error: result.error },
+            `Failed to delete remote webhook on ${this.provider}`
           );
         }
       } catch (error) {
         logger.error(
-          `Failed to delete remote webhook on ${this.kind}`,
-          error instanceof Error ? error.message : error
+          { error },
+          `Failed to delete remote webhook on ${this.provider}`
         );
         // Continue with local deletion even if remote deletion fails
       }
@@ -267,7 +258,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     });
   }
 
-  sId(): string {
+  get sId(): string {
     return WebhookSourceResource.modelIdToSId({
       id: this.id,
       workspaceId: this.workspaceId,
@@ -293,9 +284,9 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
   toJSON(): WebhookSourceType {
     return {
       id: this.id,
-      sId: this.sId(),
+      sId: this.sId,
       name: this.name,
-      kind: this.kind,
+      provider: this.provider,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       subscribedEvents: this.subscribedEvents,

@@ -13,6 +13,7 @@ import {
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import { mentionAgent } from "@app/lib/mentions";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
@@ -123,7 +124,7 @@ export async function getOrCreateConversation(
     const messageRes = await api.postUserMessage({
       conversationId,
       message: {
-        content: `:mention[${childAgentBlob.name}]{sId=${childAgentId}} ${query}`,
+        content: `${mentionAgent({ name: childAgentBlob.name, sId: childAgentId })} ${query}`,
         mentions: [{ configurationId: childAgentId }],
         context: {
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -190,7 +191,7 @@ export async function getOrCreateConversation(
     visibility: "unlisted",
     depth: mainConversation.depth + 1,
     message: {
-      content: `:mention[${childAgentBlob.name}]{sId=${childAgentId}} ${query}`,
+      content: `${mentionAgent({ name: childAgentBlob.name, sId: childAgentId })} ${query}`,
       mentions: [{ configurationId: childAgentId }],
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,

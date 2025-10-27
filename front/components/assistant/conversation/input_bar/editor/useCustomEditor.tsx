@@ -15,19 +15,31 @@ import { PastedAttachmentExtension } from "@app/components/assistant/conversatio
 import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import type { SuggestionProps } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
-import { mentionPluginKey } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
+import type { SuggestionProps } from "@app/components/assistant/conversation/input_bar/editor/useMentionAgentDropdown";
+import { mentionPluginKey } from "@app/components/assistant/conversation/input_bar/editor/useMentionAgentDropdown";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
+import { mentionAgent } from "@app/lib/mentions";
 import { isMobile } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
 
-export interface EditorMention {
+export type EditorMention = EditorMentionAgent | EditorMentionUser;
+
+interface BaseEditorMention {
   id: string;
   label: string;
-  description?: string;
+  pictureUrl: string;
+  description: string;
+}
+
+export interface EditorMentionAgent extends BaseEditorMention {
+  type: "agent";
+}
+
+export interface EditorMentionUser extends BaseEditorMention {
+  type: "user";
 }
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
@@ -48,10 +60,16 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
   // If the node is a 'mention', concatenate the mention label and add to mentions array.
   if (node.type === "mention") {
     // TODO: We should not expose `sId` here.
-    textContent += `:mention[${node.attrs?.label}]{sId=${node.attrs?.id}}`;
+    textContent += mentionAgent({
+      name: node.attrs?.label,
+      sId: node.attrs?.id,
+    });
     mentions.push({
       id: node.attrs?.id,
       label: node.attrs?.label,
+      type: node.attrs?.type,
+      pictureUrl: node.attrs?.pictureUrl,
+      description: node.attrs?.description,
     });
   }
 
@@ -101,13 +119,17 @@ const useEditorService = (editor: Editor | null) => {
       },
       // Insert mention helper function.
       insertMention: ({
+        type,
         id,
         label,
         description,
+        pictureUrl,
       }: {
+        type: "agent" | "user";
         id: string;
         label: string;
         description?: string;
+        pictureUrl?: string;
       }) => {
         const shouldAddSpaceBeforeMention =
           !editor?.isEmpty &&
@@ -118,7 +140,7 @@ const useEditorService = (editor: Editor | null) => {
           .insertContent(shouldAddSpaceBeforeMention ? " " : "") // Add an extra space before the mention.
           .insertContent({
             type: "mention",
-            attrs: { id, label, description },
+            attrs: { type, id, label, description, pictureUrl },
           })
           .insertContent(" ") // Add an extra space after the mention.
           .run();
@@ -188,7 +210,9 @@ const useEditorService = (editor: Editor | null) => {
 
       hasMention(mention: EditorMention) {
         const { mentions } = this.getTextAndMentions();
-        return mentions.some((m) => m.id === mention.id);
+        return mentions.some(
+          (m) => m.id === mention.id && m.type === mention.type
+        );
       },
 
       getTrimmedText() {

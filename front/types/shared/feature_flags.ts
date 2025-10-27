@@ -141,14 +141,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",
   },
-  research_agent: {
-    description: "Activate @deepDive agent.",
-    stage: "rolling_out",
-  },
-  deep_research_as_a_tool: {
-    description: "Activate Deep Dive tool",
-    stage: "dust_only",
-  },
   hootl_subscriptions: {
     description: "Subscription feature for Schedule & Triggers.",
     stage: "dust_only",
@@ -203,6 +195,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Microsoft Teams MCP server",
     stage: "on_demand",
   },
+  microsoft_excel_mcp_server: {
+    description: "Microsoft Excel MCP server",
+    stage: "on_demand",
+  },
   agent_builder_observability: {
     description:
       "Observability tab in the Agent Builder (charts powered by Elasticsearch)",
@@ -225,6 +221,18 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   llm_router_direct_requests: {
     description: "Use direct LLM call over Dust app run in a conversation.",
     stage: "on_demand",
+  },
+  use_requested_space_ids: {
+    description: "Use requested spaces Ids for permissions checking.",
+    stage: "dust_only",
+  },
+  mentions_v2: {
+    description: "Enable mentions v2, aka mention users",
+    stage: "on_demand",
+  },
+  dust_global_agent_memory: {
+    description: "Enable agent memory tool on the @dust global agent",
+    stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

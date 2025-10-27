@@ -8,13 +8,34 @@ import { Err, Ok } from "@app/types/shared/result";
 
 let esClient: Client | null = null;
 
-const ANALYTICS_ALIAS_NAME = "front.agent_message_analytics";
+export const ANALYTICS_ALIAS_NAME = "front.agent_message_analytics";
 
-export type ElasticsearchError = {
-  type: "connection_error" | "query_error" | "unknown_error";
-  message: string;
+export interface ElasticsearchBaseDocument {
+  workspace_id: string;
+
+  [key: string]: unknown;
+}
+
+type ElasticSearchErrorType =
+  | "connection_error"
+  | "query_error"
+  | "unknown_error";
+
+export class ElasticsearchError extends Error {
+  type: ElasticSearchErrorType;
   statusCode?: number;
-};
+
+  constructor(
+    type: ElasticSearchErrorType,
+    message: string,
+    statusCode?: number
+  ) {
+    super(message);
+    this.name = "ElasticsearchError";
+    this.type = type;
+    this.statusCode = statusCode;
+  }
+}
 
 type SearchParams = estypes.SearchRequest;
 
@@ -36,51 +57,64 @@ function extractErrorReason(err: esErrors.ResponseError): string {
   return err.message;
 }
 
-function getClient(): Client {
+function toElasticsearchError(err: unknown): ElasticsearchError {
+  if (err instanceof esErrors.ResponseError) {
+    const statusCode = err.statusCode ?? undefined;
+    const reason = extractErrorReason(err);
+    return new ElasticsearchError("query_error", reason, statusCode);
+  }
+  if (err instanceof esErrors.ConnectionError) {
+    return new ElasticsearchError(
+      "connection_error",
+      "Failed to connect to Elasticsearch"
+    );
+  }
+  return new ElasticsearchError("unknown_error", normalizeError(err).message);
+}
+
+export async function withEs<T>(
+  fn: (client: Client) => Promise<T>
+): Promise<Result<T, ElasticsearchError>> {
+  const client = await getClient();
+  try {
+    const res = await fn(client);
+    return new Ok(res);
+  } catch (err) {
+    return new Err(toElasticsearchError(err));
+  }
+}
+
+export async function getClient(): Promise<Client> {
   if (esClient) {
     return esClient;
   }
+
   const { url, username, password } = config.getElasticsearchConfig();
   esClient = new Client({
     node: url,
     auth: { username, password },
     tls: { rejectUnauthorized: false },
   });
+
+  // Wait for the client to be ready.
+  await esClient.ping();
+
   return esClient;
 }
 
-async function esSearch<TDocument = unknown, TAggregations = unknown>(
+async function esSearch<
+  TDocument extends ElasticsearchBaseDocument,
+  TAggregations = unknown,
+>(
   params: SearchParams
 ): Promise<
   Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
 > {
-  const client = getClient();
-  try {
-    const result = await client.search<TDocument, TAggregations>({
+  return withEs((client) =>
+    client.search<TDocument, TAggregations>({
       ...params,
-    });
-    return new Ok(result);
-  } catch (err) {
-    if (err instanceof esErrors.ResponseError) {
-      const statusCode = err.statusCode ?? undefined;
-      const reason = extractErrorReason(err);
-      return new Err({
-        type: "query_error",
-        message: reason,
-        statusCode,
-      });
-    }
-    if (err instanceof esErrors.ConnectionError) {
-      return new Err({
-        type: "connection_error",
-        message: "Failed to connect to Elasticsearch",
-      });
-    }
-    return new Err({
-      type: "unknown_error",
-      message: normalizeError(err).message,
-    });
-  }
+    })
+  );
 }
 
 export function bucketsToArray<TBucket>(
@@ -106,7 +140,7 @@ export function formatUTCDateFromMillis(ms: number): string {
  * query other Elasticsearch indexes from the front service.
  */
 export async function searchAnalytics<
-  TDocument = unknown,
+  TDocument extends ElasticsearchBaseDocument | never,
   TAggregations = unknown,
 >(
   query: estypes.QueryDslQueryContainer,

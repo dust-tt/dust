@@ -1,7 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
 
 import {
   generatePlainTextFile,
@@ -14,11 +13,14 @@ import {
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  WebbrowseInputSchema,
+  WebsearchInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { summarizeWithAgent } from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -45,23 +47,7 @@ function createServer(
   server.tool(
     WEBSEARCH_TOOL_NAME,
     "A tool that performs a Google web search based on a string query.",
-    {
-      query: z
-        .string()
-        .describe(
-          "The query used to perform the Google search. If requested by the " +
-            "user, use the Google syntax `site:` to restrict the search " +
-            "to a particular website or domain."
-        ),
-      page: z
-        .number()
-        .optional()
-        .describe(
-          "A 1-indexed page number used to paginate through the search results." +
-            " Should only be provided if the page is strictly greater than 1 in order" +
-            " to go deeper into the search results for a specific query."
-        ),
-    },
+    WebsearchInputSchema.shape,
     withToolLogging(
       auth,
       {
@@ -131,33 +117,7 @@ function createServer(
   server.tool(
     WEBBROWSER_TOOL_NAME,
     "A tool to browse websites, you can provide a list of urls to browse all at once.",
-    {
-      urls: z.string().array().describe("List of urls to browse"),
-      format: z
-        .enum(["markdown", "html"])
-        .optional()
-        .describe("Format to return content: 'markdown' (default) or 'html'."),
-      screenshotMode: z
-        .enum(["none", "viewport", "fullPage"])
-        .optional()
-        .describe(
-          "Screenshot mode: 'none' (default), 'viewport', or 'fullPage'."
-        ),
-      links: z
-        .boolean()
-        .optional()
-        .describe("If true, also retrieve outgoing links from the page."),
-      useSummary: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN
-      ]
-        .describe(
-          "Summarize web pages using an AI agent before returning content. When enabled, provides concise summaries instead of full page content."
-        )
-        .default({
-          value: false,
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
-        }),
-    },
+    WebbrowseInputSchema.shape,
     withToolLogging(
       auth,
       {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   INTERNAL_MCP_SERVERS,
   LEGACY_INTERNAL_MCP_SERVER_IDS,
 } from "./constants";
@@ -62,5 +63,14 @@ describe("INTERNAL_MCP_SERVERS", () => {
       autoInternalTools,
       "Internal tools with availabilty auto or auto_hidden_builder are not up to date.\nIf you are adding or removing a tool, just update the hard coded list.\nHowever, if you are changing the availability from auto(_xxx) to manual, you need to run a migration on existing agents that were configured with that tool to update their requestedGroupIds (see getAgentConfigurationGroupIdsFromActions())."
     ).toEqual(HARD_CODED_AUTO_INTERNAL_TOOLS);
+  });
+});
+
+describe("AVAILABLE_INTERNAL_MCP_SERVER_NAMES", () => {
+  it("should contain unique server names", () => {
+    const names = [...AVAILABLE_INTERNAL_MCP_SERVER_NAMES];
+    const unique = [...new Set(names)];
+
+    expect(names).toStrictEqual(unique);
   });
 });

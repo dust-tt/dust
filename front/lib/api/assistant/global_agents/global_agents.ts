@@ -84,6 +84,7 @@ function getGlobalAgent({
   dataWarehousesMCPServerView,
   slideshowMCPServerView,
   deepDiveMCPServerView,
+  agentMemoryMCPServerView,
   featureFlags,
 }: {
   auth: Authenticator;
@@ -101,6 +102,7 @@ function getGlobalAgent({
   dataWarehousesMCPServerView: MCPServerViewResource | null;
   slideshowMCPServerView: MCPServerViewResource | null;
   deepDiveMCPServerView: MCPServerViewResource | null;
+  agentMemoryMCPServerView: MCPServerViewResource | null;
   featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType | null {
   const settings =
@@ -356,8 +358,10 @@ function getGlobalAgent({
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
         searchMCPServerView,
+        toolsetsMCPServerView,
         deepDiveMCPServerView,
         interactiveContentMCPServerView,
+        agentMemoryMCPServerView,
         featureFlags,
       });
       break;
@@ -470,6 +474,7 @@ export async function getGlobalAgents(
     dataWarehousesMCPServerView,
     slideshowMCPServerView,
     deepDiveMCPServerView,
+    agentMemoryMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -538,6 +543,12 @@ export async function getGlobalAgents(
           "deep_dive"
         )
       : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "agent_memory"
+        )
+      : null,
   ]);
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
@@ -570,12 +581,6 @@ export async function getGlobalAgents(
     );
   }
 
-  if (!flags.includes("research_agent")) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DEEP_DIVE
-    );
-  }
-
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
   const agentCandidates = agentsIdsToFetch.map((sId) =>
@@ -595,6 +600,7 @@ export async function getGlobalAgents(
       dataWarehousesMCPServerView,
       slideshowMCPServerView,
       deepDiveMCPServerView,
+      agentMemoryMCPServerView,
       featureFlags: flags,
     })
   );

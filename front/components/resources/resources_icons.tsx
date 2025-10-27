@@ -34,6 +34,7 @@ import {
   HubspotLogo,
   JiraLogo,
   LinearLogo,
+  MicrosoftExcelLogo,
   MicrosoftLogo,
   MicrosoftOutlookLogo,
   MicrosoftTeamsLogo,
@@ -43,6 +44,7 @@ import {
   SalesforceLogo,
   SlackLogo,
   StripeLogo,
+  ValTownLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentProps, ComponentType } from "react";
 
@@ -103,6 +105,7 @@ export const InternalActionIcons = {
   HubspotLogo,
   JiraLogo,
   LinearLogo,
+  MicrosoftExcelLogo,
   MicrosoftLogo,
   MicrosoftOutlookLogo,
   MicrosoftTeamsLogo,
@@ -113,6 +116,7 @@ export const InternalActionIcons = {
   SlackLogo,
   StripeLogo,
   DriveLogo,
+  ValTownLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);

@@ -11,6 +11,10 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import {
+  agentMentionDirective,
+  getAgentMentionPlugin,
+} from "@app/components/markdown/AgentMentionBlock";
+import {
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
@@ -18,10 +22,6 @@ import {
   ContentNodeMentionBlock,
   contentNodeMentionDirective,
 } from "@app/components/markdown/ContentNodeMentionBlock";
-import {
-  getMentionPlugin,
-  mentionDirective,
-} from "@app/components/markdown/MentionBlock";
 import {
   PastedAttachmentBlock,
   pastedAttachmentDirective,
@@ -47,7 +47,8 @@ export function UserMessage({
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       sup: CiteBlock,
-      mention: getMentionPlugin(owner),
+      // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
+      mention: getAgentMentionPlugin(owner),
       content_node_mention: ContentNodeMentionBlock,
       pasted_attachment: PastedAttachmentBlock,
     }),
@@ -57,7 +58,7 @@ export function UserMessage({
   const additionalMarkdownPlugins: PluggableList = useMemo(
     () => [
       getCiteDirective(),
-      mentionDirective,
+      agentMentionDirective,
       contentNodeMentionDirective,
       pastedAttachmentDirective,
     ],

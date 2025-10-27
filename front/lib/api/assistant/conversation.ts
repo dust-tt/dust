@@ -7,7 +7,9 @@ import {
   getAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
+import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
+import { createAgentMessages } from "@app/lib/api/assistant/conversation/mentions";
 import { canReadMessage } from "@app/lib/api/assistant/messages";
 import {
   getContentFragmentGroupIds,
@@ -27,7 +29,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
   AgentMessage,
-  Mention,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
@@ -44,7 +45,6 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid, normalizeArrays } from "@app/lib/utils";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
@@ -85,9 +85,6 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-
-// Soft assumption that we will not have more than 10 mentions in the same user message.
-const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
 
 /**
  * Conversation Creation, update and deletion
@@ -158,41 +155,6 @@ export async function updateConversationTitle(
   await conversation.updateTitle(title);
 
   return new Ok(undefined);
-}
-
-/**
- *  Mark the conversation as deleted, but does not remove it from database
- *  unless destroy is explicitly set to true
- */
-export async function deleteConversation(
-  auth: Authenticator,
-  {
-    conversationId,
-    destroy,
-  }: {
-    conversationId: string;
-    destroy?: boolean;
-  }
-): Promise<Result<{ success: true }, ConversationError>> {
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-
-  if (!conversation) {
-    return new Err(new ConversationError("conversation_not_found"));
-  }
-
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationError("conversation_access_restricted"));
-  }
-
-  if (destroy) {
-    await conversation.delete(auth);
-  } else {
-    await conversation.updateVisibilityToDeleted();
-  }
-  return new Ok({ success: true });
 }
 
 /**
@@ -599,103 +561,28 @@ export async function postUserMessage(
         excludedUser: user?.toJSON(),
       });
 
-      const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
-        await Promise.all(
-          mentions.filter(isAgentMention).map((mention) => {
-            // For each assistant/agent mention, create an "empty" agent message.
-            return (async () => {
-              // `getAgentConfiguration` checks that we're only pulling a configuration from the
-              // same workspace or a global one.
-              const configuration = agentConfigurations.find(
-                (ac) => ac.sId === mention.configurationId
-              );
-              if (!configuration) {
-                return null;
-              }
-
-              await Mention.create(
-                {
-                  messageId: m.id,
-                  agentConfigurationId: configuration.sId,
-                  workspaceId: owner.id,
-                },
-                { transaction: t }
-              );
-
-              const agentMessageRow = await AgentMessage.create(
-                {
-                  status: "created",
-                  agentConfigurationId: configuration.sId,
-                  agentConfigurationVersion: configuration.version,
-                  workspaceId: owner.id,
-                  skipToolsValidation,
-                },
-                { transaction: t }
-              );
-              const messageRow = await Message.create(
-                {
-                  sId: generateRandomModelSId(),
-                  rank: nextMessageRank++,
-                  conversationId: conversation.id,
-                  parentId: userMessage.id,
-                  agentMessageId: agentMessageRow.id,
-                  workspaceId: owner.id,
-                },
-                {
-                  transaction: t,
-                }
-              );
-
-              const parentAgentMessageId =
-                userMessage.context.origin === "agent_handover"
-                  ? userMessage.context.originMessageId ?? null
-                  : null;
-
-              return {
-                row: agentMessageRow,
-                m: {
-                  id: messageRow.id,
-                  agentMessageId: agentMessageRow.id,
-                  created: agentMessageRow.createdAt.getTime(),
-                  completedTs: agentMessageRow.completedAt?.getTime() ?? null,
-                  sId: messageRow.sId,
-                  type: "agent_message",
-                  visibility: "visible",
-                  version: 0,
-                  parentMessageId: userMessage.sId,
-                  parentAgentMessageId,
-                  status: "created",
-                  actions: [],
-                  content: null,
-                  chainOfThought: null,
-                  rawContents: [],
-                  error: null,
-                  configuration,
-                  rank: messageRow.rank,
-                  skipToolsValidation: agentMessageRow.skipToolsValidation,
-                  contents: [],
-                  parsedContents: {},
-                } satisfies AgentMessageType,
-              };
-            })();
-          })
-        );
-
-      const nonNullResults = results.filter((r) => r !== null) as {
-        row: AgentMessage;
-        m: AgentMessageType;
-      }[];
+      const agentMessagesResult = await createAgentMessages({
+        mentions,
+        agentConfigurations,
+        message: m,
+        owner,
+        transaction: t,
+        skipToolsValidation,
+        nextMessageRank,
+        conversation,
+        userMessage,
+      });
 
       await updateConversationRequestedGroupIds(auth, {
-        agents: nonNullResults.map(({ m }) => m.configuration),
+        agents: agentMessagesResult.map(({ m }) => m.configuration),
         conversation,
         t,
       });
 
       return {
         userMessage,
-        agentMessages: nonNullResults.map(({ m }) => m),
-        agentMessageRows: nonNullResults.map(({ row }) => row),
+        agentMessages: agentMessagesResult.map(({ m }) => m),
+        agentMessageRows: agentMessagesResult.map(({ row }) => row),
       };
     });
 
@@ -734,43 +621,13 @@ export async function postUserMessage(
     agentMessages
   );
 
-  await concurrentExecutor(
+  await runAgentLoopWorkflow({
+    auth,
     agentMessages,
-    async (agentMessage) => {
-      // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
-      const agentMessageRow = agentMessageRowById.get(
-        agentMessage.agentMessageId
-      );
-      assert(
-        agentMessageRow,
-        `Agent message row not found for agent message ${agentMessage.agentMessageId}`
-      );
-
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId: agentMessage.configuration.sId,
-        variant: "full",
-      });
-
-      assert(
-        agentConfiguration,
-        "Unreachable: could not find detailed configuration for agent"
-      );
-
-      void launchAgentLoopWorkflow({
-        auth,
-        agentLoopArgs: {
-          agentMessageId: agentMessage.sId,
-          agentMessageVersion: agentMessage.version,
-          conversationId: conversation.sId,
-          conversationTitle: conversation.title,
-          userMessageId: userMessage.sId,
-          userMessageVersion: userMessage.version,
-        },
-        startStep: 0,
-      });
-    },
-    { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
-  );
+    agentMessageRowById,
+    conversation,
+    userMessage,
+  });
 
   return new Ok({
     userMessage,
@@ -1049,112 +906,36 @@ export async function editUserMessage(
       // For now agent messages are appended at the end of conversation
       // it is fine since for now editing with new mentions is only supported
       // for the last user message
-      let nextMessageRank =
+      const nextMessageRank =
         ((await Message.max<number | null, Message>("rank", {
           where: {
             conversationId: conversation.id,
           },
           transaction: t,
         })) ?? -1) + 1;
-      const results: ({
-        row: AgentMessage;
-        m: AgentMessageType;
-      } | null)[] = await Promise.all(
-        mentions.filter(isAgentMention).map((mention) => {
-          // For each assistant/agent mention, create an "empty" agent message.
-          return (async () => {
-            // `getAgentConfiguration` checks that we're only pulling a configuration from the
-            // same workspace or a global one.
-            const configuration = agentConfigurations.find(
-              (ac) => ac.sId === mention.configurationId
-            );
-            if (!configuration) {
-              return null;
-            }
 
-            await Mention.create(
-              {
-                messageId: m.id,
-                agentConfigurationId: configuration.sId,
-                workspaceId: owner.id,
-              },
-              { transaction: t }
-            );
-
-            const agentMessageRow = await AgentMessage.create(
-              {
-                status: "created",
-                agentConfigurationId: configuration.sId,
-                agentConfigurationVersion: configuration.version,
-                workspaceId: owner.id,
-                skipToolsValidation,
-              },
-              { transaction: t }
-            );
-            const messageRow = await Message.create(
-              {
-                sId: generateRandomModelSId(),
-                rank: nextMessageRank++,
-                conversationId: conversation.id,
-                parentId: userMessage.id,
-                agentMessageId: agentMessageRow.id,
-                workspaceId: owner.id,
-              },
-              {
-                transaction: t,
-              }
-            );
-
-            const parentAgentMessageId =
-              userMessage.context.origin === "agent_handover"
-                ? userMessage.context.originMessageId ?? null
-                : null;
-
-            return {
-              row: agentMessageRow,
-              m: {
-                id: messageRow.id,
-                agentMessageId: agentMessageRow.id,
-                created: agentMessageRow.createdAt.getTime(),
-                completedTs: agentMessageRow.completedAt?.getTime() ?? null,
-                sId: messageRow.sId,
-                type: "agent_message",
-                visibility: "visible",
-                version: 0,
-                parentMessageId: userMessage.sId,
-                parentAgentMessageId,
-                status: "created",
-                actions: [],
-                content: null,
-                chainOfThought: null,
-                rawContents: [],
-                error: null,
-                configuration,
-                rank: messageRow.rank,
-                skipToolsValidation: agentMessageRow.skipToolsValidation,
-                contents: [],
-                parsedContents: {},
-              } satisfies AgentMessageType,
-            };
-          })();
-        })
-      );
-
-      const nonNullResults = results.filter((r) => r !== null) as {
-        row: AgentMessage;
-        m: AgentMessageType;
-      }[];
+      const agentMessagesResult = await createAgentMessages({
+        mentions,
+        agentConfigurations,
+        message: m,
+        owner,
+        transaction: t,
+        skipToolsValidation,
+        nextMessageRank,
+        conversation,
+        userMessage,
+      });
 
       await updateConversationRequestedGroupIds(auth, {
-        agents: nonNullResults.map(({ m }) => m.configuration),
+        agents: agentMessagesResult.map(({ m }) => m.configuration),
         conversation,
         t,
       });
 
       return {
         userMessage,
-        agentMessages: nonNullResults.map(({ m }) => m),
-        agentMessageRows: nonNullResults.map(({ row }) => row),
+        agentMessages: agentMessagesResult.map(({ m }) => m),
+        agentMessageRows: agentMessagesResult.map(({ row }) => row),
       };
     });
     userMessage = result.userMessage;
@@ -1196,43 +977,13 @@ export async function editUserMessage(
     agentMessageRowById.set(agentMessageRow.id, agentMessageRow);
   }
 
-  await concurrentExecutor(
+  await runAgentLoopWorkflow({
+    auth,
     agentMessages,
-    async (agentMessage) => {
-      // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
-      const agentMessageRow = agentMessageRowById.get(
-        agentMessage.agentMessageId
-      );
-      assert(
-        agentMessageRow,
-        `Agent message row not found for agent message ${agentMessage.agentMessageId}`
-      );
-
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId: agentMessage.configuration.sId,
-        variant: "full",
-      });
-
-      assert(
-        agentConfiguration,
-        "Unreachable: could not find detailed configuration for agent"
-      );
-
-      void launchAgentLoopWorkflow({
-        auth,
-        agentLoopArgs: {
-          agentMessageId: agentMessage.sId,
-          agentMessageVersion: agentMessage.version,
-          conversationId: conversation.sId,
-          conversationTitle: conversation.title,
-          userMessageId: userMessage.sId,
-          userMessageVersion: userMessage.version,
-        },
-        startStep: 0,
-      });
-    },
-    { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
-  );
+    agentMessageRowById,
+    conversation,
+    userMessage,
+  });
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -

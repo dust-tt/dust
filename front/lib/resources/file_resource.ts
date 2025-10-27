@@ -7,13 +7,14 @@ import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
 
 import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import {
   getPrivateUploadBucket,
   getPublicUploadBucket,
   getUpsertQueueBucket,
 } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import {
   FileModel,
   ShareableFileModel,
@@ -138,7 +139,6 @@ export class FileResource extends BaseResource<FileModel> {
     const shareableFile = await ShareableFileModel.findOne({
       where: { token },
     });
-
     if (!shareableFile) {
       return null;
     }
@@ -146,7 +146,6 @@ export class FileResource extends BaseResource<FileModel> {
     const [workspace] = await WorkspaceResource.fetchByModelIds([
       shareableFile.workspaceId,
     ]);
-
     if (!workspace) {
       return null;
     }
@@ -161,6 +160,25 @@ export class FileResource extends BaseResource<FileModel> {
     const fileRes = file ? new this(this.model, file.get()) : null;
     if (!fileRes) {
       return null;
+    }
+
+    // Check if associated conversation still exist (not soft-deleted).
+    if (
+      fileRes.useCase === "conversation" &&
+      fileRes.useCaseMetadata?.conversationId
+    ) {
+      const conversationId = fileRes.useCaseMetadata.conversationId;
+
+      const auth = await Authenticator.internalBuilderForWorkspace(
+        workspace.sId
+      );
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        conversationId
+      );
+      if (!conversation) {
+        return null;
+      }
     }
 
     const content = await fileRes.getFileContent(

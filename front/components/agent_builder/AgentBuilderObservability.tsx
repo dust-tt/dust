@@ -1,14 +1,19 @@
 import {
   Button,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Label,
+  LoadingBlock,
 } from "@dust-tt/sparkle";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { OBSERVABILITY_TIME_RANGE } from "@app/components/agent_builder/observability/constants";
+import {
+  CHART_CONTAINER_HEIGHT_CLASS,
+  OBSERVABILITY_TIME_RANGE,
+} from "@app/components/agent_builder/observability/constants";
 import {
   ObservabilityProvider,
   useObservability,
@@ -27,10 +32,11 @@ export function AgentBuilderObservability({
 }: AgentBuilderObservabilityProps) {
   const { owner } = useAgentBuilderContext();
 
-  const { agentConfiguration } = useAgentConfiguration({
-    workspaceId: owner.sId,
-    agentConfigurationId: agentConfigurationSId,
-  });
+  const { agentConfiguration, isAgentConfigurationLoading } =
+    useAgentConfiguration({
+      workspaceId: owner.sId,
+      agentConfigurationId: agentConfigurationSId,
+    });
 
   if (!agentConfiguration) {
     return null;
@@ -52,18 +58,28 @@ export function AgentBuilderObservability({
         </div>
 
         <div className="grid grid-cols-1 gap-6">
-          <UsageMetricsChart
-            workspaceId={owner.sId}
-            agentConfigurationId={agentConfiguration.sId}
-          />
-          <ToolExecutionChart
-            workspaceId={owner.sId}
-            agentConfigurationId={agentConfiguration.sId}
-          />
-          <ToolLatencyChart
-            workspaceId={owner.sId}
-            agentConfigurationId={agentConfiguration.sId}
-          />
+          {isAgentConfigurationLoading ? (
+            <>
+              <ChartContainerSkeleton />
+              <ChartContainerSkeleton />
+              <ChartContainerSkeleton />
+            </>
+          ) : (
+            <>
+              <UsageMetricsChart
+                workspaceId={owner.sId}
+                agentConfigurationId={agentConfiguration.sId}
+              />
+              <ToolExecutionChart
+                workspaceId={owner.sId}
+                agentConfigurationId={agentConfiguration.sId}
+              />
+              <ToolLatencyChart
+                workspaceId={owner.sId}
+                agentConfigurationId={agentConfiguration.sId}
+              />
+            </>
+          )}
         </div>
       </div>
     </ObservabilityProvider>
@@ -89,6 +105,24 @@ function HeaderPeriodDropdown() {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+    </div>
+  );
+}
+
+function ChartContainerSkeleton() {
+  return (
+    <div
+      className={cn(
+        "bg-card flex flex-col rounded-lg border border-border p-4",
+        CHART_CONTAINER_HEIGHT_CLASS
+      )}
+    >
+      <div className="mb-4 flex items-center justify-between">
+        <LoadingBlock className="h-6 w-40 rounded-md" />
+      </div>
+      <div className="flex-1">
+        <LoadingBlock className="h-full w-full rounded-xl" />
+      </div>
     </div>
   );
 }

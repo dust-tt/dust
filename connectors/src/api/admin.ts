@@ -50,6 +50,10 @@ const whitelistedCommands = [
     command: "run-auto-join",
   },
   {
+    majorCommand: "slack",
+    command: "check-channel",
+  },
+  {
     majorCommand: "connectors",
     command: "set-error",
   },
@@ -72,6 +76,10 @@ const whitelistedCommands = [
   {
     majorCommand: "confluence",
     command: "check-page-exists",
+  },
+  {
+    majorCommand: "google_drive",
+    command: "upsert-file",
   },
 ];
 

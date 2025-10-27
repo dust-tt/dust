@@ -4,64 +4,17 @@ import {
   isDustAppChatBlockType,
   runActionStreamed,
 } from "@app/lib/actions/server";
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { AgentMessageContentParser } from "@app/lib/api/assistant/agent_message_content_parser";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type {
-  AgentConfigurationType,
-  AgentMessageType,
-  ConversationType,
-  ModelConfigurationType,
-  ModelConversationTypeMultiActions,
-  Result,
-  UserMessageType,
-} from "@app/types";
-import { Err, Ok } from "@app/types";
-import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
-} from "@app/types/assistant/agent_message_content";
-
-type Output = {
-  actions: Array<{
-    functionCallId: string;
-    name: string | null;
-    arguments: Record<string, string | boolean | number> | null;
-  }>;
-  generation: string | null;
-  contents: Array<
-    TextContentType | FunctionCallContentType | ReasoningContentType
-  >;
-};
-
-type GetOutputFromActionInput = {
-  modelConversationRes: Ok<{
-    modelConversation: ModelConversationTypeMultiActions;
-    tokensUsed: number;
-  }>;
-  conversation: ConversationType;
-  userMessage: UserMessageType;
-  runConfig: any;
-  specifications: AgentActionSpecification[];
-  flushParserTokens: () => Promise<void>;
-  contentParser: AgentMessageContentParser;
-  agentMessageRow: AgentMessage;
-  step: number;
-  agentConfiguration: AgentConfigurationType;
-  agentMessage: AgentMessageType;
-  model: ModelConfigurationType;
-  publishAgentError: (error: {
-    code: string;
-    message: string;
-    metadata: Record<string, string | number | boolean> | null;
-  }) => Promise<void>;
-  prompt: string;
-};
+  GetOutputRequestParams,
+  GetOutputResponse,
+  Output,
+} from "@app/temporal/agent_loop/lib/types";
+import { Err, Ok, safeParseJSON } from "@app/types";
+import type { ReasoningContentType } from "@app/types/assistant/agent_message_content";
 
 export async function getOutputFromAction(
   auth: Authenticator,
@@ -80,18 +33,8 @@ export async function getOutputFromAction(
     model,
     publishAgentError,
     prompt,
-  }: GetOutputFromActionInput
-): Promise<
-  Result<
-    {
-      output: Output;
-      dustRunId: string;
-      nativeChainOfThought: string;
-    },
-    | { type: "shouldRetryMessage"; message: string }
-    | { type: "shouldReturnNull" }
-  >
-> {
+  }: GetOutputRequestParams
+): Promise<GetOutputResponse> {
   let blockExecutionOutput: Output | null = null;
   let blockExecutionNativeChainOfThought = "";
 
@@ -277,21 +220,19 @@ export async function getOutputFromAction(
 
         if (block.message.function_calls?.length) {
           for (const fc of block.message.function_calls) {
-            try {
-              const args = JSON.parse(fc.arguments);
-              blockExecutionOutput.actions.push({
-                name: fc.name,
-                functionCallId: fc.id,
-                arguments: args,
-              });
-            } catch (error) {
+            const argsRes = safeParseJSON(fc.arguments);
+            if (argsRes.isErr()) {
               await publishAgentError({
                 code: "function_call_error",
-                message: `Error parsing function call arguments: ${error}`,
+                message: `Error parsing function call arguments: ${argsRes.error.message}`,
                 metadata: null,
               });
               return new Err({ type: "shouldReturnNull" });
             }
+            blockExecutionOutput.actions.push({
+              name: fc.name,
+              functionCallId: fc.id,
+            });
           }
         } else {
           blockExecutionOutput.generation = block.message.content ?? null;

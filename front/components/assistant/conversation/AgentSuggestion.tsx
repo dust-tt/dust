@@ -9,9 +9,10 @@ import {
 import { useRouter } from "next/router";
 import { useCallback, useMemo, useState } from "react";
 
-import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { mentionAgent } from "@app/lib/mentions";
 import {
   useAgentConfigurations,
   useSuggestedAgentConfigurations,
@@ -62,7 +63,7 @@ export function AgentSuggestion({
 
   const { submit: handleSelectSuggestion } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
-      const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
+      const editedContent = `${mentionAgent(agent)} ${userMessage.content}`;
       const mRes = await fetch(
         `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${userMessage.sId}/edit`,
         {
@@ -117,7 +118,7 @@ export function AgentSuggestion({
     isSuggestedAgentConfigurationsLoading,
   ]);
 
-  const showAssistantDetails = useCallback(
+  const showAgentDetails = useCallback(
     (agentConfiguration: LightAgentConfigurationType) => {
       setQueryParam(router, "agentDetails", agentConfiguration.sId);
     },
@@ -149,9 +150,7 @@ export function AgentSuggestion({
               onClick={() => handleSelectSuggestion(agent)}
               variant="secondary"
               action={
-                <AssistantCardMore
-                  onClick={() => showAssistantDetails(agent)}
-                />
+                <AssistantCardMore onClick={() => showAgentDetails(agent)} />
               }
             />
           ))}
@@ -159,9 +158,9 @@ export function AgentSuggestion({
       )}
       <div className="flex flex-row items-center gap-2">
         <p className="flex text-sm text-muted-foreground">Or</p>
-        <AssistantPicker
+        <AgentPicker
           owner={owner}
-          assistants={allSortedAgents}
+          agents={allSortedAgents}
           onItemClick={async (agent) => {
             if (!isLoading) {
               setIsLoading(true);

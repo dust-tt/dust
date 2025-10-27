@@ -76,7 +76,7 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
       signatureHeader: "X-Signature",
       signatureAlgorithm: "sha256",
       includeGlobal: true,
-      kind: "custom",
+      provider: null,
       subscribedEvents: [],
     };
 
@@ -102,7 +102,7 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
       signatureHeader: "X-Signature",
       signatureAlgorithm: "sha256",
       includeGlobal: true,
-      kind: "custom",
+      provider: null,
       subscribedEvents: [],
     };
 
@@ -125,7 +125,7 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
       signatureHeader: "X-Hub-Signature-256",
       signatureAlgorithm: "sha256",
       includeGlobal: true,
-      kind: "github",
+      provider: "github",
       subscribedEvents: ["pull_request"],
     };
 
@@ -134,7 +134,7 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
     expect(res._getStatusCode()).toBe(201);
     const data = res._getJSONData();
     expect(data.success).toBe(true);
-    expect(data.webhookSource.kind).toBe("github");
+    expect(data.webhookSource.provider).toBe("github");
     expect(data.webhookSource.subscribedEvents).toEqual(["pull_request"]);
     expect(data.webhookSource.name).toBe("GitHub PR Webhook");
   });
@@ -148,7 +148,7 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
       signatureHeader: "X-Hub-Signature-256",
       signatureAlgorithm: "sha256",
       includeGlobal: true,
-      kind: "github",
+      provider: "github",
       subscribedEvents: [],
     };
 

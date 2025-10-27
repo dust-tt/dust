@@ -11,6 +11,7 @@ import {
   _getAgentRouterToolsConfiguration,
   _getDefaultWebActionsForGlobalAgent,
   _getInteractiveContentToolConfiguration,
+  _getToolsetsToolsConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -39,8 +40,10 @@ export function _getDustGlobalAgent(
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
     searchMCPServerView,
+    toolsetsMCPServerView,
     deepDiveMCPServerView,
     interactiveContentMCPServerView,
+    agentMemoryMCPServerView,
     featureFlags,
   }: {
     settings: GlobalAgentSettings | null;
@@ -48,8 +51,10 @@ export function _getDustGlobalAgent(
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     searchMCPServerView: MCPServerViewResource | null;
+    toolsetsMCPServerView: MCPServerViewResource | null;
     deepDiveMCPServerView: MCPServerViewResource | null;
     interactiveContentMCPServerView: MCPServerViewResource | null;
+    agentMemoryMCPServerView: MCPServerViewResource | null;
     featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
@@ -135,6 +140,12 @@ export function _getDustGlobalAgent(
   You are an AI agent created by Dust to answer questions using your internal knowledge, the public internet and the user's internal company data sources.
   </primary_goal>
 
+  <toolsets_guidelines>
+  The "toolsets" tools allow listing and enabling additional tools.
+  At the start of each conversation or when encountering any request that might benefit from specialized tools, use \`toolsets__list\` to discover available toolsets.
+  Enable relevant toolsets before attempting to fulfill the request. Never assume or reply that you cannot do something before checking the toolsets available.
+  </toolsets_guidelines>
+
   <general_guidelines>
   ${globalAgentGuidelines}
   </general_guidelines>
@@ -146,6 +157,59 @@ export function _getDustGlobalAgent(
     instructions += `<instructions>
     ${simpleRequestGuidelines}
     </instructions>`;
+  }
+
+  const hasAgentMemory = featureFlags.includes("dust_global_agent_memory");
+  if (hasAgentMemory && agentMemoryMCPServerView) {
+    instructions += `<memory_guidelines>
+    You have access to a persistent, user-specific memory system. Each user has their own private memory store.
+
+    <critical_behavior>
+    ALWAYS retrieve memories FIRST before any other action in EVERY conversation.
+    This is non-negotiable - memories shape your entire response strategy.
+    </critical_behavior>
+
+    <memory_strategy>
+    Think of memories as building a "user manual" for each person you interact with:
+    - Extract salient facts worth remembering (use judgment - not everything is memory-worthy)
+    - Consolidate similar memories to avoid redundancy
+    - Update facts when they change rather than accumulating outdated versions
+    - Memories should enable you to provide increasingly personalized and efficient help over time
+    </memory_strategy>
+
+    <what_to_remember>
+    High-value memories (always save):
+    - Identity & role: job title, team structure, responsibilities
+    - Preferences: communication style, detail level, format preferences
+    - Context: ongoing projects, goals, deadlines, constraints
+    - Expertise: knowledge level, skills, areas where they need support
+    - Decisions: technical choices, strategic directions, agreed approaches
+    - Tools & workflows: software they use, processes they follow
+
+    Low-value memories (usually skip):
+    - Temporal states: "working on X today", "currently debugging"
+    - One-off queries without broader context
+    - Information readily available in their data sources
+    </what_to_remember>
+
+    <memory_usage>
+    Use memories to:
+    - Skip redundant questions (e.g., don't ask their role if you know it)
+    - Tailor complexity to their expertise level automatically
+    - Proactively offer relevant suggestions based on their patterns
+    - Maintain continuity across conversations (reference past decisions naturally)
+    - Adapt tone and format to their preferences without being asked
+
+    Never explicitly say "I remember" or "based on our previous conversation" - just apply the context naturally.
+    </memory_usage>
+
+    <memory_hygiene>
+    - Write atomic, factual statements (e.g., "CFO at Series B startup, 50 employees")
+    - Include temporal markers when relevant (e.g., "Migrating to AWS - started Jan 2025")
+    - Edit existing memories when facts change rather than creating new ones
+    - Erase memories that become irrelevant or that users ask you to forget
+    </memory_hygiene>
+    </memory_guidelines>`;
   }
 
   const dustAgent = {
@@ -277,6 +341,10 @@ export function _getDustGlobalAgent(
       agentId: GLOBAL_AGENTS_SID.DUST,
       webSearchBrowseMCPServerView,
     }),
+    ..._getToolsetsToolsConfiguration({
+      agentId: GLOBAL_AGENTS_SID.DUST,
+      toolsetsMcpServerView: toolsetsMCPServerView,
+    }),
     ..._getAgentRouterToolsConfiguration(
       GLOBAL_AGENTS_SID.DUST,
       agentRouterMCPServerView,
@@ -296,6 +364,27 @@ export function _getDustGlobalAgent(
       description: `Handoff the query to the @${DEEP_DIVE_NAME} agent`,
       mcpServerViewId: deepDiveMCPServerView.sId,
       internalMCPServerId: deepDiveMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      secretName: null,
+    });
+  }
+
+  if (hasAgentMemory && agentMemoryMCPServerView) {
+    actions.push({
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.DUST + "-agent-memory",
+      type: "mcp_server_configuration",
+      name: "agent_memory" satisfies InternalMCPServerNameType,
+      description: "The agent memory tool",
+      mcpServerViewId: agentMemoryMCPServerView.sId,
+      internalMCPServerId: agentMemoryMCPServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
       childAgentId: null,

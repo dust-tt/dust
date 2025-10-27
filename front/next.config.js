@@ -258,27 +258,8 @@ const config = {
     }
     return config;
   },
-  eslint: {
-    // By default, `next lint` only runs on pages/, app/, components/, lib/, and src/
-    // directories. We want to run it in all directories
-    dirs: [
-      "admin",
-      "components",
-      "config",
-      "hooks",
-      "lib",
-      "logger",
-      // "mailing", Not putting migrations as it generates a lot of noise in linter, especially raw SQL
-      // "migrations", Not putting migrations as it generates a lot of noise in linter, especially raw SQL
-      "pages",
-      "poke",
-      "prompt",
-      "scripts",
-      "temporal",
-      "tests",
-      "types",
-    ],
-  },
+  // We don't use next lint anymore, it's removed in next 16. So we disable it here.
+  // eslint: false
 };
 
 module.exports = withBundleAnalyzer(config);

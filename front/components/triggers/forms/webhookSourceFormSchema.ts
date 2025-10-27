@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 export type WebhookSourceFormValues = {
@@ -43,7 +43,7 @@ export function getWebhookSourceFormDefaults(
   return {
     name,
     description: view.description ?? "",
-    icon: view.icon ?? DEFAULT_WEBHOOK_ICON,
+    icon: normalizeWebhookIcon(view.icon),
     sharingSettings,
   };
 }

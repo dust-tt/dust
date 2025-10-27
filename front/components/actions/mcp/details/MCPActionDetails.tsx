@@ -11,6 +11,12 @@ import {
 import { useEffect, useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import {
+  makeQueryTextForDataSourceSearch,
+  makeQueryTextForFind,
+  makeQueryTextForInclude,
+  makeQueryTextForList,
+} from "@app/components/actions/mcp/details/input_rendering";
 import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
 import {
@@ -26,6 +32,7 @@ import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/M
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import { MCPToolsetsEnableActionDetails } from "@app/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import {
@@ -54,16 +61,17 @@ import {
   isResourceContentWithText,
   isTextContent,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
+import {
+  isDataSourceFilesystemFindInputType,
+  isDataSourceFilesystemListInputType,
+  isIncludeInputType,
+  isSearchInputType,
+  isWebsearchInputType,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
-import {
-  asDisplayName,
-  isString,
-  isSupportedImageContentType,
-  parseTimeFrame,
-} from "@app/types";
+import { asDisplayName, isSupportedImageContentType } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 export interface MCPActionDetailsProps {
@@ -124,26 +132,20 @@ export function MCPActionDetails({
     isInternalMCPServerOfName(mcpServerId, "search") ||
     isInternalMCPServerOfName(mcpServerId, "data_sources_file_system")
   ) {
-    if (toolName === SEARCH_TOOL_NAME && isString(params.relativeTimeFrame)) {
-      const timeFrame = parseTimeFrame(params.relativeTimeFrame);
-      // TODO: remove these typecasts
-      const queryResource = makeQueryResource({
-        query: params.query as string,
-        timeFrame: timeFrame,
-        tagsIn: params.tagsIn as string[],
-        tagsNot: params.tagsNot as string[],
-        nodeIds: params.nodeIds as string[],
-      });
-
+    if (toolName === SEARCH_TOOL_NAME) {
       return (
         <SearchResultDetails
           viewType={viewType}
-          defaultQuery={queryResource.text}
           actionName={
             viewType === "conversation" ? "Searching data" : "Search data"
           }
           actionOutput={output}
           visual={MagnifyingGlassIcon}
+          query={
+            isSearchInputType(params)
+              ? makeQueryTextForDataSourceSearch(params)
+              : null
+          }
         />
       );
     }
@@ -161,6 +163,13 @@ export function MCPActionDetails({
               : "Browse data sources"
           }
           actionOutput={output}
+          query={
+            isDataSourceFilesystemFindInputType(params)
+              ? makeQueryTextForFind(params)
+              : isDataSourceFilesystemListInputType(params)
+                ? makeQueryTextForList(params)
+                : null
+          }
           visual={ActionDocumentTextIcon}
         />
       );
@@ -185,6 +194,9 @@ export function MCPActionDetails({
           }
           actionOutput={output}
           visual={ClockIcon}
+          query={
+            isIncludeInputType(params) ? makeQueryTextForInclude(params) : null
+          }
         />
       );
     }
@@ -195,7 +207,7 @@ export function MCPActionDetails({
       return (
         <SearchResultDetails
           viewType={viewType}
-          defaultQuery={params.query as string}
+          query={isWebsearchInputType(params) ? params.query : null}
           actionName={
             viewType === "conversation" ? "Searching the web" : "Web search"
           }
@@ -237,6 +249,9 @@ export function MCPActionDetails({
   }
 
   if (isInternalMCPServerOfName(mcpServerId, "toolsets")) {
+    if (toolName === "enable") {
+      return <MCPToolsetsEnableActionDetails {...toolOutputDetailsProps} />;
+    }
     return <MCPListToolsActionDetails {...toolOutputDetailsProps} />;
   }
 

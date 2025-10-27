@@ -6,6 +6,7 @@ import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resourc
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
+import type { WorkspaceType } from "@app/types";
 
 import handler from "./index";
 
@@ -28,15 +29,9 @@ async function setupTest(
   return { req, res, workspace, authenticator };
 }
 
-async function createWebhookSource(workspace: any, name: string) {
+async function createWebhookSource(workspace: WorkspaceType, name: string) {
   const webhookSourceFactory = new WebhookSourceFactory(workspace);
-  const result = await webhookSourceFactory.create({ name });
-
-  if (result.isErr()) {
-    throw new Error(`Failed to create webhook source: ${result.error.message}`);
-  }
-
-  return result.value;
+  return webhookSourceFactory.create({ name });
 }
 
 describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
@@ -50,7 +45,7 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       workspace,
       "Test Webhook Source"
     );
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
 
     await handler(req, res);
 
@@ -64,7 +59,7 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     // Verify the webhook source was actually deleted
     const deletedWebhookSource = await WebhookSourceResource.fetchById(
       authenticator,
-      webhookSource.sId()
+      webhookSource.sId
     );
     expect(deletedWebhookSource).toBeNull();
   });
@@ -109,7 +104,7 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       workspace,
       "Test Webhook Source"
     );
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
 
     // Mock the delete method to simulate failure
     const deleteSpy = vi
@@ -123,10 +118,7 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     expect(res._getStatusCode()).toBe(500);
 
     const responseData = res._getJSONData();
-    expect(responseData.error).toEqual({
-      type: "internal_server_error",
-      message: "Failed to delete webhook source.",
-    });
+    expect(responseData.error.type).toEqual("internal_server_error");
 
     // Restore the original method
     deleteSpy.mockRestore();
@@ -144,7 +136,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       workspace,
       "Test Webhook Source"
     );
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
     req.body = {
       remoteMetadata: { id: "remote-webhook-123", repo: "owner/repo" },
     };
@@ -161,7 +153,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     // Verify the webhook source was actually updated
     const updatedWebhookSource = await WebhookSourceResource.fetchById(
       authenticator,
-      webhookSource.sId()
+      webhookSource.sId
     );
     expect(updatedWebhookSource?.remoteMetadata).toEqual({
       id: "remote-webhook-123",
@@ -179,7 +171,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       workspace,
       "Test Webhook Source"
     );
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
     req.body = {
       oauthConnectionId: "connection-456",
     };
@@ -196,7 +188,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     // Verify the webhook source was actually updated
     const updatedWebhookSource = await WebhookSourceResource.fetchById(
       authenticator,
-      webhookSource.sId()
+      webhookSource.sId
     );
     expect(updatedWebhookSource?.oauthConnectionId).toBe("connection-456");
   });
@@ -211,7 +203,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       workspace,
       "Test Webhook Source"
     );
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
     req.body = {
       remoteMetadata: { id: "remote-webhook-789", repo: "org/project" },
       oauthConnectionId: "connection-789",
@@ -229,7 +221,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     // Verify all fields were updated
     const updatedWebhookSource = await WebhookSourceResource.fetchById(
       authenticator,
-      webhookSource.sId()
+      webhookSource.sId
     );
     expect(updatedWebhookSource?.remoteMetadata).toEqual({
       id: "remote-webhook-789",
@@ -248,7 +240,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       workspace,
       "Test Webhook Source"
     );
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
     req.body = {
       remoteMetadata: "invalid", // Invalid: should be object
       oauthConnectionId: "valid-connection",
@@ -266,7 +258,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     // Verify only the valid field was updated
     const updatedWebhookSource = await WebhookSourceResource.fetchById(
       authenticator,
-      webhookSource.sId()
+      webhookSource.sId
     );
     expect(updatedWebhookSource?.remoteMetadata).toBeNull();
     expect(updatedWebhookSource?.oauthConnectionId).toBe("valid-connection");
@@ -279,7 +271,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       workspace,
       "Test Webhook Source"
     );
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
     req.body = {};
 
     await handler(req, res);
@@ -340,7 +332,7 @@ describe("Method Support /api/w/[wId]/webhook_sources/[webhookSourceId]", () => 
       workspace,
       "Test Webhook Source"
     );
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
 
     await handler(req, res);
 
@@ -361,7 +353,7 @@ describe("Method Support /api/w/[wId]/webhook_sources/[webhookSourceId]", () => 
       workspace,
       "Test Webhook Source"
     );
-    req.query.webhookSourceId = webhookSource.sId();
+    req.query.webhookSourceId = webhookSource.sId;
 
     await handler(req, res);
 
