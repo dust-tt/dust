@@ -2829,6 +2829,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GoogleSpreadsheetLogo"
   | "FreshserviceLogo"
   | "HubspotLogo"
+  | "MicrosoftExcelLogo"
   | "MicrosoftOutlookLogo"
   | "MicrosoftTeamsLogo"
   | "JiraLogo"
