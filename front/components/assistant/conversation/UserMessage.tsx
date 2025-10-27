@@ -27,6 +27,10 @@ import {
   PastedAttachmentBlock,
   pastedAttachmentDirective,
 } from "@app/components/markdown/PastedAttachmentBlock";
+import {
+  getUserMentionPlugin,
+  userMentionDirective,
+} from "@app/lib/mentions/markdown/plugin";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
 
@@ -50,6 +54,7 @@ export function UserMessage({
       sup: CiteBlock,
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: getAgentMentionPlugin(owner),
+      mention_user: getUserMentionPlugin(owner),
       content_node_mention: ContentNodeMentionBlock,
       pasted_attachment: PastedAttachmentBlock,
     }),
@@ -60,6 +65,7 @@ export function UserMessage({
     () => [
       getCiteDirective(),
       agentMentionDirective,
+      userMentionDirective,
       contentNodeMentionDirective,
       pastedAttachmentDirective,
     ],

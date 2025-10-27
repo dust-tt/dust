@@ -93,7 +93,7 @@ export const MentionDropdown = React.forwardRef<
           <DropdownMenuItem
             onClick={handleUserSeeDetails}
             icon={UserIcon}
-            label={`Profile of @${mention.label}${mention.description ? ": " + mention.description : ""}`}
+            label={`Profile of @${mention.label}: ${mention.description}`}
           />
         </DropdownMenuContent>
       </DropdownMenu>
