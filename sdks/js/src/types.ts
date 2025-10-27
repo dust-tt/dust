@@ -708,6 +708,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "llm_router_direct_requests"
   | "mentions_v2"
   | "dust_global_agent_memory"
+  | "http_client_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

@@ -62,6 +62,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",
   },
+  http_client_tool: {
+    description: "HTTP Client MCP tool for making external API requests",
+    stage: "on_demand",
+  },
   index_private_slack_channel: {
     description: "Allow indexing of private Slack channels",
     stage: "on_demand",

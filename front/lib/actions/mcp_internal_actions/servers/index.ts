@@ -21,6 +21,7 @@ import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as calendarServer } from "@app/lib/actions/mcp_internal_actions/servers/google_calendar";
 import { default as driveServer } from "@app/lib/actions/mcp_internal_actions/servers/google_drive";
 import { default as sheetsServer } from "@app/lib/actions/mcp_internal_actions/servers/google_sheets";
+import { default as httpClientServer } from "@app/lib/actions/mcp_internal_actions/servers/http_client";
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot";
 import { default as imageGenerationServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
@@ -193,6 +194,8 @@ export async function getInternalMCPServer(
       return valtownServer(auth, agentLoopContext);
     case "deep_dive":
       return deepDiveServer(auth, agentLoopContext);
+    case "http_client":
+      return httpClientServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }
