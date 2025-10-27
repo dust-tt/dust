@@ -179,7 +179,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     }
   }
 
-  if (internalMCPServerName === "web_search_&_browse" || internalMCPServerName === "http_client") {
+  if (internalMCPServerName === "web_search_&_browse") {
     if (toolName === WEBSEARCH_TOOL_NAME) {
       return (
         <SearchResultDetails
