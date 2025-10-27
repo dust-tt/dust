@@ -36,4 +36,6 @@ export { editorMentionUtils } from "./editor/utils";
 export {
   agentMentionDirective,
   getAgentMentionPlugin,
+  getUserMentionPlugin,
+  userMentionDirective,
 } from "./markdown/plugin";

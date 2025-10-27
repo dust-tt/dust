@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
 
+import type { EditorService } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import type {
-  EditorMention,
-  EditorMentionAgent,
-  EditorService,
-} from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
-import type { AgentMention, LightAgentConfigurationType } from "@app/types";
+  AgentMention,
+  LightAgentConfigurationType,
+  RichMention,
+} from "@app/types";
 
 const useHandleAgentMentions = (
   editorService: EditorService,
@@ -31,7 +31,7 @@ const useHandleAgentMentions = (
     // 2. The editor contains only the sticky mention from a previously selected agent.
     // This ensures that sticky mentions are maintained but not duplicated.
     if (editorIsEmpty || onlyContainsPreviousStickyMention) {
-      const mentionsToInsert: EditorMention[] = [];
+      const mentionsToInsert: RichMention[] = [];
 
       for (const configurationId of stickyMentions.map(
         (mention) => mention.configurationId
@@ -70,7 +70,7 @@ const useHandleAgentMentions = (
         return;
       }
 
-      const mention: EditorMentionAgent = {
+      const mention: RichMention = {
         type: "agent",
         id: agentConfiguration.sId,
         label: agentConfiguration.name,
