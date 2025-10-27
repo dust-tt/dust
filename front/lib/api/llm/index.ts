@@ -6,7 +6,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 
-import { AnthropicLLM } from "./clients/anthropic";
+import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
 
 // Keep this until the list includes all the supported model IDs (cf SUPPORTED_MODEL_CONFIGS)
 const WHITELISTED_MODEL_IDS: ModelIdType[] = [

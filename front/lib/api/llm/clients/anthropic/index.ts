@@ -12,9 +12,15 @@ import type {
 } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
-import { CLAUDE_4_THINKING_BUDGET_TOKENS, isClaude4 } from "./utils";
-import { streamLLMEvents } from "./utils/anthropic_to_events";
-import { toMessage, toTool } from "./utils/conversation_to_anthropic";
+import {
+  CLAUDE_4_THINKING_BUDGET_TOKENS,
+  isClaude4,
+} from "@app/lib/api/llm/clients/anthropic/utils";
+import { streamLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
+import {
+  toMessage,
+  toTool,
+} from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
 
 export class AnthropicLLM extends LLM {
   private client: Anthropic;

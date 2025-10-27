@@ -1,10 +1,9 @@
 import type { MessageStreamEvent } from "@anthropic-ai/sdk/resources/messages.mjs";
 import { describe, expect, it } from "vitest";
 
+import { streamLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
 import type { ProviderMetadata } from "@app/lib/api/llm/types/events";
 import { createAsyncGenerator } from "@app/lib/api/llm/utils/utils";
-
-import { streamLLMEvents } from "../anthropic_to_events";
 
 describe("streamLLMEvents", () => {
   it("should convert modelOutputEvents to finishLLMEvents", async () => {
