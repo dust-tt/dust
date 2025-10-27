@@ -706,6 +706,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_default_haiku_feature"
   | "llm_router_direct_requests"
   | "mentions_v2"
+  | "dust_global_agent_memory"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

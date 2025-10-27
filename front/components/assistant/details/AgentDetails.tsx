@@ -211,7 +211,7 @@ export function AgentDetails({
               <DescriptionSection />
             </SheetHeader>
             <SheetContainer className="pb-4">
-              {showEditorsTabs || showPerformanceTabs ? (
+              {showEditorsTabs || showPerformanceTabs || showAgentMemory ? (
                 <Tabs value={selectedTab}>
                   <TabsList border={false}>
                     <TabsTrigger
