@@ -1,5 +1,3 @@
-import { ZendeskLogo } from "@dust-tt/sparkle";
-
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
 import { CreateWebhookZendeskConnection } from "@app/lib/triggers/built-in-webhooks/zendesk/components/CreateWebhookZendeskConnection";
 import { WebhookSourceZendeskDetails } from "@app/lib/triggers/built-in-webhooks/zendesk/components/WebhookSourceZendeskDetails";
@@ -14,7 +12,7 @@ export const ZENDESK_WEBHOOK_PRESET: PresetWebhook<"zendesk"> = {
     field: "type",
   },
   events: ZENDESK_WEBHOOK_EVENTS,
-  icon: ZendeskLogo,
+  icon: "ZendeskLogo",
   description:
     "Receive events from Zendesk such as ticket creation or modification",
   featureFlag: "hootl_dev_webhooks",

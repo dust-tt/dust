@@ -45,6 +45,7 @@ import {
   SlackLogo,
   StripeLogo,
   ValTownLogo,
+  ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentProps, ComponentType } from "react";
 
@@ -117,6 +118,7 @@ export const InternalActionIcons = {
   StripeLogo,
   DriveLogo,
   ValTownLogo,
+  ZendeskLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);

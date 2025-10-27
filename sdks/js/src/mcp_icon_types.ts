@@ -40,6 +40,7 @@ export const MCPInternalActionIconSchema = z.enum([
   "StripeLogo",
   "OpenaiLogo",
   "ValTownLogo",
+  "ZendeskLogo",
 ]);
 
 export const MCPExternalActionIconSchema = z.enum([

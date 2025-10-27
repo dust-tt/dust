@@ -2843,6 +2843,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "StripeLogo"
   | "OpenaiLogo"
   | "ValTownLogo"
+  | "ZendeskLogo"
 >();
 
 const CustomServerIconSchema = FlexibleEnumSchema<
