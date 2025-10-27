@@ -3,14 +3,12 @@ import { describe, expect, it } from "vitest";
 import {  replaceMentionsWithAt, serializeMention } from "./format";
 
 describe("format", () => {
-  it("mentions an agent", () => {
+  it("serializeMention", () => {
     const res = serializeMention({ name: "agent", sId: "youpi" });
     expect(res).toBe(":mention[agent]{sId=youpi}");
   });
-});
 
-describe("replaceMentionsWithAt", () => {
-  describe("idempotency with mentionAgent", () => {
+  describe("idempotency with serializeMention", () => {
     it("should replace mentions", () => {
       const res = replaceMentionsWithAt(
         serializeMention({ name: "agent", sId: "youpi" })
