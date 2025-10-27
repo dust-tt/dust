@@ -1,5 +1,5 @@
 import Placeholder from "@tiptap/extension-placeholder";
-import type { Editor, JSONContent } from "@tiptap/react";
+import type { Editor } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
@@ -26,17 +26,7 @@ import type { WorkspaceType } from "@app/types";
 
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
 
-// TODO(rcs): remove those aliases
-export type EditorMention = RichMention;
-export type EditorMentionAgent = RichMention & { type: "agent" };
-export type EditorMentionUser = RichMention & { type: "user" };
-
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
-
-// TODO(rcs): remove this aliases
-function getTextAndMentionsFromNode(node?: JSONContent) {
-  return extractFromEditorJSON(node);
-}
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {
   const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
@@ -89,7 +79,7 @@ const useEditorService = (editor: Editor | null) => {
       },
 
       resetWithMentions: (
-        mentions: EditorMention[],
+        mentions: RichMention[],
         disableAutoFocus: boolean
       ) => {
         const chainCommands = editor?.chain();
@@ -126,9 +116,7 @@ const useEditorService = (editor: Editor | null) => {
       },
 
       getTextAndMentions() {
-        const { mentions, text } = getTextAndMentionsFromNode(
-          editor?.getJSON()
-        );
+        const { mentions, text } = extractFromEditorJSON(editor?.getJSON());
 
         return {
           mentions,
@@ -150,7 +138,7 @@ const useEditorService = (editor: Editor | null) => {
         };
       },
 
-      hasMention(mention: EditorMention) {
+      hasMention(mention: RichMention) {
         const { mentions } = this.getTextAndMentions();
         return mentions.some(
           (m) => m.id === mention.id && m.type === mention.type
