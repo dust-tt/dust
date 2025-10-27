@@ -320,7 +320,7 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
           webhooks: [
             {
               events,
-              jqlFilter: `project = ${projectKey}`,
+              jqlFilter: `project = "${projectKey.replace(/"/g, '\\"')}"`
             },
           ],
         }),
