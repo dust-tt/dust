@@ -42,7 +42,7 @@ import {
   useDeleteWebhookSource,
   useWebhookSourcesWithViews,
 } from "@app/lib/swr/webhook_source";
-import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
 import type {
@@ -251,9 +251,9 @@ function WebhookSourceSheetContent({
         includeGlobal: true,
         ...(remoteMetadata ? { remoteMetadata } : {}),
         ...(connectionId ? { connectionId } : {}),
-        icon: data.provider
-          ? WEBHOOK_PRESETS[data.provider].icon
-          : DEFAULT_WEBHOOK_ICON,
+        icon: normalizeWebhookIcon(
+          data.provider ? WEBHOOK_PRESETS[data.provider].icon : null
+        ),
       };
 
       await createWebhookSource(apiData);
@@ -552,9 +552,9 @@ function WebhookSourceSheetContent({
         title: `Create ${mode.provider ? WEBHOOK_PRESETS[mode.provider].name : "Custom"} Webhook Source`,
         description: "",
         icon: getIcon(
-          mode.provider
-            ? WEBHOOK_PRESETS[mode.provider].icon
-            : DEFAULT_WEBHOOK_ICON
+          normalizeWebhookIcon(
+            mode.provider ? WEBHOOK_PRESETS[mode.provider].icon : null
+          )
         ),
         content: (
           <FormProvider {...createForm}>
@@ -582,9 +582,9 @@ function WebhookSourceSheetContent({
         icon: systemView
           ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />
           : getIcon(
-              mode.provider
-                ? WEBHOOK_PRESETS[mode.provider].icon
-                : DEFAULT_WEBHOOK_ICON
+              normalizeWebhookIcon(
+                mode.provider ? WEBHOOK_PRESETS[mode.provider].icon : null
+              )
             ),
         content:
           systemView && webhookSource ? (
