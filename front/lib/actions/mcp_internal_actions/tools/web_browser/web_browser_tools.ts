@@ -18,7 +18,10 @@ import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { WebbrowseInputSchema, WebsearchInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
+import {
+  WebbrowseInputSchema,
+  WebsearchInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { summarizeWithAgent } from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
