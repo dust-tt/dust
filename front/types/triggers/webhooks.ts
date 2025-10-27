@@ -117,4 +117,5 @@ export const WebhookSourcesSchema = z.object({
   // Optional fields for creating remote webhooks
   connectionId: z.string().optional(),
   remoteMetadata: z.record(z.any()).optional(),
+  icon: z.string().optional(),
 });

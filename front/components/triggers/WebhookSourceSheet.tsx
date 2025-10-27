@@ -251,6 +251,9 @@ function WebhookSourceSheetContent({
         includeGlobal: true,
         ...(remoteMetadata ? { remoteMetadata } : {}),
         ...(connectionId ? { connectionId } : {}),
+        icon: data.provider
+          ? WEBHOOK_PRESETS[data.provider].icon
+          : DEFAULT_WEBHOOK_ICON,
       };
 
       await createWebhookSource(apiData);
