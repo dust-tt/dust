@@ -16,7 +16,10 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { getSecureFileAction } from "@app/pages/api/w/[wId]/files/[fileId]";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isPubliclySupportedUseCase } from "@app/types";
+import {
+  isConversationFileUseCase,
+  isPubliclySupportedUseCase,
+} from "@app/types";
 
 export const config = {
   api: {
@@ -70,7 +73,10 @@ async function handler(
   }
 
   // Check if the user has access to the file based on its useCase and useCaseMetadata
-  if (file.useCase === "conversation" && file.useCaseMetadata?.conversationId) {
+  if (
+    isConversationFileUseCase(file.useCase) &&
+    file.useCaseMetadata?.conversationId
+  ) {
     // For conversation files, check if the user has access to the conversation
     const conversation = await ConversationResource.fetchById(
       auth,
@@ -88,10 +94,8 @@ async function handler(
         },
       });
     }
-  } else if (
-    file.useCase === "folders_document" &&
-    file.useCaseMetadata?.spaceId
-  ) {
+  }
+  if (file.useCase === "folders_document" && file.useCaseMetadata?.spaceId) {
     // For folder documents, check if the user has access to the space
     const space = await SpaceResource.fetchById(
       auth,
