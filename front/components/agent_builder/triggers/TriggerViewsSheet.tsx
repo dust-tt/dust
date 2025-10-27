@@ -271,6 +271,7 @@ export function TriggerViewsSheet({
         currentPageId={currentPageId}
         onPageChange={(pageId) => setCurrentPageId(pageId as PageId)}
         size="xl"
+        addFooterSeparator
         showHeaderNavigation={false}
         showNavigation={false}
         leftButton={
