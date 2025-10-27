@@ -2,7 +2,8 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
@@ -25,8 +26,9 @@ import { useObservability } from "@app/components/agent_builder/observability/Ob
 import { ToolUsageTooltip } from "@app/components/agent_builder/observability/ToolUsageTooltip";
 import type {
   ChartDatum,
-  Mode,
+  ToolChartModeType,
 } from "@app/components/agent_builder/observability/types";
+import { isToolChartMode } from "@app/components/agent_builder/observability/types";
 import type { ValuesPayload } from "@app/components/agent_builder/observability/utils";
 import {
   getToolColor,
@@ -79,7 +81,7 @@ export function ToolUsageChart({
   agentConfigurationId: string;
 }) {
   const { period } = useObservability();
-  const [mode, setMode] = useState<Mode>("version");
+  const [mode, setMode] = useState<ToolChartModeType>("version");
 
   const {
     chartData,
@@ -113,12 +115,17 @@ export function ToolUsageChart({
           size="xs"
           variant="outline"
           isSelect
-          label={mode === "version" ? "version" : "step"}
+          label={mode === "version" ? "Version" : "Step"}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem label="version" onClick={() => setMode("version")} />
-        <DropdownMenuItem label="step" onClick={() => setMode("step")} />
+        <DropdownMenuRadioGroup
+          value={mode}
+          onValueChange={(value) => isToolChartMode(value) && setMode(value)}
+        >
+          <DropdownMenuRadioItem value="version">Version</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="step">Step</DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

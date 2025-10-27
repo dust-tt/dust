@@ -2,13 +2,12 @@ import React from "react";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
+import type { ToolChartModeType } from "@app/components/agent_builder/observability/types";
 import { getToolColor } from "@app/components/agent_builder/observability/utils";
-
-type Mode = "version" | "step";
 
 export interface ToolUsageTooltipProps
   extends TooltipContentProps<number, string> {
-  mode: Mode;
+  mode: ToolChartModeType;
   topTools: string[];
 }
 
