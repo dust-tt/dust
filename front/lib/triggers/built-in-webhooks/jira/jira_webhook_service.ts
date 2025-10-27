@@ -97,7 +97,7 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
       return new Err(new Error("Failed to get Jira access token"));
     }
 
-    const accessToken = tokenRes.value.access_token;
+    const { access_token: accessToken } = tokenRes.value;
 
     const resourcesRes = await this.getAccessibleResources(accessToken);
     if (resourcesRes.isErr()) {
@@ -178,34 +178,31 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
     const metadataRes = await oauthAPI.getConnectionMetadata({
       connectionId,
     });
-
     if (metadataRes.isErr()) {
       return new Err(new Error("Jira connection not found"));
     }
 
-    const workspace = auth.getNonNullableWorkspace();
-
-    const workspaceId = metadataRes.value.connection.metadata.workspace_id;
-    if (!workspaceId || workspaceId !== workspace.sId) {
-      return new Err(new Error("Connection does not belong to this workspace"));
+    const checkConnectionOwnershipResult = await checkConnectionOwnership(
+      auth,
+      connectionId
+    );
+    if (checkConnectionOwnershipResult.isErr()) {
+      return checkConnectionOwnershipResult;
     }
 
     const tokenRes = await oauthAPI.getAccessToken({
       connectionId,
     });
-
     if (tokenRes.isErr()) {
       return new Err(new Error("Failed to get Jira access token"));
     }
 
-    const accessToken = tokenRes.value.access_token;
-    const cloudId = remoteMetadata.cloudId;
+    const { access_token: accessToken } = tokenRes.value;
+    const { cloudId, webhookIds } = remoteMetadata;
 
     if (!isString(cloudId)) {
       return new Err(new Error("Remote metadata missing cloudId"));
     }
-
-    const webhookIds = remoteMetadata.webhookIds;
 
     if (!webhookIds || typeof webhookIds !== "object") {
       return new Err(new Error("Remote metadata missing webhookIds"));
