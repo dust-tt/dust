@@ -1,7 +1,7 @@
+import type { ResponseStreamEvent } from "openai/resources/responses/responses.mjs";
 import { describe, expect, it } from "vitest";
 
 import { streamLLMEvents } from "../openai_to_events";
-import { ResponseStreamEvent } from "openai/resources/responses/responses.mjs";
 
 async function* createAsyncGenerator<T>(items: T[]): AsyncGenerator<T> {
   for (const item of items) {
@@ -47,7 +47,8 @@ const modelOutputEvents: ResponseStreamEvent[] = [
       type: "function_call",
       name: "web_search_browse__websearch",
       arguments: '{"query":"Paris France weather forecast October 23 2025"}',
-      call_id: "DdHr7L197",
+      call_id: "call_DdHr7L197",
+      id: "fc_DdHr7L197",
     },
   },
   {
