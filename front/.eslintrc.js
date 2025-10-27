@@ -3,6 +3,7 @@ module.exports = {
     "next/core-web-vitals",
     "prettier",
     "eslint:recommended",
+    "plugin:@next/next/recommended",
     "plugin:@typescript-eslint/recommended",
   ],
   plugins: [
@@ -11,6 +12,7 @@ module.exports = {
     "dust",
     "eslint-plugin-unused-imports",
   ],
+  ignorePatterns: ["migrations/**/*.ts", "mailing/**/*.ts"],
   rules: {
     // Intentionally discourage direct global fetch; prefer explicit egress helpers.
     // For now set to "warn" so we can migrate incrementally.
@@ -89,7 +91,6 @@ module.exports = {
   overrides: [
     {
       files: ["*.jsx", "*.js", "*.ts", "*.tsx", "**/*.jsx"],
-      excludedFiles: ["migrations/**/*.ts", "mailings/**/*.ts"],
     },
     {
       // Force the setting of a swagger description on each public api endpoint
