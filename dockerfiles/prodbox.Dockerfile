@@ -20,6 +20,8 @@ ENV LD_LIBRARY_PATH=/usr/local/lib
 # Set the working directory to /dust
 WORKDIR /dust
 
+RUN mkdir -p ~/.ssh
+RUN chmod 700 ~/.ssh
 RUN ssh-keyscan -H github.com >> ~/.ssh/known_hosts
 RUN git fetch
 
