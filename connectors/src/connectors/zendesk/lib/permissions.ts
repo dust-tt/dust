@@ -8,12 +8,7 @@ import {
   getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import {
-  fetchZendeskBrand,
-  getZendeskBrandSubdomain,
-  listZendeskBrands,
-  listZendeskCategories,
-} from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { ZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskArticleResource,
@@ -90,7 +85,11 @@ async function getRootLevelContentNodes({
         ),
     ];
   } else {
-    const brands = await listZendeskBrands({ subdomain, accessToken });
+    const zendeskClient = await ZendeskClient.createClient(
+      accessToken,
+      connectorId
+    );
+    const brands = await zendeskClient.listBrands({ subdomain });
     return brands.map(
       (brand) =>
         brandsInDatabase
@@ -134,10 +133,13 @@ async function getBrandChildren({
     brandId,
   });
 
-  // fetching the brand to check whether it has an enabled Help Center
-  const fetchedBrand = await fetchZendeskBrand({
-    subdomain,
+  const zendeskClient = await ZendeskClient.createClient(
     accessToken,
+    connectorId
+  );
+  // fetching the brand to check whether it has an enabled Help Center
+  const fetchedBrand = await zendeskClient.fetchBrand({
+    subdomain,
     brandId,
   });
   if (!fetchedBrand) {
@@ -223,15 +225,17 @@ async function getHelpCenterChildren({
       category.toContentNode(connectorId, { expandable: true })
     );
   } else {
-    const brandSubdomain = await getZendeskBrandSubdomain({
-      connectorId,
+    const zendeskClient = await ZendeskClient.createClient(
+      accessToken,
+      connectorId
+    );
+
+    const brandSubdomain = await zendeskClient.getBrandSubdomain({
       brandId,
       subdomain,
-      accessToken,
     });
 
-    const categories = await listZendeskCategories({
-      accessToken,
+    const categories = await zendeskClient.listCategories({
       brandSubdomain,
     });
 
