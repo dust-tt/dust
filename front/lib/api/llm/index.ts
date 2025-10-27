@@ -1,4 +1,5 @@
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
+import { OpenAILLM } from "./clients/openai";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMOptions } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,6 +11,7 @@ import type { ModelIdType } from "@app/types/assistant/models/types";
 const WHITELISTED_MODEL_IDS: ModelIdType[] = [
   "mistral-large-latest",
   "mistral-small-latest",
+  "gpt-4o",
 ];
 
 export async function getLLM(
@@ -42,6 +44,8 @@ export async function getLLM(
     case "mistral-large-latest":
     case "mistral-small-latest":
       return hasFeature ? new MistralLLM({ model: modelConfiguration }) : null;
+    case "gpt-4o":
+      return new OpenAILLM({ model: modelConfiguration, options });
     default:
       return null;
   }
