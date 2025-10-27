@@ -26,11 +26,7 @@ import type { WebhookSourceFormValues } from "@app/components/triggers/forms/web
 import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
-import {
-  buildWebhookUrl,
-  DEFAULT_WEBHOOK_ICON,
-  normalizeWebhookIcon,
-} from "@app/lib/webhookSource";
+import { buildWebhookUrl, normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
@@ -150,7 +146,7 @@ export function WebhookSourceDetailsInfo({
                 >
                   <IconPicker
                     icons={ActionIcons}
-                    selectedIcon={selectedIcon ?? DEFAULT_WEBHOOK_ICON}
+                    selectedIcon={normalizeWebhookIcon(selectedIcon)}
                     onIconSelect={(iconName: string) => {
                       form.setValue("icon", iconName, { shouldDirty: true });
                       setIsPopoverOpen(false);

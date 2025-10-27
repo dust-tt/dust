@@ -7,6 +7,7 @@ import {
   PlusIcon,
 } from "@dust-tt/sparkle";
 
+import { getIcon } from "@app/components/resources/resources_icons";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
@@ -56,7 +57,7 @@ export const AddTriggerMenu = ({
             <DropdownMenuItem
               key={kind}
               label={WEBHOOK_PRESETS[kind].name + " Webhook"}
-              icon={WEBHOOK_PRESETS[kind].icon}
+              icon={getIcon(WEBHOOK_PRESETS[kind].icon)}
               onClick={() => createWebhook(kind)}
             />
           ))}

@@ -1,5 +1,3 @@
-import { RocketIcon } from "@dust-tt/sparkle";
-
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
@@ -103,7 +101,7 @@ export const TEST_WEBHOOK_PRESET: PresetWebhook<"test"> = {
     field: "event-type",
   },
   events: [TEST_EVENT],
-  icon: RocketIcon,
+  icon: "ActionRocketIcon",
   description: "A test webhook preset with a simple event structure.",
   // Used for dev tests only, it should always be hidden behind the flag
   featureFlag: "hootl_dev_webhooks",
