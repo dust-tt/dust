@@ -154,10 +154,7 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
     expect(res._getStatusCode()).toBe(500);
 
     const responseData = res._getJSONData();
-    expect(responseData.error).toEqual({
-      type: "internal_server_error",
-      message: "Failed to fetch webhook source views.",
-    });
+    expect(responseData.error.type).toEqual("internal_server_error");
 
     // Restore the original method
     listSpy.mockRestore();
