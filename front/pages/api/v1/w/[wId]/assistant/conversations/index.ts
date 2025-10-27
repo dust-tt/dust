@@ -2,7 +2,10 @@ import type {
   GetConversationsResponseType,
   PostConversationsResponseType,
 } from "@dust-tt/client";
-import { PostConversationsResponseSchema,PublicPostConversationsRequestBodySchema  } from "@dust-tt/client";
+import {
+  PostConversationsResponseSchema,
+  PublicPostConversationsRequestBodySchema,
+} from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -431,11 +434,13 @@ async function handler(
         conversation = updatedRes.value;
       }
 
-      res.status(200).json(validated(PostConversationsResponseSchema, {
-        conversation,
-        message: newMessage ?? undefined,
-        contentFragment: newContentFragment ?? undefined,
-      }));
+      res.status(200).json(
+        validated(PostConversationsResponseSchema, {
+          conversation,
+          message: newMessage ?? undefined,
+          contentFragment: newContentFragment ?? undefined,
+        })
+      );
       return;
     case "GET":
       if (!auth.user()) {

@@ -1,5 +1,8 @@
 import type { PostWorkspaceSearchResponseBodyType } from "@dust-tt/client";
-import { PostWorkspaceSearchResponseBodySchema,SearchRequestBodySchema  } from "@dust-tt/client";
+import {
+  PostWorkspaceSearchResponseBodySchema,
+  SearchRequestBodySchema,
+} from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -108,7 +111,9 @@ async function handler(
     });
   }
 
-  return res.status(200).json(validated(PostWorkspaceSearchResponseBodySchema, searchResult.value));
+  return res
+    .status(200)
+    .json(validated(PostWorkspaceSearchResponseBodySchema, searchResult.value));
 }
 
 export default withPublicAPIAuthentication(handler);

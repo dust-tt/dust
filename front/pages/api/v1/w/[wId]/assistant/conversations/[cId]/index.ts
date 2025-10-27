@@ -1,5 +1,8 @@
 import type { GetConversationResponseType } from "@dust-tt/client";
-import { GetConversationResponseSchema,PatchConversationRequestSchema  } from "@dust-tt/client";
+import {
+  GetConversationResponseSchema,
+  PatchConversationRequestSchema,
+} from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -133,7 +136,9 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      return res.status(200).json(validated(GetConversationResponseSchema, { conversation }));
+      return res
+        .status(200)
+        .json(validated(GetConversationResponseSchema, { conversation }));
     }
 
     case "PATCH": {

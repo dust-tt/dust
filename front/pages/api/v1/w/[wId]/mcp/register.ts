@@ -1,5 +1,8 @@
 import type { RegisterMCPResponseType } from "@dust-tt/client";
-import { PublicRegisterMCPRequestBodySchema , RegisterMCPResponseSchema } from "@dust-tt/client";
+import {
+  PublicRegisterMCPRequestBodySchema,
+  RegisterMCPResponseSchema,
+} from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -133,7 +136,9 @@ async function handler(
     });
   }
 
-  res.status(200).json(validated(RegisterMCPResponseSchema, registration.value));
+  res
+    .status(200)
+    .json(validated(RegisterMCPResponseSchema, registration.value));
 }
 
 export default withPublicAPIAuthentication(handler);

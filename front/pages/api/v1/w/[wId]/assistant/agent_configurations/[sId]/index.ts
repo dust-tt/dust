@@ -1,5 +1,8 @@
 import type { GetOrPatchAgentConfigurationResponseType } from "@dust-tt/client";
-import { GetOrPatchAgentConfigurationResponseSchema,PatchAgentConfigurationRequestSchema  } from "@dust-tt/client";
+import {
+  GetOrPatchAgentConfigurationResponseSchema,
+  PatchAgentConfigurationRequestSchema,
+} from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -153,9 +156,11 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      return res.status(200).json(validated(GetOrPatchAgentConfigurationResponseSchema, {
-        agentConfiguration,
-      }));
+      return res.status(200).json(
+        validated(GetOrPatchAgentConfigurationResponseSchema, {
+          agentConfiguration,
+        })
+      );
     }
     case "PATCH": {
       const r = PatchAgentConfigurationRequestSchema.safeParse(req.body);
@@ -189,9 +194,11 @@ async function handler(
         }
       }
 
-      return res.status(200).json(validated(GetOrPatchAgentConfigurationResponseSchema, {
-        agentConfiguration,
-      }));
+      return res.status(200).json(
+        validated(GetOrPatchAgentConfigurationResponseSchema, {
+          agentConfiguration,
+        })
+      );
     }
     default:
       return apiError(req, res, {

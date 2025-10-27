@@ -35,7 +35,11 @@ async function handler(
   switch (req.method) {
     case "GET":
       const feature_flags = await getFeatureFlags(owner);
-      return res.status(200).json(validated(GetWorkspaceFeatureFlagsResponseSchema, { feature_flags }));
+      return res
+        .status(200)
+        .json(
+          validated(GetWorkspaceFeatureFlagsResponseSchema, { feature_flags })
+        );
 
     default:
       return apiError(req, res, {

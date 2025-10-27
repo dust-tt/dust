@@ -114,7 +114,7 @@ export function withValidationArray<T extends z.ZodObject<any>>(
   schema: T,
   items: unknown[]
 ): z.infer<T>[] {
-  return items.map(item => schema.strip().parse(item));
+  return items.map((item) => schema.strip().parse(item));
 }
 
 /**
@@ -142,5 +142,5 @@ export function validateBatch<T extends z.ZodObject<any>>(
   schema: T,
   items: unknown[]
 ): z.infer<T>[] {
-  return items.map(item => schema.strip().parse(item));
+  return items.map((item) => schema.strip().parse(item));
 }

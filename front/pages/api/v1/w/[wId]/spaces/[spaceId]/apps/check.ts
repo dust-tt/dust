@@ -1,5 +1,8 @@
 import type { AppsCheckResponseType } from "@dust-tt/client";
-import { AppsCheckRequestSchema , AppsCheckResponseSchema } from "@dust-tt/client";
+import {
+  AppsCheckRequestSchema,
+  AppsCheckResponseSchema,
+} from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -71,9 +74,11 @@ async function handler(
         { concurrency: 5 }
       );
 
-      res.status(200).json(validated(AppsCheckResponseSchema, {
-        apps,
-      }));
+      res.status(200).json(
+        validated(AppsCheckResponseSchema, {
+          apps,
+        })
+      );
       return;
 
     default:
