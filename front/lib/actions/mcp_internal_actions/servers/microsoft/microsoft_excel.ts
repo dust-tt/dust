@@ -42,8 +42,12 @@ function createServer(
     try {
       // Check cache
       const cached = sessionCache.get(driveItemId);
-      if (cached && cached.expiresAt > Date.now()) {
-        return cached.sessionId;
+      if (cached) {
+        if (cached.expiresAt > Date.now()) {
+          return cached.sessionId;
+        }
+        // Remove expired entry
+        sessionCache.delete(driveItemId);
       }
 
       // Create new persistent session
@@ -125,7 +129,7 @@ function createServer(
               {
                 entityTypes: ["driveItem"],
                 query: {
-                  queryString: `${query} .xlsx`,
+                  queryString: `${query.replace(/["'\\]/g, "").trim()} .xlsx`,
                 },
               },
             ],
@@ -550,13 +554,7 @@ function createServer(
             worksheetName
           )}/range(address='${encodeURIComponent(range)}')/clear`;
 
-          await makeExcelRequest(
-            client,
-            itemId,
-            apiPath,
-            "post",
-            { applyTo }
-          );
+          await makeExcelRequest(client, itemId, apiPath, "post", { applyTo });
 
           return new Ok([
             {
