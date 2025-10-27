@@ -77,6 +77,10 @@ const whitelistedCommands = [
     majorCommand: "confluence",
     command: "check-page-exists",
   },
+  {
+    majorCommand: "google_drive",
+    command: "upsert-file",
+  },
 ];
 
 const _adminAPIHandler = async (
