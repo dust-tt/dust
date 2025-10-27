@@ -24,7 +24,10 @@ import type { RateLimit } from "@connectors/lib/throttle";
 import { throttleWithRedis } from "@connectors/lib/throttle";
 import mainLogger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
-import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
+import {
+  ZendeskBrandResource,
+  ZendeskConfigurationResource,
+} from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 
 const RATE_LIMIT_MAX_RETRIES = 5;
@@ -58,9 +61,6 @@ export class ZendeskClient {
     const client = new ZendeskClient(accessToken, connectorId);
 
     // Fetch configuration to get rate limit settings
-    const { ZendeskConfigurationResource } = await import(
-      "@connectors/resources/zendesk_resources"
-    );
     const configuration =
       await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
     if (configuration) {
@@ -441,22 +441,17 @@ export class ZendeskClient {
     }
   }
 
-  async listCategoriesInBrand({
-    brandSubdomain,
-    pageSize,
-    url,
-  }: {
-    brandSubdomain?: string;
-    pageSize?: number;
-    url?: string;
-  }): Promise<{
+  async listCategoriesInBrand(
+    params: { url: string } | { brandSubdomain: string; pageSize: number }
+  ): Promise<{
     categories: ZendeskFetchedCategory[];
     hasMore: boolean;
     nextLink: string | null;
   }> {
     const apiUrl =
-      url ||
-      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories?page[size]=${pageSize}`;
+      "url" in params
+        ? params.url
+        : `https://${params.brandSubdomain}.zendesk.com/api/v2/help_center/categories?page[size]=${params.pageSize}`;
     try {
       const response = (await this.fetchFromZendeskWithRetries(apiUrl)) as {
         categories: ZendeskFetchedCategory[];
@@ -476,24 +471,19 @@ export class ZendeskClient {
     }
   }
 
-  async listArticlesInCategory({
-    brandSubdomain,
-    categoryId,
-    pageSize,
-    url,
-  }: {
-    brandSubdomain?: string;
-    categoryId?: number;
-    pageSize?: number;
-    url?: string;
-  }): Promise<{
+  async listArticlesInCategory(
+    params:
+      | { url: string }
+      | { brandSubdomain: string; categoryId: number; pageSize: number }
+  ): Promise<{
     articles: ZendeskFetchedArticle[];
     hasMore: boolean;
     nextLink: string | null;
   }> {
     const apiUrl =
-      url ||
-      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}/articles?page[size]=${pageSize}`;
+      "url" in params
+        ? params.url
+        : `https://${params.brandSubdomain}.zendesk.com/api/v2/help_center/categories/${params.categoryId}/articles?page[size]=${params.pageSize}`;
     try {
       const response = (await this.fetchFromZendeskWithRetries(apiUrl)) as {
         articles: ZendeskFetchedArticle[];
@@ -534,24 +524,20 @@ export class ZendeskClient {
     }
   }
 
-  async listTickets({
-    brandSubdomain,
-    startTime,
-    url,
-  }: {
-    brandSubdomain?: string;
-    startTime?: number;
-    url?: string;
-  }): Promise<{
+  async listTickets(
+    params: { url: string } | { brandSubdomain: string; startTime: number }
+  ): Promise<{
     tickets: ZendeskFetchedTicket[];
     hasMore: boolean;
     nextLink: string | null;
   }> {
     try {
-      const response = (await this.fetchFromZendeskWithRetries(
-        url ||
-          `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?per_page=${TICKET_PAGE_SIZE}&start_time=${startTime}`
-      )) as {
+      const apiUrl =
+        "url" in params
+          ? params.url
+          : `https://${params.brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?per_page=${TICKET_PAGE_SIZE}&start_time=${params.startTime}`;
+
+      const response = (await this.fetchFromZendeskWithRetries(apiUrl)) as {
         tickets: ZendeskFetchedTicket[];
         end_of_stream: boolean;
         after_url: string | null;

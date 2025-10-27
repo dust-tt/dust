@@ -81,15 +81,12 @@ export function ZendeskRateLimitConfig({
     return true;
   };
 
-  const handleRateLimitTransactionsPerSecondSave = async () => {
+  const handleSave = async () => {
     const value = rateLimitInput.trim();
+
     if (value === "") {
-      sendNotification({
-        type: "info",
-        title: "Rate limit required",
-        description:
-          "Please enter a rate limit value or Select Disable to disable rate limiting.",
-      });
+      // Empty value means disable rate limiting
+      await handleSetNewConfig(ZENDESK_CONFIG_KEYS.RATE_LIMIT_TPS, "");
       return;
     }
 
@@ -107,10 +104,6 @@ export function ZendeskRateLimitConfig({
     await handleSetNewConfig(ZENDESK_CONFIG_KEYS.RATE_LIMIT_TPS, numValue);
   };
 
-  const handleDisableRateLimit = async () => {
-    await handleSetNewConfig(ZENDESK_CONFIG_KEYS.RATE_LIMIT_TPS, "");
-  };
-
   return (
     <ContextItem
       title="Rate Limit Transactions Per Second"
@@ -120,10 +113,9 @@ export function ZendeskRateLimitConfig({
     >
       <ContextItem.Description>
         <div className="mb-4 flex items-start justify-between gap-4 text-muted-foreground dark:text-muted-foreground-night">
-          <div className="text-sm text-muted-foreground">
-            Set the maximum number of transactions per second when hitting
-            Zendesk rate limits. Select disable to remove the rate limiting
-            entirely.
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Set a transaction-per-second limit to manage Zendesk rate
+            restrictions. Leave empty to disable.
           </div>
           <div className="flex items-center gap-2">
             <Input
@@ -138,12 +130,12 @@ export function ZendeskRateLimitConfig({
               }
               className="w-24"
             />
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               transactions per second
             </span>
             <Button
               size="sm"
-              onClick={handleRateLimitTransactionsPerSecondSave}
+              onClick={handleSave}
               disabled={
                 readOnly ||
                 !isAdmin ||
@@ -151,12 +143,6 @@ export function ZendeskRateLimitConfig({
                 rateLimitInput === rateLimitTransactionsPerSecond?.toString()
               }
               label="Save"
-            />
-            <Button
-              size="sm"
-              onClick={handleDisableRateLimit}
-              disabled={readOnly || !isAdmin || loading}
-              label="Disable"
             />
           </div>
         </div>
