@@ -1,3 +1,4 @@
+import compact from "lodash/compact";
 import type {
   ResponseOutputItem,
   ResponseOutputItemDoneEvent,
@@ -7,7 +8,6 @@ import type { Response } from "openai/resources/responses/responses";
 
 import type { ProviderMetadata } from "@app/lib/api/llm/types/events";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import { compact } from "lodash";
 
 export async function* streamLLMEvents({
   responseStreamEvents,
@@ -56,7 +56,7 @@ function toolCall(
       events.push({
         type: "tool_call",
         content: {
-          id: item.call_id,
+          id: extractCallId(item.call_id),
           name: item.name,
           arguments: item.arguments,
         },
@@ -93,7 +93,7 @@ function itemToEvent(
       return {
         type: "tool_call",
         content: {
-          id: item.call_id,
+          id: extractCallId(item.call_id),
           name: item.name,
           arguments: item.arguments,
         },
@@ -142,6 +142,16 @@ function responseCompleted(
     });
   }
   return events;
+}
+
+function extractCallId(id: string): string {
+  if (id.startsWith("fc_")) {
+    return id.slice(3);
+  } else if (id.startsWith("call_")) {
+    return id.slice(5);
+  } else {
+    return id;
+  }
 }
 
 function toEvents({

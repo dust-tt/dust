@@ -89,15 +89,16 @@ const inputMessages: ResponseInput = [
   },
   {
     type: "function_call",
-    call_id: "DdHr7L197",
+    id: "fc_DdHr7L197",
+    call_id: "call_DdHr7L197",
     name: "web_search_browse__websearch",
     arguments: '{"query":"Paris France weather forecast October 23 2025"}',
   },
   {
-    id: "DdHr7L197",
+    id: "fc_DdHr7L197",
     type: "function_call_output",
     output:
       '[{"type":"resource","resource":{"uri":"https://www.weather25.com"}}]',
-    call_id: "DdHr7L197",
+    call_id: "call_DdHr7L197",
   },
 ];
