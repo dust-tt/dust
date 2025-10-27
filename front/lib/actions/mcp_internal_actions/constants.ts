@@ -59,6 +59,7 @@ export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2"; // Do not change th
 export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
 export const AGENT_MEMORY_SERVER_NAME = "agent_memory";
 
+
 // IDs of internal MCP servers that are no longer present.
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
 export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4];
@@ -116,6 +117,11 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "web_search_&_browse",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
+] as const;
+
+export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
+  "web_search_&_browse",
+  "http_client",
 ] as const;
 
 // Whether the server is available by default in the global space.

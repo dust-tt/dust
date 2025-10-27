@@ -48,6 +48,7 @@ import {
   GET_DATABASE_SCHEMA_TOOL_NAME,
   getInternalMCPServerIconByName,
   INCLUDE_TOOL_NAME,
+  INTERNAL_SERVERS_WITH_WEBSEARCH,
   isInternalMCPServerOfName,
   PROCESS_TOOL_NAME,
   SEARCH_TOOL_NAME,
@@ -202,7 +203,11 @@ export function MCPActionDetails({
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "web_search_&_browse")) {
+  if (
+    INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+      isInternalMCPServerOfName(mcpServerId, n)
+    )
+  ) {
     if (toolName === WEBSEARCH_TOOL_NAME) {
       return (
         <SearchResultDetails

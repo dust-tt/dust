@@ -152,7 +152,7 @@ function createServer(
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-        const requestHeaders: Record<string, string> = { ...(headers ?? {}) };
+        const requestHeaders = validateAndSanitizeHeaders(headers);
 
         const bearerToken = await getBearerToken(auth, agentLoopContext);
         if (bearerToken) {
@@ -240,6 +240,43 @@ function createServer(
   registerWebBrowserTool(auth, server, agentLoopContext);
 
   return server;
+}
+
+function validateAndSanitizeHeaders(
+  headers: Record<string, string> | undefined
+): Record<string, string> {
+  const requestHeaders: Record<string, string> = {};
+  const bannedHeaders = [
+    "host",
+    "authorization",
+    "content-length",
+    "transfer-encoding",
+  ];
+
+  if (!headers) {
+    return requestHeaders;
+  }
+
+  for (const [key, value] of Object.entries(headers)) {
+    // Check for CRLF injection
+    if (
+      key.includes("\n") ||
+      key.includes("\r") ||
+      value.includes("\n") ||
+      value.includes("\r")
+    ) {
+      throw new Error(`Invalid header: ${key} contains newline characters`);
+    }
+
+    // Prevent overwriting security-sensitive headers
+    if (bannedHeaders.includes(key.toLowerCase())) {
+      continue; // Skip banned headers
+    }
+
+    requestHeaders[key] = value;
+  }
+
+  return requestHeaders;
 }
 
 export default createServer;
