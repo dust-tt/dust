@@ -19,6 +19,21 @@ export async function getGraphClient(
   });
 }
 
+export async function getDriveItemEndpoint(
+  itemId?: string,
+  driveId?: string,
+  siteId?: string
+): Promise<string> {
+  const path = itemId ? `/items/${itemId}` : "";
+  if (driveId) {
+    return `/drives/${driveId}${path}`;
+  }
+  if (siteId) {
+    return `/sites/${siteId}/drive${path}`;
+  }
+  throw new Error("Either driveId or siteId must be provided");
+}
+
 /**
  * Validates XML content for security vulnerabilities (XXE, entity expansion attacks)
  * @param xml The XML string to validate
@@ -216,4 +231,26 @@ export function extractTextFromDocx(buffer: Buffer): string {
       `Failed to extract text from docx: ${normalizeError(error).message}`
     );
   }
+}
+
+/**
+ * Parses a cell reference to row and column numbers
+ * @param cell - The cell reference to parse (e.g. "A1", "B2", "AA10")
+ * @returns The row and column numbers (e.g. { row: 1, col: 1 } for "A1")
+ */
+export function parseCellRef(cell: string): { row: number; col: number } {
+  const match = cell.match(/^([A-Z]+)(\d+)$/);
+  if (!match) {
+    throw new Error("Invalid cell reference");
+  }
+  const colStr = match[1];
+  const rowNum = parseInt(match[2], 10);
+
+  // Convert column letters to number (A=1, B=2, ..., Z=26, AA=27, etc.)
+  let colNum = 0;
+  for (let i = 0; i < colStr.length; i++) {
+    colNum = colNum * 26 + (colStr.charCodeAt(i) - 64);
+  }
+
+  return { row: rowNum, col: colNum };
 }

@@ -1,8 +1,10 @@
-import type { Icon } from "@dust-tt/sparkle";
-import { GithubLogo, JiraLogo } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type React from "react";
 
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
 import type {
   WebhookCreateFormComponentProps,
   WebhookDetailsComponentProps,
@@ -23,19 +25,11 @@ export type WebhookEvent = {
   schema: JSONSchema;
 };
 
-const WebhookPresetIcons = {
-  GithubLogo,
-  JiraLogo,
-} as const;
-
-export type WebhookPresetIcon =
-  (typeof WebhookPresetIcons)[keyof typeof WebhookPresetIcons];
-
 export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
   name: string;
   eventCheck: EventCheck;
   events: WebhookEvent[];
-  icon: typeof Icon;
+  icon: InternalAllowedIconType | CustomResourceIconType;
   description: string;
   webhookPageUrl?: string;
   featureFlag?: WhitelistableFeature;

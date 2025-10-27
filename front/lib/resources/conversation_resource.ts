@@ -176,15 +176,24 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       if (
         newSpaceBasedAccessible.length !== legacyGroupBasedAccessible.length
       ) {
+        const allowedByGroupIdsOnly = legacyGroupBasedAccessible.filter(
+          (groupConv) =>
+            !newSpaceBasedAccessible.some(
+              (spaceConv) => spaceConv.sId === groupConv.sId
+            )
+        );
+        const allowedBySpaceIdsOnly = newSpaceBasedAccessible.filter(
+          (spaceConv) =>
+            !legacyGroupBasedAccessible.some(
+              (groupConv) => groupConv.sId === spaceConv.sId
+            )
+        );
         // Otherwise, log a warning showing the difference between new and legacy permissions.
         logger.warn(
           {
             workspaceId: workspace.sId,
-            validConversations: validConversations.map((c) => c.sId),
-            newSpaceBasedAccessible: newSpaceBasedAccessible.map((c) => c.sId),
-            legacyGroupBasedAccessible: legacyGroupBasedAccessible.map(
-              (c) => c.sId
-            ),
+            allowedByGroupIdsOnly: allowedByGroupIdsOnly.map((c) => c.sId),
+            allowedBySpaceIdsOnly: allowedBySpaceIdsOnly.map((c) => c.sId),
           },
           "[REQUESTED_SPACE_IDS] Mismatch between new space-based and legacy group-based permission results. " +
             "Returning all valid conversations for backward compatibility."
