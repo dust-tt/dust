@@ -1,7 +1,4 @@
-import {
-  MAX_TOOLS_DISPLAYED,
-  PERCENTAGE_MULTIPLIER,
-} from "@app/components/agent_builder/observability/constants";
+import { MAX_TOOLS_DISPLAYED } from "@app/components/agent_builder/observability/constants";
 import type {
   ChartDatum,
   ToolChartModeType,
@@ -35,7 +32,7 @@ function calculatePercentage(count: number, total: number): number {
   if (total === 0) {
     return 0;
   }
-  return Math.round((count / total) * PERCENTAGE_MULTIPLIER);
+  return Math.round((count / total) * 10);
 }
 
 function aggregateToolCounts(items: ToolDataItem[]): Map<string, number> {
