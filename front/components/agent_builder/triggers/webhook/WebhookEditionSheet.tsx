@@ -340,7 +340,7 @@ export function WebhookEditionSheet({
                 ? `Add ${webhookSourceView.customName} Trigger`
                 : "Add Webhook",
             variant: "primary",
-            onClick: isEditor ? onSave() : handleClose,
+            onClick: isEditor ? onSave : handleClose,
             disabled: isSubmitting,
           }}
         />
