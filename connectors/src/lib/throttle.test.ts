@@ -784,10 +784,12 @@ describe("throttle", () => {
         addTimestamp: vi.fn(async (timestamp: number) => {
           timestamps.push(timestamp);
         }),
-        removeTimestampsBatch: vi.fn(async (timestamp: number) => {
-          const index = timestamps.indexOf(timestamp);
-          if (index > -1) {
-            timestamps.splice(index, 1);
+        removeTimestampsBatch: vi.fn(async (timestamps: number[]) => {
+          for (const timestamp of timestamps) {
+            const index = timestamps.indexOf(timestamp);
+            if (index > -1) {
+              timestamps.splice(index, 1);
+            }
           }
         }),
         acquireLock: vi.fn(async () => {}),

@@ -191,7 +191,7 @@ export class ZendeskClient {
       return await throttleWithRedis(
         rateLimitConfig,
         `zendesk:${this.connectorId}`,
-        false,
+        { canBeIgnored: false },
         runFetch,
         { subdomain, endpoint }
       );
