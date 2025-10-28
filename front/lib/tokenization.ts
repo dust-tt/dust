@@ -1,5 +1,6 @@
 import _ from "lodash";
 
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import {
@@ -12,6 +13,9 @@ import {
 
 import config from "./api/config";
 
+// Limit batch size to prevent OOM issues in core API when tokenizing large payloads of text.
+const MAX_BATCH_SIZE = 100;
+
 export async function tokenCountForTexts(
   texts: string[],
   model: { providerId: string; modelId: string; tokenCountAdjustment?: number }
@@ -19,15 +23,20 @@ export async function tokenCountForTexts(
   const BATCHES_COUNT = 3;
   try {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const batches = _.chunk(texts, Math.ceil(texts.length / BATCHES_COUNT));
-    const batchResults = await Promise.all(
-      batches.map((batch) =>
-        coreAPI.tokenizeBatch({
+    const batches = _.chunk(
+      texts,
+      Math.min(MAX_BATCH_SIZE, Math.ceil(texts.length / BATCHES_COUNT))
+    );
+
+    const batchResults = await concurrentExecutor(
+      batches,
+      async (batch) =>
+        coreAPI.tokenizeBatchCount({
           texts: batch,
           providerId: model.providerId,
           modelId: model.modelId,
-        })
-      )
+        }),
+      { concurrency: 1 }
     );
 
     const counts: number[] = [];
@@ -37,10 +46,10 @@ export async function tokenCountForTexts(
           new Error(`Error tokenizing model message: ${res.error.message}`)
         );
       }
-      for (const tokens of res.value.tokens) {
+      for (const count of res.value.counts) {
         counts.push(
           Math.round(
-            tokens.length *
+            count *
               (model.tokenCountAdjustment ?? DEFAULT_TOKEN_COUNT_ADJUSTMENT)
           )
         );
