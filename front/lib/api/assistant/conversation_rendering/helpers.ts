@@ -22,7 +22,6 @@ import type {
 } from "@app/types";
 import { removeNulls } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-
 import type {
   AgentContentItemType,
   ErrorContentType,
