@@ -90,8 +90,8 @@ function responseCompleted(
   response: Response,
   metadata: LLMClientMetadata
 ): LLMEvent[] {
-  const events: LLMEvent[] = compact(
-    response.output.map((i) => itemToEvent(i, metadata))
+  const events: LLMEvent[] = response.output.map((i) =>
+    itemToEvent(i, metadata)
   );
 
   if (response.usage) {
@@ -130,8 +130,6 @@ function toEvents({
       return [textDelta(event.delta, metadata)];
     case "response.reasoning_summary_text.delta":
       return [reasoningDelta(event.delta, metadata)];
-    // case "response.output_item.done":
-    //   return toolCall(event, metadata);
     case "response.completed":
       return responseCompleted(event.response, metadata);
     default:
