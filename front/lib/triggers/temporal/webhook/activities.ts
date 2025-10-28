@@ -150,22 +150,10 @@ export async function runTriggerWebhookActivity({
         assertNever(type);
     }
 
-    if (
-      receivedEventValue === undefined ||
-      // Event not in preset
-      !WEBHOOK_PRESETS[webhookSource.provider].events
-        .map((event) => event.value)
-        .includes(receivedEventValue) ||
-      // Event not subscribed
-      !webhookSource.subscribedEvents.includes(receivedEventValue)
-    ) {
-      const errorMessage =
-        "Webhook event not subscribed or not in preset. Potential cause: the events selection was manually modified on the service.";
+    if (!receivedEventValue) {
+      const errorMessage = `Unable to determine webhook event from ${type}.`;
       await webhookRequest.markAsFailed(errorMessage);
-      logger.error(
-        { workspaceId, webhookRequestId, eventValue: receivedEventValue },
-        errorMessage
-      );
+      logger.error({ workspaceId, webhookRequestId }, errorMessage);
       throw new TriggerNonRetryableError(errorMessage);
     }
 
@@ -183,6 +171,24 @@ export async function runTriggerWebhookActivity({
         "Webhook event is blacklisted, ignoring."
       );
       return;
+    }
+
+    if (
+      // Event not in preset
+      !WEBHOOK_PRESETS[webhookSource.provider].events
+        .map((event) => event.value)
+        .includes(receivedEventValue) ||
+      // Event not subscribed
+      !webhookSource.subscribedEvents.includes(receivedEventValue)
+    ) {
+      const errorMessage =
+        "Webhook event not subscribed or not in preset. Potential cause: the events selection was manually modified on the service.";
+      await webhookRequest.markAsFailed(errorMessage);
+      logger.error(
+        { workspaceId, webhookRequestId, eventValue: receivedEventValue },
+        errorMessage
+      );
+      throw new TriggerNonRetryableError(errorMessage);
     }
   }
 
