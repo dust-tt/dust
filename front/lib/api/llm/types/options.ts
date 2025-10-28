@@ -2,7 +2,7 @@ import type { ModelIdType, ReasoningEffort } from "@app/types";
 
 export type LLMParameters = {
   modelId: ModelIdType;
-  reasoningEffortId?: ReasoningEffort;
+  reasoningEffort?: ReasoningEffort;
   temperature?: number;
   bypassFeatureFlag?: boolean;
 };

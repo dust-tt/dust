@@ -25,13 +25,13 @@ export class GoogleLLM extends LLM {
   constructor({
     modelId,
     temperature,
-    reasoningEffortId,
+    reasoningEffort,
     bypassFeatureFlag,
   }: LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId }) {
     super({
       modelId,
       temperature,
-      reasoningEffortId,
+      reasoningEffort,
       bypassFeatureFlag,
     });
     const { GOOGLE_AI_STUDIO_API_KEY } = dustManagedCredentials();

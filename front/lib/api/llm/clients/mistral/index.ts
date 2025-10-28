@@ -25,13 +25,13 @@ export class MistralLLM extends LLM {
   constructor({
     modelId,
     temperature,
-    reasoningEffortId,
+    reasoningEffort,
     bypassFeatureFlag,
   }: LLMParameters & { modelId: MistralWhitelistedModelId }) {
     super({
       modelId,
       temperature,
-      reasoningEffortId,
+      reasoningEffort,
       bypassFeatureFlag,
     });
     const { MISTRAL_API_KEY } = dustManagedCredentials();

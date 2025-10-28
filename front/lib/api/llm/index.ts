@@ -10,7 +10,7 @@ import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 export async function getLLM(
   auth: Authenticator,
-  { modelId, temperature, reasoningEffortId, bypassFeatureFlag }: LLMParameters
+  { modelId, temperature, reasoningEffort, bypassFeatureFlag }: LLMParameters
 ): Promise<LLM | null> {
   const modelConfiguration = SUPPORTED_MODEL_CONFIGS.find(
     (config) => config.modelId === modelId
@@ -31,7 +31,7 @@ export async function getLLM(
     return new MistralLLM({
       modelId,
       temperature,
-      reasoningEffortId,
+      reasoningEffort,
       bypassFeatureFlag,
     });
   }
@@ -40,7 +40,7 @@ export async function getLLM(
     return new GoogleLLM({
       modelId,
       temperature,
-      reasoningEffortId,
+      reasoningEffort,
       bypassFeatureFlag,
     });
   }

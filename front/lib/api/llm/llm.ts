@@ -11,19 +11,19 @@ import type {
 export abstract class LLM {
   protected modelId: ModelIdType;
   protected temperature: number;
-  protected reasoningEffortId: ReasoningEffort;
+  protected reasoningEffort: ReasoningEffort;
   protected bypassFeatureFlag: boolean;
 
   constructor({
     modelId,
     temperature,
-    reasoningEffortId,
+    reasoningEffort,
     bypassFeatureFlag = false,
   }: LLMParameters) {
     this.modelId = modelId;
     this.temperature =
       temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced;
-    this.reasoningEffortId = reasoningEffortId ?? "none";
+    this.reasoningEffort = reasoningEffort ?? "none";
     this.bypassFeatureFlag = bypassFeatureFlag;
   }
 
