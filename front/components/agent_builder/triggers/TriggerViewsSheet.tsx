@@ -260,31 +260,6 @@ export function TriggerViewsSheet({
     }
   }, [mode, form]);
 
-  const scheduleTitle = useMemo(() => {
-    const trigger = editTrigger?.kind === "schedule" ? editTrigger : null;
-    const isEditor = (trigger?.editor ?? user?.id) === user?.id;
-
-    if (trigger) {
-      return isEditor ? "Edit Schedule" : "View Schedule";
-    }
-    return "Create Schedule";
-  }, [editTrigger, user]);
-
-  const webhookTitle = useMemo(() => {
-    const trigger = editTrigger?.kind === "webhook" ? editTrigger : null;
-    const webhookSourceView =
-      editWebhookSourceView ?? selectedWebhookSourceView;
-    const isEditor = (trigger?.editor ?? user?.id) === user?.id;
-
-    if (trigger) {
-      return isEditor ? "Edit Webhook" : "View Webhook";
-    }
-    if (webhookSourceView) {
-      return `Create ${webhookSourceView.customName} Trigger`;
-    }
-    return "Create Webhook";
-  }, [editTrigger, editWebhookSourceView, selectedWebhookSourceView, user]);
-
   const webhookIcon = useMemo(() => {
     const webhookSourceView =
       editWebhookSourceView ?? selectedWebhookSourceView;
@@ -294,6 +269,26 @@ export function TriggerViewsSheet({
   const isEditor = useMemo(() => {
     return editTrigger?.editor ? editTrigger?.editor === user?.id : true;
   }, [editTrigger, user]);
+
+  const scheduleTitle = useMemo(() => {
+    if (editTrigger) {
+      return isEditor ? "Edit Schedule" : "View Schedule";
+    }
+    return "Create Schedule";
+  }, [editTrigger, isEditor]);
+
+  const webhookTitle = useMemo(() => {
+    const webhookSourceView =
+      editWebhookSourceView ?? selectedWebhookSourceView;
+
+    if (editTrigger) {
+      return isEditor ? "Edit Trigger" : "View Trigger";
+    }
+    if (webhookSourceView) {
+      return `Create ${webhookSourceView.customName} Trigger`;
+    }
+    return "Create Trigger";
+  }, [editTrigger, editWebhookSourceView, isEditor, selectedWebhookSourceView]);
 
   const pages: MultiPageSheetPage[] = [
     {
