@@ -38,18 +38,22 @@ export function AgentBuilderTriggersBlock({
   const { getValues, setValue, control } =
     useFormContext<AgentBuilderFormData>();
 
-  const { fields: triggersToCreate, remove: removeFromCreate } = useFieldArray<
-    AgentBuilderFormData,
-    "triggersToCreate"
-  >({
+  // We have to pass down this `append` rather than useFieldArray in the child component for the
+  // triggersToCreate to be updated here; this is specific to arrays in react-hook-form.
+  const {
+    fields: triggersToCreate,
+    remove: removeFromCreate,
+    append: appendTriggerToCreate,
+  } = useFieldArray<AgentBuilderFormData, "triggersToCreate">({
     control,
     name: "triggersToCreate",
   });
 
-  const { fields: triggersToUpdate, remove: removeFromUpdate } = useFieldArray<
-    AgentBuilderFormData,
-    "triggersToUpdate"
-  >({
+  const {
+    fields: triggersToUpdate,
+    remove: removeFromUpdate,
+    append: appendTriggerToUpdate,
+  } = useFieldArray<AgentBuilderFormData, "triggersToUpdate">({
     control,
     name: "triggersToUpdate",
   });
@@ -202,6 +206,8 @@ export function AgentBuilderTriggersBlock({
         onModeChange={setSheetMode}
         webhookSourceViews={accessibleWebhookSourceViews}
         agentConfigurationId={agentConfigurationId}
+        onAppendTriggerToCreate={appendTriggerToCreate}
+        onAppendTriggerToUpdate={appendTriggerToUpdate}
       />
     </AgentBuilderSectionContainer>
   );

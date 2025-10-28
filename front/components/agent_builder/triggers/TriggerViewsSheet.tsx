@@ -1,10 +1,8 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type {
-  AgentBuilderFormData,
   AgentBuilderScheduleTriggerType,
   AgentBuilderTriggerType,
   AgentBuilderWebhookTriggerType,
@@ -45,6 +43,8 @@ interface TriggerViewsSheetProps {
   onModeChange: (mode: SheetMode | null) => void;
   webhookSourceViews: WebhookSourceViewType[];
   agentConfigurationId: string | null;
+  onAppendTriggerToCreate: (trigger: AgentBuilderTriggerType) => void;
+  onAppendTriggerToUpdate: (trigger: AgentBuilderTriggerType) => void;
 }
 
 export function TriggerViewsSheet({
@@ -53,19 +53,9 @@ export function TriggerViewsSheet({
   onModeChange,
   webhookSourceViews,
   agentConfigurationId,
+  onAppendTriggerToCreate,
+  onAppendTriggerToUpdate,
 }: TriggerViewsSheetProps) {
-  const { control } = useFormContext<AgentBuilderFormData>();
-
-  const { append: appendTriggerToCreate } = useFieldArray({
-    control,
-    name: "triggersToCreate",
-  });
-
-  const { append: appendTriggerToUpdate } = useFieldArray({
-    control,
-    name: "triggersToUpdate",
-  });
-
   const [currentPageId, setCurrentPageId] = useState<PageId>(
     TRIGGERS_SHEET_PAGE_IDS.SELECTION
   );
@@ -94,25 +84,25 @@ export function TriggerViewsSheet({
   const handleScheduleSave = useCallback(
     async (trigger: AgentBuilderScheduleTriggerType) => {
       if (trigger.sId) {
-        appendTriggerToUpdate(trigger);
+        onAppendTriggerToUpdate(trigger);
       } else {
-        appendTriggerToCreate(trigger);
+        onAppendTriggerToCreate(trigger);
       }
       handleSheetClose();
     },
-    [appendTriggerToCreate, appendTriggerToUpdate, handleSheetClose]
+    [onAppendTriggerToCreate, onAppendTriggerToUpdate, handleSheetClose]
   );
 
   const handleWebhookSave = useCallback(
     async (trigger: AgentBuilderWebhookTriggerType) => {
       if (trigger.sId) {
-        appendTriggerToUpdate(trigger);
+        onAppendTriggerToUpdate(trigger);
       } else {
-        appendTriggerToCreate(trigger);
+        onAppendTriggerToCreate(trigger);
       }
       handleSheetClose();
     },
-    [appendTriggerToCreate, appendTriggerToUpdate, handleSheetClose]
+    [onAppendTriggerToCreate, onAppendTriggerToUpdate, handleSheetClose]
   );
 
   const handleScheduleCancel = useCallback(() => {
