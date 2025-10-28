@@ -95,7 +95,7 @@ export function AgentBuilderTriggersBlock({
     })),
   ];
 
-  const handleAddTriggersClick = () => {
+  const handleAddTrigger = () => {
     setSheetMode({ type: "add" });
   };
 
@@ -163,7 +163,7 @@ export function AgentBuilderTriggersBlock({
             label="Add triggers"
             type="button"
             icon={BoltIcon}
-            onClick={handleAddTriggersClick}
+            onClick={handleAddTrigger}
           />
         )
       }
@@ -181,7 +181,7 @@ export function AgentBuilderTriggersBlock({
                 label="Add triggers"
                 type="button"
                 icon={BoltIcon}
-                onClick={handleAddTriggersClick}
+                onClick={handleAddTrigger}
               />
             }
             className="py-4"
