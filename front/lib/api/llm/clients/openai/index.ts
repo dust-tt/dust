@@ -2,7 +2,7 @@ import { OpenAI } from "openai";
 import type { ReasoningEffort } from "openai/resources/shared.mjs";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { OpenAIPayload } from "@app/lib/api/llm/clients/openai/utils";
+import type { OpenAIPayload } from "@app/lib/api/llm/clients/openai/utils";
 import {
   toInput,
   toOpenAIReasoningEffort,
@@ -11,10 +11,8 @@ import {
 import { streamLLMEvents } from "@app/lib/api/llm/clients/openai/utils/openai_to_events";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent, ProviderMetadata } from "@app/lib/api/llm/types/events";
-import {
-  dustManagedCredentials,
-  ModelConversationTypeMultiActions,
-} from "@app/types";
+import type { ModelConversationTypeMultiActions } from "@app/types";
+import { dustManagedCredentials } from "@app/types";
 
 export class OpenAILLM extends LLM {
   private client: OpenAI;

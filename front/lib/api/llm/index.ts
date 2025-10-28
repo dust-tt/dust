@@ -1,14 +1,13 @@
 import { GoogleLLM } from "@app/lib/api/llm/clients/google";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
+import { OpenAILLM } from "@app/lib/api/llm/clients/openai";
+import type { OpenAIPayload } from "@app/lib/api/llm/clients/openai/utils";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMOptions } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 import type { ModelIdType } from "@app/types/assistant/models/types";
-
-import { OpenAILLM } from "@app/lib/api/llm/clients/openai";
-import { OpenAIPayload } from "@app/lib/api/llm/clients/openai/utils";
 
 // Keep this until the list includes all the supported model IDs (cf SUPPORTED_MODEL_CONFIGS)
 const WHITELISTED_MODEL_IDS: ModelIdType[] = [

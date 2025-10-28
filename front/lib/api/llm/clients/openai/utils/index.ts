@@ -1,5 +1,5 @@
+import type { AgentReasoningEffort, ModelConfigurationType } from "@app/types";
 import {
-  AgentReasoningEffort,
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_1_MINI_MODEL_ID,
   GPT_4_1_MODEL_ID,
@@ -10,7 +10,6 @@ import {
   GPT_5_MINI_MODEL_ID,
   GPT_5_MODEL_ID,
   GPT_5_NANO_MODEL_ID,
-  ModelConfigurationType,
   O1_MINI_MODEL_ID,
   O1_MODEL_ID,
   O3_MINI_MODEL_ID,
