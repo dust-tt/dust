@@ -1,12 +1,15 @@
-import compact from "lodash/compact";
+import flatMap from "lodash/flatMap";
 import type {
   ResponseOutputItem,
+  ResponseOutputRefusal,
+  ResponseOutputText,
   ResponseStreamEvent,
 } from "openai/resources/responses/responses";
 import type { Response } from "openai/resources/responses/responses";
 
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import { assertNever } from "@app/types";
 
 export async function* streamLLMEvents(
   responseStreamEvents: AsyncIterable<ResponseStreamEvent>,
@@ -43,44 +46,62 @@ function reasoningDelta(delta: string, metadata: LLMClientMetadata): LLMEvent {
   };
 }
 
-function itemToEvent(
-  item: ResponseOutputItem,
+function responseOutputToEvent(
+  responseOutput: ResponseOutputText | ResponseOutputRefusal,
   metadata: LLMClientMetadata
 ): LLMEvent {
-  switch (item.type) {
-    case "message":
+  switch (responseOutput.type) {
+    case "output_text":
       return {
         type: "text_generated",
         content: {
-          text: item.content
-            .map((content) => {
-              if (content.type === "output_text") {
-                return content.text;
-              }
-              return "";
-            })
-            .join("\n"),
+          text: responseOutput.text,
         },
         metadata,
       };
-    case "function_call":
+    case "refusal":
       return {
-        type: "tool_call",
+        type: "error",
         content: {
-          id: item.call_id,
-          name: item.name,
-          arguments: item.arguments,
+          message: responseOutput.refusal,
+          code: 500,
         },
         metadata,
       };
+    default:
+      assertNever(responseOutput);
+  }
+}
+
+function itemToEvents(
+  item: ResponseOutputItem,
+  metadata: LLMClientMetadata
+): LLMEvent[] {
+  switch (item.type) {
+    case "message":
+      return item.content.map((responseOutput) =>
+        responseOutputToEvent(responseOutput, metadata)
+      );
+    case "function_call":
+      return [
+        {
+          type: "tool_call",
+          content: {
+            id: item.call_id,
+            name: item.name,
+            arguments: item.arguments,
+          },
+          metadata,
+        },
+      ];
     case "reasoning":
-      return {
+      return item.summary.map((summary) => ({
         type: "reasoning_generated",
         content: {
-          text: item.summary.map((summary) => summary.text).join("\n"),
+          text: summary.text,
         },
         metadata,
-      };
+      }));
     default:
       // TODO(LLM-Router 2025-10-28): Send error event
       throw new Error(`Unsupported OpenAI Response Item: ${item}`);
@@ -91,8 +112,8 @@ function responseCompleted(
   response: Response,
   metadata: LLMClientMetadata
 ): LLMEvent[] {
-  const events: LLMEvent[] = response.output.map((i) =>
-    itemToEvent(i, metadata)
+  const events: LLMEvent[] = flatMap(
+    response.output.map((i) => itemToEvents(i, metadata))
   );
 
   if (response.usage) {
