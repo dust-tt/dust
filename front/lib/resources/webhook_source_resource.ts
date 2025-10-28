@@ -46,7 +46,11 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
   static async makeNew(
     auth: Authenticator,
     blob: CreationAttributes<WebhookSourceModel>,
-    { transaction, icon }: { transaction?: Transaction; icon?: string } = {}
+    {
+      transaction,
+      icon,
+      description,
+    }: { transaction?: Transaction; icon?: string; description?: string } = {}
   ): Promise<WebhookSourceResource> {
     assert(
       await SpaceResource.canAdministrateSystemSpace(auth),
@@ -67,8 +71,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
         editedAt: new Date(),
         editedByUserId: auth.user()?.id,
         webhookSourceId: webhookSource.id,
-        // on creation there is no custom icon or description
-        description: "",
+        description: description ?? "",
         icon: normalizeWebhookIcon(icon),
       },
       {

@@ -435,6 +435,7 @@ function WebhookSourceSheetContent({
 
     const agents = _.uniq(
       webhookSourcesWithViews
+        .filter((source) => source.sId === webhookSource.sId)
         .map((source) => source.usage?.agents ?? [])
         .flat()
         .map((agent) => `@${agent.name}`)
