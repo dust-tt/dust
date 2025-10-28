@@ -255,13 +255,13 @@ export function TriggerViewsSheet({
 
   const scheduleTitle = useMemo(() => {
     const trigger = editTrigger?.kind === "schedule" ? editTrigger : null;
-    const isEditor = trigger?.editor !== undefined && trigger?.editor !== null;
+    const isEditor = (trigger?.editor ?? user?.id) === user?.id;
 
     if (trigger) {
       return isEditor ? "Edit Schedule" : "View Schedule";
     }
     return "Create Schedule";
-  }, [editTrigger]);
+  }, [editTrigger, user]);
 
   const webhookTitle = useMemo(() => {
     const trigger = editTrigger?.kind === "webhook" ? editTrigger : null;
@@ -286,13 +286,13 @@ export function TriggerViewsSheet({
 
   const scheduleIsEditor = useMemo(() => {
     const trigger = editTrigger?.kind === "schedule" ? editTrigger : null;
-    return trigger?.editor !== undefined && trigger?.editor !== null;
-  }, [editTrigger]);
+    return (trigger?.editor ?? user?.id) === user?.id;
+  }, [editTrigger, user]);
 
   const webhookIsEditor = useMemo(() => {
     const trigger = editTrigger?.kind === "webhook" ? editTrigger : null;
-    return trigger?.editor !== undefined && trigger?.editor !== null;
-  }, [editTrigger]);
+    return (trigger?.editor ?? user?.id) === user?.id;
+  }, [editTrigger, user]);
 
   const pages: MultiPageSheetPage[] = [
     {
