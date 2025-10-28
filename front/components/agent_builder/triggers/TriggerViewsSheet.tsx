@@ -104,11 +104,7 @@ export function TriggerViewsSheet({
 
   const handleScheduleSave = useCallback(
     async (trigger: AgentBuilderScheduleTriggerType) => {
-      if (
-        scheduleEditionState &&
-        scheduleEditionState.index !== null &&
-        scheduleEditionState.index !== undefined
-      ) {
+      if (scheduleEditionState?.index) {
         if (scheduleEditionState.trigger?.sId) {
           appendTriggerToUpdate(trigger);
         } else {
@@ -305,10 +301,10 @@ export function TriggerViewsSheet({
             : currentPageId === TRIGGERS_SHEET_PAGE_IDS.WEBHOOK
               ? {
                   label: webhookEditionState?.trigger
-                    ? "Update Webhook"
+                    ? "Update Trigger"
                     : webhookEditionState?.webhookSourceView
                       ? `Add ${webhookEditionState.webhookSourceView.customName} Trigger`
-                      : "Add Webhook",
+                      : "Add Trigger",
                   variant: "primary",
                   type: "submit",
                 }
