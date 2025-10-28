@@ -175,7 +175,7 @@ export { default as Spinner } from "./Spinner";
 export { FlexSplitButton, SplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
-export { ToolCard } from "./ToolCard";
+export { ActionCard } from "./ActionCard";
 export {
   Tooltip,
   TooltipContent,

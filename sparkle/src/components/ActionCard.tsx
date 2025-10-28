@@ -24,7 +24,7 @@ export interface ToolCardProps {
   descriptionLineClamp?: number;
 }
 
-export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
+export const ActionCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
   (
     {
       icon,
@@ -111,4 +111,4 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
     );
   }
 );
-ToolCard.displayName = "ToolCard";
+ActionCard.displayName = "ActionCard";
