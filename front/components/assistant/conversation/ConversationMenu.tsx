@@ -213,7 +213,10 @@ export function ConversationMenu({
   };
 
   return (
-    <div onClick={(e) => e.stopPropagation()}>
+    <div
+      onClick={(e) => e.stopPropagation()}
+      onContextMenu={(e) => e.stopPropagation()}
+    >
       <DeleteConversationsDialog
         isOpen={showDeleteDialog}
         type="selection"
