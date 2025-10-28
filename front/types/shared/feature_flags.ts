@@ -241,7 +241,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   dust_global_data_source_file_system: {
     description:
       "Use the Data Sources File System MCP server on the @dust global agent (replaces search tool server)",
-    stage: "on_demand",
+    stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
 
