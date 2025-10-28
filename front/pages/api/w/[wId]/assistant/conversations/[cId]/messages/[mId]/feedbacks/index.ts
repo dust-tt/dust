@@ -13,7 +13,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import { launchAgentMessageAnalyticsActivity } from "@app/temporal/agent_loop/activities/analytics";
+import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export const MessageFeedbackRequestBodySchema = t.type({
@@ -103,8 +103,7 @@ async function handler(
         });
       }
 
-      await launchAgentMessageAnalyticsActivity(auth.toJSON(), {
-        type: "agent_message_feedback",
+      await launchAgentMessageFeedbackWorkflow(auth.toJSON(), {
         feedback: created.value,
         message: {
           agentMessageId: messageId,
