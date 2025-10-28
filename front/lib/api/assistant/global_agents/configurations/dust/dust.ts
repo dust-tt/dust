@@ -40,6 +40,7 @@ export function _getDustGlobalAgent(
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
     searchMCPServerView,
+    dataSourcesFileSystemMCPServerView,
     toolsetsMCPServerView,
     deepDiveMCPServerView,
     interactiveContentMCPServerView,
@@ -51,6 +52,7 @@ export function _getDustGlobalAgent(
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     searchMCPServerView: MCPServerViewResource | null;
+    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
     toolsetsMCPServerView: MCPServerViewResource | null;
     deepDiveMCPServerView: MCPServerViewResource | null;
     interactiveContentMCPServerView: MCPServerViewResource | null;
@@ -157,6 +159,31 @@ export function _getDustGlobalAgent(
     instructions += `<instructions>
     ${simpleRequestGuidelines}
     </instructions>`;
+  }
+
+  // If the filesystem server is enabled on @dust, add brief usage guidelines.
+  const hasFilesystemTools =
+    featureFlags.includes("dust_global_data_source_file_system") &&
+    !!dataSourcesFileSystemMCPServerView;
+  if (hasFilesystemTools) {
+    instructions += `<company_data_guidelines>
+    Default behavior: optimize for speed by starting with \`semantic_search\`.
+    Provide \`nodeIds\` only when you already know the relevant folder(s) or document(s) to target;
+    otherwise, search across all available content and refine your query before exploring the tree.
+
+    Use tree-navigation tools when thoroughness is required:
+    - Use \`list\` to enumerate direct children of a node (folders and documents). If no node is provided, list from data source roots.
+    - Use \`find\` to locate nodes by title recursively from a given node (partial titles are OK). Helpful to narrow scope when search is too broad.
+    - Use \`locate_in_tree\` to display the full path from a node up to its data source root when you need to understand or show where it sits.
+
+    Search and reading:
+    - Use \`semantic_search\` to retrieve relevant content quickly. Pass \`nodeIds\` to limit scope only when needed; otherwise search globally.
+    - Use \`cat\` sparingly to extract short, relevant snippets you need to quote or verify facts. Prefer searching over reading large files end-to-end.
+
+    <cat_tool_guidelines>
+    ALWAYS provide a \`limit\` when using \`cat\`. The maximum \`limit\` is 10,000 characters. For long documents, read in chunks using \`offset\` and \`limit\`. Optionally use \`grep\` to narrow to relevant lines.
+    </cat_tool_guidelines>
+    </company_data_guidelines>`;
   }
 
   const hasAgentMemory = featureFlags.includes("dust_global_agent_memory");
@@ -267,17 +294,28 @@ export function _getDustGlobalAgent(
     (dsView) => dsView.dataSource.assistantDefaultSelected === true
   );
 
-  // Only add the action if there are data sources and the search MCPServer is available.
-  if (dataSourceViews.length > 0 && searchMCPServerView) {
+  // Decide which MCP server to use for data sources: default `search`,
+  // or `data_sources_file_system` when the feature flag is enabled.
+  const useFsServer = featureFlags.includes(
+    "dust_global_data_source_file_system"
+  );
+  const dataSourcesServerView = useFsServer
+    ? dataSourcesFileSystemMCPServerView ?? null
+    : searchMCPServerView;
+
+  // Only add the action if there are data sources and the chosen MCP server is available.
+  if (dataSourceViews.length > 0 && dataSourcesServerView) {
     // We push one action with all data sources
     actions.push({
       id: -1,
       sId: GLOBAL_AGENTS_SID.DUST + "-datasource-action",
       type: "mcp_server_configuration",
-      name: "search_all_data_sources",
-      description: "The user's entire workspace data sources",
-      mcpServerViewId: searchMCPServerView.sId,
-      internalMCPServerId: searchMCPServerView.internalMCPServerId,
+      name: useFsServer ? "company_data" : "search_all_data_sources",
+      description: useFsServer
+        ? "The user's internal company data."
+        : "The user's entire workspace data sources",
+      mcpServerViewId: dataSourcesServerView.sId,
+      internalMCPServerId: dataSourcesServerView.internalMCPServerId,
       dataSources: dataSourceViews.map((dsView) => ({
         dataSourceViewId: dsView.sId,
         workspaceId: preFetchedDataSources.workspaceId,
@@ -293,47 +331,46 @@ export function _getDustGlobalAgent(
       secretName: null,
     });
 
-    // Add one action per managed data source to improve search results for queries like
-    // "search in <data_source>".
-    // Only include data sources from the global space to limit actions for the same
-    // data source.
-    // Hack: Prefix action names with "hidden_" to prevent them from appearing in the UI,
-    // avoiding duplicate display of data sources.
-    dataSourceViews.forEach((dsView) => {
-      if (
-        dsView.dataSource.connectorProvider &&
-        dsView.dataSource.connectorProvider !== "webcrawler" &&
-        dsView.isInGlobalSpace
-      ) {
-        actions.push({
-          id: -1,
-          sId:
-            GLOBAL_AGENTS_SID.DUST +
-            "-datasource-action-" +
-            dsView.dataSource.sId,
-          type: "mcp_server_configuration",
-          name: "hidden_dust_search_" + dsView.dataSource.name,
-          description: `The user's ${dsView.dataSource.connectorProvider} data source.`,
-          mcpServerViewId: searchMCPServerView.sId,
-          internalMCPServerId: searchMCPServerView.internalMCPServerId,
-          dataSources: [
-            {
-              workspaceId: preFetchedDataSources.workspaceId,
-              dataSourceViewId: dsView.sId,
-              filter: { parents: null, tags: null },
-            },
-          ],
-          tables: null,
-          childAgentId: null,
-          reasoningModel: null,
-          additionalConfiguration: {},
-          timeFrame: null,
-          dustAppConfiguration: null,
-          jsonSchema: null,
-          secretName: null,
-        });
-      }
-    });
+    // In filesystem mode we only expose a single `company_data` action.
+    // Otherwise (search mode) we add one hidden action per managed data source
+    // to improve queries like "search in <data_source>".
+    if (!useFsServer) {
+      dataSourceViews.forEach((dsView) => {
+        if (
+          dsView.dataSource.connectorProvider &&
+          dsView.dataSource.connectorProvider !== "webcrawler" &&
+          dsView.isInGlobalSpace
+        ) {
+          actions.push({
+            id: -1,
+            sId:
+              GLOBAL_AGENTS_SID.DUST +
+              "-datasource-action-" +
+              dsView.dataSource.sId,
+            type: "mcp_server_configuration",
+            name: "hidden_dust_search_" + dsView.dataSource.name,
+            description: `The user's ${dsView.dataSource.connectorProvider} data source.`,
+            mcpServerViewId: dataSourcesServerView.sId,
+            internalMCPServerId: dataSourcesServerView.internalMCPServerId,
+            dataSources: [
+              {
+                workspaceId: preFetchedDataSources.workspaceId,
+                dataSourceViewId: dsView.sId,
+                filter: { parents: null, tags: null },
+              },
+            ],
+            tables: null,
+            childAgentId: null,
+            reasoningModel: null,
+            additionalConfiguration: {},
+            timeFrame: null,
+            dustAppConfiguration: null,
+            jsonSchema: null,
+            secretName: null,
+          });
+        }
+      });
+    }
   }
 
   actions.push(
