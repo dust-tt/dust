@@ -17,7 +17,7 @@ import type {
 import type { ModelConversationTypeMultiActions } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
-export class OpenAILLM extends LLM {
+export class OpenAIResponsesLLM extends LLM {
   private client: OpenAI;
   private metadata: LLMClientMetadata = {
     clientId: "openai_responses",
@@ -64,6 +64,7 @@ export class OpenAILLM extends LLM {
       },
       tools: specifications.map(toTool),
     });
+
     yield* streamLLMEvents(events, this.metadata);
   }
 }

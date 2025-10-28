@@ -2,7 +2,7 @@ import { GoogleLLM } from "@app/lib/api/llm/clients/google";
 import { isGoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
 import { isMistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
-import { OpenAILLM } from "@app/lib/api/llm/clients/openai";
+import { OpenAIResponsesLLM } from "@app/lib/api/llm/clients/openai";
 import { OPEN_AI_RESPONSES_WHITELISTED_MODEL_IDS } from "@app/lib/api/llm/clients/openai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
@@ -48,7 +48,7 @@ export async function getLLM(
   }
 
   if (OPEN_AI_RESPONSES_WHITELISTED_MODEL_IDS.includes(modelId)) {
-    return new OpenAILLM({
+    return new OpenAIResponsesLLM({
       modelId,
       temperature,
       reasoningEffort,
