@@ -94,7 +94,7 @@ export function CreateWebhookSourceFormContent({
         name="description"
         render={({ field }) => (
           <div className="space-y-2">
-            <Label htmlFor="trigger-description">Description</Label>
+            <Label htmlFor="trigger-description">Description (optional)</Label>
             <TextArea
               {...field}
               id="trigger-description"
