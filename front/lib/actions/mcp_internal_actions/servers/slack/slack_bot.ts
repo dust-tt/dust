@@ -8,7 +8,7 @@ import {
   executeListUsers,
   executePostMessage,
   getSlackClient,
-} from "@app/lib/actions/mcp_internal_actions/servers/slack_bot/slack_api_helper";
+} from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
