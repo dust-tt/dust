@@ -26,11 +26,6 @@ import type {
   AgentContentItemType,
   ErrorContentType,
 } from "@app/types/assistant/agent_message_content";
-import {
-  isErrorContent,
-  isFunctionCallContent,
-  isReasoningContent,
-} from "@app/types/assistant/agent_message_content";
 
 /**
  * Type for a step in agent message processing
@@ -128,7 +123,7 @@ export async function getSteps(
   }
 
   for (const content of message.contents) {
-    if (isErrorContent(content.content)) {
+    if (content.content.type === "error") {
       // Don't render error content.
       logger.warn(
         {
@@ -142,7 +137,7 @@ export async function getSteps(
     }
 
     if (
-      isReasoningContent(content.content) &&
+      content.content.type === "reasoning" &&
       content.content.value.provider !== supportedModel.providerId
     ) {
       // Skip reasoning content from other providers.
@@ -173,7 +168,7 @@ export async function getSteps(
           step.actions.map((action) => [action.call.id, action.result])
         );
         for (const content of step.contents) {
-          if (isFunctionCallContent(content)) {
+          if (content.type === "function_call") {
             const functionCall = content.value;
             if (!functionResultByCallId[functionCall.id]) {
               logger.warn(
