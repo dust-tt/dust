@@ -77,36 +77,30 @@ export function TriggerViewsSheet({
     mode?.type === "edit" ? mode.webhookSourceView : null;
 
   const defaultValues = useMemo((): TriggerViewsSheetFormValues => {
-    if (editTrigger?.kind === "schedule") {
-      return {
-        type: "schedule",
-        schedule: getScheduleFormDefaultValues(editTrigger),
-      };
+    switch (editTrigger?.kind) {
+      case "schedule": {
+        return {
+          type: "schedule",
+          schedule: getScheduleFormDefaultValues(editTrigger),
+        };
+      }
+      case "webhook": {
+        return {
+          type: "webhook",
+          webhook: getWebhookFormDefaultValues({
+            trigger: editTrigger,
+            webhookSourceView: editWebhookSourceView,
+          }),
+        };
+      }
+      default: {
+        return {
+          type: "schedule",
+          schedule: getScheduleFormDefaultValues(null),
+        };
+      }
     }
-    if (editTrigger?.kind === "webhook") {
-      return {
-        type: "webhook",
-        webhook: getWebhookFormDefaultValues({
-          trigger: editTrigger,
-          webhookSourceView: editWebhookSourceView,
-        }),
-      };
-    }
-    if (selectedWebhookSourceView) {
-      return {
-        type: "webhook",
-        webhook: getWebhookFormDefaultValues({
-          trigger: null,
-          webhookSourceView: selectedWebhookSourceView,
-        }),
-      };
-    }
-    // Default to schedule type
-    return {
-      type: "schedule",
-      schedule: getScheduleFormDefaultValues(null),
-    };
-  }, [editTrigger, editWebhookSourceView, selectedWebhookSourceView]);
+  }, [editTrigger, editWebhookSourceView]);
 
   const form = useForm<TriggerViewsSheetFormValues>({
     defaultValues,
