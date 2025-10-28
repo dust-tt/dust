@@ -22,9 +22,12 @@ import type {
 } from "@app/types";
 import { removeNulls } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+
+import type {
+  AgentContentItemType,
+  ErrorContentType,
+} from "@app/types/assistant/agent_message_content";
 import {
-  type AgentContentItemType,
-  type ErrorContentType,
   isErrorContent,
   isFunctionCallContent,
   isReasoningContent,

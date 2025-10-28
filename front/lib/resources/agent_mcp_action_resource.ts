@@ -45,10 +45,8 @@ import type {
   AgentMCPActionType,
   AgentMCPActionWithOutputType,
 } from "@app/types/actions";
-import {
-  isFunctionCallContent,
-  type FunctionCallContentType,
-} from "@app/types/assistant/agent_message_content";
+import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
+import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

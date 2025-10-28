@@ -43,8 +43,8 @@ import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/l
 import type { GetOutputResponse } from "@app/temporal/agent_loop/lib/types";
 import type { AgentActionsEvent, ModelId } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
 const MAX_AUTO_RETRY = 3;
 
