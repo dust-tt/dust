@@ -397,7 +397,7 @@ export async function* tryCallMCPTool(
         setTimeout(() => {
           heartbeat();
           resolve();
-        }, TOOL_ACTIVITY_HEARTBEAT_TIMEOUT / 2);
+        }, TOOL_ACTIVITY_HEARTBEAT_TIMEOUT / 6);
       });
 
     while (!toolDone) {
