@@ -67,7 +67,7 @@ export class GoogleLLM extends LLM {
           candidateCount: 1,
           thinkingConfig: {
             includeThoughts: true,
-            // TODO(2025-10-27 pierre): update according to effort
+            // TODO(LLM-Router 2025-10-27): update according to effort
             thinkingBudget: 1024,
           },
         },

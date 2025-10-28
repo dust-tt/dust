@@ -34,7 +34,7 @@ async function contentToPart(
       return { text: content.text };
     case "image_url":
       // Google only accepts images as base64 inline data
-      // TODO(2025-10-27 pierre): Handle error properly and send Non retryableError event
+      // TODO(LLM-Router 2025-10-27): Handle error properly and send Non retryableError event
       const { mediaType, data } = await trustedFetchImageBase64(
         content.image_url.url
       );
@@ -107,7 +107,7 @@ function assistantContentToPart(
       return {
         text: content.value.reasoning,
         thought: true,
-        // TODO(2025-10-27 pierre): add thoughtSignature
+        // TODO(LLM-Router 2025-10-27): add thoughtSignature
       };
     case "text_content":
       return {
