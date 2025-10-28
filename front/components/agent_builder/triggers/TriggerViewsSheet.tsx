@@ -68,13 +68,12 @@ export function TriggerViewsSheet({
     TRIGGERS_SHEET_PAGE_IDS.SELECTION
   );
 
-  const [selectedWebhookSourceView, setSelectedWebhookSourceView] =
-    useState<WebhookSourceViewType | null>(null);
-
-  // When the mode changes to edit, navigate to the appropriate page.
   const editTrigger = mode?.type === "edit" ? mode.trigger : null;
   const editWebhookSourceView =
     mode?.type === "edit" ? mode.webhookSourceView : null;
+
+  const [selectedWebhookSourceView, setSelectedWebhookSourceView] =
+    useState<WebhookSourceViewType | null>(editWebhookSourceView);
 
   const defaultValues = useMemo((): TriggerViewsSheetFormValues => {
     switch (editTrigger?.kind) {
@@ -208,6 +207,7 @@ export function TriggerViewsSheet({
 
   // Jumping to the correct page directly in the edit.
   useEffect(() => {
+    form.reset(defaultValues);
     if (mode?.type === "edit") {
       switch (mode.trigger.kind) {
         case "schedule": {
@@ -220,7 +220,7 @@ export function TriggerViewsSheet({
       }
     }
     setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SELECTION);
-  }, [mode]);
+  }, [defaultValues, form, mode]);
 
   const webhookIcon = useMemo(() => {
     const webhookSourceView =

@@ -30,6 +30,7 @@ export function getWebhookFormDefaultValues({
   trigger: AgentBuilderWebhookTriggerType | null;
   webhookSourceView: WebhookSourceViewType | null;
 }): WebhookFormValues {
+  console.log({ trigger, webhookSourceView }, "asd");
   return {
     name: trigger?.name ?? "Webhook Trigger",
     enabled: trigger?.enabled ?? true,
