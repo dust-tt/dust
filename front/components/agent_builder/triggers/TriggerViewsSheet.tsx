@@ -111,10 +111,6 @@ export function TriggerViewsSheet({
     mode: "onSubmit",
   });
 
-  useEffect(() => {
-    form.reset(defaultValues);
-  }, [form, defaultValues]);
-
   const handleSheetClose = useCallback(() => {
     setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SELECTION);
     setSelectedWebhookSourceView(null);
@@ -245,13 +241,24 @@ export function TriggerViewsSheet({
   useEffect(() => {
     if (mode?.type === "edit") {
       if (mode.trigger.kind === "schedule") {
+        form.reset({
+          type: "schedule",
+          schedule: getScheduleFormDefaultValues(mode.trigger),
+        });
         setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SCHEDULE);
       } else if (mode.trigger.kind === "webhook") {
         setSelectedWebhookSourceView(mode.webhookSourceView);
+        form.reset({
+          type: "webhook",
+          webhook: getWebhookFormDefaultValues({
+            trigger: mode.trigger,
+            webhookSourceView: mode.webhookSourceView,
+          }),
+        });
         setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.WEBHOOK);
       }
     }
-  }, [mode]);
+  }, [mode, form]);
 
   const scheduleTitle = useMemo(() => {
     const trigger = editTrigger?.kind === "schedule" ? editTrigger : null;
