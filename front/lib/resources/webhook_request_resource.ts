@@ -270,4 +270,42 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       return new Err(error as Error);
     }
   }
+
+  static async deleteByWebhookSourceId(
+    auth: Authenticator,
+    webhookSourceId: ModelId,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<{ affectedCount: number }> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Fetch only the IDs of webhook requests to minimize data transfer
+    const webhookRequests = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        webhookSourceId,
+      },
+      attributes: ["id"],
+      transaction,
+    });
+
+    // Delete all request triggers for these webhook requests
+    await WebhookRequestTriggerModel.destroy({
+      where: {
+        workspaceId: workspace.id,
+        webhookRequestId: webhookRequests.map((r) => r.id),
+      },
+      transaction,
+    });
+
+    // Delete all webhook requests for this webhook source
+    const affectedCount = await this.model.destroy({
+      where: {
+        workspaceId: workspace.id,
+        webhookSourceId,
+      },
+      transaction,
+    });
+
+    return { affectedCount };
+  }
 }

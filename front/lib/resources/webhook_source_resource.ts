@@ -233,11 +233,9 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
       });
 
       // Directly delete the webhook requests associated with this webhook source
-      const webhookRequests =
-        await WebhookRequestResource.fetchByWebhookSourceId(auth, this.id);
-      for (const webhookRequest of webhookRequests) {
-        await webhookRequest.delete(auth, { transaction });
-      }
+      await WebhookRequestResource.deleteByWebhookSourceId(auth, this.id, {
+        transaction,
+      });
 
       // Then delete the webhook source itself
       await WebhookSourceModel.destroy({
