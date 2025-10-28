@@ -2,11 +2,8 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import logger from "@app/logger/logger";
-import { launchStoreAgentAnalyticsWorkflow } from "@app/temporal/analytics_queue/client";
 import type {
   ConversationType,
   ConversationWithoutContentType,
@@ -244,48 +241,4 @@ export async function getAgentFeedbacks({
   return new Ok(
     feedbacksWithHiddenConversationId as AgentMessageFeedbackWithMetadataType[]
   );
-}
-
-export async function triggerAgentMessageFeedbackWorkflow(
-  auth: Authenticator,
-  {
-    feedback,
-    messageId,
-    conversationId,
-  }: {
-    feedback: AgentMessageFeedbackType;
-    messageId: string;
-    conversationId: string;
-  }
-): Promise<void> {
-  const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
-
-  if (!featureFlags.includes("agent_builder_observability")) {
-    return;
-  }
-
-  const launchResult = await launchStoreAgentAnalyticsWorkflow({
-    authType: auth.toJSON(),
-    agentMessageAnalyticsArgs: {
-      type: "agent_message_feedback",
-      feedback,
-      message: {
-        agentMessageId: messageId,
-        conversationId,
-      },
-    },
-  });
-
-  if (launchResult.isErr()) {
-    logger.warn(
-      {
-        feedbackId: feedback.id,
-        messageId: feedback.messageId,
-        workspaceId: workspace.sId,
-        error: launchResult.error,
-      },
-      "Failed to launch store agent message feedback workflow"
-    );
-  }
 }

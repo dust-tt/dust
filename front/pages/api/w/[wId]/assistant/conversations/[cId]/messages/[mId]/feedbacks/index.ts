@@ -7,13 +7,13 @@ import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conve
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import {
   deleteMessageFeedback,
-  triggerAgentMessageFeedbackWorkflow,
   upsertMessageFeedback,
 } from "@app/lib/api/assistant/feedback";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
+import { launchAgentMessageAnalyticsActivity } from "@app/temporal/agent_loop/activities/analytics";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export const MessageFeedbackRequestBodySchema = t.type({
@@ -103,10 +103,13 @@ async function handler(
         });
       }
 
-      await triggerAgentMessageFeedbackWorkflow(auth, {
+      await launchAgentMessageAnalyticsActivity(auth.toJSON(), {
+        type: "agent_message_feedback",
         feedback: created.value,
-        messageId,
-        conversationId,
+        message: {
+          agentMessageId: messageId,
+          conversationId: conversation.sId,
+        },
       });
 
       res.status(200).json({ success: true });
