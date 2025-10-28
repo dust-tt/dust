@@ -20,6 +20,7 @@ interface WebhookEditionProps {
   onSave: (trigger: AgentBuilderWebhookTriggerType) => Promise<void> | void;
   agentConfigurationId: string | null;
   webhookSourceView: WebhookSourceViewType | null;
+  formId: string;
 }
 
 export function WebhookEdition({
@@ -28,6 +29,7 @@ export function WebhookEdition({
   onSave,
   agentConfigurationId,
   webhookSourceView,
+  formId,
 }: WebhookEditionProps) {
   const { user } = useUser();
 
@@ -92,7 +94,7 @@ export function WebhookEdition({
   );
 
   return (
-    <FormProvider form={form} onSubmit={handleSubmit}>
+    <FormProvider form={form} onSubmit={handleSubmit} formId={formId}>
       <WebhookEditionSheetContent
         owner={owner}
         trigger={trigger}

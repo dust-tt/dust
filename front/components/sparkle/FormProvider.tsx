@@ -6,6 +6,7 @@ interface FormProviderProps<TFormData extends FieldValues> {
   form: UseFormReturn<TFormData>;
   onSubmit?: (data: TFormData) => void | Promise<void>;
   className?: string;
+  formId?: string;
 }
 
 // You are not supposed to have nested forms. If you want to have multiple forms,
@@ -17,6 +18,7 @@ export function FormProvider<TFormData extends FieldValues>({
   form,
   onSubmit,
   className,
+  formId,
 }: FormProviderProps<TFormData>) {
   const handleSubmit = async (data: TFormData) => {
     if (onSubmit) {
@@ -29,6 +31,7 @@ export function FormProvider<TFormData extends FieldValues>({
   return (
     <ReactHookFromProvider {...form}>
       <form
+        id={formId}
         className={className}
         onSubmit={(e) => {
           e.stopPropagation();

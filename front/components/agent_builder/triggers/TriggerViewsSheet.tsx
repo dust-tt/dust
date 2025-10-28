@@ -23,6 +23,11 @@ const TRIGGERS_SHEET_PAGE_IDS = {
   WEBHOOK: "webhook-edition",
 } as const;
 
+const TRIGGERS_SHEET_FORM_IDS = {
+  SCHEDULE: "schedule-edition-form",
+  WEBHOOK: "webhook-edition-form",
+} as const;
+
 type PageId =
   (typeof TRIGGERS_SHEET_PAGE_IDS)[keyof typeof TRIGGERS_SHEET_PAGE_IDS];
 
@@ -232,6 +237,7 @@ export function TriggerViewsSheet({
           owner={owner}
           trigger={scheduleEditionState?.trigger ?? null}
           onSave={handleScheduleSave}
+          formId={TRIGGERS_SHEET_FORM_IDS.SCHEDULE}
         />
       ),
     },
@@ -246,6 +252,7 @@ export function TriggerViewsSheet({
           onSave={handleWebhookSave}
           agentConfigurationId={agentConfigurationId}
           webhookSourceView={webhookEditionState?.webhookSourceView ?? null}
+          formId={TRIGGERS_SHEET_FORM_IDS.WEBHOOK}
         />
       ),
     },
@@ -293,6 +300,7 @@ export function TriggerViewsSheet({
                   : "Add Trigger",
                 variant: "primary",
                 type: "submit",
+                form: TRIGGERS_SHEET_FORM_IDS.SCHEDULE,
               }
             : currentPageId === TRIGGERS_SHEET_PAGE_IDS.WEBHOOK
               ? {
@@ -303,6 +311,7 @@ export function TriggerViewsSheet({
                       : "Add Trigger",
                   variant: "primary",
                   type: "submit",
+                  form: TRIGGERS_SHEET_FORM_IDS.WEBHOOK,
                 }
               : undefined
         }

@@ -17,12 +17,14 @@ interface ScheduleEditionProps {
   owner: LightWorkspaceType;
   trigger: AgentBuilderScheduleTriggerType | null;
   onSave: (trigger: AgentBuilderScheduleTriggerType) => Promise<void> | void;
+  formId: string;
 }
 
 export function ScheduleEdition({
   owner,
   trigger,
   onSave,
+  formId,
 }: ScheduleEditionProps) {
   const { user } = useUser();
 
@@ -71,7 +73,7 @@ export function ScheduleEdition({
   );
 
   return (
-    <FormProvider form={form} onSubmit={handleSubmit}>
+    <FormProvider form={form} onSubmit={handleSubmit} formId={formId}>
       <ScheduleEditionSheetContent
         owner={owner}
         trigger={trigger}
