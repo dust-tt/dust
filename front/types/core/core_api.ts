@@ -1490,36 +1490,6 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
-  async tokenizeBatchCount({
-    texts,
-    modelId,
-    providerId,
-  }: {
-    texts: string[];
-    modelId: string;
-    providerId: string;
-  }): Promise<CoreAPIResponse<{ counts: number[] }>> {
-    const credentials = dustManagedCredentials();
-    const response = await this._fetchWithError(
-      `${this._url}/tokenize/batch/count`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        keepalive: false,
-        body: JSON.stringify({
-          texts,
-          model_id: modelId,
-          provider_id: providerId,
-          credentials,
-        }),
-      }
-    );
-
-    return this._resultFromResponse(response);
-  }
-
   async dataSourceTokenize(
     {
       text,
