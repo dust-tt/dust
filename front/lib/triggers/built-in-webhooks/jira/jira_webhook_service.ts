@@ -1,5 +1,4 @@
 import config from "@app/lib/api/config";
-import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   JiraProject,
@@ -78,12 +77,9 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
       return new Err(new Error("Jira connection not found"));
     }
 
-    const checkConnectionOwnershipResult = await checkConnectionOwnership(
-      auth,
-      connectionId
-    );
-    if (checkConnectionOwnershipResult.isErr()) {
-      return checkConnectionOwnershipResult;
+    const { workspace_id: workspaceId } = metadataRes.value.connection.metadata;
+    if (!workspaceId || workspaceId !== auth.getNonNullableWorkspace().sId) {
+      return new Err(new Error("Connection does not belong to this workspace"));
     }
 
     const tokenRes = await oauthAPI.getAccessToken({ connectionId });
@@ -176,12 +172,9 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
       return new Err(new Error("Jira connection not found"));
     }
 
-    const checkConnectionOwnershipResult = await checkConnectionOwnership(
-      auth,
-      connectionId
-    );
-    if (checkConnectionOwnershipResult.isErr()) {
-      return checkConnectionOwnershipResult;
+    const workspaceId = metadataRes.value.connection.metadata.workspace_id;
+    if (!workspaceId || workspaceId !== auth.getNonNullableWorkspace().sId) {
+      return new Err(new Error("Connection does not belong to this workspace"));
     }
 
     const tokenRes = await oauthAPI.getAccessToken({
