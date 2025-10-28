@@ -99,7 +99,7 @@ export const NavigationSidebar = React.forwardRef<
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col">
         {appStatus && <AppStatusBanner appStatus={appStatus} />}
         {!hasIncidentBanner && endDate && endDate < in30Days && (
           <SubscriptionEndBanner
