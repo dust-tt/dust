@@ -99,7 +99,7 @@ export const NavigationSidebar = React.forwardRef<
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
-      <div className="flex flex-col gap-2 pt-3">
+      <div className="flex flex-col gap-2">
         {appStatus && <AppStatusBanner appStatus={appStatus} />}
         {!hasIncidentBanner && endDate && endDate < in30Days && (
           <SubscriptionEndBanner
@@ -112,7 +112,7 @@ export const NavigationSidebar = React.forwardRef<
         )}
         {navs.length > 1 && (
           <Tabs value={currentTab?.id ?? "conversations"}>
-            <TabsList className="px-2">
+            <TabsList className="flex min-h-14 grow items-center justify-center">
               {navs.map((tab) => (
                 <div key={tab.id} ref={tab.ref ?? undefined}>
                   <TabsTrigger
