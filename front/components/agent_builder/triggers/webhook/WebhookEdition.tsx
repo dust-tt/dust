@@ -20,6 +20,7 @@ interface WebhookEditionProps {
   onSave: (trigger: AgentBuilderWebhookTriggerType) => void;
   agentConfigurationId: string | null;
   webhookSourceView: WebhookSourceViewType | null;
+  onSubmitHandlerReady?: (handler: () => Promise<void>) => void;
 }
 
 export function WebhookEdition({
@@ -28,6 +29,7 @@ export function WebhookEdition({
   onSave,
   agentConfigurationId,
   webhookSourceView,
+  onSubmitHandlerReady,
 }: WebhookEditionProps) {
   const { user } = useUser();
 
@@ -90,6 +92,14 @@ export function WebhookEdition({
     },
     [form, onSave, trigger, user, webhookSourceView]
   );
+
+  useEffect(() => {
+    if (onSubmitHandlerReady) {
+      onSubmitHandlerReady(async () => {
+        await form.handleSubmit(handleSubmit)();
+      });
+    }
+  }, [form, handleSubmit, onSubmitHandlerReady]);
 
   return (
     <FormProvider form={form} onSubmit={handleSubmit}>

@@ -81,6 +81,13 @@ export function TriggerViewsSheet({
     webhookSourceView: WebhookSourceViewType | null;
   } | null>(null);
 
+  const [scheduleSubmitHandler, setScheduleSubmitHandler] = useState<
+    (() => Promise<void>) | null
+  >(null);
+  const [webhookSubmitHandler, setWebhookSubmitHandler] = useState<
+    (() => Promise<void>) | null
+  >(null);
+
   const isSheetOpen = mode !== null;
 
   const handleSheetClose = useCallback(() => {
@@ -249,6 +256,9 @@ export function TriggerViewsSheet({
           owner={owner}
           trigger={scheduleEditionState?.trigger ?? null}
           onSave={handleScheduleSave}
+          onSubmitHandlerReady={(handler) =>
+            setScheduleSubmitHandler(() => handler)
+          }
         />
       ),
     },
@@ -263,6 +273,9 @@ export function TriggerViewsSheet({
           onSave={handleWebhookSave}
           agentConfigurationId={agentConfigurationId}
           webhookSourceView={webhookEditionState?.webhookSourceView ?? null}
+          onSubmitHandlerReady={(handler) =>
+            setWebhookSubmitHandler(() => handler)
+          }
         />
       ),
     },
@@ -301,6 +314,35 @@ export function TriggerViewsSheet({
                 variant: "outline",
                 onClick: handleSheetClose,
               }
+        }
+        rightButton={
+          currentPageId === TRIGGERS_SHEET_PAGE_IDS.SCHEDULE
+            ? {
+                label: scheduleEditionState?.trigger
+                  ? "Update Trigger"
+                  : "Add Trigger",
+                variant: "primary",
+                onClick: async () => {
+                  if (scheduleSubmitHandler) {
+                    await scheduleSubmitHandler();
+                  }
+                },
+              }
+            : currentPageId === TRIGGERS_SHEET_PAGE_IDS.WEBHOOK
+              ? {
+                  label: webhookEditionState?.trigger
+                    ? "Update Webhook"
+                    : webhookEditionState?.webhookSourceView
+                      ? `Add ${webhookEditionState.webhookSourceView.customName} Trigger`
+                      : "Add Webhook",
+                  variant: "primary",
+                  onClick: async () => {
+                    if (webhookSubmitHandler) {
+                      await webhookSubmitHandler();
+                    }
+                  },
+                }
+              : undefined
         }
       />
     </MultiPageSheet>

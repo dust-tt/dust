@@ -17,12 +17,14 @@ interface ScheduleEditionProps {
   owner: LightWorkspaceType;
   trigger: AgentBuilderScheduleTriggerType | null;
   onSave: (trigger: AgentBuilderScheduleTriggerType) => void;
+  onSubmitHandlerReady?: (handler: () => Promise<void>) => void;
 }
 
 export function ScheduleEdition({
   owner,
   trigger,
   onSave,
+  onSubmitHandlerReady,
 }: ScheduleEditionProps) {
   const { user } = useUser();
 
@@ -69,6 +71,14 @@ export function ScheduleEdition({
     },
     [user, trigger, onSave]
   );
+
+  useEffect(() => {
+    if (onSubmitHandlerReady) {
+      onSubmitHandlerReady(async () => {
+        await form.handleSubmit(handleSubmit)();
+      });
+    }
+  }, [form, handleSubmit, onSubmitHandlerReady]);
 
   return (
     <FormProvider form={form} onSubmit={handleSubmit}>
