@@ -175,7 +175,7 @@ const InputBarContainer = ({
         {
           type: "pastedAttachment",
           attrs: { fileId, title, textContent },
-          text: `:pasted_attachment[${title}]{fileId=${fileId}}`,
+          text: `:pasted_content[${title}]{pastedId=${fileId}}`,
         },
         { type: "text", text: " " },
       ];
