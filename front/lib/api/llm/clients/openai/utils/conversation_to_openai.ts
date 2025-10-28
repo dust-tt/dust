@@ -10,6 +10,7 @@ import type {
 import type { ReasoningEffort } from "openai/resources/shared";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { generateFunctionCallId } from "@app/lib/api/llm/clients/openai/utils/function_tool_call_id";
 import type {
   Content,
   FunctionMessageTypeModel,
@@ -56,8 +57,7 @@ function toAssistantItem(content: AgentContentItemType): ResponseInputItem {
     case "function_call":
       return {
         type: "function_call",
-        id: idFormat(content.value.id),
-        call_id: callIdFormat(content.value.id),
+        call_id: content.value.id,
         name: content.value.name,
         arguments: content.value.arguments,
       };
@@ -98,31 +98,11 @@ function functionMessage(
     ? message.content
     : message.content.map((content) => JSON.stringify(content)).join("\n");
   return {
-    id: idFormat(message.function_call_id),
+    id: generateFunctionCallId(),
     type: "function_call_output",
-    call_id: callIdFormat(message.function_call_id),
+    call_id: message.function_call_id,
     output: outputString,
   };
-}
-
-function idFormat(id: string): string {
-  if (id.startsWith("call_")) {
-    return "fc" + id.slice(4);
-  } else if (id.startsWith("fc_")) {
-    return id;
-  } else {
-    return `fc_${id}`;
-  }
-}
-
-function callIdFormat(id: string): string {
-  if (id.startsWith("fc_")) {
-    return "call" + id.slice(2);
-  } else if (id.startsWith("call_")) {
-    return id;
-  } else {
-    return `call_${id}`;
-  }
 }
 
 export function toInput(
