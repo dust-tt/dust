@@ -58,7 +58,7 @@ export type OpenAIPayload =
       };
       options?: {
         reasoningEffort?: AgentReasoningEffort;
-        temperature?: number;
+        temperature?: undefined;
       };
     }
   | {

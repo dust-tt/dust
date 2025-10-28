@@ -1,8 +1,8 @@
 import { OpenAI } from "openai";
 import type { ReasoningEffort } from "openai/resources/shared.mjs";
 
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { OpenAIPayload } from "@app/lib/api/llm/clients/openai/utils";
 import {
   toInput,
   toOpenAIReasoningEffort,
@@ -11,24 +11,20 @@ import {
 import { streamLLMEvents } from "@app/lib/api/llm/clients/openai/utils/openai_to_events";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent, ProviderMetadata } from "@app/lib/api/llm/types/events";
-import type { LLMOptions } from "@app/lib/api/llm/types/options";
-import type {
-  ModelConfigurationType,
+import {
+  dustManagedCredentials,
   ModelConversationTypeMultiActions,
 } from "@app/types";
-import { dustManagedCredentials } from "@app/types";
-import { OpenAIPayload } from "./utils";
 
 export class OpenAILLM extends LLM {
   private client: OpenAI;
   protected metadata: ProviderMetadata;
   private reasoningEffort: ReasoningEffort;
-  private temperature: number;
+  private temperature?: number;
 
   constructor({ options, model }: OpenAIPayload) {
     super({ model, options });
-    this.temperature =
-      options?.temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced;
+    this.temperature = options?.temperature;
     this.reasoningEffort = toOpenAIReasoningEffort(
       options?.reasoningEffort ?? "none"
     );
