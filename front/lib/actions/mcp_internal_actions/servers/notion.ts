@@ -76,7 +76,7 @@ const NOTION_TOOL_NAME = "notion";
 
 const titleRichTextSchema = z
   .object({
-    type: z.literal("text"),
+    type: z.literal("text_content"),
     text: z.object({
       content: z.string(),
       link: z.object({ url: z.string() }).nullable().optional(),
@@ -282,8 +282,8 @@ async function withNotionClient<T>(
     const result = await fn(notion);
 
     return new Ok([
-      { type: "text" as const, text: "Success" },
-      { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      { type: "text_content" as const, text: "Success" },
+      { type: "text_content" as const, text: JSON.stringify(result, null, 2) },
     ]);
   } catch (e) {
     const tracked =
@@ -379,7 +379,7 @@ function createServer(
               resource: queryResource,
             },
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: "No results found.",
             },
           ]);
@@ -468,7 +468,7 @@ function createServer(
             ...resultResources.map((result) =>
               typeof result === "string"
                 ? {
-                    type: "text" as const,
+                    type: "text_content" as const,
                     text: result,
                   }
                 : {

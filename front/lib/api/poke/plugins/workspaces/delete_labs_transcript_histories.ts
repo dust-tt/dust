@@ -156,7 +156,7 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Successfully ${countBefore > 0 ? `deleted ${countBefore} history record(s) and ` : ""}restarted the workflow for transcripts configuration [${configuration.provider}]. The sync will now ${countBefore > 0 ? "restart from the beginning" : "start fresh"}.\n\nTemporal workflow: ${temporalLink}`,
     });
   },

@@ -75,9 +75,12 @@ function createServer(
               );
             }
             return new Ok([
-              { type: "text" as const, text: "Fields retrieved successfully" },
               {
-                type: "text" as const,
+                type: "text_content" as const,
+                text: "Fields retrieved successfully",
+              },
+              {
+                type: "text_content" as const,
                 text: JSON.stringify(result.value, null, 2),
               },
             ]);
@@ -118,11 +121,11 @@ function createServer(
             if (issue.isOk() && issue.value === null) {
               return new Ok([
                 {
-                  type: "text" as const,
+                  type: "text_content" as const,
                   text: "No issue found with the specified key",
                 },
                 {
-                  type: "text" as const,
+                  type: "text_content" as const,
                   text: JSON.stringify({ found: false, issueKey }, null, 2),
                 },
               ]);
@@ -133,9 +136,12 @@ function createServer(
               );
             }
             return new Ok([
-              { type: "text" as const, text: "Issue retrieved successfully" },
               {
-                type: "text" as const,
+                type: "text_content" as const,
+                text: "Issue retrieved successfully",
+              },
+              {
+                type: "text_content" as const,
                 text: JSON.stringify({ issue: issue.value }, null, 2),
               },
             ]);
@@ -167,10 +173,13 @@ function createServer(
             }
             return new Ok([
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: "Projects retrieved successfully",
               },
-              { type: "text" as const, text: JSON.stringify(result, null, 2) },
+              {
+                type: "text_content" as const,
+                text: JSON.stringify(result, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -208,9 +217,12 @@ function createServer(
               );
             }
             return new Ok([
-              { type: "text" as const, text: "Project retrieved successfully" },
               {
-                type: "text" as const,
+                type: "text_content" as const,
+                text: "Project retrieved successfully",
+              },
+              {
+                type: "text_content" as const,
                 text: JSON.stringify(result.value, null, 2),
               },
             ]);
@@ -250,11 +262,11 @@ function createServer(
             }
             return new Ok([
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: "Project versions retrieved successfully",
               },
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: JSON.stringify(result.value, null, 2),
               },
             ]);
@@ -288,10 +300,13 @@ function createServer(
             }
             return new Ok([
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: "Transitions retrieved successfully",
               },
-              { type: "text" as const, text: JSON.stringify(result, null, 2) },
+              {
+                type: "text_content" as const,
+                text: JSON.stringify(result, null, 2),
+              },
             ]);
           },
           authInfo,
@@ -352,19 +367,22 @@ function createServer(
             if (result.value === null) {
               return new Ok([
                 {
-                  type: "text" as const,
+                  type: "text_content" as const,
                   text: "Issue not found or no permission to add comment",
                 },
                 {
-                  type: "text" as const,
+                  type: "text_content" as const,
                   text: JSON.stringify({ found: false, issueKey }, null, 2),
                 },
               ]);
             }
             return new Ok([
-              { type: "text" as const, text: "Comment added successfully" },
               {
-                type: "text" as const,
+                type: "text_content" as const,
+                text: "Comment added successfully",
+              },
+              {
+                type: "text_content" as const,
                 text: JSON.stringify(
                   {
                     issueKey,
@@ -425,9 +443,9 @@ function createServer(
                 ? "No issues found matching the search criteria"
                 : "Issues retrieved successfully";
             return new Ok([
-              { type: "text" as const, text: message },
+              { type: "text_content" as const, text: message },
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: JSON.stringify(result.value, null, 2),
               },
             ]);
@@ -491,9 +509,9 @@ function createServer(
                 ? "No issues found matching the JQL query"
                 : "Issues retrieved successfully using JQL";
             return new Ok([
-              { type: "text" as const, text: message },
+              { type: "text_content" as const, text: message },
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: JSON.stringify(result.value, null, 2),
               },
             ]);
@@ -533,11 +551,11 @@ function createServer(
               }
               return new Ok([
                 {
-                  type: "text" as const,
+                  type: "text_content" as const,
                   text: "Issue types retrieved successfully",
                 },
                 {
-                  type: "text" as const,
+                  type: "text_content" as const,
                   text: JSON.stringify(result, null, 2),
                 },
               ]);
@@ -585,11 +603,11 @@ function createServer(
               }
               return new Ok([
                 {
-                  type: "text" as const,
+                  type: "text_content" as const,
                   text: "Issue fields retrieved successfully",
                 },
                 {
-                  type: "text" as const,
+                  type: "text_content" as const,
                   text: JSON.stringify(result, null, 2),
                 },
               ]);
@@ -632,11 +650,11 @@ function createServer(
 
         return new Ok([
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text: "Connection information retrieved successfully",
           },
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text: JSON.stringify(connectionInfo, null, 2),
           },
         ]);
@@ -684,22 +702,22 @@ function createServer(
             if (result.value === null) {
               return new Ok([
                 {
-                  type: "text" as const,
+                  type: "text_content" as const,
                   text: "Issue not found or no permission to transition it",
                 },
                 {
-                  type: "text" as const,
+                  type: "text_content" as const,
                   text: JSON.stringify({ found: false, issueKey }, null, 2),
                 },
               ]);
             }
             return new Ok([
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: "Issue transitioned successfully",
               },
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: JSON.stringify(
                   {
                     issueKey,
@@ -746,9 +764,12 @@ function createServer(
               return new Err(new MCPError(errorMessage));
             }
             return new Ok([
-              { type: "text" as const, text: "Issue created successfully" },
               {
-                type: "text" as const,
+                type: "text_content" as const,
+                text: "Issue created successfully",
+              },
+              {
+                type: "text_content" as const,
                 text: JSON.stringify(result.value, null, 2),
               },
             ]);
@@ -792,19 +813,22 @@ function createServer(
             if (result.value === null) {
               return new Ok([
                 {
-                  type: "text" as const,
+                  type: "text_content" as const,
                   text: "Issue not found or no permission to update it",
                 },
                 {
-                  type: "text" as const,
+                  type: "text_content" as const,
                   text: JSON.stringify({ found: false, issueKey }, null, 2),
                 },
               ]);
             }
             return new Ok([
-              { type: "text" as const, text: "Issue updated successfully" },
               {
-                type: "text" as const,
+                type: "text_content" as const,
+                text: "Issue updated successfully",
+              },
+              {
+                type: "text_content" as const,
                 text: JSON.stringify(
                   {
                     ...result.value,
@@ -851,11 +875,11 @@ function createServer(
             }
             return new Ok([
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: "Issue link created successfully",
               },
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: JSON.stringify(
                   {
                     ...linkData,
@@ -895,11 +919,11 @@ function createServer(
             }
             return new Ok([
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: "Issue link deleted successfully",
               },
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: JSON.stringify({ linkId }, null, 2),
               },
             ]);
@@ -932,11 +956,11 @@ function createServer(
             }
             return new Ok([
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: "Issue link types retrieved successfully",
               },
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: JSON.stringify(result.value, null, 2),
               },
             ]);
@@ -1011,9 +1035,9 @@ function createServer(
                   ? "No users found with the specified email address"
                   : `Found ${result.value.users.length} exact match(es) for the specified email address`;
               return new Ok([
-                { type: "text" as const, text: message },
+                { type: "text_content" as const, text: message },
                 {
-                  type: "text" as const,
+                  type: "text_content" as const,
                   text: JSON.stringify(
                     {
                       users: result.value.users,
@@ -1046,9 +1070,9 @@ function createServer(
                   ? `Found ${result.value.users.length} user(s) matching the name`
                   : `Listed ${result.value.users.length} user(s)`;
             return new Ok([
-              { type: "text" as const, text: message },
+              { type: "text_content" as const, text: message },
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: JSON.stringify(
                   {
                     users: result.value.users,
@@ -1189,11 +1213,11 @@ function createServer(
 
             return new Ok([
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: `Successfully uploaded attachment to issue ${issueKey}`,
               },
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: JSON.stringify(
                   {
                     issueKey,
@@ -1259,11 +1283,11 @@ function createServer(
 
             return new Ok([
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: `Found ${attachments.length} attachment(s) for issue ${issueKey}`,
               },
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: JSON.stringify(
                   {
                     issueKey,

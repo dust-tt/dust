@@ -102,7 +102,7 @@ export const garbageCollectGoogleDriveDocumentPlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Garbage collected ${successCount} document(s).`,
     });
   },

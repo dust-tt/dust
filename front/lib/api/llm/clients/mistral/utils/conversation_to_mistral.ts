@@ -8,33 +8,26 @@ import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
-  AssistantContentMessageTypeModel,
-  AssistantFunctionCallMessageTypeModel,
-  Content,
+  AssistantMessageTypeModel,
   ModelMessageTypeMultiActionsWithoutContentFragment,
+  TextContent,
+  UserContent,
 } from "@app/types";
 import { assertNever } from "@app/types";
-import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
-} from "@app/types/assistant/agent_message_content";
+import type { ReasoningContent } from "@app/types/assistant/agent_message_content";
+import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 
-function toContentChunk(
-  content: Content | TextContentType | ReasoningContentType
-): ContentChunk {
+function toContentChunk(content: UserContent | ReasoningContent): ContentChunk {
   switch (content.type) {
-    case "text":
-      return content;
-    case "image_url":
-      return {
-        type: "image_url",
-        imageUrl: content.image_url.url,
-      };
     case "text_content":
       return {
         type: "text",
         text: content.value,
+      };
+    case "image_url":
+      return {
+        type: "image_url",
+        imageUrl: content.value.image_url,
       };
     case "reasoning":
       assert(content.value.reasoning, "Reasoning content is missing reasoning");
@@ -48,20 +41,17 @@ function toContentChunk(
 }
 
 function toAssistantMessage(
-  message:
-    | AssistantFunctionCallMessageTypeModel
-    | AssistantContentMessageTypeModel
+  message: AssistantMessageTypeModel
 ): AssistantMessage & { role: "assistant" } {
   assert(message.contents, "Assistant message is missing contents");
 
   const textContents = message.contents
     .filter(
-      (c): c is TextContentType | ReasoningContentType =>
-        c.type !== "function_call"
+      (c): c is TextContent | ReasoningContent => !isFunctionCallContent(c)
     )
     .map(toContentChunk);
   const toolCalls = message.contents
-    .filter((c): c is FunctionCallContentType => c.type === "function_call")
+    .filter(isFunctionCallContent)
     .map((fc) => ({
       id: fc.value.id,
       function: {

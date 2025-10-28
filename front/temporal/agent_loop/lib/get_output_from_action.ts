@@ -14,7 +14,7 @@ import type {
   Output,
 } from "@app/temporal/agent_loop/lib/types";
 import { Err, Ok, safeParseJSON } from "@app/types";
-import type { ReasoningContentType } from "@app/types/assistant/agent_message_content";
+import type { ReasoningContent } from "@app/types/assistant/agent_message_content";
 
 export async function getOutputFromAction(
   auth: Authenticator,
@@ -196,7 +196,7 @@ export async function getOutputFromAction(
                 provider: model.providerId,
                 region,
               },
-            } satisfies ReasoningContentType;
+            } satisfies ReasoningContent;
           }
           return content;
         });

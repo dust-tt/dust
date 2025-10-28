@@ -33,7 +33,7 @@ export const upgradeToBusinessPlan = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Workspace ${workspace.name} whitelisted for Enterprise seat based plan.`,
     });
   },

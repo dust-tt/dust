@@ -388,7 +388,7 @@ async function createServer(
             if (matches.length === 0) {
               return new Ok([
                 {
-                  type: "text" as const,
+                  type: "text_content" as const,
                   text: `No messages found.`,
                 },
                 {
@@ -515,7 +515,7 @@ async function createServer(
 
             if (matches.length === 0) {
               return new Ok([
-                { type: "text" as const, text: `No messages found.` },
+                { type: "text_content" as const, text: `No messages found.` },
                 {
                   type: "resource" as const,
                   resource: makeQueryResource(
@@ -667,7 +667,7 @@ async function createServer(
           if (matches.length === 0) {
             return new Ok([
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: `No threads found.`,
               },
               {

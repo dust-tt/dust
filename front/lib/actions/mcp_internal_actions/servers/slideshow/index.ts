@@ -264,7 +264,7 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: responseText,
           },
         ]);
@@ -305,7 +305,7 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text:
               `Slideshow '${fileResource.sId}' (${fileResource.fileName}) retrieved ` +
               `successfully. Content:\n\n${content}`,

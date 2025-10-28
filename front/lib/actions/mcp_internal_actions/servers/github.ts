@@ -95,7 +95,10 @@ function createServer(
           );
 
           return new Ok([
-            { type: "text" as const, text: `Issue created: #${issue.number}` },
+            {
+              type: "text_content" as const,
+              text: `Issue created: #${issue.number}`,
+            },
           ]);
         } catch (e) {
           return new Err(
@@ -381,10 +384,13 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: `Retrieved pull request #${pullNumber}`,
             },
-            { type: "text" as const, text: JSON.stringify(content, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(content, null, 2),
+            },
           ]);
         } catch (e) {
           return new Err(
@@ -463,7 +469,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: `Review created with ID ${review.id}`,
             },
           ]);
@@ -575,16 +581,19 @@ function createServer(
 
           if (!content) {
             return new Ok([
-              { type: "text" as const, text: "No open projects found" },
+              { type: "text_content" as const, text: "No open projects found" },
             ]);
           }
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: `Retrieved ${projects.length} open projects`,
             },
-            { type: "text" as const, text: JSON.stringify(content, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(content, null, 2),
+            },
           ]);
         } catch (e) {
           return new Err(
@@ -712,7 +721,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: `Issue #${issueNumber} added to project`,
             },
           ]);
@@ -763,7 +772,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: `Comment added to issue #${issueNumber} with ID ${comment.id}`,
             },
           ]);
@@ -897,9 +906,12 @@ function createServer(
           };
 
           return new Ok([
-            { type: "text" as const, text: `Retrieved issue #${issueNumber}` },
             {
-              type: "text" as const,
+              type: "text_content" as const,
+              text: `Retrieved issue #${issueNumber}`,
+            },
+            {
+              type: "text_content" as const,
               text: JSON.stringify(formattedIssue, null, 2),
             },
           ]);
@@ -1061,11 +1073,11 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: `Retrieved ${formattedIssues.length} issues`,
             },
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(formattedIssues, null, 2),
             },
           ]);
@@ -1295,11 +1307,11 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: `Retrieved ${formattedPullRequests.length} pull requests`,
             },
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(
                 {
                   pullRequests: formattedPullRequests,

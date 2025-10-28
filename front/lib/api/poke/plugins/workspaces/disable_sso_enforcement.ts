@@ -35,7 +35,7 @@ export const disableSSOPlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: "SSO enforcement disabled.",
     });
   },

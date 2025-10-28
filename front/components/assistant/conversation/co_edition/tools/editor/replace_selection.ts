@@ -45,7 +45,7 @@ export function registerReplaceSelectionTool(
         return {
           content: [
             {
-              type: "text",
+              type: "text_content",
               text: `Successfully replaced selection from position ${params.from} to ${params.to}`,
             },
           ],
@@ -54,7 +54,7 @@ export function registerReplaceSelectionTool(
         return {
           content: [
             {
-              type: "text",
+              type: "text_content",
               text: `Failed to replace selection: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],

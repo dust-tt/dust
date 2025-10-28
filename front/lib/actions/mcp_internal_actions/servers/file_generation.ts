@@ -129,7 +129,7 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text:
               "Here are the formats you can use to convert to " +
               output_format +
@@ -259,7 +259,7 @@ function createServer(
           "The content of the file to generate. You can either provide the id of a file in the conversation (note: if the file ID is already in the desired format, no conversion is needed), the url to a file or the content directly."
         ),
       source_format: z
-        .enum(["text", "markdown", "html"])
+        .enum(["text_content", "markdown", "html"])
         .optional()
         .default("text")
         .describe(
@@ -280,7 +280,7 @@ function createServer(
         if (!isValidOutputType(extension)) {
           return new Ok([
             {
-              type: "text",
+              type: "text_content",
               text: `The format ${extension} is not supported.`,
             },
           ]);

@@ -147,7 +147,7 @@ function createServer(
 
         return new Ok([
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text: `Successfully enabled toolset ${toolsetId}`,
           },
         ]);

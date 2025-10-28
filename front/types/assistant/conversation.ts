@@ -11,7 +11,7 @@ import type {
   GenericErrorContent,
   LightAgentConfigurationType,
 } from "./agent";
-import type { AgentContentItemType } from "./agent_message_content";
+import type { AgentContent } from "./agent_message_content";
 
 /**
  * Mentions
@@ -175,7 +175,7 @@ export type AgentMessageType = BaseAgentMessageType & {
     step: number;
     content: string;
   }>;
-  contents: Array<{ step: number; content: AgentContentItemType }>;
+  contents: Array<{ step: number; content: AgentContent }>;
   parsedContents: Record<number, Array<ParsedContentItem>>;
 };
 

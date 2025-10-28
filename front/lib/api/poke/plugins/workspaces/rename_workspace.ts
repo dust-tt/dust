@@ -36,7 +36,7 @@ export const renameWorkspace = createPlugin({
     const organization_id = auth.getNonNullableWorkspace().workOSOrganizationId;
     if (!organization_id) {
       return new Ok({
-        display: "text",
+        display: "text_content",
         value: `Workspace renamed to ${newName}.`,
       });
     }
@@ -54,7 +54,7 @@ export const renameWorkspace = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Workspace renamed to ${newName}. It was renamed in WorkOS as well.`,
     });
   },

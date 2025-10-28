@@ -240,7 +240,7 @@ async function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(
                 {
                   messages: response.messages,
@@ -331,11 +331,11 @@ async function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: `Retrieved thread with ${response.messages?.length} total messages (1 parent + ${threadReplies.length} replies)${hasMore ? ". More replies available." : ""}`,
             },
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(
                 {
                   parent_message: parentMessage,
@@ -409,10 +409,13 @@ async function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: `Successfully added ${name} reaction to message`,
             },
-            { type: "text" as const, text: JSON.stringify(response, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(response, null, 2),
+            },
           ]);
         } catch (error) {
           return new Err(
@@ -466,10 +469,13 @@ async function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: `Successfully removed ${name} reaction from message`,
             },
-            { type: "text" as const, text: JSON.stringify(response, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(response, null, 2),
+            },
           ]);
         } catch (error) {
           return new Err(

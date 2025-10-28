@@ -137,7 +137,7 @@ function createServer(
         if (tableConfigurations.length === 0) {
           return new Ok([
             {
-              type: "text",
+              type: "text_content",
               text: "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool.",
             },
           ]);

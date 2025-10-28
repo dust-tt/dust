@@ -41,7 +41,7 @@ export const extendTrialPlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `New trial end date: ${new Date(result.value.trialEnd * 1000).toLocaleDateString()}`,
     });
   },

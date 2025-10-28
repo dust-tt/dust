@@ -15,17 +15,17 @@ export function getTextContentFromMessage(
   }
 
   if (isImageContent(content)) {
-    return content.image_url.url;
+    return content.value.image_url;
   }
 
   return content
     ?.map((c) => {
       if (isTextContent(c)) {
-        return c.text;
+        return c.value;
       }
 
       if (isImageContent(c)) {
-        return c.image_url.url;
+        return c.value.image_url;
       }
 
       return "";

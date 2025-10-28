@@ -23,15 +23,15 @@ import type {
 import { removeNulls } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
-  AgentContentItemType,
-  ErrorContentType,
+  AgentContent,
+  ErrorContent,
 } from "@app/types/assistant/agent_message_content";
 
 /**
  * Type for a step in agent message processing
  */
 export type Step = {
-  contents: Exclude<AgentContentItemType, ErrorContentType>[];
+  contents: Exclude<AgentContent, ErrorContent>[];
   actions: {
     call: FunctionCallType;
     result: FunctionMessageTypeModel;
@@ -279,8 +279,8 @@ export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
     name: m.context.fullName || m.context.username,
     content: [
       {
-        type: "text",
-        text: systemContext + content,
+        type: "text_content",
+        value: systemContext + content,
       },
     ],
   };

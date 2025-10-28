@@ -35,7 +35,7 @@ export const notionUrlSyncPlugin = createPlugin({
         multiple: false,
       },
       urls: {
-        type: "text",
+        type: "text_content",
         label: "URLs",
         description:
           "List of URLs to sync or delete, separated by a comma (,) or newline",
@@ -93,7 +93,7 @@ export const notionUrlSyncPlugin = createPlugin({
       }
 
       return new Ok({
-        display: "text",
+        display: "text_content",
         value: `Synced ${urlsArray.length} URLs from Notion.`,
       });
     } else if (operation[0] === "Delete urls") {
@@ -110,7 +110,7 @@ export const notionUrlSyncPlugin = createPlugin({
         );
       }
       return new Ok({
-        display: "text",
+        display: "text_content",
         value: `Deleted ${urlsArray.length} URLs from Notion.`,
       });
     } else {

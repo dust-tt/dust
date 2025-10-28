@@ -79,7 +79,7 @@ function createServer(
       async (params) => {
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: `JIT testing tool received: ${JSON.stringify(params)}`,
           },
         ]);

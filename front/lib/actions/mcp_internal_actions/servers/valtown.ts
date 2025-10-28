@@ -125,7 +125,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text:
                 `Successfully created val "${name}" with ID: ${val.id}\n` +
                 (val.links?.self ? `Link to the val: ${val.links.self}\n` : ""),
@@ -195,7 +195,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: resultText,
             },
           ]);
@@ -295,7 +295,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: resultText,
             },
           ]);
@@ -386,7 +386,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: resultText,
             },
           ]);
@@ -484,7 +484,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: resultText,
             },
           ]);
@@ -538,7 +538,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: resultText,
             },
           ]);
@@ -589,7 +589,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: `Successfully deleted file "${filePath}" from val ${valId}`,
             },
           ]);
@@ -642,7 +642,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: `Successfully updated file "${filePath}" in val ${valId}\n`,
             },
           ]);
@@ -721,7 +721,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: `Successfully updated file "${filePath}" in val ${valId}${
                 type ? ` (type: ${type})` : ""
               }\n`,
@@ -773,7 +773,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: `Successfully created empty file "${filePath}" in val ${valId}. Use write_file to add content and set the file type.\n`,
             },
           ]);
@@ -896,7 +896,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: resultText,
             },
           ]);

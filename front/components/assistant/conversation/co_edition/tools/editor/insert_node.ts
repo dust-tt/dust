@@ -53,7 +53,7 @@ export function registerInsertNodeTool(server: McpServer, editor: Editor) {
       return {
         content: [
           {
-            type: "text",
+            type: "text_content",
             text: `Successfully inserted node at position ${params.position}`,
           },
         ],

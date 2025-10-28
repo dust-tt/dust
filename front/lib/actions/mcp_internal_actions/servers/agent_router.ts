@@ -76,11 +76,11 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: "List of published agents successfully fetched",
           },
           {
-            type: "text",
+            type: "text_content",
             text: JSON.stringify(formattedAgents),
           },
         ]);
@@ -164,11 +164,11 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: "Suggested agents successfully fetched",
           },
           {
-            type: "text",
+            type: "text_content",
             text: JSON.stringify(formattedSuggestedAgents),
           },
         ]);

@@ -123,7 +123,7 @@ export async function runToolActivity(
             agentMessageId: agentMessage.agentMessageId,
             step: step + 1,
             index: 0,
-            type: "text_content",
+            type: "text",
             value: {
               type: "text_content",
               value: event.text,

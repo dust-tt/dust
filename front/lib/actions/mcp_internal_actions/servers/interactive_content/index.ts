@@ -280,7 +280,7 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: responseText,
           },
         ]);
@@ -346,7 +346,7 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: `File '${fileResource.sId}' reverted successfully.`,
           },
         ]);
@@ -410,7 +410,7 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: responseText,
           },
         ]);
@@ -452,7 +452,7 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text:
               `File '${fileResource.sId}' (${fileResource.fileName}) retrieved ` +
               `successfully. Content:\n\n${content}`,
@@ -491,7 +491,7 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: `URL: ${shareUrlRes.value}`,
           },
         ]);

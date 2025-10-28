@@ -67,7 +67,7 @@ export const changeWebcrawlerFrequency = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Connector ${connectorId} crawl frequency set to ${args.crawlFrequency}`,
     });
   },

@@ -31,7 +31,7 @@ export const resetMessageRateLimitPlugin = createPlugin({
     await resetMessageRateLimitForWorkspace(auth);
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Message rate limit reset for workspace ${resource?.sId}.`,
     });
   },

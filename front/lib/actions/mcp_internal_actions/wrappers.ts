@@ -115,7 +115,7 @@ export function withToolLogging<T>(
         isError: true,
         content: [
           {
-            type: "text",
+            type: "text_content",
             text: errorToString(result.error),
           },
         ],

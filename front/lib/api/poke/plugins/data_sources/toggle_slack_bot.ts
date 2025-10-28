@@ -76,7 +76,7 @@ export const toggleSlackBotPlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Successfully ${enabled ? "enabled" : "disabled"} Slack bot`,
     });
   },

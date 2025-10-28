@@ -58,7 +58,7 @@ export const notionUpdateOrphanedParents = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Workflow started for connector ${connectorId}.`,
     });
   },

@@ -13,14 +13,14 @@ export const upgradeEnterprisePlan = createPlugin({
     isHidden: true,
     args: {
       planCode: {
-        type: "text",
+        type: "text_content",
         label: "Plan Code",
         description: "The plan code to upgrade to",
         placeholder: "e.g., FREE_UPGRADED_PLAN",
         required: true,
       },
       stripeSubscriptionId: {
-        type: "text",
+        type: "text_content",
         label: "Stripe Subscription ID",
         description: "The stripe subscription id to upgrade to",
         placeholder: "e.g., sub_1234567890",
@@ -42,14 +42,14 @@ export const upgradeFreePlan = createPlugin({
     isHidden: true,
     args: {
       planCode: {
-        type: "text",
+        type: "text_content",
         label: "Plan Code",
         description: "The plan code to upgrade to",
         placeholder: "e.g., FREE_UPGRADED_PLAN",
         required: true,
       },
       endDate: {
-        type: "text",
+        type: "text_content",
         label: "End Date",
         description: "Optional end date for the upgrade",
         placeholder: "YYYY-MM-DD",

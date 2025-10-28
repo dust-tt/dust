@@ -71,7 +71,7 @@ export function hideFileFromActionOutput({
   }
   const snippet = file?.snippet ?? null;
   return {
-    type: "text",
+    type: "text_content",
     text: `A file of type ${contentType} with id ${sid} was generated successfully and made available to the conversation. The user is presented with a button to download it, do not attempt to generate a link to it. ${snippet ? `\n\nSnippet:\n ${snippet}` : ""}`,
   };
 }
@@ -97,7 +97,7 @@ export function rewriteContentForModel(
     }
     text += xml;
     return {
-      type: "text",
+      type: "text_content",
       text,
     };
   }
@@ -163,7 +163,7 @@ export async function handleBase64Upload(
   if (!resourceType) {
     return {
       content: {
-        type: "text",
+        type: "text_content",
         text: `The mime type of the generated resource (${mimeType}) is not supported.`,
       },
       file: null,
@@ -173,7 +173,7 @@ export async function handleBase64Upload(
   if (base64Data.length > MAX_RESOURCE_CONTENT_SIZE) {
     return {
       content: {
-        type: "text",
+        type: "text_content",
         text: `The generated ${resourceType} was too large to be stored.`,
       },
       file: null,
@@ -207,7 +207,7 @@ export async function handleBase64Upload(
       );
       return {
         content: {
-          type: "text",
+          type: "text_content",
           text: `Failed to upsert the generated ${resourceType} as a file.`,
         },
         file: null,
@@ -238,7 +238,7 @@ export async function handleBase64Upload(
 
     return {
       content: {
-        type: "text",
+        type: "text_content",
         text: `Failed to save the generated ${resourceType}.`,
       },
       file: null,

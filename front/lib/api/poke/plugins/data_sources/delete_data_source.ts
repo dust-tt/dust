@@ -70,7 +70,7 @@ export const deleteDataSourcePlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `✅ Data source ${dataSource.sId} has been successfully deleted (soft delete), along with the associated tools in the following agents: ${Array.from(viewsUsedByAgentsName).join(", ")}`,
     });
   },

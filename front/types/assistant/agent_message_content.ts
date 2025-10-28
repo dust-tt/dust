@@ -1,12 +1,10 @@
 import type { ModelId, ModelProviderIdType } from "@app/types";
-import type { FunctionCallType } from "@app/types/assistant/generation";
+import type {
+  FunctionCallType,
+  TextContent,
+} from "@app/types/assistant/generation";
 
-export type TextContentType = {
-  type: "text_content";
-  value: string;
-};
-
-export type ReasoningContentType = {
+export type ReasoningContent = {
   type: "reasoning";
   value: {
     reasoning?: string;
@@ -17,12 +15,12 @@ export type ReasoningContentType = {
   };
 };
 
-export type FunctionCallContentType = {
+export type FunctionCallContent = {
   type: "function_call";
   value: FunctionCallType;
 };
 
-export type ErrorContentType = {
+export type ErrorContent = {
   type: "error";
   value: {
     code: string;
@@ -31,33 +29,29 @@ export type ErrorContentType = {
   };
 };
 
-export type AgentContentItemType =
-  | TextContentType
-  | ReasoningContentType
-  | FunctionCallContentType
-  | ErrorContentType;
+export type AgentContent =
+  | TextContent
+  | ReasoningContent
+  | FunctionCallContent
+  | ErrorContent;
 
-export function isTextContent(
-  content: AgentContentItemType
-): content is TextContentType {
-  return content.type === "text_content";
+export function isTextContent(content: AgentContent): content is TextContent {
+  return content.type === "text";
 }
 
 export function isReasoningContent(
-  content: AgentContentItemType
-): content is ReasoningContentType {
+  content: AgentContent
+): content is ReasoningContent {
   return content.type === "reasoning";
 }
 
 export function isFunctionCallContent(
-  content: AgentContentItemType
-): content is FunctionCallContentType {
+  content: AgentContent
+): content is FunctionCallContent {
   return content.type === "function_call";
 }
 
-export function isErrorContent(
-  content: AgentContentItemType
-): content is ErrorContentType {
+export function isErrorContent(content: AgentContent): content is ErrorContent {
   return content.type === "error";
 }
 
@@ -70,6 +64,6 @@ export type AgentStepContentType = {
   step: number;
   index: number;
   version: number;
-  type: AgentContentItemType["type"];
-  value: AgentContentItemType;
+  type: AgentContent["type"];
+  value: AgentContent;
 };

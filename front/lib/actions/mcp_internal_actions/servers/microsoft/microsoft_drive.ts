@@ -83,7 +83,7 @@ function createServer(
             .post(requestBody);
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(response.retrievalHits, null, 2),
             },
           ]);
@@ -137,7 +137,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(response.value[0].hitsContainers, null, 2),
             },
           ]);
@@ -247,7 +247,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: "Document updated successfully",
             },
           ]);
@@ -398,7 +398,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(
                 {
                   itemId,
@@ -590,7 +590,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(
                 {
                   success: true,

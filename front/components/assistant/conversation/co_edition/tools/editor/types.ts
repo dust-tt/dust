@@ -7,7 +7,7 @@ const BaseNodeSchema = z.object({
 
 // Text node type.
 export const CoEditionTextNodeSchema = BaseNodeSchema.extend({
-  type: z.literal("text"),
+  type: z.literal("text_content"),
   content: z
     .string()
     .describe(

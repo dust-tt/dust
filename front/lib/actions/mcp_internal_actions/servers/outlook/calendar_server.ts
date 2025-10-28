@@ -38,11 +38,11 @@ function createServer(
         if (typeof result === "string") {
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: "User timezone retrieved successfully",
             },
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(
                 {
                   timezone: result,
@@ -103,8 +103,14 @@ function createServer(
         }
 
         return new Ok([
-          { type: "text" as const, text: "Calendars listed successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          {
+            type: "text_content" as const,
+            text: "Calendars listed successfully",
+          },
+          {
+            type: "text_content" as const,
+            text: JSON.stringify(result, null, 2),
+          },
         ]);
       }
     )
@@ -187,8 +193,14 @@ function createServer(
         }
 
         return new Ok([
-          { type: "text" as const, text: "Events searched successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          {
+            type: "text_content" as const,
+            text: "Events searched successfully",
+          },
+          {
+            type: "text_content" as const,
+            text: JSON.stringify(result, null, 2),
+          },
         ]);
       }
     )
@@ -235,8 +247,11 @@ function createServer(
         }
 
         return new Ok([
-          { type: "text" as const, text: "Event fetched successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          { type: "text_content" as const, text: "Event fetched successfully" },
+          {
+            type: "text_content" as const,
+            text: JSON.stringify(result, null, 2),
+          },
         ]);
       }
     )
@@ -255,7 +270,7 @@ function createServer(
       subject: z.string().describe("Title of the event."),
       body: z.string().optional().describe("Description of the event."),
       contentType: z
-        .enum(["text", "html"])
+        .enum(["text_content", "html"])
         .optional()
         .describe("Content type of the event body (default: text)."),
       startDateTime: z
@@ -344,8 +359,11 @@ function createServer(
         }
 
         return new Ok([
-          { type: "text" as const, text: "Event created successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          { type: "text_content" as const, text: "Event created successfully" },
+          {
+            type: "text_content" as const,
+            text: JSON.stringify(result, null, 2),
+          },
         ]);
       }
     )
@@ -365,7 +383,7 @@ function createServer(
       subject: z.string().optional().describe("Title of the event."),
       body: z.string().optional().describe("Description of the event."),
       contentType: z
-        .enum(["text", "html"])
+        .enum(["text_content", "html"])
         .optional()
         .describe("Content type of the event body."),
       startDateTime: z.string().optional().describe("ISO 8601 start time"),
@@ -447,8 +465,11 @@ function createServer(
         }
 
         return new Ok([
-          { type: "text" as const, text: "Event updated successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          { type: "text_content" as const, text: "Event updated successfully" },
+          {
+            type: "text_content" as const,
+            text: JSON.stringify(result, null, 2),
+          },
         ]);
       }
     )
@@ -495,7 +516,7 @@ function createServer(
         }
 
         return new Ok([
-          { type: "text" as const, text: "Event deleted successfully" },
+          { type: "text_content" as const, text: "Event deleted successfully" },
         ]);
       }
     )
@@ -557,8 +578,14 @@ function createServer(
         }
 
         return new Ok([
-          { type: "text" as const, text: "Availability checked successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          {
+            type: "text_content" as const,
+            text: "Availability checked successfully",
+          },
+          {
+            type: "text_content" as const,
+            text: JSON.stringify(result, null, 2),
+          },
         ]);
       }
     )

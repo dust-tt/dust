@@ -22,17 +22,20 @@ const conversationMessages: ModelMessageTypeMultiActionsWithoutContentFragment[]
       name: "Pierre Milliotte",
       content: [
         {
-          type: "text",
-          text: '<attachment id="id" type="image/png" title="title.png" version="latest" isIncludable="true" isQueryable="false" isSearchable="false">[Image content interpreted by a vision-enabled model. Description not available in this context.\n</attachment>',
+          type: "text_content",
+          value:
+            '<attachment id="id" type="image/png" title="title.png" version="latest" isIncludable="true" isQueryable="false" isSearchable="false">[Image content interpreted by a vision-enabled model. Description not available in this context.\n</attachment>',
         },
         {
-          type: "text",
-          text: "<dust_system>\n- Sender: Pierre Milliotte (@pierre) <pierre@dust.tt>\n- Sent at: Oct 22, 2025, 10:53:44 GMT+2\n- Source: web\n</dust_system>\n\n@test hello",
+          type: "text_content",
+          value:
+            "<dust_system>\n- Sender: Pierre Milliotte (@pierre) <pierre@dust.tt>\n- Sent at: Oct 22, 2025, 10:53:44 GMT+2\n- Source: web\n</dust_system>\n\n@test hello",
         },
       ],
     },
     {
       role: "assistant",
+      name: "@assistant",
       function_calls: [
         {
           id: "DdHr7L197",

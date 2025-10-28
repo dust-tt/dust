@@ -21,7 +21,7 @@ export const syncAppsPlugin = createPlugin({
     }
     if (!result.value) {
       return new Ok({
-        display: "text",
+        display: "text_content",
         value: "Sync not enabled.",
       });
     }

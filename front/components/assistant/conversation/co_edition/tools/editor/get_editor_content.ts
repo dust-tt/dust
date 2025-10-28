@@ -93,7 +93,7 @@ export function registerGetEditorContentTool(
       return {
         content: [
           {
-            type: "text",
+            type: "text_content",
             text: JSON.stringify(getEditorContentForModel(editor), null, 2),
           },
         ],

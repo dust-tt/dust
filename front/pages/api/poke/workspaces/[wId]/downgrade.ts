@@ -59,7 +59,7 @@ async function handler(
       await launchScheduleWorkspaceScrubWorkflow({ workspaceId: owner.sId });
 
       await pluginRun.recordResult({
-        display: "text",
+        display: "text_content",
         value: `Workspace ${owner.name} downgraded.`,
       });
 

@@ -375,7 +375,7 @@ export default async function createServer(
         async () => {
           return new Ok([
             {
-              type: "text",
+              type: "text_content",
               text: "Successfully list Dust App configuration",
             },
           ]);
@@ -501,7 +501,7 @@ export default async function createServer(
           }
 
           content.push({
-            type: "text",
+            type: "text_content",
             text: JSON.stringify(sanitizedOutput, null, 2),
           });
 
@@ -523,7 +523,7 @@ export default async function createServer(
         async () => {
           return new Ok([
             {
-              type: "text",
+              type: "text_content",
               text: "Successfully saved Dust App configuration",
             },
           ]);

@@ -9,12 +9,12 @@ import type {
   ModelConversationTypeMultiActions,
   Ok,
   Result,
+  TextContent,
   UserMessageType,
 } from "@app/types";
 import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
+  FunctionCallContent,
+  ReasoningContent,
 } from "@app/types/assistant/agent_message_content";
 
 export type Output = {
@@ -23,9 +23,7 @@ export type Output = {
     name: string | null;
   }>;
   generation: string | null;
-  contents: Array<
-    TextContentType | FunctionCallContentType | ReasoningContentType
-  >;
+  contents: Array<TextContent | FunctionCallContent | ReasoningContent>;
 };
 
 export type GetOutputRequestParams = {

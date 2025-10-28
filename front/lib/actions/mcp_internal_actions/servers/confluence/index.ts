@@ -44,11 +44,11 @@ function createServer(
             }
             return new Ok([
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: "Current user information retrieved successfully",
               },
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: JSON.stringify(result.value, null, 2),
               },
             ]);
@@ -94,14 +94,14 @@ function createServer(
             }
             return new Ok([
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text:
                   result.value.results.length === 0
                     ? "No pages found"
                     : `Found ${result.value.results.length} page(s)`,
               },
               {
-                type: "text" as const,
+                type: "text_content" as const,
                 text: JSON.stringify(result.value, null, 2),
               },
             ]);
@@ -157,9 +157,12 @@ function createServer(
               );
             }
             return new Ok([
-              { type: "text" as const, text: "Page created successfully" },
               {
-                type: "text" as const,
+                type: "text_content" as const,
+                text: "Page created successfully",
+              },
+              {
+                type: "text_content" as const,
                 text: JSON.stringify(result.value, null, 2),
               },
             ]);
@@ -229,9 +232,12 @@ function createServer(
               );
             }
             return new Ok([
-              { type: "text" as const, text: "Page updated successfully" },
               {
-                type: "text" as const,
+                type: "text_content" as const,
+                text: "Page updated successfully",
+              },
+              {
+                type: "text_content" as const,
                 text: JSON.stringify(result.value, null, 2),
               },
             ]);

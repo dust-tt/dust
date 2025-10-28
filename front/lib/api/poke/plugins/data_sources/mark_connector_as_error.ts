@@ -74,7 +74,7 @@ export const markConnectorAsErrorPlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Connector ${connectorId} marked as ${errorType} and paused.`,
     });
   },

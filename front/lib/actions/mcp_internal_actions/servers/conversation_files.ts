@@ -74,7 +74,7 @@ function createServer(
         if (attachments.length === 0) {
           return new Ok([
             {
-              type: "text",
+              type: "text_content",
               text: "No files are currently attached to the conversation.",
             },
           ]);
@@ -90,7 +90,7 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: content,
           },
         ]);
@@ -167,13 +167,13 @@ function createServer(
           );
         }
 
-        let text = content.text;
+        let text = content.value;
 
         // Returning early with a custom message if the text is empty.
         if (text.length === 0) {
           return new Ok([
             {
-              type: "text",
+              type: "text_content",
               text: `No content retrieved for file ${title}.`,
             },
           ]);
@@ -246,7 +246,7 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text,
           },
         ]);
@@ -288,8 +288,8 @@ export async function getFileFromConversation(
       fileId,
       title: attachment.title,
       content: {
-        type: "text",
-        text: CONTENT_OUTDATED_MSG,
+        type: "text_content",
+        value: CONTENT_OUTDATED_MSG,
       },
     });
   }

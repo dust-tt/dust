@@ -176,10 +176,13 @@ export async function executePostMessage(
 
     return new Ok([
       {
-        type: "text" as const,
+        type: "text_content" as const,
         text: `Message with file uploaded to ${channelId}`,
       },
-      { type: "text" as const, text: JSON.stringify(uploadResp, null, 2) },
+      {
+        type: "text_content" as const,
+        text: JSON.stringify(uploadResp, null, 2),
+      },
     ]);
   }
 
@@ -196,8 +199,8 @@ export async function executePostMessage(
   }
 
   return new Ok([
-    { type: "text" as const, text: `Message posted to ${to}` },
-    { type: "text" as const, text: JSON.stringify(response, null, 2) },
+    { type: "text_content" as const, text: `Message posted to ${to}` },
+    { type: "text_content" as const, text: JSON.stringify(response, null, 2) },
   ]);
 }
 
@@ -236,11 +239,11 @@ export async function executeListUsers(
       if (filteredUsers.length > 0) {
         return new Ok([
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text: `The workspace has ${filteredUsers.length} users containing "${nameFilter}"`,
           },
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text: JSON.stringify(filteredUsers, null, 2),
           },
         ]);
@@ -251,16 +254,19 @@ export async function executeListUsers(
   if (nameFilter) {
     return new Ok([
       {
-        type: "text" as const,
+        type: "text_content" as const,
         text: `The workspace has ${users.length} users but none containing "${nameFilter}"`,
       },
-      { type: "text" as const, text: JSON.stringify(users, null, 2) },
+      { type: "text_content" as const, text: JSON.stringify(users, null, 2) },
     ]);
   }
 
   return new Ok([
-    { type: "text" as const, text: `The workspace has ${users.length} users` },
-    { type: "text" as const, text: JSON.stringify(users, null, 2) },
+    {
+      type: "text_content" as const,
+      text: `The workspace has ${users.length} users`,
+    },
+    { type: "text_content" as const, text: JSON.stringify(users, null, 2) },
   ]);
 }
 
@@ -272,8 +278,14 @@ export async function executeGetUser(userId: string, accessToken: string) {
     return new Err(new MCPError(response.error ?? "Unknown error"));
   }
   return new Ok([
-    { type: "text" as const, text: `Retrieved user information for ${userId}` },
-    { type: "text" as const, text: JSON.stringify(response.user, null, 2) },
+    {
+      type: "text_content" as const,
+      text: `Retrieved user information for ${userId}`,
+    },
+    {
+      type: "text_content" as const,
+      text: JSON.stringify(response.user, null, 2),
+    },
   ]);
 }
 
@@ -304,11 +316,11 @@ export async function executeListPublicChannels(
     if (filteredChannels.length > 0) {
       return new Ok([
         {
-          type: "text" as const,
+          type: "text_content" as const,
           text: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
         },
         {
-          type: "text" as const,
+          type: "text_content" as const,
           text: JSON.stringify(filteredChannels, null, 2),
         },
       ]);
@@ -317,18 +329,21 @@ export async function executeListPublicChannels(
   if (nameFilter) {
     return new Ok([
       {
-        type: "text" as const,
+        type: "text_content" as const,
         text: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
       },
-      { type: "text" as const, text: JSON.stringify(channels, null, 2) },
+      {
+        type: "text_content" as const,
+        text: JSON.stringify(channels, null, 2),
+      },
     ]);
   }
 
   return new Ok([
     {
-      type: "text" as const,
+      type: "text_content" as const,
       text: `The workspace has ${channels.length} channels`,
     },
-    { type: "text" as const, text: JSON.stringify(channels, null, 2) },
+    { type: "text_content" as const, text: JSON.stringify(channels, null, 2) },
   ]);
 }

@@ -43,7 +43,7 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: `Random number (1-${upperBound}): ${value}`,
           },
         ]);
@@ -66,7 +66,7 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: `Random float: ${value}`,
           },
         ]);
@@ -99,7 +99,7 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: `Waited for ${duration_ms} milliseconds.`,
           },
         ]);
@@ -148,7 +148,7 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: parts.join("\n"),
           },
         ]);
@@ -174,7 +174,7 @@ function createServer(
           const result = evalFunction.evaluate();
           return new Ok([
             {
-              type: "text",
+              type: "text_content",
               text: result.toString(),
             },
           ]);

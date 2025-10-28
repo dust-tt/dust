@@ -28,7 +28,7 @@ import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 import type {
   AgentStepContentType,
-  FunctionCallContentType,
+  FunctionCallContent,
 } from "@app/types/assistant/agent_message_content";
 import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 
@@ -308,7 +308,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }
 
   isFunctionCallContent(): this is AgentStepContentResource & {
-    value: FunctionCallContentType;
+    value: FunctionCallContent;
   } {
     return isFunctionCallContent(this.value);
   }

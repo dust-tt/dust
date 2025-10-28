@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
-import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
+import type { AgentContent } from "@app/types/assistant/agent_message_content";
 
 makeScript({}, async ({ execute }, logger) => {
   let lastSeenId = 0;
@@ -34,11 +34,11 @@ makeScript({}, async ({ execute }, logger) => {
 
     const toUpdate: Array<{
       id: number;
-      updatedValue: AgentContentItemType;
+      updatedValue: AgentContent;
     }> = [];
 
     for (const stepContent of stepContents) {
-      const value = stepContent.value as AgentContentItemType;
+      const value = stepContent.value as AgentContent;
       if (value.type !== "reasoning") {
         throw new Error(
           `Unreachable: expected reasoning content, got ${value.type} for step content ${stepContent.id}`

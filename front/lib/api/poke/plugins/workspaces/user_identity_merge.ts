@@ -60,7 +60,7 @@ export const userIdentityMergePlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `User identities successfully merged into primary identity with email: ${mergeResult.value.primaryUser.email}`,
     });
   },

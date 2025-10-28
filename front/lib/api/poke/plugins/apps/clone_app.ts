@@ -58,7 +58,7 @@ export const cloneAppPlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `App ${app.name} cloned successfully in workspace ${targetWorkspace.name}`,
     });
   },

@@ -70,7 +70,10 @@ function createServer(
           });
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -196,7 +199,10 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
           const res = await drive.files.list(requestParams);
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           const error = normalizeError(err);
@@ -329,7 +335,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(
                 {
                   fileId,

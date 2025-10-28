@@ -513,8 +513,8 @@ export async function getContentFragmentFromAttachmentFile(
         name: `inject_${attachment.contentType}`,
         content: [
           {
-            type: "text",
-            text: renderAttachmentXml({ attachment }),
+            type: "text_content",
+            value: renderAttachmentXml({ attachment }),
           },
         ],
       });
@@ -534,8 +534,8 @@ export async function getContentFragmentFromAttachmentFile(
       content: [
         {
           type: "image_url",
-          image_url: {
-            url: signedUrl,
+          value: {
+            image_url: signedUrl,
           },
         },
       ],
@@ -576,8 +576,8 @@ export async function getContentFragmentFromAttachmentFile(
       name: `inject_${attachment.contentType}`,
       content: [
         {
-          type: "text",
-          text: renderAttachmentXml({
+          type: "text_content",
+          value: renderAttachmentXml({
             attachment,
             content: document.document.text ?? null,
           }),
@@ -604,8 +604,8 @@ export async function getContentFragmentFromAttachmentFile(
       name: `inject_${attachment.contentType}`,
       content: [
         {
-          type: "text",
-          text: renderAttachmentXml({
+          type: "text_content",
+          value: renderAttachmentXml({
             attachment,
             content,
           }),
@@ -648,8 +648,8 @@ export async function renderLightContentFragmentForModel(
       name: `attach_${contentType}`,
       content: [
         {
-          type: "text",
-          text: `The content of this file is no longer available. Reason: ${contentFragment.expiredReason}`,
+          type: "text_content",
+          value: `The content of this file is no longer available. Reason: ${contentFragment.expiredReason}`,
         },
       ],
     };
@@ -676,8 +676,8 @@ export async function renderLightContentFragmentForModel(
         name: `inject_${contentType}`,
         content: [
           {
-            type: "text",
-            text: renderAttachmentXml({
+            type: "text_content",
+            value: renderAttachmentXml({
               attachment,
               content:
                 "[Image content interpreted by a vision-enabled model. " +
@@ -696,13 +696,13 @@ export async function renderLightContentFragmentForModel(
       content: [
         {
           type: "image_url",
-          image_url: {
-            url: signedUrl,
+          value: {
+            image_url: signedUrl,
           },
         },
         {
-          type: "text",
-          text: renderAttachmentXml({
+          type: "text_content",
+          value: renderAttachmentXml({
             attachment,
           }),
         },
@@ -715,8 +715,8 @@ export async function renderLightContentFragmentForModel(
     name: `attach_${contentType}`,
     content: [
       {
-        type: "text",
-        text: renderAttachmentXml({
+        type: "text_content",
+        value: renderAttachmentXml({
           // Use fileId as contentFragmentId to provide a consistent identifier for the model
           // to reference content fragments across different actions like include_file.
           attachment,

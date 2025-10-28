@@ -116,7 +116,7 @@ function createServer(
                     data: {
                       label: "Thinking...",
                       output: {
-                        type: "text",
+                        type: "text_content",
                         text,
                       },
                     },

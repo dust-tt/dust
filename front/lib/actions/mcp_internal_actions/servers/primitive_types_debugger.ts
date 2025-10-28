@@ -27,7 +27,7 @@ function createServer(
       async ({ query }) => {
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: `Found the following configuration: ${query}.`,
           },
         ]);
@@ -113,7 +113,7 @@ function createServer(
       async (params) => {
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: `Found the following configuration: ${JSON.stringify(params)}.`,
           },
         ]);

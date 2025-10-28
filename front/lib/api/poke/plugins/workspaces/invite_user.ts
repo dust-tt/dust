@@ -116,7 +116,7 @@ export const inviteUser = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: results.join("\n"),
     });
   },

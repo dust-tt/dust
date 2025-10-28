@@ -61,7 +61,7 @@ export function registerReplaceNodeTool(server: McpServer, editor: Editor) {
       return {
         content: [
           {
-            type: "text",
+            type: "text_content",
             text: `Successfully replaced content of node ${params.nodeId}`,
           },
         ],

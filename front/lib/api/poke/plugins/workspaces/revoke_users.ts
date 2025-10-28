@@ -12,7 +12,7 @@ export const revokeUsersPlugin = createPlugin({
     resourceTypes: ["workspaces"],
     args: {
       userIds: {
-        type: "text",
+        type: "text_content",
         label: "User IDs",
         description:
           "Comma separated list of user IDs to revoke from the workspace",
@@ -68,7 +68,7 @@ export const revokeUsersPlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Revoked ${userIdsArray.length} users from workspace ${workspace?.sId}.`,
     });
   },

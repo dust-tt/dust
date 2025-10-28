@@ -83,7 +83,7 @@ export async function processAttachment({
     if (textResult.isOk()) {
       return new Ok([
         {
-          type: "text" as const,
+          type: "text_content" as const,
           text: JSON.stringify(textResult.value, null, 2),
         },
       ]);
@@ -109,7 +109,7 @@ export async function processAttachment({
   if (mimeType.startsWith("text/")) {
     return new Ok([
       {
-        type: "text" as const,
+        type: "text_content" as const,
         text: JSON.stringify(buffer.toString("utf-8"), null, 2),
       },
     ]);

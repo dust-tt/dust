@@ -77,7 +77,7 @@ export const withAuth = async ({
   if (!accessToken) {
     return {
       isError: true,
-      content: [{ type: "text", text: ERROR_MESSAGES.NO_ACCESS_TOKEN }],
+      content: [{ type: "text_content", text: ERROR_MESSAGES.NO_ACCESS_TOKEN }],
     };
   }
   try {
@@ -107,7 +107,7 @@ export const logAndReturnError = ({
     isError: true,
     content: [
       {
-        type: "text",
+        type: "text_content",
         text: error.response?.body?.message ?? error.message ?? message,
       },
     ],

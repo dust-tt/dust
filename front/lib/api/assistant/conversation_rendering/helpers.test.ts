@@ -25,7 +25,7 @@ describe("renderUserMessage", () => {
 
     expect(res.role).toBe("user");
     expect(res.content[0].type).toBe("text");
-    const text = (res.content[0] as TextContent).text;
+    const text = (res.content[0] as TextContent).value;
 
     expect(text).toContain("@John Doe");
     expect(text).not.toContain(":mention[John Doe]{user_123}");
@@ -43,7 +43,7 @@ describe("renderUserMessage", () => {
 
     const res = renderUserMessage(m);
     expect(res.content[0].type).toBe("text");
-    const text = (res.content[0] as TextContent).text;
+    const text = (res.content[0] as TextContent).value;
 
     // Should include a dust system block and a Sender line.
     expect(text.startsWith("<dust_system>\n")).toBe(true);
@@ -65,7 +65,7 @@ describe("renderUserMessage", () => {
 
     expect(res.name).toBe("jdoe");
     expect(res.content[0].type).toBe("text");
-    const text = (res.content[0] as TextContent).text;
+    const text = (res.content[0] as TextContent).value;
     expect(text).toContain("- Sender: @jdoe");
   });
 
@@ -78,7 +78,7 @@ describe("renderUserMessage", () => {
 
     const res = renderUserMessage(m);
     expect(res.content[0].type).toBe("text");
-    const text = (res.content[0] as TextContent).text;
+    const text = (res.content[0] as TextContent).value;
 
     // We do not assert exact date formatting (locale-dependent). We only check
     // that the line is present and not empty.
@@ -104,7 +104,7 @@ describe("renderUserMessage", () => {
 
     const res = renderUserMessage(m);
     expect(res.content[0].type).toBe("text");
-    const text = (res.content[0] as TextContent).text;
+    const text = (res.content[0] as TextContent).value;
 
     expect(text).toContain("- Source: Scheduled trigger");
 
@@ -125,7 +125,7 @@ describe("renderUserMessage", () => {
 
     const res = renderUserMessage(m);
     expect(res.content[0].type).toBe("text");
-    const text = (res.content[0] as TextContent).text;
+    const text = (res.content[0] as TextContent).value;
 
     expect(text).toContain("- Source: email");
   });
@@ -135,7 +135,7 @@ describe("renderUserMessage", () => {
 
     const res = renderUserMessage(m);
     expect(res.content[0].type).toBe("text");
-    const text = (res.content[0] as TextContent).text;
+    const text = (res.content[0] as TextContent).value;
 
     expect(text.startsWith("<dust_system>")).toBe(false);
     expect(text).toBe("Just text");

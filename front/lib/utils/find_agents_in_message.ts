@@ -19,7 +19,7 @@ export interface Mention {
 }
 
 export interface Text {
-  type: "text";
+  type: "text_content";
   text: string;
 }
 
@@ -163,7 +163,7 @@ const messageFromLLMToAugmentedMessage = (
       }
 
       // if we didn't find it, we return a text message with the name of the agent
-      return { type: "text", text: augmentedMessageFromLLM.name };
+      return { type: "text_content", text: augmentedMessageFromLLM.name };
     default:
       assertNever(augmentedMessageFromLLM);
   }

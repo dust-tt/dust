@@ -172,7 +172,7 @@ function createServer(
             resource: agentCreationResource,
           },
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text:
               `Successfully created agent "${name}" (ID: ${agent.sId}).\n\n` +
               `The agent has been created with:\n- Web search and browse tools\n` +

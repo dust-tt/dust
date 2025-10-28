@@ -173,7 +173,7 @@ export function registerWebBrowserTool(
 
               if (!isBrowseScrapeSuccessResponse(result)) {
                 const errText = `Browse error (${result.status}) for ${result.url}: ${result.error}`;
-                contentBlocks.push({ type: "text", text: errText });
+                contentBlocks.push({ type: "text_content", text: errText });
                 return { contentBlocks, isSuccess };
               }
 
@@ -188,7 +188,7 @@ export function registerWebBrowserTool(
               });
               if (snippetRes.isErr()) {
                 contentBlocks.push({
-                  type: "text",
+                  type: "text_content",
                   text: `Failed to summarize content for ${result.url}: ${snippetRes.error.message}`,
                 });
                 return { contentBlocks, isSuccess };

@@ -51,7 +51,9 @@ function createServer(
         auth,
         { toolNameForMonitoring: "placeholder_tool", agentLoopContext },
         async () => {
-          return new Ok([{ type: "text", text: "No action name found" }]);
+          return new Ok([
+            { type: "text_content", text: "No action name found" },
+          ]);
         }
       )
     );

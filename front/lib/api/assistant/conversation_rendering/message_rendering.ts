@@ -12,19 +12,19 @@ import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type {
   AgentMessageType,
-  AssistantContentMessageTypeModel,
-  AssistantFunctionCallMessageTypeModel,
+  AssistantMessageTypeModel,
   ConversationType,
   ModelConfigurationType,
   ModelMessageTypeMultiActions,
+  TextContent,
 } from "@app/types";
 import {
   assertNever,
   isAgentMessageType,
   isContentFragmentType,
+  isTextContent,
   isUserMessageType,
 } from "@app/types";
-import type { TextContentType } from "@app/types/assistant/agent_message_content";
 
 /**
  * Renders agent message steps into model messages
@@ -40,13 +40,13 @@ export function renderAgentSteps(
   if (excludeActions) {
     // In Exclude Actions mode, we only render the last step that has text content.
     const stepsWithContent = steps.filter((s) =>
-      s?.contents.some((c) => c.type === "text_content")
+      s?.contents.some((c) => isTextContent(c))
     );
     if (stepsWithContent.length) {
       const lastStepWithContent = stepsWithContent[stepsWithContent.length - 1];
-      const textContents: TextContentType[] = [];
+      const textContents: TextContent[] = [];
       for (const content of lastStepWithContent.contents) {
-        if (content.type === "text_content") {
+        if (isTextContent(content)) {
           textContents.push(content);
         }
       }
@@ -55,7 +55,8 @@ export function renderAgentSteps(
         name: message.configuration.name,
         content: textContents.map((c) => c.value).join("\n"),
         contents: lastStepWithContent.contents,
-      } satisfies AssistantContentMessageTypeModel);
+        function_calls: [],
+      } satisfies AssistantMessageTypeModel);
     }
   } else {
     // In regular mode, we render all steps.
@@ -72,9 +73,9 @@ export function renderAgentSteps(
         );
         continue;
       }
-      const textContents: TextContentType[] = [];
+      const textContents: TextContent[] = [];
       for (const content of step.contents) {
-        if (content.type === "text_content") {
+        if (isTextContent(content)) {
           textContents.push(content);
         }
       }
@@ -90,49 +91,18 @@ export function renderAgentSteps(
         continue;
       }
 
-      if (step.actions.length) {
-        messages.push({
-          role: "assistant",
-          function_calls: step.actions.map((s) => s.call),
-          content: textContents.map((c) => c.value).join("\n"),
-          contents: step.contents,
-        } satisfies AssistantFunctionCallMessageTypeModel);
-      } else {
-        messages.push({
-          role: "assistant",
-          content: textContents.map((c) => c.value).join("\n"),
-          name: message.configuration.name,
-          contents: step.contents,
-        } satisfies AssistantContentMessageTypeModel);
-      }
+      messages.push({
+        role: "assistant",
+        name: message.configuration.name,
+        function_calls: step.actions.map((s) => s.call),
+        content: textContents.map((c) => c.value).join("\n"),
+        contents: step.contents,
+      } satisfies AssistantMessageTypeModel);
 
       for (const { result } of step.actions) {
         messages.push(result);
       }
     }
-  }
-
-  // Legacy agent message support
-  if (!message.rawContents.length && message.content?.trim()) {
-    // This should not happen anymore, putting logs to check if anything goes wrong.
-    logger.error(
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        agentMessageId: message.sId,
-      },
-      "Unexpected legacy agent message state, agent message with empty `rawContents` and non-empty `content`"
-    );
-    messages.push({
-      role: "assistant",
-      name: message.configuration.name,
-      contents: [
-        {
-          type: "text_content",
-          value: message.content,
-        },
-      ],
-    });
   }
 
   return messages;

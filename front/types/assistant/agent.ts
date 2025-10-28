@@ -6,12 +6,12 @@ import type {
   ModelIdType,
   ModelProviderIdType,
   OAuthProvider,
+  TextContent,
 } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
+  FunctionCallContent,
+  ReasoningContent,
 } from "@app/types/assistant/agent_message_content";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { isOAuthProvider, isValidScope } from "@app/types/oauth/lib";
@@ -373,8 +373,8 @@ export type AgentChainOfThoughtEvent = {
   chainOfThought: string;
 };
 
-// Deprecated
 // TODO(agent-step-content): Remove this event
+/** @deprecated */
 export type AgentContentEvent = {
   type: "agent_message_content";
   created: number;
@@ -390,5 +390,5 @@ export type AgentStepContentEvent = {
   configurationId: string;
   messageId: string;
   index: number;
-  content: TextContentType | FunctionCallContentType | ReasoningContentType;
+  content: TextContent | FunctionCallContent | ReasoningContent;
 };

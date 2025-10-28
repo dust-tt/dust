@@ -138,8 +138,14 @@ function createServer(
             maxResults: maxResults ? Math.min(maxResults, 250) : undefined,
           });
           return new Ok([
-            { type: "text" as const, text: "Calendars listed successfully" },
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: "Calendars listed successfully",
+            },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -235,9 +241,12 @@ function createServer(
           };
 
           return new Ok([
-            { type: "text" as const, text: "Events listed successfully" },
             {
-              type: "text" as const,
+              type: "text_content" as const,
+              text: "Events listed successfully",
+            },
+            {
+              type: "text_content" as const,
               text: JSON.stringify(enrichedData, null, 2),
             },
           ]);
@@ -287,9 +296,12 @@ function createServer(
             : res.data;
 
           return new Ok([
-            { type: "text" as const, text: "Event fetched successfully" },
             {
-              type: "text" as const,
+              type: "text_content" as const,
+              text: "Event fetched successfully",
+            },
+            {
+              type: "text_content" as const,
               text: JSON.stringify(enrichedEvent, null, 2),
             },
           ]);
@@ -385,9 +397,12 @@ function createServer(
             : res.data;
 
           return new Ok([
-            { type: "text" as const, text: "Event created successfully" },
             {
-              type: "text" as const,
+              type: "text_content" as const,
+              text: "Event created successfully",
+            },
+            {
+              type: "text_content" as const,
               text: JSON.stringify(enrichedEvent, null, 2),
             },
           ]);
@@ -497,9 +512,12 @@ function createServer(
             : res.data;
 
           return new Ok([
-            { type: "text" as const, text: "Event updated successfully" },
             {
-              type: "text" as const,
+              type: "text_content" as const,
+              text: "Event updated successfully",
+            },
+            {
+              type: "text_content" as const,
               text: JSON.stringify(enrichedEvent, null, 2),
             },
           ]);
@@ -543,7 +561,10 @@ function createServer(
             eventId,
           });
           return new Ok([
-            { type: "text" as const, text: "Event deleted successfully" },
+            {
+              type: "text_content" as const,
+              text: "Event deleted successfully",
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -619,7 +640,7 @@ function createServer(
           const available = busySlots.length === 0;
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(
                 {
                   available,
@@ -690,11 +711,11 @@ function createServer(
 
         return new Ok([
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text: "User timezone information retrieved",
           },
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text: JSON.stringify(
               {
                 attendees: results,

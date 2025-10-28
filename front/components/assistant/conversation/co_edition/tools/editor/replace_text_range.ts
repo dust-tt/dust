@@ -78,7 +78,7 @@ export function registerReplaceTextRangeTool(
       return {
         content: [
           {
-            type: "text",
+            type: "text_content",
             text: isRangeValid
               ? `Successfully replaced text range in node ${params.nodeId}`
               : `Failed to find text range in node ${params.nodeId}. ` +

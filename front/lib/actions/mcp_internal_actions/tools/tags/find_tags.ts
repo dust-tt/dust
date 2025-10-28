@@ -133,7 +133,7 @@ export function registerFindTagsTool(
         if (result.value.tags.length === 0) {
           return new Ok([
             {
-              type: "text",
+              type: "text_content",
               text: "No labels found matching the search criteria.",
             },
           ]);
@@ -141,7 +141,7 @@ export function registerFindTagsTool(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text:
               "Labels found:\n\n" +
               removeNulls(

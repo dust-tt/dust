@@ -68,8 +68,14 @@ function createServer(
 
         const boards = await getBoards(accessToken);
         return new Ok([
-          { type: "text" as const, text: "Boards retrieved successfully" },
-          { type: "text" as const, text: JSON.stringify(boards, null, 2) },
+          {
+            type: "text_content" as const,
+            text: "Boards retrieved successfully",
+          },
+          {
+            type: "text_content" as const,
+            text: JSON.stringify(boards, null, 2),
+          },
         ]);
       }
     )
@@ -96,8 +102,14 @@ function createServer(
 
         const items = await getBoardItems(accessToken, boardId);
         return new Ok([
-          { type: "text" as const, text: "Board items retrieved successfully" },
-          { type: "text" as const, text: JSON.stringify(items, null, 2) },
+          {
+            type: "text_content" as const,
+            text: "Board items retrieved successfully",
+          },
+          {
+            type: "text_content" as const,
+            text: JSON.stringify(items, null, 2),
+          },
         ]);
       }
     )
@@ -128,10 +140,13 @@ function createServer(
         }
         return new Ok([
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text: "Item details retrieved successfully",
           },
-          { type: "text" as const, text: JSON.stringify(item, null, 2) },
+          {
+            type: "text_content" as const,
+            text: JSON.stringify(item, null, 2),
+          },
         ]);
       }
     )
@@ -216,10 +231,13 @@ function createServer(
         const items = await searchItems(accessToken, filters);
         return new Ok([
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text: `Found ${items.length} items (max 100 returned)`,
           },
-          { type: "text" as const, text: JSON.stringify(items, null, 2) },
+          {
+            type: "text_content" as const,
+            text: JSON.stringify(items, null, 2),
+          },
         ]);
       }
     )
@@ -263,8 +281,11 @@ function createServer(
           columnValues
         );
         return new Ok([
-          { type: "text" as const, text: "Item created successfully" },
-          { type: "text" as const, text: JSON.stringify(item, null, 2) },
+          { type: "text_content" as const, text: "Item created successfully" },
+          {
+            type: "text_content" as const,
+            text: JSON.stringify(item, null, 2),
+          },
         ]);
       }
     )
@@ -301,8 +322,11 @@ function createServer(
         }
         const item = await updateItem(accessToken, itemId, columnValues);
         return new Ok([
-          { type: "text" as const, text: "Item updated successfully" },
-          { type: "text" as const, text: JSON.stringify(item, null, 2) },
+          { type: "text_content" as const, text: "Item updated successfully" },
+          {
+            type: "text_content" as const,
+            text: JSON.stringify(item, null, 2),
+          },
         ]);
       }
     )
@@ -330,8 +354,11 @@ function createServer(
 
         const update = await createUpdate(accessToken, itemId, body);
         return new Ok([
-          { type: "text" as const, text: "Update added successfully" },
-          { type: "text" as const, text: JSON.stringify(update, null, 2) },
+          { type: "text_content" as const, text: "Update added successfully" },
+          {
+            type: "text_content" as const,
+            text: JSON.stringify(update, null, 2),
+          },
         ]);
       }
     )
@@ -354,8 +381,8 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "Item deleted successfully" },
-          { type: "text", text: JSON.stringify(result, null, 2) },
+          { type: "text_content", text: "Item deleted successfully" },
+          { type: "text_content", text: JSON.stringify(result, null, 2) },
         ],
       };
     }
@@ -379,8 +406,8 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "Item name updated successfully" },
-          { type: "text", text: JSON.stringify(item, null, 2) },
+          { type: "text_content", text: "Item name updated successfully" },
+          { type: "text_content", text: JSON.stringify(item, null, 2) },
         ],
       };
     }
@@ -425,8 +452,8 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "Board created successfully" },
-          { type: "text", text: JSON.stringify(board, null, 2) },
+          { type: "text_content", text: "Board created successfully" },
+          { type: "text_content", text: JSON.stringify(board, null, 2) },
         ],
       };
     }
@@ -463,8 +490,8 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "Column created successfully" },
-          { type: "text", text: JSON.stringify(column, null, 2) },
+          { type: "text_content", text: "Column created successfully" },
+          { type: "text_content", text: JSON.stringify(column, null, 2) },
         ],
       };
     }
@@ -497,8 +524,8 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "Group created successfully" },
-          { type: "text", text: JSON.stringify(group, null, 2) },
+          { type: "text_content", text: "Group created successfully" },
+          { type: "text_content", text: JSON.stringify(group, null, 2) },
         ],
       };
     }
@@ -531,8 +558,8 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "Subitem created successfully" },
-          { type: "text", text: JSON.stringify(subitem, null, 2) },
+          { type: "text_content", text: "Subitem created successfully" },
+          { type: "text_content", text: JSON.stringify(subitem, null, 2) },
         ],
       };
     }
@@ -556,8 +583,8 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "Group deleted successfully" },
-          { type: "text", text: JSON.stringify(result, null, 2) },
+          { type: "text_content", text: "Group deleted successfully" },
+          { type: "text_content", text: JSON.stringify(result, null, 2) },
         ],
       };
     }
@@ -595,8 +622,8 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "Group duplicated successfully" },
-          { type: "text", text: JSON.stringify(group, null, 2) },
+          { type: "text_content", text: "Group duplicated successfully" },
+          { type: "text_content", text: JSON.stringify(group, null, 2) },
         ],
       };
     }
@@ -622,8 +649,8 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "Subitem updated successfully" },
-          { type: "text", text: JSON.stringify(subitem, null, 2) },
+          { type: "text_content", text: "Subitem updated successfully" },
+          { type: "text_content", text: JSON.stringify(subitem, null, 2) },
         ],
       };
     }
@@ -653,8 +680,8 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "File uploaded successfully" },
-          { type: "text", text: JSON.stringify(result, null, 2) },
+          { type: "text_content", text: "File uploaded successfully" },
+          { type: "text_content", text: JSON.stringify(result, null, 2) },
         ],
       };
     }
@@ -684,8 +711,8 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "Items retrieved successfully" },
-          { type: "text", text: JSON.stringify(items, null, 2) },
+          { type: "text_content", text: "Items retrieved successfully" },
+          { type: "text_content", text: JSON.stringify(items, null, 2) },
         ],
       };
     }
@@ -708,14 +735,14 @@ function createServer(
       if (!user) {
         return {
           isError: true,
-          content: [{ type: "text", text: "User not found" }],
+          content: [{ type: "text_content", text: "User not found" }],
         };
       }
       return {
         isError: false,
         content: [
-          { type: "text", text: "User found successfully" },
-          { type: "text", text: JSON.stringify(user, null, 2) },
+          { type: "text_content", text: "User found successfully" },
+          { type: "text_content", text: JSON.stringify(user, null, 2) },
         ],
       };
     }
@@ -738,8 +765,11 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "Board details retrieved successfully" },
-          { type: "text", text: JSON.stringify(board, null, 2) },
+          {
+            type: "text_content",
+            text: "Board details retrieved successfully",
+          },
+          { type: "text_content", text: JSON.stringify(board, null, 2) },
         ],
       };
     }
@@ -769,14 +799,17 @@ function createServer(
       if (!columnValue) {
         return {
           isError: true,
-          content: [{ type: "text", text: "Column value not found" }],
+          content: [{ type: "text_content", text: "Column value not found" }],
         };
       }
       return {
         isError: false,
         content: [
-          { type: "text", text: "Column values retrieved successfully" },
-          { type: "text", text: JSON.stringify(columnValue, null, 2) },
+          {
+            type: "text_content",
+            text: "Column values retrieved successfully",
+          },
+          { type: "text_content", text: JSON.stringify(columnValue, null, 2) },
         ],
       };
     }
@@ -806,8 +839,14 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "File column values retrieved successfully" },
-          { type: "text", text: JSON.stringify(fileColumnValue, null, 2) },
+          {
+            type: "text_content",
+            text: "File column values retrieved successfully",
+          },
+          {
+            type: "text_content",
+            text: JSON.stringify(fileColumnValue, null, 2),
+          },
         ],
       };
     }
@@ -831,14 +870,17 @@ function createServer(
       if (!group) {
         return {
           isError: true,
-          content: [{ type: "text", text: "Group not found" }],
+          content: [{ type: "text_content", text: "Group not found" }],
         };
       }
       return {
         isError: false,
         content: [
-          { type: "text", text: "Group details retrieved successfully" },
-          { type: "text", text: JSON.stringify(group, null, 2) },
+          {
+            type: "text_content",
+            text: "Group details retrieved successfully",
+          },
+          { type: "text_content", text: JSON.stringify(group, null, 2) },
         ],
       };
     }
@@ -861,8 +903,8 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "Subitems retrieved successfully" },
-          { type: "text", text: JSON.stringify(subitems, null, 2) },
+          { type: "text_content", text: "Subitems retrieved successfully" },
+          { type: "text_content", text: JSON.stringify(subitems, null, 2) },
         ],
       };
     }
@@ -885,14 +927,14 @@ function createServer(
       if (!user) {
         return {
           isError: true,
-          content: [{ type: "text", text: "User not found" }],
+          content: [{ type: "text_content", text: "User not found" }],
         };
       }
       return {
         isError: false,
         content: [
-          { type: "text", text: "User details retrieved successfully" },
-          { type: "text", text: JSON.stringify(user, null, 2) },
+          { type: "text_content", text: "User details retrieved successfully" },
+          { type: "text_content", text: JSON.stringify(user, null, 2) },
         ],
       };
     }
@@ -941,8 +983,8 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "Item moved to board successfully" },
-          { type: "text", text: JSON.stringify(item, null, 2) },
+          { type: "text_content", text: "Item moved to board successfully" },
+          { type: "text_content", text: JSON.stringify(item, null, 2) },
         ],
       };
     }
@@ -981,10 +1023,10 @@ function createServer(
         isError: false,
         content: [
           {
-            type: "text",
+            type: "text_content",
             text: `Created ${createdItems.length} items successfully`,
           },
-          { type: "text", text: JSON.stringify(createdItems, null, 2) },
+          { type: "text_content", text: JSON.stringify(createdItems, null, 2) },
         ],
       };
     }
@@ -1027,8 +1069,11 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "Activity logs retrieved successfully" },
-          { type: "text", text: JSON.stringify(logs, null, 2) },
+          {
+            type: "text_content",
+            text: "Activity logs retrieved successfully",
+          },
+          { type: "text_content", text: JSON.stringify(logs, null, 2) },
         ],
       };
     }
@@ -1051,8 +1096,11 @@ function createServer(
       return {
         isError: false,
         content: [
-          { type: "text", text: "Board analytics retrieved successfully" },
-          { type: "text", text: JSON.stringify(analytics, null, 2) },
+          {
+            type: "text_content",
+            text: "Board analytics retrieved successfully",
+          },
+          { type: "text_content", text: JSON.stringify(analytics, null, 2) },
         ],
       };
     }

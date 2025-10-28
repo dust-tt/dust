@@ -891,7 +891,7 @@ const NotificationStoreResourceContentSchema = z.object({
 });
 
 const NotificationTextContentSchema = z.object({
-  type: z.literal("text"),
+  type: z.literal("text_content"),
   text: z.string(),
 });
 

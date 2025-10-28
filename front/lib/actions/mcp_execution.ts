@@ -264,7 +264,7 @@ export async function processToolResults(
               );
               return {
                 content: {
-                  type: "text",
+                  type: "text_content",
                   text: "Failed to upsert the generated file.",
                 },
                 file: null,

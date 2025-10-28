@@ -206,7 +206,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text",
+              type: "text_content",
               text: resultText,
             },
           ]);

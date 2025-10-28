@@ -298,7 +298,7 @@ async function countTokensForMessages(
       const textContents: string[] = [];
       for (const c of m.content) {
         if (isTextContent(c)) {
-          textContents.push(c.text);
+          textContents.push(c.value);
         } else if (isImageContent(c)) {
           additionalTokens[i] += IMAGE_CONTENT_TOKEN_COUNT;
         } else {
@@ -312,7 +312,7 @@ async function countTokensForMessages(
         for (const c of m.contents) {
           if (c.type === "reasoning") {
             additionalTokens[i] += c.value.tokens;
-          } else if (c.type === "text_content") {
+          } else if (isTextContent(c)) {
             text += c.value;
           } else if (c.type === "function_call") {
             text += `${c.value.name} ${c.value.arguments}`;
@@ -327,11 +327,11 @@ async function countTokensForMessages(
     } else if (m.role === "function") {
       const content = Array.isArray(m.content)
         ? m.content
-        : [{ type: "text" as const, text: m.content }];
+        : [{ type: "text" as const, value: m.content }];
       const textContents: string[] = [];
       for (const c of content) {
         if (isTextContent(c)) {
-          textContents.push(c.text);
+          textContents.push(c.value);
         } else if (isImageContent(c)) {
           additionalTokens[i] += IMAGE_CONTENT_TOKEN_COUNT;
         } else {

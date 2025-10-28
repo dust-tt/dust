@@ -151,9 +151,12 @@ function createServer(
         const result = await response.json();
 
         return new Ok([
-          { type: "text" as const, text: "Messages fetched successfully" },
           {
-            type: "text" as const,
+            type: "text_content" as const,
+            text: "Messages fetched successfully",
+          },
+          {
+            type: "text_content" as const,
             text: JSON.stringify(
               {
                 messages: (result.value || []) as OutlookMessage[],
@@ -242,9 +245,12 @@ function createServer(
         );
 
         return new Ok([
-          { type: "text" as const, text: "Drafts fetched successfully" },
           {
-            type: "text" as const,
+            type: "text_content" as const,
+            text: "Drafts fetched successfully",
+          },
+          {
+            type: "text_content" as const,
             text: JSON.stringify(
               {
                 drafts: draftDetails.filter(Boolean) as OutlookMessage[],
@@ -340,9 +346,9 @@ function createServer(
         const result = await response.json();
 
         return new Ok([
-          { type: "text" as const, text: "Draft created successfully" },
+          { type: "text_content" as const, text: "Draft created successfully" },
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text: JSON.stringify(
               {
                 messageId: result.id,
@@ -395,7 +401,7 @@ function createServer(
         }
 
         return new Ok([
-          { type: "text" as const, text: "Draft deleted successfully" },
+          { type: "text_content" as const, text: "Draft deleted successfully" },
         ]);
       }
     )
@@ -516,9 +522,12 @@ function createServer(
         const result = await response.json();
 
         return new Ok([
-          { type: "text" as const, text: "Reply draft created successfully" },
           {
-            type: "text" as const,
+            type: "text_content" as const,
+            text: "Reply draft created successfully",
+          },
+          {
+            type: "text_content" as const,
             text: JSON.stringify(
               {
                 messageId: result.id,
@@ -608,9 +617,12 @@ function createServer(
         const result = await response.json();
 
         return new Ok([
-          { type: "text" as const, text: "Contacts fetched successfully" },
           {
-            type: "text" as const,
+            type: "text_content" as const,
+            text: "Contacts fetched successfully",
+          },
+          {
+            type: "text_content" as const,
             text: JSON.stringify(
               {
                 contacts: (result.value || []) as OutlookContact[],
@@ -735,9 +747,12 @@ function createServer(
         const result = await response.json();
 
         return new Ok([
-          { type: "text" as const, text: "Contact created successfully" },
           {
-            type: "text" as const,
+            type: "text_content" as const,
+            text: "Contact created successfully",
+          },
+          {
+            type: "text_content" as const,
             text: JSON.stringify(result as OutlookContact, null, 2),
           },
         ]);
@@ -871,9 +886,12 @@ function createServer(
         const result = await response.json();
 
         return new Ok([
-          { type: "text" as const, text: "Contact updated successfully" },
           {
-            type: "text" as const,
+            type: "text_content" as const,
+            text: "Contact updated successfully",
+          },
+          {
+            type: "text_content" as const,
             text: JSON.stringify(result as OutlookContact, null, 2),
           },
         ]);

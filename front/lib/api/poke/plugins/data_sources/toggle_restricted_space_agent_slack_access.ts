@@ -85,7 +85,7 @@ export const restrictedSpaceAgentsPlugin = createPlugin({
 
     const actionText = action[0] === "enable" ? "enabled" : "disabled";
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Restricted space agents have been ${actionText} on Slack for this workspace.`,
     });
   },

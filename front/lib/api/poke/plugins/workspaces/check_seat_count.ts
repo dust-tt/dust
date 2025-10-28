@@ -28,7 +28,7 @@ export const checkSeatCountPlugin = createPlugin({
         return result;
       }
       return new Ok({
-        display: "text",
+        display: "text_content",
         value: "Usage report workflow launched.",
       });
     } else {
@@ -38,7 +38,7 @@ export const checkSeatCountPlugin = createPlugin({
       }
 
       return new Ok({
-        display: "text",
+        display: "text_content",
         value: res.value,
       });
     }

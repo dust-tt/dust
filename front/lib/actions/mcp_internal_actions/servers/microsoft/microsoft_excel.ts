@@ -152,7 +152,10 @@ function createServer(
             .post(requestBody);
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(response, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(response, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -211,7 +214,10 @@ function createServer(
           );
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(response, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(response, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -289,7 +295,10 @@ function createServer(
           );
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(response, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(response, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -435,7 +444,10 @@ function createServer(
           );
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(response, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(response, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -500,7 +512,10 @@ function createServer(
           );
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(response, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(response, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -582,7 +597,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(
                 { success: true, clearedRange: range },
                 null,

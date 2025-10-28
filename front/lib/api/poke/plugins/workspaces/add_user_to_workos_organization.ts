@@ -47,7 +47,7 @@ export const addUserToWorkOSOrganization = createPlugin({
 
     if (addUserResult.isOk()) {
       return new Ok({
-        display: "text",
+        display: "text_content",
         value: `Successfully added user ${email} to WorkOS organization ${workspace.workOSOrganizationId}`,
       });
     } else {

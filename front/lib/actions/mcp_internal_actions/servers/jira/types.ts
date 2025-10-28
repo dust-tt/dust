@@ -259,7 +259,7 @@ export const ADFMarkSchema = z.object({
 export type ADFMark = z.infer<typeof ADFMarkSchema>;
 
 export const ADFTextNodeSchema = z.object({
-  type: z.literal("text"),
+  type: z.literal("text_content"),
   text: z.string(),
   marks: z.array(ADFMarkSchema).optional(),
 });
@@ -307,7 +307,7 @@ export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
       content: z
         .array(
           z.object({
-            type: z.literal("text"),
+            type: z.literal("text_content"),
             text: z.string(),
           })
         )

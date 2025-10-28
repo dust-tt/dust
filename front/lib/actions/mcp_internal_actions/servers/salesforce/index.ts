@@ -58,8 +58,14 @@ function createServer(
         const result = await conn.query(query);
 
         return new Ok([
-          { type: "text" as const, text: "Operation completed successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          {
+            type: "text_content" as const,
+            text: "Operation completed successfully",
+          },
+          {
+            type: "text_content" as const,
+            text: JSON.stringify(result, null, 2),
+          },
         ]);
       }
     )
@@ -105,8 +111,8 @@ function createServer(
           .join("\n");
 
         return new Ok([
-          { type: "text", text: "Operation completed successfully" },
-          { type: "text", text: objects },
+          { type: "text_content", text: "Operation completed successfully" },
+          { type: "text_content", text: objects },
         ]);
       }
     )
@@ -215,10 +221,10 @@ function createServer(
 
         return new Ok([
           {
-            type: "text",
+            type: "text_content",
             text: "Object described successfully. Summary provided.",
           },
-          { type: "text", text: summary },
+          { type: "text_content", text: summary },
         ]);
       }
     )
@@ -290,10 +296,13 @@ function createServer(
 
         return new Ok([
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text: `Update completed: ${successCount} successful, ${failureCount} failed`,
           },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          {
+            type: "text_content" as const,
+            text: JSON.stringify(result, null, 2),
+          },
         ]);
       }
     )
@@ -343,11 +352,11 @@ function createServer(
 
         return new Ok([
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text: `Found ${attachments.length} attachment(s) for record ${recordId}`,
           },
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text: JSON.stringify(
               {
                 attachments: attachmentSummary,

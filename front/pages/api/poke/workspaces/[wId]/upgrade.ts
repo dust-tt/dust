@@ -88,7 +88,7 @@ async function handler(
       });
 
       await pluginRun.recordResult({
-        display: "text",
+        display: "text_content",
         value: `Workspace ${owner.name} upgraded to plan ${planCode}.`,
       });
 

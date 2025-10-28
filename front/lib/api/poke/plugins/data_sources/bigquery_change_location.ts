@@ -200,7 +200,7 @@ export const bigqueryChangeLocationPlugin = createPlugin({
     );
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Connector ${dataSource.connectorId} updated: location ${content.location} -> ${selected}. A re-sync has been triggered.`,
     });
   },

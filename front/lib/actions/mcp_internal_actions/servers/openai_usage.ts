@@ -238,7 +238,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text",
+              type: "text_content",
               text: JSON.stringify(data, null, 2),
             },
           ]);
@@ -374,7 +374,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text",
+              type: "text_content",
               text: JSON.stringify(data, null, 2),
             },
           ]);

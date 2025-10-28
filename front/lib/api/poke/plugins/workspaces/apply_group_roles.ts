@@ -31,7 +31,7 @@ export const applyGroupRoles = createPlugin({
     );
     if (!adminGroup) {
       return new Ok({
-        display: "text",
+        display: "text_content",
         value: "dust-admins group not found in workspace.",
       });
     }
@@ -39,14 +39,14 @@ export const applyGroupRoles = createPlugin({
     const userCountInAdminGroup = await adminGroup.getMemberCount(auth);
     if (userCountInAdminGroup === 0) {
       return new Ok({
-        display: "text",
+        display: "text_content",
         value: "dust-admins group found but no users in it.",
       });
     }
 
     if (provisioningGroups.length === 0) {
       return new Ok({
-        display: "text",
+        display: "text_content",
         value:
           "dust-admins or dust-builders group both not found in workspace.",
       });

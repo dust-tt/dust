@@ -10,7 +10,7 @@ export const restoreConversationPlugin = createPlugin({
     resourceTypes: ["workspaces"],
     args: {
       conversationIds: {
-        type: "text",
+        type: "text_content",
         label: "Conversation IDs",
         description: "Comma separated list of conversation sIds to restore",
       },
@@ -47,7 +47,7 @@ export const restoreConversationPlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Restored ${conversations.length} conversations`,
     });
   },

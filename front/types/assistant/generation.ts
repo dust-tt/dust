@@ -1,6 +1,6 @@
 import type {
-  AgentContentItemType,
-  ErrorContentType,
+  AgentContent,
+  ErrorContent,
 } from "@app/types/assistant/agent_message_content";
 
 /**
@@ -19,17 +19,17 @@ export interface ModelConversationType {
 
 export interface ImageContent {
   type: "image_url";
-  image_url: {
-    url: string;
+  value: {
+    image_url: string;
   };
 }
 
 export interface TextContent {
-  type: "text";
-  text: string;
+  type: "text_content";
+  value: string;
 }
 
-export type Content = TextContent | ImageContent;
+export type UserContent = TextContent | ImageContent;
 
 export function isTextContent(content: object): content is TextContent {
   return "text" in content && "type" in content && content.type === "text";
@@ -44,13 +44,13 @@ export function isImageContent(content: object): content is ImageContent {
 export interface ContentFragmentMessageTypeModel {
   role: "content_fragment";
   name: string;
-  content: Content[];
+  content: UserContent[];
 }
 
 export interface UserMessageTypeModel {
   role: "user";
   name: string;
-  content: Content[];
+  content: UserContent[];
 }
 export interface FunctionCallType {
   id: string;
@@ -59,21 +59,14 @@ export interface FunctionCallType {
 }
 
 // Assistant requiring usage of function(s) call(s)
-export interface AssistantFunctionCallMessageTypeModel {
-  role: "assistant";
-  /** @deprecated, use contents instead. */
-  content?: string;
-  /** @deprecated, use contents instead. */
-  function_calls: FunctionCallType[];
-  contents: Array<Exclude<AgentContentItemType, ErrorContentType>>;
-}
-
-export interface AssistantContentMessageTypeModel {
+export interface AssistantMessageTypeModel {
   role: "assistant";
   name: string;
   /** @deprecated, use contents instead. */
   content?: string;
-  contents: Array<Exclude<AgentContentItemType, ErrorContentType>>;
+  /** @deprecated, use contents instead. */
+  function_calls: FunctionCallType[];
+  contents: Exclude<AgentContent, ErrorContent>[];
 }
 
 // This is the output of one function call
@@ -81,13 +74,12 @@ export interface FunctionMessageTypeModel {
   role: "function";
   name: string;
   function_call_id: string;
-  content: string | Content[];
+  content: string | UserContent[];
 }
 
 export type ModelMessageTypeMultiActionsWithoutContentFragment =
   | UserMessageTypeModel
-  | AssistantFunctionCallMessageTypeModel
-  | AssistantContentMessageTypeModel
+  | AssistantMessageTypeModel
   | FunctionMessageTypeModel;
 
 export type ModelMessageTypeMultiActions =

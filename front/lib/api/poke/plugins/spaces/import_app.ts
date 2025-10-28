@@ -48,7 +48,7 @@ export const importAppPlugin = createPlugin({
       return new Err(new Error(result.error.message));
     }
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Imported`,
     });
   },

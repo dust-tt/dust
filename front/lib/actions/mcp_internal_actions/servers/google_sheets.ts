@@ -95,7 +95,10 @@ function createServer(
           });
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -141,7 +144,10 @@ function createServer(
           });
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -199,7 +205,10 @@ function createServer(
           });
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -263,7 +272,10 @@ function createServer(
           });
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -339,7 +351,10 @@ function createServer(
           });
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -382,7 +397,10 @@ function createServer(
           });
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -433,7 +451,10 @@ function createServer(
           });
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -496,7 +517,10 @@ function createServer(
           });
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -545,7 +569,10 @@ function createServer(
           });
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -645,7 +672,10 @@ function createServer(
           });
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -703,7 +733,10 @@ function createServer(
           });
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -755,7 +788,10 @@ function createServer(
           });
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(
@@ -814,7 +850,10 @@ function createServer(
           });
 
           return new Ok([
-            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+            {
+              type: "text_content" as const,
+              text: JSON.stringify(res.data, null, 2),
+            },
           ]);
         } catch (err) {
           return new Err(

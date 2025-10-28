@@ -71,7 +71,7 @@ function createServer(
           isError: true,
           content: [
             {
-              type: "text",
+              type: "text_content",
               text: "No user memory available as there is no user authenticated.",
             },
           ],
@@ -87,7 +87,7 @@ function createServer(
     if (memory.length === 0) {
       return new Ok([
         {
-          type: "text" as const,
+          type: "text_content" as const,
           text: "(memory empty)",
         },
       ]);
@@ -95,7 +95,7 @@ function createServer(
 
     return new Ok([
       {
-        type: "text" as const,
+        type: "text_content" as const,
         text: memory.map((entry, i) => `[${i}] ${entry.content}`).join("\n"),
       },
     ]);

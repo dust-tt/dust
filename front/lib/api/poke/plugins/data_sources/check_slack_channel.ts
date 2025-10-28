@@ -64,7 +64,7 @@ export const checkSlackChannelPlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Channel ${channelId} exists and is accessible by the connector`,
     });
   },

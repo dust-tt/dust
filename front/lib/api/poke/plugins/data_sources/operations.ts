@@ -83,7 +83,7 @@ export const connectorOperationsPlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Operation ${op} executed successfully on connector ${connectorId}.`,
     });
   },

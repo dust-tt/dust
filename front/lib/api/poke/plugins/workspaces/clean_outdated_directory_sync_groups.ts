@@ -15,7 +15,7 @@ export const cleanOutdatedDirectorySyncGroupsPlugin = createPlugin({
       "Make sure the groups are truly outdated before proceeding and run without 'execute' to verify.",
     args: {
       groupNames: {
-        type: "text",
+        type: "text_content",
         label: "Group Names",
         description:
           "Comma-separated list of group names to delete. Only provisioned groups will be deleted.",
@@ -57,7 +57,7 @@ export const cleanOutdatedDirectorySyncGroupsPlugin = createPlugin({
     });
     if (provisionedGroups.length === 0) {
       return new Ok({
-        display: "text",
+        display: "text_content",
         value: "No provisioned groups found in this workspace.",
       });
     }

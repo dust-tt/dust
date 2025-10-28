@@ -21,7 +21,7 @@ export const confluencePageCheckerPlugin = createPlugin({
     resourceTypes: ["data_sources"],
     args: {
       pageUrl: {
-        type: "text",
+        type: "text_content",
         label: "Page URL",
         description: "The Confluence page URL to check",
       },
@@ -75,7 +75,7 @@ export const confluencePageCheckerPlugin = createPlugin({
 
       if (!response.exists) {
         return new Ok({
-          display: "text",
+          display: "text_content",
           value: "Page not found on Confluence.",
         });
       }

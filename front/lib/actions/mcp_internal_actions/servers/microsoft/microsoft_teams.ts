@@ -57,7 +57,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(response.value[0].hitsContainers, null, 2),
             },
           ]);
@@ -92,7 +92,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(response.value, null, 2),
             },
           ]);
@@ -136,7 +136,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(response.value, null, 2),
             },
           ]);
@@ -175,7 +175,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(response.value, null, 2),
             },
           ]);
@@ -234,7 +234,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(response.value, null, 2),
             },
           ]);
@@ -283,7 +283,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(response.value, null, 2),
             },
           ]);
@@ -415,7 +415,7 @@ function createServer(
 
           return new Ok([
             {
-              type: "text" as const,
+              type: "text_content" as const,
               text: JSON.stringify(
                 {
                   success: true,

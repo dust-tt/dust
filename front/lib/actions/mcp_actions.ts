@@ -283,7 +283,7 @@ export async function* tryCallMCPTool(
       isError: true,
       content: [
         {
-          type: "text",
+          type: "text_content",
           text: "Could not call tool, invalid action configuration: not an MCP action configuration",
         },
       ],
@@ -306,7 +306,7 @@ export async function* tryCallMCPTool(
       isError: true,
       content: [
         {
-          type: "text",
+          type: "text_content",
           text: `The tool execution failed with the following error: ${connectionParamsRes.error.message}`,
         },
       ],
@@ -338,7 +338,7 @@ export async function* tryCallMCPTool(
         isError: true,
         content: [
           {
-            type: "text",
+            type: "text_content",
             text: `The tool execution failed with the following error: ${connectionResult.error.message}`,
           },
         ],
@@ -451,7 +451,7 @@ export async function* tryCallMCPTool(
         isError: true,
         content: [
           {
-            type: "text",
+            type: "text_content",
             text:
               "The tool execution failed because of too many output items: " +
               `${content.length} (max is ${MAX_OUTPUT_ITEMS})`,
@@ -483,7 +483,7 @@ export async function* tryCallMCPTool(
           isError: true,
           content: [
             {
-              type: "text",
+              type: "text_content",
               text:
                 "The tool execution failed because of a tool result content size exceeding " +
                 "the maximum limit.",
@@ -535,7 +535,7 @@ export async function* tryCallMCPTool(
       isError: true,
       content: [
         {
-          type: "text",
+          type: "text_content",
           text: `The tool execution failed with the following error: ${normalizeError(error).message}`,
         },
       ],

@@ -110,7 +110,7 @@ export const googleDriveSyncFilePlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Successfully synced Google Drive file: ${extractedFileId}`,
     });
   },

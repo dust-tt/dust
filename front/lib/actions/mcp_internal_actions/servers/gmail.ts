@@ -129,9 +129,12 @@ function createServer(
         );
 
         return new Ok([
-          { type: "text" as const, text: "Drafts fetched successfully" },
           {
-            type: "text" as const,
+            type: "text_content" as const,
+            text: "Drafts fetched successfully",
+          },
+          {
+            type: "text_content" as const,
             text: JSON.stringify(
               {
                 drafts,
@@ -226,9 +229,9 @@ function createServer(
         const result = await response.json();
 
         return new Ok([
-          { type: "text" as const, text: "Draft created successfully" },
+          { type: "text_content" as const, text: "Draft created successfully" },
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text: JSON.stringify(
               {
                 draftId: result.id,
@@ -280,7 +283,7 @@ function createServer(
         }
 
         return new Ok([
-          { type: "text" as const, text: "Draft deleted successfully" },
+          { type: "text_content" as const, text: "Draft deleted successfully" },
         ]);
       }
     )
@@ -395,9 +398,9 @@ function createServer(
         }
 
         return new Ok([
-          { type: "text" as const, text: message },
+          { type: "text_content" as const, text: message },
           {
-            type: "text" as const,
+            type: "text_content" as const,
             text: JSON.stringify(
               {
                 messages: successfulMessages,
@@ -584,9 +587,12 @@ function createServer(
         const result = await response.json();
 
         return new Ok([
-          { type: "text" as const, text: "Reply draft created successfully" },
           {
-            type: "text" as const,
+            type: "text_content" as const,
+            text: "Reply draft created successfully",
+          },
+          {
+            type: "text_content" as const,
             text: JSON.stringify(
               {
                 draftId: result.id,

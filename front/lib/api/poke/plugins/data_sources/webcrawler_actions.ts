@@ -12,7 +12,7 @@ export const setWebcrawlerActions = createPlugin({
     resourceTypes: ["data_sources"],
     args: {
       actions: {
-        type: "text",
+        type: "text_content",
         label: "Actions",
         description: "",
       },
@@ -52,7 +52,7 @@ export const setWebcrawlerActions = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: `Connector ${connectorId} actions have been updated`,
     });
   },

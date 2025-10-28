@@ -24,7 +24,7 @@ async function handleAddDomain(
   if (existingDomain) {
     if (existingDomain.workspaceId === workspace.id) {
       return new Ok({
-        display: "text",
+        display: "text_content",
         value: `Domain ${domain} is already authorized for this workspace.`,
       });
     }
@@ -66,7 +66,7 @@ async function handleAddDomain(
   }
 
   return new Ok({
-    display: "text",
+    display: "text_content",
     value:
       `Domain ${domain} has been added to the workspace. Next webhook will add it to ` +
       "the workspace in the database.",
@@ -99,7 +99,7 @@ export async function handleRemoveDomain(
   }
 
   return new Ok({
-    display: "text",
+    display: "text_content",
     value:
       `Domain ${domain} has been removed from the workspace in WorkOS. Next webhook will ` +
       "remove it from the workspace in the database.",

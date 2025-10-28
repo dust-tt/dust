@@ -75,7 +75,7 @@ export const updateEditorsPlugin = createPlugin({
     // If no changes needed
     if (usersToAdd.length === 0 && usersToRemove.length === 0) {
       return new Ok({
-        display: "text",
+        display: "text_content",
         value: "✅ No changes needed - editor list is already up to date.",
       });
     }
@@ -138,7 +138,7 @@ export const updateEditorsPlugin = createPlugin({
     );
 
     return new Ok({
-      display: "text",
+      display: "text_content",
       value: message,
     });
   },

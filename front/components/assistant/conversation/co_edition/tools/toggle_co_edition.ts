@@ -60,7 +60,7 @@ export function registerToggleTool(
       return {
         content: [
           {
-            type: "text",
+            type: "text_content",
             text: `Co-edition ${params.enabled ? "enabled" : "disabled"}${
               params.enabled && params.initialNodes
                 ? " with initial content"

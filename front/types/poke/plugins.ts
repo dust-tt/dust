@@ -55,7 +55,7 @@ interface NumberArgDefinition extends BaseArgDefinition {
 }
 
 interface TextArgDefinition extends BaseArgDefinition {
-  type: "text";
+  type: "text_content";
   values?: never;
 }
 

@@ -45,7 +45,7 @@ export function registerDeleteNodeTool(server: McpServer, editor: Editor) {
       return {
         content: [
           {
-            type: "text",
+            type: "text_content",
             text: `Successfully deleted node ${params.nodeId}`,
           },
         ],

@@ -33,14 +33,14 @@ import type {
   MessageType,
   ModelId,
   Result,
+  TextContent,
   UserMessageType,
 } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
-  AgentContentItemType,
-  ReasoningContentType,
-  TextContentType,
+  AgentContent,
+  ReasoningContent,
 } from "@app/types/assistant/agent_message_content";
 import {
   isFunctionCallContent,
@@ -68,7 +68,7 @@ export async function generateParsedContents(
   actions: AgentMCPActionWithOutputType[],
   agentConfiguration: LightAgentConfigurationType,
   messageId: string,
-  contents: { step: number; content: AgentContentItemType }[]
+  contents: { step: number; content: AgentContent }[]
 ): Promise<Record<number, ParsedContentItem[]>> {
   const parsedContents: Record<number, ParsedContentItem[]> = {};
   const actionsByCallId = new Map(actions.map((a) => [a.functionCallId, a]));
@@ -348,17 +348,16 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         agentStepContents
       );
 
-      const textContents: Array<{ step: number; content: TextContentType }> =
-        [];
+      const textContents: Array<{ step: number; content: TextContent }> = [];
       for (const content of agentStepContents) {
-        if (content.content.type === "text_content") {
+        if (isTextContent(content.content)) {
           textContents.push({ step: content.step, content: content.content });
         }
       }
 
       const reasoningContents: Array<{
         step: number;
-        content: ReasoningContentType;
+        content: ReasoningContent;
       }> = [];
       for (const content of agentStepContents) {
         if (content.content.type === "reasoning") {
