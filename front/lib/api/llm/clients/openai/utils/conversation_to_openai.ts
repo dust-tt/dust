@@ -129,6 +129,7 @@ export function toInput(
 }
 
 export function toTool(tool: AgentActionSpecification): FunctionTool {
+  const properties = tool.inputSchema.properties ?? {};
   const parameters: {
     type: "object";
     properties: Record<string, unknown>;
@@ -136,17 +137,11 @@ export function toTool(tool: AgentActionSpecification): FunctionTool {
     additionalProperties: boolean;
   } = {
     type: "object",
-    properties: tool.inputSchema.properties ?? {},
-    required: [],
+    properties,
+    // OpenAI requires all properties to be marked as required
+    required: Object.keys(properties),
     additionalProperties: false,
   };
-
-  // for (const [key, value] of Object.entries(
-  //   tool.inputSchema.properties ?? {}
-  // )) {
-  //   parameters.properties[key] = value;
-  // }
-  parameters.required = Object.keys(parameters.properties);
 
   return {
     type: "function",
