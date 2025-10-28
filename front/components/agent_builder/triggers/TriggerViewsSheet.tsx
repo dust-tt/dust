@@ -1,10 +1,5 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import {
-  MultiPageSheet,
-  MultiPageSheetContent,
-  PlusIcon,
-  TimeIcon,
-} from "@dust-tt/sparkle";
+import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import React, { useCallback, useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -17,6 +12,8 @@ import type {
 import { ScheduleEdition } from "@app/components/agent_builder/triggers/schedule/ScheduleEdition";
 import { TriggerSelectionPageContent } from "@app/components/agent_builder/triggers/TriggerSelectionPage";
 import { WebhookEdition } from "@app/components/agent_builder/triggers/webhook/WebhookEdition";
+import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
@@ -228,11 +225,7 @@ export function TriggerViewsSheet({
   }, [webhookEditionState]);
 
   const webhookIcon = useMemo(() => {
-    const webhookSourceView = webhookEditionState?.webhookSourceView;
-    if (!webhookSourceView || !webhookSourceView.provider) {
-      return PlusIcon;
-    }
-    return PlusIcon;
+    return normalizeWebhookIcon(webhookEditionState?.webhookSourceView?.icon);
   }, [webhookEditionState]);
 
   const pages: MultiPageSheetPage[] = [
@@ -250,7 +243,7 @@ export function TriggerViewsSheet({
     {
       id: TRIGGERS_SHEET_PAGE_IDS.SCHEDULE,
       title: scheduleTitle,
-      icon: TimeIcon,
+      icon: () => getAvatarFromIcon("ActionTimeIcon"),
       content: (
         <ScheduleEdition
           owner={owner}
@@ -265,7 +258,7 @@ export function TriggerViewsSheet({
     {
       id: TRIGGERS_SHEET_PAGE_IDS.WEBHOOK,
       title: webhookTitle,
-      icon: webhookIcon,
+      icon: () => getAvatarFromIcon(webhookIcon),
       content: (
         <WebhookEdition
           owner={owner}
