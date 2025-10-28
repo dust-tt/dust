@@ -109,7 +109,6 @@ export function TriggerViewsSheet({
   });
 
   const handleSheetClose = useCallback(() => {
-    setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SELECTION);
     setSelectedWebhookSourceView(null);
     onModeChange(null);
   }, [onModeChange]);
