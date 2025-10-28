@@ -6,11 +6,16 @@ import type {
   Transaction,
 } from "sequelize";
 
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
+import type {
+  ConversationAttachmentType,
+  LargePasteType,
+} from "@app/lib/api/assistant/conversation/attachments";
 import {
   conversationAttachmentId,
   getAttachmentFromContentFragment,
   renderAttachmentXml,
+  renderLargePasteXml,
 } from "@app/lib/api/assistant/conversation/attachments";
 import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
@@ -599,6 +604,28 @@ export async function getContentFragmentFromAttachmentFile(
       content = await getOriginalFileContent(auth, fileStringId);
     }
 
+    // Check if this is a pasted content (large paste) - use simplified XML format
+    if (isPastedFile(attachment.contentType)) {
+      const largePaste: LargePasteType = {
+        fileId: fileStringId,
+        title: attachment.title,
+      };
+
+      return new Ok({
+        role: "content_fragment",
+        name: `inject_pasted_content`,
+        content: [
+          {
+            type: "text",
+            text: renderLargePasteXml({
+              largePaste,
+              content,
+            }),
+          },
+        ],
+      });
+    }
+
     return new Ok({
       role: "content_fragment",
       name: `inject_${attachment.contentType}`,
@@ -668,6 +695,28 @@ export async function renderLightContentFragmentForModel(
         workspaceId: conversation.owner.id,
       })
     : null;
+
+  // Check if this is pasted content - render with simplified format
+  if (fileStringId && isPastedFile(contentType)) {
+    const largePaste: LargePasteType = {
+      fileId: fileStringId,
+      title: attachment.title,
+    };
+
+    return {
+      role: "content_fragment",
+      name: `attach_pasted_content`,
+      content: [
+        {
+          type: "text",
+          text: renderLargePasteXml({
+            largePaste,
+            content: attachment.snippet ?? "",
+          }),
+        },
+      ],
+    };
+  }
 
   if (fileStringId && isSupportedImageContentType(contentType)) {
     if (excludeImages || !model.supportsVision) {

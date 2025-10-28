@@ -53,7 +53,7 @@ function buildNodeSerializers(schema: Schema) {
     node: ProseMirrorNode
   ) => {
     state.write(
-      `:pasted_attachment[${node.attrs.title}]{fileId=${node.attrs.fileId}}`
+      `:pasted_content[${node.attrs.title}]{pastedId=${node.attrs.fileId}}`
     );
   };
 
