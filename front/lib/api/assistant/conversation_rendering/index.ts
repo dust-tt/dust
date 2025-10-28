@@ -19,6 +19,11 @@ import {
   isTextContent,
   Ok,
 } from "@app/types";
+import {
+  isFunctionCallContent,
+  isReasoningContent,
+  isTextContent as isAssistantTextContent,
+} from "@app/types/assistant/agent_message_content";
 
 import type { InteractionWithTokens, MessageWithTokens } from "./pruning";
 import {
@@ -26,11 +31,6 @@ import {
   progressivelyPruneInteraction,
   prunePreviousInteractions,
 } from "./pruning";
-import {
-  isTextContent as isAssistantTextContent,
-  isFunctionCallContent,
-  isReasoningContent,
-} from "@app/types/assistant/agent_message_content";
 
 // When previous iteractions pruning is enabled, we'll attempt to fully preserve this number of interactions.
 const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;

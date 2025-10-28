@@ -14,13 +14,12 @@ import type {
   ModelMessageTypeMultiActionsWithoutContentFragment,
 } from "@app/types";
 import { assertNever } from "@app/types";
-import {
-  isFunctionCallContent,
-  type FunctionCallContentType,
-  type ReasoningContentType,
-  type TextContentType,
-} from "@app/types/assistant/agent_message_content";
+import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 
+import type {
+  ReasoningContentType,
+  TextContentType,
+} from "@app/types/assistant/agent_message_content";
 function toContentChunk(
   content: Content | TextContentType | ReasoningContentType
 ): ContentChunk {
