@@ -10,7 +10,12 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import type { ConversationType, ModelId, WorkspaceType } from "@app/types";
+import type {
+  ConversationType,
+  ConversationVisibility,
+  ModelId,
+  WorkspaceType,
+} from "@app/types";
 
 export class ConversationFactory {
   static async create(
@@ -20,12 +25,14 @@ export class ConversationFactory {
       messagesCreatedAt,
       conversationCreatedAt,
       requestedSpaceIds,
+      visibility = "unlisted",
       t,
     }: {
       agentConfigurationId: string;
       messagesCreatedAt: Date[];
       conversationCreatedAt?: Date;
       requestedSpaceIds?: ModelId[];
+      visibility?: ConversationVisibility;
       t?: Transaction;
     }
   ): Promise<ConversationType> {
@@ -34,7 +41,7 @@ export class ConversationFactory {
 
     const conversation = await createConversation(auth, {
       title: "Test Conversation",
-      visibility: "unlisted",
+      visibility,
     });
 
     if (conversationCreatedAt) {

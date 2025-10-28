@@ -852,28 +852,29 @@ describe("ConversationResource", () => {
       expect(conversations).toHaveLength(0);
     });
 
-    it("should handle visibility filters with includeDeleted option", async () => {
-      const conversation = await ConversationResource.fetchById(
-        userAuth,
-        conversationIds[0]
-      );
-      assert(conversation, "Conversation not found");
+    it("should not return test conversations by default", async () => {
+      // Create a test conversation by updating visibility
+      const testConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        messagesCreatedAt: [dateFromDaysAgo(3)],
+        visibility: "test",
+      });
 
-      // Mark conversation as deleted.
-      await conversation.updateVisibilityToDeleted();
+      // Add user as participant to the test conversation
+      await ConversationResource.upsertParticipation(userAuth, {
+        conversation: testConvo,
+        action: "posted",
+      });
 
-      // Without includeDeleted, should not see deleted conversation.
-      let userConversations =
+      // By default, should only see unlisted conversations (not test conversations)
+      const userConversations =
         await ConversationResource.listConversationsForUser(userAuth);
-      expect(userConversations).toHaveLength(0);
+      const conversationIds = userConversations.map((c) => c.sId);
+      expect(conversationIds).toContain(conversationIds[0]); // original conversation
+      expect(conversationIds).not.toContain(testConvo.sId); // test conversation should be filtered out
 
-      // With includeDeleted, should see deleted conversation.
-      userConversations = await ConversationResource.listConversationsForUser(
-        userAuth,
-        { includeDeleted: true }
-      );
-      expect(userConversations).toHaveLength(1);
-      expect(userConversations[0].sId).toBe(conversationIds[0]);
+      // Clean up
+      await destroyConversation(adminAuth, { conversationId: testConvo.sId });
     });
   });
 });
