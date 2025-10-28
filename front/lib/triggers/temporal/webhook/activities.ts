@@ -169,11 +169,8 @@ export async function runTriggerWebhookActivity({
       throw new TriggerNonRetryableError(errorMessage);
     }
 
-    if (
-      WEBHOOK_PRESETS[webhookSource.provider].event_blacklist?.includes(
-        receivedEventValue!
-      )
-    ) {
+    const blacklist = WEBHOOK_PRESETS[webhookSource.provider].event_blacklist;
+    if (blacklist && blacklist.includes(receivedEventValue)) {
       // Silently ignore blacklisted events
       await webhookRequest.markAsProcessed();
       logger.info(
@@ -183,7 +180,7 @@ export async function runTriggerWebhookActivity({
           provider: webhookSource.provider,
           eventValue: receivedEventValue,
         },
-        "Webhook event is blacklist, ignoring."
+        "Webhook event is blacklisted, ignoring."
       );
       return;
     }
