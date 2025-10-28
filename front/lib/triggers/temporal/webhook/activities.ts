@@ -168,6 +168,25 @@ export async function runTriggerWebhookActivity({
       );
       throw new TriggerNonRetryableError(errorMessage);
     }
+
+    if (
+      WEBHOOK_PRESETS[webhookSource.provider].event_blacklist?.includes(
+        receivedEventValue!
+      )
+    ) {
+      // Silently ignore blacklisted events
+      await webhookRequest.markAsProcessed();
+      logger.info(
+        {
+          workspaceId,
+          webhookRequestId,
+          provider: webhookSource.provider,
+          eventValue: receivedEventValue,
+        },
+        "Webhook event is blacklist, ignoring."
+      );
+      return;
+    }
   }
 
   // Fetch all triggers based on the webhook source id.

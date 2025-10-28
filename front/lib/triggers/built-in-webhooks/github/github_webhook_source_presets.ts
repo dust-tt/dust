@@ -31,6 +31,7 @@ export const GITHUB_WEBHOOK_PRESET: PresetWebhook<"github"> = {
     field: "X-GitHub-Event",
   },
   events: [GITHUB_PULL_REQUEST_EVENT, GITHUB_ISSUES_EVENT],
+  event_blacklist: ["ping"],
   icon: "GithubLogo",
   description:
     "Receive events from GitHub such as creation or edition of issues or pull requests.",
