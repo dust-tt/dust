@@ -23,7 +23,7 @@ export const Examples = () => (
         isSelected
         canAdd
         onClick={() => console.log("Add Image Generation")}
-        toolInfo={{
+        footer={{
           label: "Click here",
           onClick: () => console.log("Click here"),
         }}
@@ -56,7 +56,7 @@ export const Examples = () => (
         }
         isSelected
         canAdd={false}
-        toolInfo={{
+        footer={{
           label: "Click here",
           onClick: () => console.log("Click here"),
         }}

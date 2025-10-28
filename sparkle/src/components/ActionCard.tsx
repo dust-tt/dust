@@ -15,7 +15,7 @@ export interface ActionCardProps {
   isSelected: boolean;
   canAdd: boolean;
   cantAddReason?: string;
-  toolInfo?: { label: string; onClick: () => void };
+  footer?: { label: string; onClick: () => void };
   onClick?: () => void;
   className?: string;
   cardContainerClassName?: string;
@@ -33,7 +33,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
       isSelected,
       canAdd,
       cantAddReason,
-      toolInfo,
+      footer: toolInfo,
       onClick,
       className,
       cardContainerClassName,
