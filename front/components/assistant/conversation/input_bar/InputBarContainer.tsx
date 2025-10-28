@@ -359,6 +359,13 @@ const InputBarContainer = ({
         }
       }
     },
+    onError: (error) => {
+      sendNotification({
+        type: "error",
+        title: "Failed to transcribe voice",
+        description: normalizeError(error).message,
+      });
+    },
   });
 
   // Update the editor ref when the editor is created.
