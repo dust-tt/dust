@@ -21,6 +21,7 @@ import {
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentConfigurationType,
@@ -29,6 +30,7 @@ import type {
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   MessageType,
+  ModelId,
   Result,
   UserType,
   WorkspaceType,
@@ -67,6 +69,26 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     this.message = message;
     this.user = user;
     this.conversationId = conversationId;
+  }
+
+  get sId(): string {
+    return AgentMessageFeedbackResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("agent_message_feedback", {
+      id,
+      workspaceId,
+    });
   }
 
   static async makeNew(
@@ -138,8 +160,13 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       agentConfigurationId?: string;
     }
   ): Promise<AgentMessageFeedbackResource | null> {
+    const resourceId = getResourceIdFromSId(feedbackId);
+    if (!resourceId) {
+      return null;
+    }
+
     const where: WhereOptions<AgentMessageFeedback> = {
-      id: parseInt(feedbackId, 10),
+      id: resourceId,
       workspaceId: auth.getNonNullableWorkspace().id,
     };
 
@@ -519,6 +546,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   toJSON() {
     return {
       id: this.id,
+      sId: this.sId,
       messageId: this.message?.sId,
       agentMessageId: this.agentMessageId,
       userId: this.userId,

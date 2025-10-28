@@ -18,6 +18,7 @@ import { ConversationError, Err, normalizeError, Ok } from "@app/types";
 
 export type AgentMessageFeedbackType = {
   id: number;
+  sId: string;
   messageId: string;
   agentMessageId: number;
   userId: number;

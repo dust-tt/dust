@@ -10,7 +10,7 @@ export function useDismissFeedback({
 }: {
   workspaceId: string;
   agentConfigurationId: string;
-  feedbackId: number;
+  feedbackId: string;
   onSuccess?: () => void;
 }) {
   const [isDismissing, setIsDismissing] = useState(false);

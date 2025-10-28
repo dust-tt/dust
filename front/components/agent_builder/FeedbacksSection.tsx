@@ -192,7 +192,7 @@ export const FeedbacksSection = ({
                   <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
                     {versionFeedbacks?.map((feedback) => (
                       <MemoizedFeedbackCard
-                        key={feedback.id}
+                        key={feedback.sId}
                         className="h-full"
                         owner={owner}
                         feedback={
@@ -273,7 +273,7 @@ function FeedbackCard({
   const { isDismissing, toggleDismiss } = useDismissFeedback({
     workspaceId: owner.sId,
     agentConfigurationId: feedback.agentConfigurationId,
-    feedbackId: feedback.id,
+    feedbackId: feedback.sId,
     onSuccess: onDismiss,
   });
 
