@@ -297,6 +297,7 @@ fn main() {
         // Misc
         .route("/tokenize", post(tokenize::tokenize))
         .route("/tokenize/batch", post(tokenize::tokenize_batch))
+        .route("/tokenize/batch/count", post(tokenize::tokenize_batch_count))
         .layer(OtelInResponseLayer::default())
         // Start OpenTelemetry trace on incoming request.
         .layer(OtelAxumLayer::default())
