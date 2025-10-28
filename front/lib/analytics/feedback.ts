@@ -9,11 +9,13 @@ import type { Result } from "@app/types/shared/result";
 
 function makeDocumentId(
   workspace: LightWorkspaceType,
-  messageId: string,
-  messageCreated: number
+  message: {
+    id: string;
+    created: number;
+  },
 ): string {
-  const timestamp = new Date(messageCreated).toISOString();
-  return `${workspace.sId}_${messageId}_${timestamp}`;
+  const timestamp = new Date(message.created).toISOString();
+  return `${workspace.sId}_${message.id}_${timestamp}`;
 }
 
 export async function updateAnalyticsFeedback(
@@ -28,7 +30,7 @@ export async function updateAnalyticsFeedback(
 ): Promise<Result<estypes.UpdateResponse, ElasticsearchError>> {
   const workspace = auth.getNonNullableWorkspace();
   const { message, feedbacks } = params;
-  const documentId = makeDocumentId(workspace, message.id, message.created);
+  const documentId = makeDocumentId(workspace, message);
 
   return withEs(async (client) => {
     return client.update({

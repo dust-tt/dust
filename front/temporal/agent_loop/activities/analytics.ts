@@ -19,7 +19,6 @@ export async function launchAgentMessageAnalyticsActivity(
       { workspaceId: authType.workspaceId },
       "Failed to fetch workspace infos for agent message analytics"
     );
-
     return;
   }
 
@@ -40,7 +39,7 @@ export async function launchAgentMessageAnalyticsActivity(
         error: result.error,
         workspaceId: authType.workspaceId,
       },
-      `Failed to launch agent message analytics workflow`
+      "Failed to launch agent message analytics workflow"
     );
   }
 }
