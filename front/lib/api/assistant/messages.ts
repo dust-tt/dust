@@ -351,7 +351,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       const textContents: Array<{ step: number; content: TextContentType }> =
         [];
       for (const content of agentStepContents) {
-        if (content.content.type === "text_content") {
+        if (isTextContent(content.content)) {
           textContents.push({ step: content.step, content: content.content });
         }
       }
@@ -361,7 +361,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         content: ReasoningContentType;
       }> = [];
       for (const content of agentStepContents) {
-        if (content.content.type === "reasoning") {
+        if (isReasoningContent(content.content)) {
           reasoningContents.push({
             step: content.step,
             content: content.content,

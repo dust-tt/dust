@@ -46,6 +46,7 @@ import type {
   AgentMCPActionWithOutputType,
 } from "@app/types/actions";
 import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
+import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -570,7 +571,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   toJSON(): AgentMCPActionType {
     assert(
-      this.stepContent.value.type === "function_call",
+      isFunctionCallContent(this.stepContent.value),
       "Action linked to a non-function call step content."
     );
 

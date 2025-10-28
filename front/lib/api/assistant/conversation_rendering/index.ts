@@ -19,6 +19,11 @@ import {
   isTextContent,
   Ok,
 } from "@app/types";
+import {
+  isFunctionCallContent,
+  isReasoningContent,
+  isTextContent as isAssistantTextContent,
+} from "@app/types/assistant/agent_message_content";
 
 import type { InteractionWithTokens, MessageWithTokens } from "./pruning";
 import {
@@ -310,11 +315,11 @@ async function countTokensForMessages(
       //  Use the `contents` if available.
       if (m.contents?.length) {
         for (const c of m.contents) {
-          if (c.type === "reasoning") {
+          if (isReasoningContent(c)) {
             additionalTokens[i] += c.value.tokens;
-          } else if (c.type === "text_content") {
+          } else if (isAssistantTextContent(c)) {
             text += c.value;
-          } else if (c.type === "function_call") {
+          } else if (isFunctionCallContent(c)) {
             text += `${c.value.name} ${c.value.arguments}`;
           } else {
             assertNever(c);

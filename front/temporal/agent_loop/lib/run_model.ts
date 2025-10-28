@@ -43,6 +43,7 @@ import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/l
 import type { GetOutputResponse } from "@app/temporal/agent_loop/lib/types";
 import type { AgentActionsEvent, ModelId } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
+import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
 const MAX_AUTO_RETRY = 3;
@@ -510,7 +511,7 @@ export async function runModelActivity(
     });
 
     // If this is a function call content, track the step content ID
-    if (content.type === "function_call") {
+    if (isFunctionCallContent(content)) {
       updatedFunctionCallStepContentIds[content.value.id] = stepContent.id;
     }
   }
