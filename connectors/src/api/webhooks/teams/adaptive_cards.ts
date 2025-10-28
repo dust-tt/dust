@@ -6,7 +6,6 @@ import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 
 const DUST_URL = "https://dust.tt/home";
-const TEAMS_HELP_URL = "https://docs.dust.tt/docs/teams";
 
 /**
  * Creates an Adaptive Card for Teams with the AI response, conversation link, and agent selector
@@ -330,7 +329,7 @@ function createFooterText({
     }
   }
 
-  const baseLinks = `[Browse agents](${assistantsUrl}) | [Use Dust in Teams](${TEAMS_HELP_URL}) | [Learn more](${DUST_URL})`;
+  const baseLinks = `[Browse agents](${assistantsUrl}) | [Learn more](${DUST_URL})`;
 
   return conversationUrl
     ? `${attribution}[Go to full conversation](${conversationUrl}) | ${baseLinks}`
