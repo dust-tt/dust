@@ -10,6 +10,9 @@ import {
 } from "@dust-tt/sparkle";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { ToolLatencyChart } from "@app/components/agent_builder/observability/charts/ToolLatencyChart";
+import { ToolUsageChart } from "@app/components/agent_builder/observability/charts/ToolUsageChart";
+import { UsageMetricsChart } from "@app/components/agent_builder/observability/charts/UsageMetricsChart";
 import {
   CHART_CONTAINER_HEIGHT_CLASS,
   OBSERVABILITY_TIME_RANGE,
@@ -18,9 +21,6 @@ import {
   ObservabilityProvider,
   useObservability,
 } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { ToolExecutionChart } from "@app/components/agent_builder/observability/ToolExecutionChart";
-import { ToolLatencyChart } from "@app/components/agent_builder/observability/ToolLatencyChart";
-import { UsageMetricsChart } from "@app/components/agent_builder/observability/UsageMetricsChart";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 
 interface AgentBuilderObservabilityProps {
@@ -70,7 +70,7 @@ export function AgentBuilderObservability({
                 workspaceId={owner.sId}
                 agentConfigurationId={agentConfiguration.sId}
               />
-              <ToolExecutionChart
+              <ToolUsageChart
                 workspaceId={owner.sId}
                 agentConfigurationId={agentConfiguration.sId}
               />

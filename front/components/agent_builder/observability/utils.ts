@@ -5,6 +5,7 @@ export function getToolColor(toolName: string, topTools: string[]): string {
   return TOOL_COLORS[(idx >= 0 ? idx : 0) % TOOL_COLORS.length];
 }
 
+// Returns the top N tools by aggregating metrics across versions
 export function calculateTopTools<T>(
   dataByVersion: { version: string; tools: Record<string, T> }[],
   extractMetric: (tool: T) => number,
@@ -23,4 +24,29 @@ export function calculateTopTools<T>(
     .sort((a, b) => b[1] - a[1])
     .slice(0, maxTools)
     .map(([toolName]) => toolName);
+}
+
+// Returns the top N tools from a pre-aggregated count map
+export function selectTopTools(
+  toolCounts: Map<string, number>,
+  maxTools: number
+): string[] {
+  return Array.from(toolCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, maxTools)
+    .map(([toolName]) => toolName);
+}
+
+export type ValuesPayload = { values: Record<string, number> };
+
+export function makeIsTopForPayload(topTools: string[]) {
+  return (payload: ValuesPayload, seriesIdx: number) => {
+    for (let k = seriesIdx + 1; k < topTools.length; k++) {
+      const nextTool = topTools[k];
+      if ((payload.values[nextTool] ?? 0) > 0) {
+        return false;
+      }
+    }
+    return true;
+  };
 }
