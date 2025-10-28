@@ -1,7 +1,13 @@
-import type { AgentReasoningEffort } from "@app/types";
+import type { ModelIdType, ReasoningEffortIdType } from "@app/types";
 
-export type LLMOptions = {
-  reasoningEffort?: AgentReasoningEffort;
+export type LLMParameters = {
+  modelId: ModelIdType;
+  reasoningEffortId?: ReasoningEffortIdType;
   temperature?: number;
   bypassFeatureFlag?: boolean;
+};
+
+export type LLMClientMetadata = {
+  clientId: string;
+  modelId: ModelIdType;
 };

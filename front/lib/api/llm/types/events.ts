@@ -1,9 +1,4 @@
-import type { ModelProviderIdType } from "@app/types";
-
-export type ProviderMetadata = Record<string, any> & {
-  providerId: ModelProviderIdType;
-  modelId: string;
-};
+import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 
 export type Delta = {
   delta: string;
@@ -17,13 +12,13 @@ export type Text = {
 export interface TextDeltaEvent {
   type: "text_delta";
   content: Delta;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }
 
 export interface ReasoningDeltaEvent {
   type: "reasoning_delta";
   content: Delta;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }
 
 // Output items
@@ -36,19 +31,19 @@ export interface ToolCall {
 export interface ToolCallEvent {
   type: "tool_call";
   content: ToolCall;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }
 
 export interface TextGeneratedEvent {
   type: "text_generated";
   content: Text;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }
 
 export interface ReasoningGeneratedEvent {
   type: "reasoning_generated";
   content: Text;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }
 
 export type LLMOutputItem =
@@ -69,13 +64,13 @@ export interface TokenUsage {
 export interface TokenUsageEvent {
   type: "token_usage";
   content: TokenUsage;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }
 
 export interface SuccessCompletionEvent {
   type: "success";
   content: LLMOutputItem[];
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }
 
 export interface CompletionError {
@@ -86,7 +81,7 @@ export interface CompletionError {
 export interface ErrorCompletionEvent {
   type: "error";
   content: CompletionError;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }
 
 export type LLMEvent =

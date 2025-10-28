@@ -1,24 +1,30 @@
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type { LLMOptions } from "@app/lib/api/llm/types/options";
+import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type {
-  ModelConfigurationType,
   ModelConversationTypeMultiActions,
+  ModelIdType,
+  ReasoningEffortIdType,
 } from "@app/types";
 
 export abstract class LLM {
-  protected model: ModelConfigurationType;
-  protected options: LLMOptions | undefined;
+  protected modelId: ModelIdType;
+  protected temperature: number;
+  protected reasoningEffortId: ReasoningEffortIdType;
+  protected bypassFeatureFlag: boolean;
 
   constructor({
-    model,
-    options,
-  }: {
-    model: ModelConfigurationType;
-    options?: LLMOptions;
-  }) {
-    this.model = model;
-    this.options = options;
+    modelId,
+    temperature,
+    reasoningEffortId,
+    bypassFeatureFlag = false,
+  }: LLMParameters) {
+    this.modelId = modelId;
+    this.temperature =
+      temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced;
+    this.reasoningEffortId = reasoningEffortId ?? "none";
+    this.bypassFeatureFlag = bypassFeatureFlag;
   }
 
   abstract stream({

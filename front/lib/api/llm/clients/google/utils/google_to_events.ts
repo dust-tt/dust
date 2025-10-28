@@ -4,7 +4,8 @@ import assert from "assert";
 import { hash as blake3 } from "blake3";
 import crypto from "crypto";
 
-import type { LLMEvent, ProviderMetadata } from "@app/lib/api/llm/types/events";
+import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 
 function newId(): string {
   const uuid = crypto.randomUUID();
@@ -16,7 +17,7 @@ export async function* streamLLMEvents({
   metadata,
 }: {
   generateContentResponses: AsyncIterable<GenerateContentResponse>;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }): AsyncGenerator<LLMEvent> {
   // Google does not send a "report" with concatenated text chunks
   // So we have to aggregate it ourselves as we receive text chunks
@@ -106,7 +107,7 @@ function textPartToEvent({
   metadata,
 }: {
   part: { text: string; thought?: boolean };
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }): LLMEvent {
   const { text, thought } = part;
 
@@ -130,7 +131,7 @@ function partToLLMEvent({
   metadata,
 }: {
   part: Part;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }): LLMEvent {
   // Exactly one "structuring" field within a Part should be set
   if (part.text) {

@@ -1,38 +1,39 @@
 import { GoogleGenAI } from "@google/genai";
 
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import {
   toContent,
   toTool,
 } from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/google/utils/google_to_events";
 import { LLM } from "@app/lib/api/llm/llm";
-import type { LLMEvent, ProviderMetadata } from "@app/lib/api/llm/types/events";
-import type { LLMOptions } from "@app/lib/api/llm/types/options";
+import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
-  ModelConfigurationType,
-  ModelConversationTypeMultiActions,
-} from "@app/types";
+  LLMClientMetadata,
+  LLMParameters,
+} from "@app/lib/api/llm/types/options";
+import type { ModelConversationTypeMultiActions } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
 export class GoogleLLM extends LLM {
   private client: GoogleGenAI;
-  private metadata: ProviderMetadata = {
-    providerId: "google_ai_studio",
-    modelId: this.model.modelId,
+  private metadata: LLMClientMetadata = {
+    clientId: "google_ai_studio",
+    modelId: this.modelId,
   };
-  private temperature: number;
   constructor({
-    model,
-    options,
-  }: {
-    model: ModelConfigurationType;
-    options?: LLMOptions;
-  }) {
-    super({ model, options });
-    this.temperature =
-      options?.temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced;
+    modelId,
+    temperature,
+    reasoningEffortId,
+    bypassFeatureFlag,
+  }: LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId }) {
+    super({
+      modelId,
+      temperature,
+      reasoningEffortId,
+      bypassFeatureFlag,
+    });
     const { GOOGLE_AI_STUDIO_API_KEY } = dustManagedCredentials();
     if (!GOOGLE_AI_STUDIO_API_KEY) {
       throw new Error(
@@ -57,7 +58,7 @@ export class GoogleLLM extends LLM {
 
     const generateContentResponses =
       await this.client.models.generateContentStream({
-        model: this.model.modelId,
+        model: this.modelId,
         contents,
         config: {
           temperature: this.temperature,
