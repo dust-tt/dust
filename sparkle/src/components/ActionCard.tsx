@@ -8,7 +8,7 @@ import { cn } from "@sparkle/lib/utils";
 const FADE_TRANSITION_CLASSES =
   "s-transition-opacity s-duration-300 s-ease-in-out";
 
-export interface ToolCardProps {
+export interface ActionCardProps {
   icon: React.ComponentType;
   label: string;
   description: string | React.ReactNode;
@@ -24,7 +24,7 @@ export interface ToolCardProps {
   descriptionLineClamp?: number;
 }
 
-export const ActionCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
+export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
   (
     {
       icon,
