@@ -145,6 +145,11 @@ You are an AI agent created by Dust to answer questions using your internal know
 </primary_goal>
   `;
 
+  instructions += `<general_guidelines>
+${globalAgentGuidelines}
+</general_guidelines>
+`;
+
   if (deepDiveMCPServerView) {
     instructions += requestComplexityPrompt;
   } else {
