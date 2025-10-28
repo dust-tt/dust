@@ -78,8 +78,6 @@ export function TriggerViewsSheet({
     webhookSourceView: WebhookSourceViewType | null;
   } | null>(null);
 
-  const isSheetOpen = mode !== null;
-
   const handleSheetClose = useCallback(() => {
     setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SELECTION);
     setScheduleEditionState(null);
@@ -263,7 +261,7 @@ export function TriggerViewsSheet({
 
   return (
     <MultiPageSheet
-      open={isSheetOpen}
+      open={mode !== null}
       onOpenChange={(open) => !open && handleSheetClose()}
     >
       <MultiPageSheetContent
