@@ -5,13 +5,13 @@ import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type {
   ModelConversationTypeMultiActions,
   ModelIdType,
-  ReasoningEffortIdType,
+  ReasoningEffort,
 } from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
   protected temperature: number;
-  protected reasoningEffortId: ReasoningEffortIdType;
+  protected reasoningEffortId: ReasoningEffort;
   protected bypassFeatureFlag: boolean;
 
   constructor({
