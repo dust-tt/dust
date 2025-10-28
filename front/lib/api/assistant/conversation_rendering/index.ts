@@ -26,6 +26,11 @@ import {
   progressivelyPruneInteraction,
   prunePreviousInteractions,
 } from "./pruning";
+import {
+  isTextContent as isAssistantTextContent,
+  isFunctionCallContent,
+  isReasoningContent,
+} from "@app/types/assistant/agent_message_content";
 
 // When previous iteractions pruning is enabled, we'll attempt to fully preserve this number of interactions.
 const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;
@@ -310,11 +315,11 @@ async function countTokensForMessages(
       //  Use the `contents` if available.
       if (m.contents?.length) {
         for (const c of m.contents) {
-          if (c.type === "reasoning") {
+          if (isReasoningContent(c)) {
             additionalTokens[i] += c.value.tokens;
-          } else if (c.type === "text_content") {
+          } else if (isAssistantTextContent(c)) {
             text += c.value;
-          } else if (c.type === "function_call") {
+          } else if (isFunctionCallContent(c)) {
             text += `${c.value.name} ${c.value.arguments}`;
           } else {
             assertNever(c);

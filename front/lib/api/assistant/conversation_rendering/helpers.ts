@@ -22,9 +22,12 @@ import type {
 } from "@app/types";
 import { removeNulls } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import type {
-  AgentContentItemType,
-  ErrorContentType,
+import {
+  isErrorContent,
+  isFunctionCallContent,
+  isReasoningContent,
+  type AgentContentItemType,
+  type ErrorContentType,
 } from "@app/types/assistant/agent_message_content";
 
 /**
@@ -123,7 +126,7 @@ export async function getSteps(
   }
 
   for (const content of message.contents) {
-    if (content.content.type === "error") {
+    if (isErrorContent(content.content)) {
       // Don't render error content.
       logger.warn(
         {
@@ -137,7 +140,7 @@ export async function getSteps(
     }
 
     if (
-      content.content.type === "reasoning" &&
+      isReasoningContent(content.content) &&
       content.content.value.provider !== supportedModel.providerId
     ) {
       // Skip reasoning content from other providers.
@@ -168,7 +171,7 @@ export async function getSteps(
           step.actions.map((action) => [action.call.id, action.result])
         );
         for (const content of step.contents) {
-          if (content.type === "function_call") {
+          if (isFunctionCallContent(content)) {
             const functionCall = content.value;
             if (!functionResultByCallId[functionCall.id]) {
               logger.warn(

@@ -14,10 +14,11 @@ import type {
   ModelMessageTypeMultiActionsWithoutContentFragment,
 } from "@app/types";
 import { assertNever } from "@app/types";
-import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
+import {
+  isFunctionCallContent,
+  type FunctionCallContentType,
+  type ReasoningContentType,
+  type TextContentType,
 } from "@app/types/assistant/agent_message_content";
 
 function toContentChunk(
@@ -62,7 +63,7 @@ function toAssistantMessage(
     )
     .map(toContentChunk);
   const toolCalls = message.contents
-    .filter((c): c is FunctionCallContentType => c.type === "function_call")
+    .filter(isFunctionCallContent)
     .map((fc) => ({
       id: fc.value.id,
       function: {

@@ -30,7 +30,10 @@ import type {
   AgentStepContentType,
   FunctionCallContentType,
 } from "@app/types/assistant/agent_message_content";
-import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
+import {
+  isFunctionCallContent,
+  isReasoningContent,
+} from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -347,7 +350,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
   toJSON(): AgentStepContentType {
     let value = this.value;
-    if (this.type === "reasoning" && value.type === "reasoning") {
+    if (this.type === "reasoning" && isReasoningContent(value)) {
       value = {
         ...value,
         value: {
