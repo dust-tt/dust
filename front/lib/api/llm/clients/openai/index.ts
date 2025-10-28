@@ -1,37 +1,41 @@
 import { OpenAI } from "openai";
-import type { ReasoningEffort } from "openai/resources/shared.mjs";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type { OpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+import { REASONING_EFFORT_TO_OPENAI_REASONING } from "@app/lib/api/llm/clients/openai/types";
 import {
   toInput,
-  toOpenAIReasoningEffort,
   toTool,
 } from "@app/lib/api/llm/clients/openai/utils/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/openai/utils/openai_to_events";
 import { LLM } from "@app/lib/api/llm/llm";
-import type { LLMEvent, ProviderMetadata } from "@app/lib/api/llm/types/events";
+import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import type {
+  LLMClientMetadata,
+  LLMParameters,
+} from "@app/lib/api/llm/types/options";
 import type { ModelConversationTypeMultiActions } from "@app/types";
-import { dustManagedCredentials } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
 export class OpenAILLM extends LLM {
   private client: OpenAI;
-  protected metadata: ProviderMetadata;
-  private reasoningEffort: ReasoningEffort;
-  private temperature?: number;
+  private metadata: LLMClientMetadata = {
+    clientId: "openai_responses",
+    modelId: this.modelId,
+  };
 
   constructor({
-    options,
-    model,
-  }: {
-    options?: LLMOptions;
-    model: ModelConfigurationType;
-  }) {
-    super({ model, options });
-    this.temperature = options?.temperature;
-    this.reasoningEffort = toOpenAIReasoningEffort(
-      options?.reasoningEffort ?? "none"
-    );
+    modelId,
+    temperature,
+    reasoningEffort,
+    bypassFeatureFlag,
+  }: LLMParameters & { modelId: OpenAIResponsesWhitelistedModelId }) {
+    super({
+      modelId,
+      temperature,
+      reasoningEffort,
+      bypassFeatureFlag,
+    });
     const { OPENAI_API_KEY } = dustManagedCredentials();
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY environment variable is required");
@@ -39,10 +43,6 @@ export class OpenAILLM extends LLM {
     this.client = new OpenAI({
       apiKey: OPENAI_API_KEY,
     });
-    this.metadata = {
-      providerId: "openai",
-      modelId: model.modelId,
-    };
   }
 
   async *stream({
@@ -55,12 +55,12 @@ export class OpenAILLM extends LLM {
     specifications: AgentActionSpecification[];
   }): AsyncGenerator<LLMEvent> {
     const events = await this.client.responses.create({
-      model: this.model.modelId,
+      model: this.modelId,
       input: toInput(prompt, conversation),
       stream: true,
       temperature: this.temperature,
       reasoning: {
-        effort: this.reasoningEffort,
+        effort: REASONING_EFFORT_TO_OPENAI_REASONING[this.reasoningEffort],
       },
       tools: specifications.map(toTool),
     });
