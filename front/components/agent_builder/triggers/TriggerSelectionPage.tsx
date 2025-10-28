@@ -1,10 +1,7 @@
-import { ActionIcons, SearchInput, TimeIcon, ToolCard } from "@dust-tt/sparkle";
+import { SearchInput, TimeIcon, ToolCard } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 
-import {
-  InternalActionIcons,
-  isCustomResourceIconType,
-} from "@app/components/resources/resources_icons";
+import { getIcon } from "@app/components/resources/resources_icons";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 interface TriggerSelectionPageContentProps {
@@ -80,14 +77,10 @@ export function TriggerSelectionPageContent({
             <span className="text-lg font-semibold">Other triggers</span>
             <div className="grid grid-cols-2 gap-3">
               {filteredWebhookSourceViews.map((view) => {
-                const icon = isCustomResourceIconType(view.icon)
-                  ? ActionIcons[view.icon]
-                  : InternalActionIcons[view.icon];
-
                 return (
                   <ToolCard
                     key={view.sId}
-                    icon={icon}
+                    icon={getIcon(view.icon)}
                     label={view.customName}
                     description={
                       view.description ||
