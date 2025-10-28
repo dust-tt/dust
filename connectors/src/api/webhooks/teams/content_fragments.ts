@@ -143,11 +143,12 @@ export async function processFileAttachments(
         continue;
       }
 
-      const { itemId, mimeType, siteId } = sharepointFileInfoRes.value;
+      const { itemId, mimeType, siteId, driveId } = sharepointFileInfoRes.value;
 
       const downloadResult = await downloadSharepointFile(
         itemId,
         siteId,
+        driveId,
         microsoftGraphClient,
         logger
       );
