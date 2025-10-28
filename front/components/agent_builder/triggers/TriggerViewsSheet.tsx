@@ -207,27 +207,17 @@ export function TriggerViewsSheet({
     setSelectedWebhookSourceView(null);
   }, []);
 
+  // Jumping to the correct page directly in the edit.
   useEffect(() => {
     if (mode?.type === "edit") {
       if (mode.trigger.kind === "schedule") {
-        form.reset({
-          type: "schedule",
-          schedule: getScheduleFormDefaultValues(mode.trigger),
-        });
         setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SCHEDULE);
       } else if (mode.trigger.kind === "webhook") {
         setSelectedWebhookSourceView(mode.webhookSourceView);
-        form.reset({
-          type: "webhook",
-          webhook: getWebhookFormDefaultValues({
-            trigger: mode.trigger,
-            webhookSourceView: mode.webhookSourceView,
-          }),
-        });
         setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.WEBHOOK);
       }
     }
-  }, [mode, form]);
+  }, [mode]);
 
   const webhookIcon = useMemo(() => {
     const webhookSourceView =
