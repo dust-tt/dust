@@ -269,7 +269,9 @@ export default function WorkspaceAdmin({
             <VoiceTranscriptionToggle owner={owner} />
           </ContextItem.List>
         </Page.Vertical>
-        {(!isSlackDataSourceBotEnabled || isDiscordBotEnabled) && (
+        {(!isSlackDataSourceBotEnabled ||
+          isDiscordBotEnabled ||
+          isMicrosoftTeamsBotEnabled) && (
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Integrations</Page.H>
             {!isSlackDataSourceBotEnabled && (
