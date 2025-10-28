@@ -22,7 +22,6 @@ import {
   assertNever,
   isAgentMessageType,
   isContentFragmentType,
-  isTextContent,
   isUserMessageType,
 } from "@app/types";
 import type { TextContentType } from "@app/types/assistant/agent_message_content";
@@ -41,13 +40,13 @@ export function renderAgentSteps(
   if (excludeActions) {
     // In Exclude Actions mode, we only render the last step that has text content.
     const stepsWithContent = steps.filter((s) =>
-      s?.contents.some(isTextContent)
+      s?.contents.some((c) => c.type === "text_content")
     );
     if (stepsWithContent.length) {
       const lastStepWithContent = stepsWithContent[stepsWithContent.length - 1];
       const textContents: TextContentType[] = [];
       for (const content of lastStepWithContent.contents) {
-        if (isTextContent(content)) {
+        if (content.type === "text_content") {
           textContents.push(content);
         }
       }
@@ -75,7 +74,7 @@ export function renderAgentSteps(
       }
       const textContents: TextContentType[] = [];
       for (const content of step.contents) {
-        if (isTextContent(content)) {
+        if (content.type === "text_content") {
           textContents.push(content);
         }
       }
