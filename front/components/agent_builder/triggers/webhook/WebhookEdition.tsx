@@ -17,10 +17,9 @@ import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 interface WebhookEditionProps {
   owner: LightWorkspaceType;
   trigger: AgentBuilderWebhookTriggerType | null;
-  onSave: (trigger: AgentBuilderWebhookTriggerType) => void;
+  onSave: (trigger: AgentBuilderWebhookTriggerType) => Promise<void> | void;
   agentConfigurationId: string | null;
   webhookSourceView: WebhookSourceViewType | null;
-  onSubmitHandlerReady?: (handler: () => Promise<void>) => void;
 }
 
 export function WebhookEdition({
@@ -29,7 +28,6 @@ export function WebhookEdition({
   onSave,
   agentConfigurationId,
   webhookSourceView,
-  onSubmitHandlerReady,
 }: WebhookEditionProps) {
   const { user } = useUser();
 
@@ -88,18 +86,10 @@ export function WebhookEdition({
         editorName: trigger?.editorName ?? user.fullName ?? undefined,
       };
 
-      onSave(triggerData);
+      await onSave(triggerData);
     },
     [form, onSave, trigger, user, webhookSourceView]
   );
-
-  useEffect(() => {
-    if (onSubmitHandlerReady) {
-      onSubmitHandlerReady(async () => {
-        await form.handleSubmit(handleSubmit)();
-      });
-    }
-  }, [form, handleSubmit, onSubmitHandlerReady]);
 
   return (
     <FormProvider form={form} onSubmit={handleSubmit}>
