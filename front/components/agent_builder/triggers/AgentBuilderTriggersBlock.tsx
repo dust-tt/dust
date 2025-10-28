@@ -35,12 +35,14 @@ export function AgentBuilderTriggersBlock({
   isTriggersLoading,
   agentConfigurationId,
 }: AgentBuilderTriggersBlockProps) {
-  const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
+  const { getValues, setValue, control } =
+    useFormContext<AgentBuilderFormData>();
 
   const { fields: triggersToCreate, remove: removeFromCreate } = useFieldArray<
     AgentBuilderFormData,
     "triggersToCreate"
   >({
+    control,
     name: "triggersToCreate",
   });
 
@@ -48,6 +50,7 @@ export function AgentBuilderTriggersBlock({
     AgentBuilderFormData,
     "triggersToUpdate"
   >({
+    control,
     name: "triggersToUpdate",
   });
 
