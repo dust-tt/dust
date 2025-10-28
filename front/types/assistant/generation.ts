@@ -32,12 +32,23 @@ export interface TextContent {
 export type Content = TextContent | ImageContent;
 
 export function isTextContent(content: object): content is TextContent {
-  return "text" in content && "type" in content && content.type === "text";
+  return (
+    "text" in content &&
+    "type" in content &&
+    content.type === "text" &&
+    typeof content.text === "string"
+  );
 }
 
 export function isImageContent(content: object): content is ImageContent {
   return (
-    "image_url" in content && "type" in content && content.type === "image_url"
+    "image_url" in content &&
+    "type" in content &&
+    content.type === "image_url" &&
+    typeof content.image_url === "object" &&
+    content.image_url !== null &&
+    "url" in content.image_url &&
+    typeof content.image_url.url === "string"
   );
 }
 
