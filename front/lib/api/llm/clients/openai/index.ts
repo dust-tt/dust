@@ -38,6 +38,9 @@ export class OpenAILLM extends LLM {
       options?.reasoningEffort ?? "none"
     );
     const { OPENAI_API_KEY } = dustManagedCredentials();
+    if (!OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY environment variable is required");
+    }
     this.client = new OpenAI({
       apiKey: OPENAI_API_KEY,
     });
