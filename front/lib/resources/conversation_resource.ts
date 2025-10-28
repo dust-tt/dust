@@ -527,7 +527,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       {
         where: {
           id: { [Op.in]: conversationIds },
-          visibility: { [Op.notIn]: ["deleted", "test"] },
+          visibility: { [Op.eq]: "unlisted" },
         },
       }
     );
