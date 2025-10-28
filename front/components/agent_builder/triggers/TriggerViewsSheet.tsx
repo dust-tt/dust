@@ -126,11 +126,7 @@ export function TriggerViewsSheet({
 
   const handleWebhookSave = useCallback(
     async (trigger: AgentBuilderWebhookTriggerType) => {
-      if (
-        webhookEditionState &&
-        webhookEditionState.index !== null &&
-        webhookEditionState.index !== undefined
-      ) {
+      if (webhookEditionState?.index) {
         if (webhookEditionState.trigger?.sId) {
           appendTriggerToUpdate(trigger);
         } else {

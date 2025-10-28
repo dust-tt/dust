@@ -59,7 +59,7 @@ export function WebhookEdition({
       }
 
       // Validate that event is selected for preset webhooks (not custom)
-      if (webhookSourceView && webhookSourceView.provider && !values.event) {
+      if (webhookSourceView?.provider && !values.event) {
         form.setError("event", {
           type: "manual",
           message: "Please select an event",
