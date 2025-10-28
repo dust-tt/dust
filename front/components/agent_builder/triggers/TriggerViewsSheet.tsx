@@ -291,14 +291,8 @@ export function TriggerViewsSheet({
     return normalizeWebhookIcon(webhookSourceView?.icon);
   }, [editWebhookSourceView, selectedWebhookSourceView]);
 
-  const scheduleIsEditor = useMemo(() => {
-    const trigger = editTrigger?.kind === "schedule" ? editTrigger : null;
-    return (trigger?.editor ?? user?.id) === user?.id;
-  }, [editTrigger, user]);
-
-  const webhookIsEditor = useMemo(() => {
-    const trigger = editTrigger?.kind === "webhook" ? editTrigger : null;
-    return (trigger?.editor ?? user?.id) === user?.id;
+  const isEditor = useMemo(() => {
+    return editTrigger?.editor ? editTrigger?.editor === user?.id : true;
   }, [editTrigger, user]);
 
   const pages: MultiPageSheetPage[] = [
@@ -321,7 +315,7 @@ export function TriggerViewsSheet({
         <ScheduleEditionSheetContent
           owner={owner}
           trigger={editTrigger?.kind === "schedule" ? editTrigger : null}
-          isEditor={scheduleIsEditor}
+          isEditor={isEditor}
         />
       ),
     },
@@ -335,7 +329,7 @@ export function TriggerViewsSheet({
           trigger={editTrigger?.kind === "webhook" ? editTrigger : null}
           agentConfigurationId={agentConfigurationId}
           webhookSourceView={editWebhookSourceView ?? selectedWebhookSourceView}
-          isEditor={webhookIsEditor}
+          isEditor={isEditor}
         />
       ),
     },
