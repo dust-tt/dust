@@ -79,9 +79,9 @@ async function functionMessageToResponses(
   return functionResponses;
 }
 
-async function assistantContentToPart(
+function assistantContentToPart(
   content: ReasoningContentType | TextContentType | FunctionCallContentType
-): Promise<Part> {
+): Part {
   switch (content.type) {
     case "reasoning":
       assert(content.value.reasoning, "Reasoning content is missing reasoning");
