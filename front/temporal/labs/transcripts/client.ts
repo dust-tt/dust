@@ -41,7 +41,7 @@ function getScheduleOptions(
       overlap: ScheduleOverlapPolicy.SKIP,
     },
     spec: {
-      cronExpressions: ["*/5 * * * *"],
+      cronExpressions: ["*/10 * * * *"],
     },
     memo: {
       transcriptsConfigurationId: transcriptsConfiguration.id,
