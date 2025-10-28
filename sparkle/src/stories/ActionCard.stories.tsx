@@ -1,13 +1,12 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { ToolCard } from "@sparkle/components";
-import { Hoverable } from "@sparkle/components";
+import { ActionCard, Hoverable } from "@sparkle/components";
 import { BookOpenIcon, CommandLineIcon } from "@sparkle/icons/app";
 
-const meta: Meta<typeof ToolCard> = {
-  title: "Modules/ToolCard",
-  component: ToolCard,
+const meta: Meta<typeof ActionCard> = {
+  title: "Modules/ActionCard",
+  component: ActionCard,
 };
 
 export default meta;
@@ -16,7 +15,7 @@ export const Examples = () => (
   <div className="s-flex s-gap-3">
     {/* Not added - default md size */}
     <div className="s-w-80">
-      <ToolCard
+      <ActionCard
         icon={BookOpenIcon}
         cardContainerClassName="s-h-36"
         label="Image Generation"
@@ -24,7 +23,7 @@ export const Examples = () => (
         isSelected
         canAdd
         onClick={() => console.log("Add Image Generation")}
-        toolInfo={{
+        footer={{
           label: "Click here",
           onClick: () => console.log("Click here"),
         }}
@@ -33,7 +32,7 @@ export const Examples = () => (
 
     {/* Added - xl size */}
     <div className="s-w-80">
-      <ToolCard
+      <ActionCard
         cardContainerClassName="s-h-36"
         icon={CommandLineIcon}
         label="Reasoning"
@@ -57,7 +56,7 @@ export const Examples = () => (
         }
         isSelected
         canAdd={false}
-        toolInfo={{
+        footer={{
           label: "Click here",
           onClick: () => console.log("Click here"),
         }}

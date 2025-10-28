@@ -35,6 +35,7 @@ function toContentChunk(content: UserContent | ReasoningContent): ContentChunk {
         type: "thinking",
         thinking: [{ type: "text", text: content.value.reasoning }],
       };
+    }
     default:
       assertNever(content);
   }

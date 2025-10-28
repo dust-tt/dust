@@ -16,7 +16,7 @@ import {
   executeListUsers,
   executePostMessage,
   getSlackClient,
-} from "@app/lib/actions/mcp_internal_actions/servers/slack_bot/slack_api_helper";
+} from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import {
   makeInternalMCPServer,
   makePersonalAuthenticationError,

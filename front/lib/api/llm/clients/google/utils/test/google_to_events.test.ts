@@ -1,0 +1,200 @@
+import type { GenerateContentResponse } from "@google/genai";
+import { FinishReason } from "@google/genai";
+import { describe, expect, it } from "vitest";
+
+import { streamLLMEvents } from "../google_to_events";
+
+// Test-specific type that omits computed/derived properties from GenerateContentResponse
+type PartialGenerateContentResponse = Omit<
+  GenerateContentResponse,
+  "text" | "data" | "functionCalls" | "executableCode" | "codeExecutionResult"
+>;
+
+async function* createAsyncGenerator<T>(items: T[]): AsyncGenerator<T> {
+  for (const item of items) {
+    yield item;
+  }
+}
+
+describe("streamLLMEvents", () => {
+  describe("when finish reason is stop", () => {
+    it("should convert modelOutputFinishStopEvents to finishStopLLMEvents", async () => {
+      const generateContentResponses = createAsyncGenerator(
+        modelOutputFinishStopEvents as GenerateContentResponse[]
+      );
+      const result = [];
+
+      for await (const event of streamLLMEvents({
+        generateContentResponses,
+        metadata,
+      })) {
+        result.push(event);
+      }
+
+      expect(result).toEqual(
+        finishStopLLMEvents.map((e) => ({ ...e, metadata }))
+      );
+    });
+  });
+
+  describe("when finish reason has function calls", () => {
+    it("should convert modelOutputFunctionCallEvents to functionCallLLMEvents", async () => {
+      const generateContentResponses = createAsyncGenerator(
+        modelOutputFunctionCallEvents as GenerateContentResponse[]
+      );
+      const result = [];
+
+      for await (const event of streamLLMEvents({
+        generateContentResponses,
+        metadata,
+      })) {
+        result.push(event);
+      }
+
+      expect(result).toEqual(
+        functionCallLLMEvents.map((e) => ({ ...e, metadata }))
+      );
+    });
+  });
+});
+
+const modelOutputFinishStopEvents: PartialGenerateContentResponse[] = [
+  {
+    candidates: [
+      {
+        content: {
+          parts: [
+            {
+              text: "Hello, ",
+            },
+          ],
+          role: "model",
+        },
+        finishReason: undefined,
+        index: 0,
+      },
+    ],
+  },
+  {
+    candidates: [
+      {
+        content: {
+          parts: [
+            {
+              text: "how are you ?",
+            },
+          ],
+          role: "model",
+        },
+        finishReason: FinishReason.STOP,
+        index: 0,
+      },
+    ],
+    usageMetadata: {
+      promptTokenCount: 3186,
+      candidatesTokenCount: 192,
+      totalTokenCount: 3378,
+    },
+  },
+];
+
+const modelOutputFunctionCallEvents: PartialGenerateContentResponse[] = [
+  {
+    candidates: [
+      {
+        content: {
+          parts: [
+            {
+              text: "Hi !",
+            },
+          ],
+          role: "model",
+        },
+        finishReason: undefined,
+        index: 0,
+      },
+    ],
+  },
+  {
+    candidates: [
+      {
+        content: {
+          parts: [
+            {
+              functionCall: {
+                id: "DdHr7L197",
+                name: "web_search_browse__websearch",
+                args: {
+                  query: "Paris France weather forecast October 23 2025",
+                },
+              },
+            },
+          ],
+          role: "model",
+        },
+        finishReason: FinishReason.STOP,
+        index: 0,
+      },
+    ],
+    usageMetadata: {
+      promptTokenCount: 1766,
+      candidatesTokenCount: 128,
+      totalTokenCount: 1894,
+    },
+  },
+];
+
+const metadata = {
+  providerId: "google_ai_studio" as const,
+  modelId: "gemini-pro",
+};
+
+const finishStopLLMEvents = [
+  {
+    type: "text_delta",
+    content: {
+      delta: "Hello, ",
+    },
+    metadata,
+  },
+  {
+    type: "text_delta",
+    content: {
+      delta: "how are you ?",
+    },
+    metadata,
+  },
+  {
+    type: "text_generated",
+    content: {
+      text: "Hello, how are you ?",
+    },
+    metadata,
+  },
+];
+
+const functionCallLLMEvents = [
+  {
+    type: "text_delta",
+    content: {
+      delta: "Hi !",
+    },
+    metadata,
+  },
+  {
+    type: "tool_call",
+    content: {
+      id: "DdHr7L197",
+      name: "web_search_browse__websearch",
+      arguments: '{"query":"Paris France weather forecast October 23 2025"}',
+    },
+    metadata,
+  },
+  {
+    type: "text_generated",
+    content: {
+      text: "Hi !",
+    },
+    metadata,
+  },
+];
