@@ -1,5 +1,4 @@
 import type { ModelConfigurationType } from "@app/types";
-
 import {
   CLAUDE_2_1_MODEL_ID,
   CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
