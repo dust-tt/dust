@@ -1,9 +1,9 @@
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import type { AgentMessageAnalyticsArgs } from "@app/temporal/agent_loop/activities/analytics";
 import { QUEUE_NAME } from "@app/temporal/analytics_queue/config";
 import { makeAgentMessageAnalyticsWorkflowId } from "@app/temporal/analytics_queue/helpers";
 import {
@@ -12,17 +12,18 @@ import {
 } from "@app/temporal/analytics_queue/workflows";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 export async function launchStoreAgentAnalyticsWorkflow({
   authType,
-  agentMessageAnalyticsArgs,
+  agentLoopArgs,
 }: {
   authType: AuthenticatorType;
-  agentMessageAnalyticsArgs: AgentMessageAnalyticsArgs;
+  agentLoopArgs: AgentLoopArgs;
 }): Promise<Result<undefined, Error>> {
   const { workspaceId } = authType;
 
-  const { agentMessageId, conversationId } = agentMessageAnalyticsArgs.message;
+  const { agentMessageId, conversationId } = agentLoopArgs;
 
   const client = await getTemporalClientForFrontNamespace();
 
@@ -33,41 +34,22 @@ export async function launchStoreAgentAnalyticsWorkflow({
   });
 
   try {
-    if (agentMessageAnalyticsArgs.type === "agent_message") {
-      await client.workflow.start(storeAgentAnalyticsWorkflow, {
-        args: [authType, { agentLoopArgs: agentMessageAnalyticsArgs.message }],
-        taskQueue: QUEUE_NAME,
-        workflowId,
-        memo: {
-          agentMessageId,
-          workspaceId,
-        },
-      });
-    } else if (agentMessageAnalyticsArgs.type === "agent_message_feedback") {
-      await client.workflow.start(storeAgentMessageFeedbackWorkflow, {
-        args: [
-          authType,
-          {
-            feedback: agentMessageAnalyticsArgs.feedback,
-            message: agentMessageAnalyticsArgs.message,
-          },
-        ],
-        taskQueue: QUEUE_NAME,
-        workflowId,
-        memo: {
-          agentMessageId,
-          workspaceId,
-        },
-      });
-    }
-
+    await client.workflow.start(storeAgentAnalyticsWorkflow, {
+      args: [authType, { agentLoopArgs }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      memo: {
+        agentMessageId,
+        workspaceId,
+      },
+    });
     return new Ok(undefined);
   } catch (e) {
     if (!(e instanceof WorkflowExecutionAlreadyStartedError)) {
       logger.error(
         {
           workflowId,
-          agentMessageId: agentMessageAnalyticsArgs.message.agentMessageId,
+          agentMessageId,
           error: e,
         },
         "Failed starting agent analytics workflow"
@@ -76,4 +58,55 @@ export async function launchStoreAgentAnalyticsWorkflow({
 
     return new Err(normalizeError(e));
   }
+}
+
+export async function launchAgentMessageFeedbackWorkflow(
+  authType: AuthenticatorType,
+  {
+    feedback,
+    message,
+  }: {
+    feedback: AgentMessageFeedbackType;
+    message: {
+      conversationId: string;
+      agentMessageId: string;
+    };
+  }
+): Promise<Result<undefined, Error>> {
+  const { workspaceId } = authType;
+
+  const { agentMessageId, conversationId } = message;
+
+  const client = await getTemporalClientForFrontNamespace();
+
+  const workflowId = makeAgentMessageAnalyticsWorkflowId({
+    agentMessageId,
+    conversationId,
+    workspaceId,
+  });
+
+  try {
+    await client.workflow.start(storeAgentMessageFeedbackWorkflow, {
+      args: [authType, { feedback, message }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      memo: {
+        agentMessageId,
+        workspaceId,
+      },
+    });
+  } catch (e) {
+    if (!(e instanceof WorkflowExecutionAlreadyStartedError)) {
+      logger.error(
+        {
+          workflowId,
+          agentMessageId,
+          error: e,
+        },
+        "Failed starting agent message feedback workflow"
+      );
+    }
+  }
+
+  return new Ok(undefined);
 }

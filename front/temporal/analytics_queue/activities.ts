@@ -300,7 +300,7 @@ export async function storeAgentMessageFeedbackActivity(
   );
 
   await updateAnalyticsFeedback(auth, {
-    messageSId: message.agentMessageId,
+    messageId: message.agentMessageId,
     messageCreated,
     feedbacks: allFeedbacks,
   });

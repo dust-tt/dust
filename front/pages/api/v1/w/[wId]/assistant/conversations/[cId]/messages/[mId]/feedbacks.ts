@@ -16,7 +16,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
-import { launchAgentMessageAnalyticsActivity } from "@app/temporal/agent_loop/activities/analytics";
+import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
 import type { WithAPIErrorResponse } from "@app/types";
 import { getUserEmailFromHeaders } from "@app/types/user";
 
@@ -251,8 +251,7 @@ async function handler(
         });
       }
 
-      await launchAgentMessageAnalyticsActivity(auth.toJSON(), {
-        type: "agent_message_feedback",
+      await launchAgentMessageFeedbackWorkflow(auth.toJSON(), {
         feedback: created.value,
         message: {
           agentMessageId: messageId,

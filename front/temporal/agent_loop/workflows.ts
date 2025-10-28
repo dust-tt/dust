@@ -221,10 +221,7 @@ export async function agentLoopWorkflow({
         },
       });
 
-      await launchAgentMessageAnalyticsActivity(authType, {
-        type: "agent_message",
-        message: agentLoopArgs,
-      });
+      await launchAgentMessageAnalyticsActivity(authType, agentLoopArgs);
     });
 
     if (childWorkflowHandle) {

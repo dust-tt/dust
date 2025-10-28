@@ -545,7 +545,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   static async listByAgentMessageId(
     auth: Authenticator,
-    agentMessageId: number
+    agentMessageId: ModelId
   ): Promise<AgentMessageFeedbackResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 

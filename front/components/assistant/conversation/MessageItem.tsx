@@ -77,6 +77,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 type: "success",
               });
             }
+
             await mutate(
               `/api/w/${context.owner.sId}/assistant/conversations/${context.conversationId}/feedbacks`
             );
