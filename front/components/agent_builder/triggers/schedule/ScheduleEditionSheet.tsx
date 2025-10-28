@@ -10,6 +10,7 @@ import { useController, useFormContext } from "react-hook-form";
 
 import type { AgentBuilderScheduleTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ScheduleEditionScheduler } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionScheduler";
+import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import type { LightWorkspaceType } from "@app/types";
 
 interface ScheduleEditionNameInputProps {
@@ -17,7 +18,7 @@ interface ScheduleEditionNameInputProps {
 }
 
 function ScheduleEditionNameInput({ isEditor }: ScheduleEditionNameInputProps) {
-  const { control } = useFormContext();
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
     field,
     fieldState: { error },
@@ -46,7 +47,7 @@ interface ScheduleEditionStatusToggleProps {
 function ScheduleEditionStatusToggle({
   isEditor,
 }: ScheduleEditionStatusToggleProps) {
-  const { control } = useFormContext();
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
     field: { value: enabled, onChange: setEnabled },
   } = useController({ control, name: "schedule.enabled" });
@@ -79,7 +80,7 @@ interface ScheduleEditionMessageInputProps {
 function ScheduleEditionMessageInput({
   isEditor,
 }: ScheduleEditionMessageInputProps) {
-  const { control } = useFormContext();
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const { field } = useController({ control, name: "schedule.customPrompt" });
 
   return (

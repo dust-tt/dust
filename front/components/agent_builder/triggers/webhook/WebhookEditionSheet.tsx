@@ -17,6 +17,7 @@ import { useController, useFormContext } from "react-hook-form";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
+import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
@@ -31,7 +32,7 @@ interface WebhookEditionNameInputProps {
 }
 
 function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
-  const { control } = useFormContext();
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
     field,
     fieldState: { error },
@@ -60,7 +61,7 @@ interface WebhookEditionStatusToggleProps {
 function WebhookEditionStatusToggle({
   isEditor,
 }: WebhookEditionStatusToggleProps) {
-  const { control } = useFormContext();
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
     field: { value: enabled, onChange: setEnabled },
   } = useController({ control, name: "webhook.enabled" });
@@ -97,7 +98,7 @@ function WebhookEditionEventSelector({
   selectedPreset,
   availableEvents,
 }: WebhookEditionEventSelectorProps) {
-  const { control } = useFormContext();
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
     field: { value: selectedEvent, onChange: setSelectedEvent },
     fieldState: { error },
@@ -151,7 +152,7 @@ interface WebhookEditionIncludePayloadProps {
 function WebhookEditionIncludePayload({
   isEditor,
 }: WebhookEditionIncludePayloadProps) {
-  const { control } = useFormContext();
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
     field: { value: includePayload, onChange: setIncludePayload },
   } = useController({ control, name: "webhook.includePayload" });
@@ -182,7 +183,7 @@ interface WebhookEditionMessageInputProps {
 function WebhookEditionMessageInput({
   isEditor,
 }: WebhookEditionMessageInputProps) {
-  const { control } = useFormContext();
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const { field } = useController({ control, name: "webhook.customPrompt" });
 
   return (
