@@ -146,76 +146,81 @@ export function TriggerViewsSheet({
         return;
       }
 
-      if (values.type === "schedule") {
-        const triggerData: AgentBuilderScheduleTriggerType = {
-          sId: editTrigger?.kind === "schedule" ? editTrigger.sId : undefined,
-          enabled: values.schedule.enabled,
-          name: values.schedule.name.trim(),
-          kind: "schedule",
-          configuration: {
-            cron: values.schedule.cron.trim(),
-            timezone: values.schedule.timezone.trim(),
-          },
-          editor:
-            editTrigger?.kind === "schedule"
-              ? editTrigger.editor
-              : user.id ?? null,
-          naturalLanguageDescription:
-            values.schedule.naturalLanguageDescription?.trim() ?? null,
-          customPrompt: values.schedule.customPrompt?.trim() ?? null,
-          editorName:
-            editTrigger?.kind === "schedule"
-              ? editTrigger.editorName
-              : user.fullName ?? undefined,
-        };
+      switch (values.type) {
+        case "schedule": {
+          const triggerData: AgentBuilderScheduleTriggerType = {
+            sId: editTrigger?.kind === "schedule" ? editTrigger.sId : undefined,
+            enabled: values.schedule.enabled,
+            name: values.schedule.name.trim(),
+            kind: "schedule",
+            configuration: {
+              cron: values.schedule.cron.trim(),
+              timezone: values.schedule.timezone.trim(),
+            },
+            editor:
+              editTrigger?.kind === "schedule"
+                ? editTrigger.editor
+                : user.id ?? null,
+            naturalLanguageDescription:
+              values.schedule.naturalLanguageDescription?.trim() ?? null,
+            customPrompt: values.schedule.customPrompt?.trim() ?? null,
+            editorName:
+              editTrigger?.kind === "schedule"
+                ? editTrigger.editorName
+                : user.fullName ?? undefined,
+          };
 
-        if (triggerData.sId) {
-          onAppendTriggerToUpdate(triggerData);
-        } else {
-          onAppendTriggerToCreate(triggerData);
+          if (triggerData.sId) {
+            onAppendTriggerToUpdate(triggerData);
+          } else {
+            onAppendTriggerToCreate(triggerData);
+          }
+          break;
         }
-      } else if (values.type === "webhook") {
-        // Validate that event is selected for preset webhooks
-        const webhookSourceView =
-          editWebhookSourceView ?? selectedWebhookSourceView;
-        if (webhookSourceView?.provider && !values.webhook.event) {
-          form.setError("webhook.event", {
-            type: "manual",
-            message: "Please select an event",
-          });
-          return;
-        }
+        case "webhook": {
+          // Validate that event is selected for preset webhooks
+          const webhookSourceView =
+            editWebhookSourceView ?? selectedWebhookSourceView;
+          if (webhookSourceView?.provider && !values.webhook.event) {
+            form.setError("webhook.event", {
+              type: "manual",
+              message: "Please select an event",
+            });
+            return;
+          }
 
-        const triggerData: AgentBuilderWebhookTriggerType = {
-          sId: editTrigger?.kind === "webhook" ? editTrigger.sId : undefined,
-          enabled: values.webhook.enabled,
-          name: values.webhook.name.trim(),
-          customPrompt: values.webhook.customPrompt?.trim() ?? null,
-          naturalLanguageDescription: webhookSourceView?.provider
-            ? values.webhook.naturalDescription?.trim() ?? null
-            : null,
-          kind: "webhook",
-          configuration: {
-            includePayload: values.webhook.includePayload,
-            event: values.webhook.event,
-            filter: values.webhook.filter?.trim() ?? undefined,
-          },
-          webhookSourceViewSId:
-            values.webhook.webhookSourceViewSId ?? undefined,
-          editor:
-            editTrigger?.kind === "webhook"
-              ? editTrigger.editor
-              : user.id ?? null,
-          editorName:
-            editTrigger?.kind === "webhook"
-              ? editTrigger.editorName
-              : user.fullName ?? undefined,
-        };
+          const triggerData: AgentBuilderWebhookTriggerType = {
+            sId: editTrigger?.kind === "webhook" ? editTrigger.sId : undefined,
+            enabled: values.webhook.enabled,
+            name: values.webhook.name.trim(),
+            customPrompt: values.webhook.customPrompt?.trim() ?? null,
+            naturalLanguageDescription: webhookSourceView?.provider
+              ? values.webhook.naturalDescription?.trim() ?? null
+              : null,
+            kind: "webhook",
+            configuration: {
+              includePayload: values.webhook.includePayload,
+              event: values.webhook.event,
+              filter: values.webhook.filter?.trim() ?? undefined,
+            },
+            webhookSourceViewSId:
+              values.webhook.webhookSourceViewSId ?? undefined,
+            editor:
+              editTrigger?.kind === "webhook"
+                ? editTrigger.editor
+                : user.id ?? null,
+            editorName:
+              editTrigger?.kind === "webhook"
+                ? editTrigger.editorName
+                : user.fullName ?? undefined,
+          };
 
-        if (triggerData.sId) {
-          onAppendTriggerToUpdate(triggerData);
-        } else {
-          onAppendTriggerToCreate(triggerData);
+          if (triggerData.sId) {
+            onAppendTriggerToUpdate(triggerData);
+          } else {
+            onAppendTriggerToCreate(triggerData);
+          }
+          break;
         }
       }
 
