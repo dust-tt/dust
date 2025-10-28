@@ -21,6 +21,7 @@ import type {
 } from "@app/types";
 import { isString } from "@app/types";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
+import assert from "node:assert";
 
 export function toOpenAIReasoningEffort(
   reasoningEffort: AgentReasoningEffort
@@ -62,12 +63,11 @@ function toAssistantItem(content: AgentContentItemType): ResponseInputItem {
         arguments: content.value.arguments,
       };
     case "reasoning":
+      assert(content.value.reasoning, "Expected non-null reasoning content");
       return {
         id: "",
         type: "reasoning",
-        summary: [
-          { type: "summary_text", text: content.value.reasoning ?? "" },
-        ],
+        summary: [{ type: "summary_text", text: content.value.reasoning }],
       };
     case "error":
       return {
@@ -90,14 +90,6 @@ function userMessage(message: UserMessageTypeModel): ResponseInputItem.Message {
     role: "user",
     content: message.content.map(toUserContent),
   };
-}
-
-function assistantMessages(
-  message:
-    | AssistantContentMessageTypeModel
-    | AssistantFunctionCallMessageTypeModel
-): ResponseInputItem[] {
-  return message.contents.map(toAssistantItem);
 }
 
 function functionMessage(
@@ -147,7 +139,7 @@ export function toInput(
         inputs.push(userMessage(message));
         break;
       case "assistant":
-        inputs.push(...assistantMessages(message));
+        inputs.push(...message.contents.map(toAssistantItem));
         break;
       case "function":
         inputs.push(functionMessage(message));
@@ -165,16 +157,16 @@ export function toTool(tool: AgentActionSpecification): FunctionTool {
     additionalProperties: boolean;
   } = {
     type: "object",
-    properties: {},
+    properties: tool.inputSchema.properties ?? {},
     required: [],
     additionalProperties: false,
   };
 
-  for (const [key, value] of Object.entries(
-    tool.inputSchema.properties ?? {}
-  )) {
-    parameters.properties[key] = value;
-  }
+  // for (const [key, value] of Object.entries(
+  //   tool.inputSchema.properties ?? {}
+  // )) {
+  //   parameters.properties[key] = value;
+  // }
   parameters.required = Object.keys(parameters.properties);
 
   return {

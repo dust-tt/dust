@@ -3,7 +3,6 @@ import type { ReasoningEffort } from "openai/resources/shared.mjs";
 
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { baseURLFromProviderId } from "@app/lib/api/llm/clients/openai/utils";
 import {
   toInput,
   toOpenAIReasoningEffort,
@@ -24,7 +23,6 @@ export class OpenAILLM extends LLM {
   protected metadata: ProviderMetadata;
   private reasoningEffort: ReasoningEffort;
   private temperature: number;
-  private baseURL?: string;
 
   constructor({
     options,
@@ -40,9 +38,7 @@ export class OpenAILLM extends LLM {
       options?.reasoningEffort ?? "none"
     );
     const { OPENAI_API_KEY } = dustManagedCredentials();
-    this.baseURL = baseURLFromProviderId(model.providerId);
     this.client = new OpenAI({
-      baseURL: this.baseURL,
       apiKey: OPENAI_API_KEY,
     });
     this.metadata = {
