@@ -92,11 +92,7 @@ export function AgentBuilderTriggersBlock({
     setSheetMode({ type: "add" });
   };
 
-  const handleTriggerEdit = (
-    trigger: AgentBuilderTriggerType,
-    displayIndex: number
-  ) => {
-    const displayItem = allTriggers[displayIndex];
+  const handleTriggerEdit = (trigger: AgentBuilderTriggerType) => {
     let webhookSourceView: WebhookSourceViewType | null = null;
 
     if (trigger.kind === "webhook") {
@@ -190,7 +186,7 @@ export function AgentBuilderTriggersBlock({
                 key={item.trigger.sId ?? `${item.source}-${item.index}`}
                 trigger={item.trigger}
                 onRemove={() => handleTriggerRemove(item.trigger, displayIndex)}
-                onEdit={() => handleTriggerEdit(item.trigger, displayIndex)}
+                onEdit={() => handleTriggerEdit(item.trigger)}
               />
             ))}
           </CardGrid>
