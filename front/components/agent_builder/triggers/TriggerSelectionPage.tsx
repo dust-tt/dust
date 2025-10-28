@@ -2,6 +2,7 @@ import { SearchInput, TimeIcon, ToolCard } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 
 import { getIcon } from "@app/components/resources/resources_icons";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 interface TriggerSelectionPageContentProps {
@@ -80,7 +81,7 @@ export function TriggerSelectionPageContent({
                 return (
                   <ToolCard
                     key={view.sId}
-                    icon={getIcon(view.icon)}
+                    icon={getIcon(normalizeWebhookIcon(view.icon))}
                     label={view.customName}
                     description={
                       view.description ||
