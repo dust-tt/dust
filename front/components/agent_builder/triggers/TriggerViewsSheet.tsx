@@ -46,7 +46,6 @@ export type SheetMode =
 interface TriggerViewsSheetProps {
   owner: LightWorkspaceType;
   mode: SheetMode | null;
-  onModeChange: (mode: SheetMode | null) => void;
   webhookSourceViews: WebhookSourceViewType[];
   agentConfigurationId: string | null;
   onAppendTriggerToCreate: (trigger: AgentBuilderTriggerType) => void;
@@ -56,7 +55,6 @@ interface TriggerViewsSheetProps {
 export function TriggerViewsSheet({
   owner,
   mode,
-  onModeChange,
   webhookSourceViews,
   agentConfigurationId,
   onAppendTriggerToCreate,
@@ -67,6 +65,7 @@ export function TriggerViewsSheet({
   const [currentPageId, setCurrentPageId] = useState<string>(
     TRIGGERS_SHEET_PAGE_IDS.SELECTION
   );
+  const [open, setOpen] = useState(mode !== null);
 
   const editTrigger = mode?.type === "edit" ? mode.trigger : null;
   const editWebhookSourceView =
@@ -109,8 +108,8 @@ export function TriggerViewsSheet({
 
   const handleSheetClose = useCallback(() => {
     setSelectedWebhookSourceView(null);
-    onModeChange(null);
-  }, [onModeChange]);
+    setOpen(false);
+  }, []);
 
   const handleScheduleSelect = useCallback(() => {
     form.reset({
@@ -222,6 +221,12 @@ export function TriggerViewsSheet({
     setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SELECTION);
   }, [defaultValues, form, mode]);
 
+  useEffect(() => {
+    if (mode) {
+      setOpen(true);
+    }
+  }, [mode]);
+
   const webhookIcon = useMemo(() => {
     const webhookSourceView =
       editWebhookSourceView ?? selectedWebhookSourceView;
@@ -295,7 +300,7 @@ export function TriggerViewsSheet({
   return (
     <FormProvider form={form} onSubmit={handleFormSubmit}>
       <MultiPageSheet
-        open={mode !== null}
+        open={open}
         onOpenChange={(open) => !open && handleSheetClose()}
       >
         <MultiPageSheetContent

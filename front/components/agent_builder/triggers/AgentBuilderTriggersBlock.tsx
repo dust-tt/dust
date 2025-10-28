@@ -203,7 +203,6 @@ export function AgentBuilderTriggersBlock({
       <TriggerViewsSheet
         owner={owner}
         mode={sheetMode}
-        onModeChange={setSheetMode}
         webhookSourceViews={accessibleWebhookSourceViews}
         agentConfigurationId={agentConfigurationId}
         onAppendTriggerToCreate={appendTriggerToCreate}
