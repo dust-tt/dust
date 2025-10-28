@@ -31,6 +31,12 @@ export type FileUseCaseMetadata = {
   lastEditedByAgentConfigurationId?: string;
 };
 
+export function isConversationFileUseCase(
+  useCase: string
+): useCase is "conversation" | "tool_output" {
+  return ["conversation", "tool_output"].includes(useCase);
+}
+
 export const fileShareScopeSchema = z.enum(["workspace", "public"]);
 
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;

@@ -34,9 +34,12 @@ export function CreateWebhookSourceWithProviderForm({
     null
   );
   const [isConnectingProvider, setIsConnectingToProvider] = useState(false);
+  const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
+  const [isExtraConfigValid, setIsExtraConfigValid] = useState(false);
 
   const preset = WEBHOOK_PRESETS[provider];
   const kindName = preset.name;
+  const OAuthExtraConfigInput = preset.components.oauthExtraConfigInput;
 
   const handleConnectToProvider = async () => {
     if (!owner) {
@@ -50,7 +53,7 @@ export function CreateWebhookSourceWithProviderForm({
         owner,
         provider,
         useCase: "webhooks",
-        extraConfig: {},
+        extraConfig,
       });
 
       if (connectionRes.isErr()) {
@@ -86,6 +89,16 @@ export function CreateWebhookSourceWithProviderForm({
           Connect your {kindName} account to select repositories and
           organizations to follow.
         </p>
+        {OAuthExtraConfigInput && (
+          <div className="mt-4">
+            <OAuthExtraConfigInput
+              extraConfig={extraConfig}
+              setExtraConfig={setExtraConfig}
+              setIsExtraConfigValid={setIsExtraConfigValid}
+            />
+          </div>
+        )}
+
         <div className="mt-2 flex items-center gap-2">
           <Button
             variant={"outline"}
@@ -94,7 +107,11 @@ export function CreateWebhookSourceWithProviderForm({
             }
             icon={getIcon(preset.icon)}
             onClick={handleConnectToProvider}
-            disabled={isConnectingProvider || !!connection}
+            disabled={
+              isConnectingProvider ||
+              !!connection ||
+              (OAuthExtraConfigInput ? !isExtraConfigValid : false)
+            }
           />
           {connection && preset.webhookPageUrl && (
             <a

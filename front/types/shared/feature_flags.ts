@@ -62,6 +62,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",
   },
+  http_client_tool: {
+    description: "HTTP Client MCP tool for making external API requests",
+    stage: "on_demand",
+  },
   index_private_slack_channel: {
     description: "Allow indexing of private Slack channels",
     stage: "on_demand",
@@ -232,6 +236,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   dust_global_agent_memory: {
     description: "Enable agent memory tool on the @dust global agent",
+    stage: "dust_only",
+  },
+  dust_global_data_source_file_system: {
+    description:
+      "Use the Data Sources File System MCP server on the @dust global agent (replaces search tool server)",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

@@ -15,6 +15,10 @@ export function isStringArray(value: unknown): value is string[] {
   );
 }
 
+export function isRecord(value: object): value is Record<string, unknown> {
+  return !Array.isArray(value);
+}
+
 export function isEmptyString(str: string | null | undefined): boolean {
   if (str === null || str === undefined) {
     return true;

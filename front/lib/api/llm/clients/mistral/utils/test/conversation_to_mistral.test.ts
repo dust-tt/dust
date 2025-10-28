@@ -19,7 +19,7 @@ const conversationMessages: ModelMessageTypeMultiActionsWithoutContentFragment[]
   [
     {
       role: "user",
-      name: "Pierre Milliotte",
+      name: "Somebody",
       content: [
         {
           type: "text",
@@ -27,7 +27,7 @@ const conversationMessages: ModelMessageTypeMultiActionsWithoutContentFragment[]
         },
         {
           type: "text",
-          text: "<dust_system>\n- Sender: Pierre Milliotte (@pierre) <pierre@dust.tt>\n- Sent at: Oct 22, 2025, 10:53:44 GMT+2\n- Source: web\n</dust_system>\n\n@test hello",
+          text: "<dust_system>\n- Sender: Somebody (@somebody) <somebody@dust.tt>\n- Sent at: Oct 22, 2025, 10:53:44 GMT+2\n- Source: web\n</dust_system>\n\n@test hello",
         },
       ],
     },
@@ -77,7 +77,7 @@ const inputMessages = [
       },
       {
         type: "text",
-        text: "<dust_system>\n- Sender: Pierre Milliotte (@pierre) <pierre@dust.tt>\n- Sent at: Oct 22, 2025, 10:53:44 GMT+2\n- Source: web\n</dust_system>\n\n@test hello",
+        text: "<dust_system>\n- Sender: Somebody (@somebody) <somebody@dust.tt>\n- Sent at: Oct 22, 2025, 10:53:44 GMT+2\n- Source: web\n</dust_system>\n\n@test hello",
       },
     ],
   },

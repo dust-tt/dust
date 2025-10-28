@@ -531,7 +531,7 @@ async function processErrorResult(
       await throttleWithRedis(
         RATE_LIMITS["chat.update"],
         `${connector.id}-chat-update`,
-        false,
+        { canBeIgnored: false },
         async () =>
           slackClient.chat.update({
             ...errorPost,

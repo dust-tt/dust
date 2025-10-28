@@ -1,7 +1,6 @@
 import compact from "lodash/compact";
 import type {
   ResponseOutputItem,
-  ResponseOutputItemDoneEvent,
   ResponseStreamEvent,
 } from "openai/resources/responses/responses";
 import type { Response } from "openai/resources/responses/responses";
@@ -42,31 +41,6 @@ function reasoningDelta(delta: string, metadata: ProviderMetadata): LLMEvent {
     },
     metadata,
   };
-}
-
-function toolCall(
-  event: ResponseOutputItemDoneEvent,
-  metadata: ProviderMetadata
-): LLMEvent[] {
-  const events: LLMEvent[] = [];
-  const item = event.item;
-
-  switch (item.type) {
-    case "function_call":
-      events.push({
-        type: "tool_call",
-        content: {
-          id: extractCallId(item.call_id),
-          name: item.name,
-          arguments: item.arguments,
-        },
-        metadata,
-      });
-      break;
-    default:
-      break;
-  }
-  return events;
 }
 
 function itemToEvent(
@@ -166,8 +140,6 @@ function toEvents({
       return [textDelta(event.delta, metadata)];
     case "response.reasoning_summary_text.delta":
       return [reasoningDelta(event.delta, metadata)];
-    // case "response.output_item.done":
-    //   return toolCall(event, metadata);
     case "response.completed":
       return responseCompleted(event.response, metadata);
     default:

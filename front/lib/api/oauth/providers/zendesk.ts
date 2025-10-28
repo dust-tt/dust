@@ -13,11 +13,13 @@ import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 export class ZendeskOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
     connection,
+    useCase,
   }: {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
   }) {
-    const scopes = ["read"];
+    // Webhooks require write scope to create/manage webhooks
+    const scopes = useCase === "webhooks" ? ["webhooks:write"] : ["read"];
     if (!isValidZendeskSubdomain(connection.metadata.zendesk_subdomain)) {
       throw "Invalid Zendesk subdomain";
     }

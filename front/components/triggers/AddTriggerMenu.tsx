@@ -10,6 +10,7 @@ import {
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
 import type { WorkspaceType } from "@app/types";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import {
@@ -19,7 +20,7 @@ import {
 
 type AddTriggerMenuProps = {
   owner: WorkspaceType;
-  createWebhook: (provider: WebhookProvider) => void;
+  createWebhook: (provider: WebhookProvider | null) => void;
 };
 
 export const AddTriggerMenu = ({
@@ -61,6 +62,12 @@ export const AddTriggerMenu = ({
               onClick={() => createWebhook(kind)}
             />
           ))}
+        <DropdownMenuItem
+          key="custom"
+          label="Custom Webhook"
+          icon={getIcon(DEFAULT_WEBHOOK_ICON)}
+          onClick={() => createWebhook(null)}
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -11,7 +11,10 @@ import { runPermissionsWorker } from "@app/temporal/permissions_queue/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
 import { runRelocationWorker } from "@app/temporal/relocation/worker";
 import { runRemoteToolsSyncWorker } from "@app/temporal/remote_tools/worker";
-import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
+import {
+  runScrubWorkspaceQueueWorker,
+  runScrubWorkspaceQueueWorkerV1,
+} from "@app/temporal/scrub_workspace/worker";
 import {
   runTrackerNotificationWorker,
   runTrackerWorker,
@@ -37,6 +40,7 @@ export type WorkerName =
   | "relocation"
   | "remote_tools_sync"
   | "scrub_workspace_queue"
+  | "scrub_workspace_queue_v1"
   | "tracker_notification"
   | "update_workspace_usage"
   | "upsert_queue"
@@ -59,6 +63,8 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   relocation: runRelocationWorker,
   remote_tools_sync: runRemoteToolsSyncWorker,
   scrub_workspace_queue: runScrubWorkspaceQueueWorker,
+  // TODO(rcs): remove this after all workflows on the v1 are done, ETA 2025-11-15
+  scrub_workspace_queue_v1: runScrubWorkspaceQueueWorkerV1,
   tracker_notification: runTrackerNotificationWorker,
   update_workspace_usage: runUpdateWorkspaceUsageWorker,
   upsert_queue: runUpsertQueueWorker,

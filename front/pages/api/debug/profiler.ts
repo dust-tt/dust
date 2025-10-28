@@ -19,7 +19,7 @@ export interface GetProfilerResponse {
   heap: string;
 }
 
-async function saveProfile({
+export async function saveProfile({
   extension,
   filename,
   profile,

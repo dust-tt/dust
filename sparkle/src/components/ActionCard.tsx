@@ -8,14 +8,14 @@ import { cn } from "@sparkle/lib/utils";
 const FADE_TRANSITION_CLASSES =
   "s-transition-opacity s-duration-300 s-ease-in-out";
 
-export interface ToolCardProps {
+export interface ActionCardProps {
   icon: React.ComponentType;
   label: string;
   description: string | React.ReactNode;
   isSelected: boolean;
   canAdd: boolean;
   cantAddReason?: string;
-  toolInfo?: { label: string; onClick: () => void };
+  footer?: { label: string; onClick: () => void };
   onClick?: () => void;
   className?: string;
   cardContainerClassName?: string;
@@ -24,7 +24,7 @@ export interface ToolCardProps {
   descriptionLineClamp?: number;
 }
 
-export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
+export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
   (
     {
       icon,
@@ -33,7 +33,7 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
       isSelected,
       canAdd,
       cantAddReason,
-      toolInfo,
+      footer,
       onClick,
       className,
       cardContainerClassName,
@@ -93,16 +93,16 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
               {description}
             </TruncatedText>
           </div>
-          {toolInfo && (
+          {footer && (
             <div>
               <a
                 onClick={(e) => {
                   e.stopPropagation();
-                  toolInfo.onClick();
+                  footer.onClick();
                 }}
                 className="s-heading-sm s-cursor-pointer s-text-muted-foreground hover:s-text-highlight-light hover:s-underline hover:s-underline-offset-2 dark:s-text-muted-foreground-night dark:hover:s-text-highlight-light-night"
               >
-                {toolInfo.label}
+                {footer.label}
               </a>
             </div>
           )}
@@ -111,4 +111,4 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
     );
   }
 );
-ToolCard.displayName = "ToolCard";
+ActionCard.displayName = "ActionCard";

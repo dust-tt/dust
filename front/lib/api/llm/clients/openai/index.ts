@@ -17,6 +17,7 @@ import type {
   ModelConversationTypeMultiActions,
 } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
+import { OpenAIPayload } from "./utils";
 
 export class OpenAILLM extends LLM {
   private client: OpenAI;
@@ -24,13 +25,7 @@ export class OpenAILLM extends LLM {
   private reasoningEffort: ReasoningEffort;
   private temperature: number;
 
-  constructor({
-    options,
-    model,
-  }: {
-    options?: LLMOptions;
-    model: ModelConfigurationType;
-  }) {
+  constructor({ options, model }: OpenAIPayload) {
     super({ model, options });
     this.temperature =
       options?.temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced;

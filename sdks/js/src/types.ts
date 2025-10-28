@@ -708,6 +708,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "llm_router_direct_requests"
   | "mentions_v2"
   | "dust_global_agent_memory"
+  | "dust_global_data_source_file_system"
+  | "http_client_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2843,6 +2845,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "StripeLogo"
   | "OpenaiLogo"
   | "ValTownLogo"
+  | "ZendeskLogo"
 >();
 
 const CustomServerIconSchema = FlexibleEnumSchema<

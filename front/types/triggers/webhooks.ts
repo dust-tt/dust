@@ -8,6 +8,7 @@ import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/g
 import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/github/github_webhook_source_presets";
 import type { TestServiceData } from "@app/lib/triggers/built-in-webhooks/test/test_webhook_source_presets";
 import { TEST_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/test/test_webhook_source_presets";
+import { ZENDESK_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/zendesk/zendesk_webhook_source_presets";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
@@ -22,7 +23,7 @@ export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
 export type WebhookSourceSignatureAlgorithm =
   (typeof WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS)[number];
 
-export const WEBHOOK_PROVIDERS = ["test", "github"] as const;
+export const WEBHOOK_PROVIDERS = ["test", "github", "zendesk"] as const;
 
 export type WebhookProvider = (typeof WEBHOOK_PROVIDERS)[number];
 
@@ -32,9 +33,13 @@ export function isWebhookProvider(
   return WEBHOOK_PROVIDERS.includes(provider as WebhookProvider);
 }
 
+export const NoAdditionalDataSchema = z.object({});
+export type NoAdditionalData = z.infer<typeof NoAdditionalDataSchema>;
+
 type WebhookProviderServiceDataMap = {
   github: GithubAdditionalData;
   test: TestServiceData;
+  zendesk: NoAdditionalData;
 };
 
 export type WebhookServiceDataForProvider<P extends WebhookProvider> =
@@ -43,6 +48,7 @@ export type WebhookServiceDataForProvider<P extends WebhookProvider> =
 export const WEBHOOK_PRESETS = {
   github: GITHUB_WEBHOOK_PRESET,
   test: TEST_WEBHOOK_PRESET,
+  zendesk: ZENDESK_WEBHOOK_PRESET,
 } satisfies {
   [P in WebhookProvider]: PresetWebhook<P>;
 };
@@ -118,4 +124,5 @@ export const WebhookSourcesSchema = z.object({
   connectionId: z.string().optional(),
   remoteMetadata: z.record(z.any()).optional(),
   icon: z.string().optional(),
+  description: z.string().optional(),
 });

@@ -78,6 +78,15 @@ const modelOutputEvents: ResponseStreamEvent[] = [
           ],
           role: "assistant",
         },
+        {
+          id: "fc_DdHr7L197",
+          type: "function_call",
+          status: "completed",
+          name: "web_search_browse__websearch",
+          arguments:
+            '{"query":"Paris France weather forecast October 23 2025"}',
+          call_id: "call_DdHr7L197",
+        },
       ],
       parallel_tool_calls: true,
       previous_response_id: null,
@@ -133,18 +142,18 @@ const finishEvents = [
     metadata,
   },
   {
+    type: "text_generated",
+    content: {
+      text: "Hello, how are you ?",
+    },
+    metadata,
+  },
+  {
     type: "tool_call",
     content: {
       id: "DdHr7L197",
       name: "web_search_browse__websearch",
       arguments: '{"query":"Paris France weather forecast October 23 2025"}',
-    },
-    metadata,
-  },
-  {
-    type: "text_generated",
-    content: {
-      text: "Hello, how are you ?",
     },
     metadata,
   },

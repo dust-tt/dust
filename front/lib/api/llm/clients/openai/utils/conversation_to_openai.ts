@@ -9,8 +9,6 @@ import type { ReasoningEffort } from "openai/resources/shared";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
-  AssistantContentMessageTypeModel,
-  AssistantFunctionCallMessageTypeModel,
   Content,
   FunctionMessageTypeModel,
   UserMessageTypeModel,
@@ -19,7 +17,7 @@ import type {
   AgentReasoningEffort,
   ModelConversationTypeMultiActions,
 } from "@app/types";
-import { isString } from "@app/types";
+import * as types from "@app/types";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 import assert from "node:assert";
 
@@ -95,7 +93,7 @@ function userMessage(message: UserMessageTypeModel): ResponseInputItem.Message {
 function functionMessage(
   message: FunctionMessageTypeModel
 ): ResponseFunctionToolCallOutputItem {
-  const outputString = isString(message.content)
+  const outputString = types.isString(message.content)
     ? message.content
     : message.content.map((content) => JSON.stringify(content)).join("\n");
   return {
@@ -162,11 +160,6 @@ export function toTool(tool: AgentActionSpecification): FunctionTool {
     additionalProperties: false,
   };
 
-  // for (const [key, value] of Object.entries(
-  //   tool.inputSchema.properties ?? {}
-  // )) {
-  //   parameters.properties[key] = value;
-  // }
   parameters.required = Object.keys(parameters.properties);
 
   return {
