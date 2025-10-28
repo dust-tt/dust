@@ -100,7 +100,7 @@ export async function getBuilderNameSuggestions(
     getConversationContext(inputs);
   const llm = await getLLM(auth, {
     modelId: "mistral-small-latest",
-    options: { bypassFeatureFlag: true },
+    bypassFeatureFlag: true,
   });
 
   if (llm === null) {
