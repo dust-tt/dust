@@ -225,18 +225,6 @@ export type AgentBuilderScheduleTriggerType = z.infer<
   typeof scheduleTriggerSchema
 >;
 
-export function isAgentBuilderWebhookTriggerType(
-  trigger: AgentBuilderTriggerType
-): trigger is AgentBuilderWebhookTriggerType {
-  return trigger.kind === "webhook";
-}
-
-export function isAgentBuilderScheduleTriggerType(
-  trigger: AgentBuilderTriggerType
-): trigger is AgentBuilderScheduleTriggerType {
-  return trigger.kind === "schedule";
-}
-
 export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,
   instructions: z.string().min(1, "Instructions are required"),
