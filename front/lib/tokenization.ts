@@ -13,20 +13,21 @@ import {
 
 import config from "./api/config";
 
-// Limit batch size to prevent OOM issues in core API when tokenizing large payloads of text.
+// Tokenizing large text payloads causes memory stress in core API, leading to OOM issues.
+// We limit batch size to 100 texts per request to prevent memory exhaustion.
 const MAX_BATCH_SIZE = 100;
+
+// Limit concurrent requests to core API to avoid overloading.
+const TOKENIZATION_CONCURRENCY = 3;
 
 export async function tokenCountForTexts(
   texts: string[],
   model: { providerId: string; modelId: string; tokenCountAdjustment?: number }
 ): Promise<Result<Array<number>, Error>> {
-  const BATCHES_COUNT = 3;
   try {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const batches = _.chunk(
-      texts,
-      Math.min(MAX_BATCH_SIZE, Math.ceil(texts.length / BATCHES_COUNT))
-    );
+    // Split texts into batches to prevent OOM in core API.
+    const batches = _.chunk(texts, MAX_BATCH_SIZE);
 
     const batchResults = await concurrentExecutor(
       batches,
@@ -36,7 +37,7 @@ export async function tokenCountForTexts(
           providerId: model.providerId,
           modelId: model.modelId,
         }),
-      { concurrency: 1 }
+      { concurrency: TOKENIZATION_CONCURRENCY }
     );
 
     const counts: number[] = [];
