@@ -2,6 +2,7 @@ import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it, vi } from "vitest";
 
 import { makeSId } from "@app/lib/resources/string_ids";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -122,6 +123,70 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
 
     // Restore the original method
     deleteSpy.mockRestore();
+  });
+
+  it("should successfully delete a webhook source with associated webhook requests", async () => {
+    const { req, res, workspace, authenticator } = await setupTest(
+      "admin",
+      "DELETE"
+    );
+
+    const webhookSource = await createWebhookSource(
+      workspace,
+      "Test Webhook Source"
+    );
+    req.query.webhookSourceId = webhookSource.sId;
+
+    // Create associated webhook requests
+    const webhookRequest1 = await WebhookRequestResource.makeNew({
+      workspaceId: workspace.id,
+      webhookSourceId: webhookSource.id,
+      status: "received",
+      processedAt: null,
+      errorMessage: null,
+    });
+
+    const webhookRequest2 = await WebhookRequestResource.makeNew({
+      workspaceId: workspace.id,
+      webhookSourceId: webhookSource.id,
+      status: "processed",
+      processedAt: new Date(),
+      errorMessage: null,
+    });
+
+    expect(webhookRequest1.isOk()).toBe(true);
+    expect(webhookRequest2.isOk()).toBe(true);
+
+    // Verify the webhook requests were created
+    const webhookRequests = await WebhookRequestResource.fetchByWebhookSourceId(
+      authenticator,
+      webhookSource.id
+    );
+    expect(webhookRequests.length).toBe(2);
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    const responseData = res._getJSONData();
+    expect(responseData).toEqual({
+      success: true,
+    });
+
+    // Verify the webhook source was deleted
+    const deletedWebhookSource = await WebhookSourceResource.fetchById(
+      authenticator,
+      webhookSource.sId
+    );
+    expect(deletedWebhookSource).toBeNull();
+
+    // Verify the webhook requests were also deleted
+    const remainingWebhookRequests =
+      await WebhookRequestResource.fetchByWebhookSourceId(
+        authenticator,
+        webhookSource.id
+      );
+    expect(remainingWebhookRequests.length).toBe(0);
   });
 });
 
