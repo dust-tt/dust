@@ -15,7 +15,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok, redactString } from "@app/types";
@@ -46,7 +46,11 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
   static async makeNew(
     auth: Authenticator,
     blob: CreationAttributes<WebhookSourceModel>,
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      transaction,
+      icon,
+      description,
+    }: { transaction?: Transaction; icon?: string; description?: string } = {}
   ): Promise<WebhookSourceResource> {
     assert(
       await SpaceResource.canAdministrateSystemSpace(auth),
@@ -67,9 +71,8 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
         editedAt: new Date(),
         editedByUserId: auth.user()?.id,
         webhookSourceId: webhookSource.id,
-        // on creation there is no custom icon or description
-        description: "",
-        icon: DEFAULT_WEBHOOK_ICON,
+        description: description ?? "",
+        icon: normalizeWebhookIcon(icon),
       },
       {
         transaction,

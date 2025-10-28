@@ -36,7 +36,11 @@ function SecretSelectionTable({
   );
 }
 
-export function SecretSection() {
+export function SecretSection({
+  customDescription,
+}: {
+  customDescription?: string;
+}) {
   const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
@@ -113,8 +117,12 @@ export function SecretSection() {
     >
       <div className="flex h-full flex-col gap-3">
         <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          The agent will use the selected secret to authenticate with the
-          service. The secret value will be securely injected at runtime.
+          {customDescription ?? (
+            <>
+              The agent will use the selected secret to authenticate with the
+              service. The secret value will be securely injected at runtime.
+            </>
+          )}
         </div>
 
         {field.value ? (

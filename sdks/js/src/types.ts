@@ -675,6 +675,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "legacy_dust_apps"
   | "llm_router_direct_requests"
   | "microsoft_drive_mcp_server"
+  | "microsoft_excel_mcp_server"
   | "microsoft_teams_bot"
   | "microsoft_teams_mcp_server"
   | "monday_tool"
@@ -707,6 +708,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "llm_router_direct_requests"
   | "mentions_v2"
   | "dust_global_agent_memory"
+  | "dust_global_data_source_file_system"
+  | "http_client_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2829,6 +2832,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GoogleSpreadsheetLogo"
   | "FreshserviceLogo"
   | "HubspotLogo"
+  | "MicrosoftExcelLogo"
   | "MicrosoftOutlookLogo"
   | "MicrosoftTeamsLogo"
   | "JiraLogo"
@@ -2841,6 +2845,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "StripeLogo"
   | "OpenaiLogo"
   | "ValTownLogo"
+  | "ZendeskLogo"
 >();
 
 const CustomServerIconSchema = FlexibleEnumSchema<

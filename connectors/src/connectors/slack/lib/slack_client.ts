@@ -184,7 +184,7 @@ async function _getSlackUserInfo(
     const res = await throttleWithRedis(
       RATE_LIMITS["users.info"],
       `${connectorId}-users-info`,
-      false,
+      { canBeIgnored: false },
       () => slackClient.users.info({ user: userId }),
       { source: "getSlackUserInfo" }
     );

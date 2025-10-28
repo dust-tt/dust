@@ -10,14 +10,14 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
-import { ChartContainer } from "@app/components/agent_builder/observability/ChartContainer";
-import { ChartLegend } from "@app/components/agent_builder/observability/ChartLegend";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/ChartTooltip";
 import {
   CHART_HEIGHT,
   MAX_TOOLS_DISPLAYED,
 } from "@app/components/agent_builder/observability/constants";
 import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
+import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
+import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { calculateTopTools } from "@app/components/agent_builder/observability/utils";
 import { useAgentToolLatency } from "@app/lib/swr/assistants";
 

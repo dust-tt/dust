@@ -367,6 +367,32 @@ function createServer(
             (view) => view.data_source_id === dataSourceNodeId
           );
         } else if (rootNodeId) {
+          // Checking that we do have access to the root node.
+          const rootNodeSearchResult = await coreAPI.searchNodes({
+            filter: {
+              data_source_views: viewFilter,
+              node_ids: [rootNodeId],
+            },
+          });
+          if (rootNodeSearchResult.isErr()) {
+            return new Err(
+              new MCPError(
+                `Failed to search content: ${rootNodeSearchResult.error.message}`
+              )
+            );
+          }
+          // If we could not access the root node, we return an error early here.
+          if (
+            rootNodeSearchResult.value.nodes.length === 0 ||
+            rootNodeSearchResult.value.nodes[0].node_id !== rootNodeId
+          ) {
+            return new Err(
+              new MCPError(`Could not find node: ${rootNodeId}`, {
+                tracked: false,
+              })
+            );
+          }
+
           viewFilter = viewFilter.map((view) => ({
             ...view,
             filter: [rootNodeId],

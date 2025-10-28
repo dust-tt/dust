@@ -21,6 +21,7 @@ import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as calendarServer } from "@app/lib/actions/mcp_internal_actions/servers/google_calendar";
 import { default as driveServer } from "@app/lib/actions/mcp_internal_actions/servers/google_drive";
 import { default as sheetsServer } from "@app/lib/actions/mcp_internal_actions/servers/google_sheets";
+import { default as httpClientServer } from "@app/lib/actions/mcp_internal_actions/servers/http_client";
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot";
 import { default as imageGenerationServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
@@ -28,6 +29,7 @@ import { default as interactiveContentServer } from "@app/lib/actions/mcp_intern
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
 import { default as jitTestingServer } from "@app/lib/actions/mcp_internal_actions/servers/jit_testing";
 import { default as microsoftDriveServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_drive";
+import { default as microsoftExcelServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_excel";
 import { default as microsoftTeamsServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_teams";
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
 import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday";
@@ -42,8 +44,8 @@ import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
-import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack";
-import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack_bot";
+import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_bot";
+import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_personal";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as soundStudio } from "@app/lib/actions/mcp_internal_actions/servers/sound_studio";
 import { default as speechGenerator } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator";
@@ -162,6 +164,8 @@ export async function getInternalMCPServer(
       return jiraServer(auth, agentLoopContext);
     case "microsoft_drive":
       return microsoftDriveServer(auth, agentLoopContext);
+    case "microsoft_excel":
+      return microsoftExcelServer(auth, agentLoopContext);
     case "microsoft_teams":
       return microsoftTeamsServer(auth, agentLoopContext);
     case "monday":
@@ -190,6 +194,8 @@ export async function getInternalMCPServer(
       return valtownServer(auth, agentLoopContext);
     case "deep_dive":
       return deepDiveServer(auth, agentLoopContext);
+    case "http_client":
+      return httpClientServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

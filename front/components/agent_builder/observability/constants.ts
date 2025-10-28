@@ -38,4 +38,3 @@ export const TOOL_COLORS = [
 ] as const;
 
 export const MAX_TOOLS_DISPLAYED = 5;
-export const PERCENTAGE_MULTIPLIER = 100;

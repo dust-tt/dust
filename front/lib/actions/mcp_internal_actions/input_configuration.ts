@@ -17,7 +17,10 @@ import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type {
+  DeveloperSecretSelectionType,
+  MCPServerViewType,
+} from "@app/lib/api/mcp";
 import type { AdditionalConfigurationValueType } from "@app/lib/models/assistant/actions/mcp";
 import {
   areSchemasEqual,
@@ -493,7 +496,7 @@ export interface MCPServerRequirements {
     }
   >;
   requiresDustAppConfiguration: boolean;
-  requiresSecretConfiguration: boolean;
+  developerSecretSelection: DeveloperSecretSelectionType | null;
   noRequirement: boolean;
 }
 
@@ -516,7 +519,7 @@ export function getMCPServerRequirements(
       requiredEnums: {},
       requiredLists: {},
       requiresDustAppConfiguration: false,
-      requiresSecretConfiguration: false,
+      developerSecretSelection: null,
       noRequirement: false,
     };
   }
@@ -758,8 +761,8 @@ export function getMCPServerRequirements(
       })
     ).length > 0;
 
-  const requiresSecretConfiguration =
-    mcpServerView.server.requiresSecret === true;
+  const developerSecretSelection =
+    mcpServerView.server.developerSecretSelection ?? null;
 
   return {
     requiresDataSourceConfiguration,
@@ -775,7 +778,7 @@ export function getMCPServerRequirements(
     requiredEnums,
     requiredLists,
     requiresDustAppConfiguration,
-    requiresSecretConfiguration,
+    developerSecretSelection,
     noRequirement:
       !requiresDataSourceConfiguration &&
       !requiresDataWarehouseConfiguration &&
@@ -790,7 +793,7 @@ export function getMCPServerRequirements(
       !Object.values(requiredEnums).some((c) => c.default === null) &&
       !Object.values(requiredLists).some((c) => c.default === null) &&
       !requiresDustAppConfiguration &&
-      !requiresSecretConfiguration,
+      !developerSecretSelection,
   };
 }
 

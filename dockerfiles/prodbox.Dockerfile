@@ -1,4 +1,4 @@
-FROM node:20.19.2 as base
+FROM node:20.19.2 AS base
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop curl libpq-dev build-essential tmux
@@ -7,23 +7,8 @@ RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Install Poppler tools
-WORKDIR /tmp/
-COPY /connectors/admin/docker_build/install_poppler_tools.sh ./
-RUN chmod +x ./install_poppler_tools.sh && \
-    ./install_poppler_tools.sh && \
-    ldconfig
-
-# Set library path for Poppler
-ENV LD_LIBRARY_PATH=/usr/local/lib
-
 # Set the working directory to /dust
 WORKDIR /dust
-
-RUN mkdir -p ~/.ssh
-RUN chmod 700 ~/.ssh
-RUN ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-RUN git fetch
 
 COPY . .
 
@@ -49,7 +34,6 @@ WORKDIR /dust
 
 # Wraning and prompt
 RUN echo "echo -e \"\033[0;31mWARNING: This is a PRODUCTION system!\033[0m\"" >> /root/.bashrc
-RUN echo "export PS1='\[\e[0;31m\]prodbox\[\e[0m\]:\w\$ '" >> /root/.bashrc
 
 ENV GIT_SSH_COMMAND="ssh -i ~/.ssh/github-deploykey-deploybox"
 

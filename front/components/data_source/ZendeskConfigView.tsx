@@ -10,6 +10,7 @@ import { useState } from "react";
 
 import { ZendeskCustomFieldFilters } from "@app/components/data_source/ZendeskCustomTagFilters";
 import { ZendeskOrganizationTagFilters } from "@app/components/data_source/ZendeskOrganizationTagFilters";
+import { ZendeskRateLimitConfig } from "@app/components/data_source/ZendeskRateLimitConfig";
 import { ZendeskTicketTagFilters } from "@app/components/data_source/ZendeskTicketTagFilters";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -241,6 +242,12 @@ export function ZendeskConfigView({
         dataSource={dataSource}
       />
       <ZendeskCustomFieldFilters
+        owner={owner}
+        readOnly={readOnly}
+        isAdmin={isAdmin}
+        dataSource={dataSource}
+      />
+      <ZendeskRateLimitConfig
         owner={owner}
         readOnly={readOnly}
         isAdmin={isAdmin}

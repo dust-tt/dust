@@ -1,5 +1,3 @@
-import { GithubLogo } from "@dust-tt/sparkle";
-
 import { CreateWebhookGithubConnection } from "@app/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection";
 import { WebhookSourceGithubDetails } from "@app/lib/triggers/built-in-webhooks/github/components/WebhookSourceGithubDetails";
 import { GitHubWebhookService } from "@app/lib/triggers/built-in-webhooks/github/github_webhook_service";
@@ -33,7 +31,7 @@ export const GITHUB_WEBHOOK_PRESET: PresetWebhook<"github"> = {
     field: "X-GitHub-Event",
   },
   events: [GITHUB_PULL_REQUEST_EVENT, GITHUB_ISSUES_EVENT],
-  icon: GithubLogo,
+  icon: "GithubLogo",
   description:
     "Receive events from GitHub such as creation or edition of issues or pull requests.",
   webhookPageUrl: `https://github.com/settings/connections/applications/${process.env.NEXT_PUBLIC_OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_ID}`,

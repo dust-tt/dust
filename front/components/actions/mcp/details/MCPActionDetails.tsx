@@ -32,6 +32,7 @@ import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/M
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import { MCPToolsetsEnableActionDetails } from "@app/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import {
@@ -47,6 +48,7 @@ import {
   GET_DATABASE_SCHEMA_TOOL_NAME,
   getInternalMCPServerIconByName,
   INCLUDE_TOOL_NAME,
+  INTERNAL_SERVERS_WITH_WEBSEARCH,
   isInternalMCPServerOfName,
   PROCESS_TOOL_NAME,
   SEARCH_TOOL_NAME,
@@ -201,7 +203,11 @@ export function MCPActionDetails({
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "web_search_&_browse")) {
+  if (
+    INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+      isInternalMCPServerOfName(mcpServerId, n)
+    )
+  ) {
     if (toolName === WEBSEARCH_TOOL_NAME) {
       return (
         <SearchResultDetails
@@ -248,6 +254,9 @@ export function MCPActionDetails({
   }
 
   if (isInternalMCPServerOfName(mcpServerId, "toolsets")) {
+    if (toolName === "enable") {
+      return <MCPToolsetsEnableActionDetails {...toolOutputDetailsProps} />;
+    }
     return <MCPListToolsActionDetails {...toolOutputDetailsProps} />;
   }
 

@@ -118,6 +118,8 @@ async function handler(
         provider,
         connectionId,
         remoteMetadata,
+        icon,
+        description,
       } = bodyValidation.data;
 
       if (provider && subscribedEvents.length === 0) {
@@ -146,22 +148,26 @@ async function handler(
         });
       }
 
-      const webhookSource = await WebhookSourceResource.makeNew(auth, {
-        workspaceId: workspace.id,
-        name,
-        secret:
-          trimmedSignatureHeader.length === 0
-            ? null
-            : secret && secret.length > 0
-              ? secret
-              : generateSecureSecret(64),
-        urlSecret: generateSecureSecret(64),
-        provider,
-        signatureHeader:
-          trimmedSignatureHeader.length > 0 ? trimmedSignatureHeader : null,
-        signatureAlgorithm,
-        subscribedEvents,
-      });
+      const webhookSource = await WebhookSourceResource.makeNew(
+        auth,
+        {
+          workspaceId: workspace.id,
+          name,
+          secret:
+            trimmedSignatureHeader.length === 0
+              ? null
+              : secret && secret.length > 0
+                ? secret
+                : generateSecureSecret(64),
+          urlSecret: generateSecureSecret(64),
+          provider,
+          signatureHeader:
+            trimmedSignatureHeader.length > 0 ? trimmedSignatureHeader : null,
+          signatureAlgorithm,
+          subscribedEvents,
+        },
+        { icon, description }
+      );
 
       if (includeGlobal) {
         const systemView =

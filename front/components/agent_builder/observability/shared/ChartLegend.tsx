@@ -1,4 +1,4 @@
-import { LegendDot } from "@app/components/agent_builder/observability/ChartTooltip";
+import { LegendDot } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 
 interface LegendItem {
   key: string;

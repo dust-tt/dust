@@ -1,12 +1,15 @@
-import type { Icon } from "@dust-tt/sparkle";
-import { GithubLogo, JiraLogo } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type React from "react";
 
 import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
+import type {
   WebhookCreateFormComponentProps,
   WebhookDetailsComponentProps,
 } from "@app/components/triggers/webhook_preset_components";
+import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
@@ -23,19 +26,11 @@ export type WebhookEvent = {
   schema: JSONSchema;
 };
 
-const WebhookPresetIcons = {
-  GithubLogo,
-  JiraLogo,
-} as const;
-
-export type WebhookPresetIcon =
-  (typeof WebhookPresetIcons)[keyof typeof WebhookPresetIcons];
-
 export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
   name: string;
   eventCheck: EventCheck;
   events: WebhookEvent[];
-  icon: typeof Icon;
+  icon: InternalAllowedIconType | CustomResourceIconType;
   description: string;
   webhookPageUrl?: string;
   featureFlag?: WhitelistableFeature;
@@ -43,5 +38,6 @@ export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
   components: {
     detailsComponent: React.ComponentType<WebhookDetailsComponentProps>;
     createFormComponent: React.ComponentType<WebhookCreateFormComponentProps>;
+    oauthExtraConfigInput?: React.ComponentType<ConnectorOauthExtraConfigProps>;
   };
 };

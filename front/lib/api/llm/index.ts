@@ -1,3 +1,4 @@
+import { GoogleLLM } from "@app/lib/api/llm/clients/google";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMOptions } from "@app/lib/api/llm/types/options";
@@ -7,12 +8,14 @@ import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 
 import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
+import { AnthropicPayload } from "./clients/anthropic/utils";
 
 // Keep this until the list includes all the supported model IDs (cf SUPPORTED_MODEL_CONFIGS)
 const WHITELISTED_MODEL_IDS: ModelIdType[] = [
   "mistral-large-latest",
   "mistral-small-latest",
   "claude-sonnet-4-5-20250929",
+  "gemini-2.5-pro",
 ];
 
 export async function getLLM(
@@ -50,7 +53,11 @@ export async function getLLM(
         ? new AnthropicLLM({
             model: modelConfiguration,
             options,
-          })
+          } as AnthropicPayload)
+        : null;
+    case "gemini-2.5-pro":
+      return hasFeature
+        ? new GoogleLLM({ model: modelConfiguration, options })
         : null;
     default:
       return null;

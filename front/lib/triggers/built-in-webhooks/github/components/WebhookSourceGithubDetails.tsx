@@ -1,4 +1,4 @@
-import { ExternalLinkIcon, Page } from "@dust-tt/sparkle";
+import { Chip, ExternalLinkIcon, Page } from "@dust-tt/sparkle";
 
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { GithubAdditionalDataSchema } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
@@ -33,61 +33,33 @@ export function WebhookSourceGithubDetails({
 
   return (
     <div className="space-y-4">
-      {hasRepositories && (
-        <div>
-          <Page.H variant="h6">
-            GitHub {repositories.length === 1 ? "Repository" : "Repositories"}
-          </Page.H>
-          <div className="space-y-2">
-            {repositories.map((repository) => (
-              <div
-                key={repository.fullName}
-                className="flex items-center gap-2"
-              >
-                <span className="font-mono text-sm text-foreground dark:text-foreground-night">
-                  {repository.fullName}
-                </span>
-                <a
-                  href={`https://github.com/${repository.fullName}/settings/hooks`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-action-500 hover:text-action-600 dark:text-action-400 dark:hover:text-action-300 inline-flex items-center gap-1 text-xs"
-                >
-                  View webhooks
-                  <ExternalLinkIcon className="h-3 w-3" />
-                </a>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {hasOrganizations && (
-        <div>
-          <Page.H variant="h6">
-            GitHub{" "}
-            {organizations.length === 1 ? "Organization" : "Organizations"}
-          </Page.H>
-          <div className="space-y-2">
-            {organizations.map((organization) => (
-              <div key={organization.name} className="flex items-center gap-2">
-                <span className="font-mono text-sm text-foreground dark:text-foreground-night">
-                  {organization.name}
-                </span>
-                <a
-                  href={`https://github.com/organizations/${organization.name}/settings/hooks`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-action-500 hover:text-action-600 dark:text-action-400 dark:hover:text-action-300 inline-flex items-center gap-1 text-xs"
-                >
-                  View webhooks
-                  <ExternalLinkIcon className="h-3 w-3" />
-                </a>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <div>
+        <Page.H variant="h6">Connected Sources</Page.H>
+      </div>
+      <div>
+        {[
+          ...organizations.map((org) => [
+            org.name,
+            `https://github.com/organizations/${org.name}/settings/hooks`,
+          ]),
+          ...repositories.map((repo) => [
+            repo.fullName,
+            `https://github.com/${repo.fullName}/settings/hooks`,
+          ]),
+        ].map(([item, link]) => (
+          <Chip
+            key={item}
+            label={item}
+            icon={ExternalLinkIcon}
+            size="xs"
+            color="primary"
+            className="m-0.5"
+            onClick={() => {
+              window.open(link, "_blank");
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
