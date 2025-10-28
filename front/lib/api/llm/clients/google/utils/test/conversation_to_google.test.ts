@@ -33,6 +33,7 @@ const conversationMessages: ModelMessageTypeMultiActionsWithoutContentFragment[]
     },
     {
       role: "assistant",
+      name: "@test",
       function_calls: [
         {
           id: "DdHr7L197",
