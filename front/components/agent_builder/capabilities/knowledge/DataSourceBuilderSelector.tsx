@@ -124,7 +124,9 @@ export const DataSourceBuilderSelector = ({
       }
     }
 
-    // Only set parentId if we're not searching by URL/node candidate
+    // When searching by URL/node candidate, we want to search globally (not restricted by parentId).
+    // URLs contain the full document path, so the document might be anywhere in the space,
+    // not necessarily within the current folder the user is navigating.
     if (
       searchScope === "node" &&
       currentNode &&
