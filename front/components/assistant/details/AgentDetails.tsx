@@ -272,7 +272,6 @@ export function AgentDetails({
                         <AgentPerformanceTab
                           agentConfiguration={agentConfiguration}
                           owner={owner}
-                          gridMode={false}
                         />
                       </TabsContent>
                       <TabsContent value="editors">
