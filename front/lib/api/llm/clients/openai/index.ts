@@ -1,8 +1,12 @@
 import { OpenAI } from "openai";
+import type { ReasoningEffort as OpenAiReasoningEffort } from "openai/resources/shared";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { OpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
-import { REASONING_EFFORT_TO_OPENAI_REASONING } from "@app/lib/api/llm/clients/openai/types";
+import {
+  isOpenAIResponsesWhitelistedReasoningModelId,
+  REASONING_EFFORT_TO_OPENAI_REASONING,
+} from "@app/lib/api/llm/clients/openai/types";
 import {
   toInput,
   toTool,
@@ -23,6 +27,7 @@ export class OpenAIResponsesLLM extends LLM {
     clientId: "openai_responses",
     modelId: this.modelId,
   };
+  private reasoning: { effort: OpenAiReasoningEffort } | null;
 
   constructor({
     modelId,
@@ -36,6 +41,13 @@ export class OpenAIResponsesLLM extends LLM {
       reasoningEffort,
       bypassFeatureFlag,
     });
+
+    // OpenAI throws an error if reasoning is set for non reasoning models
+    // TODO(LLM-Router 2025-10-28): handle o3 models differently : temperature should be set to 0
+    this.reasoning = isOpenAIResponsesWhitelistedReasoningModelId(modelId)
+      ? { effort: REASONING_EFFORT_TO_OPENAI_REASONING[this.reasoningEffort] }
+      : null;
+
     const { OPENAI_API_KEY } = dustManagedCredentials();
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY environment variable is required");
@@ -59,9 +71,7 @@ export class OpenAIResponsesLLM extends LLM {
       input: toInput(prompt, conversation),
       stream: true,
       temperature: this.temperature,
-      reasoning: {
-        effort: REASONING_EFFORT_TO_OPENAI_REASONING[this.reasoningEffort],
-      },
+      reasoning: this.reasoning,
       tools: specifications.map(toTool),
     });
 
