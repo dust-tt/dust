@@ -110,7 +110,7 @@ export class ZendeskWebhookService implements RemoteWebhookService<"zendesk"> {
         http_method: "POST",
         request_format: "json",
         status: "active",
-        events,
+        subscriptions: events,
         ...(secret && { signing_secret: { secret } }),
       },
     };
