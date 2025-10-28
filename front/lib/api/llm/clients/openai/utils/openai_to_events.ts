@@ -166,8 +166,8 @@ function toEvents({
       return [textDelta(event.delta, metadata)];
     case "response.reasoning_summary_text.delta":
       return [reasoningDelta(event.delta, metadata)];
-    case "response.output_item.done":
-      return toolCall(event, metadata);
+    // case "response.output_item.done":
+    //   return toolCall(event, metadata);
     case "response.completed":
       return responseCompleted(event.response, metadata);
     default:
