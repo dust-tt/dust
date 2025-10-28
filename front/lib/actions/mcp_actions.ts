@@ -88,7 +88,6 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
-import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT } from "@app/temporal/agent_loop/workflows";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok, slugify } from "@app/types";
 
@@ -397,7 +396,8 @@ export async function* tryCallMCPTool(
         setTimeout(() => {
           heartbeat();
           resolve();
-        }, TOOL_ACTIVITY_HEARTBEAT_TIMEOUT / 2);
+          // Reasonable delay to react to cancellation under 10s.
+        }, 10_000);
       });
 
     while (!toolDone) {
