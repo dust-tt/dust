@@ -17,6 +17,7 @@ import type {
   ConversationType,
   ModelConfigurationType,
   ModelMessageTypeMultiActions,
+  TextContent,
 } from "@app/types";
 import {
   assertNever,
@@ -24,7 +25,6 @@ import {
   isContentFragmentType,
   isUserMessageType,
 } from "@app/types";
-import type { TextContentType } from "@app/types/assistant/agent_message_content";
 
 /**
  * Renders agent message steps into model messages
@@ -44,7 +44,7 @@ export function renderAgentSteps(
     );
     if (stepsWithContent.length) {
       const lastStepWithContent = stepsWithContent[stepsWithContent.length - 1];
-      const textContents: TextContentType[] = [];
+      const textContents: TextContent[] = [];
       for (const content of lastStepWithContent.contents) {
         if (content.type === "text_content") {
           textContents.push(content);
@@ -72,7 +72,7 @@ export function renderAgentSteps(
         );
         continue;
       }
-      const textContents: TextContentType[] = [];
+      const textContents: TextContent[] = [];
       for (const content of step.contents) {
         if (content.type === "text_content") {
           textContents.push(content);

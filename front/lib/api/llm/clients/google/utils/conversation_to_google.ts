@@ -14,7 +14,6 @@ import { assertNever, isRecord, safeParseJSON } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
-  TextContentType,
 } from "@app/types/assistant/agent_message_content";
 import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
 
@@ -30,8 +29,8 @@ async function contentToPart(
   content: TextContent | ImageContent
 ): Promise<Part> {
   switch (content.type) {
-    case "text":
-      return { text: content.text };
+    case "text_content":
+      return { text: content.value };
     case "image_url":
       // Google only accepts images as base64 inline data
       // TODO(LLM-Router 2025-10-27): Handle error properly and send Non retryableError event
@@ -73,9 +72,9 @@ async function functionMessageToResponses(
   const functionResponses = await Promise.all(
     message.content.map(async (c) => {
       switch (c.type) {
-        case "text":
+        case "text_content":
           return {
-            response: { output: c.text },
+            response: { output: c.value },
             name: message.name,
             id: message.function_call_id,
           };
@@ -99,7 +98,7 @@ async function functionMessageToResponses(
 }
 
 function assistantContentToPart(
-  content: ReasoningContentType | TextContentType | FunctionCallContentType
+  content: ReasoningContentType | TextContent | FunctionCallContentType
 ): Part {
   switch (content.type) {
     case "reasoning":

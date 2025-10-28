@@ -25,14 +25,14 @@ export interface ImageContent {
 }
 
 export interface TextContent {
-  type: "text";
-  text: string;
+  type: "text_content";
+  value: string;
 }
 
 export type Content = TextContent | ImageContent;
 
 export function isTextContent(content: object): content is TextContent {
-  return "text" in content && "type" in content && content.type === "text";
+  return "value" in content && "type" in content && content.type === "text";
 }
 
 export function isImageContent(content: object): content is ImageContent {

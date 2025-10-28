@@ -279,8 +279,8 @@ export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
     name: m.context.fullName || m.context.username,
     content: [
       {
-        type: "text",
-        text: systemContext + content,
+        type: "text_content",
+        value: systemContext + content,
       },
     ],
   };

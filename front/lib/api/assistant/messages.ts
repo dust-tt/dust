@@ -33,19 +33,24 @@ import type {
   MessageType,
   ModelId,
   Result,
+  TextContent,
   UserMessageType,
 } from "@app/types";
-import { ConversationError, Err, Ok, removeNulls } from "@app/types";
+import {
+  ConversationError,
+  Err,
+  isTextContent,
+  Ok,
+  removeNulls,
+} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentContentItemType,
   ReasoningContentType,
-  TextContentType,
 } from "@app/types/assistant/agent_message_content";
 import {
   isFunctionCallContent,
   isReasoningContent,
-  isTextContent,
 } from "@app/types/assistant/agent_message_content";
 import type { ParsedContentItem } from "@app/types/assistant/conversation";
 
@@ -348,8 +353,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         agentStepContents
       );
 
-      const textContents: Array<{ step: number; content: TextContentType }> =
-        [];
+      const textContents: Array<{ step: number; content: TextContent }> = [];
       for (const content of agentStepContents) {
         if (content.content.type === "text_content") {
           textContents.push({ step: content.step, content: content.content });
