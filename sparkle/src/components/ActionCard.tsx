@@ -33,7 +33,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
       isSelected,
       canAdd,
       cantAddReason,
-      footer: toolInfo,
+      footer,
       onClick,
       className,
       cardContainerClassName,
@@ -93,16 +93,16 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
               {description}
             </TruncatedText>
           </div>
-          {toolInfo && (
+          {footer && (
             <div>
               <a
                 onClick={(e) => {
                   e.stopPropagation();
-                  toolInfo.onClick();
+                  footer.onClick();
                 }}
                 className="s-heading-sm s-cursor-pointer s-text-muted-foreground hover:s-text-highlight-light hover:s-underline hover:s-underline-offset-2 dark:s-text-muted-foreground-night dark:hover:s-text-highlight-light-night"
               >
-                {toolInfo.label}
+                {footer.label}
               </a>
             </div>
           )}
