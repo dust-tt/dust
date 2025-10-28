@@ -1,6 +1,6 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type {
@@ -36,7 +36,6 @@ export type SheetMode =
   | {
       type: "edit";
       trigger: AgentBuilderTriggerType;
-      index: number;
       webhookSourceView: WebhookSourceViewType | null;
     };
 
@@ -71,32 +70,22 @@ export function TriggerViewsSheet({
     TRIGGERS_SHEET_PAGE_IDS.SELECTION
   );
 
-  const [scheduleEditionState, setScheduleEditionState] =
-    useState<AgentBuilderScheduleTriggerType | null>(null);
-
-  const [webhookEditionState, setWebhookEditionState] = useState<{
-    trigger: AgentBuilderWebhookTriggerType | null;
-    webhookSourceView: WebhookSourceViewType | null;
-  } | null>(null);
+  const [selectedWebhookSourceView, setSelectedWebhookSourceView] =
+    useState<WebhookSourceViewType | null>(null);
 
   const handleSheetClose = useCallback(() => {
     setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SELECTION);
-    setScheduleEditionState(null);
-    setWebhookEditionState(null);
+    setSelectedWebhookSourceView(null);
     onModeChange(null);
   }, [onModeChange]);
 
   const handleScheduleSelect = useCallback(() => {
-    setScheduleEditionState(null);
     setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SCHEDULE);
   }, []);
 
   const handleWebhookSelect = useCallback(
     (webhookSourceView: WebhookSourceViewType) => {
-      setWebhookEditionState({
-        trigger: null,
-        webhookSourceView,
-      });
+      setSelectedWebhookSourceView(webhookSourceView);
       setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.WEBHOOK);
     },
     []
@@ -128,51 +117,44 @@ export function TriggerViewsSheet({
 
   const handleScheduleCancel = useCallback(() => {
     setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SELECTION);
-    setScheduleEditionState(null);
   }, []);
 
   const handleWebhookCancel = useCallback(() => {
     setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SELECTION);
-    setWebhookEditionState(null);
+    setSelectedWebhookSourceView(null);
   }, []);
 
-  if (mode?.type === "edit") {
-    if (mode.trigger.kind === "schedule") {
-      if (scheduleEditionState === null) {
-        setScheduleEditionState(mode.trigger);
+  // When the mode changes to edit, navigate to the appropriate page.
+  const editTrigger = mode?.type === "edit" ? mode.trigger : null;
+  const editWebhookSourceView =
+    mode?.type === "edit" ? mode.webhookSourceView : null;
+
+  useEffect(() => {
+    if (mode?.type === "edit") {
+      if (mode.trigger.kind === "schedule") {
         setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SCHEDULE);
-        onModeChange(null);
-      }
-    } else if (mode.trigger.kind === "webhook") {
-      if (webhookEditionState === null) {
-        setWebhookEditionState({
-          trigger: mode.trigger,
-          webhookSourceView: mode.webhookSourceView,
-        });
+      } else if (mode.trigger.kind === "webhook") {
+        setSelectedWebhookSourceView(mode.webhookSourceView);
         setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.WEBHOOK);
-        onModeChange(null);
       }
     }
-  }
+  }, [mode]);
 
   const scheduleTitle = useMemo(() => {
-    const trigger = scheduleEditionState;
-    const isEditor =
-      scheduleEditionState?.editor !== undefined &&
-      scheduleEditionState?.editor !== null;
+    const trigger = editTrigger?.kind === "schedule" ? editTrigger : null;
+    const isEditor = trigger?.editor !== undefined && trigger?.editor !== null;
 
     if (trigger) {
       return isEditor ? "Edit Schedule" : "View Schedule";
     }
     return "Create Schedule";
-  }, [scheduleEditionState]);
+  }, [editTrigger]);
 
   const webhookTitle = useMemo(() => {
-    const trigger = webhookEditionState?.trigger;
-    const webhookSourceView = webhookEditionState?.webhookSourceView;
-    const isEditor =
-      webhookEditionState?.trigger?.editor !== undefined &&
-      webhookEditionState?.trigger?.editor !== null;
+    const trigger = editTrigger?.kind === "webhook" ? editTrigger : null;
+    const webhookSourceView =
+      editWebhookSourceView ?? selectedWebhookSourceView;
+    const isEditor = trigger?.editor !== undefined && trigger?.editor !== null;
 
     if (trigger) {
       return isEditor ? "Edit Webhook" : "View Webhook";
@@ -181,11 +163,13 @@ export function TriggerViewsSheet({
       return `Create ${webhookSourceView.customName} Trigger`;
     }
     return "Create Webhook";
-  }, [webhookEditionState]);
+  }, [editTrigger, editWebhookSourceView, selectedWebhookSourceView]);
 
   const webhookIcon = useMemo(() => {
-    return normalizeWebhookIcon(webhookEditionState?.webhookSourceView?.icon);
-  }, [webhookEditionState]);
+    const webhookSourceView =
+      editWebhookSourceView ?? selectedWebhookSourceView;
+    return normalizeWebhookIcon(webhookSourceView?.icon);
+  }, [editWebhookSourceView, selectedWebhookSourceView]);
 
   const pages: MultiPageSheetPage[] = [
     {
@@ -206,7 +190,7 @@ export function TriggerViewsSheet({
       content: (
         <ScheduleEdition
           owner={owner}
-          trigger={scheduleEditionState}
+          trigger={editTrigger?.kind === "schedule" ? editTrigger : null}
           onSave={handleScheduleSave}
           formId={TRIGGERS_SHEET_FORM_IDS.SCHEDULE}
         />
@@ -219,10 +203,10 @@ export function TriggerViewsSheet({
       content: (
         <WebhookEdition
           owner={owner}
-          trigger={webhookEditionState?.trigger ?? null}
+          trigger={editTrigger?.kind === "webhook" ? editTrigger : null}
           onSave={handleWebhookSave}
           agentConfigurationId={agentConfigurationId}
-          webhookSourceView={webhookEditionState?.webhookSourceView ?? null}
+          webhookSourceView={editWebhookSourceView ?? selectedWebhookSourceView}
           formId={TRIGGERS_SHEET_FORM_IDS.WEBHOOK}
         />
       ),
@@ -266,18 +250,22 @@ export function TriggerViewsSheet({
         rightButton={
           currentPageId === TRIGGERS_SHEET_PAGE_IDS.SCHEDULE
             ? {
-                label: scheduleEditionState ? "Update Trigger" : "Add Trigger",
+                label:
+                  editTrigger?.kind === "schedule"
+                    ? "Update Trigger"
+                    : "Add Trigger",
                 variant: "primary",
                 type: "submit",
                 form: TRIGGERS_SHEET_FORM_IDS.SCHEDULE,
               }
             : currentPageId === TRIGGERS_SHEET_PAGE_IDS.WEBHOOK
               ? {
-                  label: webhookEditionState?.trigger
-                    ? "Update Trigger"
-                    : webhookEditionState?.webhookSourceView
-                      ? `Add ${webhookEditionState.webhookSourceView.customName} Trigger`
-                      : "Add Trigger",
+                  label:
+                    editTrigger?.kind === "webhook"
+                      ? "Update Trigger"
+                      : editWebhookSourceView ?? selectedWebhookSourceView
+                        ? `Add ${(editWebhookSourceView ?? selectedWebhookSourceView)?.customName} Trigger`
+                        : "Add Trigger",
                   variant: "primary",
                   type: "submit",
                   form: TRIGGERS_SHEET_FORM_IDS.WEBHOOK,

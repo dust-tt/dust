@@ -109,7 +109,6 @@ export function AgentBuilderTriggersBlock({
     setSheetMode({
       type: "edit",
       trigger,
-      index: displayItem.index,
       webhookSourceView,
     });
   };
