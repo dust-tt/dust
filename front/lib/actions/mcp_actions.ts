@@ -397,7 +397,8 @@ export async function* tryCallMCPTool(
         setTimeout(() => {
           heartbeat();
           resolve();
-        }, TOOL_ACTIVITY_HEARTBEAT_TIMEOUT / 6);
+          // Reasonable delay to react to cancellation under 10s.
+        }, 10_000);
       });
 
     while (!toolDone) {
