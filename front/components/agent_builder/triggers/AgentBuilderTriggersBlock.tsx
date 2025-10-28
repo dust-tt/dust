@@ -42,7 +42,7 @@ export function AgentBuilderTriggersBlock({
   // triggersToCreate to be updated here; this is specific to arrays in react-hook-form.
   const {
     fields: triggersToCreate,
-    remove: removeFromCreate,
+    remove: removeTriggerToCreate,
     append: appendTriggerToCreate,
   } = useFieldArray<AgentBuilderFormData, "triggersToCreate">({
     control,
@@ -51,7 +51,7 @@ export function AgentBuilderTriggersBlock({
 
   const {
     fields: triggersToUpdate,
-    remove: removeFromUpdate,
+    remove: removeTriggerToUpdate,
     append: appendTriggerToUpdate,
   } = useFieldArray<AgentBuilderFormData, "triggersToUpdate">({
     control,
@@ -124,14 +124,14 @@ export function AgentBuilderTriggersBlock({
 
     if (displayItem.source === "create") {
       // Just remove from create array
-      removeFromCreate(displayItem.index);
+      removeTriggerToCreate(displayItem.index);
     } else {
       // Has sId, so it exists on backend - mark for deletion
       if (trigger.sId) {
         const currentToDelete = getValues("triggersToDelete");
         setValue("triggersToDelete", [...currentToDelete, trigger.sId]);
       }
-      removeFromUpdate(displayItem.index);
+      removeTriggerToUpdate(displayItem.index);
     }
 
     sendNotification({
