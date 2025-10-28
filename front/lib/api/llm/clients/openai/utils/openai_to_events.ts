@@ -1,17 +1,16 @@
 import compact from "lodash/compact";
 import type {
   ResponseOutputItem,
-  ResponseOutputItemDoneEvent,
   ResponseStreamEvent,
 } from "openai/resources/responses/responses";
 import type { Response } from "openai/resources/responses/responses";
 
-import type { ProviderMetadata } from "@app/lib/api/llm/types/events";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 
 export async function* streamLLMEvents(
   responseStreamEvents: AsyncIterable<ResponseStreamEvent>,
-  metadata: ProviderMetadata
+  metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
   for await (const event of responseStreamEvents) {
     const outputEvents = toEvents({
@@ -24,7 +23,7 @@ export async function* streamLLMEvents(
   }
 }
 
-function textDelta(delta: string, metadata: ProviderMetadata): LLMEvent {
+function textDelta(delta: string, metadata: LLMClientMetadata): LLMEvent {
   return {
     type: "text_delta",
     content: {
@@ -34,7 +33,7 @@ function textDelta(delta: string, metadata: ProviderMetadata): LLMEvent {
   };
 }
 
-function reasoningDelta(delta: string, metadata: ProviderMetadata): LLMEvent {
+function reasoningDelta(delta: string, metadata: LLMClientMetadata): LLMEvent {
   return {
     type: "reasoning_delta",
     content: {
@@ -44,34 +43,9 @@ function reasoningDelta(delta: string, metadata: ProviderMetadata): LLMEvent {
   };
 }
 
-function toolCall(
-  event: ResponseOutputItemDoneEvent,
-  metadata: ProviderMetadata
-): LLMEvent[] {
-  const events: LLMEvent[] = [];
-  const item = event.item;
-
-  switch (item.type) {
-    case "function_call":
-      events.push({
-        type: "tool_call",
-        content: {
-          id: extractCallId(item.call_id),
-          name: item.name,
-          arguments: item.arguments,
-        },
-        metadata,
-      });
-      break;
-    default:
-      break;
-  }
-  return events;
-}
-
 function itemToEvent(
   item: ResponseOutputItem,
-  metadata: ProviderMetadata
+  metadata: LLMClientMetadata
 ): LLMEvent {
   switch (item.type) {
     case "message":
@@ -114,7 +88,7 @@ function itemToEvent(
 
 function responseCompleted(
   response: Response,
-  metadata: ProviderMetadata
+  metadata: LLMClientMetadata
 ): LLMEvent[] {
   const events: LLMEvent[] = compact(
     response.output.map((i) => itemToEvent(i, metadata))
@@ -159,7 +133,7 @@ function toEvents({
   metadata,
 }: {
   event: ResponseStreamEvent;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }): LLMEvent[] {
   switch (event.type) {
     case "response.output_text.delta":

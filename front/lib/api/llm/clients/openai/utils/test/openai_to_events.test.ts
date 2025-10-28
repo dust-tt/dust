@@ -113,9 +113,9 @@ const modelOutputEvents: ResponseStreamEvent[] = [
 ];
 
 const metadata = {
-  providerId: "openai" as const,
-  modelId: "gpt-4o",
-};
+  clientId: "openai_responses",
+  modelId: "gpt-4.1-2025-04-14",
+} as const;
 
 const finishEvents = [
   {
