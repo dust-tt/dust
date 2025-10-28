@@ -9,20 +9,24 @@ import type {
   AgentBuilderTriggerType,
   AgentBuilderWebhookTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { ScheduleFormValues } from "@app/components/agent_builder/triggers/schedule/scheduleEditionFormSchema";
-import { getScheduleFormDefaultValues } from "@app/components/agent_builder/triggers/schedule/scheduleEditionFormSchema";
+import {
+  formValuesToScheduleTriggerData,
+  getScheduleFormDefaultValues,
+} from "@app/components/agent_builder/triggers/schedule/scheduleEditionFormSchema";
 import { ScheduleEditionSheetContent } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionSheet";
 import { TriggerSelectionPageContent } from "@app/components/agent_builder/triggers/TriggerSelectionPage";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { TriggerViewsSheetFormSchema } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
-import type { WebhookFormValues } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
-import { getWebhookFormDefaultValues } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
+import {
+  formValuesToWebhookTriggerData,
+  getWebhookFormDefaultValues,
+} from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
 import { WebhookEditionSheetContent } from "@app/components/agent_builder/triggers/webhook/WebhookEditionSheet";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useUser } from "@app/lib/swr/user";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
-import type { LightWorkspaceType, UserTypeWithWorkspaces } from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 const TRIGGERS_SHEET_PAGE_IDS = {
@@ -38,71 +42,6 @@ export type SheetMode =
       trigger: AgentBuilderTriggerType;
       webhookSourceView: WebhookSourceViewType | null;
     };
-
-function formValuesToScheduleTriggerData({
-  schedule,
-  editTrigger,
-  user,
-}: {
-  schedule: ScheduleFormValues;
-  editTrigger: AgentBuilderTriggerType | null;
-  user: UserTypeWithWorkspaces;
-}): AgentBuilderScheduleTriggerType {
-  return {
-    sId: editTrigger?.kind === "schedule" ? editTrigger.sId : undefined,
-    enabled: schedule.enabled,
-    name: schedule.name.trim(),
-    kind: "schedule",
-    configuration: {
-      cron: schedule.cron.trim(),
-      timezone: schedule.timezone.trim(),
-    },
-    editor:
-      editTrigger?.kind === "schedule" ? editTrigger.editor : user.id ?? null,
-    naturalLanguageDescription:
-      schedule.naturalLanguageDescription?.trim() ?? null,
-    customPrompt: schedule.customPrompt?.trim() ?? null,
-    editorName:
-      editTrigger?.kind === "schedule"
-        ? editTrigger.editorName
-        : user.fullName ?? undefined,
-  };
-}
-
-function formValuesToWebhookTriggerData({
-  webhook,
-  editTrigger,
-  user,
-  webhookSourceView,
-}: {
-  webhook: WebhookFormValues;
-  editTrigger: AgentBuilderTriggerType | null;
-  user: UserTypeWithWorkspaces;
-  webhookSourceView: WebhookSourceViewType | null;
-}): AgentBuilderWebhookTriggerType {
-  return {
-    sId: editTrigger?.kind === "webhook" ? editTrigger.sId : undefined,
-    enabled: webhook.enabled,
-    name: webhook.name.trim(),
-    customPrompt: webhook.customPrompt?.trim() ?? null,
-    naturalLanguageDescription: webhookSourceView?.provider
-      ? webhook.naturalDescription?.trim() ?? null
-      : null,
-    kind: "webhook",
-    configuration: {
-      includePayload: webhook.includePayload,
-      event: webhook.event,
-      filter: webhook.filter?.trim() ?? undefined,
-    },
-    webhookSourceViewSId: webhook.webhookSourceViewSId ?? undefined,
-    editor:
-      editTrigger?.kind === "webhook" ? editTrigger.editor : user.id ?? null,
-    editorName:
-      editTrigger?.kind === "webhook"
-        ? editTrigger.editorName
-        : user.fullName ?? undefined,
-  };
-}
 
 interface TriggerViewsSheetProps {
   owner: LightWorkspaceType;
