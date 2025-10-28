@@ -1,5 +1,3 @@
-import { JiraLogo } from "@dust-tt/sparkle";
-
 import { CreateWebhookJiraConnection } from "@app/lib/triggers/built-in-webhooks/jira/components/CreateWebhookJiraConnection";
 import { WebhookSourceJiraDetails } from "@app/lib/triggers/built-in-webhooks/jira/components/WebhookSourceJiraDetails";
 import { JiraWebhookService } from "@app/lib/triggers/built-in-webhooks/jira/jira_webhook_service";
@@ -24,9 +22,8 @@ export const JIRA_WEBHOOK_PRESET: PresetWebhook<"jira"> = {
     field: "X-Atlassian-Webhook-Identifier",
   },
   events: [JIRA_ISSUE_CREATED_EVENT],
-  icon: JiraLogo,
-  description:
-    "Receive events from Jira such as creation of issues.",
+  icon: "JiraLogo",
+  description: "Receive events from Jira such as creation of issues.",
   webhookPageUrl: `https://id.atlassian.com/manage-profile/security/api-tokens`,
   featureFlag: "hootl_dev_webhooks",
   webhookService: new JiraWebhookService(),
