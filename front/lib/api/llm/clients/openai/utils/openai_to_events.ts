@@ -82,7 +82,8 @@ function itemToEvent(
         metadata,
       };
     default:
-      throw Error(`Unsupported OpenAI Response Item: ${item}`);
+      // TODO(LLM-Router 2025-10-28): Send error event
+      throw new Error(`Unsupported OpenAI Response Item: ${item}`);
   }
 }
 
