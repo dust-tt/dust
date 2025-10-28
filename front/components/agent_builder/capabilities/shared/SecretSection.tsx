@@ -25,11 +25,11 @@ function SecretSelectionTable({
   columns,
 }: SecretSelectionTableProps) {
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex flex-col">
       <DataTable
         data={tableData}
         columns={columns}
-        className="h-full"
+        className="max-h-80 overflow-auto"
         filterColumn="name"
       />
     </div>
@@ -154,9 +154,7 @@ export function SecretSection({
                 </div>
               </div>
             ) : (
-              <div className="flex h-64 flex-col">
-                <SecretSelectionTable tableData={tableData} columns={columns} />
-              </div>
+              <SecretSelectionTable tableData={tableData} columns={columns} />
             )}
           </>
         )}
