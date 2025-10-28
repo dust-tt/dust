@@ -8,7 +8,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
-import type { WebhookFormValues } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useWebhookFilterGenerator } from "@app/lib/swr/agent_triggers";
 import type { LightWorkspaceType } from "@app/types";
@@ -34,8 +33,9 @@ export function WebhookEditionFilters({
   availableEvents,
   workspace,
 }: WebhookEditionFiltersProps) {
-  const { setError, control } = useFormContext<WebhookFormValues>();
-  const selectedEvent = useWatch({ control, name: "event" });
+  const { setError, control } = useFormContext();
+
+  const selectedEvent = useWatch({ control, name: "webhook.event" });
 
   const selectedEventSchema = useMemo<WebhookEvent | null>(() => {
     if (!selectedEvent || !selectedPreset) {
@@ -50,13 +50,13 @@ export function WebhookEditionFilters({
   const {
     field: filterField,
     fieldState: { error: filterError },
-  } = useController({ control, name: "filter" });
+  } = useController({ control, name: "webhook.filter" });
   const {
     field: {
       value: naturalDescriptionValue,
       onChange: onNaturalDescriptionChange,
     },
-  } = useController({ control, name: "naturalDescription" });
+  } = useController({ control, name: "webhook.naturalDescription" });
 
   const [filterGenerationStatus, setFilterGenerationStatus] = useState<
     "idle" | "loading" | "error"
@@ -173,7 +173,7 @@ export function WebhookEditionFilters({
             disabled={!isEditor}
             onChange={(e) => {
               if (!selectedEvent || !selectedPreset) {
-                setError("event", {
+                setError("webhook.event", {
                   type: "manual",
                   message: "Please select an event first",
                 });

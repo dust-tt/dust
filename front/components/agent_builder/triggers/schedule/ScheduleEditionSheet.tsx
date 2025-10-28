@@ -9,7 +9,6 @@ import React from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import type { AgentBuilderScheduleTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { ScheduleFormValues } from "@app/components/agent_builder/triggers/schedule/scheduleEditionFormSchema";
 import { ScheduleEditionScheduler } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionScheduler";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -18,11 +17,11 @@ interface ScheduleEditionNameInputProps {
 }
 
 function ScheduleEditionNameInput({ isEditor }: ScheduleEditionNameInputProps) {
-  const { control } = useFormContext<ScheduleFormValues>();
+  const { control } = useFormContext();
   const {
     field,
     fieldState: { error },
-  } = useController({ control, name: "name" });
+  } = useController({ control, name: "schedule.name" });
 
   return (
     <div className="space-y-1">
@@ -47,10 +46,10 @@ interface ScheduleEditionStatusToggleProps {
 function ScheduleEditionStatusToggle({
   isEditor,
 }: ScheduleEditionStatusToggleProps) {
-  const { control } = useFormContext<ScheduleFormValues>();
+  const { control } = useFormContext();
   const {
     field: { value: enabled, onChange: setEnabled },
-  } = useController({ control, name: "enabled" });
+  } = useController({ control, name: "schedule.enabled" });
 
   return (
     <div className="space-y-1">
@@ -80,8 +79,8 @@ interface ScheduleEditionMessageInputProps {
 function ScheduleEditionMessageInput({
   isEditor,
 }: ScheduleEditionMessageInputProps) {
-  const { control } = useFormContext<ScheduleFormValues>();
-  const { field } = useController({ control, name: "customPrompt" });
+  const { control } = useFormContext();
+  const { field } = useController({ control, name: "schedule.customPrompt" });
 
   return (
     <div className="space-y-1">

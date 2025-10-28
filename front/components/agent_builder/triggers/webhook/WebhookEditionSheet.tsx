@@ -18,7 +18,6 @@ import { useController, useFormContext } from "react-hook-form";
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
 import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
-import type { WebhookFormValues } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
@@ -32,11 +31,11 @@ interface WebhookEditionNameInputProps {
 }
 
 function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
-  const { control } = useFormContext<WebhookFormValues>();
+  const { control } = useFormContext();
   const {
     field,
     fieldState: { error },
-  } = useController({ control, name: "name" });
+  } = useController({ control, name: "webhook.name" });
 
   return (
     <div className="space-y-1">
@@ -61,10 +60,10 @@ interface WebhookEditionStatusToggleProps {
 function WebhookEditionStatusToggle({
   isEditor,
 }: WebhookEditionStatusToggleProps) {
-  const { control } = useFormContext<WebhookFormValues>();
+  const { control } = useFormContext();
   const {
     field: { value: enabled, onChange: setEnabled },
-  } = useController({ control, name: "enabled" });
+  } = useController({ control, name: "webhook.enabled" });
 
   return (
     <div className="space-y-1">
@@ -98,11 +97,11 @@ function WebhookEditionEventSelector({
   selectedPreset,
   availableEvents,
 }: WebhookEditionEventSelectorProps) {
-  const { control } = useFormContext<WebhookFormValues>();
+  const { control } = useFormContext();
   const {
     field: { value: selectedEvent, onChange: setSelectedEvent },
     fieldState: { error },
-  } = useController({ control, name: "event" });
+  } = useController({ control, name: "webhook.event" });
 
   if (!selectedPreset || availableEvents.length === 0) {
     return null;
@@ -152,10 +151,10 @@ interface WebhookEditionIncludePayloadProps {
 function WebhookEditionIncludePayload({
   isEditor,
 }: WebhookEditionIncludePayloadProps) {
-  const { control } = useFormContext<WebhookFormValues>();
+  const { control } = useFormContext();
   const {
     field: { value: includePayload, onChange: setIncludePayload },
-  } = useController({ control, name: "includePayload" });
+  } = useController({ control, name: "webhook.includePayload" });
 
   return (
     <div className="flex items-center justify-between">
@@ -183,8 +182,8 @@ interface WebhookEditionMessageInputProps {
 function WebhookEditionMessageInput({
   isEditor,
 }: WebhookEditionMessageInputProps) {
-  const { control } = useFormContext<WebhookFormValues>();
-  const { field } = useController({ control, name: "customPrompt" });
+  const { control } = useFormContext();
+  const { field } = useController({ control, name: "webhook.customPrompt" });
 
   return (
     <div className="space-y-1">
