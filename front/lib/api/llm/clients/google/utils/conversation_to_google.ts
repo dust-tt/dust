@@ -2,7 +2,6 @@ import type { Content, FunctionResponse, Part, Tool } from "@google/genai";
 import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { fetchImageBase64 } from "@app/lib/api/llm/clients/google/utils/image_utils";
 import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
@@ -17,6 +16,15 @@ import type {
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
+import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
+
+const GOOGLE_AI_STUDIO_SUPPORTED_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+];
 
 async function contentToPart(
   content: TextContent | ImageContent
@@ -27,7 +35,16 @@ async function contentToPart(
     case "image_url":
       // Google only accepts images as base64 inline data
       // TODO(2025-10-27 pierre): Handle error properly and send Non retryableError event
-      const { mediaType, data } = await fetchImageBase64(content.image_url.url);
+      const { mediaType, data } = await trustedFetchImageBase64(
+        content.image_url.url
+      );
+
+      if (!GOOGLE_AI_STUDIO_SUPPORTED_MIME_TYPES.includes(mediaType)) {
+        // TODO(LLM-Router 2025-10-27): Handle error properly and send Non retryableError event
+        throw new Error(
+          `Image mime type ${mediaType} is not supported by Google AI Studio`
+        );
+      }
 
       return {
         inlineData: {
@@ -63,7 +80,9 @@ async function functionMessageToResponses(
             id: message.function_call_id,
           };
         case "image_url":
-          const { mediaType, data } = await fetchImageBase64(c.image_url.url);
+          const { mediaType, data } = await trustedFetchImageBase64(
+            c.image_url.url
+          );
 
           return {
             parts: [{ inlineData: { data, mimeType: mediaType } }],

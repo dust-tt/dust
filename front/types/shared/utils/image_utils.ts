@@ -5,15 +5,7 @@ export interface Base64EncodedImageContent {
   data: string;
 }
 
-const GOOGLE_AI_STUDIO_SUPPORTED_MIME_TYPES = [
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/heic",
-  "image/heif",
-];
-
-export async function fetchImageBase64(
+export async function trustedFetchImageBase64(
   image_url: string
 ): Promise<Base64EncodedImageContent> {
   try {
@@ -26,9 +18,6 @@ export async function fetchImageBase64(
     const mediaType = response.headers.get("content-type");
     if (!mediaType) {
       throw new Error("Invalid image: missing content-type header");
-    }
-    if (!GOOGLE_AI_STUDIO_SUPPORTED_MIME_TYPES.includes(mediaType)) {
-      throw new Error(`Unsupported image type: ${mediaType} for ${image_url}`);
     }
 
     const buffer = await response.arrayBuffer();
