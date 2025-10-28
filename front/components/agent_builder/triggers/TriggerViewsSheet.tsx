@@ -74,23 +74,34 @@ export function TriggerViewsSheet({
     mode?.type === "edit" ? mode.webhookSourceView : null;
 
   const defaultValues = useMemo((): TriggerViewsSheetFormValues => {
+    if (editTrigger?.kind === "schedule") {
+      return {
+        type: "schedule",
+        schedule: getScheduleFormDefaultValues(editTrigger),
+      };
+    }
+    if (editTrigger?.kind === "webhook") {
+      return {
+        type: "webhook",
+        webhook: getWebhookFormDefaultValues({
+          trigger: editTrigger,
+          webhookSourceView: editWebhookSourceView,
+        }),
+      };
+    }
+    if (selectedWebhookSourceView) {
+      return {
+        type: "webhook",
+        webhook: getWebhookFormDefaultValues({
+          trigger: null,
+          webhookSourceView: selectedWebhookSourceView,
+        }),
+      };
+    }
+    // Default to schedule type
     return {
-      schedule:
-        editTrigger?.kind === "schedule"
-          ? getScheduleFormDefaultValues(editTrigger)
-          : undefined,
-      webhook:
-        editTrigger?.kind === "webhook"
-          ? getWebhookFormDefaultValues({
-              trigger: editTrigger,
-              webhookSourceView: editWebhookSourceView,
-            })
-          : selectedWebhookSourceView
-            ? getWebhookFormDefaultValues({
-                trigger: null,
-                webhookSourceView: selectedWebhookSourceView,
-              })
-            : undefined,
+      type: "schedule",
+      schedule: getScheduleFormDefaultValues(null),
     };
   }, [editTrigger, editWebhookSourceView, selectedWebhookSourceView]);
 
@@ -112,8 +123,8 @@ export function TriggerViewsSheet({
 
   const handleScheduleSelect = useCallback(() => {
     form.reset({
+      type: "schedule",
       schedule: getScheduleFormDefaultValues(null),
-      webhook: undefined,
     });
     setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SCHEDULE);
   }, [form]);
@@ -122,7 +133,7 @@ export function TriggerViewsSheet({
     (webhookSourceView: WebhookSourceViewType) => {
       setSelectedWebhookSourceView(webhookSourceView);
       form.reset({
-        schedule: undefined,
+        type: "webhook",
         webhook: getWebhookFormDefaultValues({
           trigger: null,
           webhookSourceView,
@@ -139,10 +150,7 @@ export function TriggerViewsSheet({
         return;
       }
 
-      if (
-        currentPageId === TRIGGERS_SHEET_PAGE_IDS.SCHEDULE &&
-        values.schedule
-      ) {
+      if (values.type === "schedule") {
         const triggerData: AgentBuilderScheduleTriggerType = {
           sId: editTrigger?.kind === "schedule" ? editTrigger.sId : undefined,
           enabled: values.schedule.enabled,
@@ -170,10 +178,7 @@ export function TriggerViewsSheet({
         } else {
           onAppendTriggerToCreate(triggerData);
         }
-      } else if (
-        currentPageId === TRIGGERS_SHEET_PAGE_IDS.WEBHOOK &&
-        values.webhook
-      ) {
+      } else if (values.type === "webhook") {
         // Validate that event is selected for preset webhooks
         const webhookSourceView =
           editWebhookSourceView ?? selectedWebhookSourceView;
@@ -222,7 +227,6 @@ export function TriggerViewsSheet({
     },
     [
       user,
-      currentPageId,
       editTrigger,
       editWebhookSourceView,
       selectedWebhookSourceView,
