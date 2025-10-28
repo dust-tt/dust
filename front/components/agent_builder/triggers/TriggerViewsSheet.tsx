@@ -232,7 +232,6 @@ export function TriggerViewsSheet({
     {
       id: TRIGGERS_SHEET_PAGE_IDS.SELECTION,
       title: "Add triggers",
-      icon: PlusIcon,
       content: (
         <TriggerSelectionPageContent
           onScheduleSelect={handleScheduleSelect}
