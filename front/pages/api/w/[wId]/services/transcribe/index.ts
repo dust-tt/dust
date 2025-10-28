@@ -92,14 +92,22 @@ async function handler(
           break;
 
         case "fullTranscript":
-          const fullTranscript = await findAgentsInMessage(
-            auth,
-            chunk.fullTranscript
-          );
+          const transcript = chunk.fullTranscript;
 
-          res.write(
-            `data: ${JSON.stringify({ type: "fullTranscript", fullTranscript })}\n\n`
-          );
+          if (!transcript) {
+            res.write(
+              `data: ${JSON.stringify({ type: "error", error: "the audio was silent, please check your microphone" })}\n\n`
+            );
+            res.end();
+            return;
+          } else {
+            const fullTranscript = await findAgentsInMessage(auth, transcript);
+
+            res.write(
+              `data: ${JSON.stringify({ type: "fullTranscript", fullTranscript })}\n\n`
+            );
+          }
+
           stop = true;
           break;
 
