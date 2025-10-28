@@ -1,5 +1,7 @@
 import { GoogleLLM } from "@app/lib/api/llm/clients/google";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
+import { OpenAILLM } from "@app/lib/api/llm/clients/openai";
+import type { OpenAIPayload } from "@app/lib/api/llm/clients/openai/utils";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMOptions } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
@@ -11,6 +13,8 @@ import type { ModelIdType } from "@app/types/assistant/models/types";
 const WHITELISTED_MODEL_IDS: ModelIdType[] = [
   "mistral-large-latest",
   "mistral-small-latest",
+  "gpt-4o",
+  "gpt-5",
   "gemini-2.5-pro",
 ];
 
@@ -44,6 +48,11 @@ export async function getLLM(
     case "mistral-large-latest":
     case "mistral-small-latest":
       return hasFeature ? new MistralLLM({ model: modelConfiguration }) : null;
+    case "gpt-4o":
+    case "gpt-5":
+      return hasFeature
+        ? new OpenAILLM({ model: modelConfiguration, options } as OpenAIPayload)
+        : null;
     case "gemini-2.5-pro":
       return hasFeature
         ? new GoogleLLM({ model: modelConfiguration, options })
