@@ -57,11 +57,10 @@ export function TriggerViewsSheet({
 }: TriggerViewsSheetProps) {
   const { control } = useFormContext<AgentBuilderFormData>();
 
-  const { append: appendTriggerToCreate, update: updateTriggerToCreate } =
-    useFieldArray({
-      control,
-      name: "triggersToCreate",
-    });
+  const { append: appendTriggerToCreate } = useFieldArray({
+    control,
+    name: "triggersToCreate",
+  });
 
   const { append: appendTriggerToUpdate } = useFieldArray({
     control,
@@ -72,14 +71,11 @@ export function TriggerViewsSheet({
     TRIGGERS_SHEET_PAGE_IDS.SELECTION
   );
 
-  const [scheduleEditionState, setScheduleEditionState] = useState<{
-    trigger: AgentBuilderScheduleTriggerType | null;
-    index: number | null;
-  } | null>(null);
+  const [scheduleEditionState, setScheduleEditionState] =
+    useState<AgentBuilderScheduleTriggerType | null>(null);
 
   const [webhookEditionState, setWebhookEditionState] = useState<{
     trigger: AgentBuilderWebhookTriggerType | null;
-    index: number | null;
     webhookSourceView: WebhookSourceViewType | null;
   } | null>(null);
 
@@ -91,7 +87,7 @@ export function TriggerViewsSheet({
   }, [onModeChange]);
 
   const handleScheduleSelect = useCallback(() => {
-    setScheduleEditionState({ trigger: null, index: null });
+    setScheduleEditionState(null);
     setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SCHEDULE);
   }, []);
 
@@ -99,7 +95,6 @@ export function TriggerViewsSheet({
     (webhookSourceView: WebhookSourceViewType) => {
       setWebhookEditionState({
         trigger: null,
-        index: null,
         webhookSourceView,
       });
       setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.WEBHOOK);
@@ -109,46 +104,26 @@ export function TriggerViewsSheet({
 
   const handleScheduleSave = useCallback(
     async (trigger: AgentBuilderScheduleTriggerType) => {
-      if (scheduleEditionState?.index) {
-        if (scheduleEditionState.trigger?.sId) {
-          appendTriggerToUpdate(trigger);
-        } else {
-          updateTriggerToCreate(scheduleEditionState.index, trigger);
-        }
+      if (trigger.sId) {
+        appendTriggerToUpdate(trigger);
       } else {
         appendTriggerToCreate(trigger);
       }
       handleSheetClose();
     },
-    [
-      scheduleEditionState,
-      appendTriggerToCreate,
-      appendTriggerToUpdate,
-      updateTriggerToCreate,
-      handleSheetClose,
-    ]
+    [appendTriggerToCreate, appendTriggerToUpdate, handleSheetClose]
   );
 
   const handleWebhookSave = useCallback(
     async (trigger: AgentBuilderWebhookTriggerType) => {
-      if (webhookEditionState?.index) {
-        if (webhookEditionState.trigger?.sId) {
-          appendTriggerToUpdate(trigger);
-        } else {
-          updateTriggerToCreate(webhookEditionState.index, trigger);
-        }
+      if (trigger.sId) {
+        appendTriggerToUpdate(trigger);
       } else {
         appendTriggerToCreate(trigger);
       }
       handleSheetClose();
     },
-    [
-      webhookEditionState,
-      appendTriggerToCreate,
-      appendTriggerToUpdate,
-      updateTriggerToCreate,
-      handleSheetClose,
-    ]
+    [appendTriggerToCreate, appendTriggerToUpdate, handleSheetClose]
   );
 
   const handleScheduleCancel = useCallback(() => {
@@ -164,10 +139,7 @@ export function TriggerViewsSheet({
   if (mode?.type === "edit") {
     if (mode.trigger.kind === "schedule") {
       if (scheduleEditionState === null) {
-        setScheduleEditionState({
-          trigger: mode.trigger,
-          index: mode.index,
-        });
+        setScheduleEditionState(mode.trigger);
         setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SCHEDULE);
         onModeChange(null);
       }
@@ -175,7 +147,6 @@ export function TriggerViewsSheet({
       if (webhookEditionState === null) {
         setWebhookEditionState({
           trigger: mode.trigger,
-          index: mode.index,
           webhookSourceView: mode.webhookSourceView,
         });
         setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.WEBHOOK);
@@ -185,10 +156,10 @@ export function TriggerViewsSheet({
   }
 
   const scheduleTitle = useMemo(() => {
-    const trigger = scheduleEditionState?.trigger;
+    const trigger = scheduleEditionState;
     const isEditor =
-      scheduleEditionState?.trigger?.editor !== undefined &&
-      scheduleEditionState?.trigger?.editor !== null;
+      scheduleEditionState?.editor !== undefined &&
+      scheduleEditionState?.editor !== null;
 
     if (trigger) {
       return isEditor ? "Edit Schedule" : "View Schedule";
@@ -235,7 +206,7 @@ export function TriggerViewsSheet({
       content: (
         <ScheduleEdition
           owner={owner}
-          trigger={scheduleEditionState?.trigger ?? null}
+          trigger={scheduleEditionState}
           onSave={handleScheduleSave}
           formId={TRIGGERS_SHEET_FORM_IDS.SCHEDULE}
         />
@@ -295,9 +266,7 @@ export function TriggerViewsSheet({
         rightButton={
           currentPageId === TRIGGERS_SHEET_PAGE_IDS.SCHEDULE
             ? {
-                label: scheduleEditionState?.trigger
-                  ? "Update Trigger"
-                  : "Add Trigger",
+                label: scheduleEditionState ? "Update Trigger" : "Add Trigger",
                 variant: "primary",
                 type: "submit",
                 form: TRIGGERS_SHEET_FORM_IDS.SCHEDULE,
