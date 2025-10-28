@@ -67,7 +67,7 @@ function itemToEvent(
       return {
         type: "tool_call",
         content: {
-          id: extractCallId(item.call_id),
+          id: item.call_id,
           name: item.name,
           arguments: item.arguments,
         },
@@ -116,16 +116,6 @@ function responseCompleted(
     });
   }
   return events;
-}
-
-function extractCallId(id: string): string {
-  if (id.startsWith("fc_")) {
-    return id.slice(3);
-  } else if (id.startsWith("call_")) {
-    return id.slice(5);
-  } else {
-    return id;
-  }
 }
 
 function toEvents({
