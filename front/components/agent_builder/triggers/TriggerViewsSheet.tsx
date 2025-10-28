@@ -61,7 +61,7 @@ export function TriggerViewsSheet({
 }: TriggerViewsSheetProps) {
   const { user } = useUser();
 
-  const [currentPageId, setCurrentPageId] = useState<PageId>(
+  const [currentPageId, setCurrentPageId] = useState<string>(
     TRIGGERS_SHEET_PAGE_IDS.SELECTION
   );
 
@@ -344,7 +344,7 @@ export function TriggerViewsSheet({
         <MultiPageSheetContent
           pages={pages}
           currentPageId={currentPageId}
-          onPageChange={(pageId) => setCurrentPageId(pageId as PageId)}
+          onPageChange={(pageId) => setCurrentPageId(pageId)}
           size="xl"
           addFooterSeparator
           showHeaderNavigation={false}
