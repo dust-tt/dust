@@ -267,7 +267,7 @@ export function TriggerViewsSheet({
     const trigger = editTrigger?.kind === "webhook" ? editTrigger : null;
     const webhookSourceView =
       editWebhookSourceView ?? selectedWebhookSourceView;
-    const isEditor = trigger?.editor !== undefined && trigger?.editor !== null;
+    const isEditor = (trigger?.editor ?? user?.id) === user?.id;
 
     if (trigger) {
       return isEditor ? "Edit Webhook" : "View Webhook";
@@ -276,7 +276,7 @@ export function TriggerViewsSheet({
       return `Create ${webhookSourceView.customName} Trigger`;
     }
     return "Create Webhook";
-  }, [editTrigger, editWebhookSourceView, selectedWebhookSourceView]);
+  }, [editTrigger, editWebhookSourceView, selectedWebhookSourceView, user]);
 
   const webhookIcon = useMemo(() => {
     const webhookSourceView =
