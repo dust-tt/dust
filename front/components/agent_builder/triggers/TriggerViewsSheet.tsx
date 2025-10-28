@@ -365,7 +365,7 @@ export function TriggerViewsSheet({
                       ? "Update Trigger"
                       : "Add Trigger",
                   variant: "primary",
-                  type: "submit",
+                  onClick: form.handleSubmit(handleFormSubmit),
                 }
               : currentPageId === TRIGGERS_SHEET_PAGE_IDS.WEBHOOK
                 ? {
@@ -376,7 +376,7 @@ export function TriggerViewsSheet({
                           ? `Add ${(editWebhookSourceView ?? selectedWebhookSourceView)?.customName} Trigger`
                           : "Add Trigger",
                     variant: "primary",
-                    type: "submit",
+                    onClick: form.handleSubmit(handleFormSubmit),
                   }
                 : undefined
           }
