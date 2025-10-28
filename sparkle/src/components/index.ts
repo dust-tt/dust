@@ -1,3 +1,4 @@
+export { ActionCard } from "./ActionCard";
 export { AnimatedText } from "./AnimatedText";
 export { AspectRatio } from "./AspectRatio";
 export {
@@ -175,7 +176,6 @@ export { default as Spinner } from "./Spinner";
 export { FlexSplitButton, SplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
-export { ActionCard } from "./ActionCard";
 export {
   Tooltip,
   TooltipContent,
