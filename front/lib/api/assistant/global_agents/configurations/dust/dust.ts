@@ -162,10 +162,11 @@ export function _getDustGlobalAgent(
   }
 
   // If the filesystem server is enabled on @dust, add brief usage guidelines.
-  const hasFilesystemTools =
+  const useFilesystemTools =
     featureFlags.includes("dust_global_data_source_file_system") &&
     !!dataSourcesFileSystemMCPServerView;
-  if (hasFilesystemTools) {
+
+  if (useFilesystemTools) {
     instructions += `<company_data_guidelines>
     Default behavior: optimize for speed by starting with \`semantic_search\`.
     Provide \`nodeIds\` only when you already know the relevant folder(s) or document(s) to target;
@@ -296,10 +297,7 @@ export function _getDustGlobalAgent(
 
   // Decide which MCP server to use for data sources: default `search`,
   // or `data_sources_file_system` when the feature flag is enabled.
-  const useFsServer = featureFlags.includes(
-    "dust_global_data_source_file_system"
-  );
-  const dataSourcesServerView = useFsServer
+  const dataSourcesServerView = useFilesystemTools
     ? dataSourcesFileSystemMCPServerView ?? null
     : searchMCPServerView;
 
@@ -310,8 +308,8 @@ export function _getDustGlobalAgent(
       id: -1,
       sId: GLOBAL_AGENTS_SID.DUST + "-datasource-action",
       type: "mcp_server_configuration",
-      name: useFsServer ? "company_data" : "search_all_data_sources",
-      description: useFsServer
+      name: useFilesystemTools ? "company_data" : "search_all_data_sources",
+      description: useFilesystemTools
         ? "The user's internal company data."
         : "The user's entire workspace data sources",
       mcpServerViewId: dataSourcesServerView.sId,
@@ -334,7 +332,7 @@ export function _getDustGlobalAgent(
     // In filesystem mode we only expose a single `company_data` action.
     // Otherwise (search mode) we add one hidden action per managed data source
     // to improve queries like "search in <data_source>".
-    if (!useFsServer) {
+    if (!useFilesystemTools) {
       dataSourceViews.forEach((dsView) => {
         if (
           dsView.dataSource.connectorProvider &&
