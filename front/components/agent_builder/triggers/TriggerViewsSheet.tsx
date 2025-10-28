@@ -349,42 +349,19 @@ export function TriggerViewsSheet({
           addFooterSeparator
           showHeaderNavigation={false}
           showNavigation={false}
-          leftButton={
-            currentPageId !== TRIGGERS_SHEET_PAGE_IDS.SELECTION
-              ? {
-                  label: "Cancel",
-                  variant: "outline",
-                  onClick: handleCancel,
-                }
-              : {
-                  label: "Close",
-                  variant: "outline",
-                  onClick: handleSheetClose,
-                }
-          }
-          rightButton={
-            currentPageId === TRIGGERS_SHEET_PAGE_IDS.SCHEDULE
-              ? {
-                  label:
-                    editTrigger?.kind === "schedule"
-                      ? "Update Trigger"
-                      : "Add Trigger",
-                  variant: "primary",
-                  onClick: form.handleSubmit(handleFormSubmit),
-                }
-              : currentPageId === TRIGGERS_SHEET_PAGE_IDS.WEBHOOK
-                ? {
-                    label:
-                      editTrigger?.kind === "webhook"
-                        ? "Update Trigger"
-                        : editWebhookSourceView ?? selectedWebhookSourceView
-                          ? `Add ${(editWebhookSourceView ?? selectedWebhookSourceView)?.customName} Trigger`
-                          : "Add Trigger",
-                    variant: "primary",
-                    onClick: form.handleSubmit(handleFormSubmit),
-                  }
-                : undefined
-          }
+          leftButton={{
+            label:
+              currentPageId !== TRIGGERS_SHEET_PAGE_IDS.SELECTION
+                ? "Cancel"
+                : "Close",
+            variant: "outline",
+            onClick: handleCancel,
+          }}
+          rightButton={{
+            label: "Save",
+            variant: "primary",
+            onClick: form.handleSubmit(handleFormSubmit),
+          }}
         />
       </MultiPageSheet>
     </FormProvider>
