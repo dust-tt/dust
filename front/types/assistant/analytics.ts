@@ -28,6 +28,7 @@ export interface AgentMessageAnalyticsFeedback {
   thumb_direction: ThumbReaction;
   content?: string;
   is_conversation_shared: boolean;
+  dismissed: boolean;
   created_at: string; // ISO date string.
 }
 
