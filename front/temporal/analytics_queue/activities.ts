@@ -259,6 +259,7 @@ export async function storeAgentMessageFeedbackActivity(
       content: agentMessageFeedback.content ?? undefined,
       is_conversation_shared: agentMessageFeedback.isConversationShared,
       created_at: agentMessageFeedback.createdAt.toISOString(),
+      dismissed: agentMessageFeedback.dismissed,
     }));
 
   await updateAnalyticsFeedback(auth, {
