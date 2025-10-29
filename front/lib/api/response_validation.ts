@@ -85,7 +85,7 @@ export function withSchemaValidation<T extends z.ZodObject<any>>(
 ) {
   return (status: number, data: unknown) => {
     try {
-      const validated = schema.strip().parse(data);
+      const validated = schema.strip().safeParse(data);
       return res.status(status).json(validated);
     } catch (error) {
       // If validation fails, log it and return 500
@@ -114,7 +114,7 @@ export function withValidationArray<T extends z.ZodObject<any>>(
   schema: T,
   items: unknown[]
 ): z.infer<T>[] {
-  return items.map((item) => schema.strip().parse(item));
+  return items.map((item) => schema.strip().safeParse(item));
 }
 
 /**
@@ -142,5 +142,5 @@ export function validateBatch<T extends z.ZodObject<any>>(
   schema: T,
   items: unknown[]
 ): z.infer<T>[] {
-  return items.map((item) => schema.strip().parse(item));
+  return items.map((item) => schema.strip().safeParse(item));
 }
