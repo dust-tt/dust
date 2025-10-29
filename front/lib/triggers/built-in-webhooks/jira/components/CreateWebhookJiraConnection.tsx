@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { useWebhookServiceData } from "@app/lib/swr/useWebhookServiceData";
-import type { JiraProject } from "@app/lib/triggers/built-in-webhooks/jira/jira_service_types";
+import type { JiraProjectType } from "@app/lib/triggers/built-in-webhooks/jira/jira_api_types";
 
 export function CreateWebhookJiraConnection({
   owner,
@@ -22,16 +22,19 @@ export function CreateWebhookJiraConnection({
   onReadyToSubmitChange,
   connectionId,
 }: WebhookCreateFormComponentProps) {
-  const [selectedProjects, setSelectedProjects] = useState<JiraProject[]>([]);
+  const [selectedProjects, setSelectedProjects] = useState<JiraProjectType[]>(
+    []
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const { serviceData: jiraData, isServiceDataLoading } =
-    useWebhookServiceData({
+  const { serviceData: jiraData, isServiceDataLoading } = useWebhookServiceData(
+    {
       owner,
       connectionId,
       provider: "jira",
-    });
+    }
+  );
 
   const { jiraProjects, filteredProjects } = useMemo(() => {
     const jiraProjects = jiraData?.projects ?? [];
@@ -75,7 +78,7 @@ export function CreateWebhookJiraConnection({
     onReadyToSubmitChange,
   ]);
 
-  const handleAddProject = (project: JiraProject) => {
+  const handleAddProject = (project: JiraProjectType) => {
     if (!selectedProjects.some((p) => p.key === project.key)) {
       setSelectedProjects([...selectedProjects, project]);
     }
@@ -83,10 +86,8 @@ export function CreateWebhookJiraConnection({
     setShowDropdown(false);
   };
 
-  const handleRemoveProject = (project: JiraProject) => {
-    setSelectedProjects(
-      selectedProjects.filter((p) => p.key !== project.key)
-    );
+  const handleRemoveProject = (project: JiraProjectType) => {
+    setSelectedProjects(selectedProjects.filter((p) => p.key !== project.key));
   };
 
   return (
