@@ -52,6 +52,7 @@ function toAssistantInputItem(
     case "reasoning":
       assert(content.value.reasoning, "Expected non-null reasoning content");
       return {
+        // TODO(LLM-Router 2025-10-28): Use reasoning id sent by provider
         id: "",
         type: "reasoning",
         summary: [{ type: "summary_text", text: content.value.reasoning }],
