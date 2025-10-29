@@ -2,6 +2,8 @@ import type { GenerateContentResponse } from "@google/genai";
 import { FinishReason } from "@google/genai";
 import { describe, expect, it } from "vitest";
 
+import { createAsyncGenerator } from "@app/lib/api/llm/utils/utils";
+
 import { streamLLMEvents } from "../google_to_events";
 
 // Test-specific type that omits computed/derived properties from GenerateContentResponse
@@ -9,12 +11,6 @@ type PartialGenerateContentResponse = Omit<
   GenerateContentResponse,
   "text" | "data" | "functionCalls" | "executableCode" | "codeExecutionResult"
 >;
-
-async function* createAsyncGenerator<T>(items: T[]): AsyncGenerator<T> {
-  for (const item of items) {
-    yield item;
-  }
-}
 
 describe("streamLLMEvents", () => {
   describe("when finish reason is stop", () => {
