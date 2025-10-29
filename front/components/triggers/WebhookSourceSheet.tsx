@@ -352,6 +352,23 @@ function WebhookSourceSheetContent({
             await applySharingChanges(diff.sharingChanges);
           }
 
+          if (diff.webhookSourceUpdates) {
+            const response = await fetch(
+              `/api/w/${owner.sId}/webhook_sources/${webhookSource.sId}`,
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(diff.webhookSourceUpdates),
+              }
+            );
+            if (!response.ok) {
+              const body = await response.json();
+              throw new Error(
+                body.error?.message ?? "Failed to update webhook source"
+              );
+            }
+          }
+
           await mutateWebhookSourcesWithViews();
 
           sendNotification({

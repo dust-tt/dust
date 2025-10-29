@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -7,6 +8,7 @@ import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resourc
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
+import { WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS } from "@app/types/triggers/webhooks";
 
 export type DeleteWebhookSourceResponseBody = {
   success: true;
@@ -15,6 +17,13 @@ export type DeleteWebhookSourceResponseBody = {
 export type PatchWebhookSourceResponseBody = {
   success: true;
 };
+
+export const PatchWebhookSourceViewBodySchema = z.object({
+  remoteMetadata: z.record(z.unknown()).optional(),
+  oauthConnectionId: z.string().optional(),
+  signatureHeader: z.string().optional(),
+  signatureAlgorithm: z.enum(WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS).optional(),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -51,7 +60,25 @@ async function handler(
 
   switch (method) {
     case "PATCH": {
-      const { remoteMetadata, oauthConnectionId } = req.body;
+      const bodyValidation = PatchWebhookSourceViewBodySchema.safeParse(
+        req.body
+      );
+      if (!bodyValidation.success) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid request body",
+          },
+        });
+      }
+
+      const {
+        remoteMetadata,
+        oauthConnectionId,
+        signatureHeader,
+        signatureAlgorithm,
+      } = bodyValidation.data;
 
       const webhookSourceResource = await WebhookSourceResource.fetchById(
         auth,
@@ -73,6 +100,8 @@ async function handler(
       const updates: {
         remoteMetadata?: Record<string, any>;
         oauthConnectionId?: string;
+        signatureHeader?: string;
+        signatureAlgorithm?: (typeof WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS)[number];
       } = {};
 
       if (remoteMetadata && typeof remoteMetadata === "object") {
@@ -81,9 +110,15 @@ async function handler(
       if (oauthConnectionId && typeof oauthConnectionId === "string") {
         updates.oauthConnectionId = oauthConnectionId;
       }
+      if (signatureHeader !== undefined) {
+        updates.signatureHeader = signatureHeader;
+      }
+      if (signatureAlgorithm !== undefined) {
+        updates.signatureAlgorithm = signatureAlgorithm;
+      }
 
       // Update the webhook source with the provided fields
-      await webhookSourceResource.updateRemoteMetadata(updates);
+      await webhookSourceResource.updateWebhookSource(updates);
 
       return res.status(200).json({
         success: true,

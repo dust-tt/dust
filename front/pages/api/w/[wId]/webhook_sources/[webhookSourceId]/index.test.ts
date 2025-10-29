@@ -258,6 +258,70 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     expect(updatedWebhookSource?.oauthConnectionId).toBe("connection-456");
   });
 
+  it("should successfully update signatureHeader", async () => {
+    const { req, res, workspace, authenticator } = await setupTest(
+      "admin",
+      "PATCH"
+    );
+
+    const webhookSource = await createWebhookSource(
+      workspace,
+      "Test Webhook Source"
+    );
+    req.query.webhookSourceId = webhookSource.sId;
+    req.body = {
+      signatureHeader: "X-Hub-Signature-256",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    const responseData = res._getJSONData();
+    expect(responseData).toEqual({
+      success: true,
+    });
+
+    // Verify the webhook source was actually updated
+    const updatedWebhookSource = await WebhookSourceResource.fetchById(
+      authenticator,
+      webhookSource.sId
+    );
+    expect(updatedWebhookSource?.signatureHeader).toBe("X-Hub-Signature-256");
+  });
+
+  it("should successfully update signatureAlgorithm", async () => {
+    const { req, res, workspace, authenticator } = await setupTest(
+      "admin",
+      "PATCH"
+    );
+
+    const webhookSource = await createWebhookSource(
+      workspace,
+      "Test Webhook Source"
+    );
+    req.query.webhookSourceId = webhookSource.sId;
+    req.body = {
+      signatureAlgorithm: "sha256",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    const responseData = res._getJSONData();
+    expect(responseData).toEqual({
+      success: true,
+    });
+
+    // Verify the webhook source was actually updated
+    const updatedWebhookSource = await WebhookSourceResource.fetchById(
+      authenticator,
+      webhookSource.sId
+    );
+    expect(updatedWebhookSource?.signatureAlgorithm).toBe("sha256");
+  });
+
   it("should successfully update multiple fields at once", async () => {
     const { req, res, workspace, authenticator } = await setupTest(
       "admin",
@@ -272,6 +336,8 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     req.body = {
       remoteMetadata: { id: "remote-webhook-789", repo: "org/project" },
       oauthConnectionId: "connection-789",
+      signatureHeader: "X-Custom-Signature",
+      signatureAlgorithm: "sha1",
     };
 
     await handler(req, res);
@@ -288,18 +354,18 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       authenticator,
       webhookSource.sId
     );
+    expect(updatedWebhookSource).not.toBeNull();
     expect(updatedWebhookSource?.remoteMetadata).toEqual({
       id: "remote-webhook-789",
       repo: "org/project",
     });
     expect(updatedWebhookSource?.oauthConnectionId).toBe("connection-789");
+    expect(updatedWebhookSource?.signatureHeader).toBe("X-Custom-Signature");
+    expect(updatedWebhookSource?.signatureAlgorithm).toBe("sha1");
   });
 
-  it("should ignore invalid field types and only update valid fields", async () => {
-    const { req, res, workspace, authenticator } = await setupTest(
-      "admin",
-      "PATCH"
-    );
+  it("should return 400 when remoteMetadata is not an object", async () => {
+    const { req, res, workspace } = await setupTest("admin", "PATCH");
 
     const webhookSource = await createWebhookSource(
       workspace,
@@ -313,20 +379,13 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(200);
+    expect(res._getStatusCode()).toBe(400);
 
     const responseData = res._getJSONData();
-    expect(responseData).toEqual({
-      success: true,
+    expect(responseData.error).toEqual({
+      type: "invalid_request_error",
+      message: "Invalid request body",
     });
-
-    // Verify only the valid field was updated
-    const updatedWebhookSource = await WebhookSourceResource.fetchById(
-      authenticator,
-      webhookSource.sId
-    );
-    expect(updatedWebhookSource?.remoteMetadata).toBeNull();
-    expect(updatedWebhookSource?.oauthConnectionId).toBe("valid-connection");
   });
 
   it("should return 200 with empty body (no updates)", async () => {
@@ -386,6 +445,61 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       type: "invalid_request_error",
       message: "Invalid webhook source ID.",
     });
+  });
+
+  it("should return 400 when signatureAlgorithm is invalid", async () => {
+    const { req, res, workspace } = await setupTest("admin", "PATCH");
+
+    const webhookSource = await createWebhookSource(
+      workspace,
+      "Test Webhook Source"
+    );
+    req.query.webhookSourceId = webhookSource.sId;
+    req.body = {
+      signatureAlgorithm: "invalid-algorithm",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+
+    const responseData = res._getJSONData();
+    expect(responseData.error).toEqual({
+      type: "invalid_request_error",
+      message: "Invalid request body",
+    });
+  });
+
+  it("should successfully set signatureHeader to empty string", async () => {
+    const { req, res, workspace, authenticator } = await setupTest(
+      "admin",
+      "PATCH"
+    );
+
+    const webhookSource = await createWebhookSource(
+      workspace,
+      "Test Webhook Source"
+    );
+    req.query.webhookSourceId = webhookSource.sId;
+    req.body = {
+      signatureHeader: "",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    const responseData = res._getJSONData();
+    expect(responseData).toEqual({
+      success: true,
+    });
+
+    // Verify the signatureHeader was updated to empty string
+    const updatedWebhookSource = await WebhookSourceResource.fetchById(
+      authenticator,
+      webhookSource.sId
+    );
+    expect(updatedWebhookSource?.signatureHeader).toBe("");
   });
 });
 

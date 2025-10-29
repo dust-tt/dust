@@ -1,17 +1,21 @@
 import { z } from "zod";
 
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type { WebhookSourceSignatureAlgorithm } from "@app/types/triggers/webhooks";
+import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
+import { WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS } from "@app/types/triggers/webhooks";
 
 export type WebhookSourceFormValues = {
   name: string;
   description: string;
   icon: string;
   sharingSettings: Record<string, boolean>;
+  signatureHeader?: string;
+  signatureAlgorithm?: WebhookSourceSignatureAlgorithm;
 };
 
 export function getWebhookSourceFormDefaults(
-  view: WebhookSourceViewType,
+  view: WebhookSourceViewForAdminType,
   webhookSourceWithViews?: { views: Array<{ spaceId: string }> },
   spaces?: Array<{ sId: string; kind: string }>
 ): WebhookSourceFormValues {
@@ -45,6 +49,8 @@ export function getWebhookSourceFormDefaults(
     description: view.description ?? "",
     icon: normalizeWebhookIcon(view.icon),
     sharingSettings,
+    signatureHeader: view.webhookSource.signatureHeader ?? undefined,
+    signatureAlgorithm: view.webhookSource.signatureAlgorithm ?? undefined,
   };
 }
 
@@ -54,6 +60,8 @@ export function getWebhookSourceFormSchema() {
     description: z.string(),
     icon: z.string(),
     sharingSettings: z.record(z.boolean()),
+    signatureHeader: z.string().optional(),
+    signatureAlgorithm: z.enum(WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS).optional(),
   });
 }
 
@@ -67,6 +75,10 @@ type FormDiffType = {
     spaceId: string;
     action: "add" | "remove";
   }>;
+  webhookSourceUpdates?: {
+    signatureHeader?: string | null;
+    signatureAlgorithm?: WebhookSourceSignatureAlgorithm | null;
+  };
 };
 
 export function diffWebhookSourceForm(
@@ -84,6 +96,8 @@ export function diffWebhookSourceForm(
       name: string;
       description?: string;
       icon?: string;
+      signatureHeader?: string;
+      signatureAlgorithm?: WebhookSourceSignatureAlgorithm;
     } = {
       name: current.name,
     };
@@ -116,6 +130,22 @@ export function diffWebhookSourceForm(
   }
   if (sharingChanges.length > 0) {
     out.sharingChanges = sharingChanges;
+  }
+
+  const hasSignatureHeaderChange =
+    current.signatureHeader !== initial.signatureHeader;
+  const hasSignatureAlgorithmChange =
+    current.signatureAlgorithm !== initial.signatureAlgorithm;
+  if (hasSignatureHeaderChange || hasSignatureAlgorithmChange) {
+    out.webhookSourceUpdates = {};
+    if (hasSignatureHeaderChange) {
+      out.webhookSourceUpdates.signatureHeader =
+        current.signatureHeader ?? null;
+    }
+    if (hasSignatureAlgorithmChange) {
+      out.webhookSourceUpdates.signatureAlgorithm =
+        current.signatureAlgorithm ?? null;
+    }
   }
 
   return out;

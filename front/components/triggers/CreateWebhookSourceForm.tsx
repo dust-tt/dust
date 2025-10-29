@@ -1,12 +1,6 @@
 import {
-  Button,
   Checkbox,
-  ChevronDownIcon,
   CollapsibleComponent,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   Input,
   Label,
   SliderToggle,
@@ -17,11 +11,11 @@ import { Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { CreateWebhookSourceWithProviderForm } from "@app/components/triggers/CreateWebhookSourceWithProviderForm";
+import { WebhookSignatureSettings } from "@app/components/triggers/WebhookSignatureSettings";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import {
   WEBHOOK_PRESETS,
-  WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
   WebhookSourcesSchema,
 } from "@app/types/triggers/webhooks";
 
@@ -70,6 +64,10 @@ export function CreateWebhookSourceFormContent({
   const selectedEvents = useWatch({
     control: form.control,
     name: "subscribedEvents",
+  });
+  const autoGenerate = useWatch({
+    control: form.control,
+    name: "autoGenerate",
   });
 
   return (
@@ -203,7 +201,7 @@ export function CreateWebhookSourceFormContent({
                     )}
                   />
                 </div>
-                {!form.watch("autoGenerate") && (
+                {!autoGenerate && (
                   <Controller
                     control={form.control}
                     name="secret"
@@ -222,53 +220,7 @@ export function CreateWebhookSourceFormContent({
                     )}
                   />
                 )}
-                <Controller
-                  control={form.control}
-                  name="signatureHeader"
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      label="Signature Header"
-                      placeholder="Signature header..."
-                      isError={
-                        form.formState.errors.signatureHeader !== undefined
-                      }
-                      message={form.formState.errors.signatureHeader?.message}
-                      messageStatus="error"
-                    />
-                  )}
-                />
-                <div className="flex items-center justify-between space-y-2">
-                  <Label>Signature Algorithm</Label>
-                  <Controller
-                    control={form.control}
-                    name="signatureAlgorithm"
-                    render={({ field }) => (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            label={field.value}
-                            variant="outline"
-                            className="!mt-0"
-                            icon={ChevronDownIcon}
-                          />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          {WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS.map(
-                            (algorithm) => (
-                              <DropdownMenuItem
-                                key={algorithm}
-                                onClick={() => field.onChange(algorithm)}
-                              >
-                                {algorithm}
-                              </DropdownMenuItem>
-                            )
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  />
-                </div>
+                <WebhookSignatureSettings />
               </div>
             }
           />

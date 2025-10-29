@@ -228,7 +228,7 @@ async function handler(
 
         // Update the webhook source with the id of the webhook
         const updatedRemoteMetadata = result.value.updatedRemoteMetadata;
-        await webhookSource.updateRemoteMetadata({
+        await webhookSource.updateWebhookSource({
           remoteMetadata: updatedRemoteMetadata,
           oauthConnectionId: connectionId,
         });

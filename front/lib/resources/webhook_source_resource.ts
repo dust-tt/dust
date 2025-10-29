@@ -151,9 +151,15 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     });
   }
 
-  async updateRemoteMetadata(
+  async updateWebhookSource(
     updates: Partial<
-      Pick<WebhookSourceModel, "remoteMetadata" | "oauthConnectionId">
+      Pick<
+        WebhookSourceModel,
+        | "remoteMetadata"
+        | "oauthConnectionId"
+        | "signatureHeader"
+        | "signatureAlgorithm"
+      >
     >,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {

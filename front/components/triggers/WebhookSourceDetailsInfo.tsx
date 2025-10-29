@@ -25,6 +25,7 @@ import { useController, useFormContext } from "react-hook-form";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
+import { WebhookSignatureSettings } from "@app/components/triggers/WebhookSignatureSettings";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { buildWebhookUrl, normalizeWebhookIcon } from "@app/lib/webhookSource";
@@ -106,6 +107,7 @@ export function WebhookSourceDetailsInfo({
 
   const { provider, secret, signatureHeader, signatureAlgorithm } =
     webhookSourceView.webhookSource;
+
   return (
     <div className="flex flex-col gap-2">
       {editedLabel !== null && (
@@ -231,56 +233,45 @@ export function WebhookSourceDetailsInfo({
             </div>
           </div>
         )}
-        {(secret ?? signatureHeader) && (
-          <CollapsibleComponent
-            rootProps={{ defaultOpen: false }}
-            triggerProps={{ label: "Advanced settings", variant: "secondary" }}
-            contentChildren={
-              <div>
-                {secret && (
-                  <div>
-                    <Page.H variant="h6">Secret</Page.H>
-                    <div className="flex items-center space-x-2">
-                      <div
-                        className={cn("font-mono", {
+        <CollapsibleComponent
+          rootProps={{ defaultOpen: false }}
+          triggerProps={{ label: "Advanced settings", variant: "secondary" }}
+          contentChildren={
+            <div>
+              {secret && (
+                <div>
+                  <Label htmlFor="trigger-signature-algorithm">Secret</Label>
+                  <div className="flex items-center space-x-2">
+                    <div
+                      className={cn(
+                        "min-w-0 flex-1 overflow-hidden font-mono",
+                        {
                           "select-none blur-sm": !isSecretVisible,
-                        })}
-                      >
-                        <Page.P>{secret}</Page.P>
-                      </div>
-                      <IconButton
-                        icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
-                        onClick={() => setIsSecretVisible((prev) => !prev)}
-                        size="xs"
-                      />
+                        }
+                      )}
+                    >
+                      <div>{secret}</div>
                     </div>
-                  </div>
-                )}
-                {signatureHeader && (
-                  <>
-                    <div>
-                      <Page.H variant="h6">Signature Header</Page.H>
-                      <Page.P>{signatureHeader}</Page.P>
-                    </div>
-
-                    <div>
-                      <Page.H variant="h6">Signature Algorithm</Page.H>
-                      <Page.P>{signatureAlgorithm}</Page.P>
-                    </div>
-                  </>
-                )}
-                {secret && signatureHeader && signatureAlgorithm && (
-                  <>
-                    <Separator className="mb-4 mt-4" />
-                    <WebhookEndpointUsageInfo
-                      signatureAlgorithm={signatureAlgorithm}
-                      signatureHeader={signatureHeader}
+                    <IconButton
+                      icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
+                      onClick={() => setIsSecretVisible((prev) => !prev)}
+                      size="xs"
                     />
-                  </>
-                )}
-              </div>
-            }
-          />
+                  </div>
+                </div>
+              )}
+              <WebhookSignatureSettings />
+            </div>
+          }
+        />
+        {secret && signatureHeader && signatureAlgorithm && (
+          <>
+            <Separator className="mb-4 mt-4" />
+            <WebhookEndpointUsageInfo
+              signatureAlgorithm={signatureAlgorithm}
+              signatureHeader={signatureHeader}
+            />
+          </>
         )}
       </div>
     </div>
