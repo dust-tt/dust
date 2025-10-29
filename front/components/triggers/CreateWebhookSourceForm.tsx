@@ -12,8 +12,8 @@ import {
   Label,
   ListSelectIcon,
   SliderToggle,
-  XMarkIcon,
   TextArea,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
