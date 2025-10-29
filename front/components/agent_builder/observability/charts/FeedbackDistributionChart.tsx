@@ -8,8 +8,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
+import { FeedbackDistributionTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
 import {
   CHART_HEIGHT,
   FEEDBACK_DISTRIBUTION_LEGEND,
@@ -18,56 +18,7 @@ import {
 import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { useAgentFeedbackDistribution } from "@app/lib/swr/assistants";
-
-interface FeedbackDistributionData {
-  positive: number;
-  negative: number;
-}
-
-function isFeedbackDistributionData(
-  data: unknown
-): data is FeedbackDistributionData {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    "positive" in data &&
-    "negative" in data
-  );
-}
-
-function FeedbackDistributionTooltip(
-  props: TooltipContentProps<number, string>
-): JSX.Element | null {
-  const { active, payload, label } = props;
-  if (!active || !payload || payload.length === 0) {
-    return null;
-  }
-  const first = payload[0];
-  if (!first?.payload || !isFeedbackDistributionData(first.payload)) {
-    return null;
-  }
-  const row = first.payload;
-  const title = typeof label === "string" ? label : String(label);
-  return (
-    <ChartTooltipCard
-      title={title}
-      rows={[
-        {
-          label: "Positive",
-          value: row.positive,
-          colorClassName: FEEDBACK_DISTRIBUTION_PALETTE.positive,
-        },
-        {
-          label: "Negative",
-          value: row.negative,
-          colorClassName: FEEDBACK_DISTRIBUTION_PALETTE.negative,
-        },
-      ]}
-    />
-  );
-}
 
 interface FeedbackDistributionChartProps {
   workspaceId: string;

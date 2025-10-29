@@ -18,7 +18,7 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
-import { ToolUsageTooltip } from "@app/components/agent_builder/observability/charts/ToolUsageTooltip";
+import { ChartsTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import { useToolUsageData } from "@app/components/agent_builder/observability/hooks";
 import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
@@ -72,7 +72,7 @@ export function ToolUsageChart({
 
   const renderToolUsageTooltip = useCallback(
     (payload: TooltipContentProps<number, string>) => (
-      <ToolUsageTooltip {...payload} mode={mode} topTools={topTools} />
+      <ChartsTooltip {...payload} mode={mode} topTools={topTools} />
     ),
     [mode, topTools]
   );
