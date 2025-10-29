@@ -116,27 +116,30 @@ function responseCompleted(
     response.output.map((i) => itemToEvents(i, metadata))
   );
 
-  if (response.usage) {
-    const {
-      input_tokens: inputTokens,
-      output_tokens: outputTokens,
-      total_tokens: totalTokens,
-    } = response.usage;
-    const { cached_tokens: cachedTokens } = response.usage.input_tokens_details;
-    const { reasoning_tokens: reasoningTokens } =
-      response.usage.output_tokens_details;
-    events.push({
-      type: "token_usage",
-      content: {
-        inputTokens,
-        cachedTokens,
-        reasoningTokens,
-        outputTokens,
-        totalTokens,
-      },
-      metadata,
-    });
+  if (!response.usage) {
+    return events;
   }
+
+  const {
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    total_tokens: totalTokens,
+  } = response.usage;
+  const { cached_tokens: cachedTokens } = response.usage.input_tokens_details;
+  const { reasoning_tokens: reasoningTokens } =
+    response.usage.output_tokens_details;
+  events.push({
+    type: "token_usage",
+    content: {
+      inputTokens,
+      cachedTokens,
+      reasoningTokens,
+      outputTokens,
+      totalTokens,
+    },
+    metadata,
+  });
+
   return events;
 }
 
