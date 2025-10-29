@@ -123,7 +123,12 @@ export function ToolsPicker({
 
     const selectionIncreased = selectedCount > prevSelectedCount;
 
-    if (selectionIncreased && prevUnselectedCount > 0 && unselectedCount === 0) {
+    // if we have selected one more item and there are no unselected items left, close the picker
+    if (
+      selectionIncreased &&
+      prevUnselectedCount > 0 &&
+      unselectedCount === 0
+    ) {
       setIsOpen(false);
       setSearchText("");
     }
