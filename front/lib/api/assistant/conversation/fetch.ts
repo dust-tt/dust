@@ -91,7 +91,7 @@ export async function getConversation(
 
   const renderRes = await batchRenderMessages(
     auth,
-    conversation.sId,
+    conversation,
     messages,
     "full"
   );

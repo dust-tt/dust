@@ -10,7 +10,6 @@ import {
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { createAgentMessages } from "@app/lib/api/assistant/conversation/mentions";
-import { canReadMessage } from "@app/lib/api/assistant/messages";
 import {
   getContentFragmentGroupIds,
   getContentFragmentSpaceIds,
@@ -1014,16 +1013,6 @@ export async function retryAgentMessage(
     message: AgentMessageType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
-  if (!canReadMessage(auth, message)) {
-    return new Err({
-      status_code: 403,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The message to retry is not accessible.",
-      },
-    });
-  }
-
   let agentMessageResult: {
     agentMessage: AgentMessageType;
     agentMessageRow: AgentMessage;

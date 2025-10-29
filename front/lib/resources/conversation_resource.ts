@@ -5,7 +5,7 @@ import type {
 } from "sequelize";
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
 import {
   AgentMessage,
@@ -31,7 +31,6 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import logger from "@app/logger/logger";
 import type {
   ConversationMCPServerViewType,
   ConversationType,
@@ -132,11 +131,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return conversations.map((c) => new this(this.model, c.get()));
     }
 
-    const featureFlags = await getFeatureFlags(workspace);
-    const hasRequestedSpaceIdsFF = featureFlags.includes(
-      "use_requested_space_ids"
-    );
-
     // Filter out conversations that reference missing/deleted spaces.
     // There are two reasons why a space may be missing here:
     // 1. When a space is deleted, conversations referencing it won't be deleted but should not be accessible.
@@ -161,47 +155,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       )
     );
 
-    if (newSpaceBasedAccessible.length !== validConversations.length) {
-      // If the feature flag is enabled, only return the accessible conversations.
-      // TODO(2025-10-23 REQUESTED_SPACE_IDS): Remove this FF check.
-      if (hasRequestedSpaceIdsFF) {
-        return newSpaceBasedAccessible;
-      }
-
-      // Compare new space-based permissions with legacy group-based permissions.
-      const legacyGroupBasedAccessible = validConversations.filter((c) =>
-        ConversationResource.canAccessConversation(auth, c)
-      );
-
-      if (
-        newSpaceBasedAccessible.length !== legacyGroupBasedAccessible.length
-      ) {
-        const allowedByGroupIdsOnly = legacyGroupBasedAccessible.filter(
-          (groupConv) =>
-            !newSpaceBasedAccessible.some(
-              (spaceConv) => spaceConv.sId === groupConv.sId
-            )
-        );
-        const allowedBySpaceIdsOnly = newSpaceBasedAccessible.filter(
-          (spaceConv) =>
-            !legacyGroupBasedAccessible.some(
-              (groupConv) => groupConv.sId === spaceConv.sId
-            )
-        );
-        // Otherwise, log a warning showing the difference between new and legacy permissions.
-        logger.warn(
-          {
-            workspaceId: workspace.sId,
-            allowedByGroupIdsOnly: allowedByGroupIdsOnly.map((c) => c.sId),
-            allowedBySpaceIdsOnly: allowedBySpaceIdsOnly.map((c) => c.sId),
-          },
-          "[REQUESTED_SPACE_IDS] Mismatch between new space-based and legacy group-based permission results. " +
-            "Returning all valid conversations for backward compatibility."
-        );
-      }
-    }
-
-    return validConversations;
+    return newSpaceBasedAccessible;
   }
 
   static triggerIdToSId(triggerId: number | null, workspaceId: number) {
