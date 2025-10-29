@@ -190,7 +190,9 @@ export function AgentBuilderTriggersBlock({
           <CardGrid>
             {allTriggers.map((item, displayIndex) => (
               <TriggerCard
-                key={item.trigger.sId ?? `${item.source}-${item.index}`}
+                key={
+                  `card-${item.trigger.sId}` ?? `${item.source}-${item.index}`
+                }
                 trigger={item.trigger}
                 onRemove={() => handleTriggerRemove(item.trigger, displayIndex)}
                 onEdit={() => handleTriggerEdit(item.trigger)}
