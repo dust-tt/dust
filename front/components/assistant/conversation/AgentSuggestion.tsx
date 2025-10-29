@@ -10,10 +10,10 @@ import { useRouter } from "next/router";
 import { useCallback, useContext, useMemo, useState } from "react";
 
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { mentionAgent } from "@app/lib/mentions";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   useAgentConfigurations,
   useSuggestedAgentConfigurations,
