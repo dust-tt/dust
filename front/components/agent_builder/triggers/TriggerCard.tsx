@@ -2,7 +2,6 @@ import {
   Avatar,
   Card,
   CardActionButton,
-  Chip,
   TimeIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";

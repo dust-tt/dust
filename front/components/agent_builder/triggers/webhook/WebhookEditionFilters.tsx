@@ -1,9 +1,4 @@
-import {
-  CollapsibleComponent,
-  Label,
-  Spinner,
-  TextArea,
-} from "@dust-tt/sparkle";
+import { Label, Spinner, TextArea } from "@dust-tt/sparkle";
 import React, { useEffect, useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
@@ -152,7 +147,7 @@ export function WebhookEditionFilters({
             Run only when (optional)
           </Label>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Set conditions that muyst be met to run the agent.
+            Set conditions that must be met to run the agent.
           </p>
           <TextArea
             id="webhook-filter-description"

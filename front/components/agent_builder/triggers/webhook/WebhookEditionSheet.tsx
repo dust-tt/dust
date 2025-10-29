@@ -178,7 +178,7 @@ function WebhookEditionMessageInput({
 
   return (
     <div className="space-y-1">
-      <Label htmlFor="webhook-prompt">Agent message (Optional)</Label>
+      <Label htmlFor="webhook-prompt">Message (Optional)</Label>
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         Message for the agent when the trigger runs.
       </p>
