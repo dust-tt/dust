@@ -3,18 +3,14 @@ import assert from "assert";
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
+import { buildAgentLoopArgs } from "@app/lib/api/assistant/conversation/agent_loop";
 import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
 import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import {
-  AgentMessage,
-  Message,
-  UserMessage,
-} from "@app/lib/models/assistant/conversation";
+import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -222,81 +218,6 @@ async function storeToElasticsearch(
 
     throw error;
   }
-}
-
-async function buildAgentLoopArgs(
-  auth: Authenticator,
-  {
-    agentMessageId,
-    conversationId,
-  }: {
-    agentMessageId: string;
-    conversationId: string;
-  }
-): Promise<AgentLoopArgs> {
-  const workspace = auth.getNonNullableWorkspace();
-
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-
-  if (!conversation) {
-    throw new Error(`Conversation not found: ${conversationId}`);
-  }
-
-  const agentMessage = await Message.findOne({
-    where: {
-      sId: agentMessageId,
-      conversationId: conversation.id,
-      workspaceId: workspace.id,
-    },
-    include: [
-      {
-        model: AgentMessage,
-        as: "agentMessage",
-        required: true,
-      },
-    ],
-  });
-
-  if (!agentMessage?.agentMessage) {
-    throw new Error(`Agent message not found: ${agentMessageId}`);
-  }
-
-  if (!agentMessage.parentId) {
-    throw new Error(`Agent message has no parent: ${agentMessageId}`);
-  }
-
-  const userMessage = await Message.findOne({
-    where: {
-      id: agentMessage.parentId,
-      conversationId: conversation.id,
-      workspaceId: workspace.id,
-    },
-    include: [
-      {
-        model: UserMessage,
-        as: "userMessage",
-        required: true,
-      },
-    ],
-  });
-
-  if (!userMessage?.userMessage) {
-    throw new Error(
-      `User message not found for agent message: ${agentMessageId}`
-    );
-  }
-
-  return {
-    agentMessageId: agentMessage.sId,
-    agentMessageVersion: agentMessage.version ?? 0,
-    conversationId: conversation.sId,
-    conversationTitle: conversation.title ?? null,
-    userMessageId: userMessage.sId,
-    userMessageVersion: userMessage.version ?? 0,
-  };
 }
 
 export async function storeAgentMessageFeedbackActivity(
