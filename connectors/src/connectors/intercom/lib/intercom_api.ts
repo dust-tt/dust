@@ -321,8 +321,8 @@ export async function fetchIntercomConversations({
   accessToken: string;
   teamId?: string;
   slidingWindow: number;
-  cursor: string | null;
   closedAfter?: number;
+  cursor: string | null;
   pageSize?: number;
   state?: string;
 }): Promise<IntercomFetchConversationsResponseType> {
@@ -336,17 +336,17 @@ export async function fetchIntercomConversations({
     operator: string;
     value: string | number | boolean | [] | null;
   }[] = [
-    {
-      field: "open",
-      operator: "=",
-      value: false,
-    },
-    {
-      field: "created_at",
-      operator: ">",
-      value: minCreatedAt,
-    },
-  ];
+      {
+        field: "open",
+        operator: "=",
+        value: false,
+      },
+      {
+        field: "created_at",
+        operator: ">",
+        value: minCreatedAt,
+      },
+    ];
 
   if (teamId) {
     queryFilters.push({
