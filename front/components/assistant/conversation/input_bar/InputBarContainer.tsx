@@ -474,7 +474,8 @@ const InputBarContainer = ({
   const { animate } = useContext(InputBarContext);
   useEffect(() => {
     if (animate) {
-      editorService.focusEnd();
+      // Schedule focus to avoid flushing during render lifecycle.
+      queueMicrotask(() => editorService.focusEnd());
     }
   }, [animate, editorService]);
 

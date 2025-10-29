@@ -79,7 +79,8 @@ const useHandleAgentMentions = (
       };
 
       if (!editorService.hasMention(mention)) {
-        editorService.insertMention(mention);
+        // Schedule insertion to avoid synchronous editor updates during React render/effects.
+        queueMicrotask(() => editorService.insertMention(mention));
       }
     }
   }, [selectedAgent, editorService, disableAutoFocus, agentConfigurations]);
