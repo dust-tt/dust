@@ -62,6 +62,7 @@ export function formValuesToWebhookTriggerData({
       ? webhook.naturalDescription?.trim() ?? null
       : null,
     kind: "webhook",
+    provider: webhookSourceView?.provider ?? null,
     configuration: {
       includePayload: webhook.includePayload,
       event: webhook.event,
