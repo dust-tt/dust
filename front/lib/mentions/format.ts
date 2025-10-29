@@ -37,6 +37,7 @@ export function serializeMention(
     // Legacy format support
     return `:mention[${mention.name}]{sId=${mention.sId}}`;
   }
+
   switch (mention.type) {
     case "agent":
       return `:mention[${mention.label}]{sId=${mention.id}}`;

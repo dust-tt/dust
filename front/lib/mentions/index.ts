@@ -27,6 +27,7 @@ export { MentionDropdown } from "./ui/MentionDropdown";
 // Editor utilities
 export {
   filterAgentSuggestions,
+  filterUserSuggestions,
   mentionSuggestions,
 } from "./editor/suggestion";
 export { editorMentionUtils } from "./editor/utils";

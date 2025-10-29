@@ -943,6 +943,7 @@ export type UploadedContentFragmentType = {
 };
 
 const AgentMentionSchema = z.object({
+  //TODO(rcs): add a mentionType: "agent", but it requires some refactoring
   configurationId: z.string(),
 });
 

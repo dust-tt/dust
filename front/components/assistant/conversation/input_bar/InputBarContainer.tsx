@@ -16,8 +16,8 @@ import useAgentSuggestions from "@app/components/assistant/conversation/input_ba
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleAgentMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleAgentMentions";
-import useMemberSuggestions from "@app/components/assistant/conversation/input_bar/editor/useMemberSuggestions";
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
+import useUserSuggestions from "@app/components/assistant/conversation/input_bar/editor/useUserSuggestions";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
@@ -101,15 +101,28 @@ const InputBarContainer = ({
   selectedMCPServerViews,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const memberSuggestions = useMemberSuggestions(
-    owner,
-    "",
-    !featureFlags.includes("mentions_v2")
-  );
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const userMentionsEnabled = hasFeature("mentions_v2");
+
+  // Fetch agent and user suggestions.
   const agentSuggestions = useAgentSuggestions(agentConfigurations, owner);
+  const userSuggestions = useUserSuggestions(owner, userMentionsEnabled);
+
+  // Combine agent and user suggestions for the editor.
+  const editorSuggestions = useMemo(() => {
+    return {
+      suggestions: [
+        ...agentSuggestions.suggestions,
+        ...userSuggestions.suggestions,
+      ],
+      fallbackSuggestions: [
+        ...agentSuggestions.fallbackSuggestions,
+        ...userSuggestions.fallbackSuggestions,
+      ],
+      isLoading: agentSuggestions.isLoading || userSuggestions.isLoading,
+    };
+  }, [agentSuggestions, userSuggestions]);
+
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
