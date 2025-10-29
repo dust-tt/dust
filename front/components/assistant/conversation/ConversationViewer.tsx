@@ -16,7 +16,6 @@ import React, {
 } from "react";
 
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
-import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import {
@@ -65,13 +64,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import {
-  Err,
-  isContentFragmentType,
-  isUserMessageType,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import { Err, isContentFragmentType, isUserMessageType, Ok } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
 
@@ -110,7 +103,6 @@ export const ConversationViewer = ({
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
   const sendNotification = useSendNotification();
-  const { serverId } = useCoEditionContext();
 
   const {
     conversation,
@@ -430,7 +422,6 @@ export const ConversationViewer = ({
         input,
         mentions: mentions.map((mention) => ({ configurationId: mention.id })),
         contentFragments,
-        clientSideMCPServerIds: removeNulls([serverId]),
       };
 
       const lastMessageRank = Math.max(
@@ -521,7 +512,6 @@ export const ConversationViewer = ({
       return new Ok(undefined);
     },
     [
-      serverId,
       user,
       owner,
       conversationId,

@@ -14,6 +14,13 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
 
+// Constants for Slack API limits and pagination.
+export const SLACK_API_PAGE_SIZE = 100;
+export const MAX_CHANNELS_LIMIT = 500;
+export const MAX_THREAD_MESSAGES = 200;
+export const DEFAULT_THREAD_MESSAGES = 20;
+export const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000; // 10 minutes
+
 export const getSlackClient = async (accessToken?: string) => {
   if (!accessToken) {
     throw new Error("No access token provided");
@@ -34,12 +41,19 @@ type GetPublicChannelsArgs = {
   slackClient: WebClient;
 };
 
+type GetChannelsArgs = {
+  mcpServerId: string;
+  slackClient: WebClient;
+  types?: string;
+  memberOnly?: boolean;
+};
+
 type ChannelWithIdAndName = Omit<Channel, "id" | "name"> & {
   id: string;
   name: string;
 };
 
-const _getPublicChannels = async ({
+export const getPublicChannels = async ({
   slackClient,
 }: GetPublicChannelsArgs): Promise<ChannelWithIdAndName[]> => {
   const channels: Channel[] = [];
@@ -48,7 +62,7 @@ const _getPublicChannels = async ({
   do {
     const response = await slackClient.conversations.list({
       cursor,
-      limit: 100,
+      limit: SLACK_API_PAGE_SIZE,
       exclude_archived: true,
       types: "public_channel",
     });
@@ -58,10 +72,12 @@ const _getPublicChannels = async ({
     channels.push(...(response.channels ?? []));
     cursor = response.response_metadata?.next_cursor;
 
-    // We can't handle a huge list of channels, and even if we could, it would be unusable
-    // in the UI. So we arbitrarily cap it to 500 channels.
-    if (channels.length >= 500) {
-      logger.warn("Channel list truncated after reaching over 500 channels.");
+    // We can't handle a huge list of channels, and even if we could, it would be unusable.
+    // in the UI. So we arbitrarily cap it to MAX_CHANNELS_LIMIT channels.
+    if (channels.length >= MAX_CHANNELS_LIMIT) {
+      logger.warn(
+        `Channel list truncated after reaching over ${MAX_CHANNELS_LIMIT} channels.`
+      );
       break;
     }
   } while (cursor);
@@ -76,15 +92,108 @@ const _getPublicChannels = async ({
     .sort((a, b) => a.name.localeCompare(b.name));
 };
 
+export const getChannels = async ({
+  slackClient,
+  types = "public_channel",
+  memberOnly = false,
+}: GetChannelsArgs): Promise<ChannelWithIdAndName[]> => {
+  const channels: Channel[] = [];
+
+  let cursor: string | undefined = undefined;
+  do {
+    const response = await slackClient.conversations.list({
+      cursor,
+      limit: SLACK_API_PAGE_SIZE,
+      exclude_archived: true,
+      types,
+    });
+    if (!response.ok) {
+      throw new Error(response.error);
+    }
+    channels.push(...(response.channels ?? []));
+    cursor = response.response_metadata?.next_cursor;
+
+    // We can't handle a huge list of channels, and even if we could, it would be unusable.
+    // in the UI. So we arbitrarily cap it to MAX_CHANNELS_LIMIT channels.
+    if (channels.length >= MAX_CHANNELS_LIMIT) {
+      logger.warn(
+        `Channel list truncated after reaching over ${MAX_CHANNELS_LIMIT} channels.`
+      );
+      break;
+    }
+  } while (cursor);
+
+  let filteredChannels = channels.filter((c) => !!c.id && !!c.name);
+
+  // Filter by membership if requested.
+  if (memberOnly) {
+    filteredChannels = filteredChannels.filter((c) => c.is_member);
+  }
+
+  return filteredChannels
+    .map((c) => ({
+      ...c,
+      id: c.id!,
+      name: c.name!,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+};
+
 export const getCachedPublicChannels = cacheWithRedis(
-  _getPublicChannels,
+  getPublicChannels,
   ({ mcpServerId }: GetPublicChannelsArgs) => mcpServerId,
   {
-    ttlMs: 60 * 10 * 1000, // 10 minutes
+    ttlMs: CHANNEL_CACHE_TTL_MS,
   }
 );
 
-// Post message function
+// Helper function to build filtered list responses.
+function buildFilteredListResponse<T>(
+  items: T[],
+  nameFilter: string | undefined,
+  filterFn: (item: T, normalizedFilter: string) => boolean,
+  contextMessage: (
+    count: number,
+    hasFilter: boolean,
+    filterText?: string
+  ) => string
+): Ok<Array<{ type: "text"; text: string }>> {
+  if (!nameFilter) {
+    return new Ok([
+      { type: "text" as const, text: contextMessage(items.length, false) },
+      { type: "text" as const, text: JSON.stringify(items, null, 2) },
+    ]);
+  }
+
+  const normalizedNameFilter = removeDiacritics(nameFilter.toLowerCase());
+  const filteredItems = items.filter((item) =>
+    filterFn(item, normalizedNameFilter)
+  );
+
+  if (filteredItems.length > 0) {
+    return new Ok([
+      {
+        type: "text" as const,
+        text: contextMessage(filteredItems.length, true, nameFilter),
+      },
+      {
+        type: "text" as const,
+        text: JSON.stringify(filteredItems, null, 2),
+      },
+    ]);
+  }
+
+  return new Ok([
+    {
+      type: "text" as const,
+      text:
+        contextMessage(items.length, true, nameFilter) + " but none matching",
+    },
+    { type: "text" as const, text: JSON.stringify(items, null, 2) },
+  ]);
+}
+
+// Post message function.
 export async function executePostMessage(
   auth: Authenticator,
   agentLoopContext: AgentLoopContextType,
@@ -114,7 +223,7 @@ export async function executePostMessage(
   );
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
-  // If a file is provided, upload it as attachment of the original message
+  // If a file is provided, upload it as attachment of the original message.
   fileId = undefined; // TODO(2025-10-22 chris): remove this once Slack enables file:write scope
   if (fileId) {
     const file = await FileResource.fetchById(auth, fileId);
@@ -126,28 +235,47 @@ export async function executePostMessage(
       );
     }
 
-    // Resolve channel id
-    const conversationsList = await getCachedPublicChannels({
-      mcpServerId,
-      slackClient,
-    });
-    const searchString = to.trim().replace(/^#/, "").toLowerCase();
-    const channel = conversationsList.find(
-      (c) =>
-        c.name?.toLowerCase() === searchString ||
-        c.id?.toLowerCase() === searchString
-    );
-    if (!channel) {
-      return new Err(
-        new MCPError(
-          `Unable to resolve channel id for "${to}". Please use a channel id or a valid channel name.`,
-          {
-            tracked: false,
-          }
-        )
-      );
+    // Resolve channel id - optimize by trying conversations.info first if it looks like an ID.
+    const searchString = to.trim().replace(/^#/, "");
+    let channelId: string | undefined;
+
+    // If searchString looks like a Slack channel ID (starts with C or G), try direct lookup first.
+    if (searchString.match(/^[CG][A-Z0-9]+$/)) {
+      try {
+        const infoResp = await slackClient.conversations.info({
+          channel: searchString,
+        });
+        if (infoResp.ok && infoResp.channel?.id) {
+          channelId = infoResp.channel.id;
+        }
+      } catch (error) {
+        // Fall through to list-based search.
+      }
     }
-    const channelId = channel.id;
+
+    // If not found via direct lookup, search through cached channels list.
+    if (!channelId) {
+      const conversationsList = await getCachedPublicChannels({
+        mcpServerId,
+        slackClient,
+      });
+      const channel = conversationsList.find(
+        (c) =>
+          c.name?.toLowerCase() === searchString.toLowerCase() ||
+          c.id?.toLowerCase() === searchString.toLowerCase()
+      );
+      if (!channel) {
+        return new Err(
+          new MCPError(
+            `Unable to resolve channel id for "${to}". Please use a channel id or a valid channel name.`,
+            {
+              tracked: false,
+            }
+          )
+        );
+      }
+      channelId = channel.id;
+    }
 
     const signedUrl = await file.getSignedUrlForDownload(auth, "original");
     const fileResp = await fetch(signedUrl);
@@ -183,7 +311,7 @@ export async function executePostMessage(
     ]);
   }
 
-  // No file provided: regular message
+  // No file provided: regular message.
   const response = await slackClient.chat.postMessage({
     channel: to,
     text: message,
@@ -212,7 +340,7 @@ export async function executeListUsers(
   do {
     const response = await slackClient.users.list({
       cursor,
-      limit: 100,
+      limit: SLACK_API_PAGE_SIZE,
     });
     if (!response.ok) {
       return new Err(new MCPError(response.error ?? "Unknown error"));
@@ -220,6 +348,7 @@ export async function executeListUsers(
     users.push(...(response.members ?? []).filter((member) => !member.is_bot));
     cursor = response.response_metadata?.next_cursor;
 
+    // Early return optimization: if we found matching users and have a filter, return immediately.
     if (nameFilter) {
       const normalizedNameFilter = removeDiacritics(nameFilter.toLowerCase());
       const filteredUsers = users.filter(
@@ -232,36 +361,42 @@ export async function executeListUsers(
           )
       );
 
-      // Early return if we found a user
       if (filteredUsers.length > 0) {
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `The workspace has ${filteredUsers.length} users containing "${nameFilter}"`,
-          },
-          {
-            type: "text" as const,
-            text: JSON.stringify(filteredUsers, null, 2),
-          },
-        ]);
+        return buildFilteredListResponse<Member>(
+          users,
+          nameFilter,
+          (user, normalizedFilter) =>
+            removeDiacritics(user.name?.toLowerCase() ?? "").includes(
+              normalizedFilter
+            ) ||
+            removeDiacritics(user.real_name?.toLowerCase() ?? "").includes(
+              normalizedFilter
+            ),
+          (count, hasFilter, filterText) =>
+            hasFilter
+              ? `The workspace has ${count} users containing "${filterText}"`
+              : `The workspace has ${count} users`
+        );
       }
     }
   } while (cursor);
 
-  if (nameFilter) {
-    return new Ok([
-      {
-        type: "text" as const,
-        text: `The workspace has ${users.length} users but none containing "${nameFilter}"`,
-      },
-      { type: "text" as const, text: JSON.stringify(users, null, 2) },
-    ]);
-  }
-
-  return new Ok([
-    { type: "text" as const, text: `The workspace has ${users.length} users` },
-    { type: "text" as const, text: JSON.stringify(users, null, 2) },
-  ]);
+  // No filter or no matches found after checking all pages.
+  return buildFilteredListResponse<Member>(
+    users,
+    nameFilter,
+    (user, normalizedFilter) =>
+      removeDiacritics(user.name?.toLowerCase() ?? "").includes(
+        normalizedFilter
+      ) ||
+      removeDiacritics(user.real_name?.toLowerCase() ?? "").includes(
+        normalizedFilter
+      ),
+    (count, hasFilter, filterText) =>
+      hasFilter
+        ? `The workspace has ${count} users containing "${filterText}"`
+        : `The workspace has ${count} users`
+  );
 }
 
 export async function executeGetUser(userId: string, accessToken: string) {
@@ -300,7 +435,7 @@ export async function executeListPublicChannels(
         )
     );
 
-    // Early return if we found a channel
+    // Early return if we found a channel.
     if (filteredChannels.length > 0) {
       return new Ok([
         {
@@ -331,4 +466,149 @@ export async function executeListPublicChannels(
     },
     { type: "text" as const, text: JSON.stringify(channels, null, 2) },
   ]);
+}
+
+export async function executeListChannels(
+  nameFilter: string | undefined,
+  accessToken: string,
+  mcpServerId: string
+) {
+  const slackClient = await getSlackClient(accessToken);
+  const channels = await getChannels({
+    mcpServerId,
+    slackClient,
+    types: "public_channel,private_channel",
+    memberOnly: false,
+  });
+
+  return buildFilteredListResponse<ChannelWithIdAndName>(
+    channels,
+    nameFilter,
+    (channel, normalizedFilter) =>
+      removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
+        normalizedFilter
+      ) ||
+      removeDiacritics(channel.topic?.value?.toLowerCase() ?? "").includes(
+        normalizedFilter
+      ),
+    (count, hasFilter, filterText) =>
+      hasFilter
+        ? `The workspace has ${count} channels containing "${filterText}"`
+        : `The workspace has ${count} channels`
+  );
+}
+
+export async function executeListJoinedChannels(
+  nameFilter: string | undefined,
+  accessToken: string,
+  mcpServerId: string
+) {
+  const slackClient = await getSlackClient(accessToken);
+  const channels = await getChannels({
+    mcpServerId,
+    slackClient,
+    types: "public_channel,private_channel",
+    memberOnly: true,
+  });
+
+  return buildFilteredListResponse<ChannelWithIdAndName>(
+    channels,
+    nameFilter,
+    (channel, normalizedFilter) =>
+      removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
+        normalizedFilter
+      ) ||
+      removeDiacritics(channel.topic?.value?.toLowerCase() ?? "").includes(
+        normalizedFilter
+      ),
+    (count, hasFilter, filterText) =>
+      hasFilter
+        ? `You are a member of ${count} channels containing "${filterText}"`
+        : `You are a member of ${count} channels`
+  );
+}
+
+export async function executeReadThreadMessages(
+  channel: string,
+  threadTs: string,
+  limit: number | undefined,
+  cursor: string | undefined,
+  oldest: string | undefined,
+  latest: string | undefined,
+  accessToken: string
+) {
+  const slackClient = await getSlackClient(accessToken);
+
+  try {
+    const response = await slackClient.conversations.replies({
+      channel: channel,
+      ts: threadTs,
+      limit: limit
+        ? Math.min(limit, MAX_THREAD_MESSAGES)
+        : DEFAULT_THREAD_MESSAGES,
+      cursor: cursor,
+      oldest: oldest,
+      latest: latest,
+    });
+
+    if (!response.ok) {
+      return new Err(
+        new MCPError(
+          response.error === "channel_not_found"
+            ? "Channel not found or you are not a member of this channel"
+            : response.error === "thread_not_found"
+              ? "Thread not found or has been deleted"
+              : response.error ?? "Unknown error reading thread"
+        )
+      );
+    }
+
+    const messages = response.messages ?? [];
+    if (messages.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "No messages found in this thread.",
+        },
+      ]);
+    }
+
+    // First message is the parent, rest are replies.
+    const parentMessage = messages[0];
+    const threadReplies = messages.slice(1);
+
+    const formattedOutput = {
+      parent_message: {
+        text: parentMessage?.text ?? "",
+        user: parentMessage?.user ?? "",
+        ts: parentMessage?.ts ?? "",
+        reply_count: parentMessage?.reply_count ?? 0,
+      },
+      thread_replies: threadReplies.map((msg) => ({
+        text: msg.text ?? "",
+        user: msg.user ?? "",
+        ts: msg.ts ?? "",
+      })),
+      total_messages: messages.length,
+      has_more: response.has_more ?? false,
+      next_cursor: response.response_metadata?.next_cursor ?? null,
+      pagination_info: {
+        current_page_size: messages.length,
+        replies_in_this_page: threadReplies.length,
+      },
+    };
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `Thread contains ${formattedOutput.total_messages} message(s) (1 parent + ${formattedOutput.thread_replies.length} replies)`,
+      },
+      {
+        type: "text" as const,
+        text: JSON.stringify(formattedOutput, null, 2),
+      },
+    ]);
+  } catch (error) {
+    return new Err(new MCPError(`Error reading thread messages: ${error}`));
+  }
 }

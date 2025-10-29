@@ -7,6 +7,7 @@ import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
 
 const modelIdSchema = z.enum(MODEL_IDS);
 const providerIdSchema = z.enum(MODEL_PROVIDER_IDS);
@@ -193,6 +194,7 @@ const webhookTriggerSchema = z.object({
   enabled: z.boolean().default(true),
   name: z.string(),
   kind: z.enum(["webhook"]),
+  provider: z.enum(WEBHOOK_PROVIDERS).nullable(),
   customPrompt: z.string().nullable(),
   naturalLanguageDescription: z.string().nullable(),
   configuration: webhookConfigSchema,
@@ -224,18 +226,6 @@ export type AgentBuilderWebhookTriggerType = z.infer<
 export type AgentBuilderScheduleTriggerType = z.infer<
   typeof scheduleTriggerSchema
 >;
-
-export function isAgentBuilderWebhookTriggerType(
-  trigger: AgentBuilderTriggerType
-): trigger is AgentBuilderWebhookTriggerType {
-  return trigger.kind === "webhook";
-}
-
-export function isAgentBuilderScheduleTriggerType(
-  trigger: AgentBuilderTriggerType
-): trigger is AgentBuilderScheduleTriggerType {
-  return trigger.kind === "schedule";
-}
 
 export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,

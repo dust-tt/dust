@@ -10,7 +10,6 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
@@ -35,7 +34,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { conjugate, Err, Ok, pluralize, removeNulls } from "@app/types";
+import { conjugate, Err, Ok, pluralize } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -74,8 +73,6 @@ export function ConversationContainerVirtuoso({
     limit: 50,
   });
 
-  const { serverId } = useCoEditionContext();
-
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleConversationCreation = useCallback(
@@ -104,7 +101,6 @@ export function ConversationContainerVirtuoso({
             configurationId: mention.id,
           })),
           contentFragments,
-          clientSideMCPServerIds: removeNulls([serverId]),
           selectedMCPServerViewIds,
         },
       });
@@ -152,15 +148,7 @@ export function ConversationContainerVirtuoso({
         return new Ok(undefined);
       }
     },
-    [
-      isSubmitting,
-      mutateConversations,
-      owner,
-      router,
-      sendNotification,
-      serverId,
-      user,
-    ]
+    [isSubmitting, mutateConversations, owner, router, sendNotification, user]
   );
 
   const [greeting, setGreeting] = useState<string>("");
