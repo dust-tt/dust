@@ -39,7 +39,6 @@ export type NoAdditionalData = z.infer<typeof NoAdditionalDataSchema>;
 type WebhookProviderServiceDataMap = {
   github: GithubAdditionalData;
   jira: JiraAdditionalData;
-  test: TestServiceData;
   zendesk: NoAdditionalData;
 };
 
@@ -49,7 +48,6 @@ export type WebhookServiceDataForProvider<P extends WebhookProvider> =
 export const WEBHOOK_PRESETS = {
   github: GITHUB_WEBHOOK_PRESET,
   jira: JIRA_WEBHOOK_PRESET,
-  test: TEST_WEBHOOK_PRESET,
   zendesk: ZENDESK_WEBHOOK_PRESET,
 } satisfies {
   [P in WebhookProvider]: PresetWebhook<P>;
