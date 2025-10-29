@@ -503,12 +503,13 @@ async function streamAgentResponse({
         });
 
         try {
-          await sendActivity(context, approvalCard);
+          await updateActivity(context, {id: agentActivityId, ...approvalCard});
           localLogger.info(
             {
               connectorId: connector.id,
               conversationId: conversation.sId,
               toolName: event.metadata.toolName,
+              agentActivityId,
             },
             "Sent tool approval card to user"
           );
