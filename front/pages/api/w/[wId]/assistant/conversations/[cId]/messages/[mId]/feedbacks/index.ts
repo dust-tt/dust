@@ -104,7 +104,6 @@ async function handler(
       }
 
       await launchAgentMessageFeedbackWorkflow(auth.toJSON(), {
-        feedback: created.value,
         message: {
           agentMessageId: messageId,
           conversationId: conversation.sId,

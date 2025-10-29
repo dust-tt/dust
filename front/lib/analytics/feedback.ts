@@ -12,7 +12,7 @@ function makeDocumentId(
   message: {
     id: string;
     created: number;
-  },
+  }
 ): string {
   const timestamp = new Date(message.created).toISOString();
   return `${workspace.sId}_${message.id}_${timestamp}`;

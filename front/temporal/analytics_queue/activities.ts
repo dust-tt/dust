@@ -7,7 +7,11 @@ import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
 import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+import {
+  AgentMessage,
+  Message,
+  UserMessage,
+} from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -20,7 +24,6 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageAnalyticsData,
-  AgentMessageAnalyticsFeedback,
   AgentMessageAnalyticsTokens,
   AgentMessageAnalyticsToolUsed,
 } from "@app/types/assistant/analytics";
@@ -70,9 +73,7 @@ export async function storeAgentAnalyticsActivity(
     latency_ms: 0,
     message_id: agentMessage.sId,
     status: agentMessage.status,
-    timestamp: new Date(
-      Math.floor(agentMessage.created / 1000) * 1000
-    ).toISOString(),
+    timestamp: new Date(userMessage.created).toISOString(),
     tokens,
     tools_used: toolsUsed,
     user_id: userMessage.user?.sId ?? "unknown",
@@ -225,13 +226,11 @@ export async function storeAgentMessageFeedbackActivity(
   authType: AuthenticatorType,
   {
     message,
-    feedback,
   }: {
     message: {
       agentMessageId: string;
       conversationId: string;
     };
-    feedback: AgentMessageAnalyticsFeedback;
   }
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
@@ -246,7 +245,7 @@ export async function storeAgentMessageFeedbackActivity(
     throw new Error(`Conversation not found: ${message.conversationId}`);
   }
 
-  const messageRecord = await Message.findOne({
+  const agentMessageRecord = await Message.findOne({
     where: {
       sId: message.agentMessageId,
       conversationId: conversation.id,
@@ -261,48 +260,55 @@ export async function storeAgentMessageFeedbackActivity(
     ],
   });
 
-  if (!messageRecord?.agentMessage) {
-    throw new Error(`Message not found: ${message.agentMessageId}`);
+  if (!agentMessageRecord?.agentMessage) {
+    throw new Error(`Agent message not found: ${message.agentMessageId}`);
   }
 
-  const messageCreated =
-    Math.floor(
-      new Date(messageRecord.agentMessage.createdAt).getTime() / 1000
-    ) * 1000;
+  if (!agentMessageRecord.parentId) {
+    throw new Error(`Agent message has no parent: ${message.agentMessageId}`);
+  }
+
+  const userMessageRecord = await Message.findOne({
+    where: {
+      id: agentMessageRecord.parentId,
+      conversationId: conversation.id,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!userMessageRecord?.userMessage) {
+    throw new Error(
+      `User message not found for agent message: ${message.agentMessageId}`
+    );
+  }
 
   const existingFeedbacks =
     await AgentMessageFeedbackResource.listByAgentMessageId(
       auth,
-      messageRecord.agentMessage.id
+      agentMessageRecord.agentMessage.id
     );
 
   // Convert existing feedbacks to analytics format
-  const existingAnalyticsFeedbacks = existingFeedbacks
-    .filter((existingFeedback) => existingFeedback.id !== feedback.feedback_id)
-    .map((existingFeedback) => ({
-      feedback_id: existingFeedback.id,
-      user_id: existingFeedback.user?.id?.toString() ?? "unknown",
-      thumb_direction: existingFeedback.thumbDirection,
-      content: existingFeedback.content ?? undefined,
-      is_conversation_shared: existingFeedback.isConversationShared,
-      created_at: existingFeedback.createdAt.toISOString(),
-    }));
-
-  const allFeedbacks = [...existingAnalyticsFeedbacks, feedback];
-
-  logger.info(
-    {
-      agentMessageId: message.agentMessageId,
-      newFeedback: feedback,
-      totalCount: allFeedbacks.length,
-    },
-    "Storing agent message feedback activity with all feedbacks"
-  );
+  const allFeedbacks = existingFeedbacks.map((existingFeedback) => ({
+    feedback_id: existingFeedback.id,
+    user_id: existingFeedback.user?.id?.toString() ?? "unknown",
+    thumb_direction: existingFeedback.thumbDirection,
+    content: existingFeedback.content ?? undefined,
+    is_conversation_shared: existingFeedback.isConversationShared,
+    created_at: existingFeedback.createdAt.toISOString(),
+  }));
 
   await updateAnalyticsFeedback(auth, {
     message: {
-      id: messageRecord.sId,
-      created: messageCreated,
+      id: agentMessageRecord.sId,
+      created: userMessageRecord.createdAt.getTime(),
     },
     feedbacks: allFeedbacks,
   });

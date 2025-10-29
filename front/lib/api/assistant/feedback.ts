@@ -87,7 +87,7 @@ export async function upsertMessageFeedback(
     content?: string;
     isConversationShared?: boolean;
   }
-): Promise<Result<AgentMessageFeedbackType, Error>> {
+): Promise<Result<undefined, Error>> {
   const feedbackWithConversationContext =
     await AgentMessageFeedbackResource.getFeedbackWithConversationContext({
       auth,
@@ -100,7 +100,7 @@ export async function upsertMessageFeedback(
     return feedbackWithConversationContext;
   }
 
-  const { agentMessage, feedback, agentConfiguration, isGlobalAgent, message } =
+  const { agentMessage, feedback, agentConfiguration, isGlobalAgent } =
     feedbackWithConversationContext.value;
 
   if (feedback) {
@@ -110,11 +110,11 @@ export async function upsertMessageFeedback(
       isConversationShared,
     });
 
-    return new Ok({ ...feedback.toJSON(), messageId: message.sId });
+    return new Ok(undefined);
   }
 
   try {
-    const newFeedback = await AgentMessageFeedbackResource.makeNew({
+    await AgentMessageFeedbackResource.makeNew({
       workspaceId: auth.getNonNullableWorkspace().id,
       // If the agent is global, we use the agent configuration id from the agent message
       // Otherwise, we use the agent configuration id from the agent configuration
@@ -130,7 +130,7 @@ export async function upsertMessageFeedback(
       dismissed: false,
     });
 
-    return new Ok({ ...newFeedback.toJSON(), messageId: message.sId });
+    return new Ok(undefined);
   } catch (e) {
     return new Err(normalizeError(e));
   }
