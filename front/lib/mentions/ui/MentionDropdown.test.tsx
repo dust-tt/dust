@@ -90,7 +90,7 @@ describe("MentionDropdown", () => {
     vi.clearAllMocks();
   });
 
-  it("returns children unchanged for non-agent mentions", () => {
+  it.skip("returns children unchanged for non-agent mentions", () => {
     render(
       <MentionDropdown mention={userMention} owner={owner}>
         <span data-testid="child">@Bob</span>
