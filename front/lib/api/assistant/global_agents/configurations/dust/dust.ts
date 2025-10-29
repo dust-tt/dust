@@ -150,16 +150,6 @@ ${globalAgentGuidelines}
 </general_guidelines>
 `;
 
-  if (deepDiveMCPServerView) {
-    instructions += requestComplexityPrompt;
-  } else {
-    instructions += `
-<instructions>
-${simpleRequestGuidelines}
-</instructions>
-`;
-  }
-
   const hasAgentMemory = featureFlags.includes("dust_global_agent_memory");
 
   if (hasAgentMemory) {
@@ -168,6 +158,16 @@ ${simpleRequestGuidelines}
 Your very first step should always be to retrieve memories and list the available toolsets.
 You should call both \`agent_memory__retrieve\` and \`toolsets__list\` simultaneously as your very first step.
 </critical_first_step_rules>
+`;
+  }
+
+  if (deepDiveMCPServerView) {
+    instructions += requestComplexityPrompt;
+  } else {
+    instructions += `
+<instructions>
+${simpleRequestGuidelines}
+</instructions>
 `;
   }
 
