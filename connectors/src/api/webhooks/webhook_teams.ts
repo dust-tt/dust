@@ -209,8 +209,10 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           if (context.activity.value.action.verb === "toolExecutionApproval") {
             res.status(200).json({
               type: "application/vnd.microsoft.card.adaptive",
-              value: createInteractiveToolApprovalAdaptiveCard(context.activity.value.action.data)
-            })
+              value: createInteractiveToolApprovalAdaptiveCard(
+                context.activity.value.action.data
+              ),
+            });
           } else {
             await handleToolApproval(context, connector, localLogger);
           }

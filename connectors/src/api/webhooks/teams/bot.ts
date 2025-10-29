@@ -30,10 +30,7 @@ import {
   createResponseAdaptiveCard,
   createStreamingAdaptiveCard,
 } from "./adaptive_cards";
-import {
-  sendActivity,
-  updateActivity,
-} from "./bot_messaging_utils";
+import { sendActivity, updateActivity } from "./bot_messaging_utils";
 import { validateTeamsUser } from "./user_validation";
 
 export async function botAnswerMessage(
@@ -503,7 +500,10 @@ async function streamAgentResponse({
         });
 
         try {
-          await updateActivity(context, {id: agentActivityId, ...approvalCard});
+          await updateActivity(context, {
+            id: agentActivityId,
+            ...approvalCard,
+          });
           localLogger.info(
             {
               connectorId: connector.id,

@@ -347,7 +347,7 @@ export function createBasicToolApprovalAdaptiveCard({
           actionId,
           workspaceId,
           microsoftBotMessageId,
-        }
+        },
       },
       userIds: [userAadObjectId],
     },
@@ -413,7 +413,7 @@ export function createInteractiveToolApprovalAdaptiveCard({
   actionId: string;
   workspaceId: string;
   microsoftBotMessageId: number;
-}): AdaptiveCard  {
+}): AdaptiveCard {
   // Interactive card with buttons (for the original user after refresh)
   return {
     type: "AdaptiveCard",
