@@ -92,6 +92,8 @@ export async function launchAgentMessageFeedbackWorkflow(
         workspaceId,
       },
     });
+
+    return new Ok(undefined);
   } catch (e) {
     if (!(e instanceof WorkflowExecutionAlreadyStartedError)) {
       logger.error(
@@ -103,7 +105,7 @@ export async function launchAgentMessageFeedbackWorkflow(
         "Failed starting agent message feedback workflow"
       );
     }
-  }
 
-  return new Ok(undefined);
+    return new Err(normalizeError(e));
+  }
 }
