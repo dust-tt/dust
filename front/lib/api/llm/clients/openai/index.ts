@@ -27,7 +27,7 @@ export class OpenAIResponsesLLM extends LLM {
     clientId: "openai_responses",
     modelId: this.modelId,
   };
-  private reasoning: { effort: OpenAiReasoningEffort } | null;
+  private reasoning: { effort: OpenAiReasoningEffort; summary: "auto" } | null;
 
   constructor({
     modelId,
@@ -44,8 +44,12 @@ export class OpenAIResponsesLLM extends LLM {
 
     // OpenAI throws an error if reasoning is set for non reasoning models
     // TODO(LLM-Router 2025-10-28): handle o3 models differently : temperature should be set to 0
+    // TODO(LLM-Router 2025-10-28): handle GPT-5 models differently : temperature not supported
     this.reasoning = isOpenAIResponsesWhitelistedReasoningModelId(modelId)
-      ? { effort: REASONING_EFFORT_TO_OPENAI_REASONING[this.reasoningEffort] }
+      ? {
+          effort: REASONING_EFFORT_TO_OPENAI_REASONING[this.reasoningEffort],
+          summary: "auto",
+        }
       : null;
 
     const { OPENAI_API_KEY } = dustManagedCredentials();
