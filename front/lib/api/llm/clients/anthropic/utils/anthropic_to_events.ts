@@ -2,6 +2,7 @@ import type {
   MessageDeltaUsage,
   MessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
+import { assertNever } from "@dust-tt/sparkle";
 
 import type {
   LLMEvent,
@@ -27,83 +28,84 @@ export async function* streamLLMEvents(
     name: "",
     input: "",
   };
+
   for await (const messageStreamEvent of messageStreamEvents) {
-    if (messageStreamEvent.type === "message_start") {
-      // TODO: find what to do with message messageId
-      const messageId = messageStreamEvent.message.id;
-    } else {
-      switch (messageStreamEvent.type) {
-        /* Content is sent as follows:
-         * content_block_start (gives the type of the content block and some metadata)
-         * content_block_delta (streams content) (multiple times)
-         * content_block_stop (makrs the end of the content block)
-         */
-        case "content_block_start":
-          if (messageStreamEvent.content_block.type === "tool_use") {
-            currentBlockIsToolCall = true;
-            toolAccumulator = {
-              id: messageStreamEvent.content_block.id,
-              name: messageStreamEvent.content_block.name,
-              input: "",
-            };
-          }
-          break;
-        case "content_block_delta":
-          switch (messageStreamEvent.delta.type) {
-            case "text_delta":
-              textAccumulator += messageStreamEvent.delta.text;
-              yield textDelta(messageStreamEvent.delta.text, metadata);
+    switch (messageStreamEvent.type) {
+      case "message_start":
+      case "message_stop":
+        // Nothing to do for now
+        break;
+
+      /* Content is sent as follows:
+       * content_block_start (gives the type of the content block and some metadata)
+       * content_block_delta (streams content) (multiple times)
+       * content_block_stop (makrs the end of the content block)
+       */
+      case "content_block_start":
+        if (messageStreamEvent.content_block.type === "tool_use") {
+          currentBlockIsToolCall = true;
+          toolAccumulator = {
+            id: messageStreamEvent.content_block.id,
+            name: messageStreamEvent.content_block.name,
+            input: "",
+          };
+        }
+        break;
+      case "content_block_delta":
+        switch (messageStreamEvent.delta.type) {
+          case "text_delta":
+            textAccumulator += messageStreamEvent.delta.text;
+            yield textDelta(messageStreamEvent.delta.text, metadata);
+            break;
+          case "thinking_delta":
+            reasoningAccumulator += messageStreamEvent.delta.thinking;
+            yield reasoningDelta(messageStreamEvent.delta.thinking, metadata);
+            break;
+          case "input_json_delta":
+            toolAccumulator.input += messageStreamEvent.delta.partial_json;
+            break;
+          default:
+            continue;
+        }
+        break;
+      case "content_block_stop":
+        if (currentBlockIsToolCall) {
+          yield toolCall({ ...toolAccumulator, metadata });
+        }
+        currentBlockIsToolCall = false;
+        break;
+      case "message_delta":
+        yield tokenUsage(messageStreamEvent.usage, metadata);
+        if (messageStreamEvent.delta.stop_reason) {
+          const stopReason = messageStreamEvent.delta.stop_reason;
+          switch (stopReason) {
+            case "end_turn":
               break;
-            case "thinking_delta":
-              reasoningAccumulator += messageStreamEvent.delta.thinking;
-              yield reasoningDelta(messageStreamEvent.delta.thinking, metadata);
+            case "stop_sequence":
               break;
-            case "input_json_delta":
-              toolAccumulator.input += messageStreamEvent.delta.partial_json;
+            case "tool_use":
               break;
-            default:
-              continue;
+            /* When the assistant pauses the conversation, the stop reason is simply due to a long run, there was no error
+             * the model simply decided to take a break here. It should simply be prompted to continue what it was doing.
+             */
+            case "pause_turn":
+              break;
+            case "max_tokens":
+            case "refusal":
+              yield {
+                type: "error",
+                content: {
+                  message: `Stop reason: ${stopReason}`,
+                  code: 0,
+                },
+                metadata,
+              };
+              break;
           }
-          break;
-        case "content_block_stop":
-          if (currentBlockIsToolCall) {
-            yield toolCall({ ...toolAccumulator, metadata });
-          }
-          currentBlockIsToolCall = false;
-          break;
-        case "message_delta":
-          yield tokenUsage(messageStreamEvent.usage, metadata);
-          if (messageStreamEvent.delta.stop_reason) {
-            const stopReason = messageStreamEvent.delta.stop_reason;
-            switch (stopReason) {
-              case "end_turn":
-                break;
-              case "stop_sequence":
-                break;
-              case "tool_use":
-                break;
-              /* When the assistant pauses the conversation, the stop reason is simply due to a long run, there was no error
-               * the model simply decided to take a break here. It should simply be prompted to continue what it was doing.
-               */
-              case "pause_turn":
-                break;
-              case "max_tokens":
-              case "refusal":
-                yield {
-                  type: "error",
-                  content: {
-                    message: `Stop reason: ${stopReason}`,
-                    code: 0,
-                  },
-                  metadata,
-                };
-                break;
-            }
-          }
-          break;
-        default:
-          continue;
-      }
+        }
+        break;
+      default:
+        assertNever(messageStreamEvent);
     }
   }
   if (textAccumulator.length > 0) {

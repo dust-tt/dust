@@ -18,7 +18,7 @@ import type {
   ModelMessageTypeMultiActionsWithoutContentFragment,
   UserMessageTypeModel,
 } from "@app/types";
-import { isString } from "@app/types";
+import { assertNever, isString } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
@@ -129,6 +129,8 @@ export function toMessage(
       return functionMessage(message);
     case "assistant":
       return assistantMessage(message);
+    default:
+      assertNever(message);
   }
 }
 
