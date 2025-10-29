@@ -124,7 +124,7 @@ export async function getOutputFromLLMStream(
       if (argsRes.isErr()) {
         await publishAgentError({
           code: "tool_call_error",
-          message: `Error parsing tool call arguments: ${argsRes.error.message}`,
+          message: `Error parsing tool call arguments: ${argsRes.error.message}. Parsing arguments: ${JSON.stringify(event.content)} `,
           metadata: null,
         });
         return new Err({ type: "shouldReturnNull" });

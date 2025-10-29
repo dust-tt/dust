@@ -330,7 +330,10 @@ export const connectToMCPServer = async (
               "Error establishing connection to remote MCP server via ID"
             );
             return new Err(
-              new Error("Error establishing connection to remote MCP server.")
+              new Error(
+                "Error establishing connection to remote MCP server " +
+                  params.mcpServerId
+              )
             );
           }
           break;
