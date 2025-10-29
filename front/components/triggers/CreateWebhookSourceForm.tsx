@@ -161,7 +161,7 @@ export function CreateWebhookSourceFormContent({
         />
       )}
 
-      {provider && provider !== "test" && (
+      {provider && (
         <CreateWebhookSourceWithProviderForm
           owner={owner}
           provider={provider}
