@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
+import fs from "fs";
+import path from "path";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
@@ -58,11 +60,32 @@ export class AnthropicLLM extends LLM {
     prompt: string;
     specifications: AgentActionSpecification[];
   }): AsyncGenerator<LLMEvent> {
+    const messages = conversation.messages.map(toMessage);
+
+    // DEBUG: Save request messages to JSON file
+    const timestamp = Date.now();
+    const debugData = {
+      timestamp: new Date().toISOString(),
+      model: this.modelId,
+      temperature: !this.thinkingConfig ? this.temperature : 1,
+      thinkingConfig: this.thinkingConfig,
+      prompt,
+      messages,
+      tools: specifications.map(toTool),
+    };
+
+    const debugPath = path.join(
+      process.cwd(),
+      "message",
+      `anthropic-messages-${timestamp}.json`
+    );
+    fs.writeFileSync(debugPath, JSON.stringify(debugData, null, 2));
+
     const events = this.client.messages.stream({
       model: this.modelId,
       thinking: this.thinkingConfig,
       system: prompt,
-      messages: conversation.messages.map(toMessage),
+      messages,
       temperature: !this.thinkingConfig ? this.temperature : 1,
       stream: true,
       tools: specifications.map(toTool),
@@ -71,6 +94,20 @@ export class AnthropicLLM extends LLM {
       max_tokens: 64000,
     });
 
-    yield* streamLLMEvents(events, this.metadata);
+    // DEBUG: Collect response events for saving
+    const responseEvents: LLMEvent[] = [];
+    const responsePath = path.join(
+      process.cwd(),
+      "message",
+      `anthropic-response-${timestamp}.json`
+    );
+
+    for await (const event of streamLLMEvents(events, this.metadata)) {
+      responseEvents.push(event);
+      yield event;
+    }
+
+    // DEBUG: Save response events to JSON file
+    fs.writeFileSync(responsePath, JSON.stringify(responseEvents, null, 2));
   }
 }
