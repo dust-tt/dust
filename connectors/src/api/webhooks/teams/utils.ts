@@ -20,10 +20,6 @@ export async function getConnector(context: TurnContext) {
 
   if (!tenantId) {
     logger.error("No tenant ID found in Teams context");
-    await sendTextMessage(
-      context,
-      "❌ Unable to identify tenant for this Teams message"
-    );
     return;
   }
 
@@ -37,10 +33,6 @@ export async function getConnector(context: TurnContext) {
     logger.error(
       { tenantId },
       "No Microsoft Bot configuration found for tenant"
-    );
-    await sendTextMessage(
-      context,
-      "❌ Microsoft Teams Integration is not enabled for your Organization."
     );
     return;
   }
