@@ -16,7 +16,6 @@ import type {
   UserMessageTypeModel,
 } from "@app/types";
 import type { ModelConversationTypeMultiActions } from "@app/types";
-import { isString } from "@app/types";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
 function toInputContent(content: Content): ResponseInputContent {
@@ -78,14 +77,14 @@ function toUserInputMessage(
 function toToolCallOutputItem(
   message: FunctionMessageTypeModel
 ): ResponseFunctionToolCallOutputItem {
-  const outputString = isString(message.content)
-    ? message.content
-    : message.content.map((content) => JSON.stringify(content)).join("\n");
   return {
     id: generateFunctionCallId(),
     type: "function_call_output",
     call_id: message.function_call_id,
-    output: outputString,
+    output:
+      typeof message.content === "string"
+        ? message.content
+        : JSON.stringify(message.content),
   };
 }
 
