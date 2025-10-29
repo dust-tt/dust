@@ -16,7 +16,7 @@ import {
 import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, errorToString, Ok } from "@app/types";
+import { Err, errorToString, normalizeError, Ok } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WebhookSourceForAdminType } from "@app/types/triggers/webhooks";
 
@@ -148,13 +148,13 @@ export const processWebhookRequest = async (
 
   const webhookRequest = webhookRequestRes.value;
 
-  try {
-    const gcsPath = WebhookRequestResource.getGcsPath({
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      webhookSourceId: webhookSource.id,
-      webRequestId: webhookRequest.id,
-    });
+  const gcsPath = WebhookRequestResource.getGcsPath({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    webhookSourceId: webhookSource.id,
+    webRequestId: webhookRequest.id,
+  });
 
+  try {
     // Store in GCS
     await bucket.uploadRawContentToBucket({
       content,
@@ -168,7 +168,14 @@ export const processWebhookRequest = async (
     });
   } catch (error) {
     await webhookRequest.markAsFailed(errorToString(error));
-    return new Err(error as Error);
+    logger.error(
+      {
+        webhookRequestId: webhookRequest.id,
+        error,
+      },
+      "Failed to launch webhook workflow"
+    );
+    return new Err(normalizeError(error));
   }
 };
 
@@ -221,13 +228,13 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
           }
         | undefined;
 
-      try {
-        const gcsPath = WebhookRequestResource.getGcsPath({
-          workspaceId: workspace.sId,
-          webhookSourceId: wrt.webhookRequest.webhookSourceId,
-          webRequestId: wrt.webhookRequest.id,
-        });
+      const gcsPath = WebhookRequestResource.getGcsPath({
+        workspaceId: workspace.sId,
+        webhookSourceId: wrt.webhookRequest.webhookSourceId,
+        webRequestId: wrt.webhookRequest.id,
+      });
 
+      try {
         const file = bucket.file(gcsPath);
         const [content] = await file.download();
         if (content) {
