@@ -1060,7 +1060,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: true,
     tools_stakes: {
       text_to_speech: "low",
-      text_to_discussion: "low",
+      text_to_dialogue: "low",
     },
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
