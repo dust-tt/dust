@@ -2,6 +2,7 @@ import {
   ContentMessage,
   Input,
   Label,
+  Separator,
   SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
@@ -25,7 +26,7 @@ function ScheduleEditionNameInput({ isEditor }: ScheduleEditionNameInputProps) {
   } = useController({ control, name: "schedule.name" });
 
   return (
-    <div className="space-y-1">
+    <div className="flex-1 space-y-1">
       <Label htmlFor="trigger-name">Name</Label>
       <Input
         id="trigger-name"
@@ -55,19 +56,14 @@ function ScheduleEditionStatusToggle({
   return (
     <div className="space-y-1">
       <Label>Status</Label>
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        When disabled, the trigger will not run.
-      </p>
       <div className="flex flex-row items-center gap-2">
+        <span className="w-16">{enabled ? "Enabled" : "Disabled"}</span>
         <SliderToggle
           size="xs"
           disabled={!isEditor}
           selected={enabled}
           onClick={() => setEnabled(!enabled)}
         />
-        {enabled
-          ? "The trigger is currently enabled"
-          : "The trigger is currently disabled"}
       </div>
     </div>
   );
@@ -87,12 +83,11 @@ function ScheduleEditionMessageInput({
     <div className="space-y-1">
       <Label htmlFor="schedule-custom-prompt">Message (Optional)</Label>
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Add context or instructions for the agent when triggered.
+        Message for the agent when the trigger runs.
       </p>
       <TextArea
         id="schedule-custom-prompt"
-        placeholder='e.g. "Provide a summary of the latest sales figures."'
-        rows={4}
+        minRows={4}
         disabled={!isEditor}
         {...field}
       />
@@ -122,13 +117,14 @@ export function ScheduleEditionSheetContent({
           .
         </ContentMessage>
       )}
-      <div className="space-y-4">
-        <ScheduleEditionNameInput isEditor={isEditor} />
-
-        <ScheduleEditionStatusToggle isEditor={isEditor} />
-
+      <div className="space-y-8">
+        {" "}
+        <div className="flex flex-row items-center justify-between gap-4">
+          <ScheduleEditionNameInput isEditor={isEditor} />
+          <ScheduleEditionStatusToggle isEditor={isEditor} />
+        </div>
         <ScheduleEditionScheduler isEditor={isEditor} owner={owner} />
-
+        <Separator />
         <ScheduleEditionMessageInput isEditor={isEditor} />
       </div>
     </>
