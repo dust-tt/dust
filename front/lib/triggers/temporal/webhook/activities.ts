@@ -31,14 +31,7 @@ export async function runTriggerWebhookActivity({
   workspaceId: string;
   webhookRequestId: number;
 }) {
-  let auth: Authenticator | null = null;
-  try {
-    auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
-  } catch (error) {
-    const errorMessage = "Invalid authentication.";
-    logger.error({ workspaceId, error }, errorMessage);
-    throw new TriggerNonRetryableError(errorMessage);
-  }
+  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
 
   const webhookRequest = await WebhookRequestResource.fetchByModelIdWithAuth(
     auth,
