@@ -9,24 +9,11 @@ import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
-import type { ModelIdType } from "@app/types/assistant/models/types";
-
-// Keep this until the list includes all the supported model IDs (cf SUPPORTED_MODEL_CONFIGS)
-const WHITELISTED_MODEL_IDS: ModelIdType[] = [
-  "mistral-large-latest",
-  "mistral-small-latest",
-  "claude-sonnet-4-5-20250929",
-  "gemini-2.5-pro",
-];
 
 export async function getLLM(
   auth: Authenticator,
   { modelId, temperature, reasoningEffort, bypassFeatureFlag }: LLMParameters
 ): Promise<LLM | null> {
-  if (!WHITELISTED_MODEL_IDS.includes(modelId)) {
-    return null;
-  }
-
   const modelConfiguration = SUPPORTED_MODEL_CONFIGS.find(
     (config) => config.modelId === modelId
   );
