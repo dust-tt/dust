@@ -120,17 +120,7 @@ export function WebhookEditionFilters({
     switch (filterGenerationStatus) {
       case "idle":
         if (filterField.value) {
-          return (
-            <CollapsibleComponent
-              rootProps={{ defaultOpen: true }}
-              triggerChildren={
-                <Label className="cursor-pointer">Current filter</Label>
-              }
-              contentChildren={
-                <TriggerFilterRenderer data={filterField.value} />
-              }
-            />
-          );
+          return <TriggerFilterRenderer data={filterField.value} />;
         }
         return null;
       case "loading":
@@ -159,15 +149,14 @@ export function WebhookEditionFilters({
       {selectedPreset && availableEvents.length > 0 && (
         <>
           <Label htmlFor="webhook-filter-description">
-            Filter Description (optional)
+            Run only when (optional)
           </Label>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Describe in natural language the conditions under which the agent
-            should trigger. Will always trigger if left empty.
+            Set conditions that muyst be met to run the agent.
           </p>
           <TextArea
             id="webhook-filter-description"
-            placeholder='e.g. "New pull requests that changes more than 500 lines of code, or have the `auto-review` label."'
+            placeholder='Describe the conditions (e.g "Pull requests by John on dust repository")'
             rows={3}
             value={naturalDescription}
             disabled={!isEditor}

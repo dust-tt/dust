@@ -79,9 +79,6 @@ export const TriggerCard = ({
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
           <Avatar visual={getTriggerIcon(trigger)} size="xs" />
           <span className="truncate">{trigger.name}</span>
-          {!trigger.enabled && (
-            <Chip size="mini" color="rose" label="Disabled" />
-          )}
         </div>
         <span className="text-muted-foreground dark:text-muted-foreground-night">
           <span className="line-clamp-2 break-words">{description}</span>
