@@ -7,6 +7,7 @@ import type { Request, Response } from "express";
 
 import {
   createErrorAdaptiveCard,
+  createInteractiveToolApprovalAdaptiveCard,
   createThinkingAdaptiveCard,
 } from "@connectors/api/webhooks/teams/adaptive_cards";
 import {
@@ -205,7 +206,14 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           }
           break;
         case "invoke":
-          await handleToolApproval(context, connector, localLogger);
+          if (context.activity.value.action.verb === "toolExecutionApproval") {
+            res.status(200).json({
+              type: "application/vnd.microsoft.card.adaptive",
+              value: createInteractiveToolApprovalAdaptiveCard(context.activity.value.action.data)
+            })
+          } else {
+            await handleToolApproval(context, connector, localLogger);
+          }
           break;
 
         default:

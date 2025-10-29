@@ -310,7 +310,7 @@ export function createErrorAdaptiveCard({
 /**
  * Creates an Adaptive Card for tool execution approval
  */
-export function createToolApprovalAdaptiveCard({
+export function createBasicToolApprovalAdaptiveCard({
   agentName,
   toolName,
   conversationId,
@@ -318,7 +318,7 @@ export function createToolApprovalAdaptiveCard({
   actionId,
   workspaceId,
   microsoftBotMessageId,
-  teamsMessageLink,
+  userAadObjectId,
 }: {
   agentName: string;
   toolName: string;
@@ -327,9 +327,95 @@ export function createToolApprovalAdaptiveCard({
   actionId: string;
   workspaceId: string;
   microsoftBotMessageId: number;
-  teamsMessageLink: string | null;
+  userAadObjectId: string;
 }): Partial<Activity> {
-  const card: AdaptiveCard = {
+  // Basic card for everyone else (read-only, no actions)
+  const basicCard: AdaptiveCard = {
+    type: "AdaptiveCard",
+    $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+    version: "1.4",
+    refresh: {
+      action: {
+        type: "Action.Execute",
+        title: "Tool execution approval",
+        verb: "toolExecutionApproval",
+        data: {
+          agentName,
+          toolName,
+          conversationId,
+          messageId,
+          actionId,
+          workspaceId,
+          microsoftBotMessageId,
+        }
+      },
+      userIds: [userAadObjectId],
+    },
+    body: [
+      {
+        type: "TextBlock",
+        text: "Tool validation Required",
+        weight: "Bolder",
+        size: "Large",
+        spacing: "Medium",
+      },
+      {
+        type: "Container",
+        spacing: "Medium",
+        items: [
+          {
+            type: "TextBlock",
+            text: `Agent **@${agentName}** is requesting permission to use tool **${toolName}**`,
+            wrap: true,
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "_Waiting for user approval..._",
+            wrap: true,
+            spacing: "Small",
+            size: "Small",
+            color: "Accent",
+            isSubtle: true,
+          },
+        ],
+      },
+    ],
+  };
+
+  // Use helper to create activity with user-specific refresh
+  return {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: {
+          ...basicCard,
+        },
+      },
+    ],
+  };
+}
+
+export function createInteractiveToolApprovalAdaptiveCard({
+  agentName,
+  toolName,
+  conversationId,
+  messageId,
+  actionId,
+  workspaceId,
+  microsoftBotMessageId,
+}: {
+  agentName: string;
+  toolName: string;
+  conversationId: string;
+  messageId: string;
+  actionId: string;
+  workspaceId: string;
+  microsoftBotMessageId: number;
+}): AdaptiveCard  {
+  // Interactive card with buttons (for the original user after refresh)
+  return {
     type: "AdaptiveCard",
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
     version: "1.4",
@@ -353,22 +439,6 @@ export function createToolApprovalAdaptiveCard({
           },
         ],
       },
-      ...(teamsMessageLink
-        ? [{
-        type: "Container",
-        spacing: "Medium",
-        separator: true,
-        items: [
-          {
-            type: "TextBlock",
-            text: `[View message in Teams](${teamsMessageLink})`,
-            wrap: true,
-            spacing: "Small",
-            size: "Small",
-            color: "Accent",
-          },
-        ],
-      }] : [])
     ],
     actions: [
       {
@@ -401,13 +471,102 @@ export function createToolApprovalAdaptiveCard({
       },
     ],
   };
+}
 
+/**
+ * Returns the interactive card for user-specific view (called during refresh)
+ */
+export function getInteractiveToolApprovalCard({
+  agentName,
+  toolName,
+  conversationId,
+  messageId,
+  actionId,
+  workspaceId,
+  microsoftBotMessageId,
+  teamsMessageLink,
+}: {
+  agentName: string;
+  toolName: string;
+  conversationId: string;
+  messageId: string;
+  actionId: string;
+  workspaceId: string;
+  microsoftBotMessageId: number;
+  teamsMessageLink: string | null;
+}) {
   return {
-    type: "message",
-    attachments: [
+    type: "AdaptiveCard",
+    $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+    version: "1.4",
+    body: [
       {
-        contentType: "application/vnd.microsoft.card.adaptive",
-        content: card,
+        type: "TextBlock",
+        text: "Tool validation Required",
+        weight: "Bolder",
+        size: "Large",
+        spacing: "Medium",
+      },
+      {
+        type: "Container",
+        spacing: "Medium",
+        items: [
+          {
+            type: "TextBlock",
+            text: `Agent **@${agentName}** is requesting permission to use tool **${toolName}**`,
+            wrap: true,
+            spacing: "Small",
+          },
+        ],
+      },
+      ...(teamsMessageLink
+        ? [
+            {
+              type: "Container",
+              spacing: "Medium",
+              separator: true,
+              items: [
+                {
+                  type: "TextBlock",
+                  text: `[View message in Teams](${teamsMessageLink})`,
+                  wrap: true,
+                  spacing: "Small",
+                  size: "Small",
+                  color: "Accent",
+                },
+              ],
+            },
+          ]
+        : []),
+    ],
+    actions: [
+      {
+        type: "Action.Execute",
+        title: "Approve",
+        verb: "approve_tool",
+        data: {
+          conversationId,
+          messageId,
+          actionId,
+          workspaceId,
+          microsoftBotMessageId,
+          agentName,
+          toolName,
+        },
+      },
+      {
+        type: "Action.Execute",
+        title: "Reject",
+        verb: "reject_tool",
+        data: {
+          conversationId,
+          messageId,
+          actionId,
+          workspaceId,
+          microsoftBotMessageId,
+          agentName,
+          toolName,
+        },
       },
     ],
   };

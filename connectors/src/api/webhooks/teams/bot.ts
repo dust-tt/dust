@@ -26,12 +26,11 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import { getHeaderFromUserEmail } from "@connectors/types";
 
 import {
+  createBasicToolApprovalAdaptiveCard,
   createResponseAdaptiveCard,
   createStreamingAdaptiveCard,
-  createToolApprovalAdaptiveCard,
 } from "./adaptive_cards";
 import {
-  generateTeamsMessageLink,
   sendActivity,
   updateActivity,
 } from "./bot_messaging_utils";
@@ -475,14 +474,24 @@ async function streamAgentResponse({
           break;
         }
 
-        // Generate Teams message link
-        const teamsMessageLink = generateTeamsMessageLink(
-          context,
-          microsoftBotMessage.agentActivityId
-        );
+        // Get the user's AAD Object ID for user-specific view
+        const userAadObjectId = microsoftBotMessage.userAadObjectId;
 
-        // Send DM to user with approval card
-        const approvalCard = createToolApprovalAdaptiveCard({
+        if (!userAadObjectId) {
+          localLogger.error(
+            {
+              connectorId: connector.id,
+              conversationId: conversation.sId,
+              microsoftBotMessageId: microsoftBotMessage.id,
+            },
+            "No userAadObjectId found, cannot send approval card with user-specific view"
+          );
+          break;
+        }
+
+        // Send approval card in thread with user-specific view
+        // The original user sees interactive buttons, others see a read-only message
+        const approvalCard = createBasicToolApprovalAdaptiveCard({
           agentName: event.metadata.agentName,
           toolName: event.metadata.toolName,
           conversationId: event.conversationId,
@@ -490,7 +499,7 @@ async function streamAgentResponse({
           actionId: event.actionId,
           workspaceId: connector.workspaceId,
           microsoftBotMessageId: microsoftBotMessage.id,
-          teamsMessageLink,
+          userAadObjectId: context.activity.from.id, // Pass user ID for user-specific views
         });
 
         try {
