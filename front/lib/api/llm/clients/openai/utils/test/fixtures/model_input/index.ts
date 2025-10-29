@@ -31,7 +31,6 @@ export const inputMessages: ResponseInput = [
     arguments: '{"query":"Paris France weather forecast October 23 2025"}',
   },
   {
-    id: "fc_DdHr7L197",
     type: "function_call_output",
     output:
       '[{"type":"resource","resource":{"uri":"https://www.weather25.com"}}]',

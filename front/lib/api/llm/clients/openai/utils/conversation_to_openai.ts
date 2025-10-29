@@ -9,7 +9,6 @@ import type {
 } from "openai/resources/responses/responses";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { generateFunctionCallId } from "@app/lib/api/llm/clients/openai/utils/function_tool_call_id";
 import type {
   Content,
   FunctionMessageTypeModel,
@@ -77,8 +76,8 @@ function toUserInputMessage(
 function toToolCallOutputItem(
   message: FunctionMessageTypeModel
 ): ResponseFunctionToolCallOutputItem {
+  // @ts-expect-error id property required in ResponseFunctionToolCallOutputItem however not required in practice
   return {
-    id: generateFunctionCallId(),
     type: "function_call_output",
     call_id: message.function_call_id,
     output:
