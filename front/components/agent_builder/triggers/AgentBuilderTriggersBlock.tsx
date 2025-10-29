@@ -44,6 +44,7 @@ export function AgentBuilderTriggersBlock({
     fields: triggersToCreate,
     remove: removeTriggerToCreate,
     append: appendTriggerToCreate,
+    update: updateTriggerToCreate,
   } = useFieldArray<AgentBuilderFormData, "triggersToCreate">({
     control,
     name: "triggersToCreate",
@@ -53,6 +54,7 @@ export function AgentBuilderTriggersBlock({
     fields: triggersToUpdate,
     remove: removeTriggerToUpdate,
     append: appendTriggerToUpdate,
+    update: updateTriggerToUpdate,
   } = useFieldArray<AgentBuilderFormData, "triggersToUpdate">({
     control,
     name: "triggersToUpdate",
@@ -114,6 +116,36 @@ export function AgentBuilderTriggersBlock({
       trigger,
       webhookSourceView,
     });
+  };
+
+  const handleTriggerCreate = (trigger: AgentBuilderTriggerType) => {
+    appendTriggerToCreate({
+      ...trigger,
+      sId: "temp_" + crypto.randomUUID().slice(0, 8),
+    });
+  };
+
+  const handleTriggerUpdate = (trigger: AgentBuilderTriggerType) => {
+    if (sheetMode?.type !== "edit" || !trigger.sId) {
+      appendTriggerToUpdate(trigger);
+      return;
+    }
+
+    if (trigger.sId?.startsWith("temp_")) {
+      // We're editing a newly created trigger,
+      // so the update should happen in the create array.
+      const index = triggersToCreate.findIndex((t) => t.sId === trigger.sId);
+      if (index !== -1) {
+        updateTriggerToCreate(index, trigger);
+        return;
+      }
+    }
+
+    const index = triggersToUpdate.findIndex((t) => t.sId === trigger.sId);
+    if (index !== -1) {
+      updateTriggerToUpdate(index, trigger);
+      return;
+    }
   };
 
   const handleTriggerRemove = (
@@ -191,7 +223,9 @@ export function AgentBuilderTriggersBlock({
             {allTriggers.map((item, displayIndex) => (
               <TriggerCard
                 key={
-                  `card-${item.trigger.sId}` ?? `${item.source}-${item.index}`
+                  item.trigger.sId
+                    ? `card-${item.trigger.sId}`
+                    : `${item.source}-${item.index}`
                 }
                 trigger={item.trigger}
                 onRemove={() => handleTriggerRemove(item.trigger, displayIndex)}
@@ -207,8 +241,8 @@ export function AgentBuilderTriggersBlock({
         mode={sheetMode}
         webhookSourceViews={accessibleWebhookSourceViews}
         agentConfigurationId={agentConfigurationId}
-        onAppendTriggerToCreate={appendTriggerToCreate}
-        onAppendTriggerToUpdate={appendTriggerToUpdate}
+        onAppendTriggerToCreate={handleTriggerCreate}
+        onAppendTriggerToUpdate={handleTriggerUpdate}
       />
     </AgentBuilderSectionContainer>
   );
