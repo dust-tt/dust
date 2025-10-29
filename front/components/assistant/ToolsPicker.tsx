@@ -11,7 +11,7 @@ import {
   LoadingBlock,
   ToolsIcon,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   getMcpServerViewDescription,
@@ -64,9 +64,8 @@ export function ToolsPicker({
 }: ToolsPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [hasUnselectedTools, setHasUnselectedTools] = useState(false);
 
-  const { spaces, isSpacesLoading } = useSpaces({
+  const { spaces } = useSpaces({
     workspaceId: owner.sId,
     disabled: !isOpen,
   });
@@ -107,44 +106,34 @@ export function ToolsPicker({
     };
   }, [serverViews, searchText, selectedMCPServerViewIds]);
 
-  // flags if picker has unselected tools
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    if (filteredServerViewsUnselected.length > 0) {
-      setHasUnselectedTools(true);
-    }
-  }, [filteredServerViewsUnselected.length, isOpen]);
+  const prevSelectedCountRef = useRef(selectedMCPServerViewIds.length);
+  const prevUnselectedCountRef = useRef(filteredServerViewsUnselected.length);
 
   useEffect(() => {
+    const prevSelectedCount = prevSelectedCountRef.current;
+    const prevUnselectedCount = prevUnselectedCountRef.current;
+    const selectedCount = selectedMCPServerViewIds.length;
+    const unselectedCount = filteredServerViewsUnselected.length;
+
     if (!isOpen) {
+      prevSelectedCountRef.current = selectedCount;
+      prevUnselectedCountRef.current = unselectedCount;
       return;
     }
 
-    if (isLoading || isServerViewsLoading || isSpacesLoading) {
-      return;
-    }
+    const selectionIncreased = selectedCount > prevSelectedCount;
 
-    // If we previously had unselected tools and there are no unselected tools left, close the picker.
-    if (
-      hasUnselectedTools &&
-      filteredServerViewsUnselected.length === 0 &&
-      filteredServerViews.length > 0
-    ) {
+    if (selectionIncreased && prevUnselectedCount > 0 && unselectedCount === 0) {
       setIsOpen(false);
       setSearchText("");
-      setHasUnselectedTools(false);
     }
+
+    prevSelectedCountRef.current = selectedCount;
+    prevUnselectedCountRef.current = unselectedCount;
   }, [
-    hasUnselectedTools,
     filteredServerViewsUnselected.length,
-    filteredServerViews.length,
     isOpen,
-    isLoading,
-    isServerViewsLoading,
-    isSpacesLoading,
+    selectedMCPServerViewIds.length,
   ]);
 
   return (
@@ -152,7 +141,6 @@ export function ToolsPicker({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        setHasUnselectedTools(false);
         if (open) {
           setSearchText("");
         }
