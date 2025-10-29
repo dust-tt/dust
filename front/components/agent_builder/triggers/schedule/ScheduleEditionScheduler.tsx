@@ -10,7 +10,6 @@ import cronstrue from "cronstrue";
 import React, { useMemo, useRef, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
-import type { ScheduleFormValues } from "@app/components/agent_builder/triggers/schedule/scheduleEditionFormSchema";
 import { useTextAsCronRule } from "@app/lib/swr/agent_triggers";
 import { debounce } from "@app/lib/utils/debounce";
 import type { LightWorkspaceType } from "@app/types";
@@ -57,18 +56,21 @@ export function ScheduleEditionScheduler({
   isEditor,
   owner,
 }: ScheduleEditionSchedulerProps) {
-  const { control, setValue, getFieldState, formState } =
-    useFormContext<ScheduleFormValues>();
+  const { control, setValue, getFieldState, formState } = useFormContext();
+
   const {
     field: {
       value: naturalLanguageDescription,
       onChange: onNaturalDescriptionChange,
     },
-  } = useController({ control, name: "naturalLanguageDescription" });
+  } = useController({ control, name: "schedule.naturalLanguageDescription" });
 
-  const cron = useWatch({ control, name: "cron" });
-  const { error: cronError } = getFieldState("cron", formState);
-  const { error: timezoneError } = getFieldState("timezone", formState);
+  const cron = useWatch({ control, name: "schedule.cron" });
+  const { error: cronError } = getFieldState("schedule.cron", formState);
+  const { error: timezoneError } = getFieldState(
+    "schedule.timezone",
+    formState
+  );
 
   const [generationStatus, setGenerationStatus] = useState<
     "idle" | "loading" | "error"
@@ -127,14 +129,14 @@ export function ScheduleEditionScheduler({
           abortControllerRef.current = new AbortController();
           const signal = abortControllerRef.current.signal;
 
-          setValue("cron", "");
+          setValue("schedule.cron", "");
           const result = await textAsCronRule(txt, signal);
 
           // If the request was not aborted, we can update the form
           if (!signal.aborted) {
             if (result.isOk()) {
-              setValue("cron", result.value.cron);
-              setValue("timezone", result.value.timezone);
+              setValue("schedule.cron", result.value.cron);
+              setValue("schedule.timezone", result.value.timezone);
               setGeneratedTimezone(result.value.timezone);
               setGenerationStatus("idle");
             } else {

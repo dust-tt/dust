@@ -1,14 +1,8 @@
-import {
-  CollapsibleComponent,
-  Label,
-  Spinner,
-  TextArea,
-} from "@dust-tt/sparkle";
+import { Label, Spinner, TextArea } from "@dust-tt/sparkle";
 import React, { useEffect, useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
-import type { WebhookFormValues } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useWebhookFilterGenerator } from "@app/lib/swr/agent_triggers";
 import type { LightWorkspaceType } from "@app/types";
@@ -34,8 +28,9 @@ export function WebhookEditionFilters({
   availableEvents,
   workspace,
 }: WebhookEditionFiltersProps) {
-  const { setError, control } = useFormContext<WebhookFormValues>();
-  const selectedEvent = useWatch({ control, name: "event" });
+  const { setError, control } = useFormContext();
+
+  const selectedEvent = useWatch({ control, name: "webhook.event" });
 
   const selectedEventSchema = useMemo<WebhookEvent | null>(() => {
     if (!selectedEvent || !selectedPreset) {
@@ -50,13 +45,13 @@ export function WebhookEditionFilters({
   const {
     field: filterField,
     fieldState: { error: filterError },
-  } = useController({ control, name: "filter" });
+  } = useController({ control, name: "webhook.filter" });
   const {
     field: {
       value: naturalDescriptionValue,
       onChange: onNaturalDescriptionChange,
     },
-  } = useController({ control, name: "naturalDescription" });
+  } = useController({ control, name: "webhook.naturalDescription" });
 
   const [filterGenerationStatus, setFilterGenerationStatus] = useState<
     "idle" | "loading" | "error"
@@ -120,17 +115,7 @@ export function WebhookEditionFilters({
     switch (filterGenerationStatus) {
       case "idle":
         if (filterField.value) {
-          return (
-            <CollapsibleComponent
-              rootProps={{ defaultOpen: true }}
-              triggerChildren={
-                <Label className="cursor-pointer">Current filter</Label>
-              }
-              contentChildren={
-                <TriggerFilterRenderer data={filterField.value} />
-              }
-            />
-          );
+          return <TriggerFilterRenderer data={filterField.value} />;
         }
         return null;
       case "loading":
@@ -159,21 +144,20 @@ export function WebhookEditionFilters({
       {selectedPreset && availableEvents.length > 0 && (
         <>
           <Label htmlFor="webhook-filter-description">
-            Filter Description (optional)
+            Run only when (optional)
           </Label>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Describe in natural language the conditions under which the agent
-            should trigger. Will always trigger if left empty.
+            Set conditions that must be met to run the agent.
           </p>
           <TextArea
             id="webhook-filter-description"
-            placeholder='e.g. "New pull requests that changes more than 500 lines of code, or have the `auto-review` label."'
+            placeholder='Describe the conditions (e.g "Pull requests by John on dust repository")'
             rows={3}
             value={naturalDescription}
             disabled={!isEditor}
             onChange={(e) => {
               if (!selectedEvent || !selectedPreset) {
-                setError("event", {
+                setError("webhook.event", {
                   type: "manual",
                   message: "Please select an event first",
                 });

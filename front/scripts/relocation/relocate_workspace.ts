@@ -203,8 +203,12 @@ makeScript(
           assertCorrectRegion(sourceRegion);
 
           // 1) Clear workspace maintenance metadata in source region.
-          const clearSrcWorkspaceMetadataRes =
-            await setWorkspaceRelocated(owner);
+          const clearSrcWorkspaceMetadataRes = await updateWorkspaceMetadata(
+            owner,
+            {
+              maintenance: undefined,
+            }
+          );
           if (clearSrcWorkspaceMetadataRes.isErr()) {
             logger.error(
               `Failed to clear workspace maintenance metadata: ${clearSrcWorkspaceMetadataRes.error.message}`

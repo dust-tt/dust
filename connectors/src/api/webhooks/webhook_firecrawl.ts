@@ -86,7 +86,15 @@ const _webhookFirecrawlAPIHandler = async (
   if (!connector) {
     logger.error({ connectorId: metadata.connectorId }, "Connector not found");
     // We ignore the webhook.
-    return res.status(200);
+    return res.status(200).end();
+  }
+
+  if (connector.isPaused()) {
+    logger.info(
+      { connectorId: connector.id },
+      "Connector is paused, ignoring webhook"
+    );
+    return res.status(200).end();
   }
 
   switch (type) {

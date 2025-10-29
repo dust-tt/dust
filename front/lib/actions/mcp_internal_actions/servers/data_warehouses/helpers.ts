@@ -251,7 +251,7 @@ export async function validateTables(
     if (!tableId.startsWith("table-")) {
       return new Err(
         new MCPError(
-          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`,
+          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceId>-<nodeId>`,
           {
             tracked: false,
           }
@@ -263,7 +263,7 @@ export async function validateTables(
     if (parts.length < 2) {
       return new Err(
         new MCPError(
-          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`,
+          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceId>-<nodeId>`,
           {
             tracked: false,
           }

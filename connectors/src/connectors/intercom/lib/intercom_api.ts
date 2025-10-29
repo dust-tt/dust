@@ -321,9 +321,9 @@ export async function fetchIntercomConversations({
   accessToken: string;
   teamId?: string;
   slidingWindow: number;
+  closedAfter?: number;
   cursor: string | null;
   pageSize?: number;
-  closedAfter?: number;
   state?: string;
 }): Promise<IntercomFetchConversationsResponseType> {
   const minCreatedAtDate = new Date(

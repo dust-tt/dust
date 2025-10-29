@@ -22,6 +22,7 @@ import {
   validateBotFrameworkToken,
 } from "@connectors/api/webhooks/teams/jwt_validation";
 import { getConnector } from "@connectors/api/webhooks/teams/utils";
+import { apiConfig } from "@connectors/lib/api/config";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
@@ -29,10 +30,10 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 
 // CloudAdapter configuration - simplified for incoming message validation only
 const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication({
-  MicrosoftAppId: process.env.MICROSOFT_BOT_ID,
-  MicrosoftAppPassword: process.env.MICROSOFT_BOT_PASSWORD,
+  MicrosoftAppId: apiConfig.getMicrosoftBotId(),
+  MicrosoftAppPassword: apiConfig.getMicrosoftBotPassword(),
   MicrosoftAppType: "MultiTenant",
-  MicrosoftAppTenantId: process.env.MICROSOFT_BOT_TENANT_ID,
+  MicrosoftAppTenantId: apiConfig.getMicrosoftBotTenantId(),
 });
 
 const adapter = new CloudAdapter(botFrameworkAuthentication);
@@ -44,8 +45,7 @@ adapter.onTurnError = async (context, error) => {
       connectorProvider: "microsoft_bot",
       error: error.message,
       stack: error.stack,
-      botId: process.env.MICROSOFT_BOT_ID,
-      hasPassword: !!process.env.MICROSOFT_BOT_PASSWORD,
+      botId: apiConfig.getMicrosoftBotId(),
     },
     "Bot Framework adapter error"
   );
@@ -100,7 +100,7 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
     });
   }
 
-  const microsoftAppId = process.env.MICROSOFT_BOT_ID;
+  const microsoftAppId = apiConfig.getMicrosoftBotId();
   if (!microsoftAppId) {
     logger.error(
       { connectorProvider: "microsoft_bot" },
@@ -183,6 +183,7 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
 
       const connector = await getConnector(context);
       if (!connector) {
+        res.status(400).json({ error: "Connector not found" });
         return;
       }
 
@@ -243,11 +244,6 @@ async function handleMessage(
     {
       serviceUrl: context.activity.serviceUrl,
       conversationId: context.activity.conversation?.id,
-      cardType: "ThinkingCard",
-      credentials: {
-        hasAppId: !!process.env.MICROSOFT_BOT_ID,
-        hasAppPassword: !!process.env.MICROSOFT_BOT_PASSWORD,
-      },
     },
     "About to send thinking card to Bot Framework"
   );
