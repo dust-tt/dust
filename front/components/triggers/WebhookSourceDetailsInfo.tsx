@@ -164,7 +164,7 @@ export function WebhookSourceDetailsInfo({
             {...descriptionField}
             id="trigger-description"
             rows={3}
-            placeholder="Enter a description for this trigger"
+            placeholder="Help your team understand when to use this trigger."
           />
         </div>
       </div>
