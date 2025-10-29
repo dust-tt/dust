@@ -1,11 +1,21 @@
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types";
 
-export const toolUseLLMEvents: LLMEvent[] = [
+export const reasoningLLMEvents: LLMEvent[] = [
   {
-    type: "text_delta",
+    type: "reasoning_delta",
     content: {
-      delta: "Hello, ",
+      delta: "**Solving the Equation**\n\nI need to ",
+    },
+    metadata: {
+      clientId: "anthropic" as const,
+      modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
+    },
+  },
+  {
+    type: "reasoning_delta",
+    content: {
+      delta: "solve x^2 + 2x + 1 = 0.\n\n",
     },
     metadata: {
       clientId: "anthropic" as const,
@@ -15,7 +25,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
   {
     type: "text_delta",
     content: {
-      delta: "how are you ?",
+      delta: "The equation x² + 2x + 1 = 0 ",
     },
     metadata: {
       clientId: "anthropic" as const,
@@ -23,11 +33,9 @@ export const toolUseLLMEvents: LLMEvent[] = [
     },
   },
   {
-    type: "tool_call",
+    type: "text_delta",
     content: {
-      id: "DdHr7L197",
-      name: "web_search_browse__websearch",
-      arguments: '{"query":"Paris France weather forecast October 23 2025"}',
+      delta: "factors as (x + 1)² = 0, giving x = -1.",
     },
     metadata: {
       clientId: "anthropic" as const,
@@ -37,10 +45,10 @@ export const toolUseLLMEvents: LLMEvent[] = [
   {
     type: "token_usage",
     content: {
-      inputTokens: 1766,
-      outputTokens: 128,
+      inputTokens: 2500,
+      outputTokens: 180,
       cachedTokens: 0,
-      totalTokens: 1894,
+      totalTokens: 2680,
     },
     metadata: {
       clientId: "anthropic" as const,
@@ -50,7 +58,17 @@ export const toolUseLLMEvents: LLMEvent[] = [
   {
     type: "text_generated",
     content: {
-      text: "Hello, how are you ?",
+      text: "The equation x² + 2x + 1 = 0 factors as (x + 1)² = 0, giving x = -1.",
+    },
+    metadata: {
+      clientId: "anthropic" as const,
+      modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
+    },
+  },
+  {
+    type: "reasoning_generated",
+    content: {
+      text: "**Solving the Equation**\n\nI need to solve x^2 + 2x + 1 = 0.\n\n",
     },
     metadata: {
       clientId: "anthropic" as const,
