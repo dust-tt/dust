@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import type { AgentBuilderScheduleTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AgentBuilderScheduleTriggerType,
+  AgentBuilderTriggerType,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { UserTypeWithWorkspaces } from "@app/types";
 
 export const ScheduleFormSchema = z.object({
   name: z
@@ -35,5 +39,35 @@ export function getScheduleFormDefaultValues(
       Intl.DateTimeFormat().resolvedOptions().timeZone,
     naturalLanguageDescription: trigger?.naturalLanguageDescription ?? "",
     customPrompt: trigger?.customPrompt ?? "",
+  };
+}
+
+export function formValuesToScheduleTriggerData({
+  schedule,
+  editTrigger,
+  user,
+}: {
+  schedule: ScheduleFormValues;
+  editTrigger: AgentBuilderTriggerType | null;
+  user: UserTypeWithWorkspaces;
+}): AgentBuilderScheduleTriggerType {
+  return {
+    sId: editTrigger?.kind === "schedule" ? editTrigger.sId : undefined,
+    enabled: schedule.enabled,
+    name: schedule.name.trim(),
+    kind: "schedule",
+    configuration: {
+      cron: schedule.cron.trim(),
+      timezone: schedule.timezone.trim(),
+    },
+    editor:
+      editTrigger?.kind === "schedule" ? editTrigger.editor : user.id ?? null,
+    naturalLanguageDescription:
+      schedule.naturalLanguageDescription?.trim() ?? null,
+    customPrompt: schedule.customPrompt?.trim() ?? null,
+    editorName:
+      editTrigger?.kind === "schedule"
+        ? editTrigger.editorName
+        : user.fullName ?? undefined,
   };
 }

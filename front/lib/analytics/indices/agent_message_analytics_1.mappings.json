@@ -86,6 +86,9 @@
         "is_conversation_shared": {
           "type": "boolean"
         },
+        "dismissed": {
+          "type": "boolean"
+        },
         "created_at": {
           "type": "date"
         }

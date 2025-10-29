@@ -169,12 +169,11 @@ export function registerWebBrowserTool(
             results,
             async (result) => {
               const contentBlocks: CallToolResult["content"] = [];
-              let isSuccess = false;
 
               if (!isBrowseScrapeSuccessResponse(result)) {
                 const errText = `Browse error (${result.status}) for ${result.url}: ${result.error}`;
                 contentBlocks.push({ type: "text", text: errText });
-                return { contentBlocks, isSuccess };
+                return contentBlocks;
               }
 
               const { markdown, title } = result;
@@ -191,10 +190,9 @@ export function registerWebBrowserTool(
                   type: "text",
                   text: `Failed to summarize content for ${result.url}: ${snippetRes.error.message}`,
                 });
-                return { contentBlocks, isSuccess };
+                return contentBlocks;
               }
 
-              isSuccess = true;
               const snippet = snippetRes.value.slice(
                 0,
                 MAXED_OUTPUT_FILE_SNIPPET_LENGTH
@@ -239,34 +237,12 @@ export function registerWebBrowserTool(
                 });
               }
 
-              return { contentBlocks, isSuccess };
+              return contentBlocks;
             },
             { concurrency: 8 }
           );
 
-          const hasAnySuccess = perUrlContents.some(
-            (result) => result.isSuccess
-          );
-          if (!hasAnySuccess) {
-            return new Err(
-              new MCPError(
-                "All web browsing and summarization attempts failed",
-                {
-                  cause: new Error(
-                    perUrlContents
-                      .flatMap((result) =>
-                        result.contentBlocks.map((block) => block.text)
-                      )
-                      .join("\n")
-                  ),
-                }
-              )
-            );
-          }
-
-          return new Ok(
-            perUrlContents.flatMap((result) => result.contentBlocks)
-          );
+          return new Ok(perUrlContents.flatMap((contents) => contents));
         }
 
         const toolContent: CallToolResult["content"] = [];

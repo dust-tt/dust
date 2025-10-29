@@ -21,6 +21,7 @@ import {
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentConfigurationType,
@@ -29,6 +30,7 @@ import type {
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   MessageType,
+  ModelId,
   Result,
   UserType,
   WorkspaceType,
@@ -67,6 +69,26 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     this.message = message;
     this.user = user;
     this.conversationId = conversationId;
+  }
+
+  get sId(): string {
+    return AgentMessageFeedbackResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("agent_message_feedback", {
+      id,
+      workspaceId,
+    });
   }
 
   static async makeNew(
@@ -120,20 +142,70 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
   }
 
+  async dismiss() {
+    return this.update({ dismissed: true });
+  }
+
+  async undismiss() {
+    return this.update({ dismissed: false });
+  }
+
+  static async fetchById(
+    auth: Authenticator,
+    {
+      feedbackId,
+      agentConfigurationId,
+    }: {
+      feedbackId: string;
+      agentConfigurationId?: string;
+    }
+  ): Promise<AgentMessageFeedbackResource | null> {
+    const resourceId = getResourceIdFromSId(feedbackId);
+    if (!resourceId) {
+      return null;
+    }
+
+    const where: WhereOptions<AgentMessageFeedback> = {
+      id: resourceId,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    };
+
+    if (agentConfigurationId) {
+      where.agentConfigurationId = agentConfigurationId;
+    }
+
+    const feedback = await AgentMessageFeedback.findOne({ where });
+
+    if (!feedback) {
+      return null;
+    }
+
+    return new AgentMessageFeedbackResource(
+      AgentMessageFeedback,
+      feedback.get()
+    );
+  }
+
   static async getAgentConfigurationFeedbacksByDescVersion({
     workspace,
     agentConfiguration,
     paginationParams,
+    filter = "active",
   }: {
     workspace: WorkspaceType;
     agentConfiguration: LightAgentConfigurationType;
     paginationParams: PaginationParams;
+    filter?: "active" | "all";
   }) {
     const where: WhereOptions<AgentMessageFeedback> = {
       // Safety check: global models share ids across workspaces and some have had feedbacks.
       workspaceId: workspace.id,
       agentConfigurationId: agentConfiguration.sId,
     };
+
+    if (filter === "active") {
+      where.dismissed = false;
+    }
 
     if (paginationParams.lastValue) {
       const op = paginationParams.orderDirection === "desc" ? Op.lt : Op.gt;
@@ -474,12 +546,14 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   toJSON() {
     return {
       id: this.id,
+      sId: this.sId,
       messageId: this.message?.sId,
       agentMessageId: this.agentMessageId,
       userId: this.userId,
       thumbDirection: this.thumbDirection,
       content: this.content ? this.content.replace(/\r?\n/g, "\\n") : null,
       isConversationShared: this.isConversationShared,
+      dismissed: this.dismissed,
       createdAt: this.createdAt,
       agentConfigurationId: this.agentConfigurationId,
       agentConfigurationVersion: this.agentConfigurationVersion,

@@ -1,6 +1,7 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
+import { randomUUID } from "crypto";
 import { google } from "googleapis";
 import { z } from "zod";
 
@@ -81,6 +82,34 @@ interface GoogleCalendarEvent {
     title?: string;
   };
   eventType?: string;
+  conferenceData?: {
+    createRequest?: {
+      requestId?: string;
+      conferenceSolutionKey?: {
+        type?: string;
+      };
+    };
+    entryPoints?: Array<{
+      entryPointType?: string;
+      uri?: string;
+      label?: string;
+      pin?: string;
+      accessCode?: string;
+      meetingCode?: string;
+      passcode?: string;
+      password?: string;
+    }>;
+    conferenceSolution?: {
+      key?: {
+        type?: string;
+      };
+      name?: string;
+      iconUri?: string;
+    };
+    conferenceId?: string;
+    signature?: string;
+    notes?: string;
+  };
 }
 
 interface EnrichedGoogleCalendarEvent
@@ -324,6 +353,12 @@ function createServer(
         .describe("List of attendee email addresses."),
       location: z.string().optional().describe("Location of the event."),
       colorId: z.string().optional().describe("Color ID for the event."),
+      createConference: z
+        .boolean()
+        .default(true)
+        .describe(
+          "Whether to create a conference (Google Meet) for the event. Defaults to true."
+        ),
     },
     withToolLogging(
       auth,
@@ -341,6 +376,7 @@ function createServer(
           attendees,
           location,
           colorId,
+          createConference = true,
         },
         { authInfo }
       ) => {
@@ -359,6 +395,14 @@ function createServer(
             attendees?: { email: string }[];
             location?: string;
             colorId?: string;
+            conferenceData?: {
+              createRequest: {
+                requestId: string;
+                conferenceSolutionKey: {
+                  type: string;
+                };
+              };
+            };
           } = {
             summary,
             description,
@@ -374,9 +418,21 @@ function createServer(
           if (colorId) {
             event.colorId = colorId;
           }
+          if (createConference) {
+            const requestId = `conference-${randomUUID()}`;
+            event.conferenceData = {
+              createRequest: {
+                requestId,
+                conferenceSolutionKey: {
+                  type: "hangoutsMeet",
+                },
+              },
+            };
+          }
           const res = await calendar.events.insert({
             calendarId,
             requestBody: event,
+            conferenceDataVersion: 1,
           });
 
           const userTimezone = getUserTimezone();
@@ -427,6 +483,12 @@ function createServer(
         .describe("List of attendee email addresses."),
       location: z.string().optional().describe("Location of the event."),
       colorId: z.string().optional().describe("Color ID for the event."),
+      createConference: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to create a conference (Google Meet) for the event. If not provided, existing conference settings are preserved."
+        ),
     },
     withToolLogging(
       auth,
@@ -445,6 +507,7 @@ function createServer(
           attendees,
           location,
           colorId,
+          createConference,
         },
         { authInfo }
       ) => {
@@ -463,6 +526,14 @@ function createServer(
             attendees?: { email: string }[];
             location?: string;
             colorId?: string;
+            conferenceData?: {
+              createRequest: {
+                requestId: string;
+                conferenceSolutionKey: {
+                  type: string;
+                };
+              };
+            };
           } = {};
           if (summary) {
             event.summary = summary;
@@ -485,10 +556,24 @@ function createServer(
           if (colorId) {
             event.colorId = colorId;
           }
+          if (createConference !== undefined) {
+            if (createConference) {
+              const requestId = `conference-${randomUUID()}`;
+              event.conferenceData = {
+                createRequest: {
+                  requestId,
+                  conferenceSolutionKey: {
+                    type: "hangoutsMeet",
+                  },
+                },
+              };
+            }
+          }
           const res = await calendar.events.patch({
             calendarId,
             eventId,
             requestBody: event,
+            conferenceDataVersion: 1,
           });
 
           const userTimezone = getUserTimezone();

@@ -257,12 +257,14 @@ interface AgentConfigurationFeedbacksByDescVersionProps {
   workspaceId: string;
   agentConfigurationId: string | null;
   limit: number;
+  filter?: "unseen" | "all";
 }
 
 export function useAgentConfigurationFeedbacksByDescVersion({
   workspaceId,
   agentConfigurationId,
   limit,
+  filter = "unseen",
 }: AgentConfigurationFeedbacksByDescVersionProps) {
   const agentConfigurationFeedbacksFetcher: Fetcher<{
     feedbacks: (
@@ -270,13 +272,6 @@ export function useAgentConfigurationFeedbacksByDescVersion({
       | AgentMessageFeedbackWithMetadataType
     )[];
   }> = fetcher;
-
-  const urlParams = new URLSearchParams({
-    limit: limit.toString(),
-    orderColumn: "id",
-    orderDirection: "desc",
-    withMetadata: "true",
-  });
 
   const [hasMore, setHasMore] = useState(true);
 
@@ -293,6 +288,15 @@ export function useAgentConfigurationFeedbacksByDescVersion({
           setHasMore(false);
           return null;
         }
+
+        // Build URLSearchParams fresh for each page to avoid param accumulation.
+        const urlParams = new URLSearchParams({
+          limit: limit.toString(),
+          orderColumn: "id",
+          orderDirection: "desc",
+          withMetadata: "true",
+          filter,
+        });
 
         if (previousPageData !== null) {
           const lastIdValue =

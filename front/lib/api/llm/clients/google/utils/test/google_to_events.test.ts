@@ -145,9 +145,9 @@ const modelOutputFunctionCallEvents: PartialGenerateContentResponse[] = [
 ];
 
 const metadata = {
-  providerId: "google_ai_studio" as const,
-  modelId: "gemini-pro",
-};
+  clientId: "google_ai_studio",
+  modelId: "gemini-2.5-pro",
+} as const;
 
 const finishStopLLMEvents = [
   {

@@ -155,6 +155,11 @@ export async function constructPromptMultiActions(
     `// searchable: content can be searched alongside other searchable files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
     "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files mime types to decide which tool to use on which file.\n";
 
+  const pastedContentSection =
+    "# PASTED CONTENT\n" +
+    "The conversation history may contain large pasted contents, indicated by <pastedContent> tags. " +
+    "These tags contain the full content of the pasted content, so don't try to retrieve it with tools.\n";
+
   // GUIDELINES section
   let guidelinesSection = "# GUIDELINES\n";
   const canRetrieveDocuments = agentConfiguration.actions.some(
@@ -217,7 +222,7 @@ export async function constructPromptMultiActions(
     );
   }
 
-  const prompt = `${context}\n${toolsSection}\n${attachmentsSection}\n${guidelinesSection}\n${instructions}`;
+  const prompt = `${context}\n${toolsSection}\n${attachmentsSection}\n${pastedContentSection}\n${guidelinesSection}\n${instructions}`;
 
   return prompt;
 }

@@ -15,6 +15,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
@@ -231,6 +232,11 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
         // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
         // bypassing the soft deletion in place.
         hardDelete: true,
+        transaction,
+      });
+
+      // Directly delete the webhook requests associated with this webhook source
+      await WebhookRequestResource.deleteByWebhookSourceId(auth, this.id, {
         transaction,
       });
 

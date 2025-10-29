@@ -150,8 +150,30 @@ export async function runTriggerWebhookActivity({
         assertNever(type);
     }
 
+    if (!receivedEventValue) {
+      const errorMessage = `Unable to determine webhook event from ${type}.`;
+      await webhookRequest.markAsFailed(errorMessage);
+      logger.error({ workspaceId, webhookRequestId }, errorMessage);
+      throw new TriggerNonRetryableError(errorMessage);
+    }
+
+    const blacklist = WEBHOOK_PRESETS[webhookSource.provider].event_blacklist;
+    if (blacklist && blacklist.includes(receivedEventValue)) {
+      // Silently ignore blacklisted events
+      await webhookRequest.markAsProcessed();
+      logger.info(
+        {
+          workspaceId,
+          webhookRequestId,
+          provider: webhookSource.provider,
+          eventValue: receivedEventValue,
+        },
+        "Webhook event is blacklisted, ignoring."
+      );
+      return;
+    }
+
     if (
-      receivedEventValue === undefined ||
       // Event not in preset
       !WEBHOOK_PRESETS[webhookSource.provider].events
         .map((event) => event.value)

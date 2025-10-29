@@ -48,6 +48,11 @@ export type ContentNodeAttachmentType = BaseConversationAttachmentType & {
   sourceUrl: string | null;
 };
 
+export type LargePasteType = {
+  fileId: string;
+  title: string;
+};
+
 export type ConversationAttachmentType =
   | FileAttachmentType
   | ContentNodeAttachmentType;
@@ -210,6 +215,16 @@ export function getAttachmentFromToolOutput({
     isQueryable,
     isSearchable,
   };
+}
+
+export function renderLargePasteXml({
+  largePaste,
+  content,
+}: {
+  largePaste: LargePasteType;
+  content: string;
+}): string {
+  return `<pastedContent name="${largePaste.title}">${content}</pastedContent>`;
 }
 
 export function renderAttachmentXml({

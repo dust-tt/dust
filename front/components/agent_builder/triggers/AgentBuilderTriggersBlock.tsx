@@ -35,19 +35,26 @@ export function AgentBuilderTriggersBlock({
   isTriggersLoading,
   agentConfigurationId,
 }: AgentBuilderTriggersBlockProps) {
-  const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
+  const { getValues, setValue, control } =
+    useFormContext<AgentBuilderFormData>();
 
-  const { fields: triggersToCreate, remove: removeFromCreate } = useFieldArray<
-    AgentBuilderFormData,
-    "triggersToCreate"
-  >({
+  // We have to pass down this `append` rather than useFieldArray in the child component for the
+  // triggersToCreate to be updated here; this is specific to arrays in react-hook-form.
+  const {
+    fields: triggersToCreate,
+    remove: removeTriggerToCreate,
+    append: appendTriggerToCreate,
+  } = useFieldArray<AgentBuilderFormData, "triggersToCreate">({
+    control,
     name: "triggersToCreate",
   });
 
-  const { fields: triggersToUpdate, remove: removeFromUpdate } = useFieldArray<
-    AgentBuilderFormData,
-    "triggersToUpdate"
-  >({
+  const {
+    fields: triggersToUpdate,
+    remove: removeTriggerToUpdate,
+    append: appendTriggerToUpdate,
+  } = useFieldArray<AgentBuilderFormData, "triggersToUpdate">({
+    control,
     name: "triggersToUpdate",
   });
 
@@ -88,15 +95,11 @@ export function AgentBuilderTriggersBlock({
     })),
   ];
 
-  const handleAddTriggersClick = () => {
+  const handleAddTrigger = () => {
     setSheetMode({ type: "add" });
   };
 
-  const handleTriggerEdit = (
-    trigger: AgentBuilderTriggerType,
-    displayIndex: number
-  ) => {
-    const displayItem = allTriggers[displayIndex];
+  const handleTriggerEdit = (trigger: AgentBuilderTriggerType) => {
     let webhookSourceView: WebhookSourceViewType | null = null;
 
     if (trigger.kind === "webhook") {
@@ -109,7 +112,6 @@ export function AgentBuilderTriggersBlock({
     setSheetMode({
       type: "edit",
       trigger,
-      index: displayItem.index,
       webhookSourceView,
     });
   };
@@ -122,14 +124,14 @@ export function AgentBuilderTriggersBlock({
 
     if (displayItem.source === "create") {
       // Just remove from create array
-      removeFromCreate(displayItem.index);
+      removeTriggerToCreate(displayItem.index);
     } else {
       // Has sId, so it exists on backend - mark for deletion
       if (trigger.sId) {
         const currentToDelete = getValues("triggersToDelete");
         setValue("triggersToDelete", [...currentToDelete, trigger.sId]);
       }
-      removeFromUpdate(displayItem.index);
+      removeTriggerToUpdate(displayItem.index);
     }
 
     sendNotification({
@@ -161,7 +163,7 @@ export function AgentBuilderTriggersBlock({
             label="Add triggers"
             type="button"
             icon={BoltIcon}
-            onClick={handleAddTriggersClick}
+            onClick={handleAddTrigger}
           />
         )
       }
@@ -179,7 +181,7 @@ export function AgentBuilderTriggersBlock({
                 label="Add triggers"
                 type="button"
                 icon={BoltIcon}
-                onClick={handleAddTriggersClick}
+                onClick={handleAddTrigger}
               />
             }
             className="py-4"
@@ -188,10 +190,12 @@ export function AgentBuilderTriggersBlock({
           <CardGrid>
             {allTriggers.map((item, displayIndex) => (
               <TriggerCard
-                key={item.trigger.sId ?? `${item.source}-${item.index}`}
+                key={
+                  `card-${item.trigger.sId}` ?? `${item.source}-${item.index}`
+                }
                 trigger={item.trigger}
                 onRemove={() => handleTriggerRemove(item.trigger, displayIndex)}
-                onEdit={() => handleTriggerEdit(item.trigger, displayIndex)}
+                onEdit={() => handleTriggerEdit(item.trigger)}
               />
             ))}
           </CardGrid>
@@ -201,9 +205,10 @@ export function AgentBuilderTriggersBlock({
       <TriggerViewsSheet
         owner={owner}
         mode={sheetMode}
-        onModeChange={setSheetMode}
         webhookSourceViews={accessibleWebhookSourceViews}
         agentConfigurationId={agentConfigurationId}
+        onAppendTriggerToCreate={appendTriggerToCreate}
+        onAppendTriggerToUpdate={appendTriggerToUpdate}
       />
     </AgentBuilderSectionContainer>
   );

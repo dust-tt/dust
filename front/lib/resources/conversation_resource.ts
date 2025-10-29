@@ -494,8 +494,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   static async listConversationsForUser(
-    auth: Authenticator,
-    options?: FetchConversationOptions
+    auth: Authenticator
   ): Promise<ConversationResource[]> {
     const user = auth.getNonNullableUser();
 
@@ -522,11 +521,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const conversationIds = participations.map((p) => p.conversationId);
 
     // Use baseFetchWithAuthorization to get conversations with proper authorization.
-    const conversations = await this.baseFetchWithAuthorization(auth, options, {
-      where: {
-        id: { [Op.in]: conversationIds },
-      },
-    });
+    const conversations = await this.baseFetchWithAuthorization(
+      auth,
+      {},
+      {
+        where: {
+          id: { [Op.in]: conversationIds },
+          visibility: { [Op.eq]: "unlisted" },
+        },
+      }
+    );
 
     const participationMap = new Map(
       participations.map((p) => [

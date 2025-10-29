@@ -6,11 +6,11 @@ import { z } from "zod";
 import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
-import { REASONING_EFFORT_IDS } from "@app/types/assistant/models/reasoning";
+import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 
 const modelIdSchema = z.enum(MODEL_IDS);
 const providerIdSchema = z.enum(MODEL_PROVIDER_IDS);
-const reasoningEffortSchema = z.enum(REASONING_EFFORT_IDS);
+const reasoningEffortSchema = z.enum(REASONING_EFFORTS);
 
 const supportedModelSchema = z.object({
   modelId: modelIdSchema,

@@ -1,9 +1,11 @@
 import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
-import type { AnthropicPayload } from "@app/lib/api/llm/clients/anthropic/utils";
+import { ANTHROPIC_WHITELISTED_MODEL_IDS } from "@app/lib/api/llm/clients/anthropic/types";
 import { GoogleLLM } from "@app/lib/api/llm/clients/google";
+import { GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS } from "@app/lib/api/llm/clients/google/types";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
+import { MISTRAL_WHITELISTED_MODEL_IDS } from "@app/lib/api/llm/clients/mistral/types";
 import type { LLM } from "@app/lib/api/llm/llm";
-import type { LLMOptions } from "@app/lib/api/llm/types/options";
+import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
@@ -19,13 +21,7 @@ const WHITELISTED_MODEL_IDS: ModelIdType[] = [
 
 export async function getLLM(
   auth: Authenticator,
-  {
-    modelId,
-    options,
-  }: {
-    modelId: ModelIdType;
-    options?: LLMOptions;
-  }
+  { modelId, temperature, reasoningEffort, bypassFeatureFlag }: LLMParameters
 ): Promise<LLM | null> {
   if (!WHITELISTED_MODEL_IDS.includes(modelId)) {
     return null;
@@ -40,25 +36,38 @@ export async function getLLM(
 
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
   const hasFeature =
-    options?.bypassFeatureFlag ??
-    featureFlags.includes("llm_router_direct_requests");
+    bypassFeatureFlag ?? featureFlags.includes("llm_router_direct_requests");
 
-  switch (modelId) {
-    case "mistral-large-latest":
-    case "mistral-small-latest":
-      return hasFeature ? new MistralLLM({ model: modelConfiguration }) : null;
-    case "claude-sonnet-4-5-20250929":
-      return hasFeature
-        ? new AnthropicLLM({
-            model: modelConfiguration,
-            options,
-          } as AnthropicPayload)
-        : null;
-    case "gemini-2.5-pro":
-      return hasFeature
-        ? new GoogleLLM({ model: modelConfiguration, options })
-        : null;
-    default:
-      return null;
+  if (!hasFeature) {
+    return null;
   }
+
+  if (MISTRAL_WHITELISTED_MODEL_IDS.includes(modelId)) {
+    return new MistralLLM({
+      modelId,
+      temperature,
+      reasoningEffort,
+      bypassFeatureFlag,
+    });
+  }
+
+  if (GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS.includes(modelId)) {
+    return new GoogleLLM({
+      modelId,
+      temperature,
+      reasoningEffort,
+      bypassFeatureFlag,
+    });
+  }
+
+  if (ANTHROPIC_WHITELISTED_MODEL_IDS.includes(modelId)) {
+    return new AnthropicLLM({
+      modelId: modelConfiguration,
+      temperature,
+      reasoningEffort,
+      bypassFeatureFlag,
+    });
+  }
+
+  return null;
 }

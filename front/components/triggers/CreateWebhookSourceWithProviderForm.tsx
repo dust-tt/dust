@@ -1,4 +1,4 @@
-import { Button, ExternalLinkIcon, Label, Spinner } from "@dust-tt/sparkle";
+import { Button, Label, Spinner } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -80,6 +80,12 @@ export function CreateWebhookSourceWithProviderForm({
       setIsConnectingToProvider(false);
     }
   };
+  const hasConnectionPage = !!preset.webhookPageUrl;
+  const buttonLabel = connection
+    ? hasConnectionPage
+      ? `Edit connection`
+      : `Connected to ${kindName}`
+    : `Connect to ${kindName}`;
 
   return (
     <div className="flex flex-col space-y-4">
@@ -102,28 +108,22 @@ export function CreateWebhookSourceWithProviderForm({
         <div className="mt-2 flex items-center gap-2">
           <Button
             variant={"outline"}
-            label={
-              connection ? `Connected to ${kindName}` : `Connect to ${kindName}`
-            }
+            label={buttonLabel}
             icon={getIcon(preset.icon)}
-            onClick={handleConnectToProvider}
+            // if we are not connected, click starts the OAuth flow
+            // if we are connected with a connection page URL, click opens that page
+            // otherwise button is disabled
+            onClick={
+              connection
+                ? () => window.open(preset.webhookPageUrl, "_blank")
+                : handleConnectToProvider
+            }
             disabled={
               isConnectingProvider ||
-              !!connection ||
+              (!!connection && !hasConnectionPage) ||
               (OAuthExtraConfigInput ? !isExtraConfigValid : false)
             }
           />
-          {connection && preset.webhookPageUrl && (
-            <a
-              href={preset.webhookPageUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-action-500 hover:text-action-600 dark:text-action-400 dark:hover:text-action-300 inline-flex items-center gap-1 text-sm"
-            >
-              Edit connection
-              <ExternalLinkIcon className="h-3 w-3" />
-            </a>
-          )}
           {isConnectingProvider && <Spinner size="sm" />}
         </div>
       </div>

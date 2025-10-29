@@ -142,9 +142,9 @@ const modelOutputFinishToolCallEvents: CompletionEvent[] = [
 ];
 
 const metadata = {
-  providerId: "mistral" as const,
+  clientId: "mistral",
   modelId: "mistral-large-latest",
-};
+} as const;
 
 const finishStopLLMEvents = [
   {

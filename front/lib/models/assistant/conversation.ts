@@ -410,6 +410,7 @@ export class AgentMessageFeedback extends WorkspaceAwareModel<AgentMessageFeedba
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
   declare isConversationShared: boolean;
+  declare dismissed: boolean;
 
   declare thumbDirection: AgentMessageFeedbackDirection;
   declare content: string | null;
@@ -447,6 +448,11 @@ AgentMessageFeedback.init(
       allowNull: true,
     },
     isConversationShared: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    dismissed: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
