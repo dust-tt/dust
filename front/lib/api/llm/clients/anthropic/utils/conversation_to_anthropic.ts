@@ -18,7 +18,7 @@ import type {
   ModelMessageTypeMultiActionsWithoutContentFragment,
   UserMessageTypeModel,
 } from "@app/types";
-import { assertNever, isString } from "@app/types";
+import { assertNever, isString, safeParseJSON } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
@@ -63,13 +63,20 @@ function assistantContentToParam(
          * thinking events and re-extracted */
         signature: "",
       };
-    case "function_call":
+    case "function_call": {
+      const argsRes = safeParseJSON(content.value.arguments);
+      if (argsRes.isErr()) {
+        throw new Error(
+          `Failed to parse function call arguments JSON: ${argsRes.error.message}`
+        );
+      }
       return {
         type: "tool_use",
         id: content.value.id,
         name: content.value.name,
-        input: JSON.parse(content.value.arguments),
+        input: argsRes.value,
       };
+    }
   }
 }
 
