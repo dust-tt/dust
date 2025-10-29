@@ -74,6 +74,7 @@ export async function storeAgentAnalyticsActivity(
     latency_ms: 0,
     message_id: agentMessage.sId,
     status: agentMessage.status,
+    // TODO(observability 21025-10-29): Use agentMessage.created timestamp to index documents
     timestamp: new Date(userMessage.created).toISOString(),
     tokens,
     tools_used: toolsUsed,
@@ -223,32 +224,30 @@ async function storeToElasticsearch(
   }
 }
 
-export async function storeAgentMessageFeedbackActivity(
-  authType: AuthenticatorType,
+async function buildAgentLoopArgs(
+  auth: Authenticator,
   {
-    message,
+    agentMessageId,
+    conversationId,
   }: {
-    message: {
-      agentMessageId: string;
-      conversationId: string;
-    };
+    agentMessageId: string;
+    conversationId: string;
   }
-): Promise<void> {
-  const auth = await Authenticator.fromJSON(authType);
+): Promise<AgentLoopArgs> {
   const workspace = auth.getNonNullableWorkspace();
 
   const conversation = await ConversationResource.fetchById(
     auth,
-    message.conversationId
+    conversationId
   );
 
   if (!conversation) {
-    throw new Error(`Conversation not found: ${message.conversationId}`);
+    throw new Error(`Conversation not found: ${conversationId}`);
   }
 
   const agentMessageRecord = await Message.findOne({
     where: {
-      sId: message.agentMessageId,
+      sId: agentMessageId,
       conversationId: conversation.id,
       workspaceId: workspace.id,
     },
@@ -262,11 +261,11 @@ export async function storeAgentMessageFeedbackActivity(
   });
 
   if (!agentMessageRecord?.agentMessage) {
-    throw new Error(`Agent message not found: ${message.agentMessageId}`);
+    throw new Error(`Agent message not found: ${agentMessageId}`);
   }
 
   if (!agentMessageRecord.parentId) {
-    throw new Error(`Agent message has no parent: ${message.agentMessageId}`);
+    throw new Error(`Agent message has no parent: ${agentMessageId}`);
   }
 
   const userMessageRecord = await Message.findOne({
@@ -286,14 +285,49 @@ export async function storeAgentMessageFeedbackActivity(
 
   if (!userMessageRecord?.userMessage) {
     throw new Error(
-      `User message not found for agent message: ${message.agentMessageId}`
+      `User message not found for agent message: ${agentMessageId}`
     );
   }
+
+  return {
+    agentMessageId: agentMessageRecord.sId,
+    agentMessageVersion: agentMessageRecord.version ?? 0,
+    conversationId: conversation.sId,
+    conversationTitle: conversation.title ?? null,
+    userMessageId: userMessageRecord.sId,
+    userMessageVersion: userMessageRecord.version ?? 0,
+  };
+}
+
+export async function storeAgentMessageFeedbackActivity(
+  authType: AuthenticatorType,
+  {
+    message,
+  }: {
+    message: {
+      agentMessageId: string;
+      conversationId: string;
+    };
+  }
+): Promise<void> {
+  const auth = await Authenticator.fromJSON(authType);
+
+  const agentLoopArgs = await buildAgentLoopArgs(auth, {
+    agentMessageId: message.agentMessageId,
+    conversationId: message.conversationId,
+  });
+
+  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  if (runAgentDataRes.isErr()) {
+    throw runAgentDataRes.error;
+  }
+
+  const { agentMessage, agentMessageRow, userMessage } = runAgentDataRes.value;
 
   const agentMessageFeedbacks =
     await AgentMessageFeedbackResource.listByAgentMessageId(
       auth,
-      agentMessageRecord.agentMessage.id
+      agentMessageRow.id
     );
 
   const allFeedbacks: AgentMessageAnalyticsFeedback[] =
@@ -307,10 +341,8 @@ export async function storeAgentMessageFeedbackActivity(
     }));
 
   await updateAnalyticsFeedback(auth, {
-    message: {
-      sId: agentMessageRecord.sId,
-      created: userMessageRecord.createdAt.getTime(),
-    },
+    message: agentMessage,
+    createdTimestamp: userMessage.created,
     feedbacks: allFeedbacks,
   });
 }
