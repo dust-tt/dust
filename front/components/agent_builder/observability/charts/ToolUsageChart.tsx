@@ -65,9 +65,22 @@ export function ToolUsageChart({
     [topTools]
   );
 
+  // Only get tools that are actually used in the current data
+  const usedTools = useMemo(() => {
+    const toolsSet = new Set<string>();
+    chartData.forEach((datum) => {
+      Object.keys(datum.values).forEach((toolName) => {
+        if (datum.values[toolName] > 0) {
+          toolsSet.add(toolName);
+        }
+      });
+    });
+    return Array.from(toolsSet);
+  }, [chartData]);
+
   const isTopForPayload = useMemo(
-    () => makeIsTopForPayload(topTools),
-    [topTools]
+    () => makeIsTopForPayload(usedTools),
+    [usedTools]
   );
 
   const renderToolUsageTooltip = useCallback(
@@ -151,7 +164,7 @@ export function ToolUsageChart({
               boxShadow: "none",
             }}
           />
-          {topTools.map((toolName, idx) => (
+          {usedTools.map((toolName, idx) => (
             <Bar
               key={toolName}
               dataKey={(row: ChartDatum) => row.values[toolName] ?? 0}
