@@ -8,6 +8,7 @@ import type {
   EditorSuggestion,
   EditorSuggestions,
 } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import type { RichMention } from "@app/types";
 
 interface CommandFunction {
   (props: { id: string; label: string }): void;
@@ -68,7 +69,7 @@ export const useMentionDropdown = (
   };
 
   const selectSuggestion = useCallback(
-    (suggestion: EditorSuggestion) => {
+    (suggestion: RichMention) => {
       const editor = editorRef.current;
 
       if (editor && rangeRef.current) {

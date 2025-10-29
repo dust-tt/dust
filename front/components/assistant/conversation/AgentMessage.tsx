@@ -44,10 +44,6 @@ import {
   isMessageTemporayState,
 } from "@app/components/assistant/conversation/types";
 import {
-  agentMentionDirective,
-  getAgentMentionPlugin,
-} from "@app/components/markdown/AgentMentionBlock";
-import {
   CitationsContext,
   CiteBlock,
   getCiteDirective,
@@ -63,6 +59,10 @@ import {
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  agentMentionDirective,
+  getAgentMentionPlugin,
+} from "@app/lib/mentions";
 import { useCancelMessage } from "@app/lib/swr/conversations";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import { formatTimestring } from "@app/lib/utils/timestamps";
