@@ -19,11 +19,11 @@ import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard"
 import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { TriggerViewsSheet } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 
 interface AgentBuilderTriggersBlockProps {
   owner: LightWorkspaceType;

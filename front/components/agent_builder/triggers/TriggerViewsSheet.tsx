@@ -194,8 +194,7 @@ export function TriggerViewsSheet({
     [
       user,
       editTrigger,
-      editWebhookSourceView,
-      selectedWebhookSourceView,
+      webhookSourceView,
       onAppendTriggerToCreate,
       onAppendTriggerToUpdate,
       handleSheetClose,
