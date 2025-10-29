@@ -161,6 +161,7 @@ interface CardPropsWithLink
     Omit<CardLinkProps, keyof CardPropsBase> {
   href: string;
   onClick?: never;
+  disabled?: never;
 }
 
 interface CardPropsWithButton
@@ -175,7 +176,11 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ containerClassName, className, action, ...props }, ref) => {
     return (
       <div
-        className={cn("s-group/card s-relative", containerClassName)}
+        className={cn(
+          "s-group/card s-relative",
+          containerClassName,
+          props.disabled ? "s-opacity-70" : ""
+        )}
         ref={ref}
       >
         <InnerCard className={cn("s-h-full s-w-full", className)} {...props} />
