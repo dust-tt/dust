@@ -10,8 +10,9 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
-  PlusCircleIcon,
+  ListSelectIcon,
   SliderToggle,
+  XMarkIcon,
   TextArea,
 } from "@dust-tt/sparkle";
 import type { useForm } from "react-hook-form";
@@ -152,7 +153,7 @@ export function CreateWebhookSourceFormContent({
                       <div className="flex gap-2 p-2">
                         <Button
                           label="Select all"
-                          icon={PlusCircleIcon}
+                          icon={ListSelectIcon}
                           variant="primary"
                           size="xs"
                           onClick={handleSelectAll}
@@ -160,7 +161,7 @@ export function CreateWebhookSourceFormContent({
                         />
                         <Button
                           label="Unselect all"
-                          icon={XCircleIcon}
+                          icon={XMarkIcon}
                           variant="primary"
                           size="xs"
                           onClick={handleUnselectAll}
