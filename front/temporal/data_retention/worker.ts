@@ -14,7 +14,7 @@ export async function runDataRetentionWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities,
     taskQueue: QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 8,
+    maxConcurrentActivityTaskExecutions: 4,
     connection,
     namespace,
     interceptors: {

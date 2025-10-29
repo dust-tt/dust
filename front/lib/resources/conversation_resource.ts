@@ -390,6 +390,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           required: true,
           attributes: [],
           where: {
+            workspaceId,
             agentConfigurationId,
           },
         },

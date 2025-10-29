@@ -397,7 +397,11 @@ AgentMessage.init(
   {
     modelName: "agent_message",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["workspaceId"], concurrently: true }],
+    indexes: [
+      { fields: ["workspaceId"], concurrently: true },
+      // Index for agent-based data retention queries.
+      { fields: ["workspaceId", "agentConfigurationId"], concurrently: true },
+    ],
   }
 );
 
@@ -590,6 +594,11 @@ Message.init(
       },
       {
         fields: ["workspaceId", "conversationId", "sId"],
+      },
+      // Index for data retention workflow - optimizes GROUP BY with MAX(createdAt).
+      {
+        fields: ["workspaceId", "conversationId", "createdAt"],
+        concurrently: true,
       },
     ],
     hooks: {
