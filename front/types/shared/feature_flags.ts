@@ -24,10 +24,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to Claude 4 Opus model in the agent builder",
     stage: "on_demand",
   },
-  co_edition: {
-    description: "Collaborative editing features",
-    stage: "dust_only",
-  },
   confluence_tool: {
     description: "Confluence MCP tool",
     stage: "on_demand",
