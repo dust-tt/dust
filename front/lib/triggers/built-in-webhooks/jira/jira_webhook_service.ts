@@ -190,7 +190,7 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
     const errors: string[] = [];
 
     for (const [projectKey, webhookId] of Object.entries(webhookIds)) {
-      if (typeof webhookId !== "string") {
+      if (!isString(webhookId)) {
         errors.push(`Invalid webhook ID for project ${projectKey}`);
         continue;
       }
