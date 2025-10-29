@@ -1,4 +1,4 @@
-import { SearchInput, TimeIcon, ToolCard } from "@dust-tt/sparkle";
+import { ActionCard, SearchInput, TimeIcon } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -60,7 +60,7 @@ export function TriggerSelectionPageContent({
           <>
             <span className="text-lg font-semibold">Top triggers</span>
             <div className="grid grid-cols-2 gap-3">
-              <ToolCard
+              <ActionCard
                 icon={TimeIcon}
                 label="Schedule"
                 description="Trigger this agent on a schedule"
@@ -79,7 +79,7 @@ export function TriggerSelectionPageContent({
             <div className="grid grid-cols-2 gap-3">
               {filteredWebhookSourceViews.map((view) => {
                 return (
-                  <ToolCard
+                  <ActionCard
                     key={view.sId}
                     icon={getIcon(normalizeWebhookIcon(view.icon))}
                     label={view.customName}
