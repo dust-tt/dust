@@ -336,7 +336,7 @@ async function handleInteraction(
 async function handleToolApproval(
   context: TurnContext,
   connector: ConnectorResource,
-  localLogger: Logger,
+  localLogger: Logger
 ) {
   const { verb } = context.activity.value.action;
   const approved = verb === "approve_tool" ? "approved" : "rejected";
@@ -437,9 +437,7 @@ async function handleToolApproval(
         );
       }
     } else {
-      localLogger.warn(
-        "No replyToId found, cannot disable approval card"
-      );
+      localLogger.warn("No replyToId found, cannot disable approval card");
     }
   }
 }
