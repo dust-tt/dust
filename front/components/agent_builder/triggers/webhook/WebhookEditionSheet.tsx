@@ -9,12 +9,6 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
   SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
@@ -23,8 +17,8 @@ import { useController, useFormContext } from "react-hook-form";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
+import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
-import type { WebhookFormValues } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
@@ -38,11 +32,11 @@ interface WebhookEditionNameInputProps {
 }
 
 function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
-  const { control } = useFormContext<WebhookFormValues>();
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
     field,
     fieldState: { error },
-  } = useController({ control, name: "name" });
+  } = useController({ control, name: "webhook.name" });
 
   return (
     <div className="space-y-1">
@@ -67,10 +61,10 @@ interface WebhookEditionStatusToggleProps {
 function WebhookEditionStatusToggle({
   isEditor,
 }: WebhookEditionStatusToggleProps) {
-  const { control } = useFormContext<WebhookFormValues>();
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
     field: { value: enabled, onChange: setEnabled },
-  } = useController({ control, name: "enabled" });
+  } = useController({ control, name: "webhook.enabled" });
 
   return (
     <div className="space-y-1">
@@ -104,11 +98,11 @@ function WebhookEditionEventSelector({
   selectedPreset,
   availableEvents,
 }: WebhookEditionEventSelectorProps) {
-  const { control } = useFormContext<WebhookFormValues>();
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
     field: { value: selectedEvent, onChange: setSelectedEvent },
     fieldState: { error },
-  } = useController({ control, name: "event" });
+  } = useController({ control, name: "webhook.event" });
 
   if (!selectedPreset || availableEvents.length === 0) {
     return null;
@@ -158,10 +152,10 @@ interface WebhookEditionIncludePayloadProps {
 function WebhookEditionIncludePayload({
   isEditor,
 }: WebhookEditionIncludePayloadProps) {
-  const { control } = useFormContext<WebhookFormValues>();
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
     field: { value: includePayload, onChange: setIncludePayload },
-  } = useController({ control, name: "includePayload" });
+  } = useController({ control, name: "webhook.includePayload" });
 
   return (
     <div className="flex items-center justify-between">
@@ -189,8 +183,8 @@ interface WebhookEditionMessageInputProps {
 function WebhookEditionMessageInput({
   isEditor,
 }: WebhookEditionMessageInputProps) {
-  const { control } = useFormContext<WebhookFormValues>();
-  const { field } = useController({ control, name: "customPrompt" });
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
+  const { field } = useController({ control, name: "webhook.customPrompt" });
 
   return (
     <div className="space-y-1">
@@ -208,33 +202,21 @@ function WebhookEditionMessageInput({
   );
 }
 
-interface WebhookEditionSheetProps {
+interface WebhookEditionSheetContentProps {
   owner: LightWorkspaceType;
   trigger: AgentBuilderWebhookTriggerType | null;
-  isOpen: boolean;
-  onCancel: () => void;
-  onClose: () => void;
-  onSave: (trigger: AgentBuilderWebhookTriggerType) => void;
   agentConfigurationId: string | null;
   webhookSourceView: WebhookSourceViewType | null;
   isEditor: boolean;
 }
 
-export function WebhookEditionSheet({
+export function WebhookEditionSheetContent({
   owner,
   trigger,
-  isOpen,
-  onCancel,
-  onClose,
-  onSave,
   agentConfigurationId,
   webhookSourceView,
   isEditor,
-}: WebhookEditionSheetProps) {
-  const {
-    formState: { isSubmitting },
-  } = useFormContext<WebhookFormValues>();
-
+}: WebhookEditionSheetContentProps) {
   const selectedPreset = useMemo((): PresetWebhook | null => {
     if (!webhookSourceView || webhookSourceView.provider === null) {
       return null;
@@ -252,99 +234,50 @@ export function WebhookEditionSheet({
     );
   }, [selectedPreset, webhookSourceView]);
 
-  const handleClose = () => {
-    // TODO(2025-10-23 aubin): see if we want to add a confirmation if unsaved changes here.
-    onCancel();
-    onClose();
-  };
-
-  const modalTitle = useMemo(() => {
-    if (trigger) {
-      return isEditor ? "Edit Webhook" : "View Webhook";
-    }
-    if (webhookSourceView) {
-      return `Create ${webhookSourceView.customName} Trigger`;
-    }
-    return "Create Webhook";
-  }, [trigger, isEditor, webhookSourceView]);
-
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <SheetContent size="xl">
-        <SheetHeader>
-          <SheetTitle>{modalTitle}</SheetTitle>
-        </SheetHeader>
+    <>
+      {trigger && !isEditor && (
+        <ContentMessage variant="info">
+          You cannot edit this trigger. It is managed by{" "}
+          <span className="font-semibold">
+            {trigger.editorName ?? "another user"}
+          </span>
+          .
+        </ContentMessage>
+      )}
+      <div className="space-y-5">
+        <WebhookEditionNameInput isEditor={isEditor} />
 
-        <SheetContainer>
-          {trigger && !isEditor && (
-            <ContentMessage variant="info">
-              You cannot edit this trigger. It is managed by{" "}
-              <span className="font-semibold">
-                {trigger.editorName ?? "another user"}
-              </span>
-              .
-            </ContentMessage>
-          )}
-          <div className="space-y-5">
-            <WebhookEditionNameInput isEditor={isEditor} />
+        <WebhookEditionStatusToggle isEditor={isEditor} />
 
-            <WebhookEditionStatusToggle isEditor={isEditor} />
-
-            <WebhookEditionEventSelector
-              isEditor={isEditor}
-              selectedPreset={selectedPreset}
-              availableEvents={availableEvents}
-            />
-
-            <WebhookEditionFilters
-              isEditor={isEditor}
-              webhookSourceView={webhookSourceView}
-              selectedPreset={selectedPreset}
-              availableEvents={availableEvents}
-              workspace={owner}
-            />
-
-            <WebhookEditionIncludePayload isEditor={isEditor} />
-
-            <WebhookEditionMessageInput isEditor={isEditor} />
-
-            {trigger && (
-              <div className="space-y-1">
-                <RecentWebhookRequests
-                  owner={owner}
-                  agentConfigurationId={agentConfigurationId}
-                  trigger={trigger}
-                />
-              </div>
-            )}
-          </div>
-        </SheetContainer>
-
-        <SheetFooter
-          leftButtonProps={
-            isEditor
-              ? {
-                  label: "Cancel",
-                  variant: "outline",
-                  onClick: handleClose,
-                }
-              : undefined
-          }
-          // TODO(2025-10-22 aubin): fix these labels (Close feels weird).
-          rightButtonProps={{
-            label: trigger
-              ? isEditor
-                ? "Update Webhook"
-                : "Close"
-              : webhookSourceView
-                ? `Add ${webhookSourceView.customName} Trigger`
-                : "Add Webhook",
-            variant: "primary",
-            onClick: isEditor ? onSave : handleClose,
-            disabled: isSubmitting,
-          }}
+        <WebhookEditionEventSelector
+          isEditor={isEditor}
+          selectedPreset={selectedPreset}
+          availableEvents={availableEvents}
         />
-      </SheetContent>
-    </Sheet>
+
+        <WebhookEditionFilters
+          isEditor={isEditor}
+          webhookSourceView={webhookSourceView}
+          selectedPreset={selectedPreset}
+          availableEvents={availableEvents}
+          workspace={owner}
+        />
+
+        <WebhookEditionIncludePayload isEditor={isEditor} />
+
+        <WebhookEditionMessageInput isEditor={isEditor} />
+
+        {trigger && (
+          <div className="space-y-1">
+            <RecentWebhookRequests
+              owner={owner}
+              agentConfigurationId={agentConfigurationId}
+              trigger={trigger}
+            />
+          </div>
+        )}
+      </div>
+    </>
   );
 }
