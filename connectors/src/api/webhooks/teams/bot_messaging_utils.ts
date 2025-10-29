@@ -15,22 +15,12 @@ import { cacheWithRedis } from "@connectors/types/shared/cache";
  * Raw token acquisition function (for caching)
  */
 async function acquireTenantSpecificToken(): Promise<string> {
-  if (
-    !apiConfig.getMicrosoftBotTenantId() ||
-    !apiConfig.getMicrosoftBotId() ||
-    !apiConfig.getMicrosoftBotPassword()
-  ) {
-    throw new Error(
-      "Missing required environment variables: MICROSOFT_BOT_TENANT_ID, MICROSOFT_BOT_ID, MICROSOFT_BOT_PASSWORD"
-    );
-  }
-
   const tokenResponse = await axios.post(
     `https://login.microsoftonline.com/${apiConfig.getMicrosoftBotTenantId()}/oauth2/v2.0/token`,
     new URLSearchParams({
       grant_type: "client_credentials",
-      client_id: apiConfig.getMicrosoftBotId()!,
-      client_secret: apiConfig.getMicrosoftBotPassword()!,
+      client_id: apiConfig.getMicrosoftBotId(),
+      client_secret: apiConfig.getMicrosoftBotPassword(),
       scope: "https://api.botframework.com/.default",
     }),
     {

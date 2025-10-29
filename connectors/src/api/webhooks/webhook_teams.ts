@@ -46,7 +46,6 @@ adapter.onTurnError = async (context, error) => {
       error: error.message,
       stack: error.stack,
       botId: apiConfig.getMicrosoftBotId(),
-      hasPassword: !!apiConfig.getMicrosoftBotPassword(),
     },
     "Bot Framework adapter error"
   );
@@ -245,11 +244,6 @@ async function handleMessage(
     {
       serviceUrl: context.activity.serviceUrl,
       conversationId: context.activity.conversation?.id,
-      cardType: "ThinkingCard",
-      credentials: {
-        hasAppId: !!apiConfig.getMicrosoftBotId(),
-        hasAppPassword: !!apiConfig.getMicrosoftBotPassword(),
-      },
     },
     "About to send thinking card to Bot Framework"
   );
