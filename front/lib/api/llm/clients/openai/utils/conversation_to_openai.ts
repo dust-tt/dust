@@ -19,7 +19,7 @@ import type { ModelConversationTypeMultiActions } from "@app/types";
 import { isString } from "@app/types";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
-function toUserContent(content: Content): ResponseInputContent {
+function toInputContent(content: Content): ResponseInputContent {
   switch (content.type) {
     case "text":
       return { type: "input_text", text: content.text };
@@ -32,7 +32,9 @@ function toUserContent(content: Content): ResponseInputContent {
   }
 }
 
-function toAssistantItem(content: AgentContentItemType): ResponseInputItem {
+function toAssistantInputItem(
+  content: AgentContentItemType
+): ResponseInputItem {
   switch (content.type) {
     case "text_content":
       return {
@@ -63,21 +65,16 @@ function toAssistantItem(content: AgentContentItemType): ResponseInputItem {
   }
 }
 
-function systemPrompt(prompt: string): ResponseInputItem.Message {
-  return {
-    role: "developer",
-    content: [{ type: "input_text", text: prompt }],
-  };
-}
-
-function userMessage(message: UserMessageTypeModel): ResponseInputItem.Message {
+function toUserInputMessage(
+  message: UserMessageTypeModel
+): ResponseInputItem.Message {
   return {
     role: "user",
-    content: message.content.map(toUserContent),
+    content: message.content.map(toInputContent),
   };
 }
 
-function functionMessage(
+function toToolCallOutputItem(
   message: FunctionMessageTypeModel
 ): ResponseFunctionToolCallOutputItem {
   const outputString = isString(message.content)
@@ -96,18 +93,21 @@ export function toInput(
   conversation: ModelConversationTypeMultiActions
 ): ResponseInput {
   const inputs: ResponseInput = [];
-  inputs.push(systemPrompt(prompt));
+  inputs.push({
+    role: "developer",
+    content: [{ type: "input_text", text: prompt }],
+  });
 
   for (const message of conversation.messages) {
     switch (message.role) {
       case "user":
-        inputs.push(userMessage(message));
+        inputs.push(toUserInputMessage(message));
         break;
       case "assistant":
-        inputs.push(...message.contents.map(toAssistantItem));
+        inputs.push(...message.contents.map(toAssistantInputItem));
         break;
       case "function":
-        inputs.push(functionMessage(message));
+        inputs.push(toToolCallOutputItem(message));
         break;
     }
   }
