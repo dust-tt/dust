@@ -20,11 +20,8 @@ import React from "react";
 
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
-import type { WorkspaceType } from "@app/types";
-
-import type { RichMention } from "../types";
-import { isRichUserMention } from "../types";
-import { isRichAgentMention } from "../types";
+import type { RichMention, WorkspaceType } from "@app/types";
+import { isRichAgentMention, isRichUserMention } from "@app/types";
 
 interface MentionDropdownProps {
   mention: RichMention;

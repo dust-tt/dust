@@ -1,9 +1,12 @@
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import type { RichMention, RichUserMention } from "@app/types";
+import type { RichAgentMention } from "@app/types";
+import {
+  GLOBAL_AGENTS_SID,
+  isRichAgentMention,
+  isRichUserMention,
+} from "@app/types";
 
 import { compareForFuzzySort, subFilter } from "../../utils";
-import type { RichAgentMention, RichMention, RichUserMention } from "../types";
-import { isRichUserMention } from "../types";
-import { isRichAgentMention } from "../types";
 
 /**
  * Maximum number of suggestions to display in the autocomplete dropdown.

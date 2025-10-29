@@ -15,8 +15,8 @@ import {
 import React from "react";
 
 import type { WorkspaceType } from "@app/types";
+import type { RichMention } from "@app/types";
 
-import type { RichMention } from "../types";
 import { MentionDropdown } from "./MentionDropdown";
 
 interface MentionDisplayProps {

@@ -7,12 +7,12 @@ import {
   Message,
 } from "@app/lib/models/assistant/conversation";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import type { MentionType } from "@app/types";
 import type {
   AgentMention,
   AgentMessageType,
   ConversationType,
   LightAgentConfigurationType,
-  MentionType,
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
