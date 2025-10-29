@@ -24,7 +24,10 @@ import {
   extractBearerToken,
   validateBotFrameworkToken,
 } from "@connectors/api/webhooks/teams/jwt_validation";
-import { getConnector } from "@connectors/api/webhooks/teams/utils";
+import {
+  getConnector,
+  validateToolApprovalData,
+} from "@connectors/api/webhooks/teams/utils";
 import { apiConfig } from "@connectors/lib/api/config";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
@@ -208,11 +211,26 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
         case "invoke":
           // Handle tool execution approval card refresh
           if (context.activity.value.action.verb === "toolExecutionApproval") {
+            // Validate the data before using it
+            const validatedData = validateToolApprovalData(
+              context.activity.value.action.data
+            );
+
+            if (!validatedData) {
+              localLogger.error(
+                {
+                  connectorId: connector.id,
+                  receivedData: context.activity.value.action.data,
+                },
+                "Invalid tool approval data received for refresh"
+              );
+              res.status(400).json({ error: "Invalid request data" });
+              break;
+            }
+
             res.status(200).json({
               type: "application/vnd.microsoft.card.adaptive",
-              value: createInteractiveToolApprovalAdaptiveCard(
-                context.activity.value.action.data
-              ),
+              value: createInteractiveToolApprovalAdaptiveCard(validatedData),
             });
           } else {
             await handleToolApproval(context, connector, localLogger);
