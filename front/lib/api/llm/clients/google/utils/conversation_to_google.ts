@@ -3,8 +3,7 @@ import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
-  AssistantContentMessageTypeModel,
-  AssistantFunctionCallMessageTypeModel,
+  AssistantMessageTypeModel,
   FunctionMessageTypeModel,
   ImageContent,
   ModelMessageTypeMultiActionsWithoutContentFragment,
@@ -141,9 +140,7 @@ function assistantContentToPart(
 }
 
 async function assistantMessageToParts(
-  message:
-    | AssistantContentMessageTypeModel
-    | AssistantFunctionCallMessageTypeModel
+  message: AssistantMessageTypeModel
 ): Promise<Content> {
   assert(message.contents, "Assistant message is missing contents");
 

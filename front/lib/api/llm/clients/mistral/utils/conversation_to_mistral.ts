@@ -8,8 +8,7 @@ import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
-  AssistantContentMessageTypeModel,
-  AssistantFunctionCallMessageTypeModel,
+  AssistantMessageTypeModel,
   Content,
   ModelMessageTypeMultiActionsWithoutContentFragment,
 } from "@app/types";
@@ -49,9 +48,7 @@ function toContentChunk(
 }
 
 function toAssistantMessage(
-  message:
-    | AssistantFunctionCallMessageTypeModel
-    | AssistantContentMessageTypeModel
+  message: AssistantMessageTypeModel
 ): AssistantMessage & { role: "assistant" } {
   assert(message.contents, "Assistant message is missing contents");
 
