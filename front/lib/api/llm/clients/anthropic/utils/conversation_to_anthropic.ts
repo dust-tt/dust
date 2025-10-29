@@ -106,16 +106,15 @@ function assistantMessage(
     | AssistantFunctionCallMessageTypeModel
     | AssistantContentMessageTypeModel
 ): MessageParam {
+  const contents = message.contents.map(assistantContentToParam);
+
+  // Put "tool_use" blocks at the end since "tool_result" must immediately follow them
+  const nonToolUse = contents.filter((c) => c.type !== "tool_use");
+  const toolUse = contents.filter((c) => c.type === "tool_use");
+
   return {
     role: "assistant",
-    content: message.contents.map(assistantContentToParam).sort((a, b) => {
-      // We want to make sure the "tool_use" call is at the end of the contents
-      // Because the following "tool_result" is expected to follow it immediately
-      const A = a.type === "tool_use";
-      const B = b.type === "tool_use";
-
-      return A === B ? 0 : A ? 1 : -1;
-    }),
+    content: [...nonToolUse, ...toolUse],
   };
 }
 
