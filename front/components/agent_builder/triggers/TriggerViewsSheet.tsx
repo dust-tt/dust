@@ -74,6 +74,12 @@ export function TriggerViewsSheet({
   const [selectedWebhookSourceView, setSelectedWebhookSourceView] =
     useState<WebhookSourceViewType | null>(editWebhookSourceView);
 
+  const webhookSourceView = editWebhookSourceView ?? selectedWebhookSourceView;
+
+  const isEditor = editTrigger?.editor
+    ? editTrigger?.editor === user?.id
+    : true;
+
   const defaultValues = useMemo((): TriggerViewsSheetFormValues => {
     switch (editTrigger?.kind) {
       case "schedule": {
@@ -158,8 +164,6 @@ export function TriggerViewsSheet({
         }
         case "webhook": {
           // Validate that event is selected for preset webhooks
-          const webhookSourceView =
-            editWebhookSourceView ?? selectedWebhookSourceView;
           if (webhookSourceView?.provider && !values.webhook.event) {
             form.setError("webhook.event", {
               type: "manual",
@@ -227,35 +231,21 @@ export function TriggerViewsSheet({
     }
   }, [mode]);
 
-  const webhookIcon = useMemo(() => {
-    const webhookSourceView =
-      editWebhookSourceView ?? selectedWebhookSourceView;
-    return normalizeWebhookIcon(webhookSourceView?.icon);
-  }, [editWebhookSourceView, selectedWebhookSourceView]);
+  let scheduleTitle;
+  if (editTrigger) {
+    scheduleTitle = isEditor ? "Edit Schedule" : "View Schedule";
+  } else {
+    scheduleTitle = "Create Schedule";
+  }
 
-  const isEditor = useMemo(() => {
-    return editTrigger?.editor ? editTrigger?.editor === user?.id : true;
-  }, [editTrigger, user]);
-
-  const scheduleTitle = useMemo(() => {
-    if (editTrigger) {
-      return isEditor ? "Edit Schedule" : "View Schedule";
-    }
-    return "Create Schedule";
-  }, [editTrigger, isEditor]);
-
-  const webhookTitle = useMemo(() => {
-    const webhookSourceView =
-      editWebhookSourceView ?? selectedWebhookSourceView;
-
-    if (editTrigger) {
-      return isEditor ? "Edit Trigger" : "View Trigger";
-    }
-    if (webhookSourceView) {
-      return `Create ${webhookSourceView.customName} Trigger`;
-    }
-    return "Create Trigger";
-  }, [editTrigger, editWebhookSourceView, isEditor, selectedWebhookSourceView]);
+  let webhookTitle;
+  if (editTrigger) {
+    webhookTitle = isEditor ? "Edit Trigger" : "View Trigger";
+  } else if (webhookSourceView) {
+    webhookTitle = `Create ${webhookSourceView.customName} Trigger`;
+  } else {
+    webhookTitle = "Create Trigger";
+  }
 
   const pages: MultiPageSheetPage[] = [
     {
@@ -284,13 +274,14 @@ export function TriggerViewsSheet({
     {
       id: TRIGGERS_SHEET_PAGE_IDS.WEBHOOK,
       title: webhookTitle,
-      icon: () => getAvatarFromIcon(webhookIcon),
+      icon: () =>
+        getAvatarFromIcon(normalizeWebhookIcon(webhookSourceView?.icon)),
       content: (
         <WebhookEditionSheetContent
           owner={owner}
           trigger={editTrigger?.kind === "webhook" ? editTrigger : null}
           agentConfigurationId={agentConfigurationId}
-          webhookSourceView={editWebhookSourceView ?? selectedWebhookSourceView}
+          webhookSourceView={webhookSourceView}
           isEditor={isEditor}
         />
       ),
