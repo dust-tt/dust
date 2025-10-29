@@ -1438,13 +1438,12 @@ async function isAgentAccessingRestrictedSpace(
       return new Err(new Error(`Agent ${agentId} not found`));
     }
 
-    // TODO(2025-10-17 thomas): Check requestedSpaceIds instead of requestedGroupIds.
-    // If the agent has no requestedGroupIds, it's not from a restricted space
-    if (!agent.requestedGroupIds || agent.requestedGroupIds.length === 0) {
+    // If the agent has no requestedSpaceIds, it's not from a restricted space
+    if (!agent.requestedSpaceIds || agent.requestedSpaceIds.length === 0) {
       return new Ok(false);
     }
 
-    const agentGroupIds = agent.requestedGroupIds.flat();
+    const agentSpaceIds = agent.requestedSpaceIds.flat();
 
     const spacesRes = await dustAPI.getSpaces();
     if (spacesRes.isErr()) {
@@ -1461,9 +1460,9 @@ async function isAgentAccessingRestrictedSpace(
     const restrictedSpaces = spacesRes.value.filter(
       (space) => space.isRestricted
     );
-    const isFromRestrictedSpace = restrictedSpaces.some((space) => {
-      return space.groupIds.some((groupId) => agentGroupIds.includes(groupId));
-    });
+    const isFromRestrictedSpace = restrictedSpaces.some((space) =>
+      agentSpaceIds.includes(space.sId)
+    );
 
     logger.info(
       {
