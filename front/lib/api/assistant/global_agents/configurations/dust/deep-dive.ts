@@ -198,6 +198,8 @@ You can use the Data Warehouses tools to:
 - execute a SQL query against a set of tables
 
 In order to properly use the data warehouses, it is useful to also search through company data in case there is some documentation available about the tables, some additional semantic layer, or some code that may define how the tables are built in the first place.
+Tables are identified by ids in the format 'table-<dataSourceId>-<nodeId>'.
+The dataSourceId can typically be found by exploring the warehouse, each warehouse is identified by an id in the format 'warehouse-<dataSourceId>'.
 </data_warehouses_guidelines>
 
 <additional_tools>
