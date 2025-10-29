@@ -11,6 +11,7 @@ import {
 } from "@connectors/api/webhooks/teams/adaptive_cards";
 import {
   botAnswerMessage,
+  botValidateToolExecution,
   sendFeedback,
 } from "@connectors/api/webhooks/teams/bot";
 import {
@@ -202,6 +203,9 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
             await handleMessage(context, connector, localLogger);
           }
           break;
+        case "invoke":
+          await handleToolApproval(context, connector, localLogger);
+          break;
 
         default:
           localLogger.info(
@@ -325,6 +329,68 @@ async function handleInteraction(
     default:
       localLogger.info({ verb }, "Unhandled interaction verb");
       break;
+  }
+}
+
+async function handleToolApproval(
+  context: TurnContext,
+  connector: ConnectorResource,
+  localLogger: Logger,
+) {
+  const { verb } = context.activity.value.action;
+  const approved = verb === "approve_tool" ? "approved" : "rejected";
+  
+  const {
+    conversationId,
+    messageId,
+    actionId,
+    microsoftBotMessageId,
+    agentName,
+    toolName,
+  } = context.activity.value.action.data;
+
+  localLogger.info(
+    {
+      conversationId,
+      messageId,
+      actionId,
+      approved,
+      agentName,
+      toolName,
+    },
+    "Handling tool approval from adaptive card"
+  );
+
+  const result = await botValidateToolExecution({
+    context,
+    connector,
+    approved,
+    conversationId,
+    messageId,
+    actionId,
+    microsoftBotMessageId,
+    agentName,
+    toolName,
+    localLogger,
+  });
+
+  if (result.isErr()) {
+    localLogger.error(
+      {
+        error: result.error,
+        conversationId,
+        messageId,
+        actionId,
+      },
+      "Error validating tool execution"
+    );
+    await sendActivity(
+      context,
+      createErrorAdaptiveCard({
+        error: "Failed to validate tool execution. Please try again.",
+        workspaceId: connector.workspaceId,
+      })
+    );
   }
 }
 

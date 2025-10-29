@@ -307,6 +307,94 @@ export function createErrorAdaptiveCard({
   };
 }
 
+/**
+ * Creates an Adaptive Card for tool execution approval
+ */
+export function createToolApprovalAdaptiveCard({
+  agentName,
+  toolName,
+  conversationId,
+  messageId,
+  actionId,
+  workspaceId,
+  microsoftBotMessageId,
+}: {
+  agentName: string;
+  toolName: string;
+  conversationId: string;
+  messageId: string;
+  actionId: string;
+  workspaceId: string;
+  microsoftBotMessageId: number;
+}): Partial<Activity> {
+  const card: AdaptiveCard = {
+    type: "AdaptiveCard",
+    $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+    version: "1.4",
+    body: [
+      {
+        type: "TextBlock",
+        text: "Tool validation Required",
+        weight: "Bolder",
+        size: "Large",
+        spacing: "Medium",
+      },
+      {
+        type: "Container",
+        spacing: "Medium",
+        items: [
+          {
+            type: "TextBlock",
+            text: `Agent **@${agentName}** is requesting permission to use tool **${toolName}**`,
+            wrap: true,
+            spacing: "Small",
+          },
+        ],
+      },
+    ],
+    actions: [
+      {
+        type: "Action.Execute",
+        title: "Approve",
+        verb: "approve_tool",
+        data: {
+          conversationId,
+          messageId,
+          actionId,
+          workspaceId,
+          microsoftBotMessageId,
+          agentName,
+          toolName,
+        },
+      },
+      {
+        type: "Action.Execute",
+        title: "Reject",
+        verb: "reject_tool",
+        data: {
+          conversationId,
+          messageId,
+          actionId,
+          workspaceId,
+          microsoftBotMessageId,
+          agentName,
+          toolName,
+        },
+      },
+    ],
+  };
+
+  return {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: card,
+      },
+    ],
+  };
+}
+
 function createFooterText({
   assistantName,
   conversationUrl,
