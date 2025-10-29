@@ -9,12 +9,13 @@ import type {
 } from "openai/resources/responses/responses";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type { ModelConversationTypeMultiActions } from "@app/types";
 import type {
   Content,
   FunctionMessageTypeModel,
   UserMessageTypeModel,
 } from "@app/types";
-import type { ModelConversationTypeMultiActions } from "@app/types";
+import { assertNever } from "@app/types";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
 function toInputContent(content: Content): ResponseInputContent {
@@ -61,6 +62,8 @@ function toAssistantInputItem(
         type: "message",
         content: content.value.message,
       };
+    default:
+      assertNever(content);
   }
 }
 
@@ -108,6 +111,8 @@ export function toInput(
       case "function":
         inputs.push(toToolCallOutputItem(message));
         break;
+      default:
+        assertNever(message);
     }
   }
   return inputs;
