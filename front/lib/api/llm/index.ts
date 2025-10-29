@@ -62,7 +62,7 @@ export async function getLLM(
 
   if (ANTHROPIC_WHITELISTED_MODEL_IDS.includes(modelId)) {
     return new AnthropicLLM({
-      modelId: modelConfiguration,
+      modelId,
       temperature,
       reasoningEffort,
       bypassFeatureFlag,
