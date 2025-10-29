@@ -112,7 +112,7 @@ export const NavigationSidebar = React.forwardRef<
         )}
         {navs.length > 1 && (
           <Tabs value={currentTab?.id ?? "conversations"}>
-            <TabsList className="flex min-h-14 grow items-center justify-center">
+            <TabsList className="flex min-h-14 grow items-center pl-4">
               {navs.map((tab) => (
                 <div key={tab.id} ref={tab.ref ?? undefined}>
                   <TabsTrigger
