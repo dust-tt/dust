@@ -104,7 +104,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     return res.map((c) => new this(this.model, c.get()));
   }
 
-  static async fetchById(
+  static async fetchByModelIdWithAuth(
     auth: Authenticator,
     id: ModelId
   ): Promise<WebhookRequestResource | null> {

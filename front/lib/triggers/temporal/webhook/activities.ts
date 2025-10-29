@@ -40,7 +40,7 @@ export async function runTriggerWebhookActivity({
     throw new TriggerNonRetryableError(errorMessage);
   }
 
-  const webhookRequest = await WebhookRequestResource.fetchById(
+  const webhookRequest = await WebhookRequestResource.fetchByModelIdWithAuth(
     auth,
     webhookRequestId
   );
