@@ -206,6 +206,7 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           }
           break;
         case "invoke":
+          // Handle tool execution approval card refresh
           if (context.activity.value.action.verb === "toolExecutionApproval") {
             res.status(200).json({
               type: "application/vnd.microsoft.card.adaptive",

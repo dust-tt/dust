@@ -308,18 +308,9 @@ export function createErrorAdaptiveCard({
 }
 
 /**
- * Creates an Adaptive Card for tool execution approval
+ * Creates the basic Adaptive Card for tool execution approval for everyone (read-only, no actions)
  */
-export function createBasicToolApprovalAdaptiveCard({
-  agentName,
-  toolName,
-  conversationId,
-  messageId,
-  actionId,
-  workspaceId,
-  microsoftBotMessageId,
-  userAadObjectId,
-}: {
+export function createBasicToolApprovalAdaptiveCard(data: {
   agentName: string;
   toolName: string;
   conversationId: string;
@@ -329,7 +320,6 @@ export function createBasicToolApprovalAdaptiveCard({
   microsoftBotMessageId: number;
   userAadObjectId: string;
 }): Partial<Activity> {
-  // Basic card for everyone else (read-only, no actions)
   const basicCard: AdaptiveCard = {
     type: "AdaptiveCard",
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -339,17 +329,9 @@ export function createBasicToolApprovalAdaptiveCard({
         type: "Action.Execute",
         title: "Tool execution approval",
         verb: "toolExecutionApproval",
-        data: {
-          agentName,
-          toolName,
-          conversationId,
-          messageId,
-          actionId,
-          workspaceId,
-          microsoftBotMessageId,
-        },
+        data,
       },
-      userIds: [userAadObjectId],
+      userIds: [data.userAadObjectId],
     },
     body: [
       {
@@ -365,7 +347,7 @@ export function createBasicToolApprovalAdaptiveCard({
         items: [
           {
             type: "TextBlock",
-            text: `Agent **@${agentName}** is requesting permission to use tool **${toolName}**`,
+            text: `Agent **@${data.agentName}** is requesting permission to use tool **${data.toolName}**`,
             wrap: true,
             spacing: "Small",
           },
@@ -383,7 +365,6 @@ export function createBasicToolApprovalAdaptiveCard({
     ],
   };
 
-  // Use helper to create activity with user-specific refresh
   return {
     type: "message",
     attachments: [
@@ -397,15 +378,10 @@ export function createBasicToolApprovalAdaptiveCard({
   };
 }
 
-export function createInteractiveToolApprovalAdaptiveCard({
-  agentName,
-  toolName,
-  conversationId,
-  messageId,
-  actionId,
-  workspaceId,
-  microsoftBotMessageId,
-}: {
+/**
+ * Creates an interactive Adaptive Card for tool execution approval for the original sender (with buttons)
+ */
+export function createInteractiveToolApprovalAdaptiveCard(data: {
   agentName: string;
   toolName: string;
   conversationId: string;
@@ -414,7 +390,6 @@ export function createInteractiveToolApprovalAdaptiveCard({
   workspaceId: string;
   microsoftBotMessageId: number;
 }): AdaptiveCard {
-  // Interactive card with buttons (for the original user after refresh)
   return {
     type: "AdaptiveCard",
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -433,7 +408,7 @@ export function createInteractiveToolApprovalAdaptiveCard({
         items: [
           {
             type: "TextBlock",
-            text: `Agent **@${agentName}** is requesting permission to use tool **${toolName}**`,
+            text: `Agent **@${data.agentName}** is requesting permission to use tool **${data.toolName}**`,
             wrap: true,
             spacing: "Small",
           },
@@ -445,128 +420,13 @@ export function createInteractiveToolApprovalAdaptiveCard({
         type: "Action.Execute",
         title: "Approve",
         verb: "approve_tool",
-        data: {
-          conversationId,
-          messageId,
-          actionId,
-          workspaceId,
-          microsoftBotMessageId,
-          agentName,
-          toolName,
-        },
+        data,
       },
       {
         type: "Action.Execute",
         title: "Reject",
         verb: "reject_tool",
-        data: {
-          conversationId,
-          messageId,
-          actionId,
-          workspaceId,
-          microsoftBotMessageId,
-          agentName,
-          toolName,
-        },
-      },
-    ],
-  };
-}
-
-/**
- * Returns the interactive card for user-specific view (called during refresh)
- */
-export function getInteractiveToolApprovalCard({
-  agentName,
-  toolName,
-  conversationId,
-  messageId,
-  actionId,
-  workspaceId,
-  microsoftBotMessageId,
-  teamsMessageLink,
-}: {
-  agentName: string;
-  toolName: string;
-  conversationId: string;
-  messageId: string;
-  actionId: string;
-  workspaceId: string;
-  microsoftBotMessageId: number;
-  teamsMessageLink: string | null;
-}) {
-  return {
-    type: "AdaptiveCard",
-    $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-    version: "1.4",
-    body: [
-      {
-        type: "TextBlock",
-        text: "Tool validation Required",
-        weight: "Bolder",
-        size: "Large",
-        spacing: "Medium",
-      },
-      {
-        type: "Container",
-        spacing: "Medium",
-        items: [
-          {
-            type: "TextBlock",
-            text: `Agent **@${agentName}** is requesting permission to use tool **${toolName}**`,
-            wrap: true,
-            spacing: "Small",
-          },
-        ],
-      },
-      ...(teamsMessageLink
-        ? [
-            {
-              type: "Container",
-              spacing: "Medium",
-              separator: true,
-              items: [
-                {
-                  type: "TextBlock",
-                  text: `[View message in Teams](${teamsMessageLink})`,
-                  wrap: true,
-                  spacing: "Small",
-                  size: "Small",
-                  color: "Accent",
-                },
-              ],
-            },
-          ]
-        : []),
-    ],
-    actions: [
-      {
-        type: "Action.Execute",
-        title: "Approve",
-        verb: "approve_tool",
-        data: {
-          conversationId,
-          messageId,
-          actionId,
-          workspaceId,
-          microsoftBotMessageId,
-          agentName,
-          toolName,
-        },
-      },
-      {
-        type: "Action.Execute",
-        title: "Reject",
-        verb: "reject_tool",
-        data: {
-          conversationId,
-          messageId,
-          actionId,
-          workspaceId,
-          microsoftBotMessageId,
-          agentName,
-          toolName,
-        },
+        data,
       },
     ],
   };
