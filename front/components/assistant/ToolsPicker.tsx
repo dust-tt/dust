@@ -165,9 +165,10 @@ export function ToolsPicker({
                     description={getMcpServerViewDescription(v)}
                     truncateText
                     onClick={(e) => {
-                      onSelect(v);
                       e.stopPropagation();
                       e.preventDefault();
+                      onSelect(v);
+                      setIsOpen(false);
                     }}
                   />
                 );
