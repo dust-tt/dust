@@ -203,11 +203,7 @@ export async function runTriggerWebhookActivity({
     await concurrentExecutor(
       views,
       async (view) => {
-        const triggers = await TriggerResource.listByWebhookSourceViewId(
-          auth,
-          view.id
-        );
-        return triggers;
+        return TriggerResource.listByWebhookSourceViewId(auth, view.id);
       },
       { concurrency: 10 }
     )
@@ -221,53 +217,61 @@ export async function runTriggerWebhookActivity({
 
   const filteredTriggers: WebhookTriggerType[] = [];
 
-  for (const t of triggers) {
-    if (t.configuration.event && t.configuration.event !== receivedEventValue) {
+  for (const trigger of triggers) {
+    const { configuration } = trigger;
+
+    if (configuration.event && configuration.event !== receivedEventValue) {
       // Received event doesn't match the trigger's event, skip this trigger
-      await webhookRequest.markRelatedTrigger(t, "not_matched");
+      await webhookRequest.markRelatedTrigger({
+        trigger,
+        status: "not_matched",
+      });
       continue;
     }
 
-    if (!t.configuration.filter) {
+    if (!configuration.filter) {
       // No filter, add the trigger
-      filteredTriggers.push(t);
+      filteredTriggers.push(trigger);
     } else {
       try {
         // Filter triggers by payload matching
-        const parsedFilter = parseMatcherExpression(t.configuration.filter);
+        const parsedFilter = parseMatcherExpression(configuration.filter);
         const r = matchPayload(body, parsedFilter);
         if (r) {
           // Filter matches, add the trigger if not rate limited
           const rateLimiterRes = await checkTriggerForExecutionPerDayLimit(
             auth,
             {
-              trigger: t,
+              trigger,
             }
           );
           if (rateLimiterRes.isErr()) {
             const errorMessage = rateLimiterRes.error.message;
-            await webhookRequest.markRelatedTrigger(
-              t,
-              "rate_limited",
-              errorMessage
-            );
+            await webhookRequest.markRelatedTrigger({
+              trigger,
+              status: "rate_limited",
+              errorMessage,
+            });
             logger.warn(
-              { workspaceId, webhookRequestId, triggerId: t.sId },
+              { workspaceId, webhookRequestId, triggerId: trigger.sId },
               errorMessage
             );
           } else {
-            filteredTriggers.push(t);
+            filteredTriggers.push(trigger);
           }
         } else {
           // Filter doesn't match, skip the trigger but store in the mapping list.
-          await webhookRequest.markRelatedTrigger(t, "not_matched");
+          await webhookRequest.markRelatedTrigger({
+            trigger,
+            status: "not_matched",
+          });
         }
       } catch (err) {
         logger.error(
           {
-            triggerId: t.id,
-            triggerName: t.name,
-            filter: t.configuration.filter,
+            triggerId: trigger.id,
+            triggerName: trigger.name,
+            filter: configuration.filter,
             err: normalizeError(err),
           },
           "Invalid filter expression in webhook trigger"
@@ -313,19 +317,22 @@ export async function runTriggerWebhookActivity({
   // Launch all the triggers' workflows concurrently.
   await concurrentExecutor(
     filteredTriggers,
-    async (t) => {
+    async (trigger) => {
       // Get the trigger's user and create a new authenticator
-      const user = await UserResource.fetchByModelId(t.editor);
+      const user = await UserResource.fetchByModelId(trigger.editor);
 
       if (!user) {
-        logger.error({ triggerId: t.id }, "Trigger editor not found.");
-        await webhookRequest.markRelatedTrigger(t, "workflow_start_failed");
+        logger.error({ triggerId: trigger.id }, "Trigger editor not found.");
+        await webhookRequest.markRelatedTrigger({
+          trigger,
+          status: "workflow_start_failed",
+        });
       } else {
         const auth = await Authenticator.fromUserIdAndWorkspaceId(
           user.sId,
           workspaceId
         );
-        if (t.configuration.includePayload && !contentFragment) {
+        if (trigger.configuration.includePayload && !contentFragment) {
           throw new TriggerNonRetryableError(
             "One of the triggers requires the payload, but the contentFragment is missing. It should never happen as the content fragment is created if any of the triggers requires the payload."
           );
@@ -334,21 +341,24 @@ export async function runTriggerWebhookActivity({
         // Fire and forget
         const result = await launchAgentTriggerWorkflow({
           auth,
-          trigger: t,
+          trigger: trigger,
           contentFragment,
         });
 
         if (result.isErr()) {
-          await webhookRequest.markRelatedTrigger(t, "workflow_start_failed");
+          await webhookRequest.markRelatedTrigger({
+            trigger,
+            status: "workflow_start_failed",
+          });
           logger.error(
-            { triggerId: t.id, error: result.error },
+            { triggerId: trigger.id, error: result.error },
             "Error launching agent trigger workflow."
           );
         } else {
-          await webhookRequest.markRelatedTrigger(
-            t,
-            "workflow_start_succeeded"
-          );
+          await webhookRequest.markRelatedTrigger({
+            trigger,
+            status: "workflow_start_succeeded",
+          });
         }
       }
     },

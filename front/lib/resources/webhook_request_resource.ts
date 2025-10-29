@@ -59,11 +59,15 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     });
   }
 
-  async markRelatedTrigger(
-    trigger: TriggerType,
-    status: WebhookRequestTriggerStatus,
-    errorMessage?: string
-  ) {
+  async markRelatedTrigger({
+    trigger,
+    status,
+    errorMessage,
+  }: {
+    trigger: TriggerType;
+    status: WebhookRequestTriggerStatus;
+    errorMessage?: string;
+  }) {
     await WebhookRequestTriggerModel.create({
       workspaceId: this.workspaceId,
       webhookRequestId: this.id,
