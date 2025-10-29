@@ -5,7 +5,6 @@ import type {
 
 import type {
   LLMEvent,
-  ProviderMetadata,
   ReasoningDeltaEvent,
   ReasoningGeneratedEvent,
   TextDeltaEvent,
@@ -13,11 +12,12 @@ import type {
   TokenUsageEvent,
   ToolCallEvent,
 } from "@app/lib/api/llm/types/events";
+import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { safeParseJSON } from "@app/types";
 
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<MessageStreamEvent>,
-  metadata: ProviderMetadata
+  metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
   let currentBlockIsToolCall: boolean = false;
   let textAccumulator = "";
@@ -29,7 +29,8 @@ export async function* streamLLMEvents(
   };
   for await (const messageStreamEvent of messageStreamEvents) {
     if (messageStreamEvent.type === "message_start") {
-      metadata["messageId"] = messageStreamEvent.message.id;
+      // TODO: find what to do with message messageId
+      const messageId = messageStreamEvent.message.id;
     } else {
       switch (messageStreamEvent.type) {
         /* Content is sent as follows:
@@ -113,7 +114,7 @@ export async function* streamLLMEvents(
   }
 }
 
-function textDelta(delta: string, metadata: ProviderMetadata): TextDeltaEvent {
+function textDelta(delta: string, metadata: LLMClientMetadata): TextDeltaEvent {
   return {
     type: "text_delta",
     content: {
@@ -125,7 +126,7 @@ function textDelta(delta: string, metadata: ProviderMetadata): TextDeltaEvent {
 
 function reasoningDelta(
   delta: string,
-  metadata: ProviderMetadata
+  metadata: LLMClientMetadata
 ): ReasoningDeltaEvent {
   return {
     type: "reasoning_delta",
@@ -138,7 +139,7 @@ function reasoningDelta(
 
 function textGenerated(
   text: string,
-  metadata: ProviderMetadata
+  metadata: LLMClientMetadata
 ): TextGeneratedEvent {
   return {
     type: "text_generated",
@@ -151,7 +152,7 @@ function textGenerated(
 
 function reasoningGenerated(
   text: string,
-  metadata: ProviderMetadata
+  metadata: LLMClientMetadata
 ): ReasoningGeneratedEvent {
   return {
     type: "reasoning_generated",
@@ -164,7 +165,7 @@ function reasoningGenerated(
 
 function tokenUsage(
   usage: MessageDeltaUsage,
-  metadata: ProviderMetadata
+  metadata: LLMClientMetadata
 ): TokenUsageEvent {
   return {
     type: "token_usage",
@@ -189,7 +190,7 @@ function toolCall({
   id: string;
   name: string;
   input: string;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }): ToolCallEvent {
   const args = safeParseJSON(input);
   if (args.isErr()) {
