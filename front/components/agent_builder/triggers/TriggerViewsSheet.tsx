@@ -193,12 +193,11 @@ export function TriggerViewsSheet({
     },
     [
       user,
-      editTrigger,
-      editWebhookSourceView,
-      selectedWebhookSourceView,
-      onAppendTriggerToCreate,
-      onAppendTriggerToUpdate,
       handleSheetClose,
+      editTrigger,
+      onAppendTriggerToUpdate,
+      onAppendTriggerToCreate,
+      webhookSourceView,
       form,
     ]
   );
