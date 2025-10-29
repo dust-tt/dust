@@ -908,30 +908,17 @@ export async function botValidateToolExecution({
     }
   }
 
-  // Send confirmation message to user
-  const confirmationText = `Agent **${agentName}**'s request to use tool **${toolName}** was ${
-    approved === "approved" ? "✅ approved" : "❌ rejected"
-  }`;
-
-  try {
-    await sendActivity(context, { type: "message", text: confirmationText });
-    localLogger.info(
-      {
-        conversationId,
-        messageId,
-        actionId,
-        approved,
-        agentName,
-        toolName,
-      },
-      "Tool validation completed and confirmation sent"
-    );
-  } catch (error) {
-    localLogger.error(
-      { error },
-      "Failed to send tool validation confirmation message"
-    );
-  }
+  localLogger.info(
+    {
+      conversationId,
+      messageId,
+      actionId,
+      approved,
+      agentName,
+      toolName,
+    },
+    "Tool validation completed"
+  );
 
   return new Ok(undefined);
 }

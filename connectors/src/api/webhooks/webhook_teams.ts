@@ -17,6 +17,7 @@ import {
 import {
   sendActivity,
   sendTextMessage,
+  updateActivity,
 } from "@connectors/api/webhooks/teams/bot_messaging_utils";
 import {
   extractBearerToken,
@@ -339,7 +340,7 @@ async function handleToolApproval(
 ) {
   const { verb } = context.activity.value.action;
   const approved = verb === "approve_tool" ? "approved" : "rejected";
-  
+
   const {
     conversationId,
     messageId,
@@ -360,6 +361,9 @@ async function handleToolApproval(
     },
     "Handling tool approval from adaptive card"
   );
+
+  // Get the activity ID of the card that triggered this action
+  const replyToId = context.activity.replyToId;
 
   const result = await botValidateToolExecution({
     context,
@@ -384,13 +388,59 @@ async function handleToolApproval(
       },
       "Error validating tool execution"
     );
-    await sendActivity(
-      context,
-      createErrorAdaptiveCard({
-        error: "Failed to validate tool execution. Please try again.",
-        workspaceId: connector.workspaceId,
-      })
-    );
+
+    // Update the card with error message
+    if (replyToId) {
+      try {
+        await updateActivity(context, {
+          id: replyToId,
+          type: "message",
+          text: "❌ Failed to validate tool execution. Please try again.",
+          attachments: [], // Remove the adaptive card
+        });
+      } catch (updateError) {
+        localLogger.error(
+          { error: updateError, replyToId },
+          "Failed to update approval card with error"
+        );
+      }
+    }
+  } else {
+    // Update the card with success message, removing the buttons
+    const resultText = `Agent **@${agentName}**'s request to use tool **${toolName}** was ${
+      approved === "approved" ? "✅ approved" : "❌ rejected"
+    }`;
+
+    if (replyToId) {
+      try {
+        await updateActivity(context, {
+          id: replyToId,
+          type: "message",
+          text: resultText,
+          attachments: [], // Remove the adaptive card and buttons
+        });
+
+        localLogger.info(
+          {
+            conversationId,
+            messageId,
+            actionId,
+            approved,
+            replyToId,
+          },
+          "Tool approval completed and card disabled"
+        );
+      } catch (updateError) {
+        localLogger.error(
+          { error: updateError, replyToId },
+          "Failed to update approval card with result"
+        );
+      }
+    } else {
+      localLogger.warn(
+        "No replyToId found, cannot disable approval card"
+      );
+    }
   }
 }
 
