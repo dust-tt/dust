@@ -60,7 +60,6 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
   }
 
   async markRelatedTrigger(
-    this: WebhookRequestResource,
     trigger: TriggerType,
     status: WebhookRequestTriggerStatus,
     errorMessage?: string
