@@ -6,8 +6,9 @@ import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type { ModelId, Result, WorkspaceSegmentationType } from "@app/types";
+import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -90,8 +91,29 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return workspaces.map((workspace) => new this(this.model, workspace.get()));
   }
 
-  async updateSegmentation(segmentation: WorkspaceSegmentationType) {
-    return this.update({ segmentation });
+  async update(attributes: Partial<Attributes<WorkspaceModel>>) {
+    return super.update(attributes);
+  }
+
+  async updateDomainAutoJoinEnabled(
+    domainAutoJoinEnabled: boolean,
+    domain?: string
+  ): Promise<Result<void, Error>> {
+    const [affectedCount] = await WorkspaceHasDomainModel.update(
+      { domainAutoJoinEnabled },
+      {
+        where: {
+          workspaceId: this.id,
+          ...(domain ? { domain } : {}),
+        },
+      }
+    );
+
+    if (affectedCount === 0) {
+      return new Err(new Error("Workspace not found."));
+    }
+
+    return new Ok(undefined);
   }
 
   static async updateName(

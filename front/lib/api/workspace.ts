@@ -97,7 +97,7 @@ export async function setInternalWorkspaceSegmentation(
     throw new Error("Could not find workspace.");
   }
 
-  await workspace.updateSegmentation(segmentation);
+  await workspace.update({ segmentation });
 
   return renderLightWorkspaceType({ workspace });
 }
