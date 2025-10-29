@@ -23,12 +23,15 @@ import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 
 interface AgentBuilderTriggersBlockProps {
   owner: LightWorkspaceType;
   isTriggersLoading?: boolean;
   agentConfigurationId: string | null;
 }
+
+const TEMP_TRIGGER_PREFIX = "temptrg";
 
 export function AgentBuilderTriggersBlock({
   owner,
@@ -121,7 +124,9 @@ export function AgentBuilderTriggersBlock({
   const handleTriggerCreate = (trigger: AgentBuilderTriggerType) => {
     appendTriggerToCreate({
       ...trigger,
-      sId: "temp_" + crypto.randomUUID().slice(0, 8),
+      // Assign a temporary sId for frontend identification until it's created on the backend.
+      // The sId is needed to be able to update a freshly created trigger, not yet in DB.
+      sId: generateRandomModelSId(TEMP_TRIGGER_PREFIX),
     });
   };
 
@@ -131,8 +136,8 @@ export function AgentBuilderTriggersBlock({
       return;
     }
 
-    if (trigger.sId?.startsWith("temp_")) {
-      // We're editing a newly created trigger,
+    if (trigger.sId?.startsWith(TEMP_TRIGGER_PREFIX)) {
+      // We're editing a freshly created trigger,
       // so the update should happen in the create array.
       const index = triggersToCreate.findIndex((t) => t.sId === trigger.sId);
       if (index !== -1) {
