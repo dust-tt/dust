@@ -9,8 +9,10 @@ import type {
   EditorSuggestionAgent,
   EditorSuggestions,
 } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import { isEditorSuggestionAgent } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import { filterSuggestionAgents } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import {
+  filterSuggestionAgents,
+  isEditorSuggestionAgent,
+} from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 
 interface CommandFunction {
   (props: { id: string; label: string }): void;
