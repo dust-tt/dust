@@ -1,4 +1,6 @@
 {
+  "name": "front",
+  "version": "0.1.0",
   "scripts": {
     "dev:all": "concurrently --kill-others \"cd ../types/ && npm run start\" \"sleep 20 && cd ../sdks/js/ && npm run start\" \"sleep 22 && next dev\" \"sleep 22 && tsx ./start_worker.ts\"",
     "dev": "next dev",
@@ -26,7 +28,7 @@
     "analyze": "NODE_OPTIONS=--max-old-space-size=8192 ANALYZE=true npm run build"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.67.0",
+    "@anthropic-ai/sdk": "^0.67.1",
     "@datadog/browser-logs": "^6.13.0",
     "@dust-tt/client": "file:../sdks/js",
     "@dust-tt/sparkle": "^0.3.18",
