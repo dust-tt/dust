@@ -6,7 +6,8 @@ export const issueCreatedSchema: JSONSchema = {
   properties: {
     timestamp: {
       type: "integer",
-      description: "Time when the webhook was triggered (UTC milliseconds from epoch)",
+      description:
+        "Time when the webhook was triggered (UTC milliseconds from epoch)",
     },
     webhookEvent: {
       type: "string",
