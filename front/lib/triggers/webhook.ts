@@ -16,7 +16,7 @@ import {
 import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, errorToString, normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WebhookSourceForAdminType } from "@app/types/triggers/webhooks";
 
@@ -166,8 +166,9 @@ export const processWebhookRequest = async (
       auth,
       webhookRequest,
     });
-  } catch (error) {
-    await webhookRequest.markAsFailed(errorToString(error));
+  } catch (error: unknown) {
+    const normalizedError = normalizeError(error);
+    await webhookRequest.markAsFailed(normalizedError.message);
     logger.error(
       {
         webhookRequestId: webhookRequest.id,
@@ -175,7 +176,7 @@ export const processWebhookRequest = async (
       },
       "Failed to launch agent workflow on webhook request"
     );
-    return new Err(normalizeError(error));
+    return new Err(normalizedError);
   }
 };
 
