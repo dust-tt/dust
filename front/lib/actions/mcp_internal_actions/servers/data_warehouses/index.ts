@@ -276,8 +276,8 @@ function createServer(
         .array(z.string())
         .min(1)
         .describe(
-          "Array of table identifiers in the format 'table-<dataSourceSId>-<nodeId>'. " +
-            "All tables must be from the same warehouse (same dataSourceSId)."
+          "Array of table identifiers in the format 'table-<dataSourceId>-<nodeId>'. " +
+            "All tables must be from the same warehouse (same dataSourceId)."
         ),
     },
     withToolLogging(
@@ -375,8 +375,8 @@ function createServer(
         .array(z.string())
         .min(1)
         .describe(
-          "Array of table identifiers in the format 'table-<dataSourceSId>-<nodeId>'. " +
-            "All tables must be from the same warehouse (same dataSourceSId)."
+          "Array of table identifiers in the format 'table-<dataSourceId>-<nodeId>'. " +
+            "All tables must be from the same warehouse (same dataSourceId)."
         ),
       query: z
         .string()
