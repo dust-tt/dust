@@ -2,25 +2,8 @@ import type { ResponseStreamEvent } from "openai/resources/responses/responses";
 
 // OpenAI sends more data than ResponseStreamEvent
 export const functionCallModelEvents: ResponseStreamEvent[] = [
-  //   {
-  //     type: "response.created",
-  //     sequence_number: 0,
-  //     response: {
-  //       id: "resp_06aabf29f7da2e13016901cef2a8d081988d7ac3e83b297884",
-  //       // Additional properties omitted for brevity
-  //     },
-  //   },
-  //   {
-  //     type: "response.in_progress",
-  //     sequence_number: 1,
-  //     response: {
-  //       id: "resp_06aabf29f7da2e13016901cef2a8d081988d7ac3e83b297884",
-  //       // Additional properties omitted for brevity
-  //     },
-  //   },
   {
     type: "response.output_item.added",
-    // sequence_number: 2,
     output_index: 0,
     item: {
       id: "fc_06aabf29f7da2e13016901cef49d6881989055afd74ea35208",
@@ -33,12 +16,10 @@ export const functionCallModelEvents: ResponseStreamEvent[] = [
   },
   {
     type: "response.function_call_arguments.delta",
-    // sequence_number: 3,
     item_id: "fc_06aabf29f7da2e13016901cef49d6881989055afd74ea35208",
     output_index: 0,
     // Chunks are much smaller
     delta: '{"expression":',
-    // obfuscation: "aM4kVo9aTAouuT4",
   },
   {
     type: "response.function_call_arguments.delta",
@@ -46,7 +27,6 @@ export const functionCallModelEvents: ResponseStreamEvent[] = [
     item_id: "fc_06aabf29f7da2e13016901cef49d6881989055afd74ea35208",
     output_index: 0,
     delta: '"x^2 + 2x + 1 = 0"}',
-    // obfuscation: "W45Fy",
   },
   {
     type: "response.function_call_arguments.done",
