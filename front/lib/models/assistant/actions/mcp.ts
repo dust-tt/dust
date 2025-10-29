@@ -357,9 +357,11 @@ AgentMCPActionOutputItem.init(
     sequelize: frontSequelize,
     indexes: [
       {
+        // TODO(2025-10-29 flav) Remove once index below has been created.
         fields: ["workspaceId"],
         concurrently: true,
       },
+      { fields: ["workspaceId", "id"], concurrently: true },
       {
         fields: ["agentMCPActionId"],
         concurrently: true,
