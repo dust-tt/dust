@@ -4,6 +4,7 @@ import {
   Checkbox,
   ClipboardIcon,
   cn,
+  CollapsibleComponent,
   EyeIcon,
   EyeSlashIcon,
   IconButton,
@@ -103,8 +104,8 @@ export function WebhookSourceDetailsInfo({
     });
   }, [owner.sId, webhookSourceView.webhookSource]);
 
-  const { provider } = webhookSourceView.webhookSource;
-
+  const { provider, secret, signatureHeader, signatureAlgorithm } =
+    webhookSourceView.webhookSource;
   return (
     <div className="flex flex-col gap-2">
       {editedLabel !== null && (
@@ -230,55 +231,57 @@ export function WebhookSourceDetailsInfo({
             </div>
           </div>
         )}
-        {webhookSourceView.webhookSource.secret && (
-          <div>
-            <Page.H variant="h6">Secret</Page.H>
-            <div className="flex items-center space-x-2">
-              <div
-                className={cn("font-mono", {
-                  "select-none blur-sm": !isSecretVisible,
-                })}
-              >
-                <Page.P>{webhookSourceView.webhookSource.secret}</Page.P>
-              </div>
-              <IconButton
-                icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
-                onClick={() => setIsSecretVisible((prev) => !prev)}
-                size="xs"
-              />
-            </div>
-          </div>
-        )}
-        {webhookSourceView.webhookSource.signatureHeader && (
-          <>
-            <div>
-              <Page.H variant="h6">Signature Header</Page.H>
-              <Page.P>{webhookSourceView.webhookSource.signatureHeader}</Page.P>
-            </div>
+        {(secret ?? signatureHeader) && (
+          <CollapsibleComponent
+            rootProps={{ defaultOpen: false }}
+            triggerProps={{ label: "Advanced settings", variant: "secondary" }}
+            contentChildren={
+              <div>
+                {secret && (
+                  <div>
+                    <Page.H variant="h6">Secret</Page.H>
+                    <div className="flex items-center space-x-2">
+                      <div
+                        className={cn("font-mono", {
+                          "select-none blur-sm": !isSecretVisible,
+                        })}
+                      >
+                        <Page.P>{secret}</Page.P>
+                      </div>
+                      <IconButton
+                        icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
+                        onClick={() => setIsSecretVisible((prev) => !prev)}
+                        size="xs"
+                      />
+                    </div>
+                  </div>
+                )}
+                {signatureHeader && (
+                  <>
+                    <div>
+                      <Page.H variant="h6">Signature Header</Page.H>
+                      <Page.P>{signatureHeader}</Page.P>
+                    </div>
 
-            <div>
-              <Page.H variant="h6">Signature Algorithm</Page.H>
-              <Page.P>
-                {webhookSourceView.webhookSource.signatureAlgorithm}
-              </Page.P>
-            </div>
-          </>
+                    <div>
+                      <Page.H variant="h6">Signature Algorithm</Page.H>
+                      <Page.P>{signatureAlgorithm}</Page.P>
+                    </div>
+                  </>
+                )}
+                {secret && signatureHeader && signatureAlgorithm && (
+                  <>
+                    <Separator className="mb-4 mt-4" />
+                    <WebhookEndpointUsageInfo
+                      signatureAlgorithm={signatureAlgorithm}
+                      signatureHeader={signatureHeader}
+                    />
+                  </>
+                )}
+              </div>
+            }
+          />
         )}
-        {webhookSourceView.webhookSource.secret &&
-          webhookSourceView.webhookSource.signatureHeader &&
-          webhookSourceView.webhookSource.signatureAlgorithm && (
-            <>
-              <Separator className="mb-4 mt-4" />
-              <WebhookEndpointUsageInfo
-                signatureAlgorithm={
-                  webhookSourceView.webhookSource.signatureAlgorithm
-                }
-                signatureHeader={
-                  webhookSourceView.webhookSource.signatureHeader
-                }
-              />
-            </>
-          )}
       </div>
     </div>
   );
