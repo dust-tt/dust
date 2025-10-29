@@ -11,7 +11,7 @@ import {
   LoadingBlock,
   ToolsIcon,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   getMcpServerViewDescription,
@@ -64,8 +64,12 @@ export function ToolsPicker({
 }: ToolsPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [hasUnselectedTools, setHasUnselectedTools] = useState(false);
 
-  const { spaces } = useSpaces({ workspaceId: owner.sId, disabled: !isOpen });
+  const { spaces, isSpacesLoading } = useSpaces({
+    workspaceId: owner.sId,
+    disabled: !isOpen,
+  });
   const globalSpaces = useMemo(
     () => spaces.filter((s) => s.kind === "global"),
     [spaces]
@@ -103,11 +107,52 @@ export function ToolsPicker({
     };
   }, [serverViews, searchText, selectedMCPServerViewIds]);
 
+  // flags if picker has unselected tools
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    if (filteredServerViewsUnselected.length > 0) {
+      setHasUnselectedTools(true);
+    }
+  }, [filteredServerViewsUnselected.length, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    if (isLoading || isServerViewsLoading || isSpacesLoading) {
+      return;
+    }
+
+    // If we previously had unselected tools and there are no unselected tools left, close the picker.
+    if (
+      hasUnselectedTools &&
+      filteredServerViewsUnselected.length === 0 &&
+      filteredServerViews.length > 0
+    ) {
+      setIsOpen(false);
+      setSearchText("");
+      setHasUnselectedTools(false);
+    }
+  }, [
+    hasUnselectedTools,
+    filteredServerViewsUnselected.length,
+    filteredServerViews.length,
+    isOpen,
+    isLoading,
+    isServerViewsLoading,
+    isSpacesLoading,
+  ]);
+
   return (
     <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
+        setHasUnselectedTools(false);
         if (open) {
           setSearchText("");
         }

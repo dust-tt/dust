@@ -1177,14 +1177,18 @@ function useMCPServerViewsFromSpacesBase(
   const availabilitiesParam = availabilities.join(",");
 
   const url = `/api/w/${owner.sId}/mcp/views?spaceIds=${spaceIds}&availabilities=${availabilitiesParam}`;
-  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
-    ...swrOptions,
-    ...(!spaces.length ? { disabled: true } : {}),
-  });
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
+    url,
+    configFetcher,
+    {
+      ...swrOptions,
+      ...(!spaces.length ? { disabled: true } : {}),
+    }
+  );
 
   return {
     serverViews: data?.serverViews ?? emptyArray(),
-    isLoading: !error && !data && spaces.length !== 0,
+    isLoading: isLoading && !error && !data && spaces.length !== 0,
     isError: error,
     mutateServerViews: mutate,
   };
