@@ -185,7 +185,11 @@ export async function runTriggerWebhookActivity({
         "Webhook event not subscribed or not in preset. Potential cause: the events selection was manually modified on the service.";
       await webhookRequest.markAsFailed(errorMessage);
       logger.error(
-        { workspaceId, webhookRequestId, eventValue: receivedEventValue },
+        {
+          workspaceId,
+          webhookRequestId,
+          eventValue: receivedEventValue,
+        },
         errorMessage
       );
       throw new TriggerNonRetryableError(errorMessage);
@@ -322,7 +326,12 @@ export async function runTriggerWebhookActivity({
       const user = await UserResource.fetchByModelId(trigger.editor);
 
       if (!user) {
-        logger.error({ triggerId: trigger.id }, "Trigger editor not found.");
+        logger.error(
+          {
+            triggerId: trigger.sId,
+          },
+          "Trigger editor not found."
+        );
         await webhookRequest.markRelatedTrigger({
           trigger,
           status: "workflow_start_failed",
@@ -351,7 +360,10 @@ export async function runTriggerWebhookActivity({
             status: "workflow_start_failed",
           });
           logger.error(
-            { triggerId: trigger.id, error: result.error },
+            {
+              triggerId: trigger.sId,
+              error: result.error,
+            },
             "Error launching agent trigger workflow."
           );
         } else {
