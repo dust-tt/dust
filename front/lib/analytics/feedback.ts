@@ -20,7 +20,7 @@ export async function updateAnalyticsFeedback(
   auth: Authenticator,
   params: {
     message: AgentMessageType;
-    // TODO(observability 21025-10-29): Can be removed once we use agentMessage.create timestamp to index documents
+    // TODO(observability 21025-10-29): Remove once we use agentMessage.create timestamp to index documents
     createdTimestamp: number;
     feedbacks: AgentMessageAnalyticsFeedback[];
   }

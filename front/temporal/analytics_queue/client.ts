@@ -65,12 +65,13 @@ export async function launchAgentMessageFeedbackWorkflow(
     message,
   }: {
     message: {
-      conversationId: string;
       agentMessageId: string;
+      conversationId: string;
     };
   }
 ): Promise<Result<undefined, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
+  const authType = auth.toJSON();
 
   const { agentMessageId, conversationId } = message;
 
@@ -84,7 +85,7 @@ export async function launchAgentMessageFeedbackWorkflow(
 
   try {
     await client.workflow.start(storeAgentMessageFeedbackWorkflow, {
-      args: [auth.toJSON(), { message }],
+      args: [authType, { message }],
       taskQueue: QUEUE_NAME,
       workflowId,
       memo: {

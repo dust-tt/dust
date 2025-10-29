@@ -245,7 +245,7 @@ async function buildAgentLoopArgs(
     throw new Error(`Conversation not found: ${conversationId}`);
   }
 
-  const agentMessageRecord = await Message.findOne({
+  const agentMessage = await Message.findOne({
     where: {
       sId: agentMessageId,
       conversationId: conversation.id,
@@ -260,17 +260,17 @@ async function buildAgentLoopArgs(
     ],
   });
 
-  if (!agentMessageRecord?.agentMessage) {
+  if (!agentMessage?.agentMessage) {
     throw new Error(`Agent message not found: ${agentMessageId}`);
   }
 
-  if (!agentMessageRecord.parentId) {
+  if (!agentMessage.parentId) {
     throw new Error(`Agent message has no parent: ${agentMessageId}`);
   }
 
-  const userMessageRecord = await Message.findOne({
+  const userMessage = await Message.findOne({
     where: {
-      id: agentMessageRecord.parentId,
+      id: agentMessage.parentId,
       conversationId: conversation.id,
       workspaceId: workspace.id,
     },
@@ -283,19 +283,19 @@ async function buildAgentLoopArgs(
     ],
   });
 
-  if (!userMessageRecord?.userMessage) {
+  if (!userMessage?.userMessage) {
     throw new Error(
       `User message not found for agent message: ${agentMessageId}`
     );
   }
 
   return {
-    agentMessageId: agentMessageRecord.sId,
-    agentMessageVersion: agentMessageRecord.version ?? 0,
+    agentMessageId: agentMessage.sId,
+    agentMessageVersion: agentMessage.version ?? 0,
     conversationId: conversation.sId,
     conversationTitle: conversation.title ?? null,
-    userMessageId: userMessageRecord.sId,
-    userMessageVersion: userMessageRecord.version ?? 0,
+    userMessageId: userMessage.sId,
+    userMessageVersion: userMessage.version ?? 0,
   };
 }
 

@@ -103,7 +103,7 @@ async function handler(
         });
       }
 
-      await launchAgentMessageFeedbackWorkflow(auth.toJSON(), {
+      await launchAgentMessageFeedbackWorkflow(auth, {
         message: {
           agentMessageId: messageId,
           conversationId: conversation.sId,
