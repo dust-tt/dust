@@ -1,6 +1,6 @@
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
-import type { AuthenticatorType } from "@app/lib/auth";
+import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/analytics_queue/config";
@@ -60,7 +60,7 @@ export async function launchStoreAgentAnalyticsWorkflow({
 }
 
 export async function launchAgentMessageFeedbackWorkflow(
-  authType: AuthenticatorType,
+  auth: Authenticator,
   {
     message,
   }: {
@@ -70,7 +70,7 @@ export async function launchAgentMessageFeedbackWorkflow(
     };
   }
 ): Promise<Result<undefined, Error>> {
-  const { workspaceId } = authType;
+  const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const { agentMessageId, conversationId } = message;
 
@@ -84,7 +84,7 @@ export async function launchAgentMessageFeedbackWorkflow(
 
   try {
     await client.workflow.start(storeAgentMessageFeedbackWorkflow, {
-      args: [authType, { message }],
+      args: [auth.toJSON(), { message }],
       taskQueue: QUEUE_NAME,
       workflowId,
       memo: {

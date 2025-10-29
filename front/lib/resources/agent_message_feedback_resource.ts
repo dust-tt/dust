@@ -558,10 +558,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
 
     return feedbacks.map((feedback) => {
-      return new AgentMessageFeedbackResource(
-        AgentMessageFeedback,
-        feedback.get()
-      );
+      return new AgentMessageFeedbackResource(this.model, feedback.get());
     });
   }
 
