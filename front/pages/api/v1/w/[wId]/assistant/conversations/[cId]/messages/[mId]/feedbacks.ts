@@ -253,8 +253,8 @@ async function handler(
 
       await launchAgentMessageFeedbackWorkflow(auth, {
         message: {
-          agentMessageId: messageId,
           conversationId: conversation.sId,
+          agentMessageId: messageId,
         },
       });
 

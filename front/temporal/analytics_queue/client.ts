@@ -11,7 +11,10 @@ import {
 } from "@app/temporal/analytics_queue/workflows";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
-import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type {
+  AgentLoopArgs,
+  AgentMessageRef,
+} from "@app/types/assistant/agent_run";
 
 export async function launchStoreAgentAnalyticsWorkflow({
   authType,
@@ -64,22 +67,19 @@ export async function launchAgentMessageFeedbackWorkflow(
   {
     message,
   }: {
-    message: {
-      agentMessageId: string;
-      conversationId: string;
-    };
+    message: AgentMessageRef;
   }
 ): Promise<Result<undefined, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const authType = auth.toJSON();
 
-  const { agentMessageId, conversationId } = message;
+  const { conversationId, agentMessageId } = message;
 
   const client = await getTemporalClientForFrontNamespace();
 
   const workflowId = makeAgentMessageAnalyticsWorkflowId({
-    agentMessageId,
     conversationId,
+    agentMessageId,
     workspaceId,
   });
 

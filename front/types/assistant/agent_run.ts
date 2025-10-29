@@ -28,6 +28,11 @@ export type AgentLoopArgs = {
   userMessageVersion: number;
 };
 
+export type AgentMessageRef = {
+  agentMessageId: string;
+  conversationId: string;
+};
+
 export type AgentLoopExecutionData = {
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;

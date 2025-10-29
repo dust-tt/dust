@@ -16,17 +16,14 @@ import type {
   ModelId,
   UserMessageType,
 } from "@app/types";
-import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type {
+  AgentLoopArgs,
+  AgentMessageRef,
+} from "@app/types/assistant/agent_run";
 
 export async function buildAgentLoopArgs(
   auth: Authenticator,
-  {
-    agentMessageId,
-    conversationId,
-  }: {
-    agentMessageId: string;
-    conversationId: string;
-  }
+  { agentMessageId, conversationId }: AgentMessageRef
 ): Promise<AgentLoopArgs> {
   const workspace = auth.getNonNullableWorkspace();
 

@@ -16,7 +16,10 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AgentMessageType } from "@app/types";
 import { normalizeError } from "@app/types";
-import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type {
+  AgentLoopArgs,
+  AgentMessageRef,
+} from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageAnalyticsData,
@@ -225,17 +228,14 @@ export async function storeAgentMessageFeedbackActivity(
   {
     message,
   }: {
-    message: {
-      agentMessageId: string;
-      conversationId: string;
-    };
+    message: AgentMessageRef;
   }
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
 
   const agentLoopArgs = await buildAgentLoopArgs(auth, {
-    agentMessageId: message.agentMessageId,
     conversationId: message.conversationId,
+    agentMessageId: message.agentMessageId,
   });
 
   const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
