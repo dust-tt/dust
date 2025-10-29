@@ -3,7 +3,6 @@ import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
 import {
   ConversationErrorDisplay,
   ErrorDisplay,
@@ -26,7 +25,6 @@ import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ConversationError,
   ConversationWithoutContentType,
@@ -94,15 +92,6 @@ const ConversationLayoutContent = ({
     workspaceId: owner.sId,
   });
 
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
-  const hasCoEditionFeatureFlag = useMemo(
-    () => hasFeature("co_edition"),
-    [hasFeature]
-  );
-
   const agentSId = useMemo(() => {
     const sid = router.query.agentDetails ?? [];
     if (isString(sid)) {
@@ -147,21 +136,16 @@ const ConversationLayoutContent = ({
             onClose={() => onOpenChangeAgentModal(false)}
           />
 
-          <CoEditionProvider
-            owner={owner}
-            hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
-          >
-            <ConversationSidePanelProvider>
-              <ConversationInnerLayout
-                activeConversationId={activeConversationId}
-                conversation={conversation}
-                conversationError={conversationError}
-                owner={owner}
-              >
-                {children}
-              </ConversationInnerLayout>
-            </ConversationSidePanelProvider>
-          </CoEditionProvider>
+          <ConversationSidePanelProvider>
+            <ConversationInnerLayout
+              activeConversationId={activeConversationId}
+              conversation={conversation}
+              conversationError={conversationError}
+              owner={owner}
+            >
+              {children}
+            </ConversationInnerLayout>
+          </ConversationSidePanelProvider>
           {shouldDisplayWelcomeTourGuide && (
             <WelcomeTourGuide
               owner={owner}
