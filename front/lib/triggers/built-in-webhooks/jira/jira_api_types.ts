@@ -46,6 +46,30 @@ export const JiraAdditionalDataSchema = z.object({
 
 export type JiraAdditionalData = z.infer<typeof JiraAdditionalDataSchema>;
 
+export const JiraWebhookSchema = z.object({
+  id: z.number(),
+  url: z.string(),
+  events: z.array(z.string()),
+  jqlFilter: z.string(),
+  expirationDate: z.string(),
+  fieldIdsFilter: z.array(z.string()).optional(),
+  issuePropertyKeysFilter: z.array(z.string()).optional(),
+});
+
+export type JiraWebhookType = z.infer<typeof JiraWebhookSchema>;
+
+export const JiraWebhooksResponseSchema = z.object({
+  isLast: z.boolean(),
+  maxResults: z.number(),
+  startAt: z.number(),
+  total: z.number(),
+  values: z.array(JiraWebhookSchema),
+});
+
+export type JiraWebhooksResponseType = z.infer<
+  typeof JiraWebhooksResponseSchema
+>;
+
 export async function validateJiraApiResponse<T extends z.ZodTypeAny>(
   response: Response,
   schema: T
