@@ -75,7 +75,7 @@ function MCPServerCard({
         mountPortal
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         mountPortalContainer={containerRef.current || undefined}
-        toolInfo={{
+        footer={{
           label: "More info",
           onClick: onToolInfoClick,
         }}
