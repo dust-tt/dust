@@ -315,18 +315,15 @@ export async function fetchIntercomConversations({
   slidingWindow,
   cursor = null,
   pageSize = 20,
-  filterOptions,
+  closedAfter,
   state,
 }: {
   accessToken: string;
   teamId?: string;
   slidingWindow: number;
   cursor: string | null;
+  closedAfter?: number;
   pageSize?: number;
-  filterOptions?: {
-    value: number;
-    filterType: "closedAfter";
-  };
   state?: string;
 }): Promise<IntercomFetchConversationsResponseType> {
   const minCreatedAtDate = new Date(
@@ -359,20 +356,12 @@ export async function fetchIntercomConversations({
     });
   }
 
-  if (filterOptions) {
-    switch (filterOptions.filterType) {
-      case "closedAfter":
-        queryFilters.push({
-          field: "statistics.last_close_at",
-          operator: ">",
-          value: filterOptions.value,
-        });
-        break;
-      default:
-        throw new Error(
-          `[Intercom] Unknown filter type: ${filterOptions.filterType}`
-        );
-    }
+  if (closedAfter) {
+    queryFilters.push({
+      field: "statistics.last_close_at",
+      operator: ">",
+      value: closedAfter,
+    });
   }
 
   if (state) {
