@@ -39,8 +39,7 @@ async function acquireTenantSpecificToken(): Promise<string> {
  */
 export const getTenantSpecificToken: () => Promise<string> = cacheWithRedis(
   acquireTenantSpecificToken,
-  () =>
-    `teams-bot-token-${apiConfig.getMicrosoftBotId()}-${apiConfig.getMicrosoftBotTenantId()}`,
+  () => `teams-bot-token`,
   {
     ttlMs: 50 * 60 * 1000, // 50 minutes
   }
