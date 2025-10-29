@@ -8,12 +8,15 @@
     "rules/**/*.js"
   ],
   "scripts": {
-    "test": "node __tests__/require-schema-validation.test.js"
+    "test": "vitest --run --reporter=verbose"
   },
   "peerDependencies": {
     "eslint": ">=7.0.0"
   },
   "devDependencies": {
-    "eslint": "^8.57.1"
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
+    "eslint": "^8.57.1",
+    "vitest": "^3.0.8"
   }
 }
