@@ -1,7 +1,7 @@
 import { GoogleLLM } from "@app/lib/api/llm/clients/google";
-import { GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS } from "@app/lib/api/llm/clients/google/types";
+import { isGoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
-import { MISTRAL_WHITELISTED_MODEL_IDS } from "@app/lib/api/llm/clients/mistral/types";
+import { isMistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
@@ -27,7 +27,7 @@ export async function getLLM(
     return null;
   }
 
-  if (MISTRAL_WHITELISTED_MODEL_IDS.includes(modelId)) {
+  if (isMistralWhitelistedModelId(modelId)) {
     return new MistralLLM({
       modelId,
       temperature,
@@ -36,7 +36,7 @@ export async function getLLM(
     });
   }
 
-  if (GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS.includes(modelId)) {
+  if (isGoogleAIStudioWhitelistedModelId(modelId)) {
     return new GoogleLLM({
       modelId,
       temperature,
