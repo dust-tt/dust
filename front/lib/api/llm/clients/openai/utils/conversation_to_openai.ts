@@ -7,7 +7,6 @@ import type {
   ResponseInputContent,
   ResponseInputItem,
 } from "openai/resources/responses/responses";
-import type { ReasoningEffort } from "openai/resources/shared";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { generateFunctionCallId } from "@app/lib/api/llm/clients/openai/utils/function_tool_call_id";
@@ -16,22 +15,9 @@ import type {
   FunctionMessageTypeModel,
   UserMessageTypeModel,
 } from "@app/types";
-import type {
-  AgentReasoningEffort,
-  ModelConversationTypeMultiActions,
-} from "@app/types";
+import type { ModelConversationTypeMultiActions } from "@app/types";
 import { isString } from "@app/types";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
-
-export function toOpenAIReasoningEffort(
-  reasoningEffort: AgentReasoningEffort
-): ReasoningEffort | null {
-  return reasoningEffort === "none"
-    ? null
-    : reasoningEffort === "light"
-      ? "low"
-      : reasoningEffort;
-}
 
 function toUserContent(content: Content): ResponseInputContent {
   switch (content.type) {
