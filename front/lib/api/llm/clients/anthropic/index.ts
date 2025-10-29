@@ -17,7 +17,11 @@ import type {
   LLMClientMetadata,
   LLMParameters,
 } from "@app/lib/api/llm/types/options";
-import type { ModelConversationTypeMultiActions } from "@app/types";
+import { getSupportedModelConfig } from "@app/lib/assistant";
+import type {
+  ModelConversationTypeMultiActions,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
 export class AnthropicLLM extends LLM {
@@ -27,6 +31,7 @@ export class AnthropicLLM extends LLM {
     modelId: this.modelId,
   };
   private thinkingConfig?: ThinkingConfigParam;
+  private modelConfig: (typeof SUPPORTED_MODEL_CONFIGS)[number];
 
   constructor({
     modelId,
@@ -39,6 +44,11 @@ export class AnthropicLLM extends LLM {
     if (!ANTHROPIC_API_KEY) {
       throw new Error("ANTHROPIC_API_KEY environment variable is required");
     }
+
+    this.modelConfig = getSupportedModelConfig({
+      modelId: this.modelId,
+      providerId: "anthropic",
+    });
 
     if (reasoningEffort) {
       this.thinkingConfig = {
@@ -89,9 +99,7 @@ export class AnthropicLLM extends LLM {
       temperature: !this.thinkingConfig ? this.temperature : 1,
       stream: true,
       tools: specifications.map(toTool),
-      // TODO fabien
-      // max_tokens: this.model.generationTokensCount,
-      max_tokens: 64000,
+      max_tokens: this.modelConfig.generationTokensCount,
     });
 
     // DEBUG: Collect response events for saving
