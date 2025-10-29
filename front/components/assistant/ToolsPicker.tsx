@@ -109,6 +109,8 @@ export function ToolsPicker({
   const prevSelectedCountRef = useRef(selectedMCPServerViewIds.length);
   const prevUnselectedCountRef = useRef(filteredServerViewsUnselected.length);
 
+  // Compare the previous and current selected and unselected tool counts
+  // to determine if the picker should be closed.
   useEffect(() => {
     const prevSelectedCount = prevSelectedCountRef.current;
     const prevUnselectedCount = prevUnselectedCountRef.current;
@@ -136,8 +138,8 @@ export function ToolsPicker({
     prevSelectedCountRef.current = selectedCount;
     prevUnselectedCountRef.current = unselectedCount;
   }, [
-    filteredServerViewsUnselected.length,
     isOpen,
+    filteredServerViewsUnselected.length,
     selectedMCPServerViewIds.length,
   ]);
 
