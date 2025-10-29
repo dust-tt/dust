@@ -30,7 +30,11 @@ import {
   createStreamingAdaptiveCard,
   createToolApprovalAdaptiveCard,
 } from "./adaptive_cards";
-import { sendActivity, updateActivity } from "./bot_messaging_utils";
+import {
+  generateTeamsMessageLink,
+  sendActivity,
+  updateActivity,
+} from "./bot_messaging_utils";
 import { validateTeamsUser } from "./user_validation";
 
 export async function botAnswerMessage(
@@ -471,6 +475,12 @@ async function streamAgentResponse({
           break;
         }
 
+        // Generate Teams message link
+        const teamsMessageLink = generateTeamsMessageLink(
+          context,
+          microsoftBotMessage.agentActivityId
+        );
+
         // Send DM to user with approval card
         const approvalCard = createToolApprovalAdaptiveCard({
           agentName: event.metadata.agentName,
@@ -480,6 +490,7 @@ async function streamAgentResponse({
           actionId: event.actionId,
           workspaceId: connector.workspaceId,
           microsoftBotMessageId: microsoftBotMessage.id,
+          teamsMessageLink,
         });
 
         try {

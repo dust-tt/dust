@@ -117,3 +117,33 @@ export async function sendTextMessage(
     text,
   });
 }
+
+/**
+ * Generates a Teams deep link to a specific message
+ * @param context - The TurnContext containing conversation information
+ * @param messageActivityId - The activity ID of the message to link to
+ * @returns A Teams deep link URL or null if it cannot be generated
+ */
+export function generateTeamsMessageLink(
+  context: TurnContext,
+  messageActivityId: string
+): string | null {
+  const conversationId = context.activity.conversation?.id;
+  const channelId = context.activity.channelData?.channel?.id;
+
+  if (!conversationId || !messageActivityId) {
+    return null;
+  }
+
+  // Encode IDs for URL
+  const encodedConversationId = encodeURIComponent(conversationId);
+  const encodedMessageId = encodeURIComponent(messageActivityId);
+
+  if (channelId) {
+    // Channel message: https://teams.microsoft.com/l/message/<channelId>/<messageId>
+    return `https://teams.microsoft.com/l/message/${encodeURIComponent(channelId)}/${encodedMessageId}`;
+  } else {
+    // Chat message (1:1 or group chat): Use conversation ID with context parameter
+    return `https://teams.microsoft.com/l/message/${encodedConversationId}/${encodedMessageId}?context=${encodeURIComponent('{"contextType":"chat"}')}`;
+  }
+}

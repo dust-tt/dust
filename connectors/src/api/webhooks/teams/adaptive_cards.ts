@@ -318,6 +318,7 @@ export function createToolApprovalAdaptiveCard({
   actionId,
   workspaceId,
   microsoftBotMessageId,
+  teamsMessageLink,
 }: {
   agentName: string;
   toolName: string;
@@ -326,6 +327,7 @@ export function createToolApprovalAdaptiveCard({
   actionId: string;
   workspaceId: string;
   microsoftBotMessageId: number;
+  teamsMessageLink: string | null;
 }): Partial<Activity> {
   const card: AdaptiveCard = {
     type: "AdaptiveCard",
@@ -351,6 +353,22 @@ export function createToolApprovalAdaptiveCard({
           },
         ],
       },
+      ...(teamsMessageLink
+        ? [{
+        type: "Container",
+        spacing: "Medium",
+        separator: true,
+        items: [
+          {
+            type: "TextBlock",
+            text: `[View message in Teams](${teamsMessageLink})`,
+            wrap: true,
+            spacing: "Small",
+            size: "Small",
+            color: "Accent",
+          },
+        ],
+      }] : [])
     ],
     actions: [
       {

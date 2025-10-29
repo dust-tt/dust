@@ -390,20 +390,18 @@ async function handleToolApproval(
     );
 
     // Update the card with error message
-    if (replyToId) {
-      try {
-        await updateActivity(context, {
-          id: replyToId,
-          type: "message",
-          text: "❌ Failed to validate tool execution. Please try again.",
-          attachments: [], // Remove the adaptive card
-        });
-      } catch (updateError) {
-        localLogger.error(
-          { error: updateError, replyToId },
-          "Failed to update approval card with error"
-        );
-      }
+    try {
+      await updateActivity(context, {
+        id: replyToId,
+        type: "message",
+        text: "❌ Failed to validate tool execution. Please try again.",
+        attachments: [],
+      });
+    } catch (updateError) {
+      localLogger.error(
+        { error: updateError, replyToId },
+        "Failed to update approval card with error"
+      );
     }
   } else {
     // Update the card with success message, removing the buttons
@@ -411,33 +409,29 @@ async function handleToolApproval(
       approved === "approved" ? "✅ approved" : "❌ rejected"
     }`;
 
-    if (replyToId) {
-      try {
-        await updateActivity(context, {
-          id: replyToId,
-          type: "message",
-          text: resultText,
-          attachments: [], // Remove the adaptive card and buttons
-        });
+    try {
+      await updateActivity(context, {
+        id: replyToId,
+        type: "message",
+        text: resultText,
+        attachments: [],
+      });
 
-        localLogger.info(
-          {
-            conversationId,
-            messageId,
-            actionId,
-            approved,
-            replyToId,
-          },
-          "Tool approval completed and card disabled"
-        );
-      } catch (updateError) {
-        localLogger.error(
-          { error: updateError, replyToId },
-          "Failed to update approval card with result"
-        );
-      }
-    } else {
-      localLogger.warn("No replyToId found, cannot disable approval card");
+      localLogger.info(
+        {
+          conversationId,
+          messageId,
+          actionId,
+          approved,
+          replyToId,
+        },
+        "Tool approval completed and card disabled"
+      );
+    } catch (updateError) {
+      localLogger.error(
+        { error: updateError, replyToId },
+        "Failed to update approval card with result"
+      );
     }
   }
 }
