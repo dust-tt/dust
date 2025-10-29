@@ -82,6 +82,7 @@ function itemToEvents(
       return item.content.map((responseOutput) =>
         responseOutputToEvent(responseOutput, metadata)
       );
+    // TODO(LLM-Router 2025-10-29): Check tool call validity when parsing events
     case "function_call":
       return [
         {
