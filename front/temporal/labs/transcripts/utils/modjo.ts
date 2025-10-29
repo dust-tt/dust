@@ -139,6 +139,9 @@ function validateModjoResponse(
   );
 }
 
+// Maximum supported call length buffer to account for long calls
+const MAX_SUPPORTED_CALL_LENGTH_HOURS = 2;
+
 export async function retrieveModjoTranscripts(
   auth: Authenticator,
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
@@ -195,10 +198,14 @@ export async function retrieveModjoTranscripts(
     const mostRecentHistoryDate =
       await transcriptsConfiguration.getMostRecentHistoryDate();
     if (mostRecentHistoryDate) {
-      fromDateTime = mostRecentHistoryDate.toISOString();
+      // Subtract buffer to account for long calls that may have started before last sync
+      fromDateTime = new Date(
+        mostRecentHistoryDate.getTime() -
+          MAX_SUPPORTED_CALL_LENGTH_HOURS * 60 * 60 * 1000
+      ).toISOString();
       localLogger.info(
-        { fromDateTime },
-        "[retrieveModjoTranscripts] Subsequent sync - retrieving transcripts since last sync"
+        { fromDateTime, buffer: `${MAX_SUPPORTED_CALL_LENGTH_HOURS} hours` },
+        "[retrieveModjoTranscripts] Subsequent sync - retrieving transcripts since last sync with buffer"
       );
     } else {
       // Fallback to 1 day if we can't get the most recent date
