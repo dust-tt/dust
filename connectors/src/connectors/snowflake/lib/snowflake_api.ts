@@ -136,6 +136,15 @@ export const testConnection = async ({
   }
 
   const connection = connectionRes.value;
+
+  // Ensure the configured warehouse exists and is usable (mirrors core behavior).
+  const useWhRes = await useWarehouse({ credentials, connection });
+  if (useWhRes.isErr()) {
+    // Treat as invalid configuration for the connector setup path.
+    return new Err(
+      new TestConnectionError("INVALID_CREDENTIALS", useWhRes.error.message)
+    );
+  }
   const tablesRes = await fetchTables({ credentials, connection });
   const grantsRes = await isConnectionReadonly({ credentials, connection });
 
@@ -453,6 +462,33 @@ export const fetchTree = async (
   };
 
   return new Ok(tree);
+};
+
+/**
+ * Try to select the configured warehouse. This mimics core's `USE WAREHOUSE`
+ * behavior so we can surface unreachable/missing warehouses early.
+ */
+export const useWarehouse = async ({
+  credentials,
+  connection,
+}: {
+  credentials: SnowflakeCredentials;
+  connection: Connection;
+}): Promise<Result<void, Error>> => {
+  const warehouse = credentials.warehouse;
+  const res = await _executeQuery(connection, `USE WAREHOUSE ${warehouse}`);
+  if (res.isErr()) {
+    const e = normalizeError(res.error);
+
+    return new Err(
+      new Error(
+        `Snowflake warehouse check failed: USE WAREHOUSE "${warehouse}". ` +
+          `The configured warehouse may not exist or is not accessible. ` +
+          `Original error: ${e.message}`
+      )
+    );
+  }
+  return new Ok(undefined);
 };
 
 /**
