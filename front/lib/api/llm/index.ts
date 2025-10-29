@@ -1,5 +1,5 @@
 import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
-import { ANTHROPIC_WHITELISTED_MODEL_IDS } from "@app/lib/api/llm/clients/anthropic/types";
+import { isAnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import { GoogleLLM } from "@app/lib/api/llm/clients/google";
 import { GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS } from "@app/lib/api/llm/clients/google/types";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
@@ -60,7 +60,7 @@ export async function getLLM(
     });
   }
 
-  if (ANTHROPIC_WHITELISTED_MODEL_IDS.includes(modelId)) {
+  if (isAnthropicWhitelistedModelId(modelId)) {
     return new AnthropicLLM({
       modelId,
       temperature,
