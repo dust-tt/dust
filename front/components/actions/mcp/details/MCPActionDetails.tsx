@@ -18,6 +18,11 @@ import {
   makeQueryTextForList,
 } from "@app/components/actions/mcp/details/input_rendering";
 import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
+import {
+  MCPAgentMemoryEraseActionDetails,
+  MCPAgentMemoryRecordActionDetails,
+  MCPAgentMemoryRetrieveActionDetails,
+} from "@app/components/actions/mcp/details/MCPAgentMemoryActionDetails";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
 import {
   DataSourceNodeContentDetails,
@@ -253,6 +258,19 @@ export function MCPActionDetails({
     return <MCPDeepDiveActionDetails {...toolOutputDetailsProps} />;
   }
 
+  if (isInternalMCPServerOfName(mcpServerId, "agent_memory")) {
+    if (toolName === "retrieve") {
+      return (
+        <MCPAgentMemoryRetrieveActionDetails {...toolOutputDetailsProps} />
+      );
+    }
+    if (toolName === "record_entries") {
+      return <MCPAgentMemoryRecordActionDetails {...toolOutputDetailsProps} />;
+    }
+    if (toolName === "erase_entries") {
+      return <MCPAgentMemoryEraseActionDetails {...toolOutputDetailsProps} />;
+    }
+  }
   if (isInternalMCPServerOfName(mcpServerId, "toolsets")) {
     if (toolName === "enable") {
       return <MCPToolsetsEnableActionDetails {...toolOutputDetailsProps} />;
