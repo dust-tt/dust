@@ -14,7 +14,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
 
-// Constants for Slack API limits and pagination
+// Constants for Slack API limits and pagination.
 export const SLACK_API_PAGE_SIZE = 100;
 export const MAX_CHANNELS_LIMIT = 500;
 export const MAX_THREAD_MESSAGES = 200;
@@ -53,7 +53,7 @@ type ChannelWithIdAndName = Omit<Channel, "id" | "name"> & {
   name: string;
 };
 
-const _getPublicChannels = async ({
+export const getPublicChannels = async ({
   slackClient,
 }: GetPublicChannelsArgs): Promise<ChannelWithIdAndName[]> => {
   const channels: Channel[] = [];
@@ -72,7 +72,7 @@ const _getPublicChannels = async ({
     channels.push(...(response.channels ?? []));
     cursor = response.response_metadata?.next_cursor;
 
-    // We can't handle a huge list of channels, and even if we could, it would be unusable
+    // We can't handle a huge list of channels, and even if we could, it would be unusable.
     // in the UI. So we arbitrarily cap it to MAX_CHANNELS_LIMIT channels.
     if (channels.length >= MAX_CHANNELS_LIMIT) {
       logger.warn(
@@ -92,7 +92,7 @@ const _getPublicChannels = async ({
     .sort((a, b) => a.name.localeCompare(b.name));
 };
 
-const _getChannels = async ({
+export const getChannels = async ({
   slackClient,
   types = "public_channel",
   memberOnly = false,
@@ -113,7 +113,7 @@ const _getChannels = async ({
     channels.push(...(response.channels ?? []));
     cursor = response.response_metadata?.next_cursor;
 
-    // We can't handle a huge list of channels, and even if we could, it would be unusable
+    // We can't handle a huge list of channels, and even if we could, it would be unusable.
     // in the UI. So we arbitrarily cap it to MAX_CHANNELS_LIMIT channels.
     if (channels.length >= MAX_CHANNELS_LIMIT) {
       logger.warn(
@@ -125,7 +125,7 @@ const _getChannels = async ({
 
   let filteredChannels = channels.filter((c) => !!c.id && !!c.name);
 
-  // Filter by membership if requested
+  // Filter by membership if requested.
   if (memberOnly) {
     filteredChannels = filteredChannels.filter((c) => c.is_member);
   }
@@ -140,23 +140,14 @@ const _getChannels = async ({
 };
 
 export const getCachedPublicChannels = cacheWithRedis(
-  _getPublicChannels,
+  getPublicChannels,
   ({ mcpServerId }: GetPublicChannelsArgs) => mcpServerId,
   {
     ttlMs: CHANNEL_CACHE_TTL_MS,
   }
 );
 
-export const getCachedChannels = cacheWithRedis(
-  _getChannels,
-  ({ mcpServerId, types, memberOnly }: GetChannelsArgs) =>
-    `${mcpServerId}-${types}-${memberOnly}`,
-  {
-    ttlMs: CHANNEL_CACHE_TTL_MS,
-  }
-);
-
-// Helper function to build filtered list responses
+// Helper function to build filtered list responses.
 function buildFilteredListResponse<T>(
   items: T[],
   nameFilter: string | undefined,
@@ -202,7 +193,7 @@ function buildFilteredListResponse<T>(
   ]);
 }
 
-// Post message function
+// Post message function.
 export async function executePostMessage(
   auth: Authenticator,
   agentLoopContext: AgentLoopContextType,
@@ -232,7 +223,7 @@ export async function executePostMessage(
   );
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
-  // If a file is provided, upload it as attachment of the original message
+  // If a file is provided, upload it as attachment of the original message.
   fileId = undefined; // TODO(2025-10-22 chris): remove this once Slack enables file:write scope
   if (fileId) {
     const file = await FileResource.fetchById(auth, fileId);
@@ -244,11 +235,11 @@ export async function executePostMessage(
       );
     }
 
-    // Resolve channel id - optimize by trying conversations.info first if it looks like an ID
+    // Resolve channel id - optimize by trying conversations.info first if it looks like an ID.
     const searchString = to.trim().replace(/^#/, "");
     let channelId: string | undefined;
 
-    // If searchString looks like a Slack channel ID (starts with C or G), try direct lookup first
+    // If searchString looks like a Slack channel ID (starts with C or G), try direct lookup first.
     if (searchString.match(/^[CG][A-Z0-9]+$/)) {
       try {
         const infoResp = await slackClient.conversations.info({
@@ -258,11 +249,11 @@ export async function executePostMessage(
           channelId = infoResp.channel.id;
         }
       } catch (error) {
-        // Fall through to list-based search
+        // Fall through to list-based search.
       }
     }
 
-    // If not found via direct lookup, search through cached channels list
+    // If not found via direct lookup, search through cached channels list.
     if (!channelId) {
       const conversationsList = await getCachedPublicChannels({
         mcpServerId,
@@ -320,7 +311,7 @@ export async function executePostMessage(
     ]);
   }
 
-  // No file provided: regular message
+  // No file provided: regular message.
   const response = await slackClient.chat.postMessage({
     channel: to,
     text: message,
@@ -357,7 +348,7 @@ export async function executeListUsers(
     users.push(...(response.members ?? []).filter((member) => !member.is_bot));
     cursor = response.response_metadata?.next_cursor;
 
-    // Early return optimization: if we found matching users and have a filter, return immediately
+    // Early return optimization: if we found matching users and have a filter, return immediately.
     if (nameFilter) {
       const normalizedNameFilter = removeDiacritics(nameFilter.toLowerCase());
       const filteredUsers = users.filter(
@@ -390,7 +381,7 @@ export async function executeListUsers(
     }
   } while (cursor);
 
-  // No filter or no matches found after checking all pages
+  // No filter or no matches found after checking all pages.
   return buildFilteredListResponse<Member>(
     users,
     nameFilter,
@@ -444,7 +435,7 @@ export async function executeListPublicChannels(
         )
     );
 
-    // Early return if we found a channel
+    // Early return if we found a channel.
     if (filteredChannels.length > 0) {
       return new Ok([
         {
@@ -483,7 +474,7 @@ export async function executeListChannels(
   mcpServerId: string
 ) {
   const slackClient = await getSlackClient(accessToken);
-  const channels = await getCachedChannels({
+  const channels = await getChannels({
     mcpServerId,
     slackClient,
     types: "public_channel,private_channel",
@@ -513,7 +504,7 @@ export async function executeListJoinedChannels(
   mcpServerId: string
 ) {
   const slackClient = await getSlackClient(accessToken);
-  const channels = await getCachedChannels({
+  const channels = await getChannels({
     mcpServerId,
     slackClient,
     types: "public_channel,private_channel",
@@ -582,7 +573,7 @@ export async function executeReadThreadMessages(
       ]);
     }
 
-    // First message is the parent, rest are replies
+    // First message is the parent, rest are replies.
     const parentMessage = messages[0];
     const threadReplies = messages.slice(1);
 

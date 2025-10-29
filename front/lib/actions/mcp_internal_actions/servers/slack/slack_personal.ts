@@ -55,7 +55,7 @@ export const slackSearch = async (
   query: string,
   accessToken: string
 ): Promise<SlackSearchMatch[]> => {
-  // Try assistant.search.context first (requires special token and Slack AI enabled)
+  // Try assistant.search.context first (requires special token and Slack AI enabled).
   try {
     const params = new URLSearchParams({
       query,
@@ -89,7 +89,7 @@ export const slackSearch = async (
     const data: SlackSearchResponse =
       (await resp.json()) as SlackSearchResponse;
     if (!data.ok) {
-      // If invalid_action_token or other errors, throw to trigger fallback
+      // If invalid_action_token or other errors, throw to trigger fallback.
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       throw new Error(data.error || "unknown_error");
     }
@@ -104,7 +104,8 @@ export const slackSearch = async (
 
     return matches;
   } catch (error) {
-    // Fallback to standard search.messages API if assistant.search.context fails
+    // Fallback to standard search.messages API if assistant.search.context fails.
+    // This typically happens when Slack AI is not enabled (local env) or the token doesn't have the required permissions.
     logger.info(
       { error },
       "Failed to use assistant.search.context, falling back to search.messages"
@@ -125,7 +126,7 @@ export const slackSearch = async (
 
     const rawMatches = response.messages?.matches ?? [];
 
-    // Transform to match expected format
+    // Transform to match expected format.
     const matches: SlackSearchMatch[] = rawMatches.map((match) => ({
       author_name: match.username,
       channel_name: match.channel?.name,
@@ -134,15 +135,15 @@ export const slackSearch = async (
       permalink: match.permalink,
     }));
 
-    // Filter out matches that don't have text
+    // Filter out matches that don't have text.
     const matchesWithText = matches.filter((match) => !!match.content);
 
-    // Keep only the top results
+    // Keep only the top results.
     return matchesWithText.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
   }
 };
 
-// Helper function to format date as YYYY-MM-DD with zero-padding
+// Helper function to format date as YYYY-MM-DD with zero-padding.
 function formatDateForSlackQuery(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -150,7 +151,7 @@ function formatDateForSlackQuery(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-// Helper function to build search results from matches
+// Helper function to build search results from matches.
 function buildSearchResults<T>(
   matches: T[],
   refs: string[],
@@ -300,7 +301,7 @@ function isSlackTokenRevoked(error: unknown): boolean {
   );
 }
 
-// 'disconnected' is expected when we don't have a Slack connection yet
+// 'disconnected' is expected when we don't have a Slack connection yet.
 type SlackAIStatus = "enabled" | "disabled" | "disconnected";
 
 const SLACK_AI_STATUS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -343,8 +344,8 @@ const _getSlackAIEnablementStatus = async ({
   }
 };
 
-// Cache the result as this involves a call to the Slack API
-// We use a hash of the access token as the cache key to avoid storing sensitive information directly
+// Cache the result as this involves a call to the Slack API.
+// We use a hash of the access token as the cache key to avoid storing sensitive information directly.
 const getCachedSlackAIEnablementStatus = cacheWithRedis(
   _getSlackAIEnablementStatus,
   ({ mcpServerId }: GetSlackAIEnablementStatusArgs) => mcpServerId,
@@ -372,7 +373,7 @@ async function createServer(
       })
     : "disconnected";
 
-  // If we're not connected to Slack, we arbitrarily include the first search tool, just so there is one
+  // If we're not connected to Slack, we arbitrarily include the first search tool, just so there is one.
   // in the list. As soon as we're connected, it will show the correct one.
   if (slackAIStatus === "disabled" || slackAIStatus === "disconnected") {
     server.tool(
@@ -612,12 +613,12 @@ async function createServer(
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 let content = match.content || "";
 
-                // assistant.search.context wraps search words in \uE000 and \uE001,
+                // assistant.search.context wraps search words in \uE000 and \uE001.
                 // which display as squares in the UI, so we strip them out.
                 // Ideally, there would be a way to disable this behavior in the Slack API.
                 content = content.replace(/[\uE000\uE001]/g, "");
 
-                // Replace <@U050CALAKFD|someone> with just @someone
+                // Replace <@U050CALAKFD|someone> with just @someone.
                 content = content.replace(
                   /<@([A-Z0-9]+)\|([^>]+)>/g,
                   (_m, _id, username) => `@${username}`
