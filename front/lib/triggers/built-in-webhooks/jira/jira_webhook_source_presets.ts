@@ -19,7 +19,7 @@ export const JIRA_WEBHOOK_PRESET: PresetWebhook<"jira"> = {
   name: "Jira",
   eventCheck: {
     type: "body",
-    field: "issue_event_type_name",
+    field: "webhookEvent",
   },
   events: [JIRA_ISSUE_CREATED_EVENT],
   icon: "JiraLogo",
