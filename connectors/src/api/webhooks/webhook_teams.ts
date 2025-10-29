@@ -370,6 +370,20 @@ async function handleToolApproval(
   const { verb } = context.activity.value.action;
   const approved = verb === "approve_tool" ? "approved" : "rejected";
 
+  // Validate the data before using it
+  const validatedData = validateToolApprovalData(
+    context.activity.value.action.data
+  );
+  if (!validatedData) {
+    localLogger.error(
+      {
+        connectorId: connector.id,
+        receivedData: context.activity.value.action.data,
+      },
+      "Invalid tool approval data received"
+    );
+    return;
+  }
   const {
     conversationId,
     messageId,
@@ -377,7 +391,7 @@ async function handleToolApproval(
     microsoftBotMessageId,
     agentName,
     toolName,
-  } = context.activity.value.action.data;
+  } = validatedData;
 
   localLogger.info(
     {
