@@ -6,7 +6,7 @@ import type {
 } from "@app/components/resources/resources_icons";
 import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
 import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/github/github_webhook_source_presets";
-import type { JiraAdditionalData } from "@app/lib/triggers/built-in-webhooks/jira/jira_service_types";
+import type { JiraAdditionalData } from "@app/lib/triggers/built-in-webhooks/jira/jira_api_types";
 import { JIRA_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/jira/jira_webhook_source_presets";
 import { ZENDESK_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/zendesk/zendesk_webhook_source_presets";
 import type { AgentsUsageType } from "@app/types/data_source";

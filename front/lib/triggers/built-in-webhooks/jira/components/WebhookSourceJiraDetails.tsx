@@ -1,7 +1,7 @@
 import { ExternalLinkIcon, Page } from "@dust-tt/sparkle";
 
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
-import { JiraAdditionalDataSchema } from "@app/lib/triggers/built-in-webhooks/jira/jira_service_types";
+import { JiraAdditionalDataSchema } from "@app/lib/triggers/built-in-webhooks/jira/jira_api_types";
 
 export function WebhookSourceJiraDetails({
   webhookSource,

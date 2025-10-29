@@ -1,13 +1,13 @@
 import type {
-  JiraProject,
-  JiraResource,
-} from "@app/lib/triggers/built-in-webhooks/jira/jira_api_schemas";
+  JiraProjectType,
+  JiraResourceType,
+} from "@app/lib/triggers/built-in-webhooks/jira/jira_api_types";
 import {
   JiraCreateWebhookResponseSchema,
   JiraProjectsResponseSchema,
   JiraResourceSchema,
-} from "@app/lib/triggers/built-in-webhooks/jira/jira_api_schemas";
-import { validateJiraApiResponse } from "@app/lib/triggers/built-in-webhooks/jira/jira_api_validation";
+  validateJiraApiResponse,
+} from "@app/lib/triggers/built-in-webhooks/jira/jira_api_types";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -16,7 +16,7 @@ import { Err, Ok } from "@app/types";
 export class JiraClient {
   constructor(private readonly accessToken: string) {}
 
-  async getAccessibleResources(): Promise<Result<JiraResource[], Error>> {
+  async getAccessibleResources(): Promise<Result<JiraResourceType[], Error>> {
     const response = await fetch(
       "https://api.atlassian.com/oauth/token/accessible-resources",
       {
@@ -44,7 +44,9 @@ export class JiraClient {
     return new Ok(validationResult.value);
   }
 
-  async getProjects(cloudId: string): Promise<Result<JiraProject[], Error>> {
+  async getProjects(
+    cloudId: string
+  ): Promise<Result<JiraProjectType[], Error>> {
     const response = await fetch(
       `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project/search`,
       {

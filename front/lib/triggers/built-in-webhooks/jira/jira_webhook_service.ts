@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import type { JiraAdditionalData } from "@app/lib/triggers/built-in-webhooks/jira/jira_api_types";
 import { JiraClient } from "@app/lib/triggers/built-in-webhooks/jira/jira_client";
-import type { JiraAdditionalData } from "@app/lib/triggers/built-in-webhooks/jira/jira_service_types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isString, OAuthAPI, Ok } from "@app/types";
@@ -30,13 +30,7 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
       return projectsRes;
     }
 
-    const projects = projectsRes.value.map((project) => ({
-      id: project.id,
-      key: project.key,
-      name: project.name,
-    }));
-
-    return new Ok({ projects });
+    return new Ok({ projects: projectsRes.value });
   }
 
   async createWebhooks({
