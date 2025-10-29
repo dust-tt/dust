@@ -87,7 +87,7 @@ export async function upsertMessageFeedback(
     content?: string;
     isConversationShared?: boolean;
   }
-): Promise<Result<undefined, Error>> {
+) {
   const feedbackWithConversationContext =
     await AgentMessageFeedbackResource.getFeedbackWithConversationContext({
       auth,
@@ -109,7 +109,6 @@ export async function upsertMessageFeedback(
       thumbDirection,
       isConversationShared,
     });
-
     return new Ok(undefined);
   }
 
@@ -129,11 +128,10 @@ export async function upsertMessageFeedback(
       isConversationShared: isConversationShared ?? false,
       dismissed: false,
     });
-
-    return new Ok(undefined);
   } catch (e) {
     return new Err(normalizeError(e));
   }
+  return new Ok(undefined);
 }
 
 /**

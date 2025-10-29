@@ -24,6 +24,7 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageAnalyticsData,
+  AgentMessageAnalyticsFeedback,
   AgentMessageAnalyticsTokens,
   AgentMessageAnalyticsToolUsed,
 } from "@app/types/assistant/analytics";
@@ -289,25 +290,25 @@ export async function storeAgentMessageFeedbackActivity(
     );
   }
 
-  const existingFeedbacks =
+  const agentMessageFeedbacks =
     await AgentMessageFeedbackResource.listByAgentMessageId(
       auth,
       agentMessageRecord.agentMessage.id
     );
 
-  // Convert existing feedbacks to analytics format
-  const allFeedbacks = existingFeedbacks.map((existingFeedback) => ({
-    feedback_id: existingFeedback.id,
-    user_id: existingFeedback.user?.id?.toString() ?? "unknown",
-    thumb_direction: existingFeedback.thumbDirection,
-    content: existingFeedback.content ?? undefined,
-    is_conversation_shared: existingFeedback.isConversationShared,
-    created_at: existingFeedback.createdAt.toISOString(),
-  }));
+  const allFeedbacks: AgentMessageAnalyticsFeedback[] =
+    agentMessageFeedbacks.map((agentMessageFeedback) => ({
+      feedback_id: agentMessageFeedback.id,
+      user_id: agentMessageFeedback.user?.id?.toString() ?? "unknown",
+      thumb_direction: agentMessageFeedback.thumbDirection,
+      content: agentMessageFeedback.content ?? undefined,
+      is_conversation_shared: agentMessageFeedback.isConversationShared,
+      created_at: agentMessageFeedback.createdAt.toISOString(),
+    }));
 
   await updateAnalyticsFeedback(auth, {
     message: {
-      id: agentMessageRecord.sId,
+      sId: agentMessageRecord.sId,
       created: userMessageRecord.createdAt.getTime(),
     },
     feedbacks: allFeedbacks,
