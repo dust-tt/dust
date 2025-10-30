@@ -668,11 +668,12 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
         `Found ${failedWebhooks.length} failed webhook requests.`
       );
 
-      let successCount = 0;
-      let errorCount = 0;
-
       for (const webhookRequest of failedWebhooks) {
-        try {
+        if (execute) {
+          await launchAgentTriggerWebhookWorkflow({
+            auth,
+            webhookRequest,
+          });
           logger.info(
             {
               webhookRequestId: webhookRequest.id,
@@ -680,33 +681,17 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
               errorMessage: webhookRequest.errorMessage,
               createdAt: webhookRequest.createdAt,
             },
-            `Processing webhook request ${webhookRequest.id}...`
+            "Webhook workflow launched successfully."
           );
-
-          if (execute) {
-            await launchAgentTriggerWebhookWorkflow({
-              auth,
-              webhookRequest,
-            });
-            logger.info(
-              { webhookRequestId: webhookRequest.id },
-              "Webhook workflow launched successfully."
-            );
-          } else {
-            logger.info(
-              { webhookRequestId: webhookRequest.id },
-              "[DRY RUN] Would launch workflow for this webhook request."
-            );
-          }
-          successCount++;
-        } catch (error) {
-          errorCount++;
-          logger.error(
+        } else {
+          logger.info(
             {
               webhookRequestId: webhookRequest.id,
-              error,
+              webhookSourceId: webhookRequest.webhookSourceId,
+              errorMessage: webhookRequest.errorMessage,
+              createdAt: webhookRequest.createdAt,
             },
-            "Failed to launch webhook workflow."
+            "[DRY RUN] Would launch workflow for this webhook request."
           );
         }
       }
@@ -714,9 +699,6 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
       logger.info(
         {
           total: failedWebhooks.length,
-          successful: successCount,
-          errors: errorCount,
-          dryRun: !execute,
         },
         "Webhook replay completed."
       );
