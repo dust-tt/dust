@@ -85,7 +85,7 @@ https://us-central1-dust-infra.cloudfunctions.net/webhookRouter/YOUR_WEBHOOK_SEC
 
 ```
 https://webhook.dust.tt/YOUR_WEBHOOK_SECRET/slack/events
-https://webhook.dust.tt/YOUR_WEBHOOK_SECRET/slack/interactions  
+https://webhook.dust.tt/YOUR_WEBHOOK_SECRET/slack/interactions
 https://webhook.dust.tt/YOUR_WEBHOOK_SECRET/microsoft/teams/messages
 ```
 
@@ -99,7 +99,7 @@ Slack/Teams → Firebase Hosting → Firebase Function → [US Endpoint, EU Endp
 
 1. Validates webhook secret from URL parameter
 2. Platform-specific verification:
-   - **Slack**: HMAC signature validation  
+   - **Slack**: HMAC signature validation
    - **Teams**: Bot Framework JWT token validation
 3. Handles platform-specific challenges (Slack URL verification)
 4. Forwards to regional endpoints asynchronously
@@ -116,7 +116,6 @@ Uses GCP Secret Manager for production:
 - `connectors-DUST_CONNECTORS_WEBHOOKS_SECRET` - Webhook secret
 - `SLACK_SIGNING_SECRET` - Slack app signing secret
 - `MICROSOFT_BOT_ID` - Microsoft Bot Framework App ID
-- `MICROSOFT_BOT_PASSWORD` - Microsoft Bot Framework App Password
 
 For local development, set environment variables:
 
@@ -124,7 +123,6 @@ For local development, set environment variables:
 export DUST_CONNECTORS_WEBHOOKS_SECRET="your-webhook-secret"
 export SLACK_SIGNING_SECRET="your-slack-signing-secret"
 export MICROSOFT_BOT_ID="your-bot-app-id"
-export MICROSOFT_BOT_PASSWORD="your-bot-app-password"
 ```
 
 ## Benefits over Cloud Run
@@ -138,10 +136,12 @@ export MICROSOFT_BOT_PASSWORD="your-bot-app-password"
 ## API Endpoints
 
 ### Slack Endpoints
+
 - `POST /:webhookSecret/slack/events` - Slack events
 - `POST /:webhookSecret/slack/interactions` - Slack interactions
 
-### Microsoft Teams Endpoints  
+### Microsoft Teams Endpoints
+
 - `POST /:webhookSecret/microsoft/teams/messages` - Teams messages
 
 ## Development

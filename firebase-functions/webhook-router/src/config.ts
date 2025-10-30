@@ -16,7 +16,6 @@ export const CONFIG = {
 
   // Microsoft Bot environment secrets.
   MICROSOFT_BOT_ID: process.env.MICROSOFT_BOT_ID,
-  MICROSOFT_BOT_PASSWORD: process.env.MICROSOFT_BOT_PASSWORD,
 
   // Endpoints.
   US_CONNECTOR_URL: "http://localhost:3002", // "https://connectors.dust.tt",
@@ -27,6 +26,9 @@ export const CONFIG = {
 
   // Slack related secrets.
   SLACK_SIGNING_SECRET_NAME: "SLACK_SIGNING_SECRET",
+
+  // Microsoft Bot related secrets.
+  MICROSOFT_BOT_ID_SECRET_NAME: "MICROSOFT_BOT_ID",
 } as const;
 
 // Runtime getters for Firebase params.

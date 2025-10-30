@@ -8,7 +8,6 @@ export interface Secrets {
   usSecret: string;
   webhookSecret: string;
   microsoftBotId?: string;
-  microsoftBotPassword?: string;
 }
 
 export class SecretManager {
@@ -47,7 +46,6 @@ export class SecretManager {
         usSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
         webhookSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
         microsoftBotId: CONFIG.MICROSOFT_BOT_ID,
-        microsoftBotPassword: CONFIG.MICROSOFT_BOT_PASSWORD,
       };
     }
 
@@ -85,6 +83,9 @@ export class SecretManager {
         }),
         this.client.accessSecretVersion({
           name: `projects/${GCP_GLOBAL_PROJECT_ID}/secrets/${CONFIG.SLACK_SIGNING_SECRET_NAME}/versions/latest`,
+        }),
+        this.client.accessSecretVersion({
+          name: `projects/${GCP_GLOBAL_PROJECT_ID}/secrets/${CONFIG.MICROSOFT_BOT_ID_SECRET_NAME}/versions/latest`,
         }),
       ]);
 
