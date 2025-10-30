@@ -36,17 +36,3 @@ export function selectTopTools(
     .slice(0, maxTools)
     .map(([toolName]) => toolName);
 }
-
-export type ValuesPayload = { values: Record<string, number> };
-
-export function makeIsTopForPayload(topTools: string[]) {
-  return (payload: ValuesPayload, seriesIdx: number) => {
-    for (let k = seriesIdx + 1; k < topTools.length; k++) {
-      const nextTool = topTools[k];
-      if ((payload.values[nextTool] ?? 0) > 0) {
-        return false;
-      }
-    }
-    return true;
-  };
-}

@@ -11,6 +11,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -24,16 +25,16 @@ import { useToolUsageData } from "@app/components/agent_builder/observability/ho
 import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
-import { RoundedTopBarShape } from "@app/components/agent_builder/observability/shared/ChartShapes";
 import type {
   ChartDatum,
   ToolChartModeType,
 } from "@app/components/agent_builder/observability/types";
 import { isToolChartMode } from "@app/components/agent_builder/observability/types";
-import {
-  getToolColor,
-  makeIsTopForPayload,
-} from "@app/components/agent_builder/observability/utils";
+import { getToolColor } from "@app/components/agent_builder/observability/utils";
+
+const ROUNDED_TOP_RADIUS: [number, number, number, number] = [4, 4, 0, 0];
+// Recharts typings only allow number|string on Cell.radius; cast to pass tuple.
+const CELL_CORNER_RADIUS = ROUNDED_TOP_RADIUS as unknown as number;
 
 export function ToolUsageChart({
   workspaceId,
@@ -65,22 +66,19 @@ export function ToolUsageChart({
     [topTools]
   );
 
-  // Only get tools that are actually used in the current data
-  const usedTools = useMemo(() => {
-    const toolsSet = new Set<string>();
-    chartData.forEach((datum) => {
-      Object.keys(datum.values).forEach((toolName) => {
-        if (datum.values[toolName] > 0) {
-          toolsSet.add(toolName);
+  const topToolNameByEntry = useMemo(
+    () =>
+      chartData.map((datum) => {
+        for (let idx = topTools.length - 1; idx >= 0; idx--) {
+          const tool = topTools[idx];
+          if ((datum.values[tool] ?? 0) > 0) {
+            return tool;
+          }
         }
-      });
-    });
-    return Array.from(toolsSet);
-  }, [chartData]);
 
-  const isTopForPayload = useMemo(
-    () => makeIsTopForPayload(usedTools),
-    [usedTools]
+        return undefined;
+      }),
+    [chartData, topTools]
   );
 
   const renderToolUsageTooltip = useCallback(
@@ -164,7 +162,7 @@ export function ToolUsageChart({
               boxShadow: "none",
             }}
           />
-          {usedTools.map((toolName, idx) => (
+          {topTools.map((toolName) => (
             <Bar
               key={toolName}
               dataKey={(row: ChartDatum) => row.values[toolName] ?? 0}
@@ -172,13 +170,19 @@ export function ToolUsageChart({
               fill="currentColor"
               className={getToolColor(toolName, topTools)}
               name={toolName}
-              shape={
-                <RoundedTopBarShape
-                  seriesIdx={idx}
-                  isTopForPayload={isTopForPayload}
+            >
+              {chartData.map((entry, entryIdx) => (
+                <Cell
+                  key={`${String(entry.label)}-${toolName}`}
+                  radius={
+                    topToolNameByEntry[entryIdx] === toolName &&
+                    (entry.values[toolName] ?? 0) > 0
+                      ? CELL_CORNER_RADIUS
+                      : undefined
+                  }
                 />
-              }
-            />
+              ))}
+            </Bar>
           ))}
         </BarChart>
       </ResponsiveContainer>
