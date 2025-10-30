@@ -1,4 +1,3 @@
-import { OTHER_TOOLS_LABEL } from "@app/components/agent_builder/observability/constants";
 import type { ValuesPayload } from "@app/components/agent_builder/observability/utils";
 
 export function RoundedTopBarShape({
@@ -41,20 +40,6 @@ export function RoundedTopBarShape({
     const value = payload.values[candidate] ?? 0;
 
     if (value > 0) {
-      // If the candidate is the OTHER_TOOLS_LABEL, check if there is any item above
-      if (candidate === OTHER_TOOLS_LABEL) {
-        const hasItemAbove = stackOrder
-          .slice(idx + 1)
-          .some(
-            (tool) =>
-              tool !== OTHER_TOOLS_LABEL && (payload.values[tool] ?? 0) > 0
-          );
-
-        if (hasItemAbove) {
-          continue;
-        }
-      }
-
       topTool = candidate;
       break;
     }

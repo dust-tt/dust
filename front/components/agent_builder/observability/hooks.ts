@@ -143,8 +143,8 @@ function processToolUsageData(
   }
 
   const counts = aggregateToolCounts(data);
-  const includeOthers = counts.size > MAX_TOOLS_DISPLAYED;
   const selectedTools = selectTopTools(counts, MAX_TOOLS_DISPLAYED);
+  const includeOthers = counts.size > MAX_TOOLS_DISPLAYED;
   const topTools = includeOthers
     ? [...selectedTools, OTHER_TOOLS_LABEL]
     : selectedTools;
