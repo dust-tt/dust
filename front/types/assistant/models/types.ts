@@ -53,6 +53,9 @@ export type ModelConfigurationType = {
   // Denotes model is able to take a response format request parameter
   supportsResponseFormat?: boolean;
 
+  // Supports prompt caching feature.
+  supportsPromptCaching?: boolean;
+
   featureFlag?: WhitelistableFeature;
   customAssistantFeatureFlag?: WhitelistableFeature;
 };

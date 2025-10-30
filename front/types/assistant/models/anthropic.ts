@@ -185,6 +185,7 @@ export const CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  supportsPromptCaching: true,
 };
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
