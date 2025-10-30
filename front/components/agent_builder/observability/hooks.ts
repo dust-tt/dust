@@ -77,7 +77,8 @@ function createChartData(
     }
 
     if (includeOthers) {
-      const othersCount = Math.max(0, total - topToolsCount);
+      const othersCount = total - topToolsCount;
+
       if (othersCount > 0) {
         values[OTHER_TOOLS_LABEL] = calculatePercentage(othersCount, total);
       }
