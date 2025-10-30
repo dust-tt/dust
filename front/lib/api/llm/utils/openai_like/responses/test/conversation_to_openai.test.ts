@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { toInput } from "@app/lib/api/llm/utils/conversation_to_openai";
-import { conversationMessages } from "@app/lib/api/llm/utils/test/fixtures/conversation_messages";
-import { inputMessages } from "@app/lib/api/llm/utils/test/fixtures/model_input";
+import { toInput } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
+import { conversationMessages } from "@app/lib/api/llm/utils/openai_like/responses/test/fixtures/conversation_messages";
+import { inputMessages } from "@app/lib/api/llm/utils/openai_like/responses/test/fixtures/model_input";
 
 describe("toInput", () => {
   describe("user messages", () => {

@@ -13,8 +13,11 @@ import type {
   LLMClientMetadata,
   LLMParameters,
 } from "@app/lib/api/llm/types/options";
-import { toInput, toTool } from "@app/lib/api/llm/utils/conversation_to_openai";
-import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_to_events";
+import {
+  toInput,
+  toTool,
+} from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
+import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { ModelConversationTypeMultiActions } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
