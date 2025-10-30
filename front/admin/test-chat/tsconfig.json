@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "resolveJsonModule": true,
+    "baseUrl": "../..",
+    "paths": {
+      "@app/*": ["./*"]
+    }
+  },
+  "include": ["*.ts", "../../lib/**/*", "../../types/**/*"]
+}
