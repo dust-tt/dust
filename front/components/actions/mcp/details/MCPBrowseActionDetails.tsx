@@ -41,7 +41,7 @@ export function MCPBrowseActionDetails({
                     className="group flex max-h-60 flex-row gap-x-1 overflow-y-auto overflow-x-hidden pb-1"
                     key={idx}
                   >
-                    <span className="grayscale-[100%] transition-all duration-150 ease-in-out group-hover:grayscale-0">
+                    <span className="grayscale transition-all duration-150 ease-in-out group-hover:grayscale-0">
                       <FaviconIcon websiteUrl={url} />
                     </span>
                     <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
