@@ -34,7 +34,7 @@ export const checkSignature = ({
   algorithm: "sha1" | "sha256" | "sha512";
   secret: string;
   headers: Record<string, string>;
-  body: any;
+  body: unknown;
 }): Result<
   void,
   Omit<DustError, "code"> & { code: "invalid_signature_error" }
