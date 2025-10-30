@@ -75,7 +75,10 @@ const _webhookSlackBotAPIHandler = async (
       };
 
       const requestFromRouter =
-        req.headers["x-dust-clientid"] == "slack-webhook-router";
+        typeof req.headers["x-dust-clientid"] === "string" &&
+        ["slack-webhook-router", "webhook-router"].includes(
+          req.headers["x-dust-clientid"]
+        );
 
       if (requestFromRouter) {
         // If the request is coming from the router, we don't want to log the error as it's expected, and it floods Datadog with non-actionable errors
