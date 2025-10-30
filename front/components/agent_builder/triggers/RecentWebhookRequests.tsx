@@ -5,9 +5,13 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import moment from "moment";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { MatchFailure } from "@app/lib/matcher/match_failure";
+import { explainMatchFailure } from "@app/lib/matcher/match_failure";
+import { matchPayload } from "@app/lib/matcher/matcher";
+import { parseMatcherExpression } from "@app/lib/matcher/parser";
 import { useWebhookRequestTriggersForTrigger } from "@app/lib/swr/webhook_source";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -70,6 +74,44 @@ function RecentWebhookRequestsContent({
     null
   );
 
+  // Parse the filter once
+  const parsedFilter = useMemo(() => {
+    if (!trigger.configuration.filter) {
+      return null;
+    }
+    try {
+      return parseMatcherExpression(trigger.configuration.filter);
+    } catch (e) {
+      console.error("Failed to parse filter:", e);
+      return null;
+    }
+  }, [trigger.configuration.filter]);
+
+  // Compute match failures for each request
+  const requestsWithFailures = useMemo(() => {
+    if (!parsedFilter) {
+      return webhookRequests.map((req) => ({ request: req, failures: [] }));
+    }
+
+    return webhookRequests.map((req) => {
+      if (
+        !req.payload?.body ||
+        typeof req.payload.body !== "object" ||
+        req.payload.body === null
+      ) {
+        return { request: req, failures: [] };
+      }
+
+      const failures = explainMatchFailure(
+        req.payload.body as Record<string, unknown>,
+        parsedFilter,
+        matchPayload
+      );
+
+      return { request: req, failures };
+    });
+  }, [webhookRequests, parsedFilter]);
+
   if (isWebhookRequestsLoading || !isOpen) {
     return (
       <div className="flex items-center gap-2">
@@ -99,7 +141,7 @@ function RecentWebhookRequestsContent({
 
   return (
     <div className="space-y-2">
-      {webhookRequests.map((request) => (
+      {requestsWithFailures.map(({ request, failures }) => (
         <div
           key={request.id}
           className="bg-secondary dark:bg-secondary-night rounded-lg border border-border p-3 dark:border-border-night"
@@ -130,14 +172,30 @@ function RecentWebhookRequestsContent({
             )}
           </div>
 
+          {failures.length > 0 && (
+            <div className="mt-3 space-y-1">
+              <div className="text-xs font-medium text-warning">
+                Match Failures:
+              </div>
+              {failures.map((failure, idx) => (
+                <div
+                  key={idx}
+                  className="text-xs text-warning"
+                >
+                  • {failure.reason}
+                </div>
+              ))}
+            </div>
+          )}
+
           {expandedRequestId === request.id && request.payload && (
             <div className="mt-3 rounded bg-background p-2 dark:bg-background-night">
-              <pre className="max-h-48 overflow-auto text-xs text-foreground dark:text-foreground-night">
+              <div className="max-h-96 overflow-auto">
                 <Markdown
                   forcedTextSize="xs"
                   content={`\`\`\`json\n${JSON.stringify(request.payload.body, null, 2)}\n\`\`\``}
                 />
-              </pre>
+              </div>
             </div>
           )}
         </div>
