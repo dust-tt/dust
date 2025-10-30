@@ -20,7 +20,7 @@ async function acquireTenantSpecificToken(): Promise<string> {
     new URLSearchParams({
       grant_type: "client_credentials",
       client_id: apiConfig.getMicrosoftBotId() || "",
-      client_secret: apiConfig.getMicrosoftBotPassword()!,
+      client_secret: apiConfig.getMicrosoftBotPassword() || "",
       scope: "https://api.botframework.com/.default",
     }),
     {
