@@ -1,3 +1,5 @@
+import assert from "node:assert";
+
 import type {
   MessageDeltaUsage,
   MessageStreamEvent,
@@ -98,9 +100,7 @@ function* handleMessageStreamEvent(
 function validateHasState(
   state: StreamState
 ): asserts state is Exclude<StreamState, null> {
-  if (state === null) {
-    throw new Error("No content block is currently being processed");
-  }
+  assert(state !== null, "No content block is currently being processed");
 }
 
 function validateContentBlockIndex(
@@ -110,27 +110,25 @@ function validateContentBlockIndex(
     | Extract<MessageStreamEvent, { type: "content_block_stop" }>
 ): asserts state is Exclude<StreamState, null> {
   validateHasState(state);
-  if (state.currentBlockIndex === null) {
-    throw new Error(
-      `No content block is currently being processed, but got event for index ${event.index}`
-    );
-  }
-  if (state.currentBlockIndex !== event.index) {
-    throw new Error(
-      `Mismatched content block index: expected ${state.currentBlockIndex}, got ${event.index}`
-    );
-  }
+  assert(
+    !state.currentBlockIndex,
+    `No content block is currently being processed, but got event for index ${event.index}`
+  );
+  assert(
+    state.currentBlockIndex === event.index,
+    `Mismatched content block index: expected ${state.currentBlockIndex}, got ${event.index}`
+  );
 }
 
 function handleContentBlockStart(
   event: Extract<MessageStreamEvent, { type: "content_block_start" }>,
   stateContainer: { state: StreamState }
 ): void {
-  if (stateContainer.state !== null) {
-    throw new Error(
-      "A content block is already being processed, cannot start a new one"
-    );
-  }
+  assert(
+    !stateContainer.state,
+    `A content block is already being processed at index ${stateContainer.state.currentBlockIndex}, cannot start a new one at index ${event.index}`
+  );
+
   const blockType = event.content_block.type;
   switch (blockType) {
     case "text":
