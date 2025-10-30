@@ -2,21 +2,31 @@ import assert from "assert";
 
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
+import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
 import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import {
+  AgentMessage,
+  Message,
+  UserMessage,
+} from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AgentMessageType } from "@app/types";
 import { normalizeError } from "@app/types";
-import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type {
+  AgentLoopArgs,
+  AgentMessageRef,
+} from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageAnalyticsData,
+  AgentMessageAnalyticsFeedback,
   AgentMessageAnalyticsTokens,
   AgentMessageAnalyticsToolUsed,
 } from "@app/types/assistant/analytics";
@@ -66,6 +76,7 @@ export async function storeAgentAnalyticsActivity(
     latency_ms: 0,
     message_id: agentMessage.sId,
     status: agentMessage.status,
+    // TODO(observability 21025-10-29): Use agentMessage.created timestamp to index documents
     timestamp: new Date(userMessage.created).toISOString(),
     tokens,
     tools_used: toolsUsed,
@@ -213,4 +224,90 @@ async function storeToElasticsearch(
 
     throw error;
   }
+}
+
+export async function storeAgentMessageFeedbackActivity(
+  authType: AuthenticatorType,
+  {
+    message,
+  }: {
+    message: AgentMessageRef;
+  }
+): Promise<void> {
+  const auth = await Authenticator.fromJSON(authType);
+
+  const workspace = auth.getNonNullableWorkspace();
+
+  const agentMessageRow = await Message.findOne({
+    where: {
+      sId: message.agentMessageId,
+      conversationId: message.conversationId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!agentMessageRow?.agentMessage) {
+    throw new Error(`Agent message not found: ${message.agentMessageId}`);
+  }
+
+  if (!agentMessageRow.parentId) {
+    throw new Error(`Agent message has no parent: ${message.agentMessageId}`);
+  }
+
+  const agentMessageModel = agentMessageRow.agentMessage;
+
+  const userMessageRow = await Message.findOne({
+    where: {
+      id: agentMessageRow.parentId,
+      conversationId: message.conversationId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!userMessageRow?.userMessage) {
+    throw new Error(
+      `User message not found for agent message: ${message.agentMessageId}`
+    );
+  }
+
+  const userMessageModel = userMessageRow.userMessage;
+
+  const agentMessageFeedbacks =
+    await AgentMessageFeedbackResource.listByAgentMessageModelId(
+      auth,
+      agentMessageModel.id
+    );
+
+  const allFeedbacks: AgentMessageAnalyticsFeedback[] =
+    agentMessageFeedbacks.map((agentMessageFeedback) => ({
+      feedback_id: agentMessageFeedback.id,
+      user_id: agentMessageFeedback.user?.sId ?? "unknown",
+      thumb_direction: agentMessageFeedback.thumbDirection,
+      content: agentMessageFeedback.content ?? undefined,
+      dismissed: agentMessageFeedback.dismissed,
+      is_conversation_shared: agentMessageFeedback.isConversationShared,
+      created_at: agentMessageFeedback.createdAt.toISOString(),
+    }));
+
+  await updateAnalyticsFeedback(auth, {
+    message: {
+      sId: agentMessageRow.sId,
+    },
+    createdTimestamp: userMessageModel.createdAt.getTime(),
+    feedbacks: allFeedbacks,
+  });
 }
