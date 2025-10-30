@@ -23,8 +23,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
+import { launchAgentTriggerWebhookWorkflow } from "@app/lib/triggers/temporal/webhook/client";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import {
@@ -623,6 +625,111 @@ async function apikeys(command: string, args: parseArgs.ParsedArgs) {
   }
 }
 
+async function trigger(command: string, args: parseArgs.ParsedArgs) {
+  switch (command) {
+    case "replay-failed-webhooks": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+
+      const limit = args.limit ? parseInt(args.limit, 10) : 100;
+      const execute = !!args.execute;
+
+      if (!execute) {
+        logger.info(
+          "[DRY RUN] Use --execute to actually replay the webhooks. Running in dry-run mode."
+        );
+      }
+
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+      const workspace = await WorkspaceResource.fetchById(args.wId);
+      if (!workspace) {
+        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      }
+
+      logger.info(
+        { workspaceId: args.wId, limit },
+        "Fetching failed webhook requests..."
+      );
+
+      const failedWebhooks = await WebhookRequestResource.listByStatus({
+        workspaceId: workspace.id,
+        status: "failed",
+        limit,
+      });
+
+      if (failedWebhooks.length === 0) {
+        logger.info("No failed webhook requests found.");
+        return;
+      }
+
+      logger.info(
+        { count: failedWebhooks.length },
+        `Found ${failedWebhooks.length} failed webhook requests.`
+      );
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const webhookRequest of failedWebhooks) {
+        try {
+          logger.info(
+            {
+              webhookRequestId: webhookRequest.id,
+              webhookSourceId: webhookRequest.webhookSourceId,
+              errorMessage: webhookRequest.errorMessage,
+              createdAt: webhookRequest.createdAt,
+            },
+            `Processing webhook request ${webhookRequest.id}...`
+          );
+
+          if (execute) {
+            await launchAgentTriggerWebhookWorkflow({
+              auth,
+              webhookRequest,
+            });
+            successCount++;
+            logger.info(
+              { webhookRequestId: webhookRequest.id },
+              "Webhook workflow launched successfully."
+            );
+          } else {
+            logger.info(
+              { webhookRequestId: webhookRequest.id },
+              "[DRY RUN] Would launch workflow for this webhook request."
+            );
+            successCount++;
+          }
+        } catch (error) {
+          errorCount++;
+          logger.error(
+            {
+              webhookRequestId: webhookRequest.id,
+              error,
+            },
+            "Failed to launch webhook workflow."
+          );
+        }
+      }
+
+      logger.info(
+        {
+          total: failedWebhooks.length,
+          successful: successCount,
+          errors: errorCount,
+          dryRun: !execute,
+        },
+        "Webhook replay completed."
+      );
+
+      return;
+    }
+
+    default:
+      console.log(`Unknown trigger command: ${command}`);
+  }
+}
+
 export const CLI_OBJECT_TYPES = [
   "workspace",
   "user",
@@ -632,6 +739,7 @@ export const CLI_OBJECT_TYPES = [
   "registry",
   "production-check",
   "api-key",
+  "trigger",
 ] as const;
 
 export type CliObjectType = (typeof CLI_OBJECT_TYPES)[number];
@@ -679,6 +787,8 @@ const main = async () => {
       return productionCheck(command, argv);
     case "api-key":
       return apikeys(command, argv);
+    case "trigger":
+      return trigger(command, argv);
     default:
       assertNever(objectType);
   }

@@ -141,6 +141,27 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     return resources;
   }
 
+  static async listByStatus({
+    workspaceId,
+    status,
+    limit = 100,
+  }: {
+    workspaceId: ModelId;
+    status: "received" | "processed" | "failed";
+    limit?: number;
+  }): Promise<WebhookRequestResource[]> {
+    const res = await this.model.findAll({
+      where: {
+        workspaceId,
+        status,
+      },
+      limit,
+      order: [["createdAt", "DESC"]],
+    });
+
+    return res.map((c) => new this(this.model, c.get()));
+  }
+
   static async getWorkspaceIdsWithTooManyRequests({
     webhookRequestTtl = WEBHOOK_REQUEST_TTL,
     maxWebhookRequestsToKeep = MAX_WEBHOOK_REQUESTS_TO_KEEP,
