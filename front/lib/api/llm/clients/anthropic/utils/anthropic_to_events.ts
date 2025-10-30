@@ -80,10 +80,33 @@ function* handleMessageStreamEvent(
   }
 }
 
+function validateContentBlockIndex(
+  expectedIndex: number | null,
+  event:
+    | Extract<MessageStreamEvent, { type: "content_block_delta" }>
+    | Extract<MessageStreamEvent, { type: "content_block_stop" }>
+): void {
+  if (expectedIndex === null) {
+    throw new Error(
+      `No content block is currently being processed, but got event for index ${event.index}`
+    );
+  }
+  if (expectedIndex !== event.index) {
+    throw new Error(
+      `Mismatched content block index: expected ${expectedIndex}, got ${event.index}`
+    );
+  }
+}
+
 function handleContentBlockStart(
   event: Extract<MessageStreamEvent, { type: "content_block_start" }>,
   state: StreamState
 ): void {
+  if (state.currentBlockIndex !== null) {
+    throw new Error(
+      `A content block is already being processed at index ${state.currentBlockIndex}, cannot start a new one at index ${event.index}`
+    );
+  }
   state.currentBlockIndex = event.index;
   if (event.content_block.type === "tool_use") {
     state.accumulatorType = "tool_use";
@@ -99,11 +122,7 @@ function* handleContentBlockDelta(
   state: StreamState,
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
-  if (state.currentBlockIndex !== event.index) {
-    throw new Error(
-      `Mismatched content block index: expected ${state.currentBlockIndex}, got ${event.index}`
-    );
-  }
+  validateContentBlockIndex(state.currentBlockIndex, event);
   switch (event.delta.type) {
     case "text_delta":
       state.accumulator += event.delta.text;
@@ -130,11 +149,7 @@ function* handleContentBlockStop(
   state: StreamState,
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
-  if (state.currentBlockIndex !== event.index) {
-    throw new Error(
-      `Mismatched content block index: expected ${state.currentBlockIndex}, got ${event.index}`
-    );
-  }
+  validateContentBlockIndex(state.currentBlockIndex, event);
   if (state.accumulatorType === "tool_use") {
     if (!state.toolInfo) {
       throw new Error("Tool info is missing for tool use content block");
