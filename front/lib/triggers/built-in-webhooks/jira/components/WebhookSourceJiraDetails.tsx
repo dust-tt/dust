@@ -19,7 +19,7 @@ export function WebhookSourceJiraDetails({
     return null;
   }
 
-  const cloudId = metadata.cloudId as string | undefined;
+  const { cloudId } = metadata;
 
   return (
     <div className="space-y-4">
