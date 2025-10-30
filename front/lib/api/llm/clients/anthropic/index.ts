@@ -75,8 +75,9 @@ export class AnthropicLLM extends LLM {
       thinking: this.thinkingConfig,
       system: prompt,
       messages,
-      temperature: !this.thinkingConfig ? this.temperature : 1,
+      temperature: this.temperature,
       stream: true,
+
       tools: specifications.map(toTool),
       max_tokens: this.modelConfig.generationTokensCount,
     });
