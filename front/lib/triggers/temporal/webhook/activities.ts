@@ -215,9 +215,11 @@ export async function runTriggerWebhookActivity({
   const filteredTriggers: WebhookTriggerType[] = [];
 
   for (const trigger of triggers) {
-    const { configuration } = trigger;
+    const {
+      configuration: { event, filter },
+    } = trigger;
 
-    if (configuration.event && configuration.event !== receivedEventValue) {
+    if (event && event !== receivedEventValue) {
       // Received event doesn't match the trigger's event, skip this trigger
       await webhookRequest.markRelatedTrigger({
         trigger,
@@ -226,13 +228,13 @@ export async function runTriggerWebhookActivity({
       continue;
     }
 
-    if (!configuration.filter) {
+    if (!filter) {
       // No filter, add the trigger
       filteredTriggers.push(trigger);
     } else {
       try {
         // Filter triggers by payload matching
-        const parsedFilter = parseMatcherExpression(configuration.filter);
+        const parsedFilter = parseMatcherExpression(filter);
         const r = matchPayload(body, parsedFilter);
         if (r) {
           // Filter matches, add the trigger if not rate limited
@@ -268,7 +270,7 @@ export async function runTriggerWebhookActivity({
           {
             triggerId: trigger.id,
             triggerName: trigger.name,
-            filter: configuration.filter,
+            filter,
             err: normalizeError(err),
           },
           "Invalid filter expression in webhook trigger"
