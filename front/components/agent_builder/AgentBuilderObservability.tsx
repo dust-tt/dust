@@ -10,6 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { FeedbackDistributionChart } from "@app/components/agent_builder/observability/charts/FeedbackDistributionChart";
 import { ToolLatencyChart } from "@app/components/agent_builder/observability/charts/ToolLatencyChart";
 import { ToolUsageChart } from "@app/components/agent_builder/observability/charts/ToolUsageChart";
 import { UsageMetricsChart } from "@app/components/agent_builder/observability/charts/UsageMetricsChart";
@@ -63,10 +64,15 @@ export function AgentBuilderObservability({
               <ChartContainerSkeleton />
               <ChartContainerSkeleton />
               <ChartContainerSkeleton />
+              <ChartContainerSkeleton />
             </>
           ) : (
             <>
               <UsageMetricsChart
+                workspaceId={owner.sId}
+                agentConfigurationId={agentConfiguration.sId}
+              />
+              <FeedbackDistributionChart
                 workspaceId={owner.sId}
                 agentConfigurationId={agentConfiguration.sId}
               />

@@ -38,3 +38,13 @@ export const TOOL_COLORS = [
 ] as const;
 
 export const MAX_TOOLS_DISPLAYED = 5;
+
+export const FEEDBACK_DISTRIBUTION_PALETTE = {
+  positive: "text-[hsl(var(--chart-1))]",
+  negative: "text-[hsl(var(--chart-4))]",
+} as const;
+
+export const FEEDBACK_DISTRIBUTION_LEGEND = [
+  { key: "positive", label: "Positive" },
+  { key: "negative", label: "Negative" },
+] as const;
