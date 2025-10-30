@@ -610,9 +610,12 @@ export async function getGlobalAgents(
     auth.user() &&
     agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST)
   ) {
-    memories = await AgentMemoryResource.findByAgentConfigurationId(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-    });
+    memories = await AgentMemoryResource.findByAgentConfigurationIdAndUser(
+      auth,
+      {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      }
+    );
   }
 
   // For now we retrieve them all

@@ -133,7 +133,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     );
   }
 
-  static async findByAgentConfigurationId(
+  static async findByAgentConfigurationIdAndUser(
     auth: Authenticator,
     {
       agentConfigurationId,
