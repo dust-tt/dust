@@ -143,10 +143,8 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     auth: Authenticator,
     {
       status,
-      limit = 100,
     }: {
       status: "received" | "processed" | "failed";
-      limit?: number;
     }
   ): Promise<WebhookRequestResource[]> {
     return this.baseFetch(auth, {

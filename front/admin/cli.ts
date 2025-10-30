@@ -632,7 +632,6 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
         throw new Error("Missing --wId argument");
       }
 
-      const limit = args.limit ? parseInt(args.limit, 10) : 100;
       const execute = !!args.execute;
 
       if (!execute) {
@@ -645,7 +644,6 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
 
       const failedWebhooks = await WebhookRequestResource.listByStatus(auth, {
         status: "failed",
-        limit,
       });
 
       if (failedWebhooks.length === 0) {
