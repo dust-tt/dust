@@ -6,6 +6,8 @@ import type {
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 import { assertNever } from "@dust-tt/sparkle";
 
+import { validateContentBlockIndex } from "@app/lib/api/llm/clients/anthropic/utils/predicates";
+import type { StreamState } from "@app/lib/api/llm/clients/anthropic/utils/types";
 import type {
   LLMEvent,
   ReasoningDeltaEvent,
@@ -17,29 +19,6 @@ import type {
 } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { safeParseJSON } from "@app/types";
-
-type BaseState = {
-  accumulator: string;
-  currentBlockIndex: number | null;
-};
-
-type TextState = BaseState & {
-  accumulatorType: "text";
-};
-
-type ReasoningState = BaseState & {
-  accumulatorType: "reasoning";
-};
-
-type ToolUseState = BaseState & {
-  accumulatorType: "tool_use";
-  toolInfo: {
-    id: string;
-    name: string;
-  };
-};
-
-type StreamState = TextState | ReasoningState | ToolUseState | null;
 
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<MessageStreamEvent>,
@@ -97,36 +76,13 @@ function* handleMessageStreamEvent(
   }
 }
 
-function validateHasState(
-  state: StreamState
-): asserts state is Exclude<StreamState, null> {
-  assert(state !== null, "No content block is currently being processed");
-}
-
-function validateContentBlockIndex(
-  state: StreamState,
-  event:
-    | Extract<MessageStreamEvent, { type: "content_block_delta" }>
-    | Extract<MessageStreamEvent, { type: "content_block_stop" }>
-): asserts state is Exclude<StreamState, null> {
-  validateHasState(state);
-  assert(
-    !state.currentBlockIndex,
-    `No content block is currently being processed, but got event for index ${event.index}`
-  );
-  assert(
-    state.currentBlockIndex === event.index,
-    `Mismatched content block index: expected ${state.currentBlockIndex}, got ${event.index}`
-  );
-}
-
 function handleContentBlockStart(
   event: Extract<MessageStreamEvent, { type: "content_block_start" }>,
   stateContainer: { state: StreamState }
 ): void {
   assert(
-    !stateContainer.state,
-    `A content block is already being processed at index ${stateContainer.state.currentBlockIndex}, cannot start a new one at index ${event.index}`
+    stateContainer.state === null,
+    `A content block is already being processed, cannot start a new one at index ${event.index}`
   );
 
   const blockType = event.content_block.type;
