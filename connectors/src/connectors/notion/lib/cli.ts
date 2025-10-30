@@ -132,7 +132,6 @@ export async function findNotionUrl({
 
   if (page) {
     logger.info({ pageOrDbId, url, page }, "findNotionUrl: Page found");
-    page._model;
     return { page: page.dataValues, db: null };
   } else {
     logger.info({ pageOrDbId, url }, "findNotionUrl: Page not found");

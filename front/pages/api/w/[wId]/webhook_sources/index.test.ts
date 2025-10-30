@@ -197,6 +197,7 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
         postData.webhookSource.sId
       );
     expect(systemView).not.toBeNull();
+    // eslint-disable-next-line no-unused-expressions
     systemView && expect(systemView.description).toBe(testDescription);
   });
 });

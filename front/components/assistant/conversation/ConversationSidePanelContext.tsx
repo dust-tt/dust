@@ -109,6 +109,7 @@ export function ConversationSidePanelProvider({
         }
 
         case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
+          // eslint-disable-next-line no-unused-expressions
           params.timestamp
             ? setData(`${params.fileId}@${params.timestamp}`)
             : setData(params.fileId);
