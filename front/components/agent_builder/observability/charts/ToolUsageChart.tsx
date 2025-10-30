@@ -30,10 +30,7 @@ import type {
   ToolChartModeType,
 } from "@app/components/agent_builder/observability/types";
 import { isToolChartMode } from "@app/components/agent_builder/observability/types";
-import {
-  getToolColor,
-  makeIsTopForPayload,
-} from "@app/components/agent_builder/observability/utils";
+import { getToolColor } from "@app/components/agent_builder/observability/utils";
 
 export function ToolUsageChart({
   workspaceId,
@@ -62,11 +59,6 @@ export function ToolUsageChart({
         label: t,
         colorClassName: getToolColor(t, topTools),
       })),
-    [topTools]
-  );
-
-  const isTopForPayload = useMemo(
-    () => makeIsTopForPayload(topTools),
     [topTools]
   );
 
@@ -151,7 +143,7 @@ export function ToolUsageChart({
               boxShadow: "none",
             }}
           />
-          {topTools.map((toolName, idx) => (
+          {topTools.map((toolName) => (
             <Bar
               key={toolName}
               dataKey={(row: ChartDatum) => row.values[toolName] ?? 0}
@@ -160,10 +152,7 @@ export function ToolUsageChart({
               className={getToolColor(toolName, topTools)}
               name={toolName}
               shape={
-                <RoundedTopBarShape
-                  seriesIdx={idx}
-                  isTopForPayload={isTopForPayload}
-                />
+                <RoundedTopBarShape toolName={toolName} stackOrder={topTools} />
               }
             />
           ))}
