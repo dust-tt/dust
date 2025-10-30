@@ -21,7 +21,10 @@ export function calculateTopTools<T>(
   }
 
   return Array.from(toolMetrics.entries())
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => {
+      const metricDiff = b[1] - a[1];
+      return metricDiff !== 0 ? metricDiff : a[0].localeCompare(b[0]);
+    })
     .slice(0, maxTools)
     .map(([toolName]) => toolName);
 }
@@ -32,7 +35,10 @@ export function selectTopTools(
   maxTools: number
 ): string[] {
   return Array.from(toolCounts.entries())
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => {
+      const countDiff = b[1] - a[1];
+      return countDiff !== 0 ? countDiff : a[0].localeCompare(b[0]);
+    })
     .slice(0, maxTools)
     .map(([toolName]) => toolName);
 }
