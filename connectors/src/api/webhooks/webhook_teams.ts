@@ -247,9 +247,9 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           if (context.activity.action === "add") {
             localLogger.info(
               {
-                connectorProvider: connector.type,
+                connectorProvider: "microsoft_bot",
                 activityType: context.activity.type,
-                connectorId: connector.id,
+                connectorId: connector?.id,
               },
               "Installed app from Microsoft Teams"
             );
@@ -262,9 +262,9 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           if (context.activity.action === "remove") {
             localLogger.info(
               {
-                connectorProvider: connector.type,
+                connectorProvider: "microsoft_bot",
                 activityType: context.activity.type,
-                connectorId: connector.id,
+                connectorId: connector?.id,
               },
               "Uninstalled app from Microsoft Teams"
             );
@@ -274,9 +274,9 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
         default:
           localLogger.info(
             {
-              connectorProvider: connector.type,
+              connectorProvider: "microsoft_bot",
               activityType: context.activity.type,
-              connectorId: connector.id,
+              connectorId: connector?.id,
             },
             "Unhandled activity type"
           );
@@ -327,7 +327,7 @@ async function handleMessage(
       context,
       createErrorAdaptiveCard({
         error: thinkingActivity.error.message,
-        workspaceId: connector!.workspaceId,
+        workspaceId: connector.workspaceId,
       })
     );
     return;
