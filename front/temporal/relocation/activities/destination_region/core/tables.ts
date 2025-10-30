@@ -103,6 +103,9 @@ export async function processDataSourceTables({
         return upsertRes;
       }
 
+      // Note that we call upsertTable here, and we don't insert any rows. This is because we rely on
+      // separately copying the GCS blobs directly, rather than going through Core API for that.
+
       return upsertRes;
     },
     { concurrency: CORE_API_CONCURRENCY_LIMIT }
