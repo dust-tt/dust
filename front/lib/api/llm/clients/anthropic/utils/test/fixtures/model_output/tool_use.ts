@@ -28,6 +28,15 @@ export const toolUseModelEvents: MessageStreamEvent[] = [
     },
   },
   {
+    type: "content_block_start",
+    index: 0,
+    content_block: {
+      type: "text",
+      text: "",
+      citations: [],
+    },
+  },
+  {
     type: "content_block_delta",
     index: 0,
     delta: {
@@ -44,8 +53,12 @@ export const toolUseModelEvents: MessageStreamEvent[] = [
     },
   },
   {
-    type: "content_block_start", // Only tool use reads content_block_start and content_block_stop
+    type: "content_block_stop",
     index: 0,
+  },
+  {
+    type: "content_block_start",
+    index: 1,
     content_block: {
       type: "tool_use",
       id: "DdHr7L197",
@@ -55,15 +68,15 @@ export const toolUseModelEvents: MessageStreamEvent[] = [
   },
   {
     type: "content_block_delta",
-    index: 0,
+    index: 1,
     delta: {
       type: "input_json_delta",
       partial_json: '{"query":"Paris France weather forecast October 23 2025"}',
     },
   },
   {
-    type: "content_block_stop", // Only tool use reads content_block_start and content_block_stop
-    index: 0,
+    type: "content_block_stop",
+    index: 1,
   },
   {
     type: "message_delta",

@@ -16,40 +16,47 @@ import type {
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { safeParseJSON } from "@app/types";
 
-type StreamState = {
-  accumulatorType: "text" | "reasoning" | "tool_use" | null;
+type BaseState = {
   accumulator: string;
+  currentBlockIndex: number | null;
+};
+
+type TextState = BaseState & {
+  accumulatorType: "text";
+};
+
+type ReasoningState = BaseState & {
+  accumulatorType: "reasoning";
+};
+
+type ToolUseState = BaseState & {
+  accumulatorType: "tool_use";
   toolInfo: {
     id: string;
     name: string;
-  } | null;
-  currentBlockIndex: number | null;
+  };
 };
+
+type StreamState = TextState | ReasoningState | ToolUseState | null;
 
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<MessageStreamEvent>,
   metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
-  const state: StreamState = {
-    accumulatorType: null,
-    accumulator: "",
-    toolInfo: {
-      id: "",
-      name: "",
-    },
-    currentBlockIndex: null,
-  };
+  const stateContainer = { state: null };
 
   for await (const messageStreamEvent of messageStreamEvents) {
-    yield* handleMessageStreamEvent(messageStreamEvent, state, metadata);
+    yield* handleMessageStreamEvent(
+      messageStreamEvent,
+      stateContainer,
+      metadata
+    );
   }
-
-  yield* yieldFinalEvents(state, metadata);
 }
 
 function* handleMessageStreamEvent(
   messageStreamEvent: MessageStreamEvent,
-  state: StreamState,
+  stateContainer: { state: StreamState },
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   switch (messageStreamEvent.type) {
@@ -64,13 +71,21 @@ function* handleMessageStreamEvent(
      * content_block_stop (makrs the end of the content block)
      */
     case "content_block_start":
-      handleContentBlockStart(messageStreamEvent, state);
+      handleContentBlockStart(messageStreamEvent, stateContainer);
       break;
     case "content_block_delta":
-      yield* handleContentBlockDelta(messageStreamEvent, state, metadata);
+      yield* handleContentBlockDelta(
+        messageStreamEvent,
+        stateContainer,
+        metadata
+      );
       break;
     case "content_block_stop":
-      yield* handleContentBlockStop(messageStreamEvent, state, metadata);
+      yield* handleContentBlockStop(
+        messageStreamEvent,
+        stateContainer,
+        metadata
+      );
       break;
     case "message_delta":
       yield* handleMessageDelta(messageStreamEvent, metadata);
@@ -80,60 +95,90 @@ function* handleMessageStreamEvent(
   }
 }
 
+function validateHasState(
+  state: StreamState
+): asserts state is Exclude<StreamState, null> {
+  if (state === null) {
+    throw new Error("No content block is currently being processed");
+  }
+}
+
 function validateContentBlockIndex(
-  expectedIndex: number | null,
+  state: StreamState,
   event:
     | Extract<MessageStreamEvent, { type: "content_block_delta" }>
     | Extract<MessageStreamEvent, { type: "content_block_stop" }>
-): void {
-  if (expectedIndex === null) {
+): asserts state is Exclude<StreamState, null> {
+  validateHasState(state);
+  if (state.currentBlockIndex === null) {
     throw new Error(
       `No content block is currently being processed, but got event for index ${event.index}`
     );
   }
-  if (expectedIndex !== event.index) {
+  if (state.currentBlockIndex !== event.index) {
     throw new Error(
-      `Mismatched content block index: expected ${expectedIndex}, got ${event.index}`
+      `Mismatched content block index: expected ${state.currentBlockIndex}, got ${event.index}`
     );
   }
 }
 
 function handleContentBlockStart(
   event: Extract<MessageStreamEvent, { type: "content_block_start" }>,
-  state: StreamState
+  stateContainer: { state: StreamState }
 ): void {
-  if (state.currentBlockIndex !== null) {
+  if (stateContainer.state !== null) {
     throw new Error(
-      `A content block is already being processed at index ${state.currentBlockIndex}, cannot start a new one at index ${event.index}`
+      "A content block is already being processed, cannot start a new one"
     );
   }
-  state.currentBlockIndex = event.index;
-  if (event.content_block.type === "tool_use") {
-    state.accumulatorType = "tool_use";
-    state.toolInfo = {
-      id: event.content_block.id,
-      name: event.content_block.name,
-    };
+  const blockType = event.content_block.type;
+  switch (blockType) {
+    case "text":
+    case "thinking":
+      stateContainer.state = {
+        currentBlockIndex: event.index,
+        accumulator: "",
+        accumulatorType: blockType === "text" ? "text" : "reasoning",
+      };
+      break;
+    case "tool_use":
+      stateContainer.state = {
+        currentBlockIndex: event.index,
+        accumulator: "",
+        accumulatorType: "tool_use",
+        toolInfo: {
+          id: event.content_block.id,
+          name: event.content_block.name,
+        },
+      };
+      break;
+    case "redacted_thinking":
+    case "server_tool_use":
+    case "web_search_tool_result":
+      // TODO(LLM-Router) Handle these block types if needed
+      break;
+    default:
+      assertNever(blockType);
   }
 }
 
 function* handleContentBlockDelta(
   event: Extract<MessageStreamEvent, { type: "content_block_delta" }>,
-  state: StreamState,
+  stateContainer: { state: StreamState },
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
-  validateContentBlockIndex(state.currentBlockIndex, event);
+  validateContentBlockIndex(stateContainer.state, event);
   switch (event.delta.type) {
     case "text_delta":
-      state.accumulator += event.delta.text;
+      stateContainer.state.accumulator += event.delta.text;
       yield textDelta(event.delta.text, metadata);
       break;
     case "thinking_delta":
-      state.accumulator += event.delta.thinking;
+      stateContainer.state.accumulator += event.delta.thinking;
       yield reasoningDelta(event.delta.thinking, metadata);
       break;
     case "input_json_delta":
-      state.accumulator += event.delta.partial_json;
+      stateContainer.state.accumulator += event.delta.partial_json;
       break;
     case "citations_delta":
     case "signature_delta":
@@ -146,20 +191,25 @@ function* handleContentBlockDelta(
 
 function* handleContentBlockStop(
   event: Extract<MessageStreamEvent, { type: "content_block_stop" }>,
-  state: StreamState,
+  stateContainer: { state: StreamState },
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
-  validateContentBlockIndex(state.currentBlockIndex, event);
-  if (state.accumulatorType === "tool_use") {
-    if (!state.toolInfo) {
-      throw new Error("Tool info is missing for tool use content block");
-    }
-    yield toolCall({ ...state.toolInfo, input: state.accumulator, metadata });
+  validateContentBlockIndex(stateContainer.state, event);
+  switch (stateContainer.state.accumulatorType) {
+    case "text":
+      yield textGenerated(stateContainer.state.accumulator, metadata);
+      break;
+    case "reasoning":
+      yield reasoningGenerated(stateContainer.state.accumulator, metadata);
+      break;
+    case "tool_use":
+      yield toolCall({
+        ...stateContainer.state.toolInfo,
+        input: stateContainer.state.accumulator,
+        metadata,
+      });
   }
-  state.currentBlockIndex = null;
-  state.accumulatorType = null;
-  state.accumulator = "";
-  state.toolInfo = null;
+  stateContainer.state = null;
 }
 
 function* handleMessageDelta(
@@ -198,18 +248,6 @@ function* handleStopReason(
         metadata,
       };
       break;
-  }
-}
-
-function* yieldFinalEvents(
-  state: StreamState,
-  metadata: LLMClientMetadata
-): Generator<LLMEvent> {
-  if (state.accumulatorType === "text" && state.accumulator.length > 0) {
-    yield textGenerated(state.accumulator, metadata);
-  }
-  if (state.accumulatorType === "reasoning" && state.accumulator.length > 0) {
-    yield reasoningGenerated(state.accumulator, metadata);
   }
 }
 

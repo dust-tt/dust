@@ -23,6 +23,16 @@ export const toolUseLLMEvents: LLMEvent[] = [
     },
   },
   {
+    type: "text_generated",
+    content: {
+      text: "Hello, how are you ?",
+    },
+    metadata: {
+      clientId: "anthropic" as const,
+      modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
+    },
+  },
+  {
     type: "tool_call",
     content: {
       id: "DdHr7L197",
@@ -41,16 +51,6 @@ export const toolUseLLMEvents: LLMEvent[] = [
       outputTokens: 128,
       cachedTokens: 0,
       totalTokens: 1894,
-    },
-    metadata: {
-      clientId: "anthropic" as const,
-      modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
-    },
-  },
-  {
-    type: "text_generated",
-    content: {
-      text: "Hello, how are you ?",
     },
     metadata: {
       clientId: "anthropic" as const,
