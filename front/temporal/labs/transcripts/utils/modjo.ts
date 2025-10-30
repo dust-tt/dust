@@ -143,53 +143,6 @@ function validateModjoResponse(
 const MAX_SUPPORTED_CALL_LENGTH_HOURS = 2;
 const MODJO_API_URL = "https://api.modjo.ai";
 
-/**
- * Creates a scoped logger with a specific function context
- */
-function createScopedLogger(logger: Logger, functionName: string): Logger {
-  return logger.child({ function: functionName });
-}
-
-/**
- * Utility function to make requests to the Modjo API
- */
-async function fetchModjoAPI({
-  apiKey,
-  pagination,
-  filters,
-  relations,
-}: {
-  apiKey: string;
-  pagination: { page: number; perPage: number };
-  filters?: {
-    callStartDateRange?: { start: string; end: string };
-    callIds?: number[];
-  };
-  relations?: {
-    recording?: boolean;
-    highlights?: boolean;
-    transcript?: boolean;
-    speakers?: boolean;
-    tags?: boolean;
-    contacts?: boolean;
-    account?: boolean;
-    deal?: boolean;
-  };
-}): Promise<Response> {
-  return fetch(MODJO_API_URL + "/v1/calls/exports", {
-    method: "POST",
-    headers: {
-      "X-API-KEY": apiKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      pagination,
-      filters: filters ?? {},
-      relations: relations ?? {},
-    }),
-  });
-}
-
 export async function retrieveModjoTranscripts(
   auth: Authenticator,
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
@@ -272,25 +225,31 @@ export async function retrieveModjoTranscripts(
   let hasMorePages = true;
   while (hasMorePages) {
     try {
-      const response = await fetchModjoAPI({
-        apiKey: modjoApiKey,
-        pagination: { page, perPage },
-        filters: {
-          callStartDateRange: {
-            start: fromDateTime,
-            end: new Date().toISOString(),
+      const response = await fetch(`${MODJO_API_URL}/v1/calls/exports`, {
+        method: "POST",
+        headers: {
+          "X-API-KEY": modjoApiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          pagination: { page, perPage },
+          filters: {
+            callStartDateRange: {
+              start: fromDateTime,
+              end: new Date().toISOString(),
+            },
           },
-        },
-        relations: {
-          recording: true,
-          highlights: true,
-          transcript: true,
-          speakers: true,
-          tags: true,
-          contacts: true,
-          account: true,
-          deal: true,
-        },
+          relations: {
+            recording: true,
+            highlights: true,
+            transcript: true,
+            speakers: true,
+            tags: true,
+            contacts: true,
+            account: true,
+            deal: true,
+          },
+        }),
       });
 
       if (!response.ok) {
@@ -467,22 +426,28 @@ export async function retrieveModjoTranscriptContent(
     return user;
   };
 
-  const response = await fetchModjoAPI({
-    apiKey: modjoApiKey,
-    pagination: { page: 1, perPage: 1 },
-    filters: {
-      callIds: [parseInt(fileId)],
+  const response = await fetch(`${MODJO_API_URL}/v1/calls/exports`, {
+    method: "POST",
+    headers: {
+      "X-API-KEY": modjoApiKey,
+      "Content-Type": "application/json",
     },
-    relations: {
-      recording: true,
-      highlights: true,
-      transcript: true,
-      speakers: true,
-      tags: true,
-      contacts: true,
-      account: true,
-      deal: true,
-    },
+    body: JSON.stringify({
+      pagination: { page: 1, perPage: 1 },
+      filters: {
+        callIds: [parseInt(fileId)],
+      },
+      relations: {
+        recording: true,
+        highlights: true,
+        transcript: true,
+        speakers: true,
+        tags: true,
+        contacts: true,
+        account: true,
+        deal: true,
+      },
+    }),
   });
 
   if (!response.ok) {
@@ -729,10 +694,9 @@ export async function scanModjoTranscriptsInDateRange(
     startDate: string;
   }>
 > {
-  const localLogger = createScopedLogger(
-    logger,
-    "scanModjoTranscriptsInDateRange"
-  );
+  const localLogger = logger.child({
+    function: "scanModjoTranscriptsInDateRange",
+  });
 
   const foundTranscripts: Array<{
     callId: string;
@@ -754,16 +718,22 @@ export async function scanModjoTranscriptsInDateRange(
 
   while (hasMorePages) {
     try {
-      const response = await fetchModjoAPI({
-        apiKey: modjoApiKey,
-        pagination: { page, perPage },
-        filters: {
-          callStartDateRange: {
-            start: startDate.toISOString(),
-            end: endDate.toISOString(),
-          },
+      const response = await fetch(`${MODJO_API_URL}/v1/calls/exports`, {
+        method: "POST",
+        headers: {
+          "X-API-KEY": modjoApiKey,
+          "Content-Type": "application/json",
         },
-        relations: {},
+        body: JSON.stringify({
+          pagination: { page, perPage },
+          filters: {
+            callStartDateRange: {
+              start: startDate.toISOString(),
+              end: endDate.toISOString(),
+            },
+          },
+          relations: {},
+        }),
       });
 
       if (!response.ok) {
