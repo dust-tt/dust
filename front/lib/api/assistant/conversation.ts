@@ -364,16 +364,6 @@ export async function postUserMessage(
     });
   }
 
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err({
-      status_code: 403,
-      api_error: {
-        type: "conversation_access_restricted",
-        message: "Conversation cannot be accessed.",
-      },
-    });
-  }
-
   // Check plan and rate limit.
   const messageLimit = await isMessagesLimitReached({
     owner,
@@ -689,16 +679,6 @@ export async function editUserMessage(
       api_error: {
         type: "conversation_not_found",
         message: "The conversation does not exist.",
-      },
-    });
-  }
-
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err({
-      status_code: 403,
-      api_error: {
-        type: "conversation_access_restricted",
-        message: "Conversation cannot be accessed.",
       },
     });
   }
@@ -1211,10 +1191,6 @@ export async function postNewContentFragment(
   const owner = auth.workspace();
   if (!owner || owner.id !== conversation.owner.id) {
     throw new Error("Invalid auth for conversation.");
-  }
-
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationError("conversation_access_restricted"));
   }
 
   const upsertAttachmentRes = await maybeUpsertFileAttachment(auth, {

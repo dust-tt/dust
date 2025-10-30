@@ -145,7 +145,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // Create space-to-groups mapping once for efficient permission checks.
     const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
 
-    const newSpaceBasedAccessible = validConversations.filter((c) =>
+    const spaceBasedAccessible = validConversations.filter((c) =>
       auth.canRead(
         createResourcePermissionsFromSpacesWithMap(
           spaceIdToGroupsMap,
@@ -155,7 +155,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       )
     );
 
-    return newSpaceBasedAccessible;
+    return spaceBasedAccessible;
   }
 
   static triggerIdToSId(triggerId: number | null, workspaceId: number) {
@@ -371,23 +371,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return conversations.map((c) => c.sId);
   }
 
-  static canAccessConversation(
-    auth: Authenticator,
-    conversation:
-      | ConversationWithoutContentType
-      | ConversationType
-      | ConversationResource
-  ): boolean {
-    const requestedGroupIds =
-      conversation instanceof ConversationResource
-        ? conversation.getRequestedGroupIdsFromModel(auth)
-        : conversation.requestedGroupIds;
-
-    return auth.canRead(
-      Authenticator.createResourcePermissionsFromGroupIds(requestedGroupIds)
-    );
-  }
-
   static async fetchConversationWithoutContent(
     auth: Authenticator,
     sId: string,
@@ -403,13 +386,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     if (!conversation) {
       return new Err(new ConversationError("conversation_not_found"));
-    }
-
-    if (
-      !options?.dangerouslySkipPermissionFiltering &&
-      !ConversationResource.canAccessConversation(auth, conversation)
-    ) {
-      return new Err(new ConversationError("conversation_access_restricted"));
     }
 
     const { actionRequired, unread } =

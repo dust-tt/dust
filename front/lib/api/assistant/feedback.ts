@@ -49,10 +49,6 @@ export async function getConversationFeedbacksForUser(
   auth: Authenticator,
   conversation: ConversationType | ConversationWithoutContentType
 ) {
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationError("conversation_access_restricted"));
-  }
-
   const feedbacksRes =
     await AgentMessageFeedbackResource.getConversationFeedbacksForUser(
       auth,
@@ -150,13 +146,6 @@ export async function deleteMessageFeedback(
     user: UserType;
   }
 ) {
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err({
-      type: "conversation_access_restricted",
-      message: "You don't have access to this conversation.",
-    });
-  }
-
   const feedbackWithContext =
     await AgentMessageFeedbackResource.getFeedbackWithConversationContext({
       auth,
