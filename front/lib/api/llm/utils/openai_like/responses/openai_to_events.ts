@@ -126,9 +126,12 @@ function responseCompleted(
     output_tokens: outputTokens,
     total_tokens: totalTokens,
   } = response.usage;
-  const { cached_tokens: cachedTokens } = response.usage.input_tokens_details;
-  const { reasoning_tokens: reasoningTokens } =
-    response.usage.output_tokens_details;
+  // even if in the types `input_tokens_details` and `output_tokens_details` are NOT optional,
+  // some providers (e.g. Fireworks) return them as null
+  const cachedTokens = response.usage.input_tokens_details?.cached_tokens;
+  const reasoningTokens =
+    response.usage.output_tokens_details?.reasoning_tokens;
+
   events.push({
     type: "token_usage",
     content: {
