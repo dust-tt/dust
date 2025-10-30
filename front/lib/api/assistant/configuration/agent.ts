@@ -73,7 +73,7 @@ import type { TagType } from "@app/types/tag";
 /**
  * Get one specific version of a single agent
  */
-async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
+export async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
   auth: Authenticator,
   {
     agentId,
