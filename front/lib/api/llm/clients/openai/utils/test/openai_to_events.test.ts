@@ -5,7 +5,7 @@ import { functionCallLLMEvents } from "@app/lib/api/llm/clients/openai/utils/tes
 import { reasoningLLMEvents } from "@app/lib/api/llm/clients/openai/utils/test/fixtures/llm_events/reasoning";
 import { functionCallModelEvents } from "@app/lib/api/llm/clients/openai/utils/test/fixtures/model_output/function_call";
 import { reasoningModelOutput } from "@app/lib/api/llm/clients/openai/utils/test/fixtures/model_output/reasoning";
-import { createAsyncGenerator } from "@app/lib/api/llm/utils/utils";
+import { createAsyncGenerator } from "@app/lib/api/llm/utils";
 
 const metadata = {
   clientId: "openai_responses",

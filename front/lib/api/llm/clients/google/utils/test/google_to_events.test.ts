@@ -2,7 +2,7 @@ import type { GenerateContentResponse } from "@google/genai";
 import { FinishReason } from "@google/genai";
 import { describe, expect, it } from "vitest";
 
-import { createAsyncGenerator } from "@app/lib/api/llm/utils/utils";
+import { createAsyncGenerator } from "@app/lib/api/llm/utils";
 
 import { streamLLMEvents } from "../google_to_events";
 

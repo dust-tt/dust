@@ -1,7 +1,7 @@
 import type { CompletionEvent } from "@mistralai/mistralai/models/components";
 import { describe, expect, it } from "vitest";
 
-import { createAsyncGenerator } from "@app/lib/api/llm/utils/utils";
+import { createAsyncGenerator } from "@app/lib/api/llm/utils";
 
 import { streamLLMEvents } from "../mistral_to_events";
 
