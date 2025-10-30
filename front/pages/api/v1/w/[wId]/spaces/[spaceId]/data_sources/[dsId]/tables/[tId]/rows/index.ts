@@ -262,6 +262,7 @@ async function handler(
       }
 
       const { rows: rowsList, total } = listRes.value;
+      // eslint-disable-next-line dust/require-schema-validation -- UpsertTableRowsResponseSchema not yet exported from @dust-tt/client
       return res.status(200).json({ rows: rowsList, offset, limit, total });
 
     case "POST":

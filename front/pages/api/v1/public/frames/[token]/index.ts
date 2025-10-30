@@ -1,8 +1,10 @@
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
+import { PublicFrameResponseBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { validated } from "@app/lib/api/response_validation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -139,19 +141,21 @@ async function handler(
     }
   }
 
-  res.status(200).json({
-    content: fileContent,
-    file: file.toJSON(),
-    // Only return the conversation URL if the user is a participant of the conversation.
-    conversationUrl: isParticipant
-      ? getConversationRoute(
-          workspace.sId,
-          conversationId,
-          undefined,
-          config.getClientFacingUrl()
-        )
-      : null,
-  });
+  res.status(200).json(
+    validated(PublicFrameResponseBodySchema, {
+      content: fileContent,
+      file: file.toJSON(),
+      // Only return the conversation URL if the user is a participant of the conversation.
+      conversationUrl: isParticipant
+        ? getConversationRoute(
+            workspace.sId,
+            conversationId,
+            undefined,
+            config.getClientFacingUrl()
+          )
+        : null,
+    })
+  );
 }
 
 export default handler;

@@ -177,6 +177,7 @@ async function handler(
         });
 
         res.setHeader("Content-Type", "application/json");
+        // eslint-disable-next-line dust/require-schema-validation -- GetWorkspaceUsageResponseSchema not yet exported from @dust-tt/client
         res.status(200).json(records);
         return;
       }
@@ -201,6 +202,7 @@ async function handler(
           "Content-Disposition",
           `attachment; filename="usage.zip"`
         );
+        // eslint-disable-next-line dust/require-schema-validation -- GetWorkspaceUsageResponseSchema not yet exported from @dust-tt/client
         res.status(200).send(zipContent);
       } else {
         res.setHeader("Content-Type", "text/csv");
@@ -209,6 +211,7 @@ async function handler(
           `attachment; filename="${query.table}.csv"`
         );
         const csvData = data[query.table];
+        // eslint-disable-next-line dust/require-schema-validation -- GetWorkspaceUsageResponseSchema not yet exported from @dust-tt/client
         res.status(200).send(csvData);
       }
       return;

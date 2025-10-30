@@ -213,6 +213,7 @@ async function handler(
       }
 
       const { row } = rowRes.value;
+      // eslint-disable-next-line dust/require-schema-validation -- GetTableRowsResponseSchema not yet exported from @dust-tt/client
       return res.status(200).json({ row });
 
     case "DELETE":

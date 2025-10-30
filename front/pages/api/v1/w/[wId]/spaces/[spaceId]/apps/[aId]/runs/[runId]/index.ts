@@ -1,9 +1,11 @@
 import type { RunAppResponseType } from "@dust-tt/client";
+import { RunAppResponseSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
+import { validated } from "@app/lib/api/response_validation";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -130,7 +132,7 @@ async function handler(
         run.results = null;
       }
 
-      res.status(200).json({ run });
+      res.status(200).json(validated(RunAppResponseSchema, { run }));
       return;
 
     default:

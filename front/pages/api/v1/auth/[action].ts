@@ -115,6 +115,7 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
       }).toString(),
     });
     const data = await response.json();
+    // eslint-disable-next-line dust/require-schema-validation -- pass-through to WorkOS
     res.status(response.status).json(data);
   } catch (error) {
     logger.error({ error }, "Error in authenticate proxy");

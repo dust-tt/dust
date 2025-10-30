@@ -211,6 +211,7 @@ async function handler(
         }
       }
 
+      // eslint-disable-next-line dust/require-schema-validation -- DataSourceSearchResponseSchema not yet exported from @dust-tt/client
       return res.status(200).json(s.value);
     }
 

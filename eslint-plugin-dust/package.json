@@ -2,7 +2,21 @@
   "name": "eslint-plugin-dust",
   "version": "0.0.0",
   "license": "MIT",
+  "main": "index.js",
   "files": [
-    "eslint-plugin-dust.js"
-  ]
+    "index.js",
+    "rules/**/*.js"
+  ],
+  "scripts": {
+    "test": "vitest --run --reporter=verbose"
+  },
+  "peerDependencies": {
+    "eslint": ">=7.0.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
+    "eslint": "^8.57.1",
+    "vitest": "^3.0.8"
+  }
 }

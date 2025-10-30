@@ -33,6 +33,7 @@ async function handler(
     case "GET":
       const { members: users } = await getMembers(auth, { activeOnly: true });
 
+      // eslint-disable-next-line dust/require-schema-validation -- internal data source, no external pass-through
       res.status(200).json({
         users: users.map(
           (user): Pick<UserType, "sId" | "id" | "email"> => ({
