@@ -19,7 +19,7 @@ async function acquireTenantSpecificToken(): Promise<string> {
     `https://login.microsoftonline.com/${apiConfig.getMicrosoftBotTenantId()}/oauth2/v2.0/token`,
     new URLSearchParams({
       grant_type: "client_credentials",
-      client_id: apiConfig.getMicrosoftBotId()!,
+      client_id: apiConfig.getMicrosoftBotId() || "",
       client_secret: apiConfig.getMicrosoftBotPassword()!,
       scope: "https://api.botframework.com/.default",
     }),
