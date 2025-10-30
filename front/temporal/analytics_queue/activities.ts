@@ -241,7 +241,6 @@ export async function storeAgentMessageFeedbackActivity(
   const agentMessageRow = await Message.findOne({
     where: {
       sId: message.agentMessageId,
-      conversationId: message.conversationId,
       workspaceId: workspace.id,
     },
     include: [
@@ -266,7 +265,7 @@ export async function storeAgentMessageFeedbackActivity(
   const userMessageRow = await Message.findOne({
     where: {
       id: agentMessageRow.parentId,
-      conversationId: message.conversationId,
+      conversationId: agentMessageRow.conversationId,
       workspaceId: workspace.id,
     },
     include: [
@@ -283,8 +282,6 @@ export async function storeAgentMessageFeedbackActivity(
       `User message not found for agent message: ${message.agentMessageId}`
     );
   }
-
-  const userMessageModel = userMessageRow.userMessage;
 
   const agentMessageFeedbacks =
     await AgentMessageFeedbackResource.listByAgentMessageModelId(
@@ -307,7 +304,7 @@ export async function storeAgentMessageFeedbackActivity(
     message: {
       sId: agentMessageRow.sId,
     },
-    createdTimestamp: userMessageModel.createdAt.getTime(),
+    createdTimestamp: userMessageRow.createdAt.getTime(),
     feedbacks: allFeedbacks,
   });
 }
