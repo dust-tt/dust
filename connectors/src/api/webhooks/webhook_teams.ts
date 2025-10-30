@@ -7,21 +7,27 @@ import type { Request, Response } from "express";
 
 import {
   createErrorAdaptiveCard,
+  createInteractiveToolApprovalAdaptiveCard,
   createThinkingAdaptiveCard,
 } from "@connectors/api/webhooks/teams/adaptive_cards";
 import {
   botAnswerMessage,
+  botValidateToolExecution,
   sendFeedback,
 } from "@connectors/api/webhooks/teams/bot";
 import {
   sendActivity,
   sendTextMessage,
+  updateActivity,
 } from "@connectors/api/webhooks/teams/bot_messaging_utils";
 import {
   extractBearerToken,
   validateBotFrameworkToken,
 } from "@connectors/api/webhooks/teams/jwt_validation";
-import { getConnector } from "@connectors/api/webhooks/teams/utils";
+import {
+  getConnector,
+  validateToolApprovalData,
+} from "@connectors/api/webhooks/teams/utils";
 import { apiConfig } from "@connectors/lib/api/config";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
@@ -202,6 +208,34 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
             await handleMessage(context, connector, localLogger);
           }
           break;
+        case "invoke":
+          // Handle tool execution approval card refresh
+          if (context.activity.value.action.verb === "toolExecutionApproval") {
+            // Validate the data before using it
+            const validatedData = validateToolApprovalData(
+              context.activity.value.action.data
+            );
+
+            if (!validatedData) {
+              localLogger.error(
+                {
+                  connectorId: connector.id,
+                  receivedData: context.activity.value.action.data,
+                },
+                "Invalid tool approval data received for refresh"
+              );
+              res.status(400).json({ error: "Invalid request data" });
+              break;
+            }
+
+            res.status(200).json({
+              type: "application/vnd.microsoft.card.adaptive",
+              value: createInteractiveToolApprovalAdaptiveCard(validatedData),
+            });
+          } else {
+            await handleToolApproval(context, connector, localLogger);
+          }
+          break;
 
         default:
           localLogger.info(
@@ -325,6 +359,123 @@ async function handleInteraction(
     default:
       localLogger.info({ verb }, "Unhandled interaction verb");
       break;
+  }
+}
+
+async function handleToolApproval(
+  context: TurnContext,
+  connector: ConnectorResource,
+  localLogger: Logger
+) {
+  const { verb } = context.activity.value.action;
+  const approved = verb === "approve_tool" ? "approved" : "rejected";
+
+  // Validate the data before using it
+  const validatedData = validateToolApprovalData(
+    context.activity.value.action.data
+  );
+  if (!validatedData) {
+    localLogger.error(
+      {
+        connectorId: connector.id,
+        receivedData: context.activity.value.action.data,
+      },
+      "Invalid tool approval data received"
+    );
+    return;
+  }
+  const {
+    conversationId,
+    messageId,
+    actionId,
+    microsoftBotMessageId,
+    agentName,
+    toolName,
+  } = validatedData;
+
+  localLogger.info(
+    {
+      conversationId,
+      messageId,
+      actionId,
+      approved,
+      agentName,
+      toolName,
+    },
+    "Handling tool approval from adaptive card"
+  );
+
+  // Get the activity ID of the card that triggered this action
+  const replyToId = context.activity.replyToId;
+
+  const result = await botValidateToolExecution({
+    context,
+    connector,
+    approved,
+    conversationId,
+    messageId,
+    actionId,
+    microsoftBotMessageId,
+    agentName,
+    toolName,
+    localLogger,
+  });
+
+  if (result.isErr()) {
+    localLogger.error(
+      {
+        error: result.error,
+        conversationId,
+        messageId,
+        actionId,
+      },
+      "Error validating tool execution"
+    );
+
+    // Update the card with error message
+    try {
+      await updateActivity(context, {
+        id: replyToId,
+        type: "message",
+        text: "❌ Failed to validate tool execution. Please try again.",
+        attachments: [],
+      });
+    } catch (updateError) {
+      localLogger.error(
+        { error: updateError, replyToId },
+        "Failed to update approval card with error"
+      );
+    }
+  } else {
+    // Update the card with success message, removing the buttons
+    const resultText = `Agent **@${agentName}**'s request to use tool **${toolName}** was ${
+      approved === "approved" ? "✅ approved" : "❌ rejected"
+    }`;
+
+    try {
+      await updateActivity(context, {
+        id: replyToId,
+        type: "message",
+        text: resultText,
+        attachments: [],
+      });
+
+      localLogger.info(
+        {
+          conversationId,
+          messageId,
+          actionId,
+          approved,
+          replyToId,
+        },
+        "Tool approval completed and card disabled"
+      );
+    } catch (updateError) {
+      localLogger.error(
+        { error: updateError, replyToId },
+        "Failed to update approval card with result"
+      );
+    }
   }
 }
 
