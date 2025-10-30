@@ -18,7 +18,7 @@ export const CONFIG = {
   MICROSOFT_BOT_ID_SECRET: process.env.MICROSOFT_BOT_ID_SECRET,
 
   // Endpoints.
-  US_CONNECTOR_URL: "http://localhost:3002", // "https://connectors.dust.tt",
+  US_CONNECTOR_URL: "https://connectors.dust.tt",
   EU_CONNECTOR_URL: "https://eu.connectors.dust.tt",
 
   // Secret names.
