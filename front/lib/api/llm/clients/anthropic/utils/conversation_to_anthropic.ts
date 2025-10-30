@@ -102,9 +102,7 @@ function functionMessage(message: FunctionMessageTypeModel): MessageParam {
 function userMessage(message: UserMessageTypeModel): MessageParam {
   return {
     role: "user",
-    content: isString(message.content)
-      ? [{ type: "text", text: message.content }]
-      : message.content.map(userContentToParam),
+    content: message.content.map(userContentToParam),
   };
 }
 
