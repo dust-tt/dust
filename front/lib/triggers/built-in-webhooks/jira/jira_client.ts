@@ -172,40 +172,6 @@ export class JiraClient {
     return new Ok(allWebhooks);
   }
 
-  async deleteWebhook({
-    cloudId,
-    webhookId,
-  }: {
-    cloudId: string;
-    webhookId: string;
-  }): Promise<Result<void, Error>> {
-    const response = await fetch(
-      `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`,
-      {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          webhookIds: [parseInt(webhookId, 10)],
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return new Err(
-        new Error(
-          `Failed to delete webhook: ${response.statusText} - ${errorText}`
-        )
-      );
-    }
-
-    return new Ok(undefined);
-  }
-
   async deleteWebhooks({
     cloudId,
     webhookIds,

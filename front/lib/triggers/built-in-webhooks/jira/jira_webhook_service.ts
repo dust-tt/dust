@@ -195,9 +195,9 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
         continue;
       }
 
-      const deleteRes = await client.deleteWebhook({
+      const deleteRes = await client.deleteWebhooks({
         cloudId,
-        webhookId,
+        webhookIds: [parseInt(webhookId, 10)],
       });
 
       if (deleteRes.isErr()) {
