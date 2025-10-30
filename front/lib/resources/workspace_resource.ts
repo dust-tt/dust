@@ -98,7 +98,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   async updateWorkspaceSettings(
     updateableAttributes: Partial<
       Pick<
-        WorkspaceModel,
+        CreationAttributes<WorkspaceModel>,
         | "name"
         | "ssoEnforced"
         | "whiteListedProviders"
@@ -108,7 +108,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       >
     >
   ) {
-    return super.update(updateableAttributes);
+    return this.update(updateableAttributes);
   }
 
   async updateDomainAutoJoinEnabled({
