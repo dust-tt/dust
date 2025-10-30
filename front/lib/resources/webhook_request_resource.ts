@@ -151,7 +151,6 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       where: {
         status,
       },
-      limit,
     });
   }
 
