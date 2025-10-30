@@ -185,7 +185,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   microsoft_teams_bot: {
     description: "Microsoft Teams bot connector for workspace integration",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   microsoft_drive_mcp_server: {
     description: "Microsoft Drive MCP server",
