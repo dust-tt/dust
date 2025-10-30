@@ -1,13 +1,9 @@
 import type { CompletionEvent } from "@mistralai/mistralai/models/components";
 import { describe, expect, it } from "vitest";
 
-import { streamLLMEvents } from "../mistral_to_events";
+import { createAsyncGenerator } from "@app/lib/api/llm/utils";
 
-async function* createAsyncGenerator<T>(items: T[]): AsyncGenerator<T> {
-  for (const item of items) {
-    yield item;
-  }
-}
+import { streamLLMEvents } from "../mistral_to_events";
 
 describe("streamLLMEvents", () => {
   describe("when finish reason is stop", () => {

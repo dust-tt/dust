@@ -1,3 +1,5 @@
+import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
+import { isAnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import { GoogleLLM } from "@app/lib/api/llm/clients/google";
 import { isGoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
@@ -49,6 +51,15 @@ export async function getLLM(
 
   if (isOpenAIResponsesWhitelistedModelId(modelId)) {
     return new OpenAIResponsesLLM({
+      modelId,
+      temperature,
+      reasoningEffort,
+      bypassFeatureFlag,
+    });
+  }
+
+  if (isAnthropicWhitelistedModelId(modelId)) {
+    return new AnthropicLLM({
       modelId,
       temperature,
       reasoningEffort,

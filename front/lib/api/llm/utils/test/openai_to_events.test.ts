@@ -5,12 +5,7 @@ import { functionCallLLMEvents } from "@app/lib/api/llm/utils/test/fixtures/llm_
 import { reasoningLLMEvents } from "@app/lib/api/llm/utils/test/fixtures/llm_events/reasoning";
 import { functionCallModelEvents } from "@app/lib/api/llm/utils/test/fixtures/model_output/function_call";
 import { reasoningModelOutput } from "@app/lib/api/llm/utils/test/fixtures/model_output/reasoning";
-
-async function* createAsyncGenerator<T>(items: T[]): AsyncGenerator<T> {
-  for (const item of items) {
-    yield item;
-  }
-}
+import { createAsyncGenerator } from "@app/lib/api/llm/utils";
 
 const metadata = {
   clientId: "openai_responses",
