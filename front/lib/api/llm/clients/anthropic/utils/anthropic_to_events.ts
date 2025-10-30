@@ -17,14 +17,13 @@ import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { safeParseJSON } from "@app/types";
 
 type StreamState = {
-  currentBlockIsToolCall: boolean;
-  textAccumulator: string;
-  reasoningAccumulator: string;
-  toolAccumulator: {
+  accumulatorType: "text" | "reasoning" | "tool_use" | null;
+  accumulator: string;
+  toolInfo: {
     id: string;
     name: string;
-    input: string;
-  };
+  } | null;
+  currentBlockIndex: number | null;
 };
 
 export async function* streamLLMEvents(
@@ -32,14 +31,13 @@ export async function* streamLLMEvents(
   metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
   const state: StreamState = {
-    currentBlockIsToolCall: false,
-    textAccumulator: "",
-    reasoningAccumulator: "",
-    toolAccumulator: {
+    accumulatorType: null,
+    accumulator: "",
+    toolInfo: {
       id: "",
       name: "",
-      input: "",
     },
+    currentBlockIndex: null,
   };
 
   for await (const messageStreamEvent of messageStreamEvents) {
@@ -72,7 +70,7 @@ function* handleMessageStreamEvent(
       yield* handleContentBlockDelta(messageStreamEvent, state, metadata);
       break;
     case "content_block_stop":
-      yield* handleContentBlockStop(state, metadata);
+      yield* handleContentBlockStop(messageStreamEvent, state, metadata);
       break;
     case "message_delta":
       yield* handleMessageDelta(messageStreamEvent, metadata);
@@ -86,12 +84,12 @@ function handleContentBlockStart(
   event: Extract<MessageStreamEvent, { type: "content_block_start" }>,
   state: StreamState
 ): void {
+  state.currentBlockIndex = event.index;
   if (event.content_block.type === "tool_use") {
-    state.currentBlockIsToolCall = true;
-    state.toolAccumulator = {
+    state.accumulatorType = "tool_use";
+    state.toolInfo = {
       id: event.content_block.id,
       name: event.content_block.name,
-      input: "",
     };
   }
 }
@@ -101,17 +99,22 @@ function* handleContentBlockDelta(
   state: StreamState,
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
+  if (state.currentBlockIndex !== event.index) {
+    throw new Error(
+      `Mismatched content block index: expected ${state.currentBlockIndex}, got ${event.index}`
+    );
+  }
   switch (event.delta.type) {
     case "text_delta":
-      state.textAccumulator += event.delta.text;
+      state.accumulator += event.delta.text;
       yield textDelta(event.delta.text, metadata);
       break;
     case "thinking_delta":
-      state.reasoningAccumulator += event.delta.thinking;
+      state.accumulator += event.delta.thinking;
       yield reasoningDelta(event.delta.thinking, metadata);
       break;
     case "input_json_delta":
-      state.toolAccumulator.input += event.delta.partial_json;
+      state.accumulator += event.delta.partial_json;
       break;
     case "citations_delta":
     case "signature_delta":
@@ -123,13 +126,25 @@ function* handleContentBlockDelta(
 }
 
 function* handleContentBlockStop(
+  event: Extract<MessageStreamEvent, { type: "content_block_stop" }>,
   state: StreamState,
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
-  if (state.currentBlockIsToolCall) {
-    yield toolCall({ ...state.toolAccumulator, metadata });
+  if (state.currentBlockIndex !== event.index) {
+    throw new Error(
+      `Mismatched content block index: expected ${state.currentBlockIndex}, got ${event.index}`
+    );
   }
-  state.currentBlockIsToolCall = false;
+  if (state.accumulatorType === "tool_use") {
+    if (!state.toolInfo) {
+      throw new Error("Tool info is missing for tool use content block");
+    }
+    yield toolCall({ ...state.toolInfo, input: state.accumulator, metadata });
+  }
+  state.currentBlockIndex = null;
+  state.accumulatorType = null;
+  state.accumulator = "";
+  state.toolInfo = null;
 }
 
 function* handleMessageDelta(
@@ -175,11 +190,11 @@ function* yieldFinalEvents(
   state: StreamState,
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
-  if (state.textAccumulator.length > 0) {
-    yield textGenerated(state.textAccumulator, metadata);
+  if (state.accumulatorType === "text" && state.accumulator.length > 0) {
+    yield textGenerated(state.accumulator, metadata);
   }
-  if (state.reasoningAccumulator.length > 0) {
-    yield reasoningGenerated(state.reasoningAccumulator, metadata);
+  if (state.accumulatorType === "reasoning" && state.accumulator.length > 0) {
+    yield reasoningGenerated(state.accumulator, metadata);
   }
 }
 
