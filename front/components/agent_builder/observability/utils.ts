@@ -1,8 +1,15 @@
-import { TOOL_COLORS } from "@app/components/agent_builder/observability/constants";
+import {
+  OTHER_TOOLS_LABEL,
+  TOOL_COLORS,
+} from "@app/components/agent_builder/observability/constants";
 
 export type ValuesPayload = { values: Record<string, number> };
 
 export function getToolColor(toolName: string, topTools: string[]): string {
+  if (toolName === OTHER_TOOLS_LABEL) {
+    return "text-muted-foreground";
+  }
+
   const idx = topTools.indexOf(toolName);
   return TOOL_COLORS[(idx >= 0 ? idx : 0) % TOOL_COLORS.length];
 }

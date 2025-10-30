@@ -37,13 +37,15 @@ export function RoundedTopBarShape({
   let topTool: string | undefined;
   for (let idx = stackOrder.length - 1; idx >= 0; idx--) {
     const candidate = stackOrder[idx];
-    if ((payload.values[candidate] ?? 0) > 0) {
+    const value = payload.values[candidate] ?? 0;
+
+    if (value > 0) {
       topTool = candidate;
       break;
     }
   }
 
-  if (topTool !== toolName) {
+  if (!topTool || topTool !== toolName) {
     return <rect x={x} y={y} width={width} height={height} fill={fill} />;
   }
 
