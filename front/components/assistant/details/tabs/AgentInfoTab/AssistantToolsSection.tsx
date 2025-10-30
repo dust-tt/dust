@@ -67,9 +67,6 @@ export function AssistantToolsSection({
     ),
   ];
 
-  // TODO(20250626, aubin): Add model used for reasoning in details following
-  // regression when moving reasoning to MCP.
-
   const filteredModels = removeNulls(models);
   return (
     <div className="flex flex-col gap-5">
