@@ -688,7 +688,6 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
               auth,
               webhookRequest,
             });
-            successCount++;
             logger.info(
               { webhookRequestId: webhookRequest.id },
               "Webhook workflow launched successfully."
@@ -698,8 +697,8 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
               { webhookRequestId: webhookRequest.id },
               "[DRY RUN] Would launch workflow for this webhook request."
             );
-            successCount++;
           }
+          successCount++;
         } catch (error) {
           errorCount++;
           logger.error(
