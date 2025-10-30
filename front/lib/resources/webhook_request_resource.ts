@@ -130,36 +130,31 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     webhookSourceId: ModelId,
     options: ResourceFindOptions<WebhookRequestModel> = {}
   ): Promise<WebhookRequestResource[]> {
-    const resources = await this.baseFetch(auth, {
+    return this.baseFetch(auth, {
       ...options,
       where: {
         ...options.where,
         webhookSourceId,
       },
     });
-
-    return resources;
   }
 
-  static async listByStatus({
-    workspaceId,
-    status,
-    limit = 100,
-  }: {
-    workspaceId: ModelId;
-    status: "received" | "processed" | "failed";
-    limit?: number;
-  }): Promise<WebhookRequestResource[]> {
-    const res = await this.model.findAll({
+  static async listByStatus(
+    auth: Authenticator,
+    {
+      status,
+      limit = 100,
+    }: {
+      status: "received" | "processed" | "failed";
+      limit?: number;
+    }
+  ): Promise<WebhookRequestResource[]> {
+    return this.baseFetch(auth, {
       where: {
-        workspaceId,
         status,
       },
       limit,
-      order: [["createdAt", "DESC"]],
     });
-
-    return res.map((c) => new this(this.model, c.get()));
   }
 
   static async getWorkspaceIdsWithTooManyRequests({

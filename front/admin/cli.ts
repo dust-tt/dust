@@ -642,18 +642,8 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
       }
 
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
-      const workspace = await WorkspaceResource.fetchById(args.wId);
-      if (!workspace) {
-        throw new Error(`Workspace not found: wId='${args.wId}'`);
-      }
 
-      logger.info(
-        { workspaceId: args.wId, limit },
-        "Fetching failed webhook requests..."
-      );
-
-      const failedWebhooks = await WebhookRequestResource.listByStatus({
-        workspaceId: workspace.id,
+      const failedWebhooks = await WebhookRequestResource.listByStatus(auth, {
         status: "failed",
         limit,
       });
