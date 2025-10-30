@@ -115,14 +115,14 @@ Uses GCP Secret Manager for production:
 
 - `connectors-DUST_CONNECTORS_WEBHOOKS_SECRET` - Webhook secret
 - `SLACK_SIGNING_SECRET` - Slack app signing secret
-- `MICROSOFT_BOT_ID` - Microsoft Bot Framework App ID
+- `MICROSOFT_BOT_ID_SECRET` - Microsoft Bot Framework App ID
 
 For local development, set environment variables:
 
 ```bash
 export DUST_CONNECTORS_WEBHOOKS_SECRET="your-webhook-secret"
 export SLACK_SIGNING_SECRET="your-slack-signing-secret"
-export MICROSOFT_BOT_ID="your-bot-app-id"
+export MICROSOFT_BOT_ID_SECRET="your-bot-app-id"
 ```
 
 ## Benefits over Cloud Run

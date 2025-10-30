@@ -15,7 +15,7 @@ export const CONFIG = {
   SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
 
   // Microsoft Bot environment secrets.
-  MICROSOFT_BOT_ID: process.env.MICROSOFT_BOT_ID,
+  MICROSOFT_BOT_ID_SECRET: process.env.MICROSOFT_BOT_ID_SECRET,
 
   // Endpoints.
   US_CONNECTOR_URL: "http://localhost:3002", // "https://connectors.dust.tt",

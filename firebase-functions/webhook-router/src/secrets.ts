@@ -42,10 +42,10 @@ export class SecretManager {
       });
       return {
         euSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
+        microsoftBotId: CONFIG.MICROSOFT_BOT_ID_SECRET,
         slackSigningSecret: CONFIG.SLACK_SIGNING_SECRET ?? "",
         usSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
         webhookSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
-        microsoftBotId: CONFIG.MICROSOFT_BOT_ID,
       };
     }
 
@@ -71,6 +71,7 @@ export class SecretManager {
         usSecretResponse,
         euSecretResponse,
         slackSigningSecretResponse,
+        microsoftBotIdResponse,
       ] = await Promise.all([
         this.client.accessSecretVersion({
           name: `projects/${GCP_GLOBAL_PROJECT_ID}/secrets/${CONFIG.SECRET_NAME}/versions/latest`,
@@ -91,6 +92,8 @@ export class SecretManager {
 
       return {
         webhookSecret: webhookSecretResponse[0].payload?.data?.toString() || "",
+        microsoftBotId:
+          microsoftBotIdResponse[0].payload?.data?.toString() || "",
         usSecret: usSecretResponse[0].payload?.data?.toString() || "",
         euSecret: euSecretResponse[0].payload?.data?.toString() || "",
         slackSigningSecret:
