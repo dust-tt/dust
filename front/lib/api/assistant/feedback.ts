@@ -3,14 +3,13 @@ import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conve
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type {
   ConversationType,
   ConversationWithoutContentType,
   Result,
   UserType,
 } from "@app/types";
-import { ConversationError, Err, normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 /**
  * We retrieve the feedbacks for a whole conversation, not just a single message.
