@@ -1,4 +1,3 @@
-import type { estypes } from "@elastic/elasticsearch";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -8,6 +7,7 @@ import type {
   UsageMetricsPoint,
 } from "@app/lib/api/assistant/observability/usage_metrics";
 import { fetchUsageMetrics } from "@app/lib/api/assistant/observability/usage_metrics";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -24,22 +24,6 @@ export type GetUsageMetricsResponse = {
   interval: UsageMetricsInterval;
   points: UsageMetricsPoint[];
 };
-
-function buildAgentAnalyticsBaseQuery(
-  workspaceId: string,
-  agentId: string,
-  days: number
-): estypes.QueryDslQueryContainer {
-  return {
-    bool: {
-      filter: [
-        { term: { workspace_id: workspaceId } },
-        { term: { agent_id: agentId } },
-        { range: { timestamp: { gte: `now-${days}d/d` } } },
-      ],
-    },
-  };
-}
 
 async function handler(
   req: NextApiRequest,

@@ -155,7 +155,7 @@ export function CreateWebhookGithubConnection({
                 )}
             </Label>
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Select repositories to monitor for events
+              Choose which repositories can activate this trigger
             </p>
             <div className="mt-2 flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-1">
@@ -223,7 +223,7 @@ export function CreateWebhookGithubConnection({
                 )}
             </Label>
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Select organizations to monitor all their repositories
+              Choose which organizations can activate this trigger
             </p>
             <div className="mt-2 flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-1">

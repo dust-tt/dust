@@ -3,8 +3,8 @@ import {
   Message,
   MessageReaction,
 } from "@app/lib/models/assistant/conversation";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type {
+  ConversationError,
   ConversationMessageReactions,
   ConversationType,
   ConversationWithoutContentType,
@@ -12,7 +12,7 @@ import type {
   Result,
 } from "@app/types";
 import type { UserType } from "@app/types";
-import { ConversationError, Err, Ok } from "@app/types";
+import { Ok } from "@app/types";
 
 /**
  * We retrieve the reactions for a whole conversation, not just a single message.
@@ -24,10 +24,6 @@ export async function getMessageReactions(
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationError("conversation_access_restricted"));
   }
 
   const messages = await Message.findAll({

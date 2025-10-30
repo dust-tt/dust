@@ -61,8 +61,8 @@ export const CHAIN_OF_THOUGHT_META_PROMPT =
   "- Thinking = process tracking ONLY (not data logging)\n" +
   "- Keep bullets extremely brief\n" +
   "- Never mention tools or process in <response>\n" +
-  "- Answer naturally without revealing the lookup process";
-"- You must never output text outside of `<thinking>` tags between tool use." +
+  "- Answer naturally without revealing the lookup process" +
+  "- You must never output text outside of `<thinking>` tags between tool use." +
   " Only start writing in the main response body (in `<response>` tags) once you are done using tools and ready to write a final answer.";
 
 export const CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION = {

@@ -1,5 +1,14 @@
-import type { TimeFrame } from "@app/shared/lib/time_frame";
-import { parseTimeFrame } from "@app/shared/lib/time_frame";
+import {
+  isDataSourceFilesystemFindInputType,
+  isDataSourceFilesystemListInputType,
+  isIncludeInputType,
+  isSearchInputType,
+  isWebsearchInputType,
+  makeQueryTextForDataSourceSearch,
+  makeQueryTextForFind,
+  makeQueryTextForInclude,
+  makeQueryTextForList,
+} from "@app/shared/lib/tool_inputs";
 import { asDisplayName } from "@app/shared/lib/utils";
 import { ActionDetailsWrapper } from "@app/ui/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/ui/components/actions/mcp/details/MCPBrowseActionDetails";
@@ -49,61 +58,9 @@ export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
 
-export function renderRelativeTimeFrameForToolOutput(
-  relativeTimeFrame: TimeFrame | null
-): string {
-  return relativeTimeFrame
-    ? "over the last " +
-        (relativeTimeFrame.duration > 1
-          ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
-          : `${relativeTimeFrame.unit}`)
-    : "across all time periods";
-}
-
-export function renderTagsForToolOutput(
-  tagsIn?: string[],
-  tagsNot?: string[]
-): string {
-  const tagsInAsString =
-    tagsIn && tagsIn.length > 0 ? `, with labels ${tagsIn?.join(", ")}` : "";
-  const tagsNotAsString =
-    tagsNot && tagsNot.length > 0
-      ? `, excluding labels ${tagsNot?.join(", ")}`
-      : "";
-  return `${tagsInAsString}${tagsNotAsString}`;
-}
-
-function renderSearchNodeIds(nodeIds?: string[]): string {
-  return nodeIds && nodeIds.length > 0
-    ? `within ${nodeIds.length} different subtrees `
-    : "";
-}
-
-export function makeQueryResource({
-  query,
-  timeFrame,
-  tagsIn,
-  tagsNot,
-  nodeIds,
-}: {
-  query: string;
-  timeFrame: TimeFrame | null;
-  tagsIn?: string[];
-  tagsNot?: string[];
-  nodeIds?: string[];
-}): string {
-  const timeFrameAsString = renderRelativeTimeFrameForToolOutput(timeFrame);
-  const tagsAsString = renderTagsForToolOutput(tagsIn, tagsNot);
-  const nodeIdsAsString = renderSearchNodeIds(nodeIds);
-
-  return query
-    ? `Searching "${query}" ${nodeIdsAsString}${timeFrameAsString}${tagsAsString}.`
-    : `Searching ${timeFrameAsString}${tagsAsString}.`;
-}
-
 export function MCPActionDetails(props: MCPActionDetailsProps) {
   const {
-    action: { output, functionCallName, internalMCPServerName, params },
+    action: { functionCallName, internalMCPServerName, params },
     viewType,
   } = props;
 
@@ -115,24 +72,18 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     internalMCPServerName === "data_sources_file_system"
   ) {
     if (toolName === SEARCH_TOOL_NAME) {
-      const timeFrame = parseTimeFrame(params.relativeTimeFrame as string);
-      const query = makeQueryResource({
-        query: params.query as string,
-        timeFrame: timeFrame,
-        tagsIn: params.tagsIn as string[],
-        tagsNot: params.tagsNot as string[],
-        nodeIds: params.nodeIds as string[],
-      });
-
       return (
         <SearchResultDetails
           viewType={viewType}
-          defaultQuery={query}
           actionName={
             viewType === "conversation" ? "Searching data" : "Search data"
           }
-          actionOutput={output}
           visual={MagnifyingGlassIcon}
+          query={
+            isSearchInputType(params)
+              ? makeQueryTextForDataSourceSearch(params)
+              : null
+          }
         />
       );
     }
@@ -149,7 +100,13 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
               ? "Browsing data sources"
               : "Browse data sources"
           }
-          actionOutput={output}
+          query={
+            isDataSourceFilesystemFindInputType(params)
+              ? makeQueryTextForFind(params)
+              : isDataSourceFilesystemListInputType(params)
+                ? makeQueryTextForList(params)
+                : null
+          }
           visual={ActionDocumentTextIcon}
         />
       );
@@ -172,8 +129,10 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           actionName={
             viewType === "conversation" ? "Including data" : "Include data"
           }
-          actionOutput={output}
           visual={ClockIcon}
+          query={
+            isIncludeInputType(params) ? makeQueryTextForInclude(params) : null
+          }
         />
       );
     }
@@ -184,11 +143,10 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
       return (
         <SearchResultDetails
           viewType={viewType}
-          defaultQuery={params.query as string}
+          query={isWebsearchInputType(params) ? params.query : null}
           actionName={
             viewType === "conversation" ? "Searching the web" : "Web search"
           }
-          actionOutput={output}
           visual={GlobeAltIcon}
         />
       );

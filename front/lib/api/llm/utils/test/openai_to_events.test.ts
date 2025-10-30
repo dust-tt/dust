@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import * as openai_to_events from "@app/lib/api/llm/clients/openai/utils/openai_to_events";
-import { functionCallLLMEvents } from "@app/lib/api/llm/clients/openai/utils/test/fixtures/llm_events/function_call";
-import { reasoningLLMEvents } from "@app/lib/api/llm/clients/openai/utils/test/fixtures/llm_events/reasoning";
-import { functionCallModelEvents } from "@app/lib/api/llm/clients/openai/utils/test/fixtures/model_output/function_call";
-import { reasoningModelOutput } from "@app/lib/api/llm/clients/openai/utils/test/fixtures/model_output/reasoning";
+import * as openai_to_events from "@app/lib/api/llm/utils/openai_to_events";
+import { functionCallLLMEvents } from "@app/lib/api/llm/utils/test/fixtures/llm_events/function_call";
+import { reasoningLLMEvents } from "@app/lib/api/llm/utils/test/fixtures/llm_events/reasoning";
+import { functionCallModelEvents } from "@app/lib/api/llm/utils/test/fixtures/model_output/function_call";
+import { reasoningModelOutput } from "@app/lib/api/llm/utils/test/fixtures/model_output/reasoning";
 import { createAsyncGenerator } from "@app/lib/api/llm/utils";
 
 const metadata = {

@@ -136,6 +136,7 @@ export default function Chat({
       const parsed = responseFormat.trim()
         ? JSON.parse(responseFormat)
         : undefined;
+      // eslint-disable-next-line no-unused-expressions
       parsed
         ? (b.config.response_format = parsed)
         : delete b.config.response_format;

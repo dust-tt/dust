@@ -87,6 +87,7 @@ export function AttachmentCitation({
                 <CitationClose
                   onClick={(e) => {
                     e.stopPropagation();
+                    // eslint-disable-next-line no-unused-expressions
                     attachmentCitation.onRemove &&
                       attachmentCitation.onRemove();
                   }}

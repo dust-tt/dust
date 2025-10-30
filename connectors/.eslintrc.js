@@ -42,6 +42,7 @@ module.exports = {
     ],
     "@typescript-eslint/no-unused-vars": "error",
     "@typescript-eslint/return-await": ["error", "in-try-catch"],
+    "no-unused-expressions": "error",
   },
   overrides: [
     {

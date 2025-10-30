@@ -22,7 +22,7 @@ import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/config
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import config from "@app/lib/api/config";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import type { DustError } from "@app/lib/error";
 import {
@@ -1175,12 +1175,6 @@ export async function filterAgentsByRequestedSpaces(
   auth: Authenticator,
   agents: AgentConfiguration[]
 ) {
-  const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
-  const hasRequestedSpaceIdsFF = featureFlags.includes(
-    "use_requested_space_ids"
-  );
-
   const uniqSpaceIds = Array.from(
     new Set(agents.flatMap((agent) => agent.requestedSpaceIds))
   );
@@ -1205,47 +1199,5 @@ export async function filterAgentsByRequestedSpaces(
     )
   );
 
-  if (hasRequestedSpaceIdsFF) {
-    return allowedBySpaceIds;
-  }
-
-  const allowedByGroupIds = validAgents.filter((agent) =>
-    auth.canRead(
-      Authenticator.createResourcePermissionsFromGroupIds(
-        agent.requestedGroupIds.map((groupIds) =>
-          groupIds.map((groupId) =>
-            GroupResource.modelIdToSId({
-              id: groupId,
-              workspaceId: workspace.id,
-            })
-          )
-        )
-      )
-    )
-  );
-
-  if (allowedByGroupIds.length !== allowedBySpaceIds.length) {
-    const allowedByGroupIdsOnly = allowedByGroupIds.filter(
-      (groupAgent) =>
-        !allowedBySpaceIds.some(
-          (spaceAgent) => spaceAgent.sId === groupAgent.sId
-        )
-    );
-    const allowedBySpaceIdsOnly = allowedBySpaceIds.filter(
-      (spaceAgent) =>
-        !allowedByGroupIds.some(
-          (groupAgent) => groupAgent.sId === spaceAgent.sId
-        )
-    );
-    logger.warn(
-      {
-        workspaceId: workspace.sId,
-        allowedByGroupIdsOnly: allowedByGroupIdsOnly.map((agent) => agent.sId),
-        allowedBySpaceIdsOnly: allowedBySpaceIdsOnly.map((agent) => agent.sId),
-      },
-      "[REQUESTED_SPACE_IDS] Allowed by group ids and space ids differ for agents"
-    );
-  }
-
-  return allowedByGroupIds;
+  return allowedBySpaceIds;
 }

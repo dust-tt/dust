@@ -1,10 +1,14 @@
-import { Button, Label, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  CloudArrowLeftRightIcon,
+  Label,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { getIcon } from "@app/components/resources/resources_icons";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
-import { setupOAuthConnection } from "@app/types";
+import { normalizeError, setupOAuthConnection } from "@app/types";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
@@ -67,14 +71,14 @@ export function CreateWebhookSourceWithProviderForm({
         sendNotification({
           type: "success",
           title: `Connected to ${kindName}`,
-          description: "Fetching your repositories and organizations...",
+          description: "Fetching additional data for configuration...",
         });
       }
     } catch (error) {
       sendNotification({
         type: "error",
         title: `Failed to connect to ${kindName}`,
-        description: error instanceof Error ? error.message : "Unknown error",
+        description: normalizeError(error).message,
       });
     } finally {
       setIsConnectingToProvider(false);
@@ -84,16 +88,15 @@ export function CreateWebhookSourceWithProviderForm({
   const buttonLabel = connection
     ? hasConnectionPage
       ? `Edit connection`
-      : `Connected to ${kindName}`
-    : `Connect to ${kindName}`;
+      : `Connected`
+    : `Connect`;
 
   return (
     <div className="flex flex-col space-y-4">
       <div>
         <Label>{kindName} Connection</Label>
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Connect your {kindName} account to select repositories and
-          organizations to follow.
+          {kindName} connection is required
         </p>
         {OAuthExtraConfigInput && (
           <div className="mt-4">
@@ -109,7 +112,7 @@ export function CreateWebhookSourceWithProviderForm({
           <Button
             variant={"outline"}
             label={buttonLabel}
-            icon={getIcon(preset.icon)}
+            icon={CloudArrowLeftRightIcon}
             // if we are not connected, click starts the OAuth flow
             // if we are connected with a connection page URL, click opens that page
             // otherwise button is disabled

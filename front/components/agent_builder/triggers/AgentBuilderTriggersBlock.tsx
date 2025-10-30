@@ -19,7 +19,6 @@ import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard"
 import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { TriggerViewsSheet } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
@@ -126,7 +125,7 @@ export function AgentBuilderTriggersBlock({
       ...trigger,
       // Assign a temporary sId for frontend identification until it's created on the backend.
       // The sId is needed to be able to update a freshly created trigger, not yet in DB.
-      sId: generateRandomModelSId(TEMP_TRIGGER_PREFIX),
+      sId: TEMP_TRIGGER_PREFIX + "_" + crypto.randomUUID().slice(0, 8),
     });
   };
 

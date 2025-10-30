@@ -7,8 +7,8 @@ export function RoundedTopBarShape({
   height,
   fill,
   payload,
-  isTopForPayload,
-  seriesIdx,
+  toolName,
+  stackOrder,
 }: {
   x?: number;
   y?: number;
@@ -16,8 +16,8 @@ export function RoundedTopBarShape({
   height?: number;
   fill?: string;
   payload?: ValuesPayload;
-  isTopForPayload: (p: ValuesPayload, i: number) => boolean;
-  seriesIdx: number;
+  toolName: string;
+  stackOrder: string[];
 }) {
   if (
     typeof x !== "number" ||
@@ -28,10 +28,26 @@ export function RoundedTopBarShape({
   ) {
     return <g />;
   }
-  const r = 4;
-  if (!isTopForPayload(payload, seriesIdx)) {
+
+  const toolValue = payload.values[toolName] ?? 0;
+  if (toolValue === 0) {
     return <rect x={x} y={y} width={width} height={height} fill={fill} />;
   }
+
+  let topTool: string | undefined;
+  for (let idx = stackOrder.length - 1; idx >= 0; idx--) {
+    const candidate = stackOrder[idx];
+    if ((payload.values[candidate] ?? 0) > 0) {
+      topTool = candidate;
+      break;
+    }
+  }
+
+  if (topTool !== toolName) {
+    return <rect x={x} y={y} width={width} height={height} fill={fill} />;
+  }
+
+  const r = 4;
   const right = x + width;
   const bottom = y + height;
   const d = `M ${x} ${bottom} L ${x} ${y + r} A ${r} ${r} 0 0 1 ${x + r} ${y} L ${right - r} ${y} A ${r} ${r} 0 0 1 ${right} ${y + r} L ${right} ${bottom} Z`;

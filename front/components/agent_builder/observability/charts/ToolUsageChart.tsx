@@ -18,7 +18,7 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
-import { ToolUsageTooltip } from "@app/components/agent_builder/observability/charts/ToolUsageTooltip";
+import { ChartsTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import { useToolUsageData } from "@app/components/agent_builder/observability/hooks";
 import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
@@ -30,10 +30,7 @@ import type {
   ToolChartModeType,
 } from "@app/components/agent_builder/observability/types";
 import { isToolChartMode } from "@app/components/agent_builder/observability/types";
-import {
-  getToolColor,
-  makeIsTopForPayload,
-} from "@app/components/agent_builder/observability/utils";
+import { getToolColor } from "@app/components/agent_builder/observability/utils";
 
 export function ToolUsageChart({
   workspaceId,
@@ -65,14 +62,9 @@ export function ToolUsageChart({
     [topTools]
   );
 
-  const isTopForPayload = useMemo(
-    () => makeIsTopForPayload(topTools),
-    [topTools]
-  );
-
   const renderToolUsageTooltip = useCallback(
     (payload: TooltipContentProps<number, string>) => (
-      <ToolUsageTooltip {...payload} mode={mode} topTools={topTools} />
+      <ChartsTooltip {...payload} mode={mode} topTools={topTools} />
     ),
     [mode, topTools]
   );
@@ -151,7 +143,7 @@ export function ToolUsageChart({
               boxShadow: "none",
             }}
           />
-          {topTools.map((toolName, idx) => (
+          {topTools.map((toolName) => (
             <Bar
               key={toolName}
               dataKey={(row: ChartDatum) => row.values[toolName] ?? 0}
@@ -160,10 +152,7 @@ export function ToolUsageChart({
               className={getToolColor(toolName, topTools)}
               name={toolName}
               shape={
-                <RoundedTopBarShape
-                  seriesIdx={idx}
-                  isTopForPayload={isTopForPayload}
-                />
+                <RoundedTopBarShape toolName={toolName} stackOrder={topTools} />
               }
             />
           ))}

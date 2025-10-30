@@ -1,8 +1,8 @@
-import type { estypes } from "@elastic/elasticsearch";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { fetchVersionMarkers } from "@app/lib/api/assistant/observability/version_markers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -19,22 +19,6 @@ const QuerySchema = z.object({
 export type GetVersionMarkersResponse = {
   versionMarkers: AgentVersionMarker[];
 };
-
-function buildAgentAnalyticsBaseQuery(
-  workspaceId: string,
-  agentId: string,
-  days: number
-): estypes.QueryDslQueryContainer {
-  return {
-    bool: {
-      filter: [
-        { term: { workspace_id: workspaceId } },
-        { term: { agent_id: agentId } },
-        { range: { timestamp: { gte: `now-${days}d/d` } } },
-      ],
-    },
-  };
-}
 
 async function handler(
   req: NextApiRequest,

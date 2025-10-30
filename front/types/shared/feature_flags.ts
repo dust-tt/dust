@@ -185,7 +185,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   microsoft_teams_bot: {
     description: "Microsoft Teams bot connector for workspace integration",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   microsoft_drive_mcp_server: {
     description: "Microsoft Drive MCP server",
@@ -212,11 +212,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
-  },
-  dust_default_haiku_feature: {
-    description:
-      "Use Claude 4.5 Haiku as the default model for the @dust global agent",
-    stage: "on_demand",
   },
   llm_router_direct_requests: {
     description: "Use direct LLM call over Dust app run in a conversation.",

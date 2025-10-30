@@ -23,7 +23,6 @@ import type {
   WhitelistableFeature,
 } from "@app/types";
 import {
-  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
@@ -72,12 +71,6 @@ export function _getDustGlobalAgent(
     }
 
     if (isProviderWhitelisted(owner, "anthropic")) {
-      // When the `dust_default_haiku_feature` feature flag is enabled for this workspace,
-      // use Claude 4.5 Haiku as the default model for the @dust global agent instead of Sonnet.
-      if (featureFlags.includes("dust_default_haiku_feature")) {
-        return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
-      }
-
       return CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG;
     }
 
@@ -90,6 +83,7 @@ export function _getDustGlobalAgent(
         modelId: modelConfiguration.modelId,
         temperature: 0.7,
         reasoningEffort: modelConfiguration.defaultReasoningEffort,
+        promptCaching: modelConfiguration.supportsPromptCaching,
       }
     : dummyModelConfiguration;
 

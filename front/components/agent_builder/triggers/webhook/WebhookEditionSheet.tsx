@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
+  Separator,
   SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
@@ -39,7 +40,7 @@ function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
   } = useController({ control, name: "webhook.name" });
 
   return (
-    <div className="space-y-1">
+    <div className="flex-grow space-y-1">
       <Label htmlFor="webhook-name">Name</Label>
       <Input
         id="webhook-name"
@@ -69,19 +70,14 @@ function WebhookEditionStatusToggle({
   return (
     <div className="space-y-1">
       <Label>Status</Label>
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        When disabled, the trigger will not run.
-      </p>
       <div className="flex flex-row items-center gap-2">
+        <span className="w-16">{enabled ? "Enabled" : "Disabled"}</span>
         <SliderToggle
           size="xs"
           disabled={!isEditor}
           selected={enabled}
           onClick={() => setEnabled(!enabled)}
         />
-        {enabled
-          ? "The trigger is currently enabled"
-          : "The trigger is currently disabled"}
       </div>
     </div>
   );
@@ -110,9 +106,9 @@ function WebhookEditionEventSelector({
 
   return (
     <div className="flex flex-col space-y-1">
-      <Label htmlFor="webhook-event">Event</Label>
+      <Label htmlFor="webhook-event">Listen for</Label>
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Select the event that will trigger this webhook.
+        Type of event that will start this agent.
       </p>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -129,7 +125,7 @@ function WebhookEditionEventSelector({
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuLabel label="Select event" />
+          <DropdownMenuLabel label="Select" />
           {availableEvents.map((event) => (
             <DropdownMenuItem
               key={event.value}
@@ -158,20 +154,14 @@ function WebhookEditionIncludePayload({
   } = useController({ control, name: "webhook.includePayload" });
 
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex flex-col space-y-1">
-        <Label>Include payload</Label>
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          When enabled, the webhook payload will be included in the agent's
-          context.
-        </p>
-      </div>
+    <div className="flex items-center gap-2">
       <Checkbox
         size="sm"
         checked={includePayload}
         onClick={() => setIncludePayload(!includePayload)}
         disabled={!isEditor}
       />
+      <Label>Include webhook payload</Label>
     </div>
   );
 }
@@ -190,7 +180,7 @@ function WebhookEditionMessageInput({
     <div className="space-y-1">
       <Label htmlFor="webhook-prompt">Message (Optional)</Label>
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Add context or instructions for the agent when the trigger runs.
+        Message for the agent when the trigger runs.
       </p>
       <TextArea
         id="webhook-prompt"
@@ -245,10 +235,11 @@ export function WebhookEditionSheetContent({
           .
         </ContentMessage>
       )}
-      <div className="space-y-5">
-        <WebhookEditionNameInput isEditor={isEditor} />
-
-        <WebhookEditionStatusToggle isEditor={isEditor} />
+      <div className="space-y-8">
+        <div className="flex flex-row items-center justify-between gap-4">
+          <WebhookEditionNameInput isEditor={isEditor} />
+          <WebhookEditionStatusToggle isEditor={isEditor} />
+        </div>
 
         <WebhookEditionEventSelector
           isEditor={isEditor}
@@ -264,9 +255,12 @@ export function WebhookEditionSheetContent({
           workspace={owner}
         />
 
-        <WebhookEditionIncludePayload isEditor={isEditor} />
+        <Separator />
 
-        <WebhookEditionMessageInput isEditor={isEditor} />
+        <div className="space-y-4">
+          <WebhookEditionMessageInput isEditor={isEditor} />
+          <WebhookEditionIncludePayload isEditor={isEditor} />
+        </div>
 
         {trigger && (
           <div className="space-y-1">

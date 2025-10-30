@@ -307,6 +307,131 @@ export function createErrorAdaptiveCard({
   };
 }
 
+/**
+ * Creates the basic Adaptive Card for tool execution approval for everyone (read-only, no actions)
+ */
+export function createBasicToolApprovalAdaptiveCard(data: {
+  agentName: string;
+  toolName: string;
+  conversationId: string;
+  messageId: string;
+  actionId: string;
+  workspaceId: string;
+  microsoftBotMessageId: number;
+  userAadObjectId: string;
+}): Partial<Activity> {
+  const basicCard: AdaptiveCard = {
+    type: "AdaptiveCard",
+    $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+    version: "1.4",
+    refresh: {
+      action: {
+        type: "Action.Execute",
+        title: "Tool execution approval",
+        verb: "toolExecutionApproval",
+        data,
+      },
+      userIds: [data.userAadObjectId],
+    },
+    body: [
+      {
+        type: "TextBlock",
+        text: "Tool validation Required",
+        weight: "Bolder",
+        size: "Large",
+        spacing: "Medium",
+      },
+      {
+        type: "Container",
+        spacing: "Medium",
+        items: [
+          {
+            type: "TextBlock",
+            text: `Agent **@${data.agentName}** is requesting permission to use tool **${data.toolName}**`,
+            wrap: true,
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "_Waiting for user approval..._",
+            wrap: true,
+            spacing: "Small",
+            size: "Small",
+            color: "Accent",
+            isSubtle: true,
+          },
+        ],
+      },
+    ],
+  };
+
+  return {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: {
+          ...basicCard,
+        },
+      },
+    ],
+  };
+}
+
+/**
+ * Creates an interactive Adaptive Card for tool execution approval for the original sender (with buttons)
+ */
+export function createInteractiveToolApprovalAdaptiveCard(data: {
+  agentName: string;
+  toolName: string;
+  conversationId: string;
+  messageId: string;
+  actionId: string;
+  workspaceId: string;
+  microsoftBotMessageId: number;
+}): AdaptiveCard {
+  return {
+    type: "AdaptiveCard",
+    $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+    version: "1.4",
+    body: [
+      {
+        type: "TextBlock",
+        text: "Tool validation Required",
+        weight: "Bolder",
+        size: "Large",
+        spacing: "Medium",
+      },
+      {
+        type: "Container",
+        spacing: "Medium",
+        items: [
+          {
+            type: "TextBlock",
+            text: `Agent **@${data.agentName}** is requesting permission to use tool **${data.toolName}**`,
+            wrap: true,
+            spacing: "Small",
+          },
+        ],
+      },
+    ],
+    actions: [
+      {
+        type: "Action.Execute",
+        title: "Approve",
+        verb: "approve_tool",
+        data,
+      },
+      {
+        type: "Action.Execute",
+        title: "Reject",
+        verb: "reject_tool",
+        data,
+      },
+    ],
+  };
+}
+
 function createFooterText({
   assistantName,
   conversationUrl,

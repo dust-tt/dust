@@ -419,13 +419,16 @@ const readSSEFromPostRequest = async ({
               | { type: "error"; error: string };
 
             if (parsed.type === "delta") {
+              // eslint-disable-next-line no-unused-expressions
               onTranscribeDelta && onTranscribeDelta(parsed.delta);
             } else if (parsed.type === "fullTranscript") {
+              // eslint-disable-next-line no-unused-expressions
               onTranscribeComplete &&
                 onTranscribeComplete(parsed.fullTranscript);
 
               doneStreaming = true;
             } else if (parsed.type === "error") {
+              // eslint-disable-next-line no-unused-expressions
               onError && onError(normalizeError(parsed.error));
               doneStreaming = true;
             }

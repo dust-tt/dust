@@ -112,7 +112,7 @@ export async function purgeConversationsBatchActivity({
           }
         },
         {
-          concurrency: 4,
+          concurrency: 2,
         }
       );
 
@@ -211,7 +211,7 @@ export async function purgeAgentConversationsBatchActivity({
       }
     },
     {
-      concurrency: 4,
+      concurrency: 2,
     }
   );
 

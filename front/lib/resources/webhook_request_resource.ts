@@ -59,12 +59,15 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     });
   }
 
-  async markRelatedTrigger(
-    this: WebhookRequestResource,
-    trigger: TriggerType,
-    status: WebhookRequestTriggerStatus,
-    errorMessage?: string
-  ) {
+  async markRelatedTrigger({
+    trigger,
+    status,
+    errorMessage,
+  }: {
+    trigger: TriggerType;
+    status: WebhookRequestTriggerStatus;
+    errorMessage?: string;
+  }) {
     await WebhookRequestTriggerModel.create({
       workspaceId: this.workspaceId,
       webhookRequestId: this.id,
@@ -78,15 +81,11 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     blob: CreationAttributes<WebhookRequestModel>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WebhookRequestResource, Error>> {
-    try {
-      const webhookRequest = await WebhookRequestModel.create(blob, {
-        transaction,
-      });
+    const webhookRequest = await this.model.create(blob, {
+      transaction,
+    });
 
-      return new Ok(new this(WebhookRequestModel, webhookRequest.get()));
-    } catch (error) {
-      return new Err(error as Error);
-    }
+    return new Ok(new this(this.model, webhookRequest.get()));
   }
 
   private static async baseFetch(
@@ -108,7 +107,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     return res.map((c) => new this(this.model, c.get()));
   }
 
-  static async fetchById(
+  static async fetchByModelIdWithAuth(
     auth: Authenticator,
     id: ModelId
   ): Promise<WebhookRequestResource | null> {

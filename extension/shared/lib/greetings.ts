@@ -26,7 +26,6 @@ const GREETINGS = [
   "Great to meet you, [Name]! 🤝",
   "Pleased to see you, [Name]! 😁",
   "Cheers, [Name]! 🥂",
-  "Top of the morning, [Name]! 🍀",
   "Happy to chat, [Name]! 💬",
   "What's happening, [Name]? 🎈",
   "How's life treating you, [Name]? 🎠",

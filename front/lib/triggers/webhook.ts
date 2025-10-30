@@ -16,7 +16,7 @@ import {
 import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, errorToString, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WebhookSourceForAdminType } from "@app/types/triggers/webhooks";
 
@@ -34,7 +34,7 @@ export const checkSignature = ({
   algorithm: "sha1" | "sha256" | "sha512";
   secret: string;
   headers: Record<string, string>;
-  body: any;
+  body: unknown;
 }): Result<
   void,
   Omit<DustError, "code"> & { code: "invalid_signature_error" }
@@ -148,13 +148,13 @@ export const processWebhookRequest = async (
 
   const webhookRequest = webhookRequestRes.value;
 
-  try {
-    const gcsPath = WebhookRequestResource.getGcsPath({
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      webhookSourceId: webhookSource.id,
-      webRequestId: webhookRequest.id,
-    });
+  const gcsPath = WebhookRequestResource.getGcsPath({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    webhookSourceId: webhookSource.id,
+    webRequestId: webhookRequest.id,
+  });
 
+  try {
     // Store in GCS
     await bucket.uploadRawContentToBucket({
       content,
@@ -166,9 +166,17 @@ export const processWebhookRequest = async (
       auth,
       webhookRequest,
     });
-  } catch (error) {
-    await webhookRequest.markAsFailed(errorToString(error));
-    return new Err(error as Error);
+  } catch (error: unknown) {
+    const normalizedError = normalizeError(error);
+    await webhookRequest.markAsFailed(normalizedError.message);
+    logger.error(
+      {
+        webhookRequestId: webhookRequest.id,
+        error,
+      },
+      "Failed to launch agent workflow on webhook request"
+    );
+    return new Err(normalizedError);
   }
 };
 
@@ -221,13 +229,13 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
           }
         | undefined;
 
-      try {
-        const gcsPath = WebhookRequestResource.getGcsPath({
-          workspaceId: workspace.sId,
-          webhookSourceId: wrt.webhookRequest.webhookSourceId,
-          webRequestId: wrt.webhookRequest.id,
-        });
+      const gcsPath = WebhookRequestResource.getGcsPath({
+        workspaceId: workspace.sId,
+        webhookSourceId: wrt.webhookRequest.webhookSourceId,
+        webRequestId: wrt.webhookRequest.id,
+      });
 
+      try {
         const file = bucket.file(gcsPath);
         const [content] = await file.download();
         if (content) {

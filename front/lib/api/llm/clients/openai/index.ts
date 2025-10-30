@@ -7,17 +7,14 @@ import {
   isOpenAIResponsesWhitelistedReasoningModelId,
   REASONING_EFFORT_TO_OPENAI_REASONING,
 } from "@app/lib/api/llm/clients/openai/types";
-import {
-  toInput,
-  toTool,
-} from "@app/lib/api/llm/clients/openai/utils/conversation_to_openai";
-import { streamLLMEvents } from "@app/lib/api/llm/clients/openai/utils/openai_to_events";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
 } from "@app/lib/api/llm/types/options";
+import { toInput, toTool } from "@app/lib/api/llm/utils/conversation_to_openai";
+import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_to_events";
 import type { ModelConversationTypeMultiActions } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
