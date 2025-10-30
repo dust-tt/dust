@@ -34,7 +34,6 @@ export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
     ];
 
     if (useCase === "webhooks") {
-      scopes.push("read:jira-work");
       scopes.push("manage:jira-webhook");
     }
 
