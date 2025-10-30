@@ -28,7 +28,7 @@ export const CONFIG = {
   SLACK_SIGNING_SECRET_NAME: "SLACK_SIGNING_SECRET",
 
   // Microsoft Bot related secrets.
-  MICROSOFT_BOT_ID_SECRET_NAME: "MICROSOFT_BOT_ID",
+  MICROSOFT_BOT_ID_SECRET_NAME: "MICROSOFT_BOT_ID_SECRET",
 } as const;
 
 // Runtime getters for Firebase params.
