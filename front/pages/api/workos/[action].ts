@@ -174,7 +174,9 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       sessionData: sealedSession,
       organizationId,
       authenticationMethod,
-      region: decodedPayload["https://dust.tt/region"],
+      region:
+        decodedPayload["https://dust.tt/region"] ||
+        multiRegionsConfig.getCurrentRegion(),
       workspaceId: decodedPayload["https://dust.tt/workspaceId"],
     };
 

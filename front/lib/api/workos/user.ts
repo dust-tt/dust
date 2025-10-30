@@ -30,7 +30,7 @@ export type SessionCookie = {
   sessionData: string;
   organizationId?: string;
   authenticationMethod: WorkOSAuthenticationResponse["authenticationMethod"];
-  region?: RegionType;
+  region: RegionType;
   workspaceId: string;
 };
 
