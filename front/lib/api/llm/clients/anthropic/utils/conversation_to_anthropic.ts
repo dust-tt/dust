@@ -115,13 +115,9 @@ function assistantMessage(
 ): MessageParam {
   const contents = message.contents.map(assistantContentToParam);
 
-  // Put "tool_use" blocks at the end since "tool_result" must immediately follow them
-  const nonToolUse = contents.filter((c) => c.type !== "tool_use");
-  const toolUse = contents.filter((c) => c.type === "tool_use");
-
   return {
     role: "assistant",
-    content: [...nonToolUse, ...toolUse],
+    content: contents,
   };
 }
 
