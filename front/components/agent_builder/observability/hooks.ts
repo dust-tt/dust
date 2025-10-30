@@ -62,6 +62,7 @@ function createChartData(
       Object.values(item.tools).reduce((acc, tool) => acc + tool.count, 0);
 
     const values: Record<string, number> = {};
+    let topToolsCount = 0;
     for (const toolName of displayTools) {
       if (toolName === OTHER_TOOLS_LABEL) {
         continue;
@@ -71,17 +72,12 @@ function createChartData(
       const count = toolData?.count ?? 0;
       if (count > 0) {
         values[toolName] = calculatePercentage(count, total);
+        topToolsCount += count;
       }
     }
 
     if (includeOthers) {
-      let othersCount = 0;
-      for (const [toolName, toolData] of Object.entries(item.tools)) {
-        if (!displayTools.includes(toolName)) {
-          othersCount += toolData.count;
-        }
-      }
-
+      const othersCount = Math.max(0, total - topToolsCount);
       if (othersCount > 0) {
         values[OTHER_TOOLS_LABEL] = calculatePercentage(othersCount, total);
       }
