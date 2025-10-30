@@ -737,6 +737,18 @@ impl LocalTable {
             }
             let schema = self.compute_schema(databases_store).await?;
 
+            // If we currently have no schema and the computed schema is empty, do not set it.
+            // This should not normally happen, except in two cases:
+            // 1. A table is created, but no rows are upserted
+            // 2. We're doing a relocation, and did not copy the GCS buckets
+            if self.table.schema.is_none() && schema.is_empty() {
+                warn!(
+                    table_id = self.table.table_id(),
+                    "DSSTRUCTSTAT [schema] Computed empty schema; not setting."
+                );
+                return Ok(None);
+            }
+
             store
                 .update_data_source_table_schema(
                     &self.table.project,
