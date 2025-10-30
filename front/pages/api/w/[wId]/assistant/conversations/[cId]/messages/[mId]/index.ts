@@ -42,10 +42,9 @@ async function handler(
     });
   }
 
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(auth, cId);
+  const conversation = await ConversationResource.fetchById(auth, cId);
 
-  if (conversationRes.isErr()) {
+  if (!conversation) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -60,7 +59,7 @@ async function handler(
       // Verify the message exists.
       const message = await fetchMessageInConversation(
         auth,
-        conversationRes.value,
+        conversation.toJSON(),
         mId
       );
 
@@ -76,7 +75,7 @@ async function handler(
 
       const renderedMessages = await batchRenderMessages(
         auth,
-        cId,
+        conversation,
         [message],
         "full"
       );

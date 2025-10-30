@@ -20,7 +20,6 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -590,117 +589,99 @@ describe("ConversationResource", () => {
       }
     });
 
-    describe("with feature flag OFF", () => {
-      it("should return all conversations regardless of permissions", async () => {
-        const allConversations = await ConversationResource.listAll(userAuth);
+    it("should filter conversations based on user permissions", async () => {
+      const userConversations = await ConversationResource.listAll(userAuth);
+      const adminConversations = await ConversationResource.listAll(adminAuth);
 
-        const conversationIds = allConversations.map((c) => c.sId);
-        expect(conversationIds).toContain(conversations.accessible[0]);
-        expect(conversationIds).toContain(conversations.restricted[0]);
+      const userConvoIds = userConversations.map((c) => c.sId);
+      const adminConvoIds = adminConversations.map((c) => c.sId);
+
+      // Regular user should only see accessible conversations.
+      expect(userConvoIds).toContain(conversations.accessible[0]);
+      expect(userConvoIds).not.toContain(conversations.restricted[0]);
+
+      // Admin should see all conversations.
+      expect(adminConvoIds).toContain(conversations.accessible[0]);
+      expect(adminConvoIds).toContain(conversations.restricted[0]);
+    });
+
+    it("should handle conversations with no requested spaces", async () => {
+      const emptySpaceConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [], // No spaces requested.
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const allConversations = await ConversationResource.listAll(userAuth);
+      const conversationIds = allConversations.map((c) => c.sId);
+
+      expect(conversationIds).toContain(emptySpaceConvo.sId);
+
+      // Clean up.
+      await destroyConversation(adminAuth, {
+        conversationId: emptySpaceConvo.sId,
       });
     });
 
-    describe("with feature flag ON", () => {
-      beforeEach(async () => {
-        await FeatureFlagFactory.basic("use_requested_space_ids", workspace);
+    it("should handle conversations with multiple space IDs", async () => {
+      const multiSpaceConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id, restrictedSpace.id], // Both global and restricted spaces.
+        messagesCreatedAt: [dateFromDaysAgo(5)],
       });
 
-      it("should filter conversations based on user permissions", async () => {
-        const userConversations = await ConversationResource.listAll(userAuth);
-        const adminConversations =
-          await ConversationResource.listAll(adminAuth);
+      const userConversations = await ConversationResource.listAll(userAuth);
+      const adminConversations = await ConversationResource.listAll(adminAuth);
 
-        const userConvoIds = userConversations.map((c) => c.sId);
-        const adminConvoIds = adminConversations.map((c) => c.sId);
+      const userConvoIds = userConversations.map((c) => c.sId);
+      const adminConvoIds = adminConversations.map((c) => c.sId);
 
-        // Regular user should only see accessible conversations.
-        expect(userConvoIds).toContain(conversations.accessible[0]);
-        expect(userConvoIds).not.toContain(conversations.restricted[0]);
+      // Regular user needs access to ALL spaces, so shouldn't see this conversation.
+      expect(userConvoIds).not.toContain(multiSpaceConvo.sId);
 
-        // Admin should see all conversations.
-        expect(adminConvoIds).toContain(conversations.accessible[0]);
-        expect(adminConvoIds).toContain(conversations.restricted[0]);
+      // Admin should see it.
+      expect(adminConvoIds).toContain(multiSpaceConvo.sId);
+
+      // Clean up.
+      await destroyConversation(adminAuth, {
+        conversationId: multiSpaceConvo.sId,
+      });
+    });
+
+    it("should filter out conversations referencing deleted spaces", async () => {
+      // Create a regular space and a conversation referencing it.
+      const tempSpace = await SpaceFactory.regular(workspace);
+      const res = await tempSpace.addMembers(adminAuth, {
+        userIds: [adminAuth.getNonNullableUser().sId],
+      });
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+      assert(res.isOk(), "Failed to add member to temp space");
+
+      const tempSpaceConvo = await ConversationFactory.create(auth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [tempSpace.id], // Reference the space that will be "deleted".
+        messagesCreatedAt: [dateFromDaysAgo(5)],
       });
 
-      it("should handle conversations with no requested spaces", async () => {
-        const emptySpaceConvo = await ConversationFactory.create(adminAuth, {
-          agentConfigurationId: agents[0].sId,
-          requestedSpaceIds: [], // No spaces requested.
-          messagesCreatedAt: [dateFromDaysAgo(5)],
-        });
+      // Verify conversation is initially visible.
+      let allConversations = await ConversationResource.listAll(auth);
+      let conversationIds = allConversations.map((c) => c.sId);
+      expect(conversationIds).toContain(tempSpaceConvo.sId);
 
-        const allConversations = await ConversationResource.listAll(userAuth);
-        const conversationIds = allConversations.map((c) => c.sId);
+      // Simulate space deletion by deleting the space from database.
+      await tempSpace.delete(auth, { hardDelete: false });
 
-        expect(conversationIds).toContain(emptySpaceConvo.sId);
+      // Now the conversation should be filtered out because its space no longer exists.
+      allConversations = await ConversationResource.listAll(auth);
+      conversationIds = allConversations.map((c) => c.sId);
+      expect(conversationIds).not.toContain(tempSpaceConvo.sId);
 
-        // Clean up.
-        await destroyConversation(adminAuth, {
-          conversationId: emptySpaceConvo.sId,
-        });
-      });
-
-      it("should handle conversations with multiple space IDs", async () => {
-        const multiSpaceConvo = await ConversationFactory.create(adminAuth, {
-          agentConfigurationId: agents[0].sId,
-          requestedSpaceIds: [globalSpace.id, restrictedSpace.id], // Both global and restricted spaces.
-          messagesCreatedAt: [dateFromDaysAgo(5)],
-        });
-
-        const userConversations = await ConversationResource.listAll(userAuth);
-        const adminConversations =
-          await ConversationResource.listAll(adminAuth);
-
-        const userConvoIds = userConversations.map((c) => c.sId);
-        const adminConvoIds = adminConversations.map((c) => c.sId);
-
-        // Regular user needs access to ALL spaces, so shouldn't see this conversation.
-        expect(userConvoIds).not.toContain(multiSpaceConvo.sId);
-
-        // Admin should see it.
-        expect(adminConvoIds).toContain(multiSpaceConvo.sId);
-
-        // Clean up.
-        await destroyConversation(adminAuth, {
-          conversationId: multiSpaceConvo.sId,
-        });
-      });
-
-      it("should filter out conversations referencing deleted spaces", async () => {
-        // Create a regular space and a conversation referencing it.
-        const tempSpace = await SpaceFactory.regular(workspace);
-        const res = await tempSpace.addMembers(adminAuth, {
-          userIds: [adminAuth.getNonNullableUser().sId],
-        });
-        const auth = await Authenticator.fromUserIdAndWorkspaceId(
-          adminAuth.getNonNullableUser().sId,
-          workspace.sId
-        );
-        assert(res.isOk(), "Failed to add member to temp space");
-
-        const tempSpaceConvo = await ConversationFactory.create(auth, {
-          agentConfigurationId: agents[0].sId,
-          requestedSpaceIds: [tempSpace.id], // Reference the space that will be "deleted".
-          messagesCreatedAt: [dateFromDaysAgo(5)],
-        });
-
-        // Verify conversation is initially visible.
-        let allConversations = await ConversationResource.listAll(auth);
-        let conversationIds = allConversations.map((c) => c.sId);
-        expect(conversationIds).toContain(tempSpaceConvo.sId);
-
-        // Simulate space deletion by deleting the space from database.
-        await tempSpace.delete(auth, { hardDelete: false });
-
-        // Now the conversation should be filtered out because its space no longer exists.
-        allConversations = await ConversationResource.listAll(auth);
-        conversationIds = allConversations.map((c) => c.sId);
-        expect(conversationIds).not.toContain(tempSpaceConvo.sId);
-
-        // Clean up the conversation.
-        await destroyConversation(auth, {
-          conversationId: tempSpaceConvo.sId,
-        });
+      // Clean up the conversation.
+      await destroyConversation(auth, {
+        conversationId: tempSpaceConvo.sId,
       });
     });
   });
