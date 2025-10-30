@@ -12,7 +12,6 @@ import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { isOrganizationSelectionRequiredError } from "@app/lib/api/workos/types";
 import type { SessionCookie } from "@app/lib/api/workos/user";
-import { setRegionForUser } from "@app/lib/api/workos/user";
 import { getSession } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import logger from "@app/logger/logger";
@@ -208,7 +207,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     if (invite) {
       // User has an invite on the current region - we want to keep the user here.
       targetRegion = currentRegion;
-      await setRegionForUser(user, targetRegion);
     } else if (userSessionRegion) {
       targetRegion = userSessionRegion;
     } else {
@@ -227,8 +225,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       } else {
         targetRegion = multiRegionsConfig.getCurrentRegion();
       }
-
-      await setRegionForUser(user, targetRegion);
     }
 
     // Safety check for target region
@@ -241,7 +237,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
         "Invalid target region during WorkOS callback"
       );
       targetRegion = multiRegionsConfig.getCurrentRegion();
-      await setRegionForUser(user, targetRegion);
     }
 
     // If wrong region, redirect to login with prompt=none on correct domain
