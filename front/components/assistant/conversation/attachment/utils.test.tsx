@@ -67,17 +67,14 @@ vi.mock("@dust-tt/sparkle", () => ({
     />
   ),
   FaviconIcon: ({
-    faviconUrl,
     websiteUrl,
     className,
   }: {
-    faviconUrl?: string;
     websiteUrl?: string;
     className?: string;
   }) => (
     <div
       data-testid="favicon"
-      data-favicon-url={faviconUrl ?? ""}
       data-website-url={websiteUrl ?? ""}
       data-class={className ?? ""}
     />
@@ -90,7 +87,6 @@ function TestIcon(props: {
   nodeType?: any; // keep it lax for the test environment
   contentType?: string;
   sourceUrl?: string;
-  faviconUrl?: string;
 }) {
   return <>{IconForAttachmentCitation(props)}</>;
 }
@@ -102,18 +98,10 @@ describe("IconForAttachmentCitation", () => {
 
   it("renders FaviconIcon when provider is webcrawler", () => {
     render(
-      <TestIcon
-        provider="webcrawler"
-        faviconUrl="https://example.com/favicon.ico"
-        sourceUrl="https://example.com/article"
-      />
+      <TestIcon provider="webcrawler" sourceUrl="https://example.com/article" />
     );
     const el = screen.getByTestId("favicon");
     expect(el).toBeInTheDocument();
-    expect(el).toHaveAttribute(
-      "data-favicon-url",
-      "https://example.com/favicon.ico"
-    );
     expect(el).toHaveAttribute(
       "data-website-url",
       "https://example.com/article"

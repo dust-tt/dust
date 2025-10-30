@@ -5,7 +5,6 @@ export interface MCPReferenceCitation {
   provider?: string;
   description?: string;
   href?: string;
-  faviconUrl?: string;
   title: string;
   contentType: AllSupportedWithDustSpecificFileContentType;
   fileId: string;

@@ -64,7 +64,6 @@ export function CiteBlock(props: ReactMarkdownProps) {
                   <span className="grayscale-[100%] transition-all duration-150 ease-in-out group-hover:grayscale-0">
                     <IconForAttachmentCitation
                       provider={document.provider}
-                      faviconUrl={document.faviconUrl}
                       contentType={document.contentType}
                       nodeType={"document"}
                       sourceUrl={document.href}

@@ -3,7 +3,6 @@ import {
   isSearchResultResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { getFaviconUrl } from "@app/lib/utils/favicon";
 import { rand } from "@app/lib/utils/seeded_random";
 import type {
   AgentMessageType,
@@ -82,12 +81,10 @@ export function getCitationsFromActions(
 
   const websearchRefs: Record<string, CitationType> = {};
   websearchResultsWithDocs.forEach((d) => {
-    const faviconUrl = getFaviconUrl(d.resource.uri);
     websearchRefs[d.resource.reference] = {
       href: d.resource.uri,
       title: d.resource.title,
       provider: "webcrawler",
-      ...(faviconUrl && { faviconUrl }),
       contentType: d.resource.mimeType,
     };
   });
@@ -103,16 +100,11 @@ export function getCitationsFromActions(
     if (result.resource.refs) {
       Object.entries(result.resource.refs).forEach(([ref, citation]) => {
         const href = citation.href ?? "";
-        const faviconUrl =
-          citation.provider === "webcrawler" && href
-            ? getFaviconUrl(href)
-            : undefined;
 
         runAgentRefs[ref] = {
           href,
           title: citation.title,
           provider: citation.provider,
-          ...(faviconUrl && { faviconUrl }),
           contentType: citation.contentType as AllSupportedFileContentType,
         };
       });

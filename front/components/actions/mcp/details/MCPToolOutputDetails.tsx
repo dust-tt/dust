@@ -160,7 +160,7 @@ export function SearchResultDetails({
             {
               description: r.resource.text,
               title: r.resource.title,
-              icon: <FaviconIcon websiteUrl={r.resource.uri} size="sm" />,
+              icon: <FaviconIcon websiteUrl={r.resource.uri} />,
               href: r.resource.uri,
             },
           ];
