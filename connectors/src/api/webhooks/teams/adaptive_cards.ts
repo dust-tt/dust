@@ -454,7 +454,7 @@ export function createWelcomeAdaptiveCard(): Partial<Activity> {
           },
           {
             type: "TextBlock",
-            text: "Thank you for installing the Dust assistant bot in Microsoft Teams!",
+            text: "Thank you for installing Dust in Microsoft Teams!",
             wrap: true,
             spacing: "Medium",
             horizontalAlignment: "Center",
