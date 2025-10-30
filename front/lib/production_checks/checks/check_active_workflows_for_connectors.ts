@@ -4,6 +4,7 @@ import { QueryTypes } from "sequelize";
 import type { CheckFunction } from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ConnectorProvider } from "@app/types";
 import {
   getIntercomSyncWorkflowId,
@@ -77,18 +78,24 @@ async function areTemporalWorkflowsRunning(
   connector: ConnectorBlob,
   info: ProviderCheck
 ) {
-  for (const workflowId of info.makeIdsFn(connector)) {
-    try {
-      const workflowHandle: WorkflowHandle =
-        client.workflow.getHandle(workflowId);
+  const runningWorkflows = await concurrentExecutor(
+    info.makeIdsFn(connector),
+    async (workflowId) => {
+      try {
+        const workflowHandle: WorkflowHandle =
+          client.workflow.getHandle(workflowId);
 
-      const descriptions = await Promise.all([workflowHandle.describe()]);
+        const descriptions = await Promise.all([workflowHandle.describe()]);
 
-      return descriptions.every(({ status: { name } }) => name === "RUNNING");
-    } catch (err) {
-      return false;
-    }
-  }
+        return descriptions.every(({ status: { name } }) => name === "RUNNING");
+      } catch (err) {
+        return false;
+      }
+    },
+    { concurrency: 1 }
+  );
+
+  return runningWorkflows.every((r) => r);
 }
 
 export const checkActiveWorkflows: CheckFunction = async (
