@@ -432,6 +432,108 @@ export function createInteractiveToolApprovalAdaptiveCard(data: {
   };
 }
 
+/**
+ * Creates a welcome adaptive card for new installations
+ */
+export function createWelcomeAdaptiveCard(): Partial<Activity> {
+  const card: AdaptiveCard = {
+    type: "AdaptiveCard",
+    $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+    version: "1.4",
+    body: [
+      {
+        type: "Container",
+        items: [
+          {
+            type: "TextBlock",
+            text: "🎉 Welcome to Dust!",
+            weight: "Bolder",
+            size: "Large",
+            spacing: "Medium",
+            horizontalAlignment: "Center",
+          },
+          {
+            type: "TextBlock",
+            text: "Thank you for installing the Dust assistant bot in Microsoft Teams!",
+            wrap: true,
+            spacing: "Medium",
+            horizontalAlignment: "Center",
+          },
+        ],
+      },
+      {
+        type: "Container",
+        spacing: "Medium",
+        separator: true,
+        items: [
+          {
+            type: "TextBlock",
+            text: "**Getting Started**",
+            weight: "Bolder",
+            spacing: "Medium",
+          },
+          {
+            type: "TextBlock",
+            text: "To start using Dust in Teams, make sure to:",
+            wrap: true,
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "• Enable the integration in your Workspace settings",
+            wrap: true,
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "• Configure your agents to work with Teams",
+            wrap: true,
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "• Start chatting by mentioning an agent",
+            wrap: true,
+            spacing: "Small",
+          },
+        ],
+      },
+      {
+        type: "Container",
+        spacing: "Medium",
+        separator: true,
+        items: [
+          {
+            type: "TextBlock",
+            text: "📚 [Read the full documentation](https://docs.dust.tt/docs/dust-in-teams) to learn more about using Dust in Teams.",
+            wrap: true,
+            size: "Small",
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "Need help? Visit [dust.tt](https://dust.tt) for support.",
+            wrap: true,
+            size: "Small",
+            spacing: "Small",
+            color: "Accent",
+          },
+        ],
+      },
+    ],
+  };
+
+  return {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: card,
+      },
+    ],
+  };
+}
+
 function createFooterText({
   assistantName,
   conversationUrl,
