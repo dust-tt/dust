@@ -95,8 +95,20 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return this.update({ segmentation });
   }
 
-  async update(attributes: Partial<Attributes<WorkspaceModel>>) {
-    return super.update(attributes);
+  async updateWorkspaceSettings(
+    updateableAttributes: Partial<
+      Pick<
+        WorkspaceModel,
+        | "name"
+        | "ssoEnforced"
+        | "whiteListedProviders"
+        | "defaultEmbeddingProvider"
+        | "workOSOrganizationId"
+        | "metadata"
+      >
+    >
+  ) {
+    return super.update(updateableAttributes);
   }
 
   async updateDomainAutoJoinEnabled({

@@ -112,7 +112,7 @@ async function handler(
       }
 
       if ("name" in body) {
-        await workspace.update({
+        await workspace.updateWorkspaceSettings({
           name: escape(body.name),
         });
         owner.name = body.name;
@@ -128,7 +128,7 @@ async function handler(
           });
         }
       } else if ("ssoEnforced" in body) {
-        await workspace.update({
+        await workspace.updateWorkspaceSettings({
           ssoEnforced: body.ssoEnforced,
         });
 
@@ -137,14 +137,14 @@ async function handler(
         "whiteListedProviders" in body &&
         "defaultEmbeddingProvider" in body
       ) {
-        await workspace.update({
+        await workspace.updateWorkspaceSettings({
           whiteListedProviders: body.whiteListedProviders,
           defaultEmbeddingProvider: body.defaultEmbeddingProvider,
         });
         owner.whiteListedProviders = body.whiteListedProviders;
         owner.defaultEmbeddingProvider = workspace.defaultEmbeddingProvider;
       } else if ("workOSOrganizationId" in body) {
-        await workspace.update({
+        await workspace.updateWorkspaceSettings({
           workOSOrganizationId: body.workOSOrganizationId,
         });
         owner.workOSOrganizationId = body.workOSOrganizationId;
@@ -154,7 +154,7 @@ async function handler(
           ...previousMetadata,
           allowContentCreationFileSharing: body.allowContentCreationFileSharing,
         };
-        await workspace.update({ metadata: newMetadata });
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
 
         // if public sharing is disabled, downgrade share scope of all public files to workspace
@@ -167,7 +167,7 @@ async function handler(
           ...previousMetadata,
           allowVoiceTranscription: body.allowVoiceTranscription,
         };
-        await workspace.update({ metadata: newMetadata });
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
       } else {
         const { domain, domainAutoJoinEnabled } = body;
