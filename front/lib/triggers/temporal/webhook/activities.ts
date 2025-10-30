@@ -137,7 +137,7 @@ export async function runTriggerWebhookActivity({
         receivedEventValue = headers[field.toLowerCase()];
         break;
       case "body":
-        receivedEventValue = body[field.toLowerCase()];
+        receivedEventValue = body[field];
         break;
       default:
         assertNever(type);

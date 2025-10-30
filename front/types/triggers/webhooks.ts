@@ -6,6 +6,8 @@ import type {
 } from "@app/components/resources/resources_icons";
 import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
 import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/github/github_webhook_source_presets";
+import type { JiraAdditionalData } from "@app/lib/triggers/built-in-webhooks/jira/jira_api_types";
+import { JIRA_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/jira/jira_webhook_source_presets";
 import { ZENDESK_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/zendesk/zendesk_webhook_source_presets";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -21,7 +23,7 @@ export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
 export type WebhookSourceSignatureAlgorithm =
   (typeof WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS)[number];
 
-export const WEBHOOK_PROVIDERS = ["github", "zendesk"] as const;
+export const WEBHOOK_PROVIDERS = ["github", "jira", "zendesk"] as const;
 
 export type WebhookProvider = (typeof WEBHOOK_PROVIDERS)[number];
 
@@ -36,6 +38,7 @@ export type NoAdditionalData = z.infer<typeof NoAdditionalDataSchema>;
 
 type WebhookProviderServiceDataMap = {
   github: GithubAdditionalData;
+  jira: JiraAdditionalData;
   zendesk: NoAdditionalData;
 };
 
@@ -44,6 +47,7 @@ export type WebhookServiceDataForProvider<P extends WebhookProvider> =
 
 export const WEBHOOK_PRESETS = {
   github: GITHUB_WEBHOOK_PRESET,
+  jira: JIRA_WEBHOOK_PRESET,
   zendesk: ZENDESK_WEBHOOK_PRESET,
 } satisfies {
   [P in WebhookProvider]: PresetWebhook<P>;
