@@ -9,6 +9,7 @@ import {
   createErrorAdaptiveCard,
   createInteractiveToolApprovalAdaptiveCard,
   createThinkingAdaptiveCard,
+  createWelcomeAdaptiveCard,
 } from "@connectors/api/webhooks/teams/adaptive_cards";
 import {
   botAnswerMessage,
@@ -188,20 +189,21 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
       );
 
       const connector = await getConnector(context);
-      if (!connector) {
-        res.status(400).json({ error: "Connector not found" });
-        return;
-      }
 
       const localLogger = logger.child({
         connectorProvider: "microsoft_bot",
-        connectorId: connector.id,
-        workspaceId: connector.workspaceId,
+        connectorId: connector?.id,
+        workspaceId: connector?.workspaceId,
       });
 
       // Handle different activity types
       switch (context.activity.type) {
         case "message":
+          if (!connector) {
+            res.status(400).json({ error: "Connector not found" });
+            return;
+          }
+
           if (context.activity.value?.verb) {
             await handleInteraction(context, connector, localLogger);
           } else {
@@ -209,6 +211,11 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           }
           break;
         case "invoke":
+          if (!connector) {
+            res.status(400).json({ error: "Connector not found" });
+            return;
+          }
+
           // Handle tool execution approval card refresh
           if (context.activity.value.action.verb === "toolExecutionApproval") {
             // Validate the data before using it
@@ -234,6 +241,33 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
             });
           } else {
             await handleToolApproval(context, connector, localLogger);
+          }
+          break;
+        case "installationUpdate":
+          if (context.activity.action === "add") {
+            localLogger.info(
+              {
+                connectorProvider: connector.type,
+                activityType: context.activity.type,
+                connectorId: connector.id,
+              },
+              "Installed app from Microsoft Teams"
+            );
+
+            if (apiConfig.getIsMicrosoftPrimaryRegion()) {
+              await sendActivity(context, createWelcomeAdaptiveCard());
+            }
+          }
+
+          if (context.activity.action === "remove") {
+            localLogger.info(
+              {
+                connectorProvider: connector.type,
+                activityType: context.activity.type,
+                connectorId: connector.id,
+              },
+              "Uninstalled app from Microsoft Teams"
+            );
           }
           break;
 

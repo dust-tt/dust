@@ -49,6 +49,13 @@ export const apiConfig = {
   getMicrosoftBotTenantId: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("MICROSOFT_BOT_TENANT_ID");
   },
+  getIsMicrosoftPrimaryRegion: (): boolean => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable(
+        "MICROSOFT_BOT_IS_PRIMARY_REGION"
+      ) === "true"
+    );
+  },
   getDiscordAppPublicKey: (): string => {
     return EnvironmentConfig.getEnvVariable("DISCORD_APP_PUBLIC_KEY");
   },
