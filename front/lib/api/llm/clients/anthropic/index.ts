@@ -48,7 +48,7 @@ export class AnthropicLLM extends LLM {
       providerId: "anthropic",
     });
 
-    if (reasoningEffort) {
+    if (reasoningEffort && reasoningEffort != "none") {
       this.thinkingConfig = {
         type: "enabled",
         budget_tokens: CLAUDE_4_THINKING_BUDGET_TOKENS[reasoningEffort],
@@ -75,7 +75,8 @@ export class AnthropicLLM extends LLM {
       thinking: this.thinkingConfig,
       system: prompt,
       messages,
-      temperature: this.temperature,
+      // Thinking isn’t compatible with temperature: `temperature` may only be set to 1 when thinking is enabled.
+      temperature: this.thinkingConfig ? 1 : this.temperature,
       stream: true,
 
       tools: specifications.map(toTool),
