@@ -1,4 +1,5 @@
-import { parseTimeFrame, TimeFrame } from "@app/shared/lib/time_frame";
+import type { TimeFrame } from "@app/shared/lib/time_frame";
+import { parseTimeFrame } from "@app/shared/lib/time_frame";
 import { z } from "zod";
 
 export const SearchInputSchema = z

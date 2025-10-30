@@ -1,4 +1,3 @@
-import { asDisplayName } from "@app/shared/lib/utils";
 import {
   isDataSourceFilesystemFindInputType,
   isDataSourceFilesystemListInputType,
@@ -10,6 +9,7 @@ import {
   makeQueryTextForInclude,
   makeQueryTextForList,
 } from "@app/shared/lib/tool_inputs";
+import { asDisplayName } from "@app/shared/lib/utils";
 import { ActionDetailsWrapper } from "@app/ui/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/ui/components/actions/mcp/details/MCPBrowseActionDetails";
 import {
