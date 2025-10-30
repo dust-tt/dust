@@ -555,17 +555,13 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       );
     }
 
-    try {
-      await TriggerSubscriberModel.create({
-        workspaceId: auth.getNonNullableWorkspace().id,
-        triggerId: this.id,
-        userId: auth.getNonNullableUser().id,
-      });
+    await TriggerSubscriberModel.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      triggerId: this.id,
+      userId: auth.getNonNullableUser().id,
+    });
 
-      return new Ok(undefined);
-    } catch (error) {
-      return new Err(new DustError("internal_error", errorToString(error)));
-    }
+    return new Ok(undefined);
   }
 
   async removeFromSubscribers(
