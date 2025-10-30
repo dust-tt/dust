@@ -1,8 +1,8 @@
 import {
+  ActionCard,
   ActionIcons,
   BookOpenIcon,
   Hoverable,
-  ToolCard,
 } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
@@ -64,7 +64,7 @@ function MCPServerCard({
 
   return (
     <div ref={containerRef}>
-      <ToolCard
+      <ActionCard
         icon={icon}
         label={view.label}
         description={description}
@@ -75,7 +75,7 @@ function MCPServerCard({
         mountPortal
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         mountPortalContainer={containerRef.current || undefined}
-        toolInfo={{
+        footer={{
           label: "More info",
           onClick: onToolInfoClick,
         }}
