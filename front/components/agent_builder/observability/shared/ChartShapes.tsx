@@ -30,7 +30,7 @@ export function RoundedTopBarShape({
   }
 
   const toolValue = payload.values[toolName] ?? 0;
-  if (toolValue <= 0) {
+  if (toolValue === 0) {
     return <rect x={x} y={y} width={width} height={height} fill={fill} />;
   }
 
