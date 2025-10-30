@@ -174,7 +174,8 @@ export class FileResource extends BaseResource<FileModel> {
       );
       const conversation = await ConversationResource.fetchById(
         auth,
-        conversationId
+        conversationId,
+        { dangerouslySkipPermissionFiltering: true }
       );
       if (!conversation) {
         return null;
