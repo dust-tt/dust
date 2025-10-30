@@ -82,8 +82,10 @@ async function handler(
         days
       );
 
-      const feedbackDistributionResult =
-        await fetchFeedbackDistribution(baseQuery);
+      const feedbackDistributionResult = await fetchFeedbackDistribution(
+        baseQuery,
+        days
+      );
 
       if (feedbackDistributionResult.isErr()) {
         const error = feedbackDistributionResult.error;

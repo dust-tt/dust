@@ -23,19 +23,30 @@ type FeedbackDistributionAggs = {
 };
 
 export async function fetchFeedbackDistribution(
-  baseQuery: estypes.QueryDslQueryContainer
+  baseQuery: estypes.QueryDslQueryContainer,
+  days: number
 ): Promise<Result<FeedbackDistributionPoint[], Error>> {
   const aggregations: Record<string, estypes.AggregationsAggregationContainer> =
     {
       feedback_by_day: {
         scripted_metric: {
           init_script: "state.by_day = new HashMap();",
+          params: {
+            days,
+          },
           map_script: `
             def src = params._source;
             if (src == null || !src.containsKey('feedbacks') || src.feedbacks == null) return;
 
+            def cutoffMillis = System.currentTimeMillis() - (params.days * 24L * 60L * 60L * 1000L);
+
             for (def f : src.feedbacks) {
-              def day = ZonedDateTime.parse(f.created_at).toLocalDate().toString();
+              def createdAt = ZonedDateTime.parse(f.created_at);
+              def feedbackMillis = createdAt.toInstant().toEpochMilli();
+
+              if (feedbackMillis < cutoffMillis) continue;
+
+              def day = createdAt.toLocalDate().toString();
 
               if (!state.by_day.containsKey(day)) {
                 def counters = new HashMap();
