@@ -67,7 +67,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         notFound: true,
       };
     }
-    stripeSubscription;
     trialDaysRemaining = stripeSubscription.trial_end
       ? Math.ceil(
           (stripeSubscription.trial_end * 1000 - Date.now()) /

@@ -21,9 +21,8 @@ import type { JobType } from "@app/types/job_type";
 import type { UserResource } from "../resources/user_resource";
 
 export class ServerSideTracking {
-  static trackSignup(args: { user: UserType }) {
+  static trackSignup(_: { user: UserType }) {
     // Do nothing for now
-    args;
   }
 
   static async trackGetUser({ user }: { user: UserTypeWithWorkspaces }) {
@@ -93,7 +92,7 @@ export class ServerSideTracking {
     }
   }
 
-  static trackUserMessage(args: {
+  static trackUserMessage(_: {
     userMessage: UserMessageType;
     workspace: WorkspaceType;
     userId: string;
@@ -101,34 +100,30 @@ export class ServerSideTracking {
     agentMessages: AgentMessageType[];
   }) {
     // Do nothing for now
-    args;
   }
 
-  static trackDataSourceCreated(args: {
+  static trackDataSourceCreated(_: {
     user?: UserResource;
     workspace?: WorkspaceType;
     dataSource: DataSourceType;
   }) {
     // Do nothing for now
-    args;
   }
 
-  static trackDataSourceUpdated(args: {
+  static trackDataSourceUpdated(_: {
     user?: UserResource;
     workspace?: WorkspaceType;
     dataSource: DataSourceType;
   }) {
     // Do nothing for now
-    args;
   }
 
-  static trackAssistantCreated(args: {
+  static trackAssistantCreated(_: {
     user?: UserResource;
     workspace?: WorkspaceType;
     assistant: AgentConfigurationType;
   }) {
     // Do nothing for now
-    args;
   }
 
   static async trackSubscriptionCreated({
