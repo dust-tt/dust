@@ -7,9 +7,10 @@ import {
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { mentionAgent } from "@app/lib/mentions";
@@ -60,6 +61,7 @@ export function AgentSuggestion({
   const [isLoading, setIsLoading] = useState(false);
 
   const router = useRouter();
+  const { setSelectedAgent } = useContext(InputBarContext);
 
   const { submit: handleSelectSuggestion } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
@@ -147,7 +149,11 @@ export function AgentSuggestion({
               subtitle={agent.lastAuthors?.join(", ") ?? ""}
               title={agent.name}
               pictureUrl={agent.pictureUrl}
-              onClick={() => handleSelectSuggestion(agent)}
+              onClick={async () => {
+                // Immediately prefill next message with selected agent
+                setSelectedAgent({ configurationId: agent.sId });
+                await handleSelectSuggestion(agent);
+              }}
               variant="secondary"
               action={
                 <AssistantCardMore onClick={() => showAgentDetails(agent)} />
@@ -164,6 +170,8 @@ export function AgentSuggestion({
           onItemClick={async (agent) => {
             if (!isLoading) {
               setIsLoading(true);
+              // Immediately prefill next message with selected agent
+              setSelectedAgent({ configurationId: agent.sId });
               await handleSelectSuggestion(agent);
               setIsLoading(false);
             }
