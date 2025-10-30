@@ -16,103 +16,170 @@ import type {
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { safeParseJSON } from "@app/types";
 
+type StreamState = {
+  currentBlockIsToolCall: boolean;
+  textAccumulator: string;
+  reasoningAccumulator: string;
+  toolAccumulator: {
+    id: string;
+    name: string;
+    input: string;
+  };
+};
+
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<MessageStreamEvent>,
   metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
-  let currentBlockIsToolCall: boolean = false;
-  let textAccumulator = "";
-  let reasoningAccumulator = "";
-  let toolAccumulator = {
-    id: "",
-    name: "",
-    input: "",
+  const state: StreamState = {
+    currentBlockIsToolCall: false,
+    textAccumulator: "",
+    reasoningAccumulator: "",
+    toolAccumulator: {
+      id: "",
+      name: "",
+      input: "",
+    },
   };
 
   for await (const messageStreamEvent of messageStreamEvents) {
-    switch (messageStreamEvent.type) {
-      case "message_start":
-      case "message_stop":
-        // Nothing to do for now
-        break;
+    yield* handleMessageStreamEvent(messageStreamEvent, state, metadata);
+  }
 
-      /* Content is sent as follows:
-       * content_block_start (gives the type of the content block and some metadata)
-       * content_block_delta (streams content) (multiple times)
-       * content_block_stop (makrs the end of the content block)
+  yield* yieldFinalEvents(state, metadata);
+}
+
+function* handleMessageStreamEvent(
+  messageStreamEvent: MessageStreamEvent,
+  state: StreamState,
+  metadata: LLMClientMetadata
+): Generator<LLMEvent> {
+  switch (messageStreamEvent.type) {
+    case "message_start":
+    case "message_stop":
+      // Nothing to do for now
+      break;
+
+    /* Content is sent as follows:
+     * content_block_start (gives the type of the content block and some metadata)
+     * content_block_delta (streams content) (multiple times)
+     * content_block_stop (makrs the end of the content block)
+     */
+    case "content_block_start":
+      handleContentBlockStart(messageStreamEvent, state);
+      break;
+    case "content_block_delta":
+      yield* handleContentBlockDelta(messageStreamEvent, state, metadata);
+      break;
+    case "content_block_stop":
+      yield* handleContentBlockStop(state, metadata);
+      break;
+    case "message_delta":
+      yield* handleMessageDelta(messageStreamEvent, metadata);
+      break;
+    default:
+      assertNever(messageStreamEvent);
+  }
+}
+
+function handleContentBlockStart(
+  event: Extract<MessageStreamEvent, { type: "content_block_start" }>,
+  state: StreamState
+): void {
+  if (event.content_block.type === "tool_use") {
+    state.currentBlockIsToolCall = true;
+    state.toolAccumulator = {
+      id: event.content_block.id,
+      name: event.content_block.name,
+      input: "",
+    };
+  }
+}
+
+function* handleContentBlockDelta(
+  event: Extract<MessageStreamEvent, { type: "content_block_delta" }>,
+  state: StreamState,
+  metadata: LLMClientMetadata
+): Generator<LLMEvent> {
+  switch (event.delta.type) {
+    case "text_delta":
+      state.textAccumulator += event.delta.text;
+      yield textDelta(event.delta.text, metadata);
+      break;
+    case "thinking_delta":
+      state.reasoningAccumulator += event.delta.thinking;
+      yield reasoningDelta(event.delta.thinking, metadata);
+      break;
+    case "input_json_delta":
+      state.toolAccumulator.input += event.delta.partial_json;
+      break;
+    case "citations_delta":
+    case "signature_delta":
+      // TODO(LLM-Router) Handle these delta types if needed
+      break;
+    default:
+      assertNever(event.delta);
+  }
+}
+
+function* handleContentBlockStop(
+  state: StreamState,
+  metadata: LLMClientMetadata
+): Generator<LLMEvent> {
+  if (state.currentBlockIsToolCall) {
+    yield toolCall({ ...state.toolAccumulator, metadata });
+  }
+  state.currentBlockIsToolCall = false;
+}
+
+function* handleMessageDelta(
+  event: Extract<MessageStreamEvent, { type: "message_delta" }>,
+  metadata: LLMClientMetadata
+): Generator<LLMEvent> {
+  yield tokenUsage(event.usage, metadata);
+
+  if (event.delta.stop_reason) {
+    yield* handleStopReason(event.delta.stop_reason, metadata);
+  }
+}
+
+function* handleStopReason(
+  stopReason: string,
+  metadata: LLMClientMetadata
+): Generator<LLMEvent> {
+  switch (stopReason) {
+    case "end_turn":
+    case "stop_sequence":
+    case "tool_use":
+    case "pause_turn":
+      /* When the assistant pauses the conversation, the stop reason is simply due to a long run, there was no error
+       * the model simply decided to take a break here. It should simply be prompted to continue what it was doing.
        */
-      case "content_block_start":
-        if (messageStreamEvent.content_block.type === "tool_use") {
-          currentBlockIsToolCall = true;
-          toolAccumulator = {
-            id: messageStreamEvent.content_block.id,
-            name: messageStreamEvent.content_block.name,
-            input: "",
-          };
-        }
-        break;
-      case "content_block_delta":
-        switch (messageStreamEvent.delta.type) {
-          case "text_delta":
-            textAccumulator += messageStreamEvent.delta.text;
-            yield textDelta(messageStreamEvent.delta.text, metadata);
-            break;
-          case "thinking_delta":
-            reasoningAccumulator += messageStreamEvent.delta.thinking;
-            yield reasoningDelta(messageStreamEvent.delta.thinking, metadata);
-            break;
-          case "input_json_delta":
-            toolAccumulator.input += messageStreamEvent.delta.partial_json;
-            break;
-          default:
-            continue;
-        }
-        break;
-      case "content_block_stop":
-        if (currentBlockIsToolCall) {
-          yield toolCall({ ...toolAccumulator, metadata });
-        }
-        currentBlockIsToolCall = false;
-        break;
-      case "message_delta":
-        yield tokenUsage(messageStreamEvent.usage, metadata);
-        if (messageStreamEvent.delta.stop_reason) {
-          const stopReason = messageStreamEvent.delta.stop_reason;
-          switch (stopReason) {
-            case "end_turn":
-              break;
-            case "stop_sequence":
-              break;
-            case "tool_use":
-              break;
-            /* When the assistant pauses the conversation, the stop reason is simply due to a long run, there was no error
-             * the model simply decided to take a break here. It should simply be prompted to continue what it was doing.
-             */
-            case "pause_turn":
-              break;
-            case "max_tokens":
-            case "refusal":
-              yield {
-                type: "error",
-                content: {
-                  message: `Stop reason: ${stopReason}`,
-                  code: 0,
-                },
-                metadata,
-              };
-              break;
-          }
-        }
-        break;
-      default:
-        assertNever(messageStreamEvent);
-    }
+      // Nothing to do for these stop reasons
+      break;
+    case "max_tokens":
+    case "refusal":
+      yield {
+        type: "error",
+        content: {
+          message: `Stop reason: ${stopReason}`,
+          code: 0,
+        },
+        metadata,
+      };
+      break;
   }
-  if (textAccumulator.length > 0) {
-    yield textGenerated(textAccumulator, metadata);
+}
+
+function* yieldFinalEvents(
+  state: StreamState,
+  metadata: LLMClientMetadata
+): Generator<LLMEvent> {
+  if (state.textAccumulator.length > 0) {
+    yield textGenerated(state.textAccumulator, metadata);
   }
-  if (reasoningAccumulator.length > 0) {
-    yield reasoningGenerated(reasoningAccumulator, metadata);
+  if (state.reasoningAccumulator.length > 0) {
+    yield reasoningGenerated(state.reasoningAccumulator, metadata);
   }
 }
 
