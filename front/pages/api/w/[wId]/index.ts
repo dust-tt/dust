@@ -171,16 +171,16 @@ async function handler(
         owner.metadata = newMetadata;
       } else {
         const { domain, domainAutoJoinEnabled } = body;
-        const updateResult = await workspace.updateDomainAutoJoinEnabled(
+        const updateResult = await workspace.updateDomainAutoJoinEnabled({
           domainAutoJoinEnabled,
-          domain
-        );
+          domain,
+        });
         if (updateResult.isErr()) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: "The workspace does not have any verified domain.",
+              message: updateResult.error.message,
             },
           });
         }
