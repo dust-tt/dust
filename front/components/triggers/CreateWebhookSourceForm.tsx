@@ -102,7 +102,7 @@ export function CreateWebhookSourceFormContent({
               {...field}
               id="trigger-description"
               rows={3}
-              placeholder="Enter a description for this trigger"
+              placeholder="Help your team understand when to use this trigger."
             />
           </div>
         )}
@@ -139,7 +139,8 @@ export function CreateWebhookSourceFormContent({
 
             return (
               <div className="flex flex-col gap-2">
-                <Label htmlFor="subscribedEvents">Subscribed events</Label>
+                <Label htmlFor="subscribedEvents">Events to watch</Label>
+                <p>Choose which events will activate this trigger</p>
                 <div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

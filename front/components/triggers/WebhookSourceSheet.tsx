@@ -550,7 +550,7 @@ function WebhookSourceSheetContent({
     () => [
       {
         id: "create",
-        title: `Create ${mode.provider ? WEBHOOK_PRESETS[mode.provider].name : "Custom"} Webhook Source`,
+        title: `New ${mode.provider ? WEBHOOK_PRESETS[mode.provider].name : "Custom"} Webhook`,
         description: "",
         icon: getIcon(
           normalizeWebhookIcon(
