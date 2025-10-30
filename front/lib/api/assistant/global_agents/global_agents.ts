@@ -18,8 +18,8 @@ import {
   _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
 import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
-import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getFeedbackAnalyzerGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/feedback_analyzer";
+import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import {
   _getHelperGlobalAgent,
