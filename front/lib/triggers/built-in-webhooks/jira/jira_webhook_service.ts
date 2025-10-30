@@ -8,6 +8,37 @@ import { Err, isString, OAuthAPI, Ok } from "@app/types";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 
 export class JiraWebhookService implements RemoteWebhookService<"jira"> {
+  private async getJiraClient(
+    auth: Authenticator,
+    {
+      connectionId,
+    }: {
+      connectionId: string;
+    }
+  ): Promise<Result<JiraClient, Error>> {
+    const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), console);
+
+    const metadataRes = await oauthAPI.getConnectionMetadata({
+      connectionId,
+    });
+    if (metadataRes.isErr()) {
+      return new Err(new Error("Jira connection not found"));
+    }
+
+    const { workspace_id: workspaceId } = metadataRes.value.connection.metadata;
+    if (!workspaceId || workspaceId !== auth.getNonNullableWorkspace().sId) {
+      return new Err(new Error("Connection does not belong to this workspace"));
+    }
+
+    const tokenRes = await oauthAPI.getAccessToken({ connectionId });
+    if (tokenRes.isErr()) {
+      return new Err(new Error("Failed to get Jira access token"));
+    }
+
+    const { access_token: accessToken } = tokenRes.value;
+    return new Ok(new JiraClient(accessToken));
+  }
+
   async getServiceData(
     oauthToken: string
   ): Promise<Result<JiraAdditionalData, Error>> {
@@ -55,27 +86,12 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
       Error
     >
   > {
-    const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), console);
-
-    const metadataRes = await oauthAPI.getConnectionMetadata({
-      connectionId,
-    });
-    if (metadataRes.isErr()) {
-      return new Err(new Error("Jira connection not found"));
+    const clientResult = await this.getJiraClient(auth, { connectionId });
+    if (clientResult.isErr()) {
+      return clientResult;
     }
 
-    const { workspace_id: workspaceId } = metadataRes.value.connection.metadata;
-    if (!workspaceId || workspaceId !== auth.getNonNullableWorkspace().sId) {
-      return new Err(new Error("Connection does not belong to this workspace"));
-    }
-
-    const tokenRes = await oauthAPI.getAccessToken({ connectionId });
-    if (tokenRes.isErr()) {
-      return new Err(new Error("Failed to get Jira access token"));
-    }
-
-    const { access_token: accessToken } = tokenRes.value;
-    const client = new JiraClient(accessToken);
+    const client = clientResult.value;
 
     const resourcesRes = await client.getAccessibleResources();
     if (resourcesRes.isErr()) {
@@ -150,29 +166,13 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
     connectionId: string;
     remoteMetadata: Record<string, unknown>;
   }): Promise<Result<void, Error>> {
-    const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), console);
-
-    const metadataRes = await oauthAPI.getConnectionMetadata({
-      connectionId,
-    });
-    if (metadataRes.isErr()) {
-      return new Err(new Error("Jira connection not found"));
+    const clientResult = await this.getJiraClient(auth, { connectionId });
+    if (clientResult.isErr()) {
+      return clientResult;
     }
 
-    const workspaceId = metadataRes.value.connection.metadata.workspace_id;
-    if (!workspaceId || workspaceId !== auth.getNonNullableWorkspace().sId) {
-      return new Err(new Error("Connection does not belong to this workspace"));
-    }
+    const client = clientResult.value;
 
-    const tokenRes = await oauthAPI.getAccessToken({
-      connectionId,
-    });
-    if (tokenRes.isErr()) {
-      return new Err(new Error("Failed to get Jira access token"));
-    }
-
-    const { access_token: accessToken } = tokenRes.value;
-    const client = new JiraClient(accessToken);
     const { cloudId, webhookIds } = remoteMetadata;
 
     if (!isString(cloudId)) {
