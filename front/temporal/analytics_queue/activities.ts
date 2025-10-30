@@ -305,7 +305,7 @@ export async function storeAgentMessageFeedbackActivity(
 
   await updateAnalyticsFeedback(auth, {
     message: {
-      sId: agentMessageRow.toJSON().sId,
+      sId: agentMessageRow.sId,
     },
     createdTimestamp: userMessageModel.createdAt.getTime(),
     feedbacks: allFeedbacks,

@@ -77,11 +77,12 @@ export async function launchAgentMessageFeedbackWorkflow(
 
   const client = await getTemporalClientForFrontNamespace();
 
-  const workflowId = makeAgentMessageAnalyticsWorkflowId({
-    conversationId,
-    agentMessageId,
-    workspaceId,
-  });
+  const workflowId =
+    makeAgentMessageAnalyticsWorkflowId({
+      conversationId,
+      agentMessageId,
+      workspaceId,
+    }) + "-feedback";
 
   try {
     await client.workflow.start(storeAgentMessageFeedbackWorkflow, {

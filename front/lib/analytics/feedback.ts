@@ -9,11 +9,11 @@ import type { Result } from "@app/types/shared/result";
 
 function makeDocumentId(
   workspace: LightWorkspaceType,
-  messageSId: string,
+  messageId: string,
   createdTimestamp: number
 ): string {
   const timestamp = new Date(createdTimestamp).toISOString();
-  return `${workspace.sId}_${messageSId}_${timestamp}`;
+  return `${workspace.sId}_${messageId}_${timestamp}`;
 }
 
 export async function updateAnalyticsFeedback(
