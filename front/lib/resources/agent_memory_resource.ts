@@ -133,6 +133,34 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     );
   }
 
+  static async findByAgentConfigurationId(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+    }: {
+      agentConfigurationId: string;
+    },
+    transaction?: Transaction
+  ): Promise<AgentMemoryResource[]> {
+    const userId = auth.user()?.id ?? null;
+    if (!userId) {
+      return [];
+    }
+
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          agentConfigurationId,
+          userId,
+        },
+        order: [["updatedAt", "DESC"]],
+      },
+      transaction
+    );
+  }
+
   async updateContent(auth: Authenticator, content: string) {
     return this.update({ content });
   }

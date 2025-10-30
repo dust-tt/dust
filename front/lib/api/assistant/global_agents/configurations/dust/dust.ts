@@ -16,7 +16,9 @@ import {
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { timeAgoFrom } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -45,6 +47,7 @@ export function _getDustGlobalAgent(
     deepDiveMCPServerView,
     interactiveContentMCPServerView,
     agentMemoryMCPServerView,
+    memories,
     featureFlags,
   }: {
     settings: GlobalAgentSettings | null;
@@ -57,6 +60,7 @@ export function _getDustGlobalAgent(
     deepDiveMCPServerView: MCPServerViewResource | null;
     interactiveContentMCPServerView: MCPServerViewResource | null;
     agentMemoryMCPServerView: MCPServerViewResource | null;
+    memories: AgentMemoryResource[];
     featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
@@ -150,17 +154,6 @@ ${globalAgentGuidelines}
 </general_guidelines>
 `;
 
-  const hasAgentMemory = featureFlags.includes("dust_global_agent_memory");
-
-  if (hasAgentMemory) {
-    instructions += `
-<critical_first_step_rules>
-Your very first step should always be to retrieve memories and list the available toolsets.
-You should call both \`agent_memory__retrieve\` and \`toolsets__list\` simultaneously as your very first step.
-</critical_first_step_rules>
-`;
-  }
-
   if (deepDiveMCPServerView) {
     instructions += requestComplexityPrompt;
   } else {
@@ -206,14 +199,16 @@ Enable relevant toolsets before attempting to fulfill the request. Never assume 
 </toolsets_guidelines>
 `;
 
+  const hasAgentMemory = featureFlags.includes("dust_global_agent_memory");
   if (hasAgentMemory && agentMemoryMCPServerView) {
     instructions += `
 <memory_guidelines>
 You have access to a persistent, user-specific memory system. Each user has their own private memory store.
 
 <critical_behavior>
-ALWAYS retrieve memories FIRST before any other action in EVERY conversation.
-This is non-negotiable - memories shape your entire response strategy.
+Existing memories are critical to your success. Always use them to tailor your responses and improve your performance over time.
+They are available to you directly in the <existing_memories> section.
+To add or edit memories, use the \`agent_memory\` tool.
 </critical_behavior>
 
 <memory_strategy>
@@ -257,6 +252,12 @@ Never explicitly say "I remember" or "based on our previous conversation" - just
 - Erase memories that become irrelevant or that users ask you to forget
 </memory_hygiene>
 </memory_guidelines>`;
+
+    instructions += `
+<existing_memories>
+${memories.map((memory) => `- ${memory.content}. Last updated: ${timeAgoFrom(new Date(memory.updatedAt).getTime())}`).join("\n")}
+</existing_memories>
+`;
   }
 
   const dustAgent = {

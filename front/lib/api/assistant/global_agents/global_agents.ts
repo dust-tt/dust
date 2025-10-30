@@ -55,6 +55,7 @@ import { getDataSourcesAndWorkspaceIdForGlobalAgents } from "@app/lib/api/assist
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AgentConfigurationType,
@@ -86,6 +87,7 @@ function getGlobalAgent({
   slideshowMCPServerView,
   deepDiveMCPServerView,
   agentMemoryMCPServerView,
+  memories,
   featureFlags,
 }: {
   auth: Authenticator;
@@ -104,6 +106,7 @@ function getGlobalAgent({
   slideshowMCPServerView: MCPServerViewResource | null;
   deepDiveMCPServerView: MCPServerViewResource | null;
   agentMemoryMCPServerView: MCPServerViewResource | null;
+  memories: AgentMemoryResource[];
   featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType | null {
   const settings =
@@ -364,6 +367,7 @@ function getGlobalAgent({
         deepDiveMCPServerView,
         interactiveContentMCPServerView,
         agentMemoryMCPServerView,
+        memories,
         featureFlags,
       });
       break;
@@ -598,6 +602,19 @@ export async function getGlobalAgents(
     );
   }
 
+  let memories: AgentMemoryResource[] = [];
+  if (
+    variant === "full" &&
+    flags.includes("dust_global_agent_memory") &&
+    agentMemoryMCPServerView &&
+    auth.user() &&
+    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST)
+  ) {
+    memories = await AgentMemoryResource.findByAgentConfigurationId(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+    });
+  }
+
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
   const agentCandidates = agentsIdsToFetch.map((sId) =>
@@ -618,6 +635,7 @@ export async function getGlobalAgents(
       slideshowMCPServerView,
       deepDiveMCPServerView,
       agentMemoryMCPServerView,
+      memories,
       featureFlags: flags,
     })
   );
