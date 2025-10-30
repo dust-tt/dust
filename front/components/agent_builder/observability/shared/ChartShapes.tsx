@@ -1,4 +1,4 @@
-type ValuesPayload = { values: Record<string, number> };
+import type { ValuesPayload } from "@app/components/agent_builder/observability/utils";
 
 export function RoundedTopBarShape({
   x,
