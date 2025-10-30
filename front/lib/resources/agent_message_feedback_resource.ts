@@ -543,7 +543,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
   }
 
-  static async listByAgentMessageId(
+  static async listByAgentMessageModelId(
     auth: Authenticator,
     agentMessageId: ModelId
   ): Promise<AgentMessageFeedbackResource[]> {
