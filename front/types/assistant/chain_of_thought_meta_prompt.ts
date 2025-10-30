@@ -82,3 +82,21 @@ export const CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION = {
     },
   ],
 };
+
+export const DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION = {
+  incompleteDelimiterPatterns: [/<\/?[a-zA-Z_]*$/],
+  delimiters: [
+    {
+      openingPattern: "<think>",
+      closingPattern: "</think>",
+      classification: "chain_of_thought" as const,
+      swallow: false,
+    },
+    {
+      openingPattern: "<response>",
+      closingPattern: "</response>",
+      classification: "tokens" as const,
+      swallow: false,
+    },
+  ],
+};
