@@ -140,6 +140,8 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       asana_list_workspaces: "never_ask",
     },
   },
+  //Removed temporaly gitlab server
+  /*
   {
     id: 10003,
     name: "gitlab",
@@ -167,6 +169,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       semantic_code_search: "never_ask",
     },
   },
+  */
   //Removed temporaly see https://dust4ai.slack.com/archives/C050SM8NSPK/p1754397289272209
   /*
   {
