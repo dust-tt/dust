@@ -141,6 +141,54 @@ function validateModjoResponse(
 
 // Maximum supported call length buffer to account for long calls
 const MAX_SUPPORTED_CALL_LENGTH_HOURS = 2;
+const MODJO_API_URL = "https://api.modjo.ai";
+
+/**
+ * Creates a scoped logger with a specific function context
+ */
+function createScopedLogger(logger: Logger, functionName: string): Logger {
+  return logger.child({ function: functionName });
+}
+
+/**
+ * Utility function to make requests to the Modjo API
+ */
+async function fetchModjoAPI({
+  apiKey,
+  pagination,
+  filters,
+  relations,
+}: {
+  apiKey: string;
+  pagination: { page: number; perPage: number };
+  filters?: {
+    callStartDateRange?: { start: string; end: string };
+    callIds?: number[];
+  };
+  relations?: {
+    recording?: boolean;
+    highlights?: boolean;
+    transcript?: boolean;
+    speakers?: boolean;
+    tags?: boolean;
+    contacts?: boolean;
+    account?: boolean;
+    deal?: boolean;
+  };
+}): Promise<Response> {
+  return fetch(MODJO_API_URL + "/v1/calls/exports", {
+    method: "POST",
+    headers: {
+      "X-API-KEY": apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      pagination,
+      filters: filters ?? {},
+      relations: relations ?? {},
+    }),
+  });
+}
 
 export async function retrieveModjoTranscripts(
   auth: Authenticator,
@@ -224,31 +272,25 @@ export async function retrieveModjoTranscripts(
   let hasMorePages = true;
   while (hasMorePages) {
     try {
-      const response = await fetch("https://api.modjo.ai/v1/calls/exports", {
-        method: "POST",
-        headers: {
-          "X-API-KEY": modjoApiKey,
-          "Content-Type": "application/json",
+      const response = await fetchModjoAPI({
+        apiKey: modjoApiKey,
+        pagination: { page, perPage },
+        filters: {
+          callStartDateRange: {
+            start: fromDateTime,
+            end: new Date().toISOString(),
+          },
         },
-        body: JSON.stringify({
-          pagination: { page, perPage },
-          filters: {
-            callStartDateRange: {
-              start: fromDateTime,
-              end: new Date().toISOString(),
-            },
-          },
-          relations: {
-            recording: true,
-            highlights: true,
-            transcript: true,
-            speakers: true,
-            tags: true,
-            contacts: true,
-            account: true,
-            deal: true,
-          },
-        }),
+        relations: {
+          recording: true,
+          highlights: true,
+          transcript: true,
+          speakers: true,
+          tags: true,
+          contacts: true,
+          account: true,
+          deal: true,
+        },
       });
 
       if (!response.ok) {
@@ -425,28 +467,22 @@ export async function retrieveModjoTranscriptContent(
     return user;
   };
 
-  const response = await fetch("https://api.modjo.ai/v1/calls/exports", {
-    method: "POST",
-    headers: {
-      "X-API-KEY": modjoApiKey,
-      "Content-Type": "application/json",
+  const response = await fetchModjoAPI({
+    apiKey: modjoApiKey,
+    pagination: { page: 1, perPage: 1 },
+    filters: {
+      callIds: [parseInt(fileId)],
     },
-    body: JSON.stringify({
-      pagination: { page: 1, perPage: 1 },
-      filters: {
-        callIds: [parseInt(fileId)],
-      },
-      relations: {
-        recording: true,
-        highlights: true,
-        transcript: true,
-        speakers: true,
-        tags: true,
-        contacts: true,
-        account: true,
-        deal: true,
-      },
-    }),
+    relations: {
+      recording: true,
+      highlights: true,
+      transcript: true,
+      speakers: true,
+      tags: true,
+      contacts: true,
+      account: true,
+      deal: true,
+    },
   });
 
   if (!response.ok) {
@@ -675,4 +711,156 @@ export async function retrieveModjoTranscriptContent(
   }
 
   return { transcriptTitle, transcriptContent, userParticipated, tags };
+}
+
+/**
+ * Scans Modjo API for all transcripts within a specific date range
+ * Returns basic transcript information (callId, title, startDate) without fetching full content
+ */
+export async function scanModjoTranscriptsInDateRange(
+  modjoApiKey: string,
+  startDate: Date,
+  endDate: Date,
+  logger: Logger
+): Promise<
+  Array<{
+    callId: string;
+    title: string;
+    startDate: string;
+  }>
+> {
+  const localLogger = createScopedLogger(
+    logger,
+    "scanModjoTranscriptsInDateRange"
+  );
+
+  const foundTranscripts: Array<{
+    callId: string;
+    title: string;
+    startDate: string;
+  }> = [];
+
+  let page = 1;
+  const perPage = 50;
+  let hasMorePages = true;
+
+  localLogger.info(
+    {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    },
+    "Starting to scan Modjo API"
+  );
+
+  while (hasMorePages) {
+    try {
+      const response = await fetchModjoAPI({
+        apiKey: modjoApiKey,
+        pagination: { page, perPage },
+        filters: {
+          callStartDateRange: {
+            start: startDate.toISOString(),
+            end: endDate.toISOString(),
+          },
+        },
+        relations: {},
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        localLogger.error(
+          {
+            status: response.status,
+            body: errorText,
+          },
+          "Error fetching from Modjo API"
+        );
+        throw new Error(
+          `Error fetching from Modjo API: ${response.status} - ${errorText}`
+        );
+      }
+
+      const rawData = await response.json();
+      const validatedDataResult = validateModjoResponse(rawData);
+
+      if (either.isLeft(validatedDataResult)) {
+        localLogger.error(
+          { error: validatedDataResult.left },
+          "Invalid response data from Modjo"
+        );
+        throw validatedDataResult.left;
+      }
+
+      const validatedData = validatedDataResult.right;
+
+      if (!validatedData.values || validatedData.values.length === 0) {
+        localLogger.info(
+          {
+            page,
+            totalFound: foundTranscripts.length,
+          },
+          "No more transcripts found"
+        );
+        break;
+      }
+
+      // Collect transcript metadata from current page
+      for (const call of validatedData.values) {
+        if (call.callId) {
+          foundTranscripts.push({
+            callId: call.callId.toString(),
+            title: call.title ?? "Untitled",
+            startDate: call.startDate ?? "Unknown",
+          });
+        }
+      }
+
+      const pagination = validatedData.pagination;
+      localLogger.info(
+        {
+          page,
+          totalFound: foundTranscripts.length,
+          pageSize: validatedData.values.length,
+          totalValues: pagination?.totalValues,
+          lastPage: pagination?.lastPage,
+          nextPage: pagination?.nextPage,
+        },
+        "Processed page of Modjo transcripts"
+      );
+
+      // Check if we should continue to next page
+      if (pagination?.nextPage && page < (pagination.lastPage ?? 0)) {
+        page = pagination.nextPage;
+      } else {
+        hasMorePages = false;
+        localLogger.info(
+          {
+            finalPage: page,
+            totalTranscriptsFound: foundTranscripts.length,
+            totalCallsReviewed: pagination?.totalValues ?? 0,
+          },
+          "Completed pagination"
+        );
+      }
+    } catch (error) {
+      localLogger.error(
+        {
+          error,
+          page,
+          totalFoundSoFar: foundTranscripts.length,
+        },
+        "Error processing page - stopping"
+      );
+      throw error;
+    }
+  }
+
+  localLogger.info(
+    {
+      totalTranscripts: foundTranscripts.length,
+    },
+    "Scan completed successfully"
+  );
+
+  return foundTranscripts;
 }
