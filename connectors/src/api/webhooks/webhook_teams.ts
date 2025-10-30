@@ -72,6 +72,21 @@ adapter.onTurnError = async (context, error) => {
  * Handles all Teams messages, adaptive cards, and message extensions
  */
 export async function webhookTeamsAPIHandler(req: Request, res: Response) {
+  const microsoftAppId = apiConfig.getMicrosoftBotId();
+  if (!microsoftAppId) {
+    logger.error(
+      { connectorProvider: "microsoft_bot" },
+      "MICROSOFT_BOT_ID environment variable not set"
+    );
+    return apiError(req, res, {
+      api_error: {
+        type: "internal_server_error",
+        message: "Bot configuration error",
+      },
+      status_code: 500,
+    });
+  }
+
   logger.info(
     {
       connectorProvider: "microsoft_bot",
@@ -103,21 +118,6 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
         message: "Missing or invalid Authorization header",
       },
       status_code: 401,
-    });
-  }
-
-  const microsoftAppId = apiConfig.getMicrosoftBotId();
-  if (!microsoftAppId) {
-    logger.error(
-      { connectorProvider: "microsoft_bot" },
-      "MICROSOFT_BOT_ID environment variable not set"
-    );
-    return apiError(req, res, {
-      api_error: {
-        type: "internal_server_error",
-        message: "Bot configuration error",
-      },
-      status_code: 500,
     });
   }
 

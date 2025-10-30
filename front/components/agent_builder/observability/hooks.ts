@@ -61,7 +61,9 @@ function createChartData(
     for (const toolName of topTools) {
       const toolData = item.tools[toolName];
       const count = toolData?.count ?? 0;
-      values[toolName] = calculatePercentage(count, total);
+      if (count > 0) {
+        values[toolName] = calculatePercentage(count, total);
+      }
     }
 
     return { label: item.label, values };

@@ -18,6 +18,7 @@ import {
   _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
 import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
+import { _getFeedbackAnalyzerGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/feedback_analyzer";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import {
@@ -61,9 +62,9 @@ import type {
   GlobalAgentStatus,
   WhitelistableFeature,
 } from "@app/types";
-import { isDevelopment } from "@app/types";
 import {
   GLOBAL_AGENTS_SID,
+  isDevelopment,
   isGlobalAgentId,
   isProviderWhitelisted,
 } from "@app/types";
@@ -398,6 +399,13 @@ function getGlobalAgent({
         settings,
       });
       break;
+    case GLOBAL_AGENTS_SID.FEEDBACK_ANALYZER:
+      agentConfiguration = _getFeedbackAnalyzerGlobalAgent({
+        auth,
+        settings,
+        interactiveContentMCPServerView,
+      });
+      break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
       if (isDevelopment()) {
@@ -581,6 +589,12 @@ export async function getGlobalAgents(
   if (!flags.includes("deepseek_r1_global_agent_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1
+    );
+  }
+
+  if (!flags.includes("agent_builder_observability")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.FEEDBACK_ANALYZER
     );
   }
 
