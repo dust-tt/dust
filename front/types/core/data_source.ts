@@ -104,9 +104,6 @@ export type CoreAPITableBlob = {
   title: string;
   mime_type: string;
   provider_visibility?: ProviderVisibility;
-
-  // Rows.
-  rows: CoreAPIRow[];
 };
 
 export type CoreAPILightDocument = {
