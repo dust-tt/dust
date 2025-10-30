@@ -343,7 +343,7 @@ export async function runTriggerWebhookActivity({
         // Fire and forget
         const result = await launchAgentTriggerWorkflow({
           auth,
-          trigger: trigger,
+          trigger,
           contentFragment,
         });
 
