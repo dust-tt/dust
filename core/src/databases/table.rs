@@ -728,23 +728,28 @@ impl LocalTable {
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
     ) -> Result<Option<TableSchema>> {
-        match &self.table.schema_stale_at {
-            Some(_) => {
-                let schema = self.compute_schema(databases_store).await?;
-
-                store
-                    .update_data_source_table_schema(
-                        &self.table.project,
-                        &self.table.data_source_id,
-                        &self.table.table_id,
-                        &schema,
-                    )
-                    .await?;
-                self.table.set_schema(schema.clone());
-
-                Ok(Some(schema))
+        if self.table.schema_stale_at.is_some() || self.table.schema.is_none() {
+            if self.table.schema.is_none() {
+                info!(
+                    table_id = self.table.table_id(),
+                    "DSSTRUCTSTAT [schema] Schema is missing, recomputing. Should normally only happen after relocation."
+                );
             }
-            None => Ok(self.table.schema.clone()),
+            let schema = self.compute_schema(databases_store).await?;
+
+            store
+                .update_data_source_table_schema(
+                    &self.table.project,
+                    &self.table.data_source_id,
+                    &self.table.table_id,
+                    &schema,
+                )
+                .await?;
+
+            self.table.set_schema(schema.clone());
+            Ok(Some(schema))
+        } else {
+            Ok(self.table.schema.clone())
         }
     }
 
