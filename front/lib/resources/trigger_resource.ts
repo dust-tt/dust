@@ -542,12 +542,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
   async addToSubscribers(
     auth: Authenticator
-  ): Promise<
-    Result<
-      undefined,
-      DustError<"unauthorized" | "internal_error" | "internal_error">
-    >
-  > {
+  ): Promise<Result<undefined, DustError<"unauthorized" | "internal_error">>> {
     if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
       return new Err(
         new DustError("unauthorized", "User do not have access to this trigger")
