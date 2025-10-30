@@ -1,4 +1,7 @@
-import { MAX_TOOLS_DISPLAYED } from "@app/components/agent_builder/observability/constants";
+import {
+  MAX_TOOLS_DISPLAYED,
+  OTHER_TOOLS_LABEL,
+} from "@app/components/agent_builder/observability/constants";
 import type {
   ChartDatum,
   ToolChartModeType,
@@ -50,7 +53,8 @@ function aggregateToolCounts(items: ToolDataItem[]): Map<string, number> {
 
 function createChartData(
   items: ToolDataItem[],
-  topTools: string[]
+  displayTools: string[],
+  includeOthers: boolean
 ): ChartDatum[] {
   return items.map((item) => {
     const total =
@@ -58,11 +62,28 @@ function createChartData(
       Object.values(item.tools).reduce((acc, tool) => acc + tool.count, 0);
 
     const values: Record<string, number> = {};
-    for (const toolName of topTools) {
+    for (const toolName of displayTools) {
+      if (toolName === OTHER_TOOLS_LABEL) {
+        continue;
+      }
+
       const toolData = item.tools[toolName];
       const count = toolData?.count ?? 0;
       if (count > 0) {
         values[toolName] = calculatePercentage(count, total);
+      }
+    }
+
+    if (includeOthers) {
+      let othersCount = 0;
+      for (const [toolName, toolData] of Object.entries(item.tools)) {
+        if (!displayTools.includes(toolName)) {
+          othersCount += toolData.count;
+        }
+      }
+
+      if (othersCount > 0) {
+        values[OTHER_TOOLS_LABEL] = calculatePercentage(othersCount, total);
       }
     }
 
@@ -122,8 +143,12 @@ function processToolUsageData(
   }
 
   const counts = aggregateToolCounts(data);
-  const topTools = selectTopTools(counts, MAX_TOOLS_DISPLAYED);
-  const chartData = createChartData(data, topTools);
+  const includeOthers = counts.size > MAX_TOOLS_DISPLAYED;
+  const selectedTools = selectTopTools(counts, MAX_TOOLS_DISPLAYED);
+  const topTools = includeOthers
+    ? [...selectedTools, OTHER_TOOLS_LABEL]
+    : selectedTools;
+  const chartData = createChartData(data, topTools, includeOthers);
 
   return {
     chartData,

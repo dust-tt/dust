@@ -39,6 +39,8 @@ export const TOOL_COLORS = [
 
 export const MAX_TOOLS_DISPLAYED = 5;
 
+export const OTHER_TOOLS_LABEL = "Others";
+
 export const FEEDBACK_DISTRIBUTION_PALETTE = {
   positive: "text-[hsl(var(--chart-1))]",
   negative: "text-[hsl(var(--chart-4))]",
