@@ -33,7 +33,7 @@ export function DataSourceViewTagsFilterDropdown() {
   >({
     name: "configuration.additionalConfiguration",
   });
-  const isExploratorySearchEnabled = 
+  const isExploratorySearchEnabled =
     additionalConfiguration[ADVANCED_SEARCH_SWITCH] === true;
 
   const dataSourceViews = sources.in.reduce((acc, source) => {
