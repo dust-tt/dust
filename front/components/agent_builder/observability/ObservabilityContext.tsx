@@ -6,13 +6,10 @@ import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability
 export type ObservabilityMode = "timeRange" | "version";
 
 type ObservabilityContextValue = {
-  // Global mode selector
   mode: ObservabilityMode;
   setMode: (m: ObservabilityMode) => void;
-  // Time-range selection (used when mode = timeRange)
   period: ObservabilityTimeRangeType;
   setPeriod: (p: ObservabilityTimeRangeType) => void;
-  // Version selection (used when mode = version)
   selectedVersion: string | null;
   setSelectedVersion: (v: string | null) => void;
 };
