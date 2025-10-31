@@ -42,7 +42,6 @@ export function CreateWebhookSourceWithProviderForm({
   const [isExtraConfigValid, setIsExtraConfigValid] = useState(false);
 
   const preset = WEBHOOK_PRESETS[provider];
-  const kindName = preset.name;
   const OAuthExtraConfigInput = preset.components.oauthExtraConfigInput;
 
   const handleConnectToProvider = async () => {
@@ -63,21 +62,21 @@ export function CreateWebhookSourceWithProviderForm({
       if (connectionRes.isErr()) {
         sendNotification({
           type: "error",
-          title: `Failed to connect to ${kindName}`,
+          title: `Failed to connect to ${preset.name}`,
           description: connectionRes.error.message,
         });
       } else {
         setConnection(connectionRes.value);
         sendNotification({
           type: "success",
-          title: `Connected to ${kindName}`,
+          title: `Connected to ${preset.name}`,
           description: "Fetching additional data for configuration...",
         });
       }
     } catch (error) {
       sendNotification({
         type: "error",
-        title: `Failed to connect to ${kindName}`,
+        title: `Failed to connect to ${preset.name}`,
         description: normalizeError(error).message,
       });
     } finally {
@@ -94,9 +93,9 @@ export function CreateWebhookSourceWithProviderForm({
   return (
     <div className="flex flex-col space-y-4">
       <div>
-        <Label>{kindName} Connection</Label>
+        <Label>{preset.name} Connection</Label>
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {kindName} connection is required
+          {preset.name} connection is required
         </p>
         {OAuthExtraConfigInput && (
           <div className="mt-4">

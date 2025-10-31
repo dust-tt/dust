@@ -45,6 +45,7 @@ import {
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
+import { asDisplayName } from "@app/types";
 import type {
   WebhookProvider,
   WebhookSourceWithSystemViewType,
@@ -189,7 +190,7 @@ function WebhookSourceSheetContent({
   // Create form
   const createFormDefaultValues = useMemo<CreateWebhookSourceFormData>(
     () => ({
-      name: "",
+      name: `${asDisplayName(mode.provider)} Trigger`,
       secret: "",
       autoGenerate: true,
       signatureHeader: "",
@@ -550,7 +551,7 @@ function WebhookSourceSheetContent({
     () => [
       {
         id: "create",
-        title: `New ${mode.provider ? WEBHOOK_PRESETS[mode.provider].name : "Custom"} Webhook`,
+        title: `New ${mode.provider ? WEBHOOK_PRESETS[mode.provider].name : "Custom"} Trigger`,
         description: "",
         icon: getIcon(
           normalizeWebhookIcon(
