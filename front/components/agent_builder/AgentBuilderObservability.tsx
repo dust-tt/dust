@@ -8,8 +8,6 @@ import {
   Label,
   LoadingBlock,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-import React from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { FeedbackDistributionChart } from "@app/components/agent_builder/observability/charts/FeedbackDistributionChart";
@@ -24,13 +22,10 @@ import {
   ObservabilityProvider,
   useObservability,
 } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { useSendNotification } from "@app/hooks/useNotification";
-import { useExportFeedbackCsv } from "@app/lib/swr/agent_observability";
+import { StartConversationWithFredButton } from "@app/components/agent_builder/observability/StartConversationWithFredButton";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
-import { getConversationRoute } from "@app/lib/utils/router";
-import { GLOBAL_AGENTS_SID, normalizeError } from "@app/types";
 
-import { createConversationWithMessage } from "../assistant/conversation/lib";
+import { ExportFeedbackCsvButton } from "./observability/ExportFeedbackCSVButton";
 
 interface AgentBuilderObservabilityProps {
   agentConfigurationSId: string;
@@ -63,10 +58,7 @@ export function AgentBuilderObservability({
               Monitor key metrics and performance indicators for your agent.
             </span>
           </div>
-          <HeaderActions
-            workspaceId={owner.sId}
-            agentConfigurationSId={agentConfiguration.sId}
-          />
+          <HeaderActions agentConfigurationSId={agentConfiguration.sId} />
         </div>
 
         <div className="grid grid-cols-1 gap-6">
@@ -127,122 +119,16 @@ function HeaderPeriodDropdown() {
 }
 
 function HeaderActions({
-  workspaceId,
   agentConfigurationSId,
 }: {
-  workspaceId: string;
   agentConfigurationSId: string;
 }) {
-  const { period } = useObservability();
-  const [downloading, setDownloading] = React.useState(false);
-  const [starting, setStarting] = React.useState(false);
-  const router = useRouter();
-
-  const { owner, user } = useAgentBuilderContext();
-  const { downloadFeedbackCsv, exportFeedbackCsv } = useExportFeedbackCsv();
-  const sendNotification = useSendNotification();
-
-  const handleDownload = async () => {
-    setDownloading(true);
-    try {
-      await downloadFeedbackCsv({
-        workspaceId,
-        agentConfigurationId: agentConfigurationSId,
-        days: period,
-      });
-    } catch (e) {
-      sendNotification({
-        title: "Export failed",
-        description: normalizeError(e).message,
-        type: "error",
-      });
-      return;
-    } finally {
-      setDownloading(false);
-    }
-  };
-
   return (
     <div className="flex items-center gap-2">
       <HeaderPeriodDropdown />
-      <ExportFeedbackCsvButton
-        onClick={handleDownload}
-        downloading={downloading}
-      />
-      <Button
-        label={starting ? "Starting..." : "Start Conversation with Fred"}
-        size="xs"
-        variant="outline"
-        disabled={starting || downloading}
-        onClick={async () => {
-          setStarting(true);
-          try {
-            // 1) Generate CSV and upload as file directly
-            const exportJson = await exportFeedbackCsv({
-              workspaceId,
-              agentConfigurationId: agentConfigurationSId,
-              days: period,
-            });
-
-            // 2) Create conversation with feedback CSV
-            const convRes = await createConversationWithMessage({
-              owner,
-              user,
-              messageData: {
-                input: "Please analyze the attached feedback CSV.",
-                mentions: [
-                  { configurationId: GLOBAL_AGENTS_SID.FEEDBACK_ANALYZER },
-                ],
-                contentFragments: {
-                  uploaded: [
-                    {
-                      title: exportJson.filename,
-                      fileId: exportJson.fileId,
-                      contentType: "text/csv",
-                    },
-                  ],
-                  contentNodes: [],
-                },
-              },
-            });
-
-            if (convRes.isErr()) {
-              throw convRes.error;
-            }
-
-            // 3) Navigate to conversation
-            const convJson = convRes.value;
-            void router.push(getConversationRoute(workspaceId, convJson.sId));
-          } catch (e) {
-            sendNotification({
-              title: "Export failed",
-              description: normalizeError(e).message,
-              type: "error",
-            });
-          } finally {
-            setStarting(false);
-          }
-        }}
-      />
-    </div>
-  );
-}
-
-function ExportFeedbackCsvButton({
-  onClick,
-  downloading,
-}: {
-  onClick: () => void;
-  downloading: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <Button
-        label={downloading ? "Generating..." : "Export Feedback CSV"}
-        size="xs"
-        variant="outline"
-        onClick={onClick}
-        disabled={downloading}
+      <ExportFeedbackCsvButton agentConfigurationSId={agentConfigurationSId} />
+      <StartConversationWithFredButton
+        agentConfigurationSId={agentConfigurationSId}
       />
     </div>
   );
