@@ -200,8 +200,6 @@ async function runTest(
         throw eventStreamResult.error;
       }
 
-      const events = eventStreamResult.value;
-
       let responseFromDeltas = "";
       let fullResponse = "";
       let reasoningFromDeltas = "";
@@ -209,7 +207,7 @@ async function runTest(
       let outputTokens = null;
 
       // Collect all events
-      for await (const event of events) {
+      for await (const event of eventStreamResult.value) {
         switch (event.type) {
           case "text_delta":
             responseFromDeltas += event.content.delta;
