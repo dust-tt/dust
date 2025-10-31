@@ -173,6 +173,7 @@ export type AgentMessageType = BaseAgentMessageType & {
   }>;
   contents: Array<{ step: number; content: AgentContentItemType }>;
   parsedContents: Record<number, Array<ParsedContentItem>>;
+  modelInteractionDurationMs: number | null;
 };
 
 export type LightAgentMessageType = BaseAgentMessageType & {
