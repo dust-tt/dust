@@ -7,11 +7,11 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import cronstrue from "cronstrue";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
+import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useTextAsCronRule } from "@app/lib/swr/agent_triggers";
-import { debounce } from "@app/lib/utils/debounce";
 import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -79,11 +79,30 @@ export function ScheduleEditionScheduler({
   const [generatedTimezone, setGeneratedTimezone] = useState<string | null>(
     null
   );
-  // TODO(2025-10-23 aubin): refactor this debounce to useDebounce.
-  const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   const textAsCronRule = useTextAsCronRule({ workspace: owner });
+
+  const triggerCronGeneration = useDebounceWithAbort(
+    async (txt: string, signal: AbortSignal) => {
+      setValue("schedule.cron", "");
+      const result = await textAsCronRule(txt, signal);
+
+      // If the request was not aborted, we can update the form
+      if (!signal.aborted) {
+        if (result.isOk()) {
+          setValue("schedule.cron", result.value.cron);
+          setValue("schedule.timezone", result.value.timezone);
+          setGeneratedTimezone(result.value.timezone);
+          setGenerationStatus("idle");
+        } else {
+          setGenerationStatus("error");
+          setCronErrorMessage(extractErrorMessage(result.error));
+          setGeneratedTimezone(null);
+        }
+      }
+    },
+    { delay: 500, minLength: MIN_DESCRIPTION_LENGTH }
+  );
 
   const cronDescription = useMemo(() => {
     switch (generationStatus) {
@@ -110,54 +129,14 @@ export function ScheduleEditionScheduler({
     }
   }, [generationStatus, cron, generatedTimezone, cronErrorMessage]);
 
-  const handleNaturalDescriptionChange = async (
+  const handleNaturalDescriptionChange = (
     e: React.ChangeEvent<HTMLTextAreaElement>
   ) => {
     const txt = e.target.value;
     onNaturalDescriptionChange(txt);
     setGenerationStatus(txt ? "loading" : "idle");
 
-    if (txt.length >= MIN_DESCRIPTION_LENGTH) {
-      debounce(
-        debounceHandle,
-        async () => {
-          // Cancel previous request
-          if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-          }
-
-          abortControllerRef.current = new AbortController();
-          const signal = abortControllerRef.current.signal;
-
-          setValue("schedule.cron", "");
-          const result = await textAsCronRule(txt, signal);
-
-          // If the request was not aborted, we can update the form
-          if (!signal.aborted) {
-            if (result.isOk()) {
-              setValue("schedule.cron", result.value.cron);
-              setValue("schedule.timezone", result.value.timezone);
-              setGeneratedTimezone(result.value.timezone);
-              setGenerationStatus("idle");
-            } else {
-              setGenerationStatus("error");
-              setCronErrorMessage(extractErrorMessage(result.error));
-              setGeneratedTimezone(null);
-            }
-          }
-        },
-        500
-      );
-    } else {
-      if (debounceHandle.current) {
-        clearTimeout(debounceHandle.current);
-        debounceHandle.current = undefined;
-      }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-    }
+    triggerCronGeneration(txt);
   };
 
   return (
