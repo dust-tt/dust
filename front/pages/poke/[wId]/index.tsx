@@ -38,6 +38,8 @@ import {
 } from "@app/components/poke/subscriptions/table";
 import { TrackerDataTable } from "@app/components/poke/trackers/table";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
+import { WebhookSourceDataTable } from "@app/components/poke/webhook_sources/table";
+import { WebhookSourceViewDataTable } from "@app/components/poke/webhook_source_views/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import config from "@app/lib/api/config";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
@@ -266,6 +268,8 @@ const WorkspacePage = ({
               <TabsTrigger value="spaces" label="Spaces" />
               <TabsTrigger value="trackers" label="Trackers" />
               <TabsTrigger value="triggers" label="Triggers" />
+              <TabsTrigger value="webhooksources" label="Webhook Sources" />
+              <TabsTrigger value="webhooksourceviews" label="Webhook Source Views" />
 
               {/* Plugin Logs on the far right */}
               <TabsTrigger value="plugins" label="Plugins Logs" />
@@ -308,6 +312,12 @@ const WorkspacePage = ({
             </TabsContent>
             <TabsContent value="triggers">
               <TriggerDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="webhooksources">
+              <WebhookSourceDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="webhooksourceviews">
+              <WebhookSourceViewDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="plugins">
               <PluginRunsDataTable owner={owner} loadOnInit />

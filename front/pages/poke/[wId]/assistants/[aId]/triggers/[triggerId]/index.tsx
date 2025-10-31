@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { ConversationDataTable } from "@app/components/poke/conversation/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { ViewTriggerTable } from "@app/components/poke/triggers/view";
+import { WebhookRequestTriggersDataTable } from "@app/components/poke/webhook_request_triggers/table";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -72,6 +73,17 @@ export default function TriggerPage({
   return (
     <div className="flex flex-col gap-y-6">
       <ViewTriggerTable trigger={trigger} agent={agent} owner={owner} />
+      {trigger.kind === "webhook" && (
+        <div className="border-t border-gray-200 pt-6">
+          <h2 className="mb-4 text-lg font-semibold">
+            Webhook Request Triggers (Last 100)
+          </h2>
+          <WebhookRequestTriggersDataTable
+            owner={owner}
+            triggerId={trigger.sId}
+          />
+        </div>
+      )}
       <div className="border-t border-gray-200 pt-6">
         <h2 className="mb-4 text-lg font-semibold">Conversations</h2>
         <ConversationDataTable owner={owner} conversations={conversations} />
