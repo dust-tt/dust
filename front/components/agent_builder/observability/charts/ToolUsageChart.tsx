@@ -125,6 +125,9 @@ export function ToolUsageChart({
             tickLine={false}
             axisLine={false}
             tickMargin={8}
+            domain={[0, 100]}
+            ticks={[0, 20, 40, 60, 80, 100]}
+            allowDecimals={false}
             label={{
               value: "Usage %",
               angle: -90,
