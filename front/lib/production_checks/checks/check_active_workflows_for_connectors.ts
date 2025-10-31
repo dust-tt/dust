@@ -84,11 +84,15 @@ async function areTemporalWorkflowsRunning(
 
       const descriptions = await Promise.all([workflowHandle.describe()]);
 
-      return descriptions.every(({ status: { name } }) => name === "RUNNING");
+      if (!descriptions.every(({ status: { name } }) => name === "RUNNING")) {
+        return false;
+      }
     } catch (err) {
       return false;
     }
   }
+
+  return true;
 }
 
 export const checkActiveWorkflows: CheckFunction = async (
