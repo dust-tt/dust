@@ -558,6 +558,19 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       );
     }
 
+    const existing = await TriggerSubscriberModel.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        triggerId: this.id,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+    if (existing) {
+      return new Err(
+        new DustError("internal_error", "User is already a subscriber")
+      );
+    }
+
     await TriggerSubscriberModel.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       triggerId: this.id,
