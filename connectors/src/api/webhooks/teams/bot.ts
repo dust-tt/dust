@@ -97,6 +97,21 @@ export async function botAnswerMessage(
     (ac) => ac.status === "active"
   );
 
+  // Teams sends mentions as <at>name</at> XML-style tags
+  const botName = context.activity.recipient?.name;
+  if (botName) {
+    const matches = message.match(/<at>.*?<\/at>/gi);
+    if (matches) {
+      for (const m of matches) {
+        const mentionedName = m.replace(/<\/?at>/gi, "").trim();
+        // Remove mention if it matches the bot's name (case-insensitive)
+        if (mentionedName.toLowerCase() === botName.toLowerCase()) {
+          message = message.replace(m, "").trim();
+        }
+      }
+    }
+  }
+
   // Process mentions in Teams messages (similar to Slack but for Teams format)
   // Teams mentions come in a different format than Slack
   const messageWithoutMarkdown = removeMarkdown(message);
