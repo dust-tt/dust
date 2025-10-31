@@ -1,10 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import React, { useState } from "react";
+import React from "react";
 
-import {
-  ButtonsSwitch,
-  ButtonsSwitchList,
-} from "../index_with_tw_base";
+import { ButtonsSwitch, ButtonsSwitchList } from "../index_with_tw_base";
 
 const meta = {
   title: "Components/ButtonsSwitch",
@@ -27,20 +24,11 @@ export const Default: Story = {
 };
 
 export const Controlled: Story = {
-  render: () => {
-    const [value, setValue] = useState("time");
-    return (
-      <div className="s-flex s-flex-col s-gap-4 s-p-4">
-        <ButtonsSwitchList value={value} onValueChange={setValue}>
-          <ButtonsSwitch value="time" label="Time range" />
-          <ButtonsSwitch value="version" label="Version" />
-          <ButtonsSwitch value="other" label="Other" />
-        </ButtonsSwitchList>
-        <div className="s-text-sm s-text-muted-foreground">
-          Selected: <span className="s-font-medium s-text-foreground">{value}</span>
-        </div>
-      </div>
-    );
-  },
+  render: () => (
+    <ButtonsSwitchList defaultValue="time">
+      <ButtonsSwitch value="time" label="Time range" />
+      <ButtonsSwitch value="version" label="Version" />
+      <ButtonsSwitch value="other" label="Other" />
+    </ButtonsSwitchList>
+  ),
 };
-

@@ -47,26 +47,13 @@ const listStyles = cva(
   }
 );
 
-type ButtonsSwitchListBaseProps = React.HTMLAttributes<HTMLDivElement> &
+type ButtonsSwitchListProps = React.HTMLAttributes<HTMLDivElement> &
   VariantProps<typeof listStyles> & {
     size?: ButtonSize;
     disabled?: boolean;
+    defaultValue?: string;
+    onValueChange?: (value: string) => void;
   };
-
-type ButtonsSwitchListControlledProps = {
-  value: string;
-  onValueChange: (value: string) => void;
-  defaultValue?: never;
-};
-
-type ButtonsSwitchListUncontrolledProps = {
-  value?: never;
-  onValueChange?: (value: string) => void;
-  defaultValue?: string;
-};
-
-type ButtonsSwitchListProps = ButtonsSwitchListBaseProps &
-  (ButtonsSwitchListControlledProps | ButtonsSwitchListUncontrolledProps);
 
 export const ButtonsSwitchList = React.forwardRef<
   HTMLDivElement,
@@ -77,7 +64,6 @@ export const ButtonsSwitchList = React.forwardRef<
       className,
       children,
       size = "sm",
-      value,
       defaultValue,
       onValueChange,
       disabled,
@@ -90,17 +76,14 @@ export const ButtonsSwitchList = React.forwardRef<
       string | undefined
     >(defaultValue);
 
-    const isControlled = value !== undefined;
-    const selected = isControlled ? value : internalValue;
+    const selected = internalValue;
 
     const handleChange = React.useCallback(
       (next: string) => {
-        if (!isControlled) {
-          setInternalValue(next);
-        }
+        setInternalValue(next);
         onValueChange?.(next);
       },
-      [isControlled, onValueChange]
+      [onValueChange]
     );
 
     const context: ButtonsSwitchContextType = React.useMemo(
