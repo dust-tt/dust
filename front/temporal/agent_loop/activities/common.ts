@@ -55,7 +55,7 @@ async function processEventForDatabase(
   // If we have a model interaction duration, store it.
   if (modelInteractionDurationMs) {
     await agentMessageRow.update({
-      modelInteractionDurationMs,
+      modelInteractionDurationMs: Math.round(modelInteractionDurationMs),
     });
   }
 
