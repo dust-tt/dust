@@ -105,7 +105,7 @@ export const GPT_4_1_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description: "OpenAI's GPT 4.1 model (1M context).",
-  shortDescription: "OpenAI's most advanced model.",
+  shortDescription: "OpenAI's smartest non reasoning model.",
   isLegacy: false,
   isLatest: true,
   generationTokensCount: 32_000,
