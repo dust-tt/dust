@@ -47,13 +47,14 @@ const listStyles = cva(
   }
 );
 
-type ButtonsSwitchListProps = React.HTMLAttributes<HTMLDivElement> &
-  VariantProps<typeof listStyles> & {
-    size?: ButtonSize;
-    disabled?: boolean;
-    defaultValue?: string;
-    onValueChange?: (value: string) => void;
-  };
+interface ButtonsSwitchListProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof listStyles> {
+  size?: ButtonSize;
+  disabled?: boolean;
+  defaultValue?: string;
+  onValueChange?: (value: string) => void;
+}
 
 export const ButtonsSwitchList = React.forwardRef<
   HTMLDivElement,
@@ -108,14 +109,12 @@ export const ButtonsSwitchList = React.forwardRef<
 );
 ButtonsSwitchList.displayName = "ButtonsSwitchList";
 
-type ButtonsSwitchProps = Omit<
-  React.ComponentProps<typeof Button>,
-  "size" | "variant"
-> & {
+interface ButtonsSwitchProps
+  extends Omit<React.ComponentProps<typeof Button>, "size" | "variant"> {
   value: string;
   label?: string;
   icon?: React.ComponentProps<typeof Button>["icon"];
-};
+}
 
 export const ButtonsSwitch = React.forwardRef<
   HTMLButtonElement,
