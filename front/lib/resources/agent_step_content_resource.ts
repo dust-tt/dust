@@ -410,7 +410,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           version: currentMaxVersion,
           type,
           value,
-          modelInteractionDurationMs,
         },
         transaction
       );
