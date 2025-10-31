@@ -104,7 +104,8 @@ pub struct DatasourceViewFilter {
     search_scope: SearchScopeType,
     #[serde(default)]
     filter: Option<Vec<String>>,
-    tags_filter: Option<TagsFilter>,
+    #[serde(default)]
+    tags: Option<TagsFilter>,
 }
 
 fn default_search_scope() -> SearchScopeType {
@@ -815,13 +816,13 @@ impl ElasticsearchSearchStore {
                     return Some(Query::Bool(bool_query));
                 }
 
-                // Space level permission filter
+                // Permission filter
                 if !f.view_filter.is_empty() {
                     counter.add(1);
                     bool_query = bool_query.filter(Query::terms("parents", f.view_filter.clone()));
                 }
 
-                // Agent level filter
+                // Selection filter
                 if let Some(ref filter) = f.filter {
                     if !filter.is_empty() {
                         counter.add(1);
@@ -829,13 +830,12 @@ impl ElasticsearchSearchStore {
                     }
                 }
 
-                // Agent level tags filter
-                if let Some(tags_filter) = &f.tags_filter {
-                    if let Some(included_tags) = &tags_filter.is_in {
+                if let Some(tags) = &f.tags {
+                    if let Some(included_tags) = &tags.is_in {
                         counter.add(1);
                         bool_query = bool_query.filter(Query::terms("tags", included_tags));
                     }
-                    if let Some(excluded_tags) = &tags_filter.is_not {
+                    if let Some(excluded_tags) = &tags.is_not {
                         counter.add(1);
                         bool_query = bool_query.must_not(Query::terms("tags", excluded_tags));
                     }
