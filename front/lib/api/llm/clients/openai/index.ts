@@ -62,7 +62,7 @@ export class OpenAIResponsesLLM extends LLM {
     });
   }
 
-  async *stream({
+  async *internalStream({
     conversation,
     prompt,
     specifications,

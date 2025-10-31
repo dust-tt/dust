@@ -59,7 +59,7 @@ export class AnthropicLLM extends LLM {
     });
   }
 
-  async *stream({
+  async *internalStream({
     conversation,
     prompt,
     specifications,

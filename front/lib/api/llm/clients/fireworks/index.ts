@@ -64,7 +64,7 @@ export class FireworksLLM extends LLM {
     });
   }
 
-  async *stream({
+  protected async *internalStream({
     conversation,
     prompt,
     specifications,
