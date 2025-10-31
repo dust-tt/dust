@@ -101,7 +101,8 @@ const makeResizeAndUploadImgToFileStorage = (maxSize: string) => {
       ImageWidth: maxSize,
     });
 };
-interface ResizeParams {
+
+interface ImageResizeParams {
   ImageHeight: string;
   ImageWidth: string;
 }
