@@ -18,7 +18,12 @@ import type {
   ModelMessageTypeMultiActionsWithoutContentFragment,
   UserMessageTypeModel,
 } from "@app/types";
-import { assertNever, isString, safeParseJSON } from "@app/types";
+import {
+  assertNever,
+  isString,
+  normalizeError,
+  safeParseJSON,
+} from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
@@ -56,12 +61,19 @@ function assistantContentToParam(
       };
     case "reasoning":
       assert(content.value.reasoning, "Reasoning content is missing reasoning");
+      let signature = "";
+      try {
+        const metadata = JSON.parse(content.value.metadata);
+        signature = metadata.signature || "";
+      } catch (e) {
+        throw new Error(
+          `Failed to parse reasoning metadata JSON: ${normalizeError(e).message}`
+        );
+      }
       return {
         type: "thinking",
         thinking: content.value.reasoning,
-        /*TODO(DIRECT_LLM 2025-10-24) Signatures should be stored in AnthropicLLM's metadata of
-         * thinking events and re-extracted */
-        signature: "",
+        signature: signature,
       };
     case "function_call": {
       const argsRes = safeParseJSON(content.value.arguments);
