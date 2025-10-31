@@ -380,7 +380,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     index,
     type,
     value,
-    modelInteractionDurationMs,
   }: Omit<
     CreationAttributes<AgentStepContentModel>,
     "version"

@@ -510,8 +510,6 @@ export async function runModelActivity(
       index,
       type: content.type,
       value: content,
-      modelInteractionDurationMs:
-        modelInteractionEndDate - modelInteractionStartDate,
     });
 
     // If this is a function call content, track the step content ID
