@@ -423,6 +423,16 @@ export class FileResource extends BaseResource<FileModel> {
     return `files/w/${workspaceId}/`;
   }
 
+  static getBaseTableStorageForCoreIds({
+    dustAPIProjectId,
+    dustAPIDataSourceId,
+  }: {
+    dustAPIProjectId: string;
+    dustAPIDataSourceId: string;
+  }) {
+    return `project-${dustAPIProjectId}/${dustAPIDataSourceId}/`;
+  }
+
   // Available when the file has been pre-processed with uploadToPublicBucket.
   getPublicUrlForDownload(auth: Authenticator): string {
     return getPublicUploadBucket()

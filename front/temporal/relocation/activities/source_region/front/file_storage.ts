@@ -4,6 +4,10 @@ import { getContentFragmentBaseCloudStorageForWorkspace } from "@app/lib/resourc
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import config from "@app/temporal/relocation/activities/config";
+import type {
+  CreateDataSourceProjectResult,
+  DataSourceCoreIds,
+} from "@app/temporal/relocation/activities/types";
 import { StorageTransferService } from "@app/temporal/relocation/lib/file_storage/transfer";
 
 export async function startTransferFrontPublicFiles({
@@ -144,4 +148,61 @@ export async function isFileStorageTransferComplete({
   }
 
   return result.value;
+}
+
+export async function startTransferTableFiles({
+  destBucket,
+  destRegion,
+  sourceRegion,
+  dataSourceCoreIds,
+  destIds,
+}: {
+  destBucket: string;
+  destRegion: RegionType;
+  sourceRegion: RegionType;
+  dataSourceCoreIds: DataSourceCoreIds;
+  destIds: CreateDataSourceProjectResult;
+}): Promise<string> {
+  const storageTransferService = new StorageTransferService();
+
+  const localLogger = logger.child({
+    destBucket,
+    destRegion,
+    path: FileResource.getBaseTableStorageForCoreIds(dataSourceCoreIds),
+    sourceRegion,
+  });
+
+  localLogger.info("[Storage Transfer] Initiating table files transfer.");
+
+  const transferResult = await storageTransferService.createTransferJob({
+    destBucket,
+    destPath: FileResource.getBaseTableStorageForCoreIds(dataSourceCoreIds),
+    destRegion,
+    sourceBucket: fileStorageConfig.getDustTablesBucket(),
+    sourcePath: FileResource.getBaseTableStorageForCoreIds(destIds),
+    sourceProjectId: config.getGcsSourceProjectId(),
+    sourceRegion,
+    // HACK: Using the project ID as workspace ID for logging purposes.
+    workspaceId: dataSourceCoreIds.dustAPIProjectId,
+  });
+
+  if (transferResult.isErr()) {
+    localLogger.error(
+      {
+        error: transferResult.error,
+      },
+      "[Storage Transfer] Failed to create table files transfer job."
+    );
+
+    throw transferResult.error;
+  }
+
+  localLogger.info(
+    {
+      jobName: transferResult.value,
+    },
+    "[Storage Transfer] Table files transfer job created successfully."
+  );
+
+  return transferResult.value;
 }
