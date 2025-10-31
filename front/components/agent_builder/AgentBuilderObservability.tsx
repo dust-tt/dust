@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
   Label,
   LoadingBlock,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -23,10 +24,12 @@ import {
   ObservabilityProvider,
   useObservability,
 } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { getConversationRoute } from "@app/lib/utils/router";
-import { GLOBAL_AGENTS_SID } from "@app/types";
-import { useRouter } from "next/router";
+import { useExportFeedbackCsv } from "@app/lib/swr/agent_observability";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { getConversationRoute } from "@app/lib/utils/router";
+import { GLOBAL_AGENTS_SID, normalizeError } from "@app/types";
+import { useRouter } from "next/router";
+import { createConversationWithMessage } from "../assistant/conversation/lib";
 
 interface AgentBuilderObservabilityProps {
   agentConfigurationSId: string;
@@ -134,26 +137,25 @@ function HeaderActions({
   const [starting, setStarting] = React.useState(false);
   const router = useRouter();
 
+  const { owner, user } = useAgentBuilderContext();
+  const { downloadFeedbackCsv, exportFeedbackCsv } = useExportFeedbackCsv();
+  const sendNotification = useSendNotification();
+
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const url = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationSId}/observability/export-feedback-csv?days=${period}`;
-      const res = await fetch(url, { method: "POST" });
-      if (!res.ok) {
-        throw new Error(`Export failed (${res.status})`);
-      }
-      const blob = await res.blob();
-      const dlUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = dlUrl;
-      a.download = `feedback_${agentConfigurationSId}_${period}d.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(dlUrl);
+      await downloadFeedbackCsv({
+        workspaceId,
+        agentConfigurationId: agentConfigurationSId,
+        days: period,
+      });
     } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error(e);
+      sendNotification({
+        title: "Export failed",
+        description: normalizeError(e).message,
+        type: "error",
+      });
+      return;
     } finally {
       setDownloading(false);
     }
@@ -174,100 +176,48 @@ function HeaderActions({
         onClick={async () => {
           setStarting(true);
           try {
-            // 1) Create conversation with @Fred (no attachment yet)
-            const tz =
-              Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC";
-            const convRes = await fetch(
-              `/api/w/${workspaceId}/assistant/conversations`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: `Observability feedback (${period}d)`,
-                  visibility: "unlisted",
-                  message: {
-                    content:
-                      "Please analyze the attached feedback CSV.\n" +
-                      `:mention[Fred]{sId=${GLOBAL_AGENTS_SID.FEEDBACK_ANALYZER}}`,
-                    mentions: [
-                      { configurationId: GLOBAL_AGENTS_SID.FEEDBACK_ANALYZER },
-                    ],
-                    context: { timezone: tz, profilePictureUrl: null },
-                  },
-                  contentFragments: [],
-                }),
-              }
-            );
-            if (!convRes.ok) {
-              throw new Error(`Create conversation failed (${convRes.status})`);
-            }
-            const convJson = (await convRes.json()) as {
-              conversation: { sId: string };
-            };
-
-            // 2) Generate CSV
-            const exportUrl = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationSId}/observability/export-feedback-csv?days=${period}`;
-            const exportRes = await fetch(exportUrl, { method: "POST" });
-            if (!exportRes.ok) {
-              throw new Error(`Export failed (${exportRes.status})`);
-            }
-            const csvBlob = await exportRes.blob();
-            const fileName = `feedback_${agentConfigurationSId}_${period}d.csv`;
-
-            // 3) Request upload slot (CSV) with conversationId metadata
-            const fileReqRes = await fetch(`/api/w/${workspaceId}/files`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                contentType: "text/csv",
-                fileName,
-                fileSize: csvBlob.size,
-                useCase: "conversation",
-                useCaseMetadata: { conversationId: convJson.conversation.sId },
-              }),
+            // 1) Generate CSV and upload as file directly
+            const exportJson = await exportFeedbackCsv({
+              workspaceId,
+              agentConfigurationId: agentConfigurationSId,
+              days: period,
             });
-            if (!fileReqRes.ok) {
-              throw new Error(`File request failed (${fileReqRes.status})`);
-            }
-            const fileReqJson = (await fileReqRes.json()) as {
-              file: { uploadUrl: string; sId: string };
-            };
 
-            // 4) Upload CSV to storage (multipart)
-            const form = new FormData();
-            form.append("file", csvBlob, fileName);
-            const putRes = await fetch(fileReqJson.file.uploadUrl, {
-              method: "POST",
-              body: form,
+            // 2) Create conversation with feedback CSV
+            const convRes = await createConversationWithMessage({
+              owner,
+              user,
+              messageData: {
+                input: "Please analyze the attached feedback CSV.",
+                mentions: [
+                  { configurationId: GLOBAL_AGENTS_SID.FEEDBACK_ANALYZER },
+                ],
+                contentFragments: {
+                  uploaded: [
+                    {
+                      title: exportJson.filename,
+                      fileId: exportJson.fileId,
+                      contentType: "text/csv",
+                    },
+                  ],
+                  contentNodes: [],
+                },
+              },
             });
-            if (!putRes.ok) {
-              throw new Error(`Upload failed (${putRes.status})`);
+
+            if (convRes.isErr()) {
+              throw convRes.error;
             }
 
-            // 5) Attach file to the conversation
-            const attachRes = await fetch(
-              `/api/w/${workspaceId}/assistant/conversations/${convJson.conversation.sId}/content_fragment`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: fileName,
-                  fileId: fileReqJson.file.sId,
-                  context: { profilePictureUrl: null },
-                }),
-              }
-            );
-            if (!attachRes.ok) {
-              throw new Error(`Attach file failed (${attachRes.status})`);
-            }
-
-            // 6) Navigate to conversation
-            void router.push(
-              getConversationRoute(workspaceId, convJson.conversation.sId)
-            );
+            // 3) Navigate to conversation
+            const convJson = convRes.value;
+            void router.push(getConversationRoute(workspaceId, convJson.sId));
           } catch (e) {
-            // eslint-disable-next-line no-console
-            console.error(e);
+            sendNotification({
+              title: "Export failed",
+              description: normalizeError(e).message,
+              type: "error",
+            });
           } finally {
             setStarting(false);
           }

@@ -7,6 +7,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { AgentMessageAnalyticsData } from "@app/types/assistant/analytics";
@@ -16,6 +17,7 @@ const PAGE_SIZE = 1000;
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional(),
+  uploadAsFile: z.enum(["true", "false"]).optional(),
 });
 
 function buildAgentAnalyticsBaseQuery(
@@ -113,7 +115,7 @@ async function handler(
     });
   }
 
-  const days = q.data.days ?? DEFAULT_PERIOD;
+  const { days, uploadAsFile } = q.data;
 
   // Build CSV header
   const header = [
@@ -126,13 +128,8 @@ async function handler(
   const baseQuery = buildAgentAnalyticsBaseQuery(
     owner.sId,
     assistant.sId,
-    days
+    days ?? DEFAULT_PERIOD
   );
-
-  // Prepare response headers for CSV download
-  res.setHeader("Content-Type", "text/csv; charset=utf-8");
-  const filename = `feedback_${assistant.sId}_${days}d.csv`;
-  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
 
   // Collect rows (incremental implementation: accumulate in memory)
   const rows: string[] = [];
@@ -173,8 +170,33 @@ async function handler(
     }
   }
 
-  // Send CSV content
-  res.status(200).send(rows.join("\n"));
+  const csvContent = rows.join("\n");
+  const filename = `feedback_${assistant.sId}_${days}d.csv`;
+
+  if (uploadAsFile === "true") {
+    // Create file and upload content
+    const user = auth.getNonNullableUser();
+    const file = await FileResource.makeNew({
+      contentType: "text/csv",
+      fileName: filename,
+      fileSize: Buffer.byteLength(csvContent, "utf8"),
+      userId: user.id,
+      workspaceId: owner.id,
+      useCase: "conversation",
+    });
+
+    await file.uploadContent(auth, csvContent);
+
+    // Return only the file ID
+    res.status(200).json({ fileId: file.sId, filename });
+  } else {
+    // Prepare response headers for CSV download
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    // Send CSV content
+    res.status(200).send(csvContent);
+  }
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
