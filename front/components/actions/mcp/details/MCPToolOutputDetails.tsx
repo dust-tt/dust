@@ -210,7 +210,6 @@ export function SearchResultDetails({
     );
   })();
 
-
   return (
     <ActionDetailsWrapper
       viewType={viewType}
