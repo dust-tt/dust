@@ -42,16 +42,23 @@ import {
 } from "@app/types";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
+const CONVERSATION_IMG_MAX_SIZE_PIXELS = 1538;
+const AVATAR_IMG_MAX_SIZE_PIXELS = 256;
 
-// Upload to public bucket.
-
-const uploadToPublicBucket: ProcessingFunction = async (
+// Images processing.
+const resizeAndUploadToPublicBucket: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
+  const result = await makeResizeAndUploadImgToFileStorage(
+    AVATAR_IMG_MAX_SIZE_PIXELS
+  )(auth, file);
+  if (result.isErr()) {
+    return result;
+  }
   const readStream = file.getReadStream({
     auth,
-    version: "original",
+    version: "processed",
   });
   const writeStream = file.getWriteStream({
     auth,
@@ -79,8 +86,6 @@ const uploadToPublicBucket: ProcessingFunction = async (
   }
 };
 
-// Images processing.
-
 const createReadableFromUrl = async (url: string): Promise<Readable> => {
   const response = await untrustedFetch(url);
   if (!response.ok || !response.body) {
@@ -89,9 +94,18 @@ const createReadableFromUrl = async (url: string): Promise<Readable> => {
   return Readable.fromWeb(response.body);
 };
 
-const resizeAndUploadToFileStorage: ProcessingFunction = async (
+const makeResizeAndUploadImgToFileStorage = (max_size: number) => {
+  return async (auth: Authenticator, file: FileResource) =>
+    resizeAndUploadToFileStorage(auth, file, {
+      ImageHeight: max_size,
+      ImageWidth: max_size,
+    });
+};
+
+const resizeAndUploadToFileStorage = async (
   auth: Authenticator,
-  file: FileResource
+  file: FileResource,
+  resizeParams: object
 ) => {
   /* Skipping sharp() to check if it's the cause of high CPU / memory usage.
   const readStream = file.getReadStream({
@@ -142,8 +156,7 @@ const resizeAndUploadToFileStorage: ProcessingFunction = async (
         ImageResolution: "72",
         ScaleImage: "true",
         ScaleIfLarger: "true",
-        ImageHeight: "1538",
-        ImageWidth: "1538",
+        ...resizeParams,
       },
       originalFormat,
       30
@@ -373,9 +386,11 @@ const getProcessingFunction = ({
 
   if (isSupportedImageContentType(contentType)) {
     if (useCase === "conversation") {
-      return resizeAndUploadToFileStorage;
+      return makeResizeAndUploadImgToFileStorage(
+        CONVERSATION_IMG_MAX_SIZE_PIXELS
+      );
     } else if (useCase === "avatar") {
-      return uploadToPublicBucket;
+      return resizeAndUploadToPublicBucket;
     }
     return undefined;
   }
