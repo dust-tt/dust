@@ -421,14 +421,14 @@ async function handleGroupUpsert(
       return;
     }
 
-    // Group exists and is not a provisioned group, throw an error.
+    // Another group with the same name exists and is not a provisioned group, throw an error.
     if (groupByName.kind !== "provisioned" || !groupByName.workOSGroupId) {
       throw new Error(
         `Group "${groupByName.name}" already exists and is not a provisioned group`
       );
     }
 
-    // Look for old group in workos and delete it if it doesn't exist anymore.
+    // Look for this other group in workos and delete it if it doesn't exist anymore.
     const workosGroupByName = await getWorkOS().directorySync.getGroup(
       groupByName.workOSGroupId
     );
