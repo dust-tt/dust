@@ -10,7 +10,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
-  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   isProviderWhitelisted,
 } from "@app/types";
@@ -62,7 +62,7 @@ export function getDefaultAgentFormData({
   user: UserType;
   owner: WorkspaceType;
 }): AgentBuilderFormData {
-  const preferredModel = CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG;
+  const preferredModel = CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG;
   const fallbackModel = getLargeWhitelistedModel(owner);
 
   // We use the preferred model unless the provider is deactivated for the workspace but we have a fallback model.
