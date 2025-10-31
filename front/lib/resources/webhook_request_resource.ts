@@ -7,6 +7,7 @@ import type {
 import { literal, Op, QueryTypes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import type { WebhookRequestStatus } from "@app/lib/models/assistant/triggers/webhook_request";
 import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
 import type { WebhookRequestTriggerStatus } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
 import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
@@ -130,15 +131,28 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     webhookSourceId: ModelId,
     options: ResourceFindOptions<WebhookRequestModel> = {}
   ): Promise<WebhookRequestResource[]> {
-    const resources = await this.baseFetch(auth, {
+    return this.baseFetch(auth, {
       ...options,
       where: {
         ...options.where,
         webhookSourceId,
       },
     });
+  }
 
-    return resources;
+  static async listByStatus(
+    auth: Authenticator,
+    {
+      status,
+    }: {
+      status: WebhookRequestStatus;
+    }
+  ): Promise<WebhookRequestResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        status,
+      },
+    });
   }
 
   static async getWorkspaceIdsWithTooManyRequests({
