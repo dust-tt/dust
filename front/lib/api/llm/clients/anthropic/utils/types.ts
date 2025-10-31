@@ -9,6 +9,7 @@ export type TextState = BaseState & {
 
 export type ReasoningState = BaseState & {
   accumulatorType: "reasoning";
+  signature?: string;
 };
 
 export type ToolUseState = BaseState & {
