@@ -109,7 +109,7 @@ export function CreateWebhookJiraConnection({
               )}
             </Label>
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Choose which projects can activate this trigger
+              Select Jira projects to monitor for events
             </p>
             <div className="mt-2 flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-1">
