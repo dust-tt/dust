@@ -22,7 +22,10 @@ import {
   ObservabilityProvider,
   useObservability,
 } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { StartConversationWithFredButton } from "@app/components/agent_builder/observability/StartConversationWithFredButton";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
+
+import { ExportFeedbackCsvButton } from "./observability/ExportFeedbackCSVButton";
 
 interface AgentBuilderObservabilityProps {
   agentConfigurationSId: string;
@@ -55,7 +58,7 @@ export function AgentBuilderObservability({
               Monitor key metrics and performance indicators for your agent.
             </span>
           </div>
-          <HeaderPeriodDropdown />
+          <HeaderActions agentConfigurationSId={agentConfiguration.sId} />
         </div>
 
         <div className="grid grid-cols-1 gap-6">
@@ -111,6 +114,22 @@ function HeaderPeriodDropdown() {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+    </div>
+  );
+}
+
+function HeaderActions({
+  agentConfigurationSId,
+}: {
+  agentConfigurationSId: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <HeaderPeriodDropdown />
+      <ExportFeedbackCsvButton agentConfigurationSId={agentConfigurationSId} />
+      <StartConversationWithFredButton
+        agentConfigurationSId={agentConfigurationSId}
+      />
     </div>
   );
 }
