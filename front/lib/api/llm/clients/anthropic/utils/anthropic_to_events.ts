@@ -26,7 +26,14 @@ export async function* streamLLMEvents(
 ): AsyncGenerator<LLMEvent> {
   const stateContainer = { state: null };
 
-  for await (const messageStreamEvent of messageStreamEvents) {
+  // There is an issue in ANthropic SDK showcasing that stream events get mutated after they are yielded.
+  // https://github.com/anthropics/anthropic-sdk-typescript/issues/777
+  // They say it has been fixed in the version we are using but in practice we still see it happening.
+  // To work around this, we clone each event before processing it.
+  for await (const mutableMessageStreamEvent of messageStreamEvents) {
+    const messageStreamEvent = JSON.parse(
+      JSON.stringify(mutableMessageStreamEvent)
+    ) as MessageStreamEvent;
     yield* handleMessageStreamEvent(
       messageStreamEvent,
       stateContainer,
