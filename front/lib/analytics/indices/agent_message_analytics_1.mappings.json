@@ -27,6 +27,9 @@
     "latency_ms": {
       "type": "integer"
     },
+    "content": {
+      "type": "text"
+    },
     "tokens": {
       "type": "object",
       "properties": {
