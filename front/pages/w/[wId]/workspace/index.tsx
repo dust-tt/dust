@@ -49,7 +49,7 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
-import { ConnectorsAPI, setupOAuthConnection } from "@app/types";
+import { ConnectorsAPI, Err, Ok, setupOAuthConnection } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -368,44 +368,40 @@ function BotToggle({
   const sendNotification = useSendNotification();
 
   const createBotConnectionAndDataSource = async () => {
-    try {
-      // OAuth flow
-      const cRes = await setupOAuthConnection({
-        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
-        owner,
-        provider: oauth.provider,
-        useCase: oauth.useCase ?? "connection",
-        extraConfig: oauth.extraConfig,
-      });
-      if (!cRes.isOk()) {
-        throw cRes.error;
+    // OAuth flow
+    const cRes = await setupOAuthConnection({
+      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+      owner,
+      provider: oauth.provider,
+      useCase: oauth.useCase ?? "connection",
+      extraConfig: oauth.extraConfig,
+    });
+    if (!cRes.isOk()) {
+      return cRes;
+    }
+
+    const connectionId = cRes.value.connection_id;
+
+    const res = await fetch(
+      `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider: connectorProvider,
+          connectionId,
+          name: undefined,
+          configuration: null,
+        } satisfies PostDataSourceRequestBody),
       }
+    );
 
-      const connectionId = cRes.value.connection_id;
-
-      const res = await fetch(
-        `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            provider: connectorProvider,
-            connectionId,
-            name: undefined,
-            configuration: null,
-          } satisfies PostDataSourceRequestBody),
-        }
-      );
-
-      if (res.ok) {
-        return await res.json();
-      } else {
-        return null;
-      }
-    } catch (e) {
-      return null;
+    if (res.ok) {
+      return new Ok(await res.json());
+    } else {
+      return new Err((await res.json()).error?.connectors_error);
     }
   };
 
@@ -415,14 +411,16 @@ function BotToggle({
       await toggleBotOnExistingDataSource(!isBotEnabled);
     } else {
       const createRes = await createBotConnectionAndDataSource();
-      if (createRes) {
+      if (createRes.isOk()) {
         // TODO: likely better to still make the call (but tricky since data source is not yet created).
         window.location.reload();
       } else {
         sendNotification({
           type: "error",
           title: `Failed to enable ${name}.`,
-          description: `Could not create a new ${name} data source.`,
+          description:
+            createRes.error?.message ??
+            `Could not create a new ${name} data source.`,
         });
       }
     }
