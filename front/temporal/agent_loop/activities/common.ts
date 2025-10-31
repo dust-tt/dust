@@ -38,11 +38,29 @@ export async function markAgentMessageAsFailed(
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
   auth: Authenticator,
-  event: AgentMessageEvents,
-  agentMessageRow: AgentMessage,
-  step: number,
-  conversation: ConversationWithoutContentType
+  {
+    event,
+    agentMessageRow,
+    step,
+    conversation,
+    modelInteractionDurationMs,
+  }: {
+    event: AgentMessageEvents;
+    agentMessageRow: AgentMessage;
+    step: number;
+    conversation: ConversationWithoutContentType;
+    modelInteractionDurationMs?: number;
+  }
 ): Promise<void> {
+  // If we have a model interaction duration, store it.
+  if (modelInteractionDurationMs) {
+    await agentMessageRow.update({
+      modelInteractionDurationMs:
+        (agentMessageRow.modelInteractionDurationMs ?? 0) +
+        Math.round(modelInteractionDurationMs),
+    });
+  }
+
   switch (event.type) {
     case "agent_error":
     case "tool_error":
@@ -151,16 +169,24 @@ export async function updateResourceAndPublishEvent(
     agentMessageRow,
     conversation,
     step,
+    modelInteractionDurationMs,
   }: {
     event: AgentMessageEvents;
     agentMessageRow: AgentMessage;
     conversation: ConversationWithoutContentType;
     step: number;
+    modelInteractionDurationMs?: number;
   }
 ): Promise<void> {
   // Processing of events before publishing to Redis.
   await Promise.all([
-    processEventForDatabase(auth, event, agentMessageRow, step, conversation),
+    processEventForDatabase(auth, {
+      event,
+      agentMessageRow,
+      step,
+      conversation,
+      modelInteractionDurationMs,
+    }),
     processEventForUnreadState(auth, { event, conversation }),
     processEventForTokenUsageTracking(auth, { event }),
   ]);

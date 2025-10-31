@@ -72,8 +72,7 @@ export async function storeAgentAnalyticsActivity(
     agent_id: agentConfiguration.sId,
     agent_version: agentConfiguration.version.toString(),
     conversation_id: conversation.sId,
-    // TODO(observability 21025-10-20): Add support for latency once defined.
-    latency_ms: 0,
+    latency_ms: agentMessageRow.modelInteractionDurationMs ?? 0,
     message_id: agentMessage.sId,
     status: agentMessage.status,
     // TODO(observability 21025-10-29): Use agentMessage.created timestamp to index documents

@@ -317,6 +317,7 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
   declare message?: NonAttribute<Message>;
   declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
 
+  declare modelInteractionDurationMs: number | null;
   declare completedAt: Date | null;
 }
 
@@ -387,6 +388,11 @@ AgentMessage.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
+    },
+    modelInteractionDurationMs: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
     },
     completedAt: {
       type: DataTypes.DATE,
