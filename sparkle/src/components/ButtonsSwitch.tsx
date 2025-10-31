@@ -47,7 +47,7 @@ const listStyles = cva(
   }
 );
 
-interface ButtonsSwitchListProps
+export interface ButtonsSwitchListProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof listStyles> {
   size?: ButtonSize;
