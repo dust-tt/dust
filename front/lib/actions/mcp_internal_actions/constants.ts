@@ -1078,9 +1078,7 @@ The directive should be used to display a clickable version of the agent name in
     id: 35,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("microsoft_drive_mcp_server");
-    },
+    isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
       search_in_files: "never_ask",
@@ -1110,9 +1108,7 @@ The directive should be used to display a clickable version of the agent name in
     id: 36,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("microsoft_teams_mcp_server");
-    },
+    isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
       search_messages_content: "never_ask",
@@ -1166,9 +1162,7 @@ The directive should be used to display a clickable version of the agent name in
     id: 38,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("microsoft_excel_mcp_server");
-    },
+    isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
       list_excel_files: "never_ask",
