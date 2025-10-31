@@ -88,6 +88,10 @@ pub struct LLMTokenUsage {
     pub cached_tokens: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reasoning_tokens: Option<u64>,
+    // TODO(cache-writes): When ready to report cache writes separately, add the field below
+    // and plumb it from providers (e.g., Anthropic). Keep commented until the rollout step.
+    // #[serde(skip_serializing_if = "Option::is_none")]
+    // pub cache_creation_input_tokens: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
