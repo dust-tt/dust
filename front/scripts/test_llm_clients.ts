@@ -10,15 +10,26 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types";
-import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
+import type {
+  ModelConversationTypeMultiActions,
+  ModelMessageTypeMultiActionsWithoutContentFragment,
+} from "@app/types/assistant/generation";
+
+const SYSTEM_PROMPT = "You are a helpful assistant.";
 
 type TestConfig = LLMParameters & { provider: ModelProviderIdType };
+
+type ResponseChecker = {
+  type: "text_contains";
+  substring: string;
+} | null;
 
 interface TestConversation {
   name: string;
   systemPrompt: string;
-  userMessage: string;
-  expectedInResponse?: string;
+  conversationActions: ModelConversationTypeMultiActions[];
+  /** Array of response checkers aligned with the conversation actions */
+  expectedInResponses: ResponseChecker[];
 }
 
 /**
@@ -97,24 +108,55 @@ const TEST_CONFIGS: TestConfig[] = [
   ),
 ];
 
+function userMessage(text: string): ModelConversationTypeMultiActions {
+  return {
+    messages: [
+      {
+        role: "user",
+        name: "User",
+        content: [
+          {
+            type: "text",
+            text: text,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function containsTextChecker(substring: string): ResponseChecker {
+  return {
+    type: "text_contains",
+    substring,
+  };
+}
+
 const TEST_CONVERSATIONS: TestConversation[] = [
   {
     name: "Simple Math",
-    systemPrompt: "You are a helpful assistant. Be concise.",
-    userMessage: "What is 2*2? Just give the number.",
-    expectedInResponse: "4",
-  },
-  {
-    name: "Hello World",
-    systemPrompt: "You are a helpful assistant. Be very brief.",
-    userMessage: "Say hello",
-    expectedInResponse: "hello",
+    systemPrompt: SYSTEM_PROMPT,
+    conversationActions: [
+      userMessage("Be concise. What is 2+2? Just give the number."),
+    ],
+    expectedInResponses: [containsTextChecker("4")],
   },
   {
     name: "Yes/No Question",
-    systemPrompt: "You are a helpful assistant. Answer only yes or no.",
-    userMessage: "Is Paris the capital of France?",
-    expectedInResponse: "yes",
+    systemPrompt: SYSTEM_PROMPT,
+    conversationActions: [
+      userMessage("Answer only yes or no. Is Paris the capital of France?"),
+    ],
+    expectedInResponses: [containsTextChecker("yes")],
+  },
+  {
+    name: "2 steps conversation",
+    systemPrompt: SYSTEM_PROMPT,
+    conversationActions: [
+      userMessage("Be very brief. Hello my name is Stan ! How are you?"),
+      userMessage("What is my name ?"),
+    ],
+    expectedInResponses: [null, containsTextChecker("Stan")],
   },
 ];
 
@@ -138,92 +180,110 @@ async function runTest(
       throw new Error("LLM instance is null");
     }
 
-    // Prepare the conversation
-    const modelConversation: ModelConversationTypeMultiActions = {
-      messages: [
-        {
-          role: "user" as const,
-          name: "User",
-          content: [
-            {
-              type: "text" as const,
-              text: conversation.userMessage,
-            },
-          ],
-        },
-      ],
-    };
+    const conversationHistory: ModelMessageTypeMultiActionsWithoutContentFragment[] =
+      [];
 
     // Call the LLM
-    const events = llm.stream({
-      conversation: modelConversation,
-      prompt: conversation.systemPrompt,
-      specifications: [],
-    });
+    for (const actionIndex in conversation.conversationActions) {
+      const conversationAction = conversation.conversationActions[actionIndex];
+      const expectedInResponse = conversation.expectedInResponses[actionIndex];
 
-    let responseFromDeltas = "";
-    let fullResponse = "";
-    let reasoningFromDeltas = "";
-    let fullReasoning = "";
-    let outputTokens = null;
+      conversationHistory.push(...conversationAction.messages);
 
-    // Collect all events
-    for await (const event of events) {
-      switch (event.type) {
-        case "text_delta":
-          responseFromDeltas += event.content.delta;
-          break;
-        case "text_generated":
-          fullResponse = event.content.text;
-          break;
-        case "reasoning_delta":
-          reasoningFromDeltas += event.content.delta;
-          break;
-        case "reasoning_generated":
-          fullReasoning = event.content.text;
-          break;
-        case "token_usage":
-          outputTokens = event.content.outputTokens;
-          break;
-        case "error":
-          throw new Error(`LLM Error: ${event.content.message}`);
+      const events = llm.stream({
+        conversation: { messages: conversationHistory },
+        prompt: conversation.systemPrompt,
+        specifications: [],
+      });
+
+      let responseFromDeltas = "";
+      let fullResponse = "";
+      let reasoningFromDeltas = "";
+      let fullReasoning = "";
+      let outputTokens = null;
+
+      // Collect all events
+      for await (const event of events) {
+        switch (event.type) {
+          case "text_delta":
+            responseFromDeltas += event.content.delta;
+            break;
+          case "text_generated":
+            fullResponse = event.content.text;
+            conversationHistory.push({
+              role: "assistant",
+              name: "Assistant",
+              contents: [{ type: "text_content", value: event.content.text }],
+            });
+            break;
+          case "reasoning_delta":
+            reasoningFromDeltas += event.content.delta;
+            break;
+          case "reasoning_generated":
+            fullReasoning = event.content.text;
+            conversationHistory.push({
+              role: "assistant",
+              name: "Assistant",
+              contents: [
+                {
+                  type: "reasoning",
+                  value: {
+                    reasoning: event.content.text,
+                    metadata: "",
+                    tokens: 12,
+                    provider: config.provider,
+                  },
+                },
+              ],
+            });
+            break;
+          case "token_usage":
+            outputTokens = event.content.outputTokens;
+            break;
+          case "error":
+            throw new Error(`LLM Error: ${event.content.message}`);
+        }
       }
-    }
 
-    if (fullResponse !== responseFromDeltas) {
-      console.log(
-        `   ⚠️ Mismatch between response from deltas and full response.\nDeltas: "${responseFromDeltas}"\nFull: "${fullResponse}"`
-      );
-    }
-
-    if (
-      config.reasoningEffort &&
-      config.reasoningEffort !== "none" &&
-      fullReasoning === ""
-    ) {
-      console.log(`   ⚠️ Expected reasoning but none was generated.`);
-    }
-
-    if (fullReasoning !== reasoningFromDeltas) {
-      console.log(
-        `   ⚠️ Mismatch between reasoning from deltas and full reasoning.\nDeltas: "${reasoningFromDeltas}"\nFull: "${fullReasoning}"`
-      );
-    }
-
-    if (outputTokens === null) {
-      console.log(`   ⚠️ No token usage event received`);
-    }
-
-    // Check if expected response is present
-    if (conversation.expectedInResponse) {
-      if (
-        !responseFromDeltas
-          .toLowerCase()
-          .includes(conversation.expectedInResponse.toLowerCase())
-      ) {
+      if (fullResponse !== responseFromDeltas) {
         console.log(
-          `   ⚠️ Expected "${conversation.expectedInResponse}" not found in response`
+          `   ⚠️ Mismatch between response from deltas and full response.\nDeltas: "${responseFromDeltas}"\nFull: "${fullResponse}"`
         );
+      }
+
+      if (
+        config.reasoningEffort &&
+        config.reasoningEffort !== "none" &&
+        fullReasoning === ""
+      ) {
+        console.log(`   ⚠️ Expected reasoning but none was generated.`);
+      }
+
+      if (fullReasoning !== reasoningFromDeltas) {
+        console.log(
+          `   ⚠️ Mismatch between reasoning from deltas and full reasoning.\nDeltas: "${reasoningFromDeltas}"\nFull: "${fullReasoning}"`
+        );
+      }
+
+      if (outputTokens === null) {
+        console.log(`   ⚠️ No token usage event received`);
+      }
+
+      if (expectedInResponse !== null) {
+        switch (expectedInResponse.type) {
+          case "text_contains":
+            const substring = expectedInResponse.substring;
+            if (
+              !responseFromDeltas
+                .toLowerCase()
+                .includes(substring.toLowerCase())
+            ) {
+              throw new Error(
+                `Expected response to contain "${substring}", but it was not found.\nFull response: "${responseFromDeltas}"`
+              );
+            }
+            break;
+        }
       }
     }
   } catch (error) {
