@@ -597,6 +597,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     return group ?? null;
   }
 
+  static async fetchByName(
+    auth: Authenticator,
+    name: string
+  ): Promise<GroupResource | null> {
+    const [group] = await this.baseFetch(auth, {
+      where: {
+        name,
+      },
+    });
+
+    return group ?? null;
+  }
+
   static async upsertByWorkOSGroupId(
     auth: Authenticator,
     directoryGroup: DirectoryGroup
