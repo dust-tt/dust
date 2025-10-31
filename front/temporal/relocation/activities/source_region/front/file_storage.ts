@@ -176,10 +176,10 @@ export async function startTransferTableFiles({
 
   const transferResult = await storageTransferService.createTransferJob({
     destBucket,
-    destPath: FileResource.getBaseTableStorageForCoreIds(dataSourceCoreIds),
+    destPath: FileResource.getBaseTableStorageForCoreIds(destIds),
     destRegion,
     sourceBucket: fileStorageConfig.getDustTablesBucket(),
-    sourcePath: FileResource.getBaseTableStorageForCoreIds(destIds),
+    sourcePath: FileResource.getBaseTableStorageForCoreIds(dataSourceCoreIds),
     sourceProjectId: config.getGcsSourceProjectId(),
     sourceRegion,
     // HACK: Using the project ID as workspace ID for logging purposes.
