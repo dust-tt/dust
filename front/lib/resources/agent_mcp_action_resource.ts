@@ -21,7 +21,7 @@ import {
 } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
@@ -241,27 +241,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const blockedActionsList: BlockedToolExecution[] = [];
 
-    // Fetch agent configurations with their specific versions from the actions.
-    const agentConfigVersionPairs = removeNulls(
-      blockedActions.map((a) => {
-        const agentMessage = a.agentMessage;
-        if (!agentMessage) {
-          return null;
-        }
-        return {
-          agentId: agentMessage.agentConfigurationId,
-          agentVersion: agentMessage.agentConfigurationVersion,
-        };
-      })
-    );
-
-    const agentConfigurations = await getAgentConfigurationsWithVersion(
-      auth,
-      agentConfigVersionPairs,
-      {
-        variant: "extra_light",
-      }
-    );
+    // We get the latest version here, it may show a different name than the one used when the
+    // action was created, taking this shortcut for the sake of simplicity.
+    const agentConfigurations = await getAgentConfigurations(auth, {
+      agentIds: [
+        ...new Set(
+          removeNulls(
+            blockedActions.map((a) => a.agentMessage?.agentConfigurationId)
+          )
+        ),
+      ],
+      variant: "extra_light",
+    });
 
     const mcpServerViewIds = [
       ...new Set(
@@ -296,9 +287,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       }
 
       const agentConfiguration = agentConfigurations.find(
-        (a) =>
-          a.sId === agentMessage.agentConfigurationId &&
-          a.version === agentMessage.agentConfigurationVersion
+        (a) => a.sId === agentMessage.agentConfigurationId
       );
       assert(agentConfiguration, "Agent not found.");
 
