@@ -70,8 +70,8 @@ export type MinimalChannelInfo = {
 // Clean channel payload to keep only essential fields.
 export function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
   return {
-    id: channel.id!,
-    name: channel.name!,
+    id: channel.id ?? "",
+    name: channel.name ?? "",
     created: channel.created ?? 0,
     creator: channel.creator ?? "",
     is_channel: channel.is_channel ?? false,
@@ -365,6 +365,106 @@ export async function executePostMessage(
   return new Ok([
     { type: "text" as const, text: `Message posted to ${to}` },
     { type: "text" as const, text: JSON.stringify(response, null, 2) },
+  ]);
+}
+
+export async function executeScheduleMessage(
+  auth: Authenticator,
+  agentLoopContext: AgentLoopContextType,
+  {
+    accessToken,
+    to,
+    message,
+    post_at,
+    threadTs,
+  }: {
+    accessToken: string;
+    to: string;
+    message: string;
+    post_at: number | string;
+    threadTs: string | undefined;
+  }
+) {
+  const slackClient = await getSlackClient(accessToken);
+  const originalMessage = message;
+
+  const agentUrl = getConversationRoute(
+    auth.getNonNullableWorkspace().sId,
+    "new",
+    `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,
+    config.getClientFacingUrl()
+  );
+  message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+
+  // Convert post_at to Unix timestamp in seconds.
+  let timestampSeconds: number;
+  if (typeof post_at === "string") {
+    // Parse ISO date string.
+    const parsedDate = new Date(post_at);
+    if (isNaN(parsedDate.getTime())) {
+      return new Err(
+        new MCPError(
+          `Invalid date format: "${post_at}". Please provide a valid ISO 8601 datetime string (e.g., "2025-10-31T14:55:00Z") or Unix timestamp in seconds.`
+        )
+      );
+    }
+    timestampSeconds = Math.floor(parsedDate.getTime() / 1000);
+  } else {
+    timestampSeconds = post_at;
+  }
+
+  // Validate that post_at is in the future.
+  const now = Math.floor(Date.now() / 1000);
+  if (timestampSeconds <= now) {
+    const providedDate = new Date(timestampSeconds * 1000).toISOString();
+    const currentDate = new Date(now * 1000).toISOString();
+    return new Err(
+      new MCPError(
+        `The scheduled time must be in the future. Provided: ${providedDate}, Current time: ${currentDate}`
+      )
+    );
+  }
+
+  // Validate that post_at is within 120 days.
+  const maxFutureTime = now + 120 * 24 * 60 * 60; // 120 days in seconds
+  if (timestampSeconds > maxFutureTime) {
+    const maxDate = new Date(maxFutureTime * 1000).toISOString();
+    return new Err(
+      new MCPError(
+        `The scheduled time cannot be more than 120 days in the future. Maximum allowed time: ${maxDate}`
+      )
+    );
+  }
+
+  const response = await slackClient.chat.scheduleMessage({
+    channel: to,
+    text: message,
+    post_at: timestampSeconds.toString(),
+    thread_ts: threadTs,
+  });
+
+  if (!response.ok) {
+    return new Err(new MCPError(response.error ?? "Unknown error"));
+  }
+
+  const scheduledDate = new Date(timestampSeconds * 1000);
+
+  // Format in local timezone (server timezone, likely matches user's for EU).
+  const localDate = scheduledDate.toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
+  });
+
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `Message scheduled successfully to ${to} at ${localDate}`,
+    },
   ]);
 }
 
