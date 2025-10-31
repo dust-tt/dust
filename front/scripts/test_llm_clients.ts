@@ -190,11 +190,17 @@ async function runTest(
 
       conversationHistory.push(...conversationAction.messages);
 
-      const events = llm.stream({
+      const eventStreamResult = llm.stream({
         conversation: { messages: conversationHistory },
         prompt: conversation.systemPrompt,
         specifications: [],
       });
+
+      if (eventStreamResult.isErr()) {
+        throw eventStreamResult.error;
+      }
+
+      const events = eventStreamResult.value;
 
       let responseFromDeltas = "";
       let fullResponse = "";
