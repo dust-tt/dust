@@ -17,6 +17,7 @@ export class AgentStepContentModel extends WorkspaceAwareModel<AgentStepContentM
   declare version: number;
   declare type: AgentContentItemType["type"];
   declare value: AgentContentItemType;
+  declare modelInteractionDurationMs: number | null;
 
   declare agentMessage?: NonAttribute<AgentMessage>;
   declare agentMCPActions?: NonAttribute<AgentMCPActionModel[]>;
@@ -65,6 +66,10 @@ AgentStepContentModel.init(
     value: {
       type: DataTypes.JSONB,
       allowNull: false,
+    },
+    modelInteractionDurationMs: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   },
   {
