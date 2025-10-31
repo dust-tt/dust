@@ -184,7 +184,7 @@ export function CreateWebhookGithubConnection({
                         size="sm"
                       />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-80">
+                    <DropdownMenuContent className="w-80" align="start">
                       <DropdownMenuSearchbar
                         name="repository"
                         placeholder="Search repositories..."
@@ -252,7 +252,7 @@ export function CreateWebhookGithubConnection({
                         size="sm"
                       />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-80">
+                    <DropdownMenuContent className="w-80" align="start">
                       <DropdownMenuSearchbar
                         name="organization"
                         placeholder="Search organizations..."

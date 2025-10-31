@@ -138,7 +138,7 @@ export function CreateWebhookJiraConnection({
                         size="sm"
                       />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-80">
+                    <DropdownMenuContent className="w-80" align="start">
                       <DropdownMenuSearchbar
                         name="project"
                         placeholder="Search projects..."
