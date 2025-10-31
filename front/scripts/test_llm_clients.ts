@@ -1,21 +1,18 @@
-import { assertNever } from "@dust-tt/sparkle";
-
-import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
-import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type { ModelIdType, ReasoningEffort } from "@app/types";
-import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
+import { getLLM } from "@app/lib/api/llm";
 import {
-  CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
-  CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
-  CLAUDE_4_5_SONNET_20250929_MODEL_ID,
-} from "@app/types/assistant/models/anthropic";
+  ANTHROPIC_WHITELISTED_NON_REASONING_MODEL_IDS,
+  ANTHROPIC_WHITELISTED_REASONING_MODEL_IDS,
+} from "@app/lib/api/llm/clients/anthropic/types";
+import type { LLMParameters } from "@app/lib/api/llm/types/options";
+import { Authenticator } from "@app/lib/auth";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+  ReasoningEffort,
+} from "@app/types";
+import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 
-interface TestConfig {
-  provider: "anthropic";
-  modelId: ModelIdType;
-  temperature?: number;
-  reasoningEffort?: ReasoningEffort;
-}
+type TestConfig = LLMParameters & { provider: ModelProviderIdType };
 
 interface TestConversation {
   name: string;
@@ -24,64 +21,78 @@ interface TestConversation {
   expectedInResponse?: string;
 }
 
+/**
+ * Creates a mock Authenticator for testing purposes.
+ * This is a minimal mock that bypasses actual authentication.
+ */
+function createMockAuthenticator(): Authenticator {
+  return new Authenticator({
+    workspace: null,
+    user: null,
+    role: "none",
+    groups: [],
+    subscription: null,
+  });
+}
+
+const REASONING_PARAMETER_CONFIGS: {
+  temperature: number;
+  reasoningEffort: ReasoningEffort;
+}[] = [
+  {
+    temperature: 0.5,
+    reasoningEffort: "none",
+  },
+  {
+    temperature: 1,
+    reasoningEffort: "light",
+  },
+  {
+    temperature: 0.5,
+    reasoningEffort: "medium",
+  },
+  {
+    temperature: 1,
+    reasoningEffort: "high",
+  },
+];
+
 function generateAnthropicThinkingTestConfigs(
   modelId: ModelIdType
 ): TestConfig[] {
-  return [
-    {
-      provider: "anthropic",
-      modelId: modelId,
-      temperature: 0.5,
-      reasoningEffort: "none",
-    },
-    {
-      provider: "anthropic",
-      modelId: modelId,
-      temperature: 1,
-      reasoningEffort: "light",
-    },
-    {
-      provider: "anthropic",
-      modelId: modelId,
-      temperature: 0.5,
-      reasoningEffort: "medium",
-    },
-    {
-      provider: "anthropic",
-      modelId: modelId,
-      temperature: 1,
-      reasoningEffort: "high",
-    },
-  ];
+  return REASONING_PARAMETER_CONFIGS.map((params) => ({
+    provider: "anthropic",
+    modelId: modelId,
+    ...params,
+  }));
 }
+
+const NON_REASONING_PARAMETER_CONFIGS: {
+  temperature: number;
+}[] = [
+  {
+    temperature: 0.5,
+  },
+  {
+    temperature: 1,
+  },
+];
 
 function generateAnthropicNotThinkingTestConfigs(
   modelId: ModelIdType
 ): TestConfig[] {
-  return [
-    {
-      provider: "anthropic",
-      modelId: modelId,
-      temperature: 0.5,
-    },
-    {
-      provider: "anthropic",
-      modelId: modelId,
-      temperature: 1,
-    },
-  ];
+  return NON_REASONING_PARAMETER_CONFIGS.map((params) => ({
+    provider: "anthropic",
+    modelId: modelId,
+    ...params,
+  }));
 }
 
-const ANTHROPIC_NOT_THINKING_MODELS = [CLAUDE_3_5_HAIKU_20241022_MODEL_ID];
-
-const ANTHROPIC_THINKING_MODELS = [
-  CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
-  CLAUDE_4_5_SONNET_20250929_MODEL_ID,
-];
-
 const TEST_CONFIGS: TestConfig[] = [
-  ...ANTHROPIC_THINKING_MODELS.flatMap(generateAnthropicThinkingTestConfigs),
-  ...ANTHROPIC_NOT_THINKING_MODELS.flatMap(
+  ...ANTHROPIC_WHITELISTED_REASONING_MODEL_IDS.flatMap(
+    generateAnthropicThinkingTestConfigs
+  ),
+  ...ANTHROPIC_WHITELISTED_NON_REASONING_MODEL_IDS.flatMap(
     generateAnthropicNotThinkingTestConfigs
   ),
 ];
@@ -116,17 +127,15 @@ async function runTest(
   );
 
   try {
-    let llm;
-    switch (config.provider) {
-      case "anthropic":
-        llm = new AnthropicLLM({
-          modelId: config.modelId as any,
-          temperature: config.temperature,
-          reasoningEffort: config.reasoningEffort,
-        });
-        break;
-      default:
-        assertNever(config.provider);
+    const mockAuth = createMockAuthenticator();
+    const llm = await getLLM(mockAuth, {
+      modelId: config.modelId,
+      temperature: config.temperature,
+      reasoningEffort: config.reasoningEffort,
+      bypassFeatureFlag: true,
+    });
+    if (llm === null) {
+      throw new Error("LLM instance is null");
     }
 
     // Prepare the conversation
@@ -159,7 +168,7 @@ async function runTest(
     let outputTokens = null;
 
     // Collect all events
-    for await (const event of events as AsyncGenerator<LLMEvent>) {
+    for await (const event of events) {
       switch (event.type) {
         case "text_delta":
           responseFromDeltas += event.content.delta;

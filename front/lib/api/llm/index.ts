@@ -12,6 +12,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
+async function hasFeatureFlag(auth: Authenticator): Promise<boolean> {
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  return featureFlags.includes("llm_router_direct_requests");
+}
+
 export async function getLLM(
   auth: Authenticator,
   { modelId, temperature, reasoningEffort, bypassFeatureFlag }: LLMParameters
@@ -23,10 +28,7 @@ export async function getLLM(
     return null;
   }
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const hasFeature =
-    bypassFeatureFlag ?? featureFlags.includes("llm_router_direct_requests");
-
+  const hasFeature = bypassFeatureFlag ?? hasFeatureFlag(auth);
   if (!hasFeature) {
     return null;
   }
