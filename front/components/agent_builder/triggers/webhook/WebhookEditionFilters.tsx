@@ -1,5 +1,5 @@
 import { Label, Spinner, TextArea } from "@dust-tt/sparkle";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
