@@ -14,6 +14,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -67,13 +68,18 @@ export async function storeAgentAnalyticsActivity(
   // Collect tool usage data from the agent message actions.
   const toolsUsed = await collectToolUsageFromMessage(auth, agentMessage);
 
+  // Collect model interaction duration from step contents.
+  const modelInteractionDurationMs = await collectModelInteractionDuration(
+    auth,
+    agentMessage
+  );
+
   // Build the complete analytics document.
   const document: AgentMessageAnalyticsData = {
     agent_id: agentConfiguration.sId,
     agent_version: agentConfiguration.version.toString(),
     conversation_id: conversation.sId,
-    // TODO(observability 21025-10-20): Add support for latency once defined.
-    latency_ms: 0,
+    latency_ms: modelInteractionDurationMs,
     message_id: agentMessage.sId,
     status: agentMessage.status,
     // TODO(observability 21025-10-29): Use agentMessage.created timestamp to index documents
@@ -193,6 +199,27 @@ async function collectToolUsageFromMessage(
       status: action.status,
     };
   });
+}
+
+/**
+ * Collect model interaction duration from step contents.
+ */
+async function collectModelInteractionDuration(
+  auth: Authenticator,
+  agentMessage: AgentMessageType
+): Promise<number> {
+  const stepContents = await AgentStepContentResource.fetchByAgentMessages(
+    auth,
+    {
+      agentMessageIds: [agentMessage.agentMessageId],
+    }
+  );
+
+  const durations = stepContents
+    .map((content) => content.modelInteractionDurationMs)
+    .filter((d): d is number => d !== null && d !== undefined);
+
+  return durations.reduce((sum, d) => sum + d, 0);
 }
 
 /**
