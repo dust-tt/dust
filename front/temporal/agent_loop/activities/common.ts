@@ -38,10 +38,17 @@ export async function markAgentMessageAsFailed(
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
   auth: Authenticator,
-  event: AgentMessageEvents,
-  agentMessageRow: AgentMessage,
-  step: number,
-  conversation: ConversationWithoutContentType
+  {
+    event,
+    agentMessageRow,
+    step,
+    conversation,
+  }: {
+    event: AgentMessageEvents;
+    agentMessageRow: AgentMessage;
+    step: number;
+    conversation: ConversationWithoutContentType;
+  }
 ): Promise<void> {
   switch (event.type) {
     case "agent_error":
@@ -160,7 +167,12 @@ export async function updateResourceAndPublishEvent(
 ): Promise<void> {
   // Processing of events before publishing to Redis.
   await Promise.all([
-    processEventForDatabase(auth, event, agentMessageRow, step, conversation),
+    processEventForDatabase(auth, {
+      event,
+      agentMessageRow,
+      step,
+      conversation,
+    }),
     processEventForUnreadState(auth, { event, conversation }),
     processEventForTokenUsageTracking(auth, { event }),
   ]);
