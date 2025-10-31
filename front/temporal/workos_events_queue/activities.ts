@@ -11,6 +11,7 @@ import assert from "assert";
 
 import { createAndLogMembership } from "@app/lib/api/signup";
 import { determineUserRoleFromGroups } from "@app/lib/api/user";
+import { getWorkOS } from "@app/lib/api/workos/client";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import {
   fetchOrCreateWorkOSUserWithEmail,
@@ -408,6 +409,39 @@ async function handleGroupUpsert(
   event: DirectoryGroup
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+  const groupByName = await GroupResource.fetchByName(auth, event.name);
+  if (groupByName && groupByName.workOSGroupId !== event.id) {
+    // Conflict - another group with the same name already exists.
+
+    // First check if this group still exists in workos.
+    const groupInWorkOS = await getWorkOS().directorySync.getGroup(event.id);
+    if (!groupInWorkOS) {
+      // Group doesn't exist, juts ignore the event.
+      return;
+    }
+
+    // Group exists and is not a provisioned group, throw an error.
+    if (groupByName.kind !== "provisioned" || !groupByName.workOSGroupId) {
+      throw new Error(
+        `Group "${groupByName.name}" already exists and is not a provisioned group`
+      );
+    }
+
+    // Look for old group in workos and delete it if it doesn't exist anymore.
+    const workosGroupByName = await getWorkOS().directorySync.getGroup(
+      groupByName.workOSGroupId
+    );
+
+    if (!workosGroupByName) {
+      await groupByName.delete(auth);
+    } else {
+      throw new Error(
+        `Group "${groupByName.name}" still exists in workos with id "${workosGroupByName.id}"`
+      );
+    }
+  }
+
   await GroupResource.upsertByWorkOSGroupId(auth, event);
 }
 
