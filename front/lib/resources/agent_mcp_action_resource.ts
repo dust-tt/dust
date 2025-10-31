@@ -249,8 +249,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           return null;
         }
         return {
-          sId: agentMessage.agentConfigurationId,
-          version: agentMessage.agentConfigurationVersion,
+          agentId: agentMessage.agentConfigurationId,
+          agentVersion: agentMessage.agentConfigurationVersion,
         };
       })
     );
