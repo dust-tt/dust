@@ -1,6 +1,6 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import type { AllSupportedFileContentType } from "@app/types";
+import type { AllSupportedWithDustSpecificFileContentType } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 import type { ContentFragmentType } from "../content_fragment";
@@ -131,10 +131,7 @@ export interface CitationType {
   title: string;
   provider: string;
   faviconUrl?: string;
-  contentType:
-    | AllSupportedFileContentType
-    | "application/vnd.dust.tool-output.data-source-search-result"
-    | "application/vnd.dust.tool-output.websearch-result";
+  contentType: AllSupportedWithDustSpecificFileContentType;
 }
 
 /**
