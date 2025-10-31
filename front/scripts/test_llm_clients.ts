@@ -136,6 +136,32 @@ function userMessage(text: string): ModelConversationTypeMultiActions {
   };
 }
 
+function userMessageWithImage(
+  text: string,
+  imageUrl: string
+): ModelConversationTypeMultiActions {
+  return {
+    messages: [
+      {
+        role: "user",
+        name: "User",
+        content: [
+          {
+            type: "text",
+            text: text,
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: imageUrl,
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
+
 function userToolCall(
   toolName: string,
   toolOutput: string
@@ -223,6 +249,17 @@ const TEST_CONVERSATIONS: TestConversation[] = [
         },
       },
     ],
+  },
+  {
+    name: "Image description",
+    systemPrompt: SYSTEM_PROMPT,
+    conversationActions: [
+      userMessageWithImage(
+        "Describe this image.",
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/481px-Cat03.jpg"
+      ),
+    ],
+    expectedInResponses: [containsTextChecker("cat")],
   },
 ];
 
