@@ -17,10 +17,13 @@ use serde_json::json;
 use tracing::{error, info};
 use url::Url;
 
-use crate::data_sources::data_source::{DataSourceESDocumentWithStats, Document};
 use crate::data_sources::folder::Folder;
 use crate::data_sources::node::NodeESDocument;
 use crate::databases::table::Table;
+use crate::{
+    data_sources::data_source::{DataSourceESDocumentWithStats, Document},
+    search_filter::TagsFilter,
+};
 use crate::{
     data_sources::{
         data_source::{DataSource, DATA_SOURCE_INDEX_NAME},
@@ -114,6 +117,7 @@ pub struct NodesSearchFilter {
     node_ids: Option<Vec<String>>,
     node_types: Option<Vec<NodeType>>,
     parent_id: Option<String>,
+    tags: Option<TagsFilter>,
 }
 
 #[derive(Debug, Clone)]
@@ -979,6 +983,17 @@ impl ElasticsearchSearchStore {
             }
 
             bool_query = bool_query.must(search_bool.minimum_should_match(1));
+        }
+
+        if let Some(tags) = &filter.tags {
+            if let Some(included_tags) = &tags.is_in {
+                counter.add(1);
+                bool_query = bool_query.filter(Query::terms("tags", included_tags));
+            }
+            if let Some(excluded_tags) = &tags.is_not {
+                counter.add(1);
+                bool_query = bool_query.must_not(Query::terms("tags", excluded_tags));
+            }
         }
 
         Ok(bool_query)
