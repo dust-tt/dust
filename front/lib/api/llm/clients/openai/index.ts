@@ -53,16 +53,9 @@ export class OpenAIResponsesLLM extends LLM {
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY environment variable is required");
     }
-    let baseURL = "https://api.openai.com/v1";
-    if (OPENAI_BASE_URL) {
-      const url = new URL(OPENAI_BASE_URL);
-      if (url.hostname.endsWith("api.openai.com") && url.protocol === "https:") {
-        baseURL = OPENAI_BASE_URL;
-      }
-    }
     this.client = new OpenAI({
       apiKey: OPENAI_API_KEY,
-      baseURL,
+      baseURL: OPENAI_BASE_URL ?? "https://api.openai.com/v1",
     });
   }
 
