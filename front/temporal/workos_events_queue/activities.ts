@@ -417,7 +417,7 @@ async function handleGroupUpsert(
     // First check if this group still exists in workos.
     const groupInWorkOS = await getWorkOS().directorySync.getGroup(event.id);
     if (!groupInWorkOS) {
-      // Group doesn't exist, juts ignore the event.
+      // Group doesn't exist, just ignore the event.
       return;
     }
 

@@ -44,8 +44,8 @@ import type {
 import {
   AGENT_GROUP_PREFIX,
   Err,
-  normalizeError,
   Ok,
+  normalizeError,
   removeNulls,
 } from "@app/types";
 
@@ -591,6 +591,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     const [group] = await this.baseFetch(auth, {
       where: {
         workOSGroupId,
+      },
+    });
+
+    return group ?? null;
+  }
+
+  static async fetchByName(
+    auth: Authenticator,
+    name: string
+  ): Promise<GroupResource | null> {
+    const [group] = await this.baseFetch(auth, {
+      where: {
+        name,
       },
     });
 
