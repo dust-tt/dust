@@ -17,6 +17,7 @@ export type {
   RegularButtonProps,
 } from "./Button";
 export { Button } from "./Button";
+export { ButtonsSwitch,ButtonsSwitchList } from "./ButtonsSwitch";
 export type { CardProps } from "./Card";
 export { Card, CardActionButton, CardGrid } from "./Card";
 export type { CheckboxProps } from "./Checkbox";
@@ -158,7 +159,6 @@ export { ScrollArea, ScrollBar } from "./ScrollArea";
 export { SearchDropdownMenu } from "./SearchDropdownMenu";
 export { SearchInput, SearchInputWithPopover } from "./SearchInput";
 export { Separator } from "./Separator";
-export { ButtonsSwitchList, ButtonsSwitch } from "./ButtonsSwitch";
 export {
   Sheet,
   SheetClose,
