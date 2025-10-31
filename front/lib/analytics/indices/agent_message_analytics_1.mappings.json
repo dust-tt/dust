@@ -28,7 +28,8 @@
       "type": "integer"
     },
     "content": {
-      "type": "text"
+      "type": "text",
+      "index": "false"
     },
     "tokens": {
       "type": "object",
