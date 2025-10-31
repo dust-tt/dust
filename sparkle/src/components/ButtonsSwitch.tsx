@@ -31,7 +31,7 @@ const useButtonsSwitch = () => {
 
 const listStyles = cva(
   cn(
-    "s-inline-flex s-items-center s-gap-1 s-rounded-2xl s-p-1",
+    "s-inline-flex s-items-center s-gap-1",
     "s-bg-primary-100 dark:s-bg-primary-900"
   ),
   {
@@ -40,9 +40,15 @@ const listStyles = cva(
         true: "s-w-full",
         false: "",
       },
+      size: {
+        xs: "s-rounded-lg s-p-0.5",
+        sm: "s-rounded-xl s-p-1",
+        md: "s-rounded-2xl s-p-1.5",
+      },
     },
     defaultVariants: {
       fullWidth: false,
+      size: "sm",
     },
   }
 );
@@ -97,7 +103,7 @@ export const ButtonsSwitchList = React.forwardRef<
         ref={ref}
         role="tablist"
         aria-orientation="horizontal"
-        className={cn(listStyles({ fullWidth }), className)}
+        className={cn(listStyles({ fullWidth, size }), className)}
         {...props}
       >
         <ButtonsSwitchContext.Provider value={context}>
