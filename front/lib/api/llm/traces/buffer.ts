@@ -67,7 +67,7 @@ export class LLMTraceBuffer {
   }) {
     this.input = {
       conversation,
-      model: modelId,
+      modelId,
       prompt,
       reasoningEffort,
       specifications,
@@ -199,7 +199,7 @@ export class LLMTraceBuffer {
   /**
    * Creates the final trace JSON object.
    */
-  private toTraceJSON({
+  toTraceJSON({
     durationMs,
     endTimestamp,
     error,
@@ -220,7 +220,7 @@ export class LLMTraceBuffer {
       metadata: {
         durationMs,
         endTimestamp,
-        modelId: this.input.model,
+        modelId: this.input.modelId,
         startTimestamp,
       },
       runId: this.runId,
@@ -264,6 +264,14 @@ export class LLMTraceBuffer {
     return `${this.workspaceId}/${this.runId}.json`;
   }
 
+  isTruncated(): boolean {
+    return this.truncated;
+  }
+
+  get outputSize(): number {
+    return this.outputByteSize;
+  }
+
   /**
    * Writes the final trace to GCS and log.
    * GCS write failures do not fail the main LLM operation.
@@ -302,7 +310,7 @@ export class LLMTraceBuffer {
           operationType: this.context.operationType,
           contextId: this.context.contextId,
           userId: this.context.userId,
-          modelId: this.input?.model,
+          modelId: this.input?.modelId,
           gcsPath: this.filePath,
           durationMs,
           hasError: !!error,

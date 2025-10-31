@@ -29,7 +29,7 @@ export interface LLMTraceContext {
  */
 export interface LLMTraceInput {
   conversation: ModelConversationTypeMultiActions;
-  model: ModelIdType;
+  modelId: ModelIdType;
   prompt: string;
   reasoningEffort: ReasoningEffort;
   specifications: unknown[];
