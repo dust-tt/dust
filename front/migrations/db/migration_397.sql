@@ -1,2 +1,2 @@
 -- Migration created on Oct 21, 2025
-ALTER TABLE "public"."agent_step_contents" ADD COLUMN "modelInteractionDurationMs" INTEGER;
+ALTER TABLE "public"."agent_messages" ADD COLUMN "modelInteractionDurationMs" INTEGER;
