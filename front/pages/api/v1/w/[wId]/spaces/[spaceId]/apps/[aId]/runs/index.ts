@@ -64,6 +64,7 @@ function extractUsageFromExecutions(
             prompt_tokens: number;
             completion_tokens: number;
             cached_tokens?: number;
+            cache_creation_input_tokens?: number;
             reasoning_tokens?: number;
           };
         };
@@ -71,6 +72,7 @@ function extractUsageFromExecutions(
           const promptTokens = token_usage.prompt_tokens;
           const completionTokens = token_usage.completion_tokens;
           const cachedTokens = token_usage.cached_tokens;
+          const cacheCreationTokens = token_usage.cache_creation_input_tokens;
 
           usages.push({
             providerId: block.provider_id,
@@ -78,6 +80,7 @@ function extractUsageFromExecutions(
             promptTokens,
             completionTokens,
             cachedTokens: cachedTokens ?? null,
+            cacheCreationTokens: cacheCreationTokens ?? null,
           });
         }
       }
