@@ -99,7 +99,7 @@ export function MCPExtractActionDetails({
         {viewType === "sidebar" && (
           <div>
             <CollapsibleComponent
-              rootProps={{ defaultOpen: true }}
+              rootProps={{ defaultOpen: false }}
               triggerChildren={
                 <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                   Results
