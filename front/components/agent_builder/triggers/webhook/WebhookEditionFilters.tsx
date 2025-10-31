@@ -1,10 +1,10 @@
 import { Label, Spinner, TextArea } from "@dust-tt/sparkle";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
-import { useDebounce } from "@app/hooks/useDebounce";
 import { useWebhookFilterGenerator } from "@app/lib/swr/agent_triggers";
+import { debounce } from "@app/lib/utils/debounce";
 import type { LightWorkspaceType } from "@app/types";
 import { normalizeError } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
@@ -60,56 +60,73 @@ export function WebhookEditionFilters({
     null
   );
 
+  const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const generateFilter = useWebhookFilterGenerator({ workspace });
 
-  const {
-    inputValue: naturalDescription,
-    debouncedValue: debouncedDescription,
-    isDebouncing,
-    setValue: setNaturalDescription,
-  } = useDebounce(naturalDescriptionValue ?? "", { delay: 500, minLength: 10 });
+  const MIN_DESCRIPTION_LENGTH = 10;
 
   // Update form field when naturalDescription changes
   const handleNaturalDescriptionChange = (value: string) => {
-    setNaturalDescription(value);
     onNaturalDescriptionChange(value);
+
+    const txt = value.trim();
+    setFilterGenerationStatus(txt ? "loading" : "idle");
+
+    if (txt.length >= MIN_DESCRIPTION_LENGTH) {
+      debounce(
+        debounceHandle,
+        async () => {
+          // Cancel previous request
+          if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+          }
+
+          abortControllerRef.current = new AbortController();
+          const signal = abortControllerRef.current.signal;
+
+          if (!selectedEventSchema) {
+            setFilterGenerationStatus("idle");
+            return;
+          }
+
+          try {
+            const result = await generateFilter({
+              naturalDescription: txt,
+              eventSchema: selectedEventSchema,
+              signal,
+            });
+
+            // If the request was not aborted, we can update the form
+            if (!signal.aborted) {
+              filterField.onChange(result.filter);
+              setFilterGenerationStatus("idle");
+              setFilterErrorMessage(null);
+            }
+          } catch (error) {
+            // If the request was not aborted, we can update the error state
+            if (!signal.aborted) {
+              setFilterGenerationStatus("error");
+              setFilterErrorMessage(
+                `Error generating filter: ${normalizeError(error).message}`
+              );
+            }
+          }
+        },
+        500
+      );
+    } else {
+      if (debounceHandle.current) {
+        clearTimeout(debounceHandle.current);
+        debounceHandle.current = undefined;
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    }
   };
-
-  useEffect(() => {
-    if (isDebouncing) {
-      setFilterGenerationStatus("loading");
-    }
-  }, [isDebouncing]);
-
-  useEffect(() => {
-    if (!debouncedDescription || !selectedEventSchema) {
-      if (!debouncedDescription) {
-        setFilterGenerationStatus("idle");
-        setFilterErrorMessage(null);
-      }
-      return;
-    }
-
-    const generateFilterAsync = async () => {
-      setFilterGenerationStatus("loading");
-      try {
-        const result = await generateFilter({
-          naturalDescription: debouncedDescription,
-          eventSchema: selectedEventSchema,
-        });
-        filterField.onChange(result.filter);
-        setFilterGenerationStatus("idle");
-        setFilterErrorMessage(null);
-      } catch (error) {
-        setFilterGenerationStatus("error");
-        setFilterErrorMessage(
-          `Error generating filter: ${normalizeError(error).message}`
-        );
-      }
-    };
-
-    void generateFilterAsync();
-  }, [debouncedDescription, selectedEventSchema, generateFilter, filterField]);
 
   const filterGenerationResult = useMemo(() => {
     switch (filterGenerationStatus) {
@@ -153,7 +170,7 @@ export function WebhookEditionFilters({
             id="webhook-filter-description"
             placeholder='Describe the conditions (e.g "Pull requests by John on dust repository")'
             rows={3}
-            value={naturalDescription}
+            value={naturalDescriptionValue ?? ""}
             disabled={!isEditor}
             onChange={(e) => {
               if (!selectedEvent || !selectedPreset) {
