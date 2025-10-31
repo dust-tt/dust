@@ -8,6 +8,7 @@ import {
 } from "@app/lib/api/llm/clients/anthropic/types";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { Authenticator } from "@app/lib/auth";
+import { makeScript } from "@app/scripts/helpers";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -35,6 +36,7 @@ type ResponseChecker =
   | null;
 
 interface TestConversation {
+  id: string;
   name: string;
   systemPrompt: string;
   conversationActions: ModelConversationTypeMultiActions[];
@@ -198,6 +200,7 @@ function hasToolCall(
 
 const TEST_CONVERSATIONS: TestConversation[] = [
   {
+    id: "simple-math",
     name: "Simple Math",
     systemPrompt: SYSTEM_PROMPT,
     conversationActions: [
@@ -206,6 +209,7 @@ const TEST_CONVERSATIONS: TestConversation[] = [
     expectedInResponses: [containsTextChecker("4")],
   },
   {
+    id: "yes-no-question",
     name: "Yes/No Question",
     systemPrompt: SYSTEM_PROMPT,
     conversationActions: [
@@ -214,6 +218,7 @@ const TEST_CONVERSATIONS: TestConversation[] = [
     expectedInResponses: [containsTextChecker("yes")],
   },
   {
+    id: "multi-step-conversation",
     name: "2 steps conversation",
     systemPrompt: SYSTEM_PROMPT,
     conversationActions: [
@@ -223,6 +228,7 @@ const TEST_CONVERSATIONS: TestConversation[] = [
     expectedInResponses: [null, containsTextChecker("Stan")],
   },
   {
+    id: "tool-usage",
     name: "Tool usage required",
     systemPrompt: SYSTEM_PROMPT,
     conversationActions: [
@@ -251,6 +257,7 @@ const TEST_CONVERSATIONS: TestConversation[] = [
     ],
   },
   {
+    id: "image-description",
     name: "Image description",
     systemPrompt: SYSTEM_PROMPT,
     conversationActions: [
@@ -265,11 +272,16 @@ const TEST_CONVERSATIONS: TestConversation[] = [
 
 async function runTest(
   config: TestConfig,
-  conversation: TestConversation
+  conversation: TestConversation,
+  execute: boolean
 ): Promise<void> {
   console.log(
     `- Testing ${config.provider} - ${config.modelId} - T=${config.temperature} - R=${config.reasoningEffort} - ${conversation.name}`
   );
+
+  if (!execute) {
+    return;
+  }
 
   try {
     const mockAuth = createMockAuthenticator();
@@ -430,44 +442,92 @@ async function runTest(
   }
 }
 
-async function main() {
-  console.log("=== Starting LLM Client Tests ===\n");
-  console.log(`Testing ${TEST_CONFIGS.length} config(s)`);
-  console.log(`Testing ${TEST_CONVERSATIONS.length} conversation(s)`);
-  console.log(
-    `Total tests: ${TEST_CONFIGS.length * TEST_CONVERSATIONS.length}\n`
-  );
+makeScript(
+  {
+    providers: {
+      type: "array",
+      coerce: (arr) => arr.map(String),
+      demandOption: false,
+      default: [],
+      description:
+        "List of providers to test (e.g., anthropic, openai). If not specified, all providers will be tested.",
+    },
+    conversationIds: {
+      type: "array",
+      coerce: (arr) => arr.map(String),
+      demandOption: false,
+      default: [],
+      description:
+        "List of conversation IDs to test (e.g., simple-math, tool-usage). If not specified, all conversations will be tested.",
+    },
+  },
+  async ({ providers, conversationIds, execute }) => {
+    console.log("=== Starting LLM Client Tests ===\n");
 
-  let passed = 0;
-  let failed = 0;
+    // Filter test configs by provider
+    const filteredConfigs =
+      providers.length > 0
+        ? TEST_CONFIGS.filter((config) => providers.includes(config.provider))
+        : TEST_CONFIGS;
 
-  for (const config of TEST_CONFIGS) {
-    for (const conversation of TEST_CONVERSATIONS) {
-      try {
-        await runTest(config, conversation);
-        passed++;
-      } catch (error) {
-        failed++;
-        console.error(`Test failed with error:`, error);
+    // Filter conversations by ID
+    const filteredConversations =
+      conversationIds.length > 0
+        ? TEST_CONVERSATIONS.filter((conv) => conversationIds.includes(conv.id))
+        : TEST_CONVERSATIONS;
+
+    if (filteredConfigs.length === 0) {
+      console.error(
+        `No test configurations found for providers: ${providers.join(", ")}`
+      );
+      process.exit(1);
+    }
+
+    if (filteredConversations.length === 0) {
+      console.error(
+        `No conversations found with IDs: ${conversationIds.join(", ")}`
+      );
+      process.exit(1);
+    }
+
+    console.log(`Testing ${filteredConfigs.length} config(s)`);
+    console.log(`Testing ${filteredConversations.length} conversation(s)`);
+    console.log(
+      `Total tests: ${filteredConfigs.length * filteredConversations.length}\n`
+    );
+
+    if (providers.length > 0) {
+      console.log(`Filtering by providers: ${providers.join(", ")}`);
+    }
+    if (conversationIds.length > 0) {
+      console.log(
+        `Filtering by conversation IDs: ${conversationIds.join(", ")}`
+      );
+    }
+
+    let passed = 0;
+    let failed = 0;
+
+    for (const config of filteredConfigs) {
+      for (const conversation of filteredConversations) {
+        try {
+          await runTest(config, conversation, execute);
+          passed++;
+        } catch (error) {
+          failed++;
+          console.error(`Test failed with error:`, error);
+        }
       }
     }
+
+    console.log("\n" + "=".repeat(60));
+    console.log(`Results: ${passed} passed, ${failed} failed`);
+    console.log("=".repeat(60));
+
+    if (failed > 0) {
+      process.exit(1);
+    } else {
+      console.log("\nAll tests completed successfully!");
+    }
   }
-
-  console.log("\n" + "=".repeat(60));
-  console.log(`📈 Results: ${passed} passed, ${failed} failed`);
-  console.log("=".repeat(60));
-
-  if (failed > 0) {
-    process.exit(1);
-  }
-}
-
-main()
-  .then(() => {
-    console.log("\n✨ All tests completed successfully!");
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error("\n💥 Test suite failed:", error);
-    process.exit(1);
-  });
+);
