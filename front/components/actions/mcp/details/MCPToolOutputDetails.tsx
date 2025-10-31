@@ -210,6 +210,7 @@ export function SearchResultDetails({
     );
   })();
 
+
   return (
     <ActionDetailsWrapper
       viewType={viewType}
@@ -239,7 +240,7 @@ export function SearchResultDetails({
           {actionOutput && viewType === "sidebar" && (
             <div>
               <CollapsibleComponent
-                rootProps={{ defaultOpen: true }}
+                rootProps={{ defaultOpen: false }}
                 triggerChildren={
                   <span className="text-sm font-bold text-foreground dark:text-foreground-night">
                     Results
