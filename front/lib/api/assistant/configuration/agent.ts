@@ -70,35 +70,35 @@ import {
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
-/**
- * Get one specific version of a single agent
- */
-async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
+export async function getAgentConfigurationsWithVersion<
+  V extends AgentFetchVariant,
+>(
   auth: Authenticator,
-  {
-    agentId,
-    agentVersion,
-    variant,
-  }: { agentId: string; agentVersion: number; variant: V }
+  agentIdsWithVersion: { agentId: string; agentVersion: number }[],
+  { variant }: { variant: V }
 ): Promise<
-  | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
-  | null
+  V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
 > {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  assert(!isGlobalAgentId(agentId), "Global agents are not versioned.");
+  assert(
+    !agentIdsWithVersion.some(({ agentId }) => isGlobalAgentId(agentId)),
+    "Global agents are not versioned."
+  );
 
   const agentModels = await AgentConfiguration.findAll({
     where: {
-      // Relies on the indexes (workspaceId), (sId, version).
       workspaceId: owner.id,
-      sId: agentId,
-      version: agentVersion,
+      [Op.or]: agentIdsWithVersion.map(
+        ({ agentId: sId, agentVersion: version }) => ({
+          sId,
+          version,
+        })
+      ),
     },
-    order: [["version", "DESC"]],
   });
 
   const allowedAgentModels = await filterAgentsByRequestedSpaces(
@@ -109,11 +109,9 @@ async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
     variant,
   });
 
-  return (
-    (agents[0] as V extends "light"
-      ? LightAgentConfigurationType
-      : AgentConfigurationType) || null
-  );
+  return agents as V extends "light"
+    ? LightAgentConfigurationType[]
+    : AgentConfigurationType[];
 }
 
 /**
@@ -250,11 +248,18 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
 > {
   return tracer.trace("getAgentConfiguration", async () => {
     if (agentVersion !== undefined) {
-      return getAgentConfigurationWithVersion(auth, {
-        agentId,
-        agentVersion,
-        variant,
-      });
+      const [agent] = await getAgentConfigurationsWithVersion(
+        auth,
+        [{ agentId, agentVersion }],
+        {
+          variant,
+        }
+      );
+      return (
+        (agent as V extends "light"
+          ? LightAgentConfigurationType
+          : AgentConfigurationType) || null
+      );
     }
     const [agent] = await getAgentConfigurations(auth, {
       agentIds: [agentId],
