@@ -28,18 +28,25 @@ export async function getOutputFromLLMStream(
     llm,
   }: GetOutputRequestParams & { llm: LLM }
 ): Promise<GetOutputResponse> {
-  const events = await llm.stream({
+  const res = llm.stream({
     conversation: modelConversationRes.value.modelConversation,
     prompt,
     specifications,
   });
+
+  if (res.isErr()) {
+    return new Err({
+      type: "shouldRetryMessage",
+      message: res.error.message,
+    });
+  }
 
   const contents: Output["contents"] = [];
   const actions: Output["actions"] = [];
   let generation = "";
   let nativeChainOfThought = "";
 
-  for await (const event of events) {
+  for await (const event of res.value) {
     if (event.type === "error") {
       await flushParserTokens();
       return new Err({

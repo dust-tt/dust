@@ -6,7 +6,16 @@ import type {
   ModelConversationTypeMultiActions,
   ModelIdType,
   ReasoningEffort,
+  Result,
 } from "@app/types";
+import { normalizeError } from "@app/types";
+import { Err, Ok } from "@app/types";
+
+type streamProps = {
+  conversation: ModelConversationTypeMultiActions;
+  prompt: string;
+  specifications: AgentActionSpecification[];
+};
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -14,26 +23,35 @@ export abstract class LLM {
   protected reasoningEffort: ReasoningEffort;
   protected bypassFeatureFlag: boolean;
 
-  constructor({
+  protected constructor({
     modelId,
-    temperature,
-    reasoningEffort,
+    temperature = AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced,
+    reasoningEffort = "none",
     bypassFeatureFlag = false,
   }: LLMParameters) {
     this.modelId = modelId;
-    this.temperature =
-      temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced;
-    this.reasoningEffort = reasoningEffort ?? "none";
+    this.temperature = temperature;
+    this.reasoningEffort = reasoningEffort;
     this.bypassFeatureFlag = bypassFeatureFlag;
   }
 
-  abstract stream({
+  stream({
     conversation,
     prompt,
     specifications,
-  }: {
-    conversation: ModelConversationTypeMultiActions;
-    prompt: string;
-    specifications: AgentActionSpecification[];
-  }): AsyncGenerator<LLMEvent>;
+  }: streamProps): Result<AsyncGenerator<LLMEvent>, Error> {
+    try {
+      return new Ok(
+        this.internalStream({ conversation, prompt, specifications })
+      );
+    } catch (error) {
+      return new Err(normalizeError(Error));
+    }
+  }
+
+  protected abstract internalStream({
+    conversation,
+    prompt,
+    specifications,
+  }: streamProps): AsyncGenerator<LLMEvent>;
 }
