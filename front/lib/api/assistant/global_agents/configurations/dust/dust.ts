@@ -214,7 +214,7 @@ function buildInstructions({
     hasFilesystemTools && INSTRUCTION_SECTIONS.companyData,
     INSTRUCTION_SECTIONS.toolsets,
     hasAgentMemory && INSTRUCTION_SECTIONS.memory(memories),
-  ].filter(Boolean) as string[];
+  ].filter((part): part is string => typeof part === "string");
 
   return parts.join("\n\n");
 }
