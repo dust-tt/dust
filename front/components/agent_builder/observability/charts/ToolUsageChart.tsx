@@ -15,6 +15,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  ReferenceLine,
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
@@ -39,8 +40,8 @@ export function ToolUsageChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const { period } = useObservability();
-  const [mode, setMode] = useState<ToolChartModeType>("version");
+  const { period, mode, selectedVersion } = useObservability();
+  const [toolMode, setToolMode] = useState<ToolChartModeType>("version");
 
   const {
     chartData,
@@ -50,7 +51,16 @@ export function ToolUsageChart({
     legendDescription,
     isLoading,
     errorMessage,
-  } = useToolUsageData({ workspaceId, agentConfigurationId, period, mode });
+  } = useToolUsageData({
+    workspaceId,
+    agentConfigurationId,
+    period,
+    mode: toolMode,
+    filterVersion:
+      mode === "version" && toolMode === "version"
+        ? selectedVersion
+        : undefined,
+  });
 
   const legendItems = useMemo(
     () =>
@@ -64,9 +74,9 @@ export function ToolUsageChart({
 
   const renderToolUsageTooltip = useCallback(
     (payload: TooltipContentProps<number, string>) => (
-      <ChartsTooltip {...payload} mode={mode} topTools={topTools} />
+      <ChartsTooltip {...payload} mode={toolMode} topTools={topTools} />
     ),
-    [mode, topTools]
+    [toolMode, topTools]
   );
 
   return (
@@ -82,14 +92,14 @@ export function ToolUsageChart({
               size="xs"
               variant="outline"
               isSelect
-              label={mode === "version" ? "Version" : "Step"}
+              label={toolMode === "version" ? "Version" : "Step"}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuRadioGroup
-              value={mode}
+              value={toolMode}
               onValueChange={(value) =>
-                isToolChartMode(value) && setMode(value)
+                isToolChartMode(value) && setToolMode(value)
               }
             >
               <DropdownMenuRadioItem value="version">
@@ -146,6 +156,18 @@ export function ToolUsageChart({
               boxShadow: "none",
             }}
           />
+          {mode === "version" &&
+            toolMode === "version" &&
+            selectedVersion &&
+            chartData.length > 0 && (
+              <ReferenceLine
+                x={`v${selectedVersion}`}
+                stroke="hsl(var(--primary))"
+                strokeDasharray="5 5"
+                strokeWidth={2}
+                ifOverflow="extendDomain"
+              />
+            )}
           {topTools.map((toolName) => (
             <Bar
               key={toolName}

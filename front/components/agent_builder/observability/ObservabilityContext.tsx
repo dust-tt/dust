@@ -3,9 +3,18 @@ import { createContext, useContext, useState } from "react";
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 
+export type ObservabilityMode = "timeRange" | "version";
+
 type ObservabilityContextValue = {
+  // Global mode selector
+  mode: ObservabilityMode;
+  setMode: (m: ObservabilityMode) => void;
+  // Time-range selection (used when mode = timeRange)
   period: ObservabilityTimeRangeType;
   setPeriod: (p: ObservabilityTimeRangeType) => void;
+  // Version selection (used when mode = version)
+  selectedVersion: string | null;
+  setSelectedVersion: (v: string | null) => void;
 };
 
 const ObservabilityContext = createContext<ObservabilityContextValue | null>(
@@ -17,11 +26,22 @@ export function ObservabilityProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const [mode, setMode] = useState<ObservabilityMode>("timeRange");
   const [period, setPeriod] =
     useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
+  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
 
   return (
-    <ObservabilityContext.Provider value={{ period, setPeriod }}>
+    <ObservabilityContext.Provider
+      value={{
+        mode,
+        setMode,
+        period,
+        setPeriod,
+        selectedVersion,
+        setSelectedVersion,
+      }}
+    >
       {children}
     </ObservabilityContext.Provider>
   );
