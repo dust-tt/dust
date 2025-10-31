@@ -82,12 +82,12 @@ export const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 export const DEFAULT_TOKEN_COUNT_ADJUSTMENT = 1.15;
 
-export function isSupportedModel(model: unknown): model is SupportedModel {
+export function isSupportedModel(model: unknown, checkProvider: boolean = true): model is SupportedModel {
   const maybeSupportedModel = model as SupportedModel;
   return SUPPORTED_MODEL_CONFIGS.some(
     (m) =>
       m.modelId === maybeSupportedModel.modelId &&
-      m.providerId === maybeSupportedModel.providerId
+      (!checkProvider || m.providerId === maybeSupportedModel.providerId)
   );
 }
 

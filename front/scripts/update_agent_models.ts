@@ -11,7 +11,8 @@ async function updateWorkspaceAssistants(
   fromModel: string,
   toModel: SupportedModelIds,
   execute: boolean,
-  onlyActive: boolean
+  onlyActive: boolean,
+  forceProviderChange: boolean,
 ) {
   const whereClause: any = { workspaceId, modelId: fromModel };
   if (onlyActive) {
@@ -29,20 +30,25 @@ async function updateWorkspaceAssistants(
   );
 
   for (const agent of agentConfigurations) {
-    if (!isSupportedModel({ modelId: toModel, providerId: agent.providerId })) {
+    if (!isSupportedModel({ modelId: toModel, providerId: agent.providerId }, !forceProviderChange)) {
       throw new Error(
         `Model ${toModel} is not supported for provider ${agent.providerId}.`
       );
     }
 
+    const targetProviderId = forceProviderChange
+      ? SUPPORTED_MODEL_CONFIGS.find((m) => m.modelId === toModel)?.providerId
+      : agent.providerId;
     if (execute) {
-      await agent.update({ modelId: toModel });
+      await agent.update({ modelId: toModel, providerId: targetProviderId });
     }
 
+    const providerChanged = agent.providerId !== targetProviderId;
+    const actionWord = execute ? "Updated" : "[DRYRUN] Would update";
     console.log(
-      `${execute ? "" : "[DRYRUN]"} Updated ${agent.name}(${
-        agent.sId
-      }) from ${fromModel} to ${toModel}.`
+      `${actionWord} ${agent.name} (${agent.sId}) from ${fromModel} to ${toModel}` +
+        (providerChanged ? ` (provider: ${agent.providerId} -> ${targetProviderId})` : "") +
+        "."
     );
   }
 }
@@ -72,8 +78,14 @@ makeScript(
       default: false,
       description: "Only update active agent configurations.",
     },
+    forceProviderChange: {
+      type: "boolean",
+      demandOption: false,
+      default: false,
+      description: "Allow switching provider to match the target model. When false, only models from the same provider are allowed. It is a safety mechanism to avoid unexpected provider changes.",
+    },
   },
-  async ({ fromModel, toModel, workspaceIds, execute, onlyActive }) => {
+  async ({ fromModel, toModel, workspaceIds, execute, onlyActive, forceProviderChange }) => {
     const whereClause = workspaceIds.length > 0 ? { sId: workspaceIds } : {};
     const workspaces = await WorkspaceModel.findAll({
       attributes: ["id", "name", "sId"],
@@ -86,7 +98,8 @@ makeScript(
         fromModel,
         toModel as SupportedModelIds,
         execute,
-        onlyActive
+        onlyActive,
+        forceProviderChange,
       );
     }
   }
