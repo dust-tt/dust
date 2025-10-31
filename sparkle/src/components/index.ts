@@ -173,7 +173,7 @@ export {
 } from "./Sheet";
 export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
-export { FlexSplitButton, SplitButton } from "./SplitButton";
+export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
 export {
