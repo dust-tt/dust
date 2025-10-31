@@ -81,9 +81,6 @@ pub struct TableBlobPayload {
     pub title: String,
     pub mime_type: String,
     pub provider_visibility: Option<ProviderVisibility>,
-
-    // Rows
-    pub rows: Vec<Row>,
 }
 
 #[derive(Debug, Serialize, Clone, Deserialize)]
@@ -322,23 +319,7 @@ impl Table {
         Ok(())
     }
 
-    pub async fn retrieve_api_blob(
-        &self,
-        databases_store: Box<dyn DatabasesStore + Sync + Send>,
-    ) -> Result<TableBlobPayload> {
-        let rows = match self.table_type()? {
-            TableType::Local => {
-                let local_table = LocalTable::from_table(self.clone())?;
-                let (rows, _) = local_table.list_rows(databases_store, None).await?;
-                rows
-            }
-            TableType::Remote(_) => {
-                // For remote tables, we don't have direct access to rows
-                // Return empty vec since rows will be fetched through DB connection
-                vec![]
-            }
-        };
-
+    pub async fn retrieve_api_blob(&self) -> Result<TableBlobPayload> {
         Ok(TableBlobPayload {
             table_id: self.table_id().to_string(),
             name: self.name().to_string(),
@@ -353,7 +334,6 @@ impl Table {
             title: self.title().to_string(),
             mime_type: self.mime_type().to_string(),
             provider_visibility: self.provider_visibility().clone(),
-            rows,
         })
     }
 }
@@ -748,23 +728,40 @@ impl LocalTable {
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
     ) -> Result<Option<TableSchema>> {
-        match &self.table.schema_stale_at {
-            Some(_) => {
-                let schema = self.compute_schema(databases_store).await?;
-
-                store
-                    .update_data_source_table_schema(
-                        &self.table.project,
-                        &self.table.data_source_id,
-                        &self.table.table_id,
-                        &schema,
-                    )
-                    .await?;
-                self.table.set_schema(schema.clone());
-
-                Ok(Some(schema))
+        if self.table.schema_stale_at.is_some() || self.table.schema.is_none() {
+            if self.table.schema.is_none() {
+                info!(
+                    table_id = self.table.table_id(),
+                    "DSSTRUCTSTAT [schema] Schema is missing, recomputing. Should normally only happen after relocation."
+                );
             }
-            None => Ok(self.table.schema.clone()),
+            let schema = self.compute_schema(databases_store).await?;
+
+            // If we currently have no schema and the computed schema is empty, do not set it.
+            // This should not normally happen, except in two cases:
+            // 1. A table is created, but no rows are upserted
+            // 2. We're doing a relocation, and did not copy the GCS buckets
+            if self.table.schema.is_none() && schema.is_empty() {
+                warn!(
+                    table_id = self.table.table_id(),
+                    "DSSTRUCTSTAT [schema] Computed empty schema; not setting."
+                );
+                return Ok(None);
+            }
+
+            store
+                .update_data_source_table_schema(
+                    &self.table.project,
+                    &self.table.data_source_id,
+                    &self.table.table_id,
+                    &schema,
+                )
+                .await?;
+
+            self.table.set_schema(schema.clone());
+            Ok(Some(schema))
+        } else {
+            Ok(self.table.schema.clone())
         }
     }
 
