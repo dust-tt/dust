@@ -89,6 +89,8 @@ export async function* runToolWithStreaming(
     toolConfiguration,
   };
 
+  await action.markAsRunning();
+
   const toolCallResult = yield* tryCallMCPTool(
     auth,
     inputs,
@@ -105,6 +107,8 @@ export async function* runToolWithStreaming(
       signal,
     }
   );
+
+  await action.setEndDate();
 
   // Err here means an exception ahead of calling the tool, like a connection error, an input
   // validation error, or any other kind of error from MCP, but not a tool error, which are returned
