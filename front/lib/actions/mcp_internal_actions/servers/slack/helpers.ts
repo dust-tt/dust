@@ -463,7 +463,7 @@ export async function executeScheduleMessage(
   return new Ok([
     {
       type: "text" as const,
-      text: `Message scheduled successfully to ${to} at ${localDate}`,
+      text: `Message scheduled successfully to ${to} at ${localDate} (server time)`,
     },
   ]);
 }
