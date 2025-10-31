@@ -8,6 +8,8 @@ import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
 import { isMistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import { OpenAIResponsesLLM } from "@app/lib/api/llm/clients/openai";
 import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+import { TogetherAILLM } from "@app/lib/api/llm/clients/togetherai";
+import { isTogetherAIWhitelistedModelId } from "@app/lib/api/llm/clients/togetherai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
@@ -75,6 +77,21 @@ export async function getLLM(
       temperature,
       reasoningEffort,
       bypassFeatureFlag,
+    });
+  }
+
+  if (isTogetherAIWhitelistedModelId(modelId)) {
+    const { TOGETHERAI_API_KEY } = dustManagedCredentials();
+    if (!TOGETHERAI_API_KEY) {
+      throw new Error("TOGETHERAI_API_KEY environment variable is required");
+    }
+
+    return new TogetherAILLM({
+      modelId,
+      temperature,
+      reasoningEffort,
+      bypassFeatureFlag,
+      apiKey: TOGETHERAI_API_KEY,
     });
   }
 
