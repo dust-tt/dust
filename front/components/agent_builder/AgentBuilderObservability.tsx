@@ -7,8 +7,8 @@ import {
   DropdownMenuTrigger,
   Label,
   LoadingBlock,
-  useSendNotification,
 } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 import React from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -24,11 +24,12 @@ import {
   ObservabilityProvider,
   useObservability,
 } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useExportFeedbackCsv } from "@app/lib/swr/agent_observability";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { GLOBAL_AGENTS_SID, normalizeError } from "@app/types";
-import { useRouter } from "next/router";
+
 import { createConversationWithMessage } from "../assistant/conversation/lib";
 
 interface AgentBuilderObservabilityProps {
