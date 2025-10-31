@@ -181,7 +181,6 @@ export function AgentMessage({
             [key]: {
               provider: citation.provider,
               href: citation.href,
-              faviconUrl: citation.faviconUrl,
               title: citation.title,
               description: citation.description,
               contentType: citation.contentType,

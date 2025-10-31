@@ -70,24 +70,16 @@ export const IconForAttachmentCitation = ({
   nodeType,
   contentType,
   sourceUrl,
-  faviconUrl,
 }: {
   provider?: string;
   nodeType?: ContentNodeType;
   contentType?: string;
   sourceUrl?: string;
-  faviconUrl?: string;
 }): ReactNode => {
   const { isDark } = useTheme();
 
   if (provider === "webcrawler") {
-    return (
-      <FaviconIcon
-        className="h-3 w-3"
-        faviconUrl={faviconUrl}
-        websiteUrl={sourceUrl}
-      />
-    );
+    return <FaviconIcon className="h-3 w-3" websiteUrl={sourceUrl} />;
   }
 
   if (provider && provider in CONNECTOR_CONFIGURATIONS) {
@@ -247,7 +239,6 @@ export function markdownCitationToAttachmentCitation(
         provider={citation.provider}
         contentType={citation.contentType}
         sourceUrl={citation.href}
-        faviconUrl={citation.faviconUrl}
       />
     ),
     isUploading: false,
