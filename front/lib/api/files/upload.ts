@@ -147,15 +147,22 @@ const resizeAndUploadToFileStorage = async (
     ".",
     ""
   );
-  const originalUrl = await file.getSignedUrlForDownload(auth, "original");
   const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
 
   let result;
   try {
+    // Upload the original file content directly to ConvertAPI to avoid exposing a signed URL
+    // which could be fetched by the third-party service. This still sends the file contents to
+    // ConvertAPI for conversion but removes the use of a signed download URL.
+    const uploadResult = await convertapi.upload(
+      file.getReadStream({ auth, version: "original" }),
+      `${file.fileName}.${originalFormat}`
+    );
+
     result = await convertapi.convert(
       originalFormat,
       {
-        File: originalUrl,
+        File: uploadResult,
         ScaleProportions: true,
         ImageResolution: "72",
         ScaleImage: "true",
