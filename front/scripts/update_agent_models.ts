@@ -12,7 +12,8 @@ async function updateWorkspaceAssistants(
   toModel: SupportedModelIds,
   execute: boolean,
   onlyActive: boolean,
-  forceProviderChange: boolean
+  forceProviderChange: boolean,
+  excludeAgentsIds: string[]
 ) {
   const whereClause: any = { workspaceId, modelId: fromModel };
   if (onlyActive) {
@@ -29,7 +30,13 @@ async function updateWorkspaceAssistants(
     }agent configurations with model ${fromModel} in workspace ${workspaceId}`
   );
 
+  const excluded = new Set(excludeAgentsIds ?? []);
+
   for (const agent of agentConfigurations) {
+    if (excluded.has(agent.sId)) {
+      console.log(`[SKIP] ${agent.name} (${agent.sId}) is excluded.`);
+      continue;
+    }
     if (
       !isSupportedModel(
         { modelId: toModel, providerId: agent.providerId },
@@ -92,6 +99,13 @@ makeScript(
       description:
         "Allow switching provider to match the target model. When false, only models from the same provider are allowed. It is a safety mechanism to avoid unexpected provider changes.",
     },
+    excludeAgentsIds: {
+      type: "array",
+      coerce: (arr) => arr.map(String),
+      demandOption: false,
+      default: [],
+      description: "Optional list of agent sIds to exclude from update.",
+    },
   },
   async ({
     fromModel,
@@ -100,6 +114,7 @@ makeScript(
     execute,
     onlyActive,
     forceProviderChange,
+    excludeAgentsIds,
   }) => {
     const whereClause = workspaceIds.length > 0 ? { sId: workspaceIds } : {};
     const workspaces = await WorkspaceModel.findAll({
@@ -114,7 +129,8 @@ makeScript(
         toModel as SupportedModelIds,
         execute,
         onlyActive,
-        forceProviderChange
+        forceProviderChange,
+        excludeAgentsIds
       );
     }
   }
