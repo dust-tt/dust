@@ -64,7 +64,7 @@ makeScript(
       demandOption: false,
       default: [],
       description:
-        "List of workspace identifiers, separated by a space, for which the feature flag should be toggled.",
+        "List of workspace identifiers, separated by a space, for which the agents should be updated.",
     },
     onlyActive: {
       type: "boolean",
