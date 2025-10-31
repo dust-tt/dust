@@ -62,7 +62,7 @@ export function FeedbackDistributionChart({
 
   return (
     <ChartContainer
-      title="Feedback trends"
+      title="Feedback Trends"
       isLoading={isFeedbackDistributionLoading}
       errorMessage={
         isFeedbackDistributionError
