@@ -1,12 +1,14 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
-import {
-  BaseConnectorManager,
-  ConnectorManagerError,
+import type {
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
 } from "@connectors/connectors/interface";
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import { getOrganization } from "@connectors/connectors/microsoft/lib/graph_api";
