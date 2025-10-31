@@ -24,11 +24,13 @@ async function updateWorkspaceAssistants(
     where: whereClause,
   });
 
-  console.log(
-    `Found ${agentConfigurations.length} ${
-      onlyActive ? "active " : ""
-    }agent configurations with model ${fromModel} in workspace ${workspaceId}`
-  );
+  if (agentConfigurations.length !== 0) {
+    console.log(
+      `Found ${agentConfigurations.length} ${
+        onlyActive ? "active " : ""
+      }agent configurations with model ${fromModel} in workspace ${workspaceId}`
+    );
+  }
 
   const excluded = new Set(excludeAgentsIds);
 
