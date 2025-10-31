@@ -5,6 +5,7 @@ import type {
   MessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 import { assertNever } from "@dust-tt/sparkle";
+import cloneDeep from "lodash/cloneDeep";
 
 import { validateContentBlockIndex } from "@app/lib/api/llm/clients/anthropic/utils/predicates";
 import type { StreamState } from "@app/lib/api/llm/clients/anthropic/utils/types";
@@ -26,7 +27,12 @@ export async function* streamLLMEvents(
 ): AsyncGenerator<LLMEvent> {
   const stateContainer = { state: null };
 
-  for await (const messageStreamEvent of messageStreamEvents) {
+  // There is an issue in Anthropic SDK showcasing that stream events get mutated after they are yielded.
+  // https://github.com/anthropics/anthropic-sdk-typescript/issues/777
+  // They say it has been fixed in the version we are using but in practice we still see it happening.
+  // To work around this, we clone each event before processing it.
+  for await (const mutableMessageStreamEvent of messageStreamEvents) {
+    const messageStreamEvent = cloneDeep(mutableMessageStreamEvent);
     yield* handleMessageStreamEvent(
       messageStreamEvent,
       stateContainer,
