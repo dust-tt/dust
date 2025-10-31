@@ -158,6 +158,7 @@ export { ScrollArea, ScrollBar } from "./ScrollArea";
 export { SearchDropdownMenu } from "./SearchDropdownMenu";
 export { SearchInput, SearchInputWithPopover } from "./SearchInput";
 export { Separator } from "./Separator";
+export { ButtonsSwitchList, ButtonsSwitch } from "./ButtonsSwitch";
 export {
   Sheet,
   SheetClose,
