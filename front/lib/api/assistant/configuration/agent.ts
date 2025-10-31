@@ -70,58 +70,11 @@ import {
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
-/**
- * Get one specific version of a single agent
- */
-export async function getAgentConfigurationWithVersion<
-  V extends AgentFetchVariant,
->(
-  auth: Authenticator,
-  {
-    agentId,
-    agentVersion,
-    variant,
-  }: { agentId: string; agentVersion: number; variant: V }
-): Promise<
-  | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
-  | null
-> {
-  const owner = auth.workspace();
-  if (!owner || !auth.isUser()) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  assert(!isGlobalAgentId(agentId), "Global agents are not versioned.");
-
-  const agentModels = await AgentConfiguration.findAll({
-    where: {
-      // Relies on the indexes (workspaceId), (sId, version).
-      workspaceId: owner.id,
-      sId: agentId,
-      version: agentVersion,
-    },
-  });
-
-  const allowedAgentModels = await filterAgentsByRequestedSpaces(
-    auth,
-    agentModels
-  );
-  const agents = await enrichAgentConfigurations(auth, allowedAgentModels, {
-    variant,
-  });
-
-  return (
-    (agents[0] as V extends "light"
-      ? LightAgentConfigurationType
-      : AgentConfigurationType) || null
-  );
-}
-
 export async function getAgentConfigurationsWithVersion<
   V extends AgentFetchVariant,
 >(
   auth: Authenticator,
-  agentIdsWithVersion: { sId: string; version: number }[],
+  agentIdsWithVersion: { agentId: string; agentVersion: number }[],
   { variant }: { variant: V }
 ): Promise<
   V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
@@ -132,18 +85,19 @@ export async function getAgentConfigurationsWithVersion<
   }
 
   assert(
-    !agentIdsWithVersion.some(({ sId }) => isGlobalAgentId(sId)),
+    !agentIdsWithVersion.some(({ agentId }) => isGlobalAgentId(agentId)),
     "Global agents are not versioned."
   );
 
   const agentModels = await AgentConfiguration.findAll({
     where: {
-      // Relies on the indexes (workspaceId), (sId, version).
       workspaceId: owner.id,
-      [Op.or]: agentIdsWithVersion.map(({ sId, version }) => ({
-        sId,
-        version,
-      })),
+      [Op.or]: agentIdsWithVersion.map(
+        ({ agentId: sId, agentVersion: version }) => ({
+          sId,
+          version,
+        })
+      ),
     },
   });
 
@@ -294,11 +248,18 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
 > {
   return tracer.trace("getAgentConfiguration", async () => {
     if (agentVersion !== undefined) {
-      return getAgentConfigurationWithVersion(auth, {
-        agentId,
-        agentVersion,
-        variant,
-      });
+      const [agent] = await getAgentConfigurationsWithVersion(
+        auth,
+        [{ agentId, agentVersion }],
+        {
+          variant,
+        }
+      );
+      return (
+        (agent as V extends "light"
+          ? LightAgentConfigurationType
+          : AgentConfigurationType) || null
+      );
     }
     const [agent] = await getAgentConfigurations(auth, {
       agentIds: [agentId],
