@@ -221,21 +221,8 @@ async function runTest(
             break;
           case "reasoning_generated":
             fullReasoning = event.content.text;
-            conversationHistory.push({
-              role: "assistant",
-              name: "Assistant",
-              contents: [
-                {
-                  type: "reasoning",
-                  value: {
-                    reasoning: event.content.text,
-                    metadata: "",
-                    tokens: 12,
-                    provider: config.provider,
-                  },
-                },
-              ],
-            });
+            // Do not include thinking at the moment as we don't have the correct signature for it
+            // TODO(llm_router): fix this when we have the correct signature
             break;
           case "token_usage":
             outputTokens = event.content.outputTokens;
