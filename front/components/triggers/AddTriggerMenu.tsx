@@ -46,9 +46,6 @@ export const AddTriggerMenu = ({
           .filter(([_, { featureFlag }]) => {
             return featureFlag === undefined || hasFeature(featureFlag);
           })
-          .sort(([_, { name: nameA }], [__, { name: nameB }]) =>
-            nameA.localeCompare(nameB)
-          )
           .map(([provider, preset]) => (
             <DropdownMenuItem
               key={`trigger-${provider}`}
