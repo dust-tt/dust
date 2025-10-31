@@ -21,7 +21,7 @@ import {
 } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import { getAgentConfigurationWithVersion } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
@@ -249,22 +249,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           return null;
         }
         return {
-          agentId: agentMessage.agentConfigurationId,
-          agentVersion: agentMessage.agentConfigurationVersion,
+          sId: agentMessage.agentConfigurationId,
+          version: agentMessage.agentConfigurationVersion,
         };
       })
     );
 
-    const agentConfigurations = removeNulls(
-      await Promise.all(
-        agentConfigVersionPairs.map(({ agentId, agentVersion }) =>
-          getAgentConfigurationWithVersion(auth, {
-            agentId,
-            agentVersion,
-            variant: "extra_light",
-          })
-        )
-      )
+    const agentConfigurations = await getAgentConfigurationsWithVersion(
+      auth,
+      agentConfigVersionPairs,
+      {
+        variant: "extra_light",
+      }
     );
 
     const mcpServerViewIds = [

@@ -100,7 +100,6 @@ export async function getAgentConfigurationWithVersion<
       sId: agentId,
       version: agentVersion,
     },
-    order: [["version", "DESC"]],
   });
 
   const allowedAgentModels = await filterAgentsByRequestedSpaces(
@@ -116,6 +115,49 @@ export async function getAgentConfigurationWithVersion<
       ? LightAgentConfigurationType
       : AgentConfigurationType) || null
   );
+}
+
+export async function getAgentConfigurationsWithVersion<
+  V extends AgentFetchVariant,
+>(
+  auth: Authenticator,
+  agentIdsWithVersion: { sId: string; version: number }[],
+  { variant }: { variant: V }
+): Promise<
+  V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
+> {
+  const owner = auth.workspace();
+  if (!owner || !auth.isUser()) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  assert(
+    !agentIdsWithVersion.some(({ sId }) => isGlobalAgentId(sId)),
+    "Global agents are not versioned."
+  );
+
+  const agentModels = await AgentConfiguration.findAll({
+    where: {
+      // Relies on the indexes (workspaceId), (sId, version).
+      workspaceId: owner.id,
+      [Op.or]: agentIdsWithVersion.map(({ sId, version }) => ({
+        sId,
+        version,
+      })),
+    },
+  });
+
+  const allowedAgentModels = await filterAgentsByRequestedSpaces(
+    auth,
+    agentModels
+  );
+  const agents = await enrichAgentConfigurations(auth, allowedAgentModels, {
+    variant,
+  });
+
+  return agents as V extends "light"
+    ? LightAgentConfigurationType[]
+    : AgentConfigurationType[];
 }
 
 /**
