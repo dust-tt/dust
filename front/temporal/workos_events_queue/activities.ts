@@ -428,14 +428,17 @@ async function handleGroupUpsert(
       );
     }
 
+    let workosGroupByName: DirectoryGroup | undefined;
     // Look for this other group in workos and delete it if it doesn't exist anymore.
-    const workosGroupByName = await getWorkOS().directorySync.getGroup(
-      groupByName.workOSGroupId
-    );
-
-    if (!workosGroupByName) {
+    try {
+      workosGroupByName = await getWorkOS().directorySync.getGroup(
+        groupByName.workOSGroupId
+      );
+    } catch (error) {
+      logger.info({ error }, "Group not found in workos, deleting local group");
       await groupByName.delete(auth);
-    } else {
+    }
+    if (workosGroupByName) {
       throw new Error(
         `Group "${groupByName.name}" still exists in workos with id "${workosGroupByName.id}"`
       );
