@@ -21,7 +21,6 @@ import type {
 import {
   assertNever,
   isString,
-  normalizeError,
   safeParseJSON,
 } from "@app/types";
 import type {
@@ -61,15 +60,20 @@ function assistantContentToParam(
       };
     case "reasoning":
       assert(content.value.reasoning, "Reasoning content is missing reasoning");
-      let signature = "";
-      try {
-        const metadata = JSON.parse(content.value.metadata);
-        signature = metadata.signature || "";
-      } catch (e) {
+      const metadata = safeParseJSON(content.value.metadata);
+      if (metadata.isErr()) {
         throw new Error(
-          `Failed to parse reasoning metadata JSON: ${normalizeError(e).message}`
+          `Failed to parse reasoning metadata JSON: ${metadata.error.message}`
         );
       }
+
+      const signature =
+        metadata.value &&
+        "signature" in metadata.value &&
+        isString(metadata.value.signature)
+          ? metadata.value.signature
+          : "";
+
       return {
         type: "thinking",
         thinking: content.value.reasoning,
