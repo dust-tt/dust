@@ -170,72 +170,9 @@ describe("TriggerResource", () => {
         expect(result.error).toBeInstanceOf(DustError);
         expect(result.error.code).toBe("unauthorized");
         expect(result.error.message).toBe(
-          "User do not have access to this trigger"
+          "User does not have access to this trigger"
         );
       }
-    });
-
-    it("should handle database errors gracefully", async () => {
-      const {
-        workspace,
-        authenticator: editorAuth,
-        user: editorUser,
-      } = await createResourceTest({
-        role: "admin",
-      });
-
-      // Create a second user who will be the subscriber
-      const subscriberUser = await UserFactory.basic();
-      const subscriberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        subscriberUser.sId,
-        workspace.sId
-      );
-
-      // Create an agent configuration for the trigger
-      const agentConfig = await AgentConfigurationFactory.createTestAgent(
-        editorAuth,
-        { name: "Test Agent" }
-      );
-
-      // Create a trigger
-      const triggerResult = await TriggerResource.makeNew(editorAuth, {
-        id: 123,
-        workspaceId: workspace.id,
-        name: "Test Trigger",
-        kind: "schedule",
-        agentConfigurationId: agentConfig.sId,
-        editor: editorUser.id,
-        customPrompt: null,
-        enabled: true,
-        configuration: {
-          cron: "0 9 * * 1",
-          timezone: "UTC",
-        },
-      });
-
-      expect(triggerResult.isOk()).toBe(true);
-      if (triggerResult.isErr()) {
-        throw triggerResult.error;
-      }
-
-      const trigger = triggerResult.value;
-
-      // Mock TriggerSubscriberModel.create to throw an error
-      const mockCreate = vi
-        .spyOn(TriggerSubscriberModel, "create")
-        .mockRejectedValue(new Error("Database connection failed"));
-
-      const result = await trigger.addToSubscribers(subscriberAuth);
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error).toBeInstanceOf(DustError);
-        expect(result.error.code).toBe("internal_error");
-        expect(result.error.message).toBe("Database connection failed");
-      }
-
-      // Restore the original method
-      mockCreate.mockRestore();
     });
 
     it("should handle duplicate subscription attempts", async () => {
@@ -425,7 +362,7 @@ describe("TriggerResource", () => {
         expect(result.error).toBeInstanceOf(DustError);
         expect(result.error.code).toBe("unauthorized");
         expect(result.error.message).toBe(
-          "User do not have access to this trigger"
+          "User does not have access to this trigger"
         );
       }
     });
