@@ -53,6 +53,36 @@ type ChannelWithIdAndName = Omit<Channel, "id" | "name"> & {
   name: string;
 };
 
+// Minimal channel information returned to reduce context window usage.
+export type MinimalChannelInfo = {
+  id: string;
+  name: string;
+  created: number;
+  creator: string;
+  is_channel: boolean;
+  is_private: boolean;
+  is_member: boolean;
+  previous_names: string[];
+  num_members?: number;
+  topic?: string;
+};
+
+// Clean channel payload to keep only essential fields.
+export function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
+  return {
+    id: channel.id!,
+    name: channel.name!,
+    created: channel.created ?? 0,
+    creator: channel.creator ?? "",
+    is_channel: channel.is_channel ?? false,
+    is_private: channel.is_private ?? false,
+    is_member: channel.is_member ?? false,
+    previous_names: channel.previous_names ?? [],
+    num_members: channel.num_members,
+    topic: channel.topic?.value,
+  };
+}
+
 export const getPublicChannels = async ({
   slackClient,
 }: GetPublicChannelsArgs): Promise<ChannelWithIdAndName[]> => {
@@ -148,7 +178,7 @@ export const getCachedPublicChannels = cacheWithRedis(
 );
 
 // Helper function to build filtered list responses.
-function buildFilteredListResponse<T>(
+function buildFilteredListResponse<T, U = T>(
   items: T[],
   nameFilter: string | undefined,
   filterFn: (item: T, normalizedFilter: string) => boolean,
@@ -156,12 +186,18 @@ function buildFilteredListResponse<T>(
     count: number,
     hasFilter: boolean,
     filterText?: string
-  ) => string
+  ) => string,
+  transformFn?: (item: T) => U
 ): Ok<Array<{ type: "text"; text: string }>> {
+  const transform = transformFn ?? ((item: T) => item as unknown as U);
+
   if (!nameFilter) {
     return new Ok([
       { type: "text" as const, text: contextMessage(items.length, false) },
-      { type: "text" as const, text: JSON.stringify(items, null, 2) },
+      {
+        type: "text" as const,
+        text: JSON.stringify(items.map(transform), null, 2),
+      },
     ]);
   }
 
@@ -178,7 +214,7 @@ function buildFilteredListResponse<T>(
       },
       {
         type: "text" as const,
-        text: JSON.stringify(filteredItems, null, 2),
+        text: JSON.stringify(filteredItems.map(transform), null, 2),
       },
     ]);
   }
@@ -189,7 +225,10 @@ function buildFilteredListResponse<T>(
       text:
         contextMessage(items.length, true, nameFilter) + " but none matching",
     },
-    { type: "text" as const, text: JSON.stringify(items, null, 2) },
+    {
+      type: "text" as const,
+      text: JSON.stringify(items.map(transform), null, 2),
+    },
   ]);
 }
 
@@ -444,7 +483,11 @@ export async function executeListPublicChannels(
         },
         {
           type: "text" as const,
-          text: JSON.stringify(filteredChannels, null, 2),
+          text: JSON.stringify(
+            filteredChannels.map(cleanChannelPayload),
+            null,
+            2
+          ),
         },
       ]);
     }
@@ -455,7 +498,10 @@ export async function executeListPublicChannels(
         type: "text" as const,
         text: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
       },
-      { type: "text" as const, text: JSON.stringify(channels, null, 2) },
+      {
+        type: "text" as const,
+        text: JSON.stringify(channels.map(cleanChannelPayload), null, 2),
+      },
     ]);
   }
 
@@ -464,7 +510,10 @@ export async function executeListPublicChannels(
       type: "text" as const,
       text: `The workspace has ${channels.length} channels`,
     },
-    { type: "text" as const, text: JSON.stringify(channels, null, 2) },
+    {
+      type: "text" as const,
+      text: JSON.stringify(channels.map(cleanChannelPayload), null, 2),
+    },
   ]);
 }
 
@@ -481,7 +530,7 @@ export async function executeListChannels(
     memberOnly: false,
   });
 
-  return buildFilteredListResponse<ChannelWithIdAndName>(
+  return buildFilteredListResponse<ChannelWithIdAndName, MinimalChannelInfo>(
     channels,
     nameFilter,
     (channel, normalizedFilter) =>
@@ -494,7 +543,8 @@ export async function executeListChannels(
     (count, hasFilter, filterText) =>
       hasFilter
         ? `The workspace has ${count} channels containing "${filterText}"`
-        : `The workspace has ${count} channels`
+        : `The workspace has ${count} channels`,
+    cleanChannelPayload
   );
 }
 
@@ -511,7 +561,7 @@ export async function executeListJoinedChannels(
     memberOnly: true,
   });
 
-  return buildFilteredListResponse<ChannelWithIdAndName>(
+  return buildFilteredListResponse<ChannelWithIdAndName, MinimalChannelInfo>(
     channels,
     nameFilter,
     (channel, normalizedFilter) =>
@@ -524,7 +574,8 @@ export async function executeListJoinedChannels(
     (count, hasFilter, filterText) =>
       hasFilter
         ? `You are a member of ${count} channels containing "${filterText}"`
-        : `You are a member of ${count} channels`
+        : `You are a member of ${count} channels`,
+    cleanChannelPayload
   );
 }
 

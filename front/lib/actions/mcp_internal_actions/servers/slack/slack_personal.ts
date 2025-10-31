@@ -874,6 +874,62 @@ async function createServer(
   );
 
   server.tool(
+    "get_channel_details",
+    "Get detailed information about a specific channel including all metadata, properties, canvas, tabs, and settings. Use this when you need complete channel information beyond the basic fields provided by list_channels.",
+    {
+      channel: z.string().describe("The channel ID or name to get details for"),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+      },
+      async ({ channel }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Access token not found"));
+        }
+
+        try {
+          const slackClient = await getSlackClient(accessToken);
+          const response = await slackClient.conversations.info({
+            channel,
+          });
+
+          if (!response.ok || !response.channel) {
+            return new Err(
+              new MCPError(
+                response.error === "channel_not_found"
+                  ? "Channel not found"
+                  : response.error ?? "Unknown error"
+              )
+            );
+          }
+
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Retrieved detailed information for channel ${channel}`,
+            },
+            {
+              type: "text" as const,
+              text: JSON.stringify(response.channel, null, 2),
+            },
+          ]);
+        } catch (error) {
+          if (isSlackTokenRevoked(error)) {
+            return new Ok(makePersonalAuthenticationError("slack").content);
+          }
+          return new Err(
+            new MCPError(`Error getting channel details: ${error}`)
+          );
+        }
+      }
+    )
+  );
+
+  server.tool(
     "list_threads",
     "List threads for a given channel. Returns thread headers with timestamps (ts field). Use read_thread_messages with the ts field to read the full thread content.",
     {
