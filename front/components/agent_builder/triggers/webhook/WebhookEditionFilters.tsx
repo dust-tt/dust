@@ -1,10 +1,10 @@
 import { Label, Spinner, TextArea } from "@dust-tt/sparkle";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
+import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useWebhookFilterGenerator } from "@app/lib/swr/agent_triggers";
-import { debounce } from "@app/lib/utils/debounce";
 import type { LightWorkspaceType } from "@app/types";
 import { normalizeError } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
@@ -60,12 +60,42 @@ export function WebhookEditionFilters({
     null
   );
 
-  const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
   const generateFilter = useWebhookFilterGenerator({ workspace });
 
   const MIN_DESCRIPTION_LENGTH = 10;
+
+  const triggerFilterGeneration = useDebounceWithAbort(
+    async (txt: string, signal: AbortSignal) => {
+      if (!selectedEventSchema) {
+        setFilterGenerationStatus("idle");
+        return;
+      }
+
+      try {
+        const result = await generateFilter({
+          naturalDescription: txt,
+          eventSchema: selectedEventSchema,
+          signal,
+        });
+
+        // If the request was not aborted, we can update the form
+        if (!signal.aborted) {
+          filterField.onChange(result.filter);
+          setFilterGenerationStatus("idle");
+          setFilterErrorMessage(null);
+        }
+      } catch (error) {
+        // If the request was not aborted, we can update the error state
+        if (!signal.aborted) {
+          setFilterGenerationStatus("error");
+          setFilterErrorMessage(
+            `Error generating filter: ${normalizeError(error).message}`
+          );
+        }
+      }
+    },
+    { delay: 500, minLength: MIN_DESCRIPTION_LENGTH }
+  );
 
   // Update form field when naturalDescription changes
   const handleNaturalDescriptionChange = (value: string) => {
@@ -74,58 +104,7 @@ export function WebhookEditionFilters({
     const txt = value.trim();
     setFilterGenerationStatus(txt ? "loading" : "idle");
 
-    if (txt.length >= MIN_DESCRIPTION_LENGTH) {
-      debounce(
-        debounceHandle,
-        async () => {
-          // Cancel previous request
-          if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-          }
-
-          abortControllerRef.current = new AbortController();
-          const signal = abortControllerRef.current.signal;
-
-          if (!selectedEventSchema) {
-            setFilterGenerationStatus("idle");
-            return;
-          }
-
-          try {
-            const result = await generateFilter({
-              naturalDescription: txt,
-              eventSchema: selectedEventSchema,
-              signal,
-            });
-
-            // If the request was not aborted, we can update the form
-            if (!signal.aborted) {
-              filterField.onChange(result.filter);
-              setFilterGenerationStatus("idle");
-              setFilterErrorMessage(null);
-            }
-          } catch (error) {
-            // If the request was not aborted, we can update the error state
-            if (!signal.aborted) {
-              setFilterGenerationStatus("error");
-              setFilterErrorMessage(
-                `Error generating filter: ${normalizeError(error).message}`
-              );
-            }
-          }
-        },
-        500
-      );
-    } else {
-      if (debounceHandle.current) {
-        clearTimeout(debounceHandle.current);
-        debounceHandle.current = undefined;
-      }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-    }
+    triggerFilterGeneration(txt);
   };
 
   const filterGenerationResult = useMemo(() => {
