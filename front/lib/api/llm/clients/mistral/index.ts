@@ -7,12 +7,11 @@ import {
   toTool,
 } from "@app/lib/api/llm/clients/mistral/utils/conversation_to_mistral";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/mistral/utils/mistral_to_events";
+import type { LLMWithTracingParameters } from "@app/lib/api/llm/llm";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type {
-  LLMClientMetadata,
-  LLMParameters,
-} from "@app/lib/api/llm/types/options";
+import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import type { Authenticator } from "@app/lib/auth";
 import type { ModelConversationTypeMultiActions } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
@@ -22,17 +21,22 @@ export class MistralLLM extends LLM {
     clientId: "mistral",
     modelId: this.modelId,
   };
-  constructor({
-    modelId,
-    temperature,
-    reasoningEffort,
-    bypassFeatureFlag,
-  }: LLMParameters & { modelId: MistralWhitelistedModelId }) {
-    super({
+  constructor(
+    auth: Authenticator,
+    {
       modelId,
       temperature,
       reasoningEffort,
       bypassFeatureFlag,
+      context,
+    }: LLMWithTracingParameters & { modelId: MistralWhitelistedModelId }
+  ) {
+    super(auth, {
+      modelId,
+      temperature,
+      reasoningEffort,
+      bypassFeatureFlag,
+      context,
     });
     const { MISTRAL_API_KEY } = dustManagedCredentials();
     if (!MISTRAL_API_KEY) {

@@ -7,12 +7,11 @@ import {
   toTool,
 } from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/google/utils/google_to_events";
+import type { LLMWithTracingParameters } from "@app/lib/api/llm/llm";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type {
-  LLMClientMetadata,
-  LLMParameters,
-} from "@app/lib/api/llm/types/options";
+import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import type { Authenticator } from "@app/lib/auth";
 import type { ModelConversationTypeMultiActions } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
@@ -22,17 +21,22 @@ export class GoogleLLM extends LLM {
     clientId: "google_ai_studio",
     modelId: this.modelId,
   };
-  constructor({
-    modelId,
-    temperature,
-    reasoningEffort,
-    bypassFeatureFlag,
-  }: LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId }) {
-    super({
+  constructor(
+    auth: Authenticator,
+    {
       modelId,
       temperature,
       reasoningEffort,
       bypassFeatureFlag,
+      context,
+    }: LLMWithTracingParameters & { modelId: GoogleAIStudioWhitelistedModelId }
+  ) {
+    super(auth, {
+      modelId,
+      temperature,
+      reasoningEffort,
+      bypassFeatureFlag,
+      context,
     });
     const { GOOGLE_AI_STUDIO_API_KEY } = dustManagedCredentials();
     if (!GOOGLE_AI_STUDIO_API_KEY) {

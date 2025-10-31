@@ -9,13 +9,12 @@ import {
   toMessage,
   toTool,
 } from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
+import type { LLMWithTracingParameters } from "@app/lib/api/llm/llm";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type {
-  LLMClientMetadata,
-  LLMParameters,
-} from "@app/lib/api/llm/types/options";
+import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { getSupportedModelConfig } from "@app/lib/assistant";
+import type { Authenticator } from "@app/lib/auth";
 import type {
   ModelConversationTypeMultiActions,
   SUPPORTED_MODEL_CONFIGS,
@@ -31,13 +30,23 @@ export class AnthropicLLM extends LLM {
   private thinkingConfig?: ThinkingConfigParam;
   private modelConfig: (typeof SUPPORTED_MODEL_CONFIGS)[number];
 
-  constructor({
-    modelId,
-    temperature,
-    reasoningEffort,
-    bypassFeatureFlag,
-  }: LLMParameters & { modelId: AnthropicWhitelistedModelId }) {
-    super({ modelId, temperature, reasoningEffort, bypassFeatureFlag });
+  constructor(
+    auth: Authenticator,
+    {
+      modelId,
+      temperature,
+      reasoningEffort,
+      bypassFeatureFlag,
+      context,
+    }: LLMWithTracingParameters & { modelId: AnthropicWhitelistedModelId }
+  ) {
+    super(auth, {
+      modelId,
+      temperature,
+      reasoningEffort,
+      bypassFeatureFlag,
+      context,
+    });
     const { ANTHROPIC_API_KEY } = dustManagedCredentials();
     if (!ANTHROPIC_API_KEY) {
       throw new Error("ANTHROPIC_API_KEY environment variable is required");

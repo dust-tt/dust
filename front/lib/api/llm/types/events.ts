@@ -54,10 +54,10 @@ export type LLMOutputItem =
 // Completion results
 
 export interface TokenUsage {
-  inputTokens: number;
-  reasoningTokens?: number;
-  outputTokens: number;
   cachedTokens?: number;
+  inputTokens: number;
+  outputTokens: number;
+  reasoningTokens?: number;
   totalTokens: number;
 }
 

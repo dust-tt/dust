@@ -7,17 +7,16 @@ import {
   isOpenAIResponsesWhitelistedReasoningModelId,
   REASONING_EFFORT_TO_OPENAI_REASONING,
 } from "@app/lib/api/llm/clients/openai/types";
+import type { LLMWithTracingParameters } from "@app/lib/api/llm/llm";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type {
-  LLMClientMetadata,
-  LLMParameters,
-} from "@app/lib/api/llm/types/options";
+import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import {
   toInput,
   toTool,
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
+import type { Authenticator } from "@app/lib/auth";
 import type { ModelConversationTypeMultiActions } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
@@ -29,17 +28,22 @@ export class OpenAIResponsesLLM extends LLM {
   };
   private reasoning: { effort: OpenAiReasoningEffort; summary: "auto" } | null;
 
-  constructor({
-    modelId,
-    temperature,
-    reasoningEffort,
-    bypassFeatureFlag,
-  }: LLMParameters & { modelId: OpenAIResponsesWhitelistedModelId }) {
-    super({
+  constructor(
+    auth: Authenticator,
+    {
       modelId,
       temperature,
       reasoningEffort,
       bypassFeatureFlag,
+      context,
+    }: LLMWithTracingParameters & { modelId: OpenAIResponsesWhitelistedModelId }
+  ) {
+    super(auth, {
+      modelId,
+      temperature,
+      reasoningEffort,
+      bypassFeatureFlag,
+      context,
     });
 
     // OpenAI throws an error if reasoning is set for non reasoning models
