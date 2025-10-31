@@ -122,7 +122,7 @@ export const slackSearch = async (
     });
 
     if (!response.ok) {
-      throw new Error(response.error ?? "unknown_error");
+      throw new Error("Failed to search messages");
     }
 
     const rawMatches = response.messages?.matches ?? [];
@@ -962,13 +962,7 @@ async function createServer(
           });
 
           if (!response.ok || !response.channel) {
-            return new Err(
-              new MCPError(
-                response.error === "channel_not_found"
-                  ? "Channel not found"
-                  : response.error ?? "Unknown error"
-              )
-            );
+            return new Err(new MCPError("Failed to get channel details"));
           }
 
           return new Ok([
@@ -1217,9 +1211,7 @@ async function createServer(
           });
 
           if (!response.ok) {
-            return new Err(
-              new MCPError(`Error adding reaction: ${response.error}`)
-            );
+            return new Err(new MCPError("Failed to add reaction"));
           }
 
           return new Ok([
@@ -1274,9 +1266,7 @@ async function createServer(
           });
 
           if (!response.ok) {
-            return new Err(
-              new MCPError(`Error removing reaction: ${response.error}`)
-            );
+            return new Err(new MCPError("Failed to remove reaction"));
           }
 
           return new Ok([

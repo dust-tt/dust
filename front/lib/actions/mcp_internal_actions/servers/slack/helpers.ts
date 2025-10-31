@@ -97,7 +97,7 @@ export const getPublicChannels = async ({
       types: "public_channel",
     });
     if (!response.ok) {
-      throw new Error(response.error);
+      throw new Error("Failed to list public channels");
     }
     channels.push(...(response.channels ?? []));
     cursor = response.response_metadata?.next_cursor;
@@ -138,7 +138,7 @@ export const getChannels = async ({
       types,
     });
     if (!response.ok) {
-      throw new Error(response.error);
+      throw new Error("Failed to list channels");
     }
     channels.push(...(response.channels ?? []));
     cursor = response.response_metadata?.next_cursor;
@@ -359,7 +359,7 @@ export async function executePostMessage(
   });
 
   if (!response.ok) {
-    return new Err(new MCPError(response.error ?? "Unknown error"));
+    return new Err(new MCPError("Failed to post message"));
   }
 
   return new Ok([
@@ -444,7 +444,7 @@ export async function executeScheduleMessage(
   });
 
   if (!response.ok) {
-    return new Err(new MCPError(response.error ?? "Unknown error"));
+    return new Err(new MCPError("Failed to schedule message"));
   }
 
   const scheduledDate = new Date(timestampSeconds * 1000);
@@ -482,7 +482,7 @@ export async function executeListUsers(
       limit: SLACK_API_PAGE_SIZE,
     });
     if (!response.ok) {
-      return new Err(new MCPError(response.error ?? "Unknown error"));
+      return new Err(new MCPError("Failed to list users"));
     }
     users.push(...(response.members ?? []).filter((member) => !member.is_bot));
     cursor = response.response_metadata?.next_cursor;
@@ -543,7 +543,7 @@ export async function executeGetUser(userId: string, accessToken: string) {
   const response = await slackClient.users.info({ user: userId });
 
   if (!response.ok || !response.user) {
-    return new Err(new MCPError(response.error ?? "Unknown error"));
+    return new Err(new MCPError("Failed to get user information"));
   }
   return new Ok([
     { type: "text" as const, text: `Retrieved user information for ${userId}` },
@@ -703,15 +703,7 @@ export async function executeReadThreadMessages(
     });
 
     if (!response.ok) {
-      return new Err(
-        new MCPError(
-          response.error === "channel_not_found"
-            ? "Channel not found or you are not a member of this channel"
-            : response.error === "thread_not_found"
-              ? "Thread not found or has been deleted"
-              : response.error ?? "Unknown error reading thread"
-        )
-      );
+      return new Err(new MCPError("Failed to read thread messages"));
     }
 
     const messages = response.messages ?? [];
