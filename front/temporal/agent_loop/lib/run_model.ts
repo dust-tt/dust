@@ -426,6 +426,7 @@ export async function runModelActivity(
 
   let getOutputFromActionResponse: GetOutputResponse;
   const llm = await getLLM(auth, { modelId: model.modelId });
+  const modelInteractionStartDate = performance.now();
 
   if (llm === null) {
     getOutputFromActionResponse = await getOutputFromAction(auth, {
@@ -463,6 +464,8 @@ export async function runModelActivity(
       llm,
     });
   }
+
+  const modelInteractionEndDate = performance.now();
 
   if (getOutputFromActionResponse.isErr()) {
     const error = getOutputFromActionResponse.error;
@@ -507,6 +510,8 @@ export async function runModelActivity(
       index,
       type: content.type,
       value: content,
+      modelInteractionDurationMs:
+        modelInteractionEndDate - modelInteractionStartDate,
     });
 
     // If this is a function call content, track the step content ID
