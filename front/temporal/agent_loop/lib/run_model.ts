@@ -566,6 +566,8 @@ export async function runModelActivity(
       agentMessageRow,
       conversation,
       step,
+      modelInteractionDurationMs:
+        modelInteractionEndDate - modelInteractionStartDate,
     });
     localLogger.info("Agent message generation succeeded");
 
