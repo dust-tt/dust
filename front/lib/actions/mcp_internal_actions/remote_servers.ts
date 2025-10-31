@@ -238,7 +238,29 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     documentationUrl:
       "https://www.canva.dev/docs/connect/canva-mcp-server-setup/",
     authMethod: "oauth-dynamic",
-    toolStakes: {},
+    toolStakes: {
+      search_designs: "never_ask",
+      get_design: "never_ask",
+      get_design_pages: "never_ask",
+      get_design_content: "never_ask",
+      get_export_formats: "never_ask",
+      list_folder_items: "never_ask",
+      list_comments: "never_ask",
+      list_replies: "never_ask",
+
+      import_design_from_url: "low",
+      export_design: "low",
+
+      comment_on_design: "low",
+      reply_to_comment: "low",
+
+      create_folder: "low",
+      move_item_to_folder: "low",
+      upload_asset_from_url: "low",
+
+      generate_design: "low",
+      create_design_from_candidate: "low",
+    },
   },
 ];
 
