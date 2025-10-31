@@ -187,6 +187,7 @@ export function FeedbackSelector({
                     : "Tell us what went wrong so we can make this agent better."
                 }
                 className="mb-4 mt-4"
+                resize="vertical"
                 rows={3}
                 value={localFeedbackContent ?? ""}
                 onChange={handleTextAreaChange}
