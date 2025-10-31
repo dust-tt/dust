@@ -104,6 +104,7 @@ pub struct DatasourceViewFilter {
     search_scope: SearchScopeType,
     #[serde(default)]
     filter: Option<Vec<String>>,
+    tags_filter: Option<TagsFilter>,
 }
 
 fn default_search_scope() -> SearchScopeType {
@@ -117,7 +118,6 @@ pub struct NodesSearchFilter {
     node_ids: Option<Vec<String>>,
     node_types: Option<Vec<NodeType>>,
     parent_id: Option<String>,
-    tags: Option<TagsFilter>,
 }
 
 #[derive(Debug, Clone)]
@@ -811,17 +811,33 @@ impl ElasticsearchSearchStore {
                 let mut bool_query =
                     Query::bool().filter(Query::term("data_source_id", f.data_source_id));
 
-                // Only add parents filter if the index supports it.
-                if index_name == DATA_SOURCE_NODE_INDEX_NAME && !f.view_filter.is_empty() {
+                if index_name != DATA_SOURCE_NODE_INDEX_NAME {
+                    return Some(Query::Bool(bool_query));
+                }
+
+                // Space level permission filter
+                if !f.view_filter.is_empty() {
                     counter.add(1);
                     bool_query = bool_query.filter(Query::terms("parents", f.view_filter.clone()));
                 }
 
-                // Apply additional filter if present (in addition to view_filter).
+                // Agent level filter
                 if let Some(ref filter) = f.filter {
-                    if index_name == DATA_SOURCE_NODE_INDEX_NAME && !filter.is_empty() {
+                    if !filter.is_empty() {
                         counter.add(1);
                         bool_query = bool_query.filter(Query::terms("parents", filter.clone()));
+                    }
+                }
+
+                // Agent level tags filter
+                if let Some(tags_filter) = &f.tags_filter {
+                    if let Some(included_tags) = &tags_filter.is_in {
+                        counter.add(1);
+                        bool_query = bool_query.filter(Query::terms("tags", included_tags));
+                    }
+                    if let Some(excluded_tags) = &tags_filter.is_not {
+                        counter.add(1);
+                        bool_query = bool_query.must_not(Query::terms("tags", excluded_tags));
                     }
                 }
 
@@ -983,17 +999,6 @@ impl ElasticsearchSearchStore {
             }
 
             bool_query = bool_query.must(search_bool.minimum_should_match(1));
-        }
-
-        if let Some(tags) = &filter.tags {
-            if let Some(included_tags) = &tags.is_in {
-                counter.add(1);
-                bool_query = bool_query.filter(Query::terms("tags", included_tags));
-            }
-            if let Some(excluded_tags) = &tags.is_not {
-                counter.add(1);
-                bool_query = bool_query.must_not(Query::terms("tags", excluded_tags));
-            }
         }
 
         Ok(bool_query)

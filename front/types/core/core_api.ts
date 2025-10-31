@@ -230,6 +230,10 @@ export const CoreAPIDatasourceViewFilterSchema = t.intersection([
   t.partial({
     search_scope: CoreAPISearchScopeSchema,
     filter: t.array(t.string),
+    tags_filter: t.type({
+      in: t.union([t.readonlyArray(t.string), t.null]),
+      not: t.union([t.readonlyArray(t.string), t.null]),
+    }),
   }),
 ]);
 
@@ -250,10 +254,6 @@ export const CoreAPINodesSearchFilterSchema = t.intersection([
     parent_id: t.string,
     query: t.string,
     mime_types: t.partial({
-      in: t.union([t.readonlyArray(t.string), t.null]),
-      not: t.union([t.readonlyArray(t.string), t.null]),
-    }),
-    tags: t.partial({
       in: t.union([t.readonlyArray(t.string), t.null]),
       not: t.union([t.readonlyArray(t.string), t.null]),
     }),
