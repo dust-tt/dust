@@ -7,6 +7,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  ReferenceLine,
 } from "recharts";
 
 import { FeedbackDistributionTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
@@ -19,6 +20,7 @@ import { useObservability } from "@app/components/agent_builder/observability/Ob
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { useAgentFeedbackDistribution } from "@app/lib/swr/assistants";
+import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 
 interface FeedbackDistributionChartProps {
   workspaceId: string;
@@ -29,12 +31,18 @@ export function FeedbackDistributionChart({
   workspaceId,
   agentConfigurationId,
 }: FeedbackDistributionChartProps) {
-  const { period } = useObservability();
+  const { period, mode, selectedVersion } = useObservability();
   const {
     feedbackDistribution,
     isFeedbackDistributionLoading,
     isFeedbackDistributionError,
   } = useAgentFeedbackDistribution({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    disabled: !workspaceId || !agentConfigurationId,
+  });
+  const { versionMarkers } = useAgentVersionMarkers({
     workspaceId,
     agentConfigurationId,
     days: period,
@@ -99,6 +107,25 @@ export function FeedbackDistributionChart({
               boxShadow: "none",
             }}
           />
+          {(versionMarkers ?? []).map((m) => {
+            const isSelected =
+              mode === "version" && selectedVersion === m.version;
+            return (
+              <ReferenceLine
+                key={m.version}
+                x={m.timestamp}
+                stroke={"hsl(var(--primary))"}
+                strokeWidth={isSelected ? 3 : 1.5}
+                strokeDasharray="5 5"
+                label={{
+                  value: `v${m.version}`,
+                  position: "top",
+                  fill: "hsl(var(--muted-foreground))",
+                }}
+                ifOverflow="extendDomain"
+              />
+            );
+          })}
           <Line
             type="monotone"
             dataKey="positive"
