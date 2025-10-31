@@ -28,7 +28,7 @@ export async function getLLM(
     return null;
   }
 
-  const hasFeature = bypassFeatureFlag ?? hasFeatureFlag(auth);
+  const hasFeature = bypassFeatureFlag ?? (await hasFeatureFlag(auth));
   if (!hasFeature) {
     return null;
   }
