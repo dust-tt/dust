@@ -50,7 +50,7 @@ const resizeAndUploadToPublicBucket: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
-  const result = await makeResizeAndUploadImgToFileStorage(
+  const result = await makeResizeAndUploadImageToFileStorage(
     AVATAR_IMG_MAX_SIZE_PIXELS
   )(auth, file);
   if (result.isErr()) {
@@ -94,7 +94,7 @@ const createReadableFromUrl = async (url: string): Promise<Readable> => {
   return Readable.fromWeb(response.body);
 };
 
-const makeResizeAndUploadImgToFileStorage = (maxSize: string) => {
+const makeResizeAndUploadImageToFileStorage = (maxSize: string) => {
   return async (auth: Authenticator, file: FileResource) =>
     resizeAndUploadToFileStorage(auth, file, {
       ImageHeight: maxSize,
@@ -110,7 +110,7 @@ interface ImageResizeParams {
 const resizeAndUploadToFileStorage = async (
   auth: Authenticator,
   file: FileResource,
-  resizeParams: ResizeParams
+  resizeParams: ImageResizeParams
 ) => {
   /* Skipping sharp() to check if it's the cause of high CPU / memory usage.
   const readStream = file.getReadStream({
@@ -398,7 +398,7 @@ const getProcessingFunction = ({
 
   if (isSupportedImageContentType(contentType)) {
     if (useCase === "conversation") {
-      return makeResizeAndUploadImgToFileStorage(
+      return makeResizeAndUploadImageToFileStorage(
         CONVERSATION_IMG_MAX_SIZE_PIXELS
       );
     } else if (useCase === "avatar") {
