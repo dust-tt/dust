@@ -5,6 +5,7 @@ import type {
   AgentBuilderWebhookTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { UserTypeWithWorkspaces } from "@app/types";
+import { asDisplayName } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 export const WebhookFormSchema = z.object({
@@ -31,7 +32,11 @@ export function getWebhookFormDefaultValues({
   webhookSourceView: WebhookSourceViewType | null;
 }): WebhookFormValues {
   return {
-    name: trigger?.name ?? "Webhook Trigger",
+    name:
+      trigger?.name ??
+      (webhookSourceView
+        ? `${webhookSourceView.webhookSource.name} trigger (${asDisplayName(webhookSourceView.provider)})`
+        : "Webhook Trigger"),
     enabled: trigger?.enabled ?? true,
     customPrompt: trigger?.customPrompt ?? "",
     webhookSourceViewSId: webhookSourceView?.sId ?? "",
