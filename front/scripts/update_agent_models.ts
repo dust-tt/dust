@@ -30,7 +30,7 @@ async function updateWorkspaceAssistants(
     }agent configurations with model ${fromModel} in workspace ${workspaceId}`
   );
 
-  const excluded = new Set(excludeAgentsIds ?? []);
+  const excluded = new Set(excludeAgentsIds);
 
   for (const agent of agentConfigurations) {
     if (excluded.has(agent.sId)) {
