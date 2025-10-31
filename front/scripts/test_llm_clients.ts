@@ -197,7 +197,7 @@ const TEST_CONVERSATIONS: TestConversation[] = [
     expectedInResponses: [null, containsTextChecker("Stan")],
   },
   {
-    name: "Too usage required",
+    name: "Tool usage required",
     systemPrompt: SYSTEM_PROMPT,
     conversationActions: [
       userMessage("What is the id of Stan?"),
@@ -293,8 +293,6 @@ async function runTest(
             break;
           case "reasoning_generated":
             fullReasoning = event.content.text;
-            // Do not include thinking at the moment as we don't have the correct signature for it
-            // TODO(llm_router): fix this when we have the correct signature
             const signature = event.metadata.signature || "";
             conversationHistory.push({
               role: "assistant",
