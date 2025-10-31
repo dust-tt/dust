@@ -170,7 +170,7 @@ describe("TriggerResource", () => {
         expect(result.error).toBeInstanceOf(DustError);
         expect(result.error.code).toBe("unauthorized");
         expect(result.error.message).toBe(
-          "User do not have access to this trigger"
+          "User does not have access to this trigger"
         );
       }
     });
@@ -425,7 +425,7 @@ describe("TriggerResource", () => {
         expect(result.error).toBeInstanceOf(DustError);
         expect(result.error.code).toBe("unauthorized");
         expect(result.error.message).toBe(
-          "User do not have access to this trigger"
+          "User does not have access to this trigger"
         );
       }
     });
