@@ -7,6 +7,7 @@ import type {
   Organization,
   OrganizationDomain,
 } from "@workos-inc/node";
+import { NotFoundException } from "@workos-inc/node";
 import assert from "assert";
 
 import { createAndLogMembership } from "@app/lib/api/signup";
@@ -415,10 +416,14 @@ async function handleGroupUpsert(
     // Conflict - another group with the same name already exists.
 
     // First check if this group still exists in workos.
-    const groupInWorkOS = await getWorkOS().directorySync.getGroup(event.id);
-    if (!groupInWorkOS) {
-      // Group doesn't exist, just ignore the event.
-      return;
+    try {
+      await getWorkOS().directorySync.getGroup(event.id);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        // Group doesn't exist, just ignore the event.
+        return;
+      }
+      throw error;
     }
 
     // Another group with the same name exists and is not a provisioned group, throw an error.
@@ -428,20 +433,26 @@ async function handleGroupUpsert(
       );
     }
 
-    let workosGroupByName: DirectoryGroup | undefined;
     // Look for this other group in workos and delete it if it doesn't exist anymore.
     try {
-      workosGroupByName = await getWorkOS().directorySync.getGroup(
-        groupByName.workOSGroupId
+      await getWorkOS().directorySync.getGroup(groupByName.workOSGroupId);
+      throw new Error(
+        `Group "${groupByName.name}" still exists in workos with id "${groupByName.workOSGroupId}"`
       );
     } catch (error) {
-      logger.info({ error }, "Group not found in workos, deleting local group");
-      await groupByName.delete(auth);
-    }
-    if (workosGroupByName) {
-      throw new Error(
-        `Group "${groupByName.name}" still exists in workos with id "${workosGroupByName.id}"`
-      );
+      if (error instanceof NotFoundException) {
+        logger.info(
+          {
+            error,
+            workOsGroupId: groupByName.workOSGroupId,
+            groupByName: groupByName.toJSON(),
+          },
+          "Group not found in workos (404), deleting local group"
+        );
+        await groupByName.delete(auth);
+      } else {
+        throw error;
+      }
     }
   }
 
