@@ -28,7 +28,7 @@ export async function getOutputFromLLMStream(
     llm,
   }: GetOutputRequestParams & { llm: LLM }
 ): Promise<GetOutputResponse> {
-  const events = await llm.stream({
+  const events = llm.streamWithTracing({
     conversation: modelConversationRes.value.modelConversation,
     prompt,
     specifications,
