@@ -6,6 +6,69 @@ import { XMLParser, XMLValidator } from "fast-xml-parser";
 
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
+// Microsoft Teams Message Types
+
+export interface TeamsUser {
+  id: string;
+  displayName: string;
+  userIdentityType: string;
+}
+
+export interface TeamsIdentitySet {
+  application: unknown | null;
+  device: unknown | null;
+  user: TeamsUser | null;
+}
+
+export interface TeamsMessageBody {
+  contentType: "html" | "text";
+  content: string;
+}
+
+export interface TeamsChannelIdentity {
+  teamId: string;
+  channelId: string;
+}
+
+export interface TeamsMentionedIdentity {
+  application: unknown | null;
+  device: unknown | null;
+  conversation: unknown | null;
+  user: TeamsUser | null;
+}
+
+export interface TeamsMention {
+  id: number;
+  mentionText: string;
+  mentioned: TeamsMentionedIdentity;
+}
+
+export interface TeamsMessage {
+  id: string;
+  replyToId: string | null;
+  etag: string;
+  messageType: string;
+  createdDateTime: string;
+  lastModifiedDateTime: string;
+  lastEditedDateTime: string | null;
+  deletedDateTime: string | null;
+  subject: string | null;
+  summary: string | null;
+  chatId: string | null;
+  importance: string;
+  locale: string;
+  webUrl: string;
+  policyViolation: unknown | null;
+  eventDetail: unknown | null;
+  from: TeamsIdentitySet;
+  body: TeamsMessageBody;
+  channelIdentity: TeamsChannelIdentity | null;
+  attachments: unknown[];
+  mentions: TeamsMention[];
+  reactions: unknown[];
+  messageHistory: unknown[];
+}
+
 export async function getGraphClient(
   authInfo?: AuthInfo
 ): Promise<Client | null> {
