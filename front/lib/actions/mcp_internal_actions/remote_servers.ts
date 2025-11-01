@@ -173,6 +173,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
   //Removed temporaly see https://dust4ai.slack.com/archives/C050SM8NSPK/p1754397289272209
   /*
   {
+    id: ? 10004,
     name: "Datadog",
     description:
       "Datadog tools for monitoring and observability (Region: US1).",
@@ -200,6 +201,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
+    id: ? 10005,
     name: "Datadog Europe",
     description:
       "Datadog tools for monitoring and observability (Region: EU1).",
@@ -227,6 +229,39 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   */
+  {
+    id: 10006,
+    name: "Canva",
+    description: "Canva tools for design capabilities.",
+    url: "https://mcp.canva.com/mcp",
+    icon: "CanvaLogo",
+    documentationUrl:
+      "https://www.canva.dev/docs/connect/canva-mcp-server-setup/",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search_designs: "never_ask",
+      get_design: "never_ask",
+      get_design_pages: "never_ask",
+      get_design_content: "never_ask",
+      get_export_formats: "never_ask",
+      list_folder_items: "never_ask",
+      list_comments: "never_ask",
+      list_replies: "never_ask",
+
+      import_design_from_url: "low",
+      export_design: "low",
+
+      comment_on_design: "low",
+      reply_to_comment: "low",
+
+      create_folder: "low",
+      move_item_to_folder: "low",
+      upload_asset_from_url: "low",
+
+      generate_design: "low",
+      create_design_from_candidate: "low",
+    },
+  },
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {

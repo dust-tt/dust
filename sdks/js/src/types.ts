@@ -2816,6 +2816,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTableIcon"
   | "ActionTimeIcon"
   | "AsanaLogo"
+  | "CanvaLogo"
   | "CommandLineIcon"
   | "ConfluenceLogo"
   | "DriveLogo"
