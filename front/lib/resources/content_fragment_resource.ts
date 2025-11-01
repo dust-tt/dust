@@ -518,8 +518,8 @@ export async function getContentFragmentFromAttachmentFile(
         name: `inject_${attachment.contentType}`,
         content: [
           {
-            type: "text",
-            text: renderAttachmentXml({ attachment }),
+            type: "text_content",
+            value: renderAttachmentXml({ attachment }),
           },
         ],
       });
@@ -581,8 +581,8 @@ export async function getContentFragmentFromAttachmentFile(
       name: `inject_${attachment.contentType}`,
       content: [
         {
-          type: "text",
-          text: renderAttachmentXml({
+          type: "text_content",
+          value: renderAttachmentXml({
             attachment,
             content: document.document.text ?? null,
           }),
@@ -616,8 +616,8 @@ export async function getContentFragmentFromAttachmentFile(
         name: `inject_pasted_content`,
         content: [
           {
-            type: "text",
-            text: renderLargePasteXml({
+            type: "text_content",
+            value: renderLargePasteXml({
               largePaste,
               content,
             }),
@@ -631,8 +631,8 @@ export async function getContentFragmentFromAttachmentFile(
       name: `inject_${attachment.contentType}`,
       content: [
         {
-          type: "text",
-          text: renderAttachmentXml({
+          type: "text_content",
+          value: renderAttachmentXml({
             attachment,
             content,
           }),
@@ -675,8 +675,8 @@ export async function renderLightContentFragmentForModel(
       name: `attach_${contentType}`,
       content: [
         {
-          type: "text",
-          text: `The content of this file is no longer available. Reason: ${contentFragment.expiredReason}`,
+          type: "text_content",
+          value: `The content of this file is no longer available. Reason: ${contentFragment.expiredReason}`,
         },
       ],
     };
@@ -708,8 +708,8 @@ export async function renderLightContentFragmentForModel(
       name: `attach_pasted_content`,
       content: [
         {
-          type: "text",
-          text: renderLargePasteXml({
+          type: "text_content",
+          value: renderLargePasteXml({
             largePaste,
             content: attachment.snippet ?? "",
           }),
@@ -725,8 +725,8 @@ export async function renderLightContentFragmentForModel(
         name: `inject_${contentType}`,
         content: [
           {
-            type: "text",
-            text: renderAttachmentXml({
+            type: "text_content",
+            value: renderAttachmentXml({
               attachment,
               content:
                 "[Image content interpreted by a vision-enabled model. " +
@@ -750,8 +750,8 @@ export async function renderLightContentFragmentForModel(
           },
         },
         {
-          type: "text",
-          text: renderAttachmentXml({
+          type: "text_content",
+          value: renderAttachmentXml({
             attachment,
           }),
         },
@@ -764,8 +764,8 @@ export async function renderLightContentFragmentForModel(
     name: `attach_${contentType}`,
     content: [
       {
-        type: "text",
-        text: renderAttachmentXml({
+        type: "text_content",
+        value: renderAttachmentXml({
           // Use fileId as contentFragmentId to provide a consistent identifier for the model
           // to reference content fragments across different actions like include_file.
           attachment,

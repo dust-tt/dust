@@ -21,7 +21,7 @@ export function getTextContentFromMessage(
   return content
     ?.map((c) => {
       if (isTextContent(c)) {
-        return c.text;
+        return c.value;
       }
 
       if (isImageContent(c)) {

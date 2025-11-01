@@ -56,8 +56,8 @@ function getConversationContext(inputs: BuilderSuggestionInputType): {
         role: "user",
         content: [
           {
-            type: "text",
-            text: initialPrompt + descriptionText + instructionsText,
+            type: "text_content",
+            value: initialPrompt + descriptionText + instructionsText,
           },
         ],
         name: "",
