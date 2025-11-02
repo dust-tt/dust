@@ -154,8 +154,13 @@ function spreadLength(a: string, b: string) {
   return lastIndex - firstIndex;
 }
 
+export type AgentConfigurationForSort = Pick<
+  LightAgentConfigurationType,
+  "name" | "sId" | "userFavorite" | "scope" | "pictureUrl" | "description"
+>;
+
 export function filterAndSortAgents(
-  agents: LightAgentConfigurationType[],
+  agents: AgentConfigurationForSort[],
   searchText: string
 ) {
   const lowerCaseSearchText = searchText.toLowerCase();
@@ -165,8 +170,10 @@ export function filterAndSortAgents(
   );
 
   if (searchText.length > 0) {
-    filtered.sort((a, b) =>
-      compareForFuzzySort(lowerCaseSearchText, a.name, b.name)
+    filtered.sort(
+      (a, b) =>
+        compareForFuzzySort(lowerCaseSearchText, a.name, b.name) ||
+        compareAgentsForSort(a, b)
     );
   }
 
@@ -183,8 +190,8 @@ export const isEqualNode = (
 // This function implements our general strategy to sort agents to users (input bar, agent list,
 // agent suggestions...).
 export function compareAgentsForSort(
-  a: LightAgentConfigurationType,
-  b: LightAgentConfigurationType
+  a: AgentConfigurationForSort,
+  b: AgentConfigurationForSort
 ) {
   if (a.userFavorite && !b.userFavorite) {
     return -1;
