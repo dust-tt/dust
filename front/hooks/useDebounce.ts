@@ -60,7 +60,6 @@ export function useDebounce(
 
 interface UseDebounceWithAbortOptions {
   delay?: number;
-  minLength?: number;
 }
 
 /**
@@ -68,13 +67,14 @@ interface UseDebounceWithAbortOptions {
  * Useful for API calls that should be cancelled when a new request is made.
  *
  * @param asyncFn - The async function to debounce. It receives the value and an AbortSignal.
- * @param options - Configuration options (delay, minLength)
+ * @param options - Configuration options (delay)
  * @returns A trigger function that accepts a value and triggers the debounced async call
  *
  * @example
  * const generateFilter = useWebhookFilterGenerator({ workspace });
  * const trigger = useDebounceWithAbort(
  *   async (description: string, signal: AbortSignal) => {
+ *     if (description.length < 10) return; // Handle validation in the callback
  *     const result = await generateFilter({
  *       naturalDescription: description,
  *       eventSchema: selectedEventSchema,
@@ -82,7 +82,7 @@ interface UseDebounceWithAbortOptions {
  *     });
  *     // Update state with result
  *   },
- *   { delay: 500, minLength: 10 }
+ *   { delay: 500 }
  * );
  *
  * // Later, in an onChange handler:
@@ -92,7 +92,7 @@ export function useDebounceWithAbort<T = string>(
   asyncFn: (value: T, signal: AbortSignal) => Promise<void>,
   options: UseDebounceWithAbortOptions = {}
 ) {
-  const { delay = 500, minLength = 0 } = options;
+  const { delay = 500 } = options;
 
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -103,21 +103,6 @@ export function useDebounceWithAbort<T = string>(
       if (debounceHandle.current) {
         clearTimeout(debounceHandle.current);
         debounceHandle.current = undefined;
-      }
-
-      // Check minimum length for string values
-      const shouldSkip =
-        minLength > 0 &&
-        typeof value === "string" &&
-        value.trim().length < minLength;
-
-      if (shouldSkip) {
-        // Cancel any pending request
-        if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
-          abortControllerRef.current = null;
-        }
-        return;
       }
 
       // Debounce the async call
@@ -135,7 +120,7 @@ export function useDebounceWithAbort<T = string>(
         void asyncFn(value, signal);
       }, delay);
     },
-    [asyncFn, delay, minLength]
+    [asyncFn, delay]
   );
 
   // Cleanup on unmount

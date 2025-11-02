@@ -21,6 +21,8 @@ interface WebhookEditionFiltersProps {
   workspace: LightWorkspaceType;
 }
 
+const MIN_DESCRIPTION_LENGTH = 10;
+
 export function WebhookEditionFilters({
   isEditor,
   webhookSourceView,
@@ -62,11 +64,9 @@ export function WebhookEditionFilters({
 
   const generateFilter = useWebhookFilterGenerator({ workspace });
 
-  const MIN_DESCRIPTION_LENGTH = 10;
-
   const triggerFilterGeneration = useDebounceWithAbort(
     async (txt: string, signal: AbortSignal) => {
-      if (!selectedEventSchema) {
+      if (txt.length < MIN_DESCRIPTION_LENGTH || !selectedEventSchema) {
         setFilterGenerationStatus("idle");
         return;
       }
@@ -94,7 +94,7 @@ export function WebhookEditionFilters({
         }
       }
     },
-    { delay: 500, minLength: MIN_DESCRIPTION_LENGTH }
+    { delay: 500 }
   );
 
   // Update form field when naturalDescription changes

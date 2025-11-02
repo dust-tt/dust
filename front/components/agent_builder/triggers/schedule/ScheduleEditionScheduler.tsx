@@ -84,6 +84,10 @@ export function ScheduleEditionScheduler({
 
   const triggerCronGeneration = useDebounceWithAbort(
     async (txt: string, signal: AbortSignal) => {
+      if (txt.length < MIN_DESCRIPTION_LENGTH) {
+        return;
+      }
+
       setValue("schedule.cron", "");
       const result = await textAsCronRule(txt, signal);
 
@@ -101,7 +105,7 @@ export function ScheduleEditionScheduler({
         }
       }
     },
-    { delay: 500, minLength: MIN_DESCRIPTION_LENGTH }
+    { delay: 500 }
   );
 
   const cronDescription = useMemo(() => {
