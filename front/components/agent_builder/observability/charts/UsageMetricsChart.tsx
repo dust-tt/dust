@@ -3,11 +3,11 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
-  ReferenceLine,
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
@@ -20,8 +20,10 @@ import { useObservability } from "@app/components/agent_builder/observability/Ob
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
-import { useAgentUsageMetrics } from "@app/lib/swr/assistants";
-import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
+import {
+  useAgentUsageMetrics,
+  useAgentVersionMarkers,
+} from "@app/lib/swr/assistants";
 
 interface UsageMetricsData {
   messages: number;

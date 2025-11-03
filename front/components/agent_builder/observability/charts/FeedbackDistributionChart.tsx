@@ -3,11 +3,11 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
-  ReferenceLine,
 } from "recharts";
 
 import { FeedbackDistributionTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
@@ -19,8 +19,10 @@ import {
 import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
-import { useAgentFeedbackDistribution } from "@app/lib/swr/assistants";
-import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
+import {
+  useAgentFeedbackDistribution,
+  useAgentVersionMarkers,
+} from "@app/lib/swr/assistants";
 
 interface FeedbackDistributionChartProps {
   workspaceId: string;
