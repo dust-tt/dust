@@ -78,7 +78,7 @@ export async function getLLM(
   }
 
   if (isFireworksWhitelistedModelId(modelId)) {
-    return new FireworksLLM({
+    return new FireworksLLM(auth, {
       modelId,
       temperature,
       reasoningEffort,
