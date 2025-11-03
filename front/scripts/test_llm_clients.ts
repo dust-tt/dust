@@ -14,6 +14,11 @@ import {
   MISTRAL_GENERIC_WHITELISTED_MODEL_IDS,
   MISTRAL_WHITELISTED_MODEL_IDS_WITHOUT_IMAGE_SUPPORT,
 } from "@app/lib/api/llm/clients/mistral/types";
+import {
+  XAI_WHITELISTED_MODELS_WITHOUT_IMAGE_SUPPORT,
+  XAI_WHITELISTED_NON_REASONING_MODEL_IDS,
+  XAI_WHITELISTED_REASONING_MODEL_IDS,
+} from "@app/lib/api/llm/clients/xai/types";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
@@ -150,6 +155,22 @@ const TEST_CONFIGS: TestConfig[] = [
   ),
   ...MISTRAL_WHITELISTED_MODEL_IDS_WITHOUT_IMAGE_SUPPORT.flatMap((modelId) =>
     generateNotThinkingTestConfigs("mistral", modelId)
+  ).map((config) => ({
+    ...config,
+    support: {
+      imageInputs: false,
+    },
+  })),
+
+  // xAI
+  ...XAI_WHITELISTED_NON_REASONING_MODEL_IDS.flatMap((modelId) =>
+    generateNotThinkingTestConfigs("xai", modelId)
+  ),
+  ...XAI_WHITELISTED_REASONING_MODEL_IDS.flatMap((modelId) =>
+    generateThinkingTestConfigs("xai", modelId)
+  ),
+  ...XAI_WHITELISTED_MODELS_WITHOUT_IMAGE_SUPPORT.flatMap((modelId) =>
+    generateNotThinkingTestConfigs("xai", modelId)
   ).map((config) => ({
     ...config,
     support: {
