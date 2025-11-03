@@ -19,10 +19,12 @@ import {
   CHART_CONTAINER_HEIGHT_CLASS,
   OBSERVABILITY_TIME_RANGE,
 } from "@app/components/agent_builder/observability/constants";
+import { ExportFeedbackCsvButton } from "@app/components/agent_builder/observability/ExportFeedbackCSVButton";
 import {
   ObservabilityProvider,
   useObservability,
 } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { StartConversationWithFredButton } from "@app/components/agent_builder/observability/StartConversationWithFredButton";
 import {
   useAgentConfiguration,
   useAgentVersionMarkers,
@@ -52,19 +54,25 @@ export function AgentBuilderObservability({
       <div className="flex h-full flex-col space-y-6 overflow-y-auto">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">
+            <h2 className="text-lg font-semibold text-foreground dark:text-foreground-night">
               Observability
             </h2>
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Monitor key metrics and performance indicators for your agent.
             </span>
           </div>
-          <HeaderGlobalSelector
-            workspaceId={owner.sId}
-            agentConfigurationId={agentConfiguration.sId}
-          />
+
+          <HeaderGlobalSelector agentConfigurationId={agentConfigurationSId} />
         </div>
 
+        <div className="flex gap-2">
+          <ExportFeedbackCsvButton
+            agentConfigurationSId={agentConfigurationSId}
+          />
+          <StartConversationWithFredButton
+            agentConfigurationSId={agentConfigurationSId}
+          />
+        </div>
         <div className="grid grid-cols-1 gap-6">
           {isAgentConfigurationLoading ? (
             <>
@@ -95,10 +103,8 @@ export function AgentBuilderObservability({
 }
 
 function HeaderGlobalSelector({
-  workspaceId,
   agentConfigurationId,
 }: {
-  workspaceId: string;
   agentConfigurationId: string;
 }) {
   const {
@@ -110,8 +116,9 @@ function HeaderGlobalSelector({
     setSelectedVersion,
   } = useObservability();
 
+  const { owner } = useAgentBuilderContext();
   const { versionMarkers, isVersionMarkersLoading } = useAgentVersionMarkers({
-    workspaceId,
+    workspaceId: owner.sId,
     agentConfigurationId,
     days: period,
     disabled: false,

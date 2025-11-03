@@ -75,11 +75,11 @@ async function handler(
       const days = q.data.days ?? DEFAULT_PERIOD_DAYS;
       const owner = auth.getNonNullableWorkspace();
 
-      const baseQuery = buildAgentAnalyticsBaseQuery(
-        owner.sId,
-        assistant.sId,
-        days
-      );
+      const baseQuery = buildAgentAnalyticsBaseQuery({
+        workspaceId: owner.sId,
+        agentId: assistant.sId,
+        days,
+      });
 
       const result = await fetchToolStepIndexDistribution(baseQuery);
 
