@@ -9,7 +9,8 @@ import { assertNever } from "@app/types";
 export async function getExecutionStatusFromConfig(
   auth: Authenticator,
   actionConfiguration: MCPToolConfigurationType,
-  agentMessage: AgentMessageType
+  agentMessage: AgentMessageType,
+  conversationId: ModelId
 ): Promise<{
   stake?: MCPToolStakeLevelType;
   status: "ready_allowed_implicitly" | "blocked_validation_required";
@@ -38,6 +39,7 @@ export async function getExecutionStatusFromConfig(
       if (!user && workspace && agentMessage.parentMessageId) {
         const userMessage = await getUserMessageFromParentMessage({
           workspaceId: workspace.id,
+          conversationId,
           parentMessageId: agentMessage.parentMessageId,
         });
 
@@ -72,14 +74,17 @@ export async function getExecutionStatusFromConfig(
 
 async function getUserMessageFromParentMessage({
   workspaceId,
+  conversationId,
   parentMessageId,
 }: {
   workspaceId: ModelId;
+  conversationId: ModelId;
   parentMessageId: string;
 }) {
   const message = await Message.findOne({
     where: {
       workspaceId,
+      conversationId,
       sId: parentMessageId,
     },
     include: [

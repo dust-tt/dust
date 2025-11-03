@@ -137,7 +137,8 @@ async function createActionForTool(
   const { status } = await getExecutionStatusFromConfig(
     auth,
     actionConfiguration,
-    agentMessage
+    agentMessage,
+    conversation.id
   );
 
   const stepContent =
