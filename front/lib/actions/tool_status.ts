@@ -1,7 +1,7 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import { getUserMessageFromParentMessageId } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
-import { Message, UserMessage } from "@app/lib/models/assistant/conversation";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentMessageType, ModelId } from "@app/types";
 import { assertNever } from "@app/types";
@@ -37,7 +37,7 @@ export async function getExecutionStatusFromConfig(
 
       // The user may not be populated, notably when using the public API.
       if (!user && workspace && agentMessage.parentMessageId) {
-        const userMessage = await getUserMessageFromParentMessage({
+        const userMessage = await getUserMessageFromParentMessageId({
           workspaceId: workspace.id,
           conversationId,
           parentMessageId: agentMessage.parentMessageId,
@@ -70,33 +70,6 @@ export async function getExecutionStatusFromConfig(
     default:
       assertNever(actionConfiguration.permission);
   }
-}
-
-async function getUserMessageFromParentMessage({
-  workspaceId,
-  conversationId,
-  parentMessageId,
-}: {
-  workspaceId: ModelId;
-  conversationId: ModelId;
-  parentMessageId: string;
-}) {
-  const message = await Message.findOne({
-    where: {
-      workspaceId,
-      conversationId,
-      sId: parentMessageId,
-    },
-    include: [
-      {
-        model: UserMessage,
-        as: "userMessage",
-      },
-    ],
-    attributes: ["id"],
-  });
-
-  return message?.userMessage ?? null;
 }
 
 const TOOLS_VALIDATION_WILDCARD = "*";
