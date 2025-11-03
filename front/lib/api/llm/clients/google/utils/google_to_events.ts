@@ -1,10 +1,14 @@
-import type { GenerateContentResponse, Part } from "@google/genai";
+import type {
+  GenerateContentResponse,
+  GenerateContentResponseUsageMetadata,
+  Part,
+} from "@google/genai";
 import { FinishReason } from "@google/genai";
 import assert from "assert";
 import { hash as blake3 } from "blake3";
 import crypto from "crypto";
 
-import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import type { LLMEvent, TokenUsageEvent } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 
 function newId(): string {
@@ -81,11 +85,13 @@ export async function* streamLLMEvents({
           };
         }
         textContentParts = "";
+        yield tokenUsage(generateContentResponse.usageMetadata, metadata);
         break;
       }
       default: {
         // yield error event after all received events
         yield* yieldEvents(events);
+        yield tokenUsage(generateContentResponse.usageMetadata, metadata);
         reasoningContentParts = "";
         textContentParts = "";
         yield {
@@ -100,6 +106,27 @@ export async function* streamLLMEvents({
       }
     }
   }
+}
+
+function tokenUsage(
+  usage: GenerateContentResponseUsageMetadata | undefined,
+  metadata: LLMClientMetadata
+): TokenUsageEvent {
+  return {
+    type: "token_usage",
+    content: {
+      // Google input usage is split between prompt and tool use
+      // toolUsePromptTokenCount represents the number of tokens in the results
+      // from tool executions, which are provided back to the model as input
+      inputTokens:
+        (usage?.promptTokenCount ?? 0) + (usage?.toolUsePromptTokenCount ?? 0),
+      outputTokens: usage?.candidatesTokenCount ?? 0,
+      totalTokens: usage?.totalTokenCount ?? 0,
+      cachedTokens: usage?.cachedContentTokenCount,
+      reasoningTokens: usage?.thoughtsTokenCount,
+    },
+    metadata,
+  };
 }
 
 function textPartToEvent({

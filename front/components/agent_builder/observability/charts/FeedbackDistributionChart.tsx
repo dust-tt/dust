@@ -3,7 +3,6 @@ import {
   CartesianGrid,
   Line,
   LineChart,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -19,6 +18,7 @@ import {
 import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
+import { filterTimeSeriesByVersionWindow } from "@app/components/agent_builder/observability/utils";
 import {
   useAgentFeedbackDistribution,
   useAgentVersionMarkers,
@@ -58,8 +58,14 @@ export function FeedbackDistributionChart({
   }));
 
   const data = useMemo(
-    () => feedbackDistribution?.points ?? [],
-    [feedbackDistribution?.points]
+    () =>
+      filterTimeSeriesByVersionWindow(
+        feedbackDistribution?.points,
+        mode,
+        selectedVersion,
+        versionMarkers ?? []
+      ),
+    [feedbackDistribution?.points, mode, selectedVersion, versionMarkers]
   );
 
   return (
@@ -109,25 +115,6 @@ export function FeedbackDistributionChart({
               boxShadow: "none",
             }}
           />
-          {(versionMarkers ?? []).map((m) => {
-            const isSelected =
-              mode === "version" && selectedVersion === m.version;
-            return (
-              <ReferenceLine
-                key={m.version}
-                x={m.timestamp}
-                stroke={"hsl(var(--primary))"}
-                strokeWidth={isSelected ? 3 : 1.5}
-                strokeDasharray="5 5"
-                label={{
-                  value: `v${m.version}`,
-                  position: "top",
-                  fill: "hsl(var(--muted-foreground))",
-                }}
-                ifOverflow="extendDomain"
-              />
-            );
-          })}
           <Line
             type="monotone"
             dataKey="positive"
