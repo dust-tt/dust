@@ -2,6 +2,7 @@ import type { Transaction } from "sequelize";
 
 import {
   ConfluenceConfiguration,
+  ConfluenceFolder,
   ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
@@ -45,6 +46,12 @@ export class ConfluenceConnectorStrategy
         transaction,
       }),
       ConfluenceSpace.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction,
+      }),
+      ConfluenceFolder.destroy({
         where: {
           connectorId: connector.id,
         },
