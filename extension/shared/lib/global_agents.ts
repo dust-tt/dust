@@ -3,7 +3,12 @@ export const GLOBAL_AGENTS_SID = {
   HELPER: "helper",
   DUST: "dust",
   DEEP_DIVE: "deep-dive",
+  CLAUDE_4_5_SONNET: "claude-4.5-sonnet",
+  CLAUDE_4_5_HAIKU: "claude-4.5-haiku",
   CLAUDE_4_SONNET: "claude-4-sonnet",
   GPT4: "gpt-4",
   GPT5: "gpt-5",
+  GPT5_MINI: "gpt-5-mini",
+  GEMINI_PRO: "gemini-pro",
+  MISTRAL_LARGE: "mistral-large",
 };
