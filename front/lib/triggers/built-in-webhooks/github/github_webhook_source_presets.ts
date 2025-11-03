@@ -30,6 +30,7 @@ export const GITHUB_WEBHOOK_PRESET: PresetWebhook<"github"> = {
     type: "headers",
     field: "X-GitHub-Event",
   },
+  connectionType: "resource",
   events: [GITHUB_PULL_REQUEST_EVENT, GITHUB_ISSUES_EVENT],
   event_blacklist: ["ping"],
   icon: "GithubLogo",

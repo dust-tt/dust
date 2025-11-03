@@ -8,10 +8,12 @@ import {
   isCustomResourceIconType,
   isInternalAllowedIcon,
 } from "@app/components/resources/resources_icons";
-import type {
-  WebhookSourceForAdminType,
-  WebhookSourceSignatureAlgorithm,
-  WebhookSourceWithViewsType,
+import {
+  WEBHOOK_PRESETS,
+  WEBHOOK_PROVIDERS,
+  type WebhookSourceForAdminType,
+  type WebhookSourceSignatureAlgorithm,
+  type WebhookSourceWithViewsType,
 } from "@app/types/triggers/webhooks";
 
 export const DEFAULT_WEBHOOK_ICON: InternalAllowedIconType =
@@ -86,5 +88,11 @@ export const buildWebhookUrl = ({
   workspaceId: string;
   webhookSource: WebhookSourceForAdminType;
 }): string => {
+  const preset = webhookSource.provider
+    ? WEBHOOK_PRESETS[webhookSource.provider]
+    : null;
+  if (preset && preset.connectionType === "app") {
+    return `${apiBaseUrl}/api/v1/w/${workspaceId}/triggers/hooks/${preset.name}/${preset.webhookService.getAppWebhookSecret()}`;
+  }
   return `${apiBaseUrl}/api/v1/w/${workspaceId}/triggers/hooks/${webhookSource.sId}/${webhookSource.urlSecret}`;
 };

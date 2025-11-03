@@ -11,7 +11,10 @@ import type {
 } from "@app/components/triggers/webhook_preset_components";
 import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
+import type {
+  RemoteWebhookServiceAppBased,
+  RemoteWebhookServiceResourceBased,
+} from "@app/types/triggers/remote_webhook_service";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 
 export type EventCheck = {
@@ -31,6 +34,26 @@ export type WebhookEvent = {
   schema: JSONSchema;
 };
 
+export type WebhookConnectionType = "resource" | "app";
+
+type PresetConnection =
+  | {
+      // Whether the provider supports multiple connections (e.g., multiple repositories in GitHub)
+      // Type of connections supported by the provider.
+      // Resource connections are linked to a specific resource in the user's workspace (e.g., a GitHub repository).
+      // App connections are global to the user's workspace (e.g., Jira or Zendesk), and are sent via the same app
+      // for all workspace.
+      connectionType: "resource";
+
+      // The service that will handle creating the webhooks for a given provider.
+      // Likely implements OAuth flow to manage webhooks on behalf of users.
+      webhookService: RemoteWebhookServiceResourceBased<WebhookProvider>;
+    }
+  | {
+      connectionType: "app";
+      webhookService: RemoteWebhookServiceAppBased<WebhookProvider>;
+    };
+
 export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
   name: string;
   description: string;
@@ -42,16 +65,13 @@ export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
   // For example, GitHub uses a specific header "X-GitHub-Event" to indicate the event type.
   eventCheck: EventCheck;
   events: WebhookEvent[];
+
   // List of event values to ignore. For example, GitHub sends a "ping" event when a webhook is created.
   // We will not want to implement it, and don't want to throw errors when receiving it.
   event_blacklist?: string[];
 
   // Optional URL to the webhook provider's webhook management page.
   webhookPageUrl?: string;
-
-  // The service that will handle creating the webhooks for a given provider.
-  // Likely implements OAuth flow to manage webhooks on behalf of users.
-  webhookService: RemoteWebhookService<P>;
 
   // React components to render the webhook details and creation form.
   components: {
@@ -61,4 +81,4 @@ export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
   };
 
   featureFlag?: WhitelistableFeature;
-};
+} & PresetConnection;

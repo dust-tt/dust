@@ -306,7 +306,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     return {
       ...this.toJSON(),
       secret: this.getSecretPotentiallyRedacted(),
-      urlSecret: this.urlSecret,
+      urlSecret: this.urlSecret ?? "",
       signatureHeader: this.signatureHeader,
       signatureAlgorithm: this.signatureAlgorithm,
       remoteMetadata: this.remoteMetadata,

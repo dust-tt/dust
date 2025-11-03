@@ -21,6 +21,7 @@ export const JIRA_WEBHOOK_PRESET: PresetWebhook<"jira"> = {
     type: "body",
     field: "webhookEvent",
   },
+  connectionType: "resource",
   events: [JIRA_ISSUE_CREATED_EVENT],
   icon: "JiraLogo",
   description: "Receive events from Jira such as creation of issues.",

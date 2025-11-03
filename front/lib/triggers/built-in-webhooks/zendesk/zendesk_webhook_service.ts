@@ -5,7 +5,6 @@ import logger from "@app/logger/logger";
 import type { Result, WorkspaceType } from "@app/types";
 import { Err, OAuthAPI, Ok } from "@app/types";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
-import type { NoAdditionalData } from "@app/types/triggers/webhooks";
 
 export class ZendeskWebhookService implements RemoteWebhookService<"zendesk"> {
   async setupZendeskConnection({
@@ -62,9 +61,7 @@ export class ZendeskWebhookService implements RemoteWebhookService<"zendesk"> {
     });
   }
 
-  async getServiceData(
-    _oauthToken: string
-  ): Promise<Result<NoAdditionalData, Error>> {
+  async getServiceData(_oauthToken: string): Promise<Result<{}, Error>> {
     return new Ok({});
   }
 
@@ -77,7 +74,7 @@ export class ZendeskWebhookService implements RemoteWebhookService<"zendesk"> {
   }: {
     auth: Authenticator;
     connectionId: string;
-    remoteMetadata: NoAdditionalData;
+    remoteMetadata: {};
     webhookUrl: string;
     events: string[];
     secret?: string;

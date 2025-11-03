@@ -11,6 +11,7 @@ export const ZENDESK_WEBHOOK_PRESET: PresetWebhook<"zendesk"> = {
     type: "body",
     field: "type",
   },
+  connectionType: "resource",
   events: ZENDESK_WEBHOOK_EVENTS,
   icon: "ZendeskLogo",
   description:
