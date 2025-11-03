@@ -164,7 +164,7 @@ export function _getInteractiveContentToolConfiguration({
   ];
 }
 
-export function _getFeedbackAnalyzerFrameToolConfiguration({
+export function _getFeedbackAnalyzerIncludeDataToolConfiguration({
   agentId,
   includeDataMCPServerView,
 }: {

@@ -1,7 +1,7 @@
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import {
-  _getFeedbackAnalyzerFrameToolConfiguration,
+  _getFeedbackAnalyzerIncludeDataToolConfiguration,
   _getInteractiveContentToolConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
@@ -100,7 +100,7 @@ Retrieve the content of the attached template Frame
         agentId: sId,
         interactiveContentMCPServerView,
       }),
-      ..._getFeedbackAnalyzerFrameToolConfiguration({
+      ..._getFeedbackAnalyzerIncludeDataToolConfiguration({
         agentId: sId,
         includeDataMCPServerView,
       }),
