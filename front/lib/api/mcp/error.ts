@@ -14,17 +14,20 @@ type HandleErrorParams = {
   agentMessage: AgentMessageType;
   errorContent: CallToolResult["content"];
   status: ToolExecutionStatus;
+  executionDurationMs: number;
 };
 
 /**
  * Handles MCP action errors with type-safe discriminated union based on error severity.
  */
-export async function handleMCPActionError(
-  params: HandleErrorParams
-): Promise<MCPErrorEvent | MCPSuccessEvent> {
-  const { action, agentConfiguration, agentMessage, errorContent, status } =
-    params;
-
+export async function handleMCPActionError({
+  action,
+  agentConfiguration,
+  agentMessage,
+  errorContent,
+  status,
+  executionDurationMs,
+}: HandleErrorParams): Promise<MCPErrorEvent | MCPSuccessEvent> {
   await AgentMCPActionOutputItem.bulkCreate(
     errorContent.map((item) => ({
       workspaceId: action.workspaceId,
@@ -35,7 +38,7 @@ export async function handleMCPActionError(
 
   // If the tool is not already in a final state, we set it to errored (could be denied).
   if (!isToolExecutionStatusFinal(status)) {
-    await action.updateStatus("errored");
+    await action.markAsErrored({ executionDurationMs });
   }
 
   // Yields tool_success to continue the conversation.

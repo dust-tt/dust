@@ -177,11 +177,6 @@ async function collectToolUsageFromMessage(
 
     assert(actionResource, "Action resource not found for action");
 
-    // TODO:(observability) This is not accurate as the action is created before tool validation
-    // is required. Meaning it accounts for the delay of user's validation time.
-    const executionTimeMs =
-      actionResource?.updatedAt.getTime() - actionResource?.createdAt.getTime();
-
     return {
       step_index: action.step,
       server_name:
@@ -189,7 +184,7 @@ async function collectToolUsageFromMessage(
       tool_name:
         action.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
         action.functionCallName,
-      execution_time_ms: executionTimeMs,
+      execution_time_ms: actionResource.executionDurationMs,
       status: action.status,
     };
   });
