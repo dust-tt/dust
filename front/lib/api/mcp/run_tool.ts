@@ -89,7 +89,8 @@ export async function* runToolWithStreaming(
     toolConfiguration,
   };
 
-  await action.markAsRunning();
+  await action.updateStatus("running");
+  const startDate = performance.now();
 
   const toolCallResult = yield* tryCallMCPTool(
     auth,
@@ -108,7 +109,7 @@ export async function* runToolWithStreaming(
     }
   );
 
-  await action.setEndDate();
+  const endDate = performance.now();
 
   // Err here means an exception ahead of calling the tool, like a connection error, an input
   // validation error, or any other kind of error from MCP, but not a tool error, which are returned
@@ -122,6 +123,7 @@ export async function* runToolWithStreaming(
       agentMessage,
       status,
       errorContent: toolCallResult.content,
+      executionDurationMs: endDate - startDate,
     });
     return;
   }
@@ -152,7 +154,7 @@ export async function* runToolWithStreaming(
   } else {
     statsDClient.increment("mcp_actions_success.count", 1, tags);
 
-    await action.updateStatus("succeeded");
+    await action.markAsSucceeded({ executionDurationMs: endDate - startDate });
 
     yield {
       type: "tool_success",

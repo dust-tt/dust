@@ -14,6 +14,7 @@ type HandleErrorParams = {
   agentMessage: AgentMessageType;
   errorContent: CallToolResult["content"];
   status: ToolExecutionStatus;
+  executionDurationMs: number;
 };
 
 /**
@@ -25,6 +26,7 @@ export async function handleMCPActionError({
   agentMessage,
   errorContent,
   status,
+  executionDurationMs,
 }: HandleErrorParams): Promise<MCPErrorEvent | MCPSuccessEvent> {
   await AgentMCPActionOutputItem.bulkCreate(
     errorContent.map((item) => ({
@@ -36,7 +38,7 @@ export async function handleMCPActionError({
 
   // If the tool is not already in a final state, we set it to errored (could be denied).
   if (!isToolExecutionStatusFinal(status)) {
-    await action.updateStatus("errored");
+    await action.markAsErrored({ executionDurationMs });
   }
 
   // Yields tool_success to continue the conversation.
