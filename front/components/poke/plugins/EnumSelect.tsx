@@ -70,6 +70,9 @@ export function EnumSelect({
         onWheelCapture={(e) => {
           e.stopPropagation();
         }}
+        onTouchMoveCapture={(e) => {
+          e.stopPropagation();
+        }}
       >
         <PokeCommand className="gap-2 py-3">
           <PokeCommandInput placeholder={label} className="h-9 p-2" />
