@@ -184,8 +184,7 @@ async function collectToolUsageFromMessage(
       tool_name:
         action.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
         action.functionCallName,
-      // TODO:(observability) handle null values here
-      execution_time_ms: actionResource.executionDurationMs ?? 0,
+      execution_time_ms: actionResource.executionDurationMs,
       status: action.status,
     };
   });

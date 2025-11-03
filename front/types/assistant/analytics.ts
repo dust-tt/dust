@@ -18,7 +18,7 @@ export interface AgentMessageAnalyticsToolUsed {
   step_index: number;
   server_name: string;
   tool_name: string;
-  execution_time_ms: number;
+  execution_time_ms: number | null;
   status: string;
 }
 
