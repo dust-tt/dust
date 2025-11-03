@@ -195,6 +195,10 @@ export class ZendeskWebhookService implements RemoteWebhookService<"zendesk"> {
       logger.warn(
         `Failed to delete Zendesk webhook: ${response.status} ${response.statusText} - ${errorText}`
       );
+
+      return new Err(
+        new Error(`Failed to delete Zendesk webhook: ${errorText}`)
+      );
     }
 
     return new Ok(undefined);
