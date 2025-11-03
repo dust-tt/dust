@@ -42,7 +42,7 @@ export function ExportFeedbackCsvButton({
 
   return (
     <Button
-      label={downloading ? "Generating..." : "Export Feedback CSV"}
+      label="Export all feedback as CSV"
       size="xs"
       variant="outline"
       onClick={handleDownload}

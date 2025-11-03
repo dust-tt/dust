@@ -27,6 +27,7 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
 import { getLLM } from "@app/lib/api/llm";
+import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -425,7 +426,14 @@ export async function runModelActivity(
   );
 
   let getOutputFromActionResponse: GetOutputResponse;
-  const llm = await getLLM(auth, { modelId: model.modelId });
+  const traceContext: LLMTraceContext = {
+    operationType: "agent_conversation",
+    contextId: agentConfiguration.sId,
+    userId: auth.user()?.sId,
+  };
+  const llm = await getLLM(auth, { modelId: model.modelId }, traceContext);
+  const llmRunId = llm?.getRunId();
+  const modelInteractionStartDate = performance.now();
 
   if (llm === null) {
     getOutputFromActionResponse = await getOutputFromAction(auth, {
@@ -463,6 +471,8 @@ export async function runModelActivity(
       llm,
     });
   }
+
+  const modelInteractionEndDate = performance.now();
 
   if (getOutputFromActionResponse.isErr()) {
     const error = getOutputFromActionResponse.error;
@@ -558,11 +568,13 @@ export async function runModelActivity(
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         message: agentMessage,
-        runIds: [...runIds, dustRunId],
+        runIds: [...runIds, dustRunId, ...(llmRunId ? [llmRunId] : [])],
       },
       agentMessageRow,
       conversation,
       step,
+      modelInteractionDurationMs:
+        modelInteractionEndDate - modelInteractionStartDate,
     });
     localLogger.info("Agent message generation succeeded");
 

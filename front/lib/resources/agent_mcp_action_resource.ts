@@ -598,6 +598,28 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
+  async markAsErrored({
+    executionDurationMs,
+  }: {
+    executionDurationMs: number;
+  }): Promise<void> {
+    await this.update({
+      status: "errored",
+      executionDurationMs: Math.round(executionDurationMs),
+    });
+  }
+
+  async markAsSucceeded({
+    executionDurationMs,
+  }: {
+    executionDurationMs: number;
+  }): Promise<void> {
+    await this.update({
+      status: "succeeded",
+      executionDurationMs: Math.round(executionDurationMs),
+    });
+  }
+
   async updateStepContext(
     stepContext: StepContext
   ): Promise<[affectedCount: number]> {

@@ -5,6 +5,7 @@ import type {
   MessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 import { assertNever } from "@dust-tt/sparkle";
+import cloneDeep from "lodash/cloneDeep";
 
 import { validateContentBlockIndex } from "@app/lib/api/llm/clients/anthropic/utils/predicates";
 import type { StreamState } from "@app/lib/api/llm/clients/anthropic/utils/types";
@@ -26,7 +27,12 @@ export async function* streamLLMEvents(
 ): AsyncGenerator<LLMEvent> {
   const stateContainer = { state: null };
 
-  for await (const messageStreamEvent of messageStreamEvents) {
+  // There is an issue in Anthropic SDK showcasing that stream events get mutated after they are yielded.
+  // https://github.com/anthropics/anthropic-sdk-typescript/issues/777
+  // They say it has been fixed in the version we are using but in practice we still see it happening.
+  // To work around this, we clone each event before processing it.
+  for await (const mutableMessageStreamEvent of messageStreamEvents) {
+    const messageStreamEvent = cloneDeep(mutableMessageStreamEvent);
     yield* handleMessageStreamEvent(
       messageStreamEvent,
       stateContainer,
@@ -84,7 +90,6 @@ function handleContentBlockStart(
     stateContainer.state === null,
     `A content block is already being processed, cannot start a new one at index ${event.index}`
   );
-
   const blockType = event.content_block.type;
   switch (blockType) {
     case "text":
@@ -134,8 +139,14 @@ function* handleContentBlockDelta(
     case "input_json_delta":
       stateContainer.state.accumulator += event.delta.partial_json;
       break;
-    case "citations_delta":
     case "signature_delta":
+      if (stateContainer.state.accumulatorType === "reasoning") {
+        const previousSignature = stateContainer.state.signature ?? "";
+        stateContainer.state.signature =
+          previousSignature + event.delta.signature;
+      }
+      break;
+    case "citations_delta":
       // TODO(LLM-Router) Handle these delta types if needed
       break;
     default:
@@ -154,7 +165,11 @@ function* handleContentBlockStop(
       yield textGenerated(stateContainer.state.accumulator, metadata);
       break;
     case "reasoning":
-      yield reasoningGenerated(stateContainer.state.accumulator, metadata);
+      yield reasoningGenerated(
+        stateContainer.state.accumulator,
+        metadata,
+        stateContainer.state.signature ?? ""
+      );
       break;
     case "tool_use":
       yield toolCall({
@@ -243,14 +258,15 @@ function textGenerated(
 
 function reasoningGenerated(
   text: string,
-  metadata: LLMClientMetadata
+  metadata: LLMClientMetadata,
+  signature: string
 ): ReasoningGeneratedEvent {
   return {
     type: "reasoning_generated",
     content: {
       text,
     },
-    metadata,
+    metadata: { ...metadata, signature },
   };
 }
 

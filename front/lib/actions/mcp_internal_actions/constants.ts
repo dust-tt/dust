@@ -551,13 +551,23 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
+      // Read operations - never ask
       search_messages: "never_ask",
       semantic_search_messages: "never_ask",
       list_users: "never_ask",
       list_public_channels: "never_ask",
+      list_channels: "never_ask",
+      list_joined_channels: "never_ask",
       list_threads: "never_ask",
-      post_message: "low",
+      read_thread_messages: "never_ask",
       get_user: "never_ask",
+      get_channel_details: "never_ask",
+
+      // Write operations - low stakes
+      post_message: "low",
+      schedule_message: "low",
+      add_reaction: "low",
+      remove_reaction: "low",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1078,9 +1088,7 @@ The directive should be used to display a clickable version of the agent name in
     id: 35,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("microsoft_drive_mcp_server");
-    },
+    isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
       search_in_files: "never_ask",
@@ -1110,9 +1118,7 @@ The directive should be used to display a clickable version of the agent name in
     id: 36,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("microsoft_teams_mcp_server");
-    },
+    isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
       search_messages_content: "never_ask",
@@ -1166,9 +1172,7 @@ The directive should be used to display a clickable version of the agent name in
     id: 38,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("microsoft_excel_mcp_server");
-    },
+    isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
       list_excel_files: "never_ask",

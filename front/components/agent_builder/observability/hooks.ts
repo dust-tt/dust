@@ -163,8 +163,10 @@ export function useToolUsageData(params: {
   agentConfigurationId: string;
   period: number;
   mode: ToolChartModeType;
+  filterVersion?: string | null;
 }): ToolUsageResult {
-  const { workspaceId, agentConfigurationId, period, mode } = params;
+  const { workspaceId, agentConfigurationId, period, mode, filterVersion } =
+    params;
 
   const exec = useAgentToolExecution({
     workspaceId,
@@ -182,7 +184,11 @@ export function useToolUsageData(params: {
   switch (mode) {
     case "version": {
       const rawData = exec.toolExecutionByVersion ?? [];
-      const normalizedData = normalizeVersionData(rawData);
+      let normalizedData = normalizeVersionData(rawData);
+      if (filterVersion) {
+        const vv = `v${filterVersion}`;
+        normalizedData = normalizedData.filter((d) => d.label === vv);
+      }
       const isLoading = exec.isToolExecutionLoading;
       const errorMessage = exec.isToolExecutionError
         ? "Failed to load tool execution data."
@@ -191,7 +197,9 @@ export function useToolUsageData(params: {
       return processToolUsageData(
         normalizedData,
         "Version",
-        "No tool execution data available for this period.",
+        filterVersion
+          ? "No tool execution data for the selected version."
+          : "No tool execution data available for this period.",
         `Shows the relative usage frequency (%) of the top ${MAX_TOOLS_DISPLAYED} tools for each agent version.`,
         isLoading,
         errorMessage

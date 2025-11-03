@@ -3,6 +3,7 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -67,7 +68,7 @@ export function ToolLatencyChart({
   workspaceId,
   agentConfigurationId,
 }: ToolLatencyChartProps) {
-  const { period } = useObservability();
+  const { period, mode, selectedVersion } = useObservability();
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
 
   const { toolLatencyByVersion, isToolLatencyLoading, isToolLatencyError } =
@@ -217,6 +218,15 @@ export function ToolLatencyChart({
               boxShadow: "none",
             }}
           />
+          {mode === "version" && selectedVersion && (
+            <ReferenceLine
+              x={`v${selectedVersion}`}
+              stroke="hsl(var(--primary))"
+              strokeDasharray="5 5"
+              strokeWidth={2}
+              ifOverflow="extendDomain"
+            />
+          )}
           <Area
             type="natural"
             dataKey="avg"

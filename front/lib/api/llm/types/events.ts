@@ -43,7 +43,7 @@ export interface TextGeneratedEvent {
 export interface ReasoningGeneratedEvent {
   type: "reasoning_generated";
   content: Text;
-  metadata: LLMClientMetadata;
+  metadata: LLMClientMetadata & { signature?: string };
 }
 
 export type LLMOutputItem =
@@ -54,10 +54,10 @@ export type LLMOutputItem =
 // Completion results
 
 export interface TokenUsage {
-  inputTokens: number;
-  reasoningTokens?: number;
-  outputTokens: number;
   cachedTokens?: number;
+  inputTokens: number;
+  outputTokens: number;
+  reasoningTokens?: number;
   totalTokens: number;
 }
 

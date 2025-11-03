@@ -1,7 +1,6 @@
 import { OpenAI } from "openai";
 import type { ReasoningEffort as OpenAiReasoningEffort } from "openai/resources/shared";
 
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { OpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
 import {
   isOpenAIResponsesWhitelistedReasoningModelId,
@@ -12,13 +11,14 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
+  StreamParameters,
 } from "@app/lib/api/llm/types/options";
 import {
   toInput,
   toTool,
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
-import type { ModelConversationTypeMultiActions } from "@app/types";
+import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types";
 
 export class OpenAIResponsesLLM extends LLM {
@@ -29,17 +29,22 @@ export class OpenAIResponsesLLM extends LLM {
   };
   private reasoning: { effort: OpenAiReasoningEffort; summary: "auto" } | null;
 
-  constructor({
-    modelId,
-    temperature,
-    reasoningEffort,
-    bypassFeatureFlag,
-  }: LLMParameters & { modelId: OpenAIResponsesWhitelistedModelId }) {
-    super({
-      modelId,
-      temperature,
-      reasoningEffort,
+  constructor(
+    auth: Authenticator,
+    {
       bypassFeatureFlag,
+      context,
+      modelId,
+      reasoningEffort,
+      temperature,
+    }: LLMParameters & { modelId: OpenAIResponsesWhitelistedModelId }
+  ) {
+    super(auth, {
+      bypassFeatureFlag,
+      context,
+      modelId,
+      reasoningEffort,
+      temperature,
     });
 
     // OpenAI throws an error if reasoning is set for non reasoning models
@@ -52,24 +57,21 @@ export class OpenAIResponsesLLM extends LLM {
         }
       : null;
 
-    const { OPENAI_API_KEY } = dustManagedCredentials();
+    const { OPENAI_API_KEY, OPENAI_BASE_URL } = dustManagedCredentials();
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY environment variable is required");
     }
     this.client = new OpenAI({
       apiKey: OPENAI_API_KEY,
+      baseURL: OPENAI_BASE_URL ?? "https://api.openai.com/v1",
     });
   }
 
-  async *stream({
+  async *internalStream({
     conversation,
     prompt,
     specifications,
-  }: {
-    conversation: ModelConversationTypeMultiActions;
-    prompt: string;
-    specifications: AgentActionSpecification[];
-  }): AsyncGenerator<LLMEvent> {
+  }: StreamParameters): AsyncGenerator<LLMEvent> {
     const events = await this.client.responses.create({
       model: this.modelId,
       input: toInput(prompt, conversation),

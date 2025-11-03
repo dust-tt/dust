@@ -230,6 +230,10 @@ export const CoreAPIDatasourceViewFilterSchema = t.intersection([
   t.partial({
     search_scope: CoreAPISearchScopeSchema,
     filter: t.array(t.string),
+    tags: t.type({
+      in: t.union([t.readonlyArray(t.string), t.null]),
+      not: t.union([t.readonlyArray(t.string), t.null]),
+    }),
   }),
 ]);
 

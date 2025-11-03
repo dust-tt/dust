@@ -439,6 +439,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         error,
         configuration: agentConfiguration,
         skipToolsValidation: agentMessage.skipToolsValidation,
+        modelInteractionDurationMs: agentMessage.modelInteractionDurationMs,
       } satisfies AgentMessageType;
 
       if (viewType === "full") {

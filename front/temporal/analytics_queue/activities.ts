@@ -72,8 +72,7 @@ export async function storeAgentAnalyticsActivity(
     agent_id: agentConfiguration.sId,
     agent_version: agentConfiguration.version.toString(),
     conversation_id: conversation.sId,
-    // TODO(observability 21025-10-20): Add support for latency once defined.
-    latency_ms: 0,
+    latency_ms: agentMessageRow.modelInteractionDurationMs ?? 0,
     message_id: agentMessage.sId,
     status: agentMessage.status,
     // TODO(observability 21025-10-29): Use agentMessage.created timestamp to index documents
@@ -83,6 +82,7 @@ export async function storeAgentAnalyticsActivity(
     user_id: userMessage.user?.sId ?? "unknown",
     workspace_id: workspace.sId,
     feedbacks: [],
+    content: agentMessage.content,
   };
 
   await storeToElasticsearch(document);
@@ -177,11 +177,6 @@ async function collectToolUsageFromMessage(
 
     assert(actionResource, "Action resource not found for action");
 
-    // TODO:(observability) This is not accurate as the action is created before tool validation
-    // is required. Meaning it accounts for the delay of user's validation time.
-    const executionTimeMs =
-      actionResource?.updatedAt.getTime() - actionResource?.createdAt.getTime();
-
     return {
       step_index: action.step,
       server_name:
@@ -189,7 +184,7 @@ async function collectToolUsageFromMessage(
       tool_name:
         action.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
         action.functionCallName,
-      execution_time_ms: executionTimeMs,
+      execution_time_ms: actionResource.executionDurationMs,
       status: action.status,
     };
   });

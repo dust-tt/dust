@@ -172,9 +172,15 @@ export class FileResource extends BaseResource<FileModel> {
       const auth = await Authenticator.internalBuilderForWorkspace(
         workspace.sId
       );
+
+      // Share token access bypasses normal space restrictions. We only need to verify the
+      // conversation exists, but internalBuilderForWorkspace only has global group
+      // access and can't see agents from other groups that this conversation might reference.
+      // Skip permission filtering since share token provides its own authorization.
       const conversation = await ConversationResource.fetchById(
         auth,
-        conversationId
+        conversationId,
+        { dangerouslySkipPermissionFiltering: true }
       );
       if (!conversation) {
         return null;

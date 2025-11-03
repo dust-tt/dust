@@ -77,7 +77,7 @@ export function StartConversationWithFredButton({
 
   return (
     <Button
-      label={starting ? "Starting..." : "Start Conversation with Fred"}
+      label="Start Conversation with Fred"
       size="xs"
       variant="outline"
       disabled={starting || disabled}
