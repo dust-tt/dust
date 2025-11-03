@@ -1,17 +1,18 @@
 import {
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Label,
   LoadingBlock,
 } from "@dust-tt/sparkle";
+import { useEffect } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { FeedbackDistributionChart } from "@app/components/agent_builder/observability/charts/FeedbackDistributionChart";
-import { ToolLatencyChart } from "@app/components/agent_builder/observability/charts/ToolLatencyChart";
 import { ToolUsageChart } from "@app/components/agent_builder/observability/charts/ToolUsageChart";
 import { UsageMetricsChart } from "@app/components/agent_builder/observability/charts/UsageMetricsChart";
 import {
@@ -22,7 +23,10 @@ import {
   ObservabilityProvider,
   useObservability,
 } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import {
+  useAgentConfiguration,
+  useAgentVersionMarkers,
+} from "@app/lib/swr/assistants";
 
 interface AgentBuilderObservabilityProps {
   agentConfigurationSId: string;
@@ -55,13 +59,15 @@ export function AgentBuilderObservability({
               Monitor key metrics and performance indicators for your agent.
             </span>
           </div>
-          <HeaderPeriodDropdown />
+          <HeaderGlobalSelector
+            workspaceId={owner.sId}
+            agentConfigurationId={agentConfiguration.sId}
+          />
         </div>
 
         <div className="grid grid-cols-1 gap-6">
           {isAgentConfigurationLoading ? (
             <>
-              <ChartContainerSkeleton />
               <ChartContainerSkeleton />
               <ChartContainerSkeleton />
               <ChartContainerSkeleton />
@@ -80,10 +86,6 @@ export function AgentBuilderObservability({
                 workspaceId={owner.sId}
                 agentConfigurationId={agentConfiguration.sId}
               />
-              <ToolLatencyChart
-                workspaceId={owner.sId}
-                agentConfigurationId={agentConfiguration.sId}
-              />
             </>
           )}
         </div>
@@ -92,25 +94,99 @@ export function AgentBuilderObservability({
   );
 }
 
-function HeaderPeriodDropdown() {
-  const { period, setPeriod } = useObservability();
+function HeaderGlobalSelector({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}) {
+  const {
+    mode,
+    setMode,
+    period,
+    setPeriod,
+    selectedVersion,
+    setSelectedVersion,
+  } = useObservability();
+
+  const { versionMarkers, isVersionMarkersLoading } = useAgentVersionMarkers({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    disabled: false,
+  });
+
+  // Default to latest version when entering version mode with available markers
+  useEffect(() => {
+    if (
+      mode === "version" &&
+      !selectedVersion &&
+      versionMarkers &&
+      versionMarkers.length > 0
+    ) {
+      const latest = versionMarkers[versionMarkers.length - 1];
+      setSelectedVersion(latest.version);
+    }
+  }, [mode, selectedVersion, versionMarkers, setSelectedVersion]);
+
   return (
-    <div className="flex items-center gap-2 pr-2">
-      <Label>Period:</Label>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button label={`${period}d`} size="xs" variant="outline" isSelect />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {OBSERVABILITY_TIME_RANGE.map((p) => (
-            <DropdownMenuItem
-              key={p}
-              label={`${p}d`}
-              onClick={() => setPeriod(p)}
+    <div className="flex items-center gap-3 pr-2">
+      <ButtonsSwitchList defaultValue={mode} size="xs">
+        <ButtonsSwitch
+          value="timeRange"
+          label="Time range"
+          onClick={() => setMode("timeRange")}
+        />
+        <ButtonsSwitch
+          value="version"
+          label="Version"
+          onClick={() => setMode("version")}
+        />
+      </ButtonsSwitchList>
+
+      {mode === "timeRange" ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button label={`${period}d`} size="xs" variant="outline" isSelect />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {OBSERVABILITY_TIME_RANGE.map((p) => (
+              <DropdownMenuItem
+                key={p}
+                label={`${p}d`}
+                onClick={() => setPeriod(p)}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              label={
+                selectedVersion
+                  ? `v${selectedVersion}`
+                  : isVersionMarkersLoading
+                    ? "Loading"
+                    : "Select"
+              }
+              size="xs"
+              variant="outline"
+              isSelect
             />
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {(versionMarkers ?? []).map((m) => (
+              <DropdownMenuItem
+                key={m.version}
+                label={`v${m.version}`}
+                onClick={() => setSelectedVersion(m.version)}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 }
