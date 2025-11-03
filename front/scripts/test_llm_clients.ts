@@ -1,3 +1,6 @@
+import { assertNever } from "@dust-tt/sparkle";
+
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { getLLM } from "@app/lib/api/llm";
 import {
   ANTHROPIC_WHITELISTED_NON_REASONING_MODEL_IDS,
@@ -19,10 +22,17 @@ const SYSTEM_PROMPT = "You are a helpful assistant.";
 
 type TestConfig = LLMParameters & { provider: ModelProviderIdType };
 
-type ResponseChecker = {
-  type: "text_contains";
-  substring: string;
-} | null;
+type ResponseChecker =
+  | {
+      type: "text_contains";
+      substring: string;
+    }
+  | {
+      type: "has_tool_call";
+      toolName: string;
+      expectedArguments: string;
+    }
+  | null;
 
 interface TestConversation {
   name: string;
@@ -30,6 +40,7 @@ interface TestConversation {
   conversationActions: ModelConversationTypeMultiActions[];
   /** Array of response checkers aligned with the conversation actions */
   expectedInResponses: ResponseChecker[];
+  specifications?: AgentActionSpecification[];
 }
 
 /**
@@ -125,10 +136,37 @@ function userMessage(text: string): ModelConversationTypeMultiActions {
   };
 }
 
+function userToolCall(
+  toolName: string,
+  toolOutput: string
+): ModelConversationTypeMultiActions {
+  return {
+    messages: [
+      {
+        role: "function",
+        name: toolName,
+        function_call_id: "1",
+        content: toolOutput,
+      },
+    ],
+  };
+}
+
 function containsTextChecker(substring: string): ResponseChecker {
   return {
     type: "text_contains",
     substring,
+  };
+}
+
+function hasToolCall(
+  toolName: string,
+  expectedArguments: string
+): ResponseChecker {
+  return {
+    type: "has_tool_call",
+    toolName,
+    expectedArguments,
   };
 }
 
@@ -157,6 +195,34 @@ const TEST_CONVERSATIONS: TestConversation[] = [
       userMessage("What is my name ?"),
     ],
     expectedInResponses: [null, containsTextChecker("Stan")],
+  },
+  {
+    name: "Tool usage required",
+    systemPrompt: SYSTEM_PROMPT,
+    conversationActions: [
+      userMessage("What is the id of Stan?"),
+      userToolCall("GetUserId", "88888"),
+    ],
+    expectedInResponses: [
+      hasToolCall("GetUserId", "Stan"),
+      containsTextChecker("88888"),
+    ],
+    specifications: [
+      {
+        name: "GetUserId",
+        description: "Get the user ID given the user's name.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            name: {
+              type: "string",
+              description: "The name of the user.",
+            },
+          },
+          required: ["name"],
+        },
+      },
+    ],
   },
 ];
 
@@ -193,7 +259,7 @@ async function runTest(
       const eventStreamResult = llm.stream({
         conversation: { messages: conversationHistory },
         prompt: conversation.systemPrompt,
-        specifications: [],
+        specifications: conversation.specifications ?? [],
       });
 
       if (eventStreamResult.isErr()) {
@@ -205,6 +271,8 @@ async function runTest(
       let reasoningFromDeltas = "";
       let fullReasoning = "";
       let outputTokens = null;
+      const toolCalls: { name: string; arguments: string }[] = [];
+      let toolCallId = 1;
 
       // Collect all events
       for await (const event of eventStreamResult.value) {
@@ -225,14 +293,48 @@ async function runTest(
             break;
           case "reasoning_generated":
             fullReasoning = event.content.text;
-            // Do not include thinking at the moment as we don't have the correct signature for it
-            // TODO(llm_router): fix this when we have the correct signature
+            const signature = event.metadata.signature ?? "";
+            conversationHistory.push({
+              role: "assistant",
+              name: "Assistant",
+              contents: [
+                {
+                  type: "reasoning",
+                  value: {
+                    reasoning: event.content.text,
+                    metadata: JSON.stringify({ signature: signature }),
+                    tokens: 12,
+                    provider: config.provider,
+                  },
+                },
+              ],
+            });
             break;
           case "token_usage":
             outputTokens = event.content.outputTokens;
             break;
           case "error":
             throw new Error(`LLM Error: ${event.content.message}`);
+          case "tool_call":
+            toolCalls.push({
+              name: event.content.name,
+              arguments: event.content.arguments,
+            });
+            conversationHistory.push({
+              role: "assistant",
+              name: "Assistant",
+              contents: [
+                {
+                  type: "function_call",
+                  value: {
+                    id: `${toolCallId++}`,
+                    name: event.content.name,
+                    arguments: event.content.arguments,
+                  },
+                },
+              ],
+            });
+            break;
         }
       }
 
@@ -240,14 +342,6 @@ async function runTest(
         console.log(
           `   ⚠️ Mismatch between response from deltas and full response.\nDeltas: "${responseFromDeltas}"\nFull: "${fullResponse}"`
         );
-      }
-
-      if (
-        config.reasoningEffort &&
-        config.reasoningEffort !== "none" &&
-        fullReasoning === ""
-      ) {
-        console.log(`   ⚠️ Expected reasoning but none was generated.`);
       }
 
       if (fullReasoning !== reasoningFromDeltas) {
@@ -274,6 +368,22 @@ async function runTest(
               );
             }
             break;
+          case "has_tool_call":
+            const { toolName, expectedArguments } = expectedInResponse;
+            const matchingToolCall = toolCalls.find(
+              (tc) =>
+                tc.name === toolName && tc.arguments.includes(expectedArguments)
+            );
+            if (!matchingToolCall) {
+              throw new Error(
+                `Expected tool call "${toolName}" with arguments containing "${expectedArguments}", but it was not found.\nTool calls made: ${JSON.stringify(
+                  toolCalls
+                )}`
+              );
+            }
+            break;
+          default:
+            assertNever(expectedInResponse);
         }
       }
     }
