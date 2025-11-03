@@ -251,9 +251,12 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
               value: createInteractiveToolApprovalAdaptiveCard(validatedData),
             });
           } else {
-            localLogger.info({
-              verb: context.activity.value?.action?.verb,
-            }, "Handling invoke activity other than tool execution approval")
+            localLogger.info(
+              {
+                verb: context.activity.value?.action?.verb,
+              },
+              "Handling invoke activity other than tool execution approval"
+            );
             await handleToolApproval(context, connector, localLogger);
           }
           break;
