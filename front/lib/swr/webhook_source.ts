@@ -132,12 +132,20 @@ export function useCreateWebhookSource({
     });
 
     if (!response.ok) {
-      throw new Error("Network response was not ok");
+      const errorData = await response.json();
+      const errorMessage = errorData.error?.message ?? "Unknown error";
+      sendNotification({
+        type: "error",
+        title: "Failed to create webhook source",
+        description: errorMessage,
+      });
+
+      return null;
     }
 
     sendNotification({
       type: "success",
-      title: `Successfully created webhook source`,
+      title: "Successfully created webhook source",
     });
 
     void mutateWebhookSourcesWithViews();
