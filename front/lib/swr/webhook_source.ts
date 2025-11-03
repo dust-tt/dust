@@ -141,7 +141,7 @@ export function useCreateWebhookSource({
 
       sendNotification({
         type: "error",
-        title: `Error archiving agents`,
+        title: `Failed to create webhook source`,
         description: `Error: ${errorData.message}`,
       });
       return null;
