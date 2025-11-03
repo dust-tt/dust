@@ -60,7 +60,7 @@ Analyze feedback:
 Retrieve the content of the attached template Frame 
 **You must:**
 - Use the exact same layout, component structure, and styling from the template
-- Maintain consistent colors, spacing, fonts, and animations
+- Maintain consistent colors, spacing, and fonts
 - Only change: dates, numbers, categories, issues, actions, priorities
 - Preserve all className attributes and inline styles exactly
 </guidelines>`;
