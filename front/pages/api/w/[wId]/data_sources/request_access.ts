@@ -5,6 +5,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -117,7 +118,7 @@ async function handler(
 
   const result = await sendEmailWithTemplate({
     to: dataSource.editedByUser.email,
-    from: { name: "Dust team", email: "support@dust.help" },
+    from: config.getSupportEmailAddress(),
     replyTo: emailRequester,
     subject: `[Dust] Request Data source from ${emailRequester}`,
     body,

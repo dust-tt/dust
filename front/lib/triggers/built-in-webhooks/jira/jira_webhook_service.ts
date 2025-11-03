@@ -133,7 +133,7 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
 
       if (createRes.isErr()) {
         errors.push(
-          `Failed to create webhook for project ${projectKey}: ${createRes.error.message}`
+          `Failed to register webhook for project ${projectKey}: ${createRes.error.message}`
         );
         continue;
       }
@@ -142,9 +142,7 @@ export class JiraWebhookService implements RemoteWebhookService<"jira"> {
     }
 
     if (Object.keys(webhookIds).length === 0) {
-      return new Err(
-        new Error(`Failed to create any webhooks. Errors: ${errors.join(", ")}`)
-      );
+      return new Err(new Error(errors.join(", ")));
     }
 
     return new Ok({

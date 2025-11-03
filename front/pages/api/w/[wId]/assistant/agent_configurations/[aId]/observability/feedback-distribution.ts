@@ -76,11 +76,11 @@ async function handler(
 
       const owner = auth.getNonNullableWorkspace();
 
-      const baseQuery = buildAgentAnalyticsBaseQuery(
-        owner.sId,
-        assistant.sId,
-        days
-      );
+      const baseQuery = buildAgentAnalyticsBaseQuery({
+        workspaceId: owner.sId,
+        agentId: assistant.sId,
+        days,
+      });
 
       const feedbackDistributionResult = await fetchFeedbackDistribution(
         baseQuery,

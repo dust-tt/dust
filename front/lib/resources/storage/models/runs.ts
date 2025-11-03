@@ -71,6 +71,7 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
   declare promptTokens: number;
   declare completionTokens: number;
   declare cachedTokens: number | null;
+  declare cacheCreationTokens: number | null;
 }
 
 RunUsageModel.init(
@@ -92,6 +93,11 @@ RunUsageModel.init(
       allowNull: false,
     },
     cachedTokens: {
+      type: DataTypes.INTEGER,
+      defaultValue: null,
+      allowNull: true,
+    },
+    cacheCreationTokens: {
       type: DataTypes.INTEGER,
       defaultValue: null,
       allowNull: true,

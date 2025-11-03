@@ -214,6 +214,8 @@ export class AgentMCPActionModel extends WorkspaceAwareModel<AgentMCPActionModel
   declare toolConfiguration: LightMCPToolConfigurationType;
   declare stepContext: StepContext;
 
+  declare executionDurationMs: number | null;
+
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
 
   declare agentMessage?: NonAttribute<AgentMessage>;
@@ -264,6 +266,11 @@ AgentMCPActionModel.init(
       type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: {},
+    },
+    executionDurationMs: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

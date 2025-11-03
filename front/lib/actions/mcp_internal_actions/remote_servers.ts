@@ -229,6 +229,8 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   */
+  /*
+  //Removed temporaly see https://dust4ai.slack.com/archives/C05BUSJQP5W/p1762164149080909?thread_ts=1762159475.187129&cid=C05BUSJQP5W
   {
     id: 10006,
     name: "Canva",
@@ -262,6 +264,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       create_design_from_candidate: "low",
     },
   },
+  **/
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {

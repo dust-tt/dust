@@ -183,7 +183,6 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           activityType: context.activity.type,
           activityName: context.activity.name,
           conversationId: context.activity.conversation?.id,
-          text: context.activity.text,
         },
         "Received Teams activity"
       );
@@ -235,11 +234,42 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
               break;
             }
 
-            res.status(200).json({
+            localLogger.info(
+              {
+                agentName: validatedData.agentName,
+                toolName: validatedData.toolName,
+                conversationId: validatedData.conversationId,
+                messageId: validatedData.messageId,
+                microsoftBotMessageId: validatedData.microsoftBotMessageId,
+              },
+              "Handling tool execution approval card refresh"
+            );
+
+            const cardResponse = {
+              statusCode: 200,
               type: "application/vnd.microsoft.card.adaptive",
               value: createInteractiveToolApprovalAdaptiveCard(validatedData),
+            };
+            localLogger.info(
+              cardResponse,
+              "Invoke reponse: tool execution approval card refresh response"
+            );
+
+            // For Bot Framework invoke activities, send response through context
+            await context.sendActivity({
+              type: "invokeResponse",
+              value: {
+                status: 200,
+                body: cardResponse,
+              },
             });
           } else {
+            localLogger.info(
+              {
+                verb: context.activity.value?.action?.verb,
+              },
+              "Handling invoke activity other than tool execution approval"
+            );
             await handleToolApproval(context, connector, localLogger);
           }
           break;

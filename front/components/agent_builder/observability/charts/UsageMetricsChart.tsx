@@ -19,7 +19,11 @@ import { useObservability } from "@app/components/agent_builder/observability/Ob
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
-import { useAgentUsageMetrics } from "@app/lib/swr/assistants";
+import { filterTimeSeriesByVersionWindow } from "@app/components/agent_builder/observability/utils";
+import {
+  useAgentUsageMetrics,
+  useAgentVersionMarkers,
+} from "@app/lib/swr/assistants";
 
 interface UsageMetricsData {
   messages: number;
@@ -81,7 +85,7 @@ export function UsageMetricsChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const { period } = useObservability();
+  const { period, mode, selectedVersion } = useObservability();
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useAgentUsageMetrics({
       workspaceId,
@@ -90,6 +94,12 @@ export function UsageMetricsChart({
       interval: "day",
       disabled: !workspaceId || !agentConfigurationId,
     });
+  const { versionMarkers } = useAgentVersionMarkers({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    disabled: !workspaceId || !agentConfigurationId,
+  });
 
   const legendItems = USAGE_METRICS_LEGEND.map(({ key, label }) => ({
     key,
@@ -98,8 +108,14 @@ export function UsageMetricsChart({
   }));
 
   const data = useMemo(
-    () => usageMetrics?.points ?? [],
-    [usageMetrics?.points]
+    () =>
+      filterTimeSeriesByVersionWindow(
+        usageMetrics,
+        mode,
+        selectedVersion,
+        versionMarkers
+      ),
+    [usageMetrics, mode, selectedVersion, versionMarkers]
   );
 
   return (
@@ -108,6 +124,9 @@ export function UsageMetricsChart({
       isLoading={isUsageMetricsLoading}
       errorMessage={
         isUsageMetricsError ? "Failed to load observability data." : undefined
+      }
+      emptyMessage={
+        data.length === 0 ? "No usage metrics for this selection." : undefined
       }
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>

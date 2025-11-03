@@ -90,7 +90,6 @@ function handleContentBlockStart(
     stateContainer.state === null,
     `A content block is already being processed, cannot start a new one at index ${event.index}`
   );
-
   const blockType = event.content_block.type;
   switch (blockType) {
     case "text":
@@ -140,8 +139,14 @@ function* handleContentBlockDelta(
     case "input_json_delta":
       stateContainer.state.accumulator += event.delta.partial_json;
       break;
-    case "citations_delta":
     case "signature_delta":
+      if (stateContainer.state.accumulatorType === "reasoning") {
+        const previousSignature = stateContainer.state.signature ?? "";
+        stateContainer.state.signature =
+          previousSignature + event.delta.signature;
+      }
+      break;
+    case "citations_delta":
       // TODO(LLM-Router) Handle these delta types if needed
       break;
     default:
@@ -160,7 +165,11 @@ function* handleContentBlockStop(
       yield textGenerated(stateContainer.state.accumulator, metadata);
       break;
     case "reasoning":
-      yield reasoningGenerated(stateContainer.state.accumulator, metadata);
+      yield reasoningGenerated(
+        stateContainer.state.accumulator,
+        metadata,
+        stateContainer.state.signature ?? ""
+      );
       break;
     case "tool_use":
       yield toolCall({
@@ -249,14 +258,15 @@ function textGenerated(
 
 function reasoningGenerated(
   text: string,
-  metadata: LLMClientMetadata
+  metadata: LLMClientMetadata,
+  signature: string
 ): ReasoningGeneratedEvent {
   return {
     type: "reasoning_generated",
     content: {
       text,
     },
-    metadata,
+    metadata: { ...metadata, signature },
   };
 }
 

@@ -43,7 +43,7 @@ export interface TextGeneratedEvent {
 export interface ReasoningGeneratedEvent {
   type: "reasoning_generated";
   content: Text;
-  metadata: LLMClientMetadata;
+  metadata: LLMClientMetadata & { signature?: string };
 }
 
 export type LLMOutputItem =

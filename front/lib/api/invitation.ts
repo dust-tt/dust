@@ -177,10 +177,7 @@ export async function sendWorkspaceInvitationEmail(
   // Send invite email.
   const message = {
     to: invitation.inviteEmail,
-    from: {
-      name: "Dust team",
-      email: "support@dust.help",
-    },
+    from: config.getSupportEmailAddress(),
     templateId: config.getInvitationEmailTemplate(),
     dynamic_template_data: {
       inviteLink: getMembershipInvitationUrl(owner, invitation.id),

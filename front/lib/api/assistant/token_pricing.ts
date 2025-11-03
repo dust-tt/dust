@@ -451,16 +451,18 @@ const DEFAULT_PRICING = MODEL_PRICING[DEFAULT_PRICING_MODEL_ID];
 function calculateTokenUsageCostForUsage(usage: RunUsageType): number {
   const pricing = MODEL_PRICING[usage.modelId] ?? DEFAULT_PRICING;
 
-  const cachedTokens = usage.cachedTokens ?? 0;
-  const uncachedPromptTokens = Math.max(usage.promptTokens - cachedTokens, 0);
+  const cachedReadTokens = usage.cachedTokens ?? 0;
+  const cacheWriteTokens = usage.cacheCreationTokens ?? 0;
 
-  const cachedInputRate = pricing.cache_read_input_tokens ?? pricing.input;
+  const cachedReadRate = pricing.cache_read_input_tokens ?? pricing.input;
+  const cacheWriteRate = pricing.cache_creation_input_tokens ?? pricing.input;
 
-  return (
-    (uncachedPromptTokens / 1_000_000) * pricing.input +
-    (cachedTokens / 1_000_000) * cachedInputRate +
-    (usage.completionTokens / 1_000_000) * pricing.output
-  );
+  const inputCost = (usage.promptTokens / 1_000_000) * pricing.input;
+  const cachedReadCost = (cachedReadTokens / 1_000_000) * cachedReadRate;
+  const cacheWriteCost = (cacheWriteTokens / 1_000_000) * cacheWriteRate;
+  const outputCost = (usage.completionTokens / 1_000_000) * pricing.output;
+
+  return inputCost + cachedReadCost + cacheWriteCost + outputCost;
 }
 
 export function calculateTokenUsageCost(usages: RunUsageType[]): number {

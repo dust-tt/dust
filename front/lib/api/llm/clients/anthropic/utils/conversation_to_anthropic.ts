@@ -55,13 +55,26 @@ function assistantContentToParam(
         text: content.value,
       };
     case "reasoning":
+      // TODO(LLM-Router): better typing for signature extraction
       assert(content.value.reasoning, "Reasoning content is missing reasoning");
+      const metadata = safeParseJSON(content.value.metadata);
+      if (metadata.isErr()) {
+        throw new Error(
+          `Failed to parse reasoning metadata JSON: ${metadata.error.message}`
+        );
+      }
+
+      const signature =
+        metadata.value &&
+        "signature" in metadata.value &&
+        isString(metadata.value.signature)
+          ? metadata.value.signature
+          : "";
+
       return {
         type: "thinking",
         thinking: content.value.reasoning,
-        /*TODO(DIRECT_LLM 2025-10-24) Signatures should be stored in AnthropicLLM's metadata of
-         * thinking events and re-extracted */
-        signature: "",
+        signature: signature,
       };
     case "function_call": {
       const argsRes = safeParseJSON(content.value.arguments);

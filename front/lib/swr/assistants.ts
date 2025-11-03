@@ -20,8 +20,8 @@ import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[t
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentConfigurationAnalyticsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/analytics";
 import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
+import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
 import type { GetToolExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-execution";
-import type { GetToolLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-latency";
 import type { GetToolStepIndexResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-step-index";
 import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/usage-metrics";
 import type { GetVersionMarkersResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/version-markers";
@@ -798,10 +798,37 @@ export function useAgentUsageMetrics({
   );
 
   return {
-    usageMetrics: data ?? null,
+    usageMetrics: data?.points ?? emptyArray(),
     isUsageMetricsLoading: !error && !data && !disabled,
     isUsageMetricsError: error,
     isUsageMetricsValidating: isValidating,
+  };
+}
+
+export function useAgentLatency({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetLatencyResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/latency?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    latency: data?.points ?? emptyArray(),
+    isLatencyLoading: !error && !data && !disabled,
+    isLatencyError: error,
+    isLatencyValidating: isValidating,
   };
 }
 
@@ -825,7 +852,7 @@ export function useAgentFeedbackDistribution({
   );
 
   return {
-    feedbackDistribution: data ?? null,
+    feedbackDistribution: data?.points ?? emptyArray(),
     isFeedbackDistributionLoading: !error && !data && !disabled,
     isFeedbackDistributionError: error,
     isFeedbackDistributionValidating: isValidating,
@@ -852,7 +879,7 @@ export function useAgentVersionMarkers({
   );
 
   return {
-    versionMarkers: data?.versionMarkers ?? null,
+    versionMarkers: data?.versionMarkers ?? emptyArray(),
     isVersionMarkersLoading: !error && !data && !disabled,
     isVersionMarkersError: error,
     isVersionMarkersValidating: isValidating,
@@ -879,37 +906,10 @@ export function useAgentToolExecution({
   );
 
   return {
-    toolExecutionByVersion: data?.byVersion ?? null,
+    toolExecutionByVersion: data?.byVersion ?? emptyArray(),
     isToolExecutionLoading: !error && !data && !disabled,
     isToolExecutionError: error,
     isToolExecutionValidating: isValidating,
-  };
-}
-
-export function useAgentToolLatency({
-  workspaceId,
-  agentConfigurationId,
-  days = DEFAULT_PERIOD_DAYS,
-  disabled,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  days?: number;
-  disabled?: boolean;
-}) {
-  const fetcherFn: Fetcher<GetToolLatencyResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-latency?days=${days}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    toolLatencyByVersion: data?.byVersion ?? null,
-    isToolLatencyLoading: !error && !data && !disabled,
-    isToolLatencyError: error,
-    isToolLatencyValidating: isValidating,
   };
 }
 
@@ -933,7 +933,7 @@ export function useAgentToolStepIndex({
   );
 
   return {
-    toolStepIndexByStep: data?.byStep ?? null,
+    toolStepIndexByStep: data?.byStep ?? emptyArray(),
     isToolStepIndexLoading: !error && !data && !disabled,
     isToolStepIndexError: error,
     isToolStepIndexValidating: isValidating,
