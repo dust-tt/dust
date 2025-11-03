@@ -59,7 +59,7 @@ export const TagsInputSchema = z.object({
     ),
 });
 
-type TagsInputType = z.infer<typeof TagsInputSchema>;
+export type TagsInputType = z.infer<typeof TagsInputSchema>;
 
 export type SearchInputTypeWithTags = SearchWithNodesInputType & TagsInputType;
 

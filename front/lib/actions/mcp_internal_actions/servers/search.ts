@@ -121,10 +121,10 @@ export async function searchFunction({
     );
   }
 
-  const conflictingTagsError = checkConflictingTags(coreSearchArgs, {
-    tagsIn,
-    tagsNot,
-  });
+  const conflictingTagsError = checkConflictingTags(
+    coreSearchArgs.map(({ filter }) => filter),
+    { tagsIn, tagsNot }
+  );
   if (conflictingTagsError) {
     return new Err(new MCPError(conflictingTagsError, { tracked: false }));
   }

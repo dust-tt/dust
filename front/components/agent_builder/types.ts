@@ -84,8 +84,7 @@ export const dataSourceConfigurationSchema = z.object({
         not: z.array(z.string()),
         mode: z.enum(["custom", "auto"]),
       })
-      .nullable()
-      .optional(),
+      .nullable(),
   }),
 });
 

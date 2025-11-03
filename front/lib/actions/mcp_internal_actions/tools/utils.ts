@@ -7,8 +7,10 @@ import {
   DATA_SOURCE_CONFIGURATION_URI_PATTERN,
   TABLE_CONFIGURATION_URI_PATTERN,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { TagsInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import type {
   DataSourceConfiguration,
+  DataSourceFilter,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -23,6 +25,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   ConnectorProvider,
   CoreAPIDatasourceViewFilter,
+  CoreApiFilter,
   CoreAPISearchFilter,
   DataSourceViewType,
   Result,
@@ -41,14 +44,32 @@ export type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
 };
 
 export function makeCoreSearchNodesFilters(
-  agentDataSourceConfigurations: ResolvedDataSourceConfiguration[]
+  agentDataSourceConfigurations: ResolvedDataSourceConfiguration[],
+  additionalDynamicTags?: TagsInputType
 ): CoreAPIDatasourceViewFilter[] {
   return agentDataSourceConfigurations.map(
-    ({ dataSource, dataSourceView, filter }) => ({
-      data_source_id: dataSource.dustAPIDataSourceId,
-      view_filter: dataSourceView.parentsIn ?? [],
-      filter: filter.parents?.in ?? undefined,
-    })
+    ({ dataSource, dataSourceView, filter }) => {
+      const maybeTagsFilter = toCoreApiFilter({
+        in: [
+          ...(filter.tags?.in ?? []),
+          ...(additionalDynamicTags?.tagsIn ?? []),
+        ],
+        not: [
+          ...(filter.tags?.not ?? []),
+          ...(additionalDynamicTags?.tagsNot ?? []),
+        ],
+      });
+
+      return {
+        data_source_id: dataSource.dustAPIDataSourceId,
+        view_filter: dataSourceView.parentsIn ?? [],
+        filter: filter.parents?.in ?? undefined,
+        // FIXME: Remove additionalDynamicTags condition and add support in other file system tools.
+        ...(additionalDynamicTags && maybeTagsFilter
+          ? { tags: maybeTagsFilter }
+          : {}),
+      };
+    }
   );
 }
 
@@ -189,16 +210,7 @@ export type CoreSearchArgs = {
   projectId: string;
   dataSourceId: string;
 
-  filter: {
-    tags: {
-      in: string[] | null;
-      not: string[] | null;
-    };
-    parents: {
-      in: string[] | null;
-      not: string[] | null;
-    };
-  };
+  filter: DataSourceFilter;
   view_filter: CoreAPISearchFilter;
   dataSourceView: DataSourceViewType;
 };
@@ -330,22 +342,15 @@ export async function getAgentDataSourceConfigurations(
             workspaceId: agentConfig.dataSourceView.workspace.sId,
             dataSourceViewId: dataSourceViewSId,
             filter: {
-              parents:
-                agentConfig.parentsIn !== null ||
-                agentConfig.parentsNotIn !== null
-                  ? {
-                      in: agentConfig.parentsIn ?? [],
-                      not: agentConfig.parentsNotIn ?? [],
-                    }
-                  : null,
-              tags:
-                agentConfig.tagsIn !== null || agentConfig.tagsNotIn !== null
-                  ? {
-                      in: agentConfig.tagsIn ?? [],
-                      not: agentConfig.tagsNotIn ?? [],
-                      mode: agentConfig.tagsMode ?? "custom",
-                    }
-                  : undefined,
+              parents: toCoreApiFilter({
+                in: agentConfig.parentsIn,
+                not: agentConfig.parentsNotIn,
+              }),
+              tags: {
+                in: agentConfig.tagsIn ?? [],
+                not: agentConfig.tagsNotIn ?? [],
+                mode: agentConfig.tagsMode ?? "custom",
+              },
             },
             dataSource: {
               dustAPIProjectId: agentConfig.dataSource.dustAPIProjectId,
@@ -460,13 +465,14 @@ export async function getCoreSearchArgs(
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         filter: {
-          tags: {
-            in: agentDataSourceConfiguration.tagsIn,
-            not: agentDataSourceConfiguration.tagsNotIn,
-          },
-          parents: {
+          parents: toCoreApiFilter({
             in: agentDataSourceConfiguration.parentsIn,
             not: agentDataSourceConfiguration.parentsNotIn,
+          }),
+          tags: {
+            in: agentDataSourceConfiguration.tagsIn ?? [],
+            not: agentDataSourceConfiguration.tagsNotIn ?? [],
+            mode: agentDataSourceConfiguration.tagsMode ?? "custom",
           },
         },
         view_filter: dataSourceView.toViewFilter(),
@@ -495,16 +501,7 @@ export async function getCoreSearchArgs(
       return new Ok({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
-        filter: {
-          tags: {
-            in: config.filter.tags?.in ?? null,
-            not: config.filter.tags?.not ?? null,
-          },
-          parents: {
-            in: config.filter.parents?.in ?? null,
-            not: config.filter.parents?.not ?? null,
-          },
-        },
+        filter: config.filter,
         view_filter: dataSourceView.toViewFilter(),
         dataSourceView: dataSourceView.toJSON(),
       });
@@ -513,4 +510,22 @@ export async function getCoreSearchArgs(
     default:
       assertNever(configInfo);
   }
+}
+
+/**
+ * Converts to CoreApiFilter, returning null if both in/not are empty.
+ * Empty arrays are normalized to null.
+ */
+export function toCoreApiFilter(filter: {
+  in: string[] | null;
+  not: string[] | null;
+}): CoreApiFilter {
+  const inFilter = filter.in?.length ? filter.in : null;
+  const notFilter = filter.not?.length ? filter.not : null;
+
+  if (!inFilter && !notFilter) {
+    return null;
+  }
+
+  return { in: inFilter, not: notFilter };
 }

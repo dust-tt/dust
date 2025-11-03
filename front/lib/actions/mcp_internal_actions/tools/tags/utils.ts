@@ -1,10 +1,12 @@
-import type { CoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
+import type {
+  DataSourceConfiguration,
+  DataSourceFilter,
+} from "@app/lib/api/assistant/configuration/types";
 
 function hasTagAutoMode(dataSourceConfigurations: DataSourceConfiguration[]) {
   return dataSourceConfigurations.some(
@@ -43,12 +45,12 @@ export function shouldAutoGenerateTags(
  * If a tag is both included and excluded, we will not get any result.
  */
 export function checkConflictingTags(
-  coreSearchArgs: CoreSearchArgs[],
+  dataSourceFilters: DataSourceFilter[],
   { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] }
 ): string | null {
-  for (const args of coreSearchArgs) {
-    const configTagsIn = args.filter.tags?.in ?? [];
-    const configTagsNot = args.filter.tags?.not ?? [];
+  for (const filter of dataSourceFilters) {
+    const configTagsIn = filter.tags?.in ?? [];
+    const configTagsNot = filter.tags?.not ?? [];
 
     const finalTagsIn = [...configTagsIn, ...(tagsIn ?? [])];
     const finalTagsNot = [...configTagsNot, ...(tagsNot ?? [])];

@@ -286,8 +286,8 @@ describe("MCP Internal Actions Server Utils", () => {
         expect(result.value.dataSourceId).toBe(
           folder.dataSource.dustAPIDataSourceId
         );
-        expect(result.value.filter.tags.in).toBeNull();
-        expect(result.value.filter.tags.not).toBeNull();
+        expect(result.value.filter.tags?.in).toHaveLength(0);
+        expect(result.value.filter.tags?.not).toHaveLength(0);
         expect(result.value.dataSourceView).toBeDefined();
       }
     });
