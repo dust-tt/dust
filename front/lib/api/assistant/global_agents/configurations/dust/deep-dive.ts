@@ -13,7 +13,10 @@ import {
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { isRemoteDatabase } from "@app/lib/data_sources";
+import {
+  isIncludedInDefaultCompanyData,
+  isRemoteDatabase,
+} from "@app/lib/data_sources";
 import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
@@ -419,7 +422,7 @@ function getCompanyDataAction(
   const dataSourceViews = preFetchedDataSources.dataSourceViews.filter(
     (dsView) =>
       dsView.isInGlobalSpace &&
-      dsView.dataSource.connectorProvider !== "webcrawler"
+      isIncludedInDefaultCompanyData(dsView.dataSource)
   );
   if (dataSourceViews.length === 0 || !dataSourcesFileSystemMCPServerView) {
     return null;

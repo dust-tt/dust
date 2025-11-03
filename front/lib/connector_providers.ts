@@ -607,6 +607,32 @@ export const isConnectorProviderAssistantDefaultSelected = (
   }
 };
 
+// Bot integrations are connectors that integrate chat apps rather than content sources.
+export const isBotIntegration = (provider: ConnectorProvider): boolean => {
+  switch (provider) {
+    case "slack_bot":
+    case "discord_bot":
+    case "microsoft_bot":
+      return true;
+    case "bigquery":
+    case "confluence":
+    case "github":
+    case "gong":
+    case "google_drive":
+    case "intercom":
+    case "microsoft":
+    case "notion":
+    case "salesforce":
+    case "slack":
+    case "snowflake":
+    case "webcrawler":
+    case "zendesk":
+      return false;
+    default:
+      assertNever(provider);
+  }
+};
+
 export const isConnectionIdRequiredForProvider = (
   provider: ConnectorProvider
 ): boolean => {
