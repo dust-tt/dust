@@ -7,16 +7,12 @@ import {
   PencilSquareIcon,
   SearchInput,
   Spinner,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import cronstrue from "cronstrue";
 import { useCallback, useMemo, useState } from "react";
 
-import {
-  useRemoveTriggerSubscriber,
-  useUserTriggers,
-} from "@app/lib/swr/agent_triggers";
+import { useUserTriggers } from "@app/lib/swr/agent_triggers";
 import { classNames } from "@app/lib/utils";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
@@ -30,12 +26,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
     workspaceId: owner.sId,
   });
 
-  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-
-  const unsubscribe = useRemoveTriggerSubscriber({
-    workspaceId: owner.sId,
-  });
 
   const getEditionURL = useCallback(
     (agentConfigurationId: string) => {
@@ -117,32 +108,13 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
         cell: ({ row }) => (
           <DataTable.CellContent>
             <div className="flex justify-end">
-              {row.original.isEditor ? (
-                <Button
-                  label="Manage"
-                  href={getEditionURL(row.original.agentConfigurationId)}
-                  variant="outline"
-                  size="sm"
-                  icon={PencilSquareIcon}
-                />
-              ) : (
-                <Button
-                  label="Unsubscribe"
-                  icon={XMarkIcon}
-                  variant="outline"
-                  size="sm"
-                  isLoading={isLoading}
-                  disabled={isLoading}
-                  onClick={async () => {
-                    setIsLoading(true);
-                    await unsubscribe(
-                      row.original.sId,
-                      row.original.agentConfigurationId
-                    );
-                    setIsLoading(false);
-                  }}
-                />
-              )}
+              <Button
+                label="Manage"
+                href={getEditionURL(row.original.agentConfigurationId)}
+                variant="outline"
+                size="sm"
+                icon={PencilSquareIcon}
+              />
             </div>
           </DataTable.CellContent>
         ),
@@ -151,7 +123,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
         },
       },
     ],
-    [unsubscribe, getEditionURL, isLoading]
+    [getEditionURL]
   );
 
   return (
@@ -177,7 +149,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
         />
       ) : triggers.length === 0 ? (
         <div className="py-8 text-center text-muted-foreground">
-          You are not involved with any triggers yet.
+          You haven't created any triggers yet.
         </div>
       ) : (
         <div className="py-8 text-center text-muted-foreground">
