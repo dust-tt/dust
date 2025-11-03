@@ -277,9 +277,6 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
     return subFilterLastIndexA - subFilterLastIndexB;
   }
 
-  if (a.length !== b.length) {
-    return a.length - b.length;
-  }
   return 0;
 }
 
