@@ -47,6 +47,14 @@ const whitelistedCommands = [
   },
   {
     majorCommand: "slack",
+    command: "skip-channel",
+  },
+  {
+    majorCommand: "slack",
+    command: "unskip-channel",
+  },
+  {
+    majorCommand: "slack",
     command: "run-auto-join",
   },
   {
