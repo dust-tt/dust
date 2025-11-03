@@ -49,7 +49,7 @@ export function makeCoreSearchNodesFilters(
 ): CoreAPIDatasourceViewFilter[] {
   return agentDataSourceConfigurations.map(
     ({ dataSource, dataSourceView, filter }) => {
-      const maybeTagsFilter = toCoreApiFilter({
+      const maybeTagsFilter = toCoreAPIFilter({
         in: [
           ...(filter.tags?.in ?? []),
           ...(additionalDynamicTags?.tagsIn ?? []),
@@ -64,7 +64,7 @@ export function makeCoreSearchNodesFilters(
         data_source_id: dataSource.dustAPIDataSourceId,
         view_filter: dataSourceView.parentsIn ?? [],
         filter: filter.parents?.in ?? undefined,
-        // FIXME: Remove additionalDynamicTags condition and add support in other file system tools.
+        // FIXME(ap): Remove additionalDynamicTags condition and add support in other file system tools.
         ...(additionalDynamicTags && maybeTagsFilter
           ? { tags: maybeTagsFilter }
           : {}),
@@ -342,7 +342,7 @@ export async function getAgentDataSourceConfigurations(
             workspaceId: agentConfig.dataSourceView.workspace.sId,
             dataSourceViewId: dataSourceViewSId,
             filter: {
-              parents: toCoreApiFilter({
+              parents: toCoreAPIFilter({
                 in: agentConfig.parentsIn,
                 not: agentConfig.parentsNotIn,
               }),
@@ -465,7 +465,7 @@ export async function getCoreSearchArgs(
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         filter: {
-          parents: toCoreApiFilter({
+          parents: toCoreAPIFilter({
             in: agentDataSourceConfiguration.parentsIn,
             not: agentDataSourceConfiguration.parentsNotIn,
           }),
@@ -513,10 +513,10 @@ export async function getCoreSearchArgs(
 }
 
 /**
- * Converts to CoreApiFilter, returning null if both in/not are empty.
+ * Converts to CoreAPIFilter, returning null if both in/not are empty.
  * Empty arrays are normalized to null.
  */
-export function toCoreApiFilter(filter: {
+export function toCoreAPIFilter(filter: {
   in: string[] | null;
   not: string[] | null;
 }): CoreAPIFilter {

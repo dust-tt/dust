@@ -464,7 +464,7 @@ function createServer(
     areTagsDynamic,
   });
 
-  // TODO: move every tool registration in dedicated file ?
+  // TODO(ap): Move every tool registration in dedicated file.
   if (!areTagsDynamic) {
     server.tool(
       SEARCH_TOOL_NAME,
