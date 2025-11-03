@@ -18,11 +18,11 @@ import {
 import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
+import { filterTimeSeriesByVersionWindow } from "@app/components/agent_builder/observability/utils";
 import {
   useAgentFeedbackDistribution,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
-import { filterTimeSeriesByVersionWindow } from "@app/components/agent_builder/observability/utils";
 
 interface FeedbackDistributionChartProps {
   workspaceId: string;

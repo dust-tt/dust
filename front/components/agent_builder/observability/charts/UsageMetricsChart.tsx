@@ -19,11 +19,11 @@ import { useObservability } from "@app/components/agent_builder/observability/Ob
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { filterTimeSeriesByVersionWindow } from "@app/components/agent_builder/observability/utils";
 import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
-import { filterTimeSeriesByVersionWindow } from "@app/components/agent_builder/observability/utils";
 
 interface UsageMetricsData {
   messages: number;
