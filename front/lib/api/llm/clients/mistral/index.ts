@@ -1,18 +1,19 @@
 import { Mistral } from "@mistralai/mistralai";
 
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import {
   toMessage,
   toTool,
 } from "@app/lib/api/llm/clients/mistral/utils/conversation_to_mistral";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/mistral/utils/mistral_to_events";
-import type { LLMWithTracingParameters } from "@app/lib/api/llm/llm";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import type {
+  LLMClientMetadata,
+  LLMParameters,
+  StreamParameters,
+} from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import type { ModelConversationTypeMultiActions } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
 export class MistralLLM extends LLM {
@@ -24,19 +25,19 @@ export class MistralLLM extends LLM {
   constructor(
     auth: Authenticator,
     {
-      modelId,
-      temperature,
-      reasoningEffort,
       bypassFeatureFlag,
       context,
-    }: LLMWithTracingParameters & { modelId: MistralWhitelistedModelId }
+      modelId,
+      reasoningEffort,
+      temperature,
+    }: LLMParameters & { modelId: MistralWhitelistedModelId }
   ) {
     super(auth, {
-      modelId,
-      temperature,
-      reasoningEffort,
       bypassFeatureFlag,
       context,
+      modelId,
+      reasoningEffort,
+      temperature,
     });
     const { MISTRAL_API_KEY } = dustManagedCredentials();
     if (!MISTRAL_API_KEY) {
@@ -51,11 +52,7 @@ export class MistralLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: {
-    conversation: ModelConversationTypeMultiActions;
-    prompt: string;
-    specifications: AgentActionSpecification[];
-  }): AsyncGenerator<LLMEvent> {
+  }: StreamParameters): AsyncGenerator<LLMEvent> {
     const messages = [
       {
         role: "system" as const,

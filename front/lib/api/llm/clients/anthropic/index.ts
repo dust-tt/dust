@@ -1,7 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import { CLAUDE_4_THINKING_BUDGET_TOKENS } from "@app/lib/api/llm/clients/anthropic/utils";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
@@ -9,16 +8,16 @@ import {
   toMessage,
   toTool,
 } from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
-import type { LLMWithTracingParameters } from "@app/lib/api/llm/llm";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import type {
+  LLMClientMetadata,
+  LLMParameters,
+  StreamParameters,
+} from "@app/lib/api/llm/types/options";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type {
-  ModelConversationTypeMultiActions,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
+import type { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
 export class AnthropicLLM extends LLM {
@@ -33,12 +32,12 @@ export class AnthropicLLM extends LLM {
   constructor(
     auth: Authenticator,
     {
-      modelId,
-      temperature,
-      reasoningEffort,
       bypassFeatureFlag,
       context,
-    }: LLMWithTracingParameters & { modelId: AnthropicWhitelistedModelId }
+      modelId,
+      reasoningEffort,
+      temperature,
+    }: LLMParameters & { modelId: AnthropicWhitelistedModelId }
   ) {
     super(auth, {
       modelId,
@@ -72,11 +71,7 @@ export class AnthropicLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: {
-    conversation: ModelConversationTypeMultiActions;
-    prompt: string;
-    specifications: AgentActionSpecification[];
-  }): AsyncGenerator<LLMEvent> {
+  }: StreamParameters): AsyncGenerator<LLMEvent> {
     const messages = conversation.messages.map(toMessage);
 
     const events = this.client.messages.stream({
