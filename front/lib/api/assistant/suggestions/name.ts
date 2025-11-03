@@ -116,17 +116,13 @@ export async function getBuilderNameSuggestions(
     return new Err(new Error("Model not found"));
   }
 
-  const res = llm.stream({
+  const events = llm.stream({
     conversation,
     prompt,
     specifications,
   });
 
-  if (res.isErr()) {
-    return new Err(new Error("No suggestions found"));
-  }
-
-  for await (const event of res.value) {
+  for await (const event of events) {
     if (event.type === "tool_call") {
       const parsedArguments = safeParseJSON(event.content.arguments);
       if (parsedArguments.isErr()) {

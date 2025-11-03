@@ -84,7 +84,12 @@ export async function* streamLLMEvents({
         textDelta = "";
         yield {
           type: "error" as const,
-          content: { message: "Maximum length reached", code: 413 },
+          content: {
+            type: "maximum_length",
+            isRetryable: false,
+            message: "Maximum length reached",
+            statusCode: 0,
+          },
           metadata,
         };
         break;
@@ -96,8 +101,10 @@ export async function* streamLLMEvents({
         yield {
           type: "error" as const,
           content: {
+            type: "stop_error",
+            isRetryable: false,
             message: "An error occurred during completion",
-            code: 500,
+            statusCode: 0,
           },
           metadata,
         };

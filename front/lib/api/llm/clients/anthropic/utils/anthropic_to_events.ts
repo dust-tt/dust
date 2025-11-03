@@ -211,8 +211,10 @@ function* handleStopReason(
       yield {
         type: "error",
         content: {
+          type: "stop_error",
           message: `Stop reason: ${stopReason}`,
-          code: 0,
+          isRetryable: false,
+          statusCode: 0,
         },
         metadata,
       };
