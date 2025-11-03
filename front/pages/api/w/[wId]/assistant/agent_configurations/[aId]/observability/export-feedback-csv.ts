@@ -33,8 +33,13 @@ const CSV_HEADERS = [
 
 function escapeCsvField(v: unknown): string {
   const s = v === undefined || v === null ? "" : String(v);
+  // Neutralize formula injection by prefixing dangerous characters with a single quote
+  // This prevents spreadsheet software from interpreting the field as a formula
+  const FORMULA_CHARS = ["=", "+", "-", "@"];
+  const neutralized =
+    s.length > 0 && FORMULA_CHARS.includes(s[0]) ? `'${s}` : s;
   // Always quote and escape quotes by doubling.
-  const escaped = s.replace(/"/g, '""');
+  const escaped = neutralized.replace(/"/g, '""');
   return `"${escaped}"`;
 }
 
