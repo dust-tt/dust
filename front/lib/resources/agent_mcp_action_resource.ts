@@ -605,7 +605,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }): Promise<void> {
     await this.update({
       status: "errored",
-      executionDurationMs,
+      executionDurationMs: Math.round(executionDurationMs),
     });
   }
 
@@ -616,7 +616,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }): Promise<void> {
     await this.update({
       status: "succeeded",
-      executionDurationMs,
+      executionDurationMs: Math.round(executionDurationMs),
     });
   }
 
