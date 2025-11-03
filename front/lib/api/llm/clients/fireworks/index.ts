@@ -48,12 +48,14 @@ export class FireworksLLM extends LLM {
       clientId: "openai_responses",
     });
 
-    this.reasoning = isOpenAIResponsesWhitelistedReasoningModelId(modelId)
-      ? {
-          effort: REASONING_EFFORT_TO_OPENAI_REASONING[this.reasoningEffort],
-          summary: "auto",
-        }
-      : null;
+    this.reasoning =
+      isOpenAIResponsesWhitelistedReasoningModelId(modelId) &&
+      this.reasoningEffort
+        ? {
+            effort: REASONING_EFFORT_TO_OPENAI_REASONING[this.reasoningEffort],
+            summary: "auto",
+          }
+        : null;
 
     const { FIREWORKS_API_KEY } = dustManagedCredentials();
     if (!FIREWORKS_API_KEY) {

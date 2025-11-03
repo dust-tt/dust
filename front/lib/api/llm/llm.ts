@@ -16,8 +16,8 @@ import { normalizeError, Ok } from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
-  protected temperature: number;
-  protected reasoningEffort: ReasoningEffort;
+  protected temperature: number | null;
+  protected reasoningEffort: ReasoningEffort | null;
   protected bypassFeatureFlag: boolean;
   protected metadata: LLMClientMetadata;
 

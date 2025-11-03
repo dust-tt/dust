@@ -59,7 +59,7 @@ export class GoogleLLM extends LLM {
         model: this.modelId,
         contents,
         config: {
-          temperature: this.temperature,
+          temperature: this.temperature ?? undefined,
           tools: specifications.map(toTool),
           systemInstruction: { text: prompt },
           // We only need one

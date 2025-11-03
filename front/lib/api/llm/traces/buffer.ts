@@ -61,9 +61,9 @@ export class LLMTraceBuffer {
     conversation: ModelConversationTypeMultiActions;
     modelId: ModelIdType;
     prompt: string;
-    reasoningEffort: ReasoningEffort;
+    reasoningEffort: ReasoningEffort | null;
     specifications: unknown[];
-    temperature: number;
+    temperature: number | null;
   }) {
     this.input = {
       conversation,
