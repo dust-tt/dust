@@ -595,6 +595,7 @@ pub async fn openai_responses_api_completion(
             reasoning_tokens: usage
                 .output_tokens_details
                 .and_then(|details| details.reasoning_tokens),
+            cache_creation_input_tokens: None,
         }),
         provider_request_id: request_id,
         logprobs: None,

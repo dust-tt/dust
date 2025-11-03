@@ -1066,6 +1066,7 @@ impl LLM for MistralAILLM {
                 prompt_tokens: u.prompt_tokens,
                 cached_tokens: None,
                 reasoning_tokens: None,
+                cache_creation_input_tokens: None,
             }),
             provider_request_id: request_id,
             logprobs: None,
