@@ -219,10 +219,10 @@ export function compareAgentsForSort(
     return aGlobalIndex - bGlobalIndex;
   }
   if (aGlobalIndex !== -1) {
-    return 1;
+    return -1;
   }
   if (bGlobalIndex !== -1) {
-    return -1;
+    return 1;
   }
 
   // Check for agents with non-global 'scope'
