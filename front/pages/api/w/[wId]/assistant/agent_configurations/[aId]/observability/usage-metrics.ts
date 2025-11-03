@@ -83,11 +83,11 @@ async function handler(
 
       const owner = auth.getNonNullableWorkspace();
 
-      const baseQuery = buildAgentAnalyticsBaseQuery(
-        owner.sId,
-        assistant.sId,
-        days
-      );
+      const baseQuery = buildAgentAnalyticsBaseQuery({
+        workspaceId: owner.sId,
+        agentId: assistant.sId,
+        days,
+      });
 
       const usageMetricsResult = await fetchUsageMetrics(baseQuery, interval);
 

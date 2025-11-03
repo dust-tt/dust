@@ -1,8 +1,12 @@
-import type { estypes } from "@elastic/elasticsearch";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
+import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  buildAgentAnalyticsBaseQuery,
+  buildFeedbackQuery,
+} from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,7 +16,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { AgentMessageAnalyticsData } from "@app/types/assistant/analytics";
 
-const DEFAULT_PERIOD = 30;
 const PAGE_SIZE = 1000;
 
 const QuerySchema = z.object({
@@ -20,21 +23,13 @@ const QuerySchema = z.object({
   uploadAsFile: z.enum(["true", "false"]).optional(),
 });
 
-function buildAgentAnalyticsBaseQuery(
-  workspaceId: string,
-  agentId: string,
-  days: number
-): estypes.QueryDslQueryContainer {
-  return {
-    bool: {
-      filter: [
-        { term: { workspace_id: workspaceId } },
-        { term: { agent_id: agentId } },
-        { range: { timestamp: { gte: `now-${days}d/d` } } },
-      ],
-    },
-  };
-}
+// Build CSV header
+const CSV_HEADERS = [
+  "feedback_content",
+  "thumbDirection",
+  "feedback_created_at",
+  "agent_message_content",
+];
 
 function escapeCsvField(v: unknown): string {
   const s = v === undefined || v === null ? "" : String(v);
@@ -117,28 +112,21 @@ async function handler(
 
   const { days, uploadAsFile } = q.data;
 
-  // Build CSV header
-  const header = [
-    "feedback_content",
-    "thumbDirection",
-    "feedback_created_at",
-    "agent_message_content",
-  ];
-
-  const baseQuery = buildAgentAnalyticsBaseQuery(
-    owner.sId,
-    assistant.sId,
-    days ?? DEFAULT_PERIOD
-  );
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId: owner.sId,
+    agentId: assistant.sId,
+    days: days ?? DEFAULT_PERIOD_DAYS,
+    feedbackNestedQuery: buildFeedbackQuery({ dismissed: false }),
+  });
 
   // Collect rows (incremental implementation: accumulate in memory)
   const rows: string[] = [];
-  rows.push(header.map(escapeCsvField).join(","));
+  rows.push(CSV_HEADERS.map(escapeCsvField).join(","));
 
   // Fetch first page deterministically (extend to pagination later if needed)
   const result = await searchAnalytics<AgentMessageAnalyticsData>(baseQuery, {
     size: PAGE_SIZE,
-    sort: [{ timestamp: "asc" } as estypes.SortCombinations],
+    sort: [{ timestamp: "asc" }],
   });
   if (result.isErr()) {
     return apiError(req, res, {

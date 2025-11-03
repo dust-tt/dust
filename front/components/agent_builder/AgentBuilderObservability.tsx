@@ -19,16 +19,16 @@ import {
   CHART_CONTAINER_HEIGHT_CLASS,
   OBSERVABILITY_TIME_RANGE,
 } from "@app/components/agent_builder/observability/constants";
+import { ExportFeedbackCsvButton } from "@app/components/agent_builder/observability/ExportFeedbackCSVButton";
 import {
   ObservabilityProvider,
   useObservability,
 } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { StartConversationWithFredButton } from "@app/components/agent_builder/observability/StartConversationWithFredButton";
 import {
   useAgentConfiguration,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
-import { ExportFeedbackCsvButton } from "./observability/ExportFeedbackCSVButton";
-import { StartConversationWithFredButton } from "./observability/StartConversationWithFredButton";
 
 interface AgentBuilderObservabilityProps {
   agentConfigurationSId: string;
@@ -196,14 +196,6 @@ function HeaderGlobalSelector({
       )}
     </div>
   );
-}
-
-function HeaderActions({
-  agentConfigurationSId,
-}: {
-  agentConfigurationSId: string;
-}) {
-  return <div className="flex items-center gap-2"></div>;
 }
 
 function ChartContainerSkeleton() {
