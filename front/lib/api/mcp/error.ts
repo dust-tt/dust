@@ -19,12 +19,13 @@ type HandleErrorParams = {
 /**
  * Handles MCP action errors with type-safe discriminated union based on error severity.
  */
-export async function handleMCPActionError(
-  params: HandleErrorParams
-): Promise<MCPErrorEvent | MCPSuccessEvent> {
-  const { action, agentConfiguration, agentMessage, errorContent, status } =
-    params;
-
+export async function handleMCPActionError({
+  action,
+  agentConfiguration,
+  agentMessage,
+  errorContent,
+  status,
+}: HandleErrorParams): Promise<MCPErrorEvent | MCPSuccessEvent> {
   await AgentMCPActionOutputItem.bulkCreate(
     errorContent.map((item) => ({
       workspaceId: action.workspaceId,
