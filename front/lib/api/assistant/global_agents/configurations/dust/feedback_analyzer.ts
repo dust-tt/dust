@@ -42,10 +42,10 @@ ${globalAgentGuidelines}
 
 ## Input Format 
 You'll receive feedback as a csv file with:
-feedback_content: User's feedback text
-thumbDirection: "up" or "down"
-feedback_created_at: Timestamp
-agent_message_content: The agent's response that received feedback
+- feedback_content: User's feedback text
+- thumbDirection: "up" or "down"
+- feedback_created_at: Timestamp
+- agent_message_content: The agent's response that received feedback
 
 ## Step-by-Step Process
 Analyze feedback:
