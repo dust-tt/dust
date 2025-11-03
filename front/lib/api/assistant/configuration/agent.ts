@@ -84,30 +84,40 @@ export async function getAgentConfigurationsWithVersion<
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  assert(
-    !agentIdsWithVersion.some(({ agentId }) => isGlobalAgentId(agentId)),
-    "Global agents are not versioned."
-  );
+  const globalAgentIds = agentIdsWithVersion
+    .map(({ agentId }) => agentId)
+    .filter(isGlobalAgentId);
 
-  const agentModels = await AgentConfiguration.findAll({
+  let globalAgents: AgentConfigurationType[] = [];
+  if (globalAgentIds.length > 0) {
+    globalAgents = await getGlobalAgents(auth, globalAgentIds, variant);
+  }
+
+  const workspaceAgentModels = await AgentConfiguration.findAll({
     where: {
       workspaceId: owner.id,
-      [Op.or]: agentIdsWithVersion.map(
-        ({ agentId: sId, agentVersion: version }) => ({
+      [Op.or]: agentIdsWithVersion
+        .filter(({ agentId }) => !isGlobalAgentId(agentId))
+        .map(({ agentId: sId, agentVersion: version }) => ({
           sId,
           version,
-        })
-      ),
+        })),
     },
   });
 
   const allowedAgentModels = await filterAgentsByRequestedSpaces(
     auth,
-    agentModels
+    workspaceAgentModels
   );
-  const agents = await enrichAgentConfigurations(auth, allowedAgentModels, {
-    variant,
-  });
+  const workspaceAgents = await enrichAgentConfigurations(
+    auth,
+    allowedAgentModels,
+    {
+      variant,
+    }
+  );
+
+  const agents = [...globalAgents, ...workspaceAgents];
 
   return agents as V extends "light"
     ? LightAgentConfigurationType[]
@@ -247,7 +257,7 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
   | null
 > {
   return tracer.trace("getAgentConfiguration", async () => {
-    if (agentVersion !== undefined) {
+    if (agentVersion !== undefined && !isGlobalAgentId(agentId)) {
       const [agent] = await getAgentConfigurationsWithVersion(
         auth,
         [{ agentId, agentVersion }],
