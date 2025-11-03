@@ -7,7 +7,6 @@ import {
   AgentMessage,
   AgentMessageFeedback,
   ConversationModel,
-  ConversationParticipantModel,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
@@ -43,82 +42,44 @@ async function backfillAgentAnalytics(
     "Starting agent analytics backfill"
   );
 
-  // First, get all conversations that were updated in the last 30 days
-  // Use ConversationParticipantModel as it gets updated when messages are posted
-  // This allows us to iterate per conversation and leverage the full index
-  const participants = await ConversationParticipantModel.findAll({
+  const allAgentMessages = await Message.findAll({
     where: {
       workspaceId: workspace.id,
-      updatedAt: {
+      agentMessageId: {
+        [Op.ne]: null,
+      },
+      createdAt: {
         [Op.gte]: thirtyDaysAgo,
       },
     },
-    attributes: ["conversationId"],
-  });
-
-  // Extract unique conversation IDs
-  const conversationIds = [
-    ...new Set(participants.map((p) => p.conversationId)),
-  ];
-
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      conversationCount: conversationIds.length,
-    },
-    "Found conversations to process"
-  );
-
-  let allAgentMessages: Message[] = [];
-
-  // Query messages per conversation to leverage the (workspaceId, conversationId, createdAt) index
-  await concurrentExecutor(
-    conversationIds,
-    async (conversationId) => {
-      const messages = await Message.findAll({
-        where: {
-          workspaceId: workspace.id,
-          conversationId,
-          agentMessageId: {
-            [Op.ne]: null,
-          },
-          createdAt: {
-            [Op.gte]: thirtyDaysAgo,
-          },
-        },
+    include: [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: true,
         include: [
           {
-            model: AgentMessage,
-            as: "agentMessage",
-            required: true,
+            model: AgentMessageFeedback,
+            as: "feedbacks",
+            required: false,
             include: [
               {
-                model: AgentMessageFeedback,
-                as: "feedbacks",
+                model: UserModel,
+                as: "user",
                 required: false,
-                include: [
-                  {
-                    model: UserModel,
-                    as: "user",
-                    required: false,
-                  },
-                ],
               },
             ],
           },
-          {
-            model: ConversationModel,
-            as: "conversation",
-            required: true,
-          },
         ],
-        order: [["createdAt", "ASC"]],
-      });
-
-      allAgentMessages.push(...messages);
-    },
-    { concurrency: 5 }
-  );
+      },
+      {
+        model: ConversationModel,
+        as: "conversation",
+        required: true,
+      },
+    ],
+    order: [["createdAt", "ASC"]],
+  });
 
   logger.info(
     {
