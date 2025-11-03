@@ -123,36 +123,27 @@ export function useCreateWebhookSource({
   const createWebhookSource = async (
     input: PostWebhookSourcesBody
   ): Promise<WebhookSourceForAdminType | null> => {
-    try {
-      const response = await fetch(`/api/w/${owner.sId}/webhook_sources`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(input),
-      });
+    const response = await fetch(`/api/w/${owner.sId}/webhook_sources`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+    });
 
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
-
-      sendNotification({
-        type: "success",
-        title: `Successfully created webhook source`,
-      });
-
-      void mutateWebhookSourcesWithViews();
-
-      const result = await response.json();
-      return result.webhookSource;
-    } catch (error) {
-      sendNotification({
-        type: "error",
-        title: `Failed to create webhook source`,
-      });
-
-      return null;
+    if (!response.ok) {
+      throw new Error("Network response was not ok");
     }
+
+    sendNotification({
+      type: "success",
+      title: `Successfully created webhook source`,
+    });
+
+    void mutateWebhookSourcesWithViews();
+
+    const result = await response.json();
+    return result.webhookSource;
   };
 
   return createWebhookSource;
