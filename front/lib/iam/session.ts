@@ -147,7 +147,10 @@ export function makeGetServerSidePropsRequirementsWrapper<
       const workspace = auth ? auth.workspace() : await getWorkspace(context);
       const maintenance = workspace?.metadata?.maintenance;
 
-      if (maintenance) {
+      // Allow Poke to work during maintenance
+      const isPokeEndpoint = context.resolvedUrl.startsWith("/poke/");
+
+      if (maintenance && !isPokeEndpoint) {
         return {
           redirect: {
             permanent: false,
