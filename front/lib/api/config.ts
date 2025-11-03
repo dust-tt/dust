@@ -133,6 +133,16 @@ const config = {
       "DUST_APPS_HELPER_DATASOURCE_VIEW_ID"
     );
   },
+  getDustAppsInteractiveContentDatasourceViewId: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "DUST_APPS_INTERACTIVE_CONTENT_DATASOURCE_VIEW_ID"
+    );
+  },
+  getDustAppsInteractiveContentFeedbackAnalysisTemplateFileName: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "DUST_APPS_INTERACTIVE_CONTENT_FEEDBACK_ANALYSIS_TEMPLATE_FILE_NAME"
+    );
+  },
   getRegionResolverSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
   },
