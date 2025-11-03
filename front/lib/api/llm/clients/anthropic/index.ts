@@ -1,7 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import { CLAUDE_4_THINKING_BUDGET_TOKENS } from "@app/lib/api/llm/clients/anthropic/utils";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
@@ -14,12 +13,11 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
+  StreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import type {
-  ModelConversationTypeMultiActions,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
+import type { Authenticator } from "@app/lib/auth";
+import type { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
 export class AnthropicLLM extends LLM {
@@ -31,13 +29,23 @@ export class AnthropicLLM extends LLM {
   private thinkingConfig?: ThinkingConfigParam;
   private modelConfig: (typeof SUPPORTED_MODEL_CONFIGS)[number];
 
-  constructor({
-    modelId,
-    temperature,
-    reasoningEffort,
-    bypassFeatureFlag,
-  }: LLMParameters & { modelId: AnthropicWhitelistedModelId }) {
-    super({ modelId, temperature, reasoningEffort, bypassFeatureFlag });
+  constructor(
+    auth: Authenticator,
+    {
+      bypassFeatureFlag,
+      context,
+      modelId,
+      reasoningEffort,
+      temperature,
+    }: LLMParameters & { modelId: AnthropicWhitelistedModelId }
+  ) {
+    super(auth, {
+      modelId,
+      temperature,
+      reasoningEffort,
+      bypassFeatureFlag,
+      context,
+    });
     const { ANTHROPIC_API_KEY } = dustManagedCredentials();
     if (!ANTHROPIC_API_KEY) {
       throw new Error("ANTHROPIC_API_KEY environment variable is required");
@@ -63,11 +71,7 @@ export class AnthropicLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: {
-    conversation: ModelConversationTypeMultiActions;
-    prompt: string;
-    specifications: AgentActionSpecification[];
-  }): AsyncGenerator<LLMEvent> {
+  }: StreamParameters): AsyncGenerator<LLMEvent> {
     const messages = conversation.messages.map(toMessage);
 
     const events = this.client.messages.stream({

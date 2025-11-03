@@ -1,6 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import {
   toContent,
@@ -12,8 +11,9 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
+  StreamParameters,
 } from "@app/lib/api/llm/types/options";
-import type { ModelConversationTypeMultiActions } from "@app/types";
+import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types";
 
 export class GoogleLLM extends LLM {
@@ -22,17 +22,22 @@ export class GoogleLLM extends LLM {
     clientId: "google_ai_studio",
     modelId: this.modelId,
   };
-  constructor({
-    modelId,
-    temperature,
-    reasoningEffort,
-    bypassFeatureFlag,
-  }: LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId }) {
-    super({
-      modelId,
-      temperature,
-      reasoningEffort,
+  constructor(
+    auth: Authenticator,
+    {
       bypassFeatureFlag,
+      context,
+      modelId,
+      reasoningEffort,
+      temperature,
+    }: LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId }
+  ) {
+    super(auth, {
+      bypassFeatureFlag,
+      context,
+      modelId,
+      reasoningEffort,
+      temperature,
     });
     const { GOOGLE_AI_STUDIO_API_KEY } = dustManagedCredentials();
     if (!GOOGLE_AI_STUDIO_API_KEY) {
@@ -49,11 +54,7 @@ export class GoogleLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: {
-    conversation: ModelConversationTypeMultiActions;
-    prompt: string;
-    specifications: AgentActionSpecification[];
-  }): AsyncGenerator<LLMEvent> {
+  }: StreamParameters): AsyncGenerator<LLMEvent> {
     const contents = await Promise.all(conversation.messages.map(toContent));
 
     const generateContentResponses =

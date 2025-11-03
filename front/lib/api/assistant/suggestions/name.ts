@@ -1,6 +1,7 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import { getLLM } from "@app/lib/api/llm";
+import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type {
@@ -98,10 +99,18 @@ export async function getBuilderNameSuggestions(
     "suggest good names for the agent. Names can not include whitespaces.";
   const conversation: ModelConversationTypeMultiActions =
     getConversationContext(inputs);
-  const llm = await getLLM(auth, {
-    modelId: "mistral-small-latest",
-    bypassFeatureFlag: true,
-  });
+  const traceContext: LLMTraceContext = {
+    operationType: "name_suggestion",
+    userId: auth.user()?.sId,
+  };
+  const llm = await getLLM(
+    auth,
+    {
+      modelId: "mistral-small-latest",
+      bypassFeatureFlag: true,
+    },
+    traceContext
+  );
 
   if (llm === null) {
     return new Err(new Error("Model not found"));

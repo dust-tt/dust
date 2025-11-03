@@ -1,6 +1,5 @@
 import { Mistral } from "@mistralai/mistralai";
 
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import {
   toMessage,
@@ -12,8 +11,9 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
+  StreamParameters,
 } from "@app/lib/api/llm/types/options";
-import type { ModelConversationTypeMultiActions } from "@app/types";
+import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types";
 
 export class MistralLLM extends LLM {
@@ -22,17 +22,22 @@ export class MistralLLM extends LLM {
     clientId: "mistral",
     modelId: this.modelId,
   };
-  constructor({
-    modelId,
-    temperature,
-    reasoningEffort,
-    bypassFeatureFlag,
-  }: LLMParameters & { modelId: MistralWhitelistedModelId }) {
-    super({
-      modelId,
-      temperature,
-      reasoningEffort,
+  constructor(
+    auth: Authenticator,
+    {
       bypassFeatureFlag,
+      context,
+      modelId,
+      reasoningEffort,
+      temperature,
+    }: LLMParameters & { modelId: MistralWhitelistedModelId }
+  ) {
+    super(auth, {
+      bypassFeatureFlag,
+      context,
+      modelId,
+      reasoningEffort,
+      temperature,
     });
     const { MISTRAL_API_KEY } = dustManagedCredentials();
     if (!MISTRAL_API_KEY) {
@@ -47,11 +52,7 @@ export class MistralLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: {
-    conversation: ModelConversationTypeMultiActions;
-    prompt: string;
-    specifications: AgentActionSpecification[];
-  }): AsyncGenerator<LLMEvent> {
+  }: StreamParameters): AsyncGenerator<LLMEvent> {
     const messages = [
       {
         role: "system" as const,
