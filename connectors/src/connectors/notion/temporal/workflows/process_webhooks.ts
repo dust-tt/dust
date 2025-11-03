@@ -1,4 +1,9 @@
-import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
+import {
+  condition,
+  continueAsNew,
+  proxyActivities,
+  setHandler,
+} from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
 import type { NotionWebhookEvent } from "@connectors/connectors/notion/temporal/signals";
@@ -17,25 +22,32 @@ export async function notionProcessWebhooksWorkflow({
   connectorId: ModelId;
 }) {
   const eventQueue: NotionWebhookEvent[] = [];
+  let processedCount = 0;
 
-  // Set up signal handler to receive webhook events
   setHandler(notionWebhookSignal, (event: NotionWebhookEvent) => {
     eventQueue.push(event);
   });
 
-  // Loop forever, processing events from the queue
-  // REVIEW: should we use continueAsNew pattern here to avoid long history?
-  while (true) {
-    if (eventQueue.length > 0) {
+  for (;;) {
+    // Wait until at least one event is present; wakes instantly on signal
+    await condition(() => eventQueue.length > 0);
+
+    // Drain the queue before waiting again
+    while (eventQueue.length > 0) {
       const event = eventQueue.shift();
       if (event) {
         await processWebhookEventActivity({
           connectorId,
           event,
         });
+        processedCount++;
       }
-    } else {
-      await sleep("10 seconds");
+    }
+
+    // After 4000 events, call continueAsNew() to limit history growth
+    if (processedCount > 4000) {
+      await continueAsNew({ connectorId });
+      return;
     }
   }
 }
