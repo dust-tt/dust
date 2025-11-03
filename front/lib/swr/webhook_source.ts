@@ -2,7 +2,12 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  emptyArray,
+  fetcher,
+  getErrorFromResponse,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type { GetWebhookRequestsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers/[tId]/webhook_requests";
 import type { GetWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/webhook_source_views";
 import type {
@@ -132,14 +137,13 @@ export function useCreateWebhookSource({
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      const errorMessage = errorData.error?.message ?? "Unknown error";
+      const errorData = await getErrorFromResponse(response);
+
       sendNotification({
         type: "error",
-        title: "Failed to create webhook source",
-        description: errorMessage,
+        title: `Error archiving agents`,
+        description: `Error: ${errorData.message}`,
       });
-
       return null;
     }
 
