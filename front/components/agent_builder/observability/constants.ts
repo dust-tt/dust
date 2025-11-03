@@ -16,6 +16,14 @@ export const USAGE_METRICS_LEGEND = [
   { key: "activeUsers", label: "Active users" },
 ] as const;
 
+export const LATENCY_PALETTE = {
+  average: "text-[hsl(var(--chart-5))]",
+} as const;
+
+export const LATENCY_LEGEND = [
+  { key: "average", label: "Average latency" },
+] as const;
+
 export const CHART_HEIGHT = 260;
 export const CHART_CONTAINER_HEIGHT_CLASS = "h-100";
 

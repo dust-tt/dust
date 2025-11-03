@@ -29,6 +29,7 @@ import {
   useAgentConfiguration,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
+import { LatencyChart } from "./observability/charts/LatencyChart";
 
 interface AgentBuilderObservabilityProps {
   agentConfigurationSId: string;
@@ -79,6 +80,7 @@ export function AgentBuilderObservability({
               <ChartContainerSkeleton />
               <ChartContainerSkeleton />
               <ChartContainerSkeleton />
+              <ChartContainerSkeleton />
             </>
           ) : (
             <>
@@ -91,6 +93,10 @@ export function AgentBuilderObservability({
                 agentConfigurationId={agentConfiguration.sId}
               />
               <ToolUsageChart
+                workspaceId={owner.sId}
+                agentConfigurationId={agentConfiguration.sId}
+              />
+              <LatencyChart
                 workspaceId={owner.sId}
                 agentConfigurationId={agentConfiguration.sId}
               />
