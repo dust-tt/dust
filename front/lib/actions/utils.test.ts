@@ -4,7 +4,10 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 
-import { hasUserAlwaysApprovedTool, setUserAlwaysApprovedTool } from "./utils";
+import {
+  hasUserAlwaysApprovedTool,
+  setUserAlwaysApprovedTool,
+} from "./tool_status";
 
 describe("Tool validation utilities", () => {
   let user: UserResource;
