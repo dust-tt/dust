@@ -35,7 +35,7 @@ export function getWebhookFormDefaultValues({
     name:
       trigger?.name ??
       (webhookSourceView
-        ? `${webhookSourceView.webhookSource.name} trigger (${asDisplayName(webhookSourceView.provider)})`
+        ? `${webhookSourceView.webhookSource.name} trigger ${webhookSourceView.provider ? "(" + asDisplayName(webhookSourceView.provider) + ")" : ""}`
         : "Webhook Trigger"),
     enabled: trigger?.enabled ?? true,
     customPrompt: trigger?.customPrompt ?? "",

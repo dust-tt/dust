@@ -1,4 +1,4 @@
-import { Label, Spinner, TextArea } from "@dust-tt/sparkle";
+import { ContentMessage, Label, Spinner, TextArea } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
@@ -167,7 +167,7 @@ export function WebhookEditionFilters({
       )}
 
       {webhookSourceView?.provider === null && (
-        <>
+        <div className="space-y-2">
           <Label htmlFor="webhook-filter-description">
             Filter Expression (optional)
           </Label>
@@ -175,6 +175,23 @@ export function WebhookEditionFilters({
             Enter a filter that will be used to filter the webhook payload JSON.
             Will always trigger if left empty.
           </p>
+          <ContentMessage variant="highlight" size="lg" title="Syntax">
+            This trigger uses a custom webhook without an integrated provider.
+            As a result, Dust is unable to automatically generate a payload
+            filter. You can manually write a filter expression using our syntax
+            to specify conditions on your webhook's payload.
+            <br />
+            See documentation on {""}
+            <a
+              href="https://docs.dust.tt/docs/filter-webhooks-payload#/f"
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              filter expressions
+            </a>{" "}
+            to learn how to write them.
+          </ContentMessage>
           <TextArea
             id="webhook-filter-description"
             placeholder={
@@ -185,7 +202,7 @@ export function WebhookEditionFilters({
             disabled={!isEditor}
             error={filterError?.message}
           />
-        </>
+        </div>
       )}
 
       <div className="pt-2">{filterGenerationResult}</div>
