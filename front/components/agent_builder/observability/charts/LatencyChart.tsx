@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   Area,
   AreaChart,
@@ -65,7 +64,11 @@ export function LatencyChart({
   agentConfigurationId: string;
 }) {
   const { period } = useObservability();
-  const { latency, isLatencyLoading, isLatencyError } = useAgentLatency({
+  const {
+    latency: data,
+    isLatencyLoading,
+    isLatencyError,
+  } = useAgentLatency({
     workspaceId,
     agentConfigurationId,
     days: period,
@@ -77,8 +80,6 @@ export function LatencyChart({
     label,
     colorClassName: LATENCY_PALETTE[key],
   }));
-
-  const data = useMemo(() => latency?.points ?? [], [latency?.points]);
 
   return (
     <ChartContainer

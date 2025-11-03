@@ -798,7 +798,7 @@ export function useAgentUsageMetrics({
   );
 
   return {
-    usageMetrics: data ?? null,
+    usageMetrics: data?.points ?? emptyArray(),
     isUsageMetricsLoading: !error && !data && !disabled,
     isUsageMetricsError: error,
     isUsageMetricsValidating: isValidating,
@@ -825,7 +825,7 @@ export function useAgentLatency({
   );
 
   return {
-    latency: data ?? null,
+    latency: data?.points ?? emptyArray(),
     isLatencyLoading: !error && !data && !disabled,
     isLatencyError: error,
     isLatencyValidating: isValidating,
@@ -852,7 +852,7 @@ export function useAgentFeedbackDistribution({
   );
 
   return {
-    feedbackDistribution: data ?? null,
+    feedbackDistribution: data?.points ?? emptyArray(),
     isFeedbackDistributionLoading: !error && !data && !disabled,
     isFeedbackDistributionError: error,
     isFeedbackDistributionValidating: isValidating,
@@ -879,7 +879,7 @@ export function useAgentVersionMarkers({
   );
 
   return {
-    versionMarkers: data?.versionMarkers ?? null,
+    versionMarkers: data?.versionMarkers ?? emptyArray(),
     isVersionMarkersLoading: !error && !data && !disabled,
     isVersionMarkersError: error,
     isVersionMarkersValidating: isValidating,
@@ -906,7 +906,7 @@ export function useAgentToolExecution({
   );
 
   return {
-    toolExecutionByVersion: data?.byVersion ?? null,
+    toolExecutionByVersion: data?.byVersion ?? emptyArray(),
     isToolExecutionLoading: !error && !data && !disabled,
     isToolExecutionError: error,
     isToolExecutionValidating: isValidating,
@@ -933,7 +933,7 @@ export function useAgentToolStepIndex({
   );
 
   return {
-    toolStepIndexByStep: data?.byStep ?? null,
+    toolStepIndexByStep: data?.byStep ?? emptyArray(),
     isToolStepIndexLoading: !error && !data && !disabled,
     isToolStepIndexError: error,
     isToolStepIndexValidating: isValidating,

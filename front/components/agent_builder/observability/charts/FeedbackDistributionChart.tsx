@@ -60,12 +60,12 @@ export function FeedbackDistributionChart({
   const data = useMemo(
     () =>
       filterTimeSeriesByVersionWindow(
-        feedbackDistribution?.points,
+        feedbackDistribution,
         mode,
         selectedVersion,
-        versionMarkers ?? []
+        versionMarkers
       ),
-    [feedbackDistribution?.points, mode, selectedVersion, versionMarkers]
+    [feedbackDistribution, mode, selectedVersion, versionMarkers]
   );
 
   return (

@@ -183,7 +183,7 @@ export function useToolUsageData(params: {
 
   switch (mode) {
     case "version": {
-      const rawData = exec.toolExecutionByVersion ?? [];
+      const rawData = exec.toolExecutionByVersion;
       let normalizedData = normalizeVersionData(rawData);
       if (filterVersion) {
         const vv = `v${filterVersion}`;
