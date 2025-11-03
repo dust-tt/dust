@@ -94,7 +94,7 @@ export function WebhookEditionFilters({
         }
       }
     },
-    { delay: 500 }
+    { delayMs: 500 }
   );
 
   // Update form field when naturalDescription changes

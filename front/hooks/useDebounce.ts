@@ -59,7 +59,7 @@ export function useDebounce(
 }
 
 interface UseDebounceWithAbortOptions {
-  delay?: number;
+  delayMs?: number;
 }
 
 /**
@@ -92,7 +92,7 @@ export function useDebounceWithAbort<T = string>(
   asyncFn: (value: T, signal: AbortSignal) => Promise<void>,
   options: UseDebounceWithAbortOptions = {}
 ) {
-  const { delay = 500 } = options;
+  const { delayMs = 500 } = options;
 
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -118,9 +118,9 @@ export function useDebounceWithAbort<T = string>(
 
         // Execute async function
         void asyncFn(value, signal);
-      }, delay);
+      }, delayMs);
     },
-    [asyncFn, delay]
+    [asyncFn, delayMs]
   );
 
   // Cleanup on unmount

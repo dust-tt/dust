@@ -105,7 +105,7 @@ export function ScheduleEditionScheduler({
         }
       }
     },
-    { delay: 500 }
+    { delayMs: 500 }
   );
 
   const cronDescription = useMemo(() => {
