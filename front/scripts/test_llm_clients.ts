@@ -270,6 +270,24 @@ const TEST_CONVERSATIONS: TestConversation[] = [
   },
 ];
 
+/**
+ * Runs a test for the LLM client.
+ *
+ * To run all the tests:
+ * ```bash
+ * npx tsx scripts/test_llm_clients.ts --execute
+ * ```
+ *
+ * To run a single test conversation for a single provider (for each model):
+ * ```bash
+ * npx tsx scripts/test_llm_clients.ts --conversationIds simple-math --providers openai --execute
+ * ```
+ *
+ * @param config The test configuration.
+ * @param conversation The conversation to test.
+ * @param execute Whether to execute the test.
+ * @returns A promise that resolves when the test is complete.
+ */
 async function runTest(
   config: TestConfig,
   conversation: TestConversation,
