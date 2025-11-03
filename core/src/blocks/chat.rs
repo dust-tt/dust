@@ -335,7 +335,7 @@ impl Block for Chat {
                         .collect::<Result<Vec<String>>>()?);
                 }
 
-                match extras.as_object().unwrap().keys().len() {
+                match extras.as_object().ok_or(anyhow!("Invalid `extras` in configuration for chat block `{}`: expecting an object", name))?.keys().len() {
                     0 => None,
                     _ => Some(extras),
                 }

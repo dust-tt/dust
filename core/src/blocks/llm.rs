@@ -410,7 +410,15 @@ impl Block for LLM {
                     extras["reasoning_effort"] = json!(s.clone());
                 }
 
-                match extras.as_object().unwrap().keys().len() {
+                match extras
+                    .as_object()
+                    .ok_or(anyhow!(
+                        "Invalid `extras` in configuration for llm block `{}`: expecting an object",
+                        name
+                    ))?
+                    .keys()
+                    .len()
+                {
                     0 => None,
                     _ => Some(extras),
                 }
