@@ -7,9 +7,16 @@ import type {
   ResponseInputContent,
   ResponseInputItem,
 } from "openai/resources/responses/responses";
+import type {
+  Reasoning,
+  ReasoningEffort as OpenAiReasoningEffort,
+} from "openai/resources/shared";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { ModelConversationTypeMultiActions } from "@app/types";
+import type {
+  ModelConversationTypeMultiActions,
+  ReasoningEffort,
+} from "@app/types";
 import type {
   Content,
   FunctionMessageTypeModel,
@@ -139,5 +146,27 @@ export function toTool(tool: AgentActionSpecification): FunctionTool {
     name: tool.name,
     description: tool.description,
     parameters,
+  };
+}
+
+const REASONING_EFFORT_TO_OPENAI_REASONING: {
+  [key in ReasoningEffort]: OpenAiReasoningEffort;
+} = {
+  none: null,
+  light: "low",
+  medium: "medium",
+  high: "high",
+};
+
+export function toReasoning(
+  reasoningEffort: ReasoningEffort | null
+): Reasoning | null {
+  if (!reasoningEffort) {
+    return null;
+  }
+
+  return {
+    effort: REASONING_EFFORT_TO_OPENAI_REASONING[reasoningEffort],
+    summary: "auto",
   };
 }
