@@ -1,16 +1,19 @@
 import { subDays } from "date-fns";
 import { Op } from "sequelize";
 
+import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
+  AgentMessageFeedback,
   ConversationModel,
   ConversationParticipantModel,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -18,6 +21,7 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { storeAgentAnalyticsActivity } from "@app/temporal/analytics_queue/activities";
 import { LightWorkspaceType } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type { AgentMessageAnalyticsFeedback } from "@app/types/assistant/analytics";
 
 async function backfillAgentAnalytics(
   workspace: LightWorkspaceType,
@@ -87,6 +91,20 @@ async function backfillAgentAnalytics(
             model: AgentMessage,
             as: "agentMessage",
             required: true,
+            include: [
+              {
+                model: AgentMessageFeedback,
+                as: "feedbacks",
+                required: false,
+                include: [
+                  {
+                    model: UserModel,
+                    as: "user",
+                    required: false,
+                  },
+                ],
+              },
+            ],
           },
           {
             model: ConversationModel,
@@ -182,14 +200,32 @@ async function backfillAgentAnalytics(
             agentLoopArgs,
           });
 
+          // If there are feedbacks, update them directly (avoiding reloading from DB)
+          if (
+            message.agentMessage.feedbacks &&
+            message.agentMessage.feedbacks.length > 0
+          ) {
+            const feedbacks: AgentMessageAnalyticsFeedback[] =
+              message.agentMessage.feedbacks.map((feedback) => ({
+                feedback_id: feedback.id,
+                user_id: feedback.user?.sId ?? "unknown",
+                thumb_direction: feedback.thumbDirection,
+                content: feedback.content ?? undefined,
+                dismissed: feedback.dismissed,
+                is_conversation_shared: feedback.isConversationShared,
+                created_at: feedback.createdAt.toISOString(),
+              }));
+
+            await updateAnalyticsFeedback(auth, {
+              message: {
+                sId: message.sId,
+              },
+              createdTimestamp: userMessageRow.createdAt.getTime(),
+              feedbacks,
+            });
+          }
+
           successCount++;
-          logger.info(
-            {
-              messageId: message.sId,
-              workspaceId: workspace.sId,
-            },
-            "Successfully stored agent analytics"
-          );
         } catch (err) {
           errorCount++;
           logger.error(
@@ -208,11 +244,7 @@ async function backfillAgentAnalytics(
     logger.info(
       {
         workspaceId: workspace.sId,
-        messages: allAgentMessages.map((m) => ({
-          messageId: m.sId,
-          conversationId: m.conversation?.sId,
-          createdAt: m.createdAt,
-        })),
+        totalProcessed: allAgentMessages.length,
       },
       "Would process these messages (dry run)"
     );
