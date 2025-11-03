@@ -69,7 +69,7 @@ export default function ProfilePage({
 
             <Separator />
 
-            <Page.SectionHeader title={"Tools & Triggers"} />
+            <Page.SectionHeader title="Tools & Triggers" />
             <Tabs defaultValue="tools" className="w-full">
               <TabsList>
                 <TabsTrigger value="tools" label="Tools" icon={BoltIcon} />
