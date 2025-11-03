@@ -72,11 +72,11 @@ async function handler(
       if (workspaceId) {
         auth = await Authenticator.fromSuperUserSession(session, workspaceId);
 
-        // Hide plugins during any workspace maintenance
+        // Hide plugins during any workspace maintenance.
         const workspace = auth.workspace();
         const maintenance = workspace?.metadata?.maintenance;
         if (maintenance) {
-          // Return a fake plugin explaining why plugins are unavailable
+          // Return a fake plugin explaining why plugins are unavailable.
           res.status(200).json({
             plugins: [
               {
