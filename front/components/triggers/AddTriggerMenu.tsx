@@ -7,18 +7,20 @@ import {
   PlusIcon,
 } from "@dust-tt/sparkle";
 
+import { getIcon } from "@app/components/resources/resources_icons";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
 import type { WorkspaceType } from "@app/types";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import {
+  isWebhookProvider,
   WEBHOOK_PRESETS,
-  WEBHOOK_PROVIDERS,
 } from "@app/types/triggers/webhooks";
 
 type AddTriggerMenuProps = {
   owner: WorkspaceType;
-  createWebhook: (provider: WebhookProvider) => void;
+  createWebhook: (provider: WebhookProvider | null) => void;
 };
 
 export const AddTriggerMenu = ({
@@ -40,26 +42,26 @@ export const AddTriggerMenu = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {/* TODO(HOOTL): use the object directly instead */}
-        {WEBHOOK_PROVIDERS.filter((provider) => {
-          const preset = WEBHOOK_PRESETS[provider];
-          return (
-            preset.featureFlag === undefined || hasFeature(preset.featureFlag)
-          );
-        })
-          .sort((kindA, kindB) =>
-            WEBHOOK_PRESETS[kindA].name.localeCompare(
-              WEBHOOK_PRESETS[kindB].name
-            )
-          )
-          .map((kind) => (
+        {Object.entries(WEBHOOK_PRESETS)
+          .filter(([_, { featureFlag }]) => {
+            return featureFlag === undefined || hasFeature(featureFlag);
+          })
+          .map(([provider, preset]) => (
             <DropdownMenuItem
-              key={kind}
-              label={WEBHOOK_PRESETS[kind].name + " Webhook"}
-              icon={WEBHOOK_PRESETS[kind].icon}
-              onClick={() => createWebhook(kind)}
+              key={`trigger-${provider}`}
+              label={preset.name + " Trigger"}
+              icon={getIcon(preset.icon)}
+              onClick={() =>
+                isWebhookProvider(provider) && createWebhook(provider)
+              }
             />
           ))}
+        <DropdownMenuItem
+          key="custom"
+          label="Custom Webhook"
+          icon={getIcon(DEFAULT_WEBHOOK_ICON)}
+          onClick={() => createWebhook(null)}
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   );

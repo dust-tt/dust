@@ -18,6 +18,11 @@ import {
   makeQueryTextForList,
 } from "@app/components/actions/mcp/details/input_rendering";
 import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
+import {
+  MCPAgentMemoryEraseActionDetails,
+  MCPAgentMemoryRecordActionDetails,
+  MCPAgentMemoryRetrieveActionDetails,
+} from "@app/components/actions/mcp/details/MCPAgentMemoryActionDetails";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
 import {
   DataSourceNodeContentDetails,
@@ -32,6 +37,7 @@ import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/M
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import { MCPToolsetsEnableActionDetails } from "@app/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import {
@@ -47,6 +53,7 @@ import {
   GET_DATABASE_SCHEMA_TOOL_NAME,
   getInternalMCPServerIconByName,
   INCLUDE_TOOL_NAME,
+  INTERNAL_SERVERS_WITH_WEBSEARCH,
   isInternalMCPServerOfName,
   PROCESS_TOOL_NAME,
   SEARCH_TOOL_NAME,
@@ -201,7 +208,11 @@ export function MCPActionDetails({
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "web_search_&_browse")) {
+  if (
+    INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+      isInternalMCPServerOfName(mcpServerId, n)
+    )
+  ) {
     if (toolName === WEBSEARCH_TOOL_NAME) {
       return (
         <SearchResultDetails
@@ -247,7 +258,23 @@ export function MCPActionDetails({
     return <MCPDeepDiveActionDetails {...toolOutputDetailsProps} />;
   }
 
+  if (isInternalMCPServerOfName(mcpServerId, "agent_memory")) {
+    if (toolName === "retrieve") {
+      return (
+        <MCPAgentMemoryRetrieveActionDetails {...toolOutputDetailsProps} />
+      );
+    }
+    if (toolName === "record_entries") {
+      return <MCPAgentMemoryRecordActionDetails {...toolOutputDetailsProps} />;
+    }
+    if (toolName === "erase_entries") {
+      return <MCPAgentMemoryEraseActionDetails {...toolOutputDetailsProps} />;
+    }
+  }
   if (isInternalMCPServerOfName(mcpServerId, "toolsets")) {
+    if (toolName === "enable") {
+      return <MCPToolsetsEnableActionDetails {...toolOutputDetailsProps} />;
+    }
     return <MCPListToolsActionDetails {...toolOutputDetailsProps} />;
   }
 
@@ -312,12 +339,26 @@ export function GenericActionDetails({
     >
       {viewType !== "conversation" && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
-          <span className="heading-base">Inputs</span>
-          <RenderToolItemMarkdown text={inputs} type="input" />
+          <CollapsibleComponent
+            rootProps={{ defaultOpen: false }}
+            triggerChildren={
+              <div
+                className={cn(
+                  "text-foreground dark:text-foreground-night",
+                  "flex flex-row items-center gap-x-2"
+                )}
+              >
+                <span className="heading-base">Inputs</span>
+              </div>
+            }
+            contentChildren={
+              <RenderToolItemMarkdown text={inputs} type="input" />
+            }
+          />
 
           {action.output && (
             <CollapsibleComponent
-              rootProps={{ defaultOpen: !action.generatedFiles.length }}
+              rootProps={{ defaultOpen: false }}
               triggerChildren={
                 <div
                   className={cn(

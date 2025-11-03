@@ -542,15 +542,13 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
   async addToSubscribers(
     auth: Authenticator
-  ): Promise<
-    Result<
-      undefined,
-      DustError<"unauthorized" | "internal_error" | "internal_error">
-    >
-  > {
+  ): Promise<Result<undefined, DustError<"unauthorized" | "internal_error">>> {
     if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
       return new Err(
-        new DustError("unauthorized", "User do not have access to this trigger")
+        new DustError(
+          "unauthorized",
+          "User does not have access to this trigger"
+        )
       );
     }
 
@@ -560,17 +558,26 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       );
     }
 
-    try {
-      await TriggerSubscriberModel.create({
+    const existing = await TriggerSubscriberModel.findOne({
+      where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         triggerId: this.id,
         userId: auth.getNonNullableUser().id,
-      });
-
-      return new Ok(undefined);
-    } catch (error) {
-      return new Err(new DustError("internal_error", errorToString(error)));
+      },
+    });
+    if (existing) {
+      return new Err(
+        new DustError("internal_error", "User is already a subscriber")
+      );
     }
+
+    await TriggerSubscriberModel.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      triggerId: this.id,
+      userId: auth.getNonNullableUser().id,
+    });
+
+    return new Ok(undefined);
   }
 
   async removeFromSubscribers(
@@ -578,7 +585,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   ): Promise<Result<undefined, DustError<"unauthorized" | "internal_error">>> {
     if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
       return new Err(
-        new DustError("unauthorized", "User do not have access to this trigger")
+        new DustError(
+          "unauthorized",
+          "User does not have access to this trigger"
+        )
       );
     }
 
@@ -604,7 +614,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   > {
     if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
       return new Err(
-        new DustError("unauthorized", "User do not have access to this trigger")
+        new DustError(
+          "unauthorized",
+          "User does not have access to this trigger"
+        )
       );
     }
 

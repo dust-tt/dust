@@ -27,6 +27,10 @@
     "latency_ms": {
       "type": "integer"
     },
+    "content": {
+      "type": "text",
+      "index": "false"
+    },
     "tokens": {
       "type": "object",
       "properties": {
@@ -64,6 +68,33 @@
         },
         "status": {
           "type": "keyword"
+        }
+      }
+    },
+    "feedbacks": {
+      "type": "nested",
+      "properties": {
+        "feedback_id": {
+          "type": "keyword"
+        },
+        "user_id": {
+          "type": "keyword"
+        },
+        "thumb_direction": {
+          "type": "keyword"
+        },
+        "content": {
+          "type": "text",
+          "index": "false"
+        },
+        "is_conversation_shared": {
+          "type": "boolean"
+        },
+        "dismissed": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "type": "date"
         }
       }
     }

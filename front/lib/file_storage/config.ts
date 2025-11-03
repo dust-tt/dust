@@ -19,6 +19,9 @@ const config = {
   getWebhookRequestsBucket: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_WEBHOOK_REQUESTS_BUCKET");
   },
+  getLLMTracesBucket: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_LLM_TRACES_BUCKET");
+  },
 };
 
 export default config;

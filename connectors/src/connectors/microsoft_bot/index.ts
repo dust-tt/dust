@@ -2,12 +2,14 @@ import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
 import type {
-  ConnectorManagerError,
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import { getOrganization } from "@connectors/connectors/microsoft/lib/graph_api";
 import logger from "@connectors/logger/logger";
@@ -31,6 +33,17 @@ export class MicrosoftBotConnectorManager extends BaseConnectorManager<null> {
 
     if (!org.id) {
       throw new Error("Could not retrieve Microsoft organization ID");
+    }
+
+    const existingConfig =
+      await MicrosoftBotConfigurationResource.fetchByTenantId(org.id);
+    if (existingConfig) {
+      return new Err(
+        new ConnectorManagerError(
+          "INVALID_CONFIGURATION",
+          `Microsoft Bot configuration already exists for tenant ${org.displayName}`
+        )
+      );
     }
 
     const connector = await ConnectorResource.makeNew(

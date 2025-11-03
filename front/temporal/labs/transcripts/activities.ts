@@ -696,10 +696,7 @@ export async function processTranscriptActivity(
 
     await sendEmailWithTemplate({
       to: user.email,
-      from: {
-        name: "Dust team",
-        email: "support@dust.help",
-      },
+      from: config.getSupportEmailAddress(),
       subject: `[DUST] Transcripts - ${transcriptTitle.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")}`,
       body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
     <a href="${getConversationRoute(owner.sId, conversation.sId, undefined, config.getClientFacingUrl())}"

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   extractTextFromDocx,
+  getDriveItemEndpoint,
   getGraphClient,
   validateDocumentXml,
   validateZipFile,
@@ -196,17 +197,7 @@ function createServer(
             );
           }
 
-          let endpoint: string;
-
-          if (driveId) {
-            endpoint = `/drives/${driveId}/items/${itemId}`;
-          } else if (siteId) {
-            endpoint = `/sites/${siteId}/drive/items/${itemId}`;
-          } else {
-            return new Err(
-              new MCPError("Either driveId or siteId must be provided")
-            );
-          }
+          const endpoint = await getDriveItemEndpoint(itemId, driveId, siteId);
 
           // Get the file metadata
           const response = await client.api(endpoint).get();
@@ -333,19 +324,7 @@ function createServer(
         }
 
         try {
-          let endpoint: string;
-
-          if (driveId) {
-            // Use driveId if provided (takes priority)
-            endpoint = `/drives/${driveId}/items/${itemId}`;
-          } else if (siteId) {
-            // Fall back to siteId if driveId is not provided
-            endpoint = `/sites/${siteId}/drive/items/${itemId}`;
-          } else {
-            return new Err(
-              new MCPError("Either driveId or siteId must be provided")
-            );
-          }
+          const endpoint = await getDriveItemEndpoint(itemId, driveId, siteId);
 
           const response = await client.api(endpoint).get();
 
@@ -529,16 +508,11 @@ function createServer(
           }
 
           // Determine the upload endpoint
-          let endpoint: string;
-          if (driveId) {
-            endpoint = `/drives/${driveId}`;
-          } else if (siteId) {
-            endpoint = `/sites/${siteId}/drive`;
-          } else {
-            return new Err(
-              new MCPError("Either driveId or siteId must be provided")
-            );
-          }
+          const endpoint = await getDriveItemEndpoint(
+            undefined,
+            driveId,
+            siteId
+          );
 
           // If folderPath is provided, ensure the folder exists (create if needed)
           if (folderPath) {

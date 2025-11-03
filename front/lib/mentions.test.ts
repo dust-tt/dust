@@ -40,6 +40,13 @@ describe("replaceMentionsByAt", () => {
       );
       expect(res).toBe("@soupinou hello @pistache both");
     });
+
+    it("should replace mentions with spaces", () => {
+      const res = replaceMentionsByAt(
+        "Hello :mention[John Doe]{user_123}, how are you?"
+      );
+      expect(res).toBe("Hello @John Doe, how are you?");
+    });
   });
 
   describe("non-mentions", () => {

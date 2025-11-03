@@ -42,9 +42,10 @@ import {
   useDeleteWebhookSource,
   useWebhookSourcesWithViews,
 } from "@app/lib/swr/webhook_source";
-import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
+import { asDisplayName } from "@app/types";
 import type {
   WebhookProvider,
   WebhookSourceWithSystemViewType,
@@ -189,7 +190,7 @@ function WebhookSourceSheetContent({
   // Create form
   const createFormDefaultValues = useMemo<CreateWebhookSourceFormData>(
     () => ({
-      name: "",
+      name: `${asDisplayName(mode.provider)} Trigger`,
       secret: "",
       autoGenerate: true,
       signatureHeader: "",
@@ -251,6 +252,9 @@ function WebhookSourceSheetContent({
         includeGlobal: true,
         ...(remoteMetadata ? { remoteMetadata } : {}),
         ...(connectionId ? { connectionId } : {}),
+        icon: normalizeWebhookIcon(
+          data.provider ? WEBHOOK_PRESETS[data.provider].icon : null
+        ),
       };
 
       await createWebhookSource(apiData);
@@ -432,6 +436,7 @@ function WebhookSourceSheetContent({
 
     const agents = _.uniq(
       webhookSourcesWithViews
+        .filter((source) => source.sId === webhookSource.sId)
         .map((source) => source.usage?.agents ?? [])
         .flat()
         .map((agent) => `@${agent.name}`)
@@ -546,11 +551,13 @@ function WebhookSourceSheetContent({
     () => [
       {
         id: "create",
-        title: `Create ${mode.provider ? WEBHOOK_PRESETS[mode.provider].name : "Custom"} Webhook Source`,
+        title: `New ${mode.provider ? WEBHOOK_PRESETS[mode.provider].name : "Custom"} Trigger`,
         description: "",
-        icon: mode.provider
-          ? WEBHOOK_PRESETS[mode.provider].icon
-          : getIcon(DEFAULT_WEBHOOK_ICON),
+        icon: getIcon(
+          normalizeWebhookIcon(
+            mode.provider ? WEBHOOK_PRESETS[mode.provider].icon : null
+          )
+        ),
         content: (
           <FormProvider {...createForm}>
             <div className="space-y-4">
@@ -576,9 +583,11 @@ function WebhookSourceSheetContent({
         description: "Webhook source for triggering assistants.",
         icon: systemView
           ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />
-          : mode.provider
-            ? WEBHOOK_PRESETS[mode.provider].icon
-            : getIcon(DEFAULT_WEBHOOK_ICON),
+          : getIcon(
+              normalizeWebhookIcon(
+                mode.provider ? WEBHOOK_PRESETS[mode.provider].icon : null
+              )
+            ),
         content:
           systemView && webhookSource ? (
             <FormProvider {...editForm}>

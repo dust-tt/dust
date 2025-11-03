@@ -22,6 +22,7 @@ import {
   ActionTimeIcon,
   AsanaLogo,
   Avatar as SparkleAvatar,
+  CanvaLogo,
   CommandLineIcon,
   ConfluenceLogo,
   DriveLogo,
@@ -34,6 +35,7 @@ import {
   HubspotLogo,
   JiraLogo,
   LinearLogo,
+  MicrosoftExcelLogo,
   MicrosoftLogo,
   MicrosoftOutlookLogo,
   MicrosoftTeamsLogo,
@@ -44,6 +46,7 @@ import {
   SlackLogo,
   StripeLogo,
   ValTownLogo,
+  ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentProps, ComponentType } from "react";
 
@@ -93,6 +96,7 @@ export const InternalActionIcons = {
   ActionMegaphoneIcon,
   ActionTimeIcon,
   AsanaLogo,
+  CanvaLogo,
   CommandLineIcon,
   ConfluenceLogo,
   GcalLogo,
@@ -104,6 +108,7 @@ export const InternalActionIcons = {
   HubspotLogo,
   JiraLogo,
   LinearLogo,
+  MicrosoftExcelLogo,
   MicrosoftLogo,
   MicrosoftOutlookLogo,
   MicrosoftTeamsLogo,
@@ -115,6 +120,7 @@ export const InternalActionIcons = {
   StripeLogo,
   DriveLogo,
   ValTownLogo,
+  ZendeskLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);

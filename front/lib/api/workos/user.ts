@@ -203,35 +203,6 @@ export async function getWorkOSSessionFromCookie(
   }
 }
 
-// Store the region in the user's app_metadata to redirect to the right region.
-// A JWT Template includes this metadata in https://dust.tt/region (https://dashboard.workos.com/environment_01JGCT54YDGZAAD731M0GQKZGM/authentication/edit-jwt-template)
-export async function setRegionForUser(user: WorkOSUser, region: RegionType) {
-  // Update user metadata
-  await getWorkOS().userManagement.updateUser({
-    userId: user.id,
-    metadata: {
-      region,
-    },
-  });
-}
-
-export async function updateUserFromAuth0(
-  session: SessionWithUser,
-  region: RegionType,
-  emailVerified: boolean
-) {
-  if (session.user.workOSUserId) {
-    // Update user metadata
-    await getWorkOS().userManagement.updateUser({
-      userId: session.user.workOSUserId,
-      emailVerified,
-      metadata: {
-        region,
-      },
-    });
-  }
-}
-
 export async function fetchUserFromWorkOS(
   email: string
 ): Promise<Result<WorkOSUser, Error>> {

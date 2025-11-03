@@ -7,21 +7,29 @@ import type { Request, Response } from "express";
 
 import {
   createErrorAdaptiveCard,
+  createInteractiveToolApprovalAdaptiveCard,
   createThinkingAdaptiveCard,
+  createWelcomeAdaptiveCard,
 } from "@connectors/api/webhooks/teams/adaptive_cards";
 import {
   botAnswerMessage,
+  botValidateToolExecution,
   sendFeedback,
 } from "@connectors/api/webhooks/teams/bot";
 import {
   sendActivity,
   sendTextMessage,
+  updateActivity,
 } from "@connectors/api/webhooks/teams/bot_messaging_utils";
 import {
   extractBearerToken,
   validateBotFrameworkToken,
 } from "@connectors/api/webhooks/teams/jwt_validation";
-import { getConnector } from "@connectors/api/webhooks/teams/utils";
+import {
+  getConnector,
+  validateToolApprovalData,
+} from "@connectors/api/webhooks/teams/utils";
+import { apiConfig } from "@connectors/lib/api/config";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
@@ -29,10 +37,10 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 
 // CloudAdapter configuration - simplified for incoming message validation only
 const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication({
-  MicrosoftAppId: process.env.MICROSOFT_BOT_ID,
-  MicrosoftAppPassword: process.env.MICROSOFT_BOT_PASSWORD,
+  MicrosoftAppId: apiConfig.getMicrosoftBotId(),
+  MicrosoftAppPassword: apiConfig.getMicrosoftBotPassword(),
   MicrosoftAppType: "MultiTenant",
-  MicrosoftAppTenantId: process.env.MICROSOFT_BOT_TENANT_ID,
+  MicrosoftAppTenantId: apiConfig.getMicrosoftBotTenantId(),
 });
 
 const adapter = new CloudAdapter(botFrameworkAuthentication);
@@ -44,8 +52,7 @@ adapter.onTurnError = async (context, error) => {
       connectorProvider: "microsoft_bot",
       error: error.message,
       stack: error.stack,
-      botId: process.env.MICROSOFT_BOT_ID,
-      hasPassword: !!process.env.MICROSOFT_BOT_PASSWORD,
+      botId: apiConfig.getMicrosoftBotId(),
     },
     "Bot Framework adapter error"
   );
@@ -66,6 +73,21 @@ adapter.onTurnError = async (context, error) => {
  * Handles all Teams messages, adaptive cards, and message extensions
  */
 export async function webhookTeamsAPIHandler(req: Request, res: Response) {
+  const microsoftAppId = apiConfig.getMicrosoftBotId();
+  if (!microsoftAppId) {
+    logger.error(
+      { connectorProvider: "microsoft_bot" },
+      "MICROSOFT_BOT_ID environment variable not set"
+    );
+    return apiError(req, res, {
+      api_error: {
+        type: "internal_server_error",
+        message: "Bot configuration error",
+      },
+      status_code: 500,
+    });
+  }
+
   logger.info(
     {
       connectorProvider: "microsoft_bot",
@@ -97,21 +119,6 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
         message: "Missing or invalid Authorization header",
       },
       status_code: 401,
-    });
-  }
-
-  const microsoftAppId = process.env.MICROSOFT_BOT_ID;
-  if (!microsoftAppId) {
-    logger.error(
-      { connectorProvider: "microsoft_bot" },
-      "MICROSOFT_BOT_ID environment variable not set"
-    );
-    return apiError(req, res, {
-      api_error: {
-        type: "internal_server_error",
-        message: "Bot configuration error",
-      },
-      status_code: 500,
     });
   }
 
@@ -176,38 +183,124 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           activityType: context.activity.type,
           activityName: context.activity.name,
           conversationId: context.activity.conversation?.id,
-          text: context.activity.text,
         },
         "Received Teams activity"
       );
 
       const connector = await getConnector(context);
-      if (!connector) {
-        return;
-      }
 
       const localLogger = logger.child({
         connectorProvider: "microsoft_bot",
-        connectorId: connector.id,
-        workspaceId: connector.workspaceId,
+        connectorId: connector?.id,
+        workspaceId: connector?.workspaceId,
       });
 
       // Handle different activity types
       switch (context.activity.type) {
         case "message":
+          if (!connector) {
+            res.status(400).json({ error: "Connector not found" });
+            return;
+          }
+
           if (context.activity.value?.verb) {
             await handleInteraction(context, connector, localLogger);
           } else {
             await handleMessage(context, connector, localLogger);
           }
           break;
+        case "invoke":
+          if (!connector) {
+            res.status(400).json({ error: "Connector not found" });
+            return;
+          }
+
+          // Handle tool execution approval card refresh
+          if (context.activity.value.action.verb === "toolExecutionApproval") {
+            // Validate the data before using it
+            const validatedData = validateToolApprovalData(
+              context.activity.value.action.data
+            );
+
+            if (!validatedData) {
+              localLogger.error(
+                {
+                  connectorId: connector.id,
+                  receivedData: context.activity.value.action.data,
+                },
+                "Invalid tool approval data received for refresh"
+              );
+              res.status(400).json({ error: "Invalid request data" });
+              break;
+            }
+
+            localLogger.info(
+              {
+                agentName: validatedData.agentName,
+                toolName: validatedData.toolName,
+                conversationId: validatedData.conversationId,
+                messageId: validatedData.messageId,
+                microsoftBotMessageId: validatedData.microsoftBotMessageId,
+              },
+              "Handling tool execution approval card refresh"
+            );
+
+            const response = {
+              statusCode: 200,
+              type: "application/vnd.microsoft.card.adaptive",
+              value: createInteractiveToolApprovalAdaptiveCard(validatedData),
+            };
+            localLogger.info(
+              response,
+              "Tool execution approval card refresh response"
+            );
+
+            res.set("Content-Type", "application/json; charset=utf-8");
+            res.status(200).json(response);
+          } else {
+            localLogger.info(
+              {
+                verb: context.activity.value?.action?.verb,
+              },
+              "Handling invoke activity other than tool execution approval"
+            );
+            await handleToolApproval(context, connector, localLogger);
+          }
+          break;
+        case "installationUpdate":
+          if (context.activity.action === "add") {
+            localLogger.info(
+              {
+                connectorProvider: "microsoft_bot",
+                activityType: context.activity.type,
+                connectorId: connector?.id,
+              },
+              "Installed app from Microsoft Teams"
+            );
+
+            if (apiConfig.getIsMicrosoftPrimaryRegion()) {
+              await sendActivity(context, createWelcomeAdaptiveCard());
+            }
+          }
+
+          if (context.activity.action === "remove") {
+            localLogger.info(
+              {
+                connectorProvider: "microsoft_bot",
+                activityType: context.activity.type,
+                connectorId: connector?.id,
+              },
+              "Uninstalled app from Microsoft Teams"
+            );
+          }
+          break;
 
         default:
           localLogger.info(
             {
-              connectorProvider: connector.type,
+              connectorProvider: "microsoft_bot",
               activityType: context.activity.type,
-              connectorId: connector.id,
+              connectorId: connector?.id,
             },
             "Unhandled activity type"
           );
@@ -243,11 +336,6 @@ async function handleMessage(
     {
       serviceUrl: context.activity.serviceUrl,
       conversationId: context.activity.conversation?.id,
-      cardType: "ThinkingCard",
-      credentials: {
-        hasAppId: !!process.env.MICROSOFT_BOT_ID,
-        hasAppPassword: !!process.env.MICROSOFT_BOT_PASSWORD,
-      },
     },
     "About to send thinking card to Bot Framework"
   );
@@ -263,7 +351,7 @@ async function handleMessage(
       context,
       createErrorAdaptiveCard({
         error: thinkingActivity.error.message,
-        workspaceId: connector!.workspaceId,
+        workspaceId: connector.workspaceId,
       })
     );
     return;
@@ -329,6 +417,123 @@ async function handleInteraction(
     default:
       localLogger.info({ verb }, "Unhandled interaction verb");
       break;
+  }
+}
+
+async function handleToolApproval(
+  context: TurnContext,
+  connector: ConnectorResource,
+  localLogger: Logger
+) {
+  const { verb } = context.activity.value.action;
+  const approved = verb === "approve_tool" ? "approved" : "rejected";
+
+  // Validate the data before using it
+  const validatedData = validateToolApprovalData(
+    context.activity.value.action.data
+  );
+  if (!validatedData) {
+    localLogger.error(
+      {
+        connectorId: connector.id,
+        receivedData: context.activity.value.action.data,
+      },
+      "Invalid tool approval data received"
+    );
+    return;
+  }
+  const {
+    conversationId,
+    messageId,
+    actionId,
+    microsoftBotMessageId,
+    agentName,
+    toolName,
+  } = validatedData;
+
+  localLogger.info(
+    {
+      conversationId,
+      messageId,
+      actionId,
+      approved,
+      agentName,
+      toolName,
+    },
+    "Handling tool approval from adaptive card"
+  );
+
+  // Get the activity ID of the card that triggered this action
+  const replyToId = context.activity.replyToId;
+
+  const result = await botValidateToolExecution({
+    context,
+    connector,
+    approved,
+    conversationId,
+    messageId,
+    actionId,
+    microsoftBotMessageId,
+    agentName,
+    toolName,
+    localLogger,
+  });
+
+  if (result.isErr()) {
+    localLogger.error(
+      {
+        error: result.error,
+        conversationId,
+        messageId,
+        actionId,
+      },
+      "Error validating tool execution"
+    );
+
+    // Update the card with error message
+    try {
+      await updateActivity(context, {
+        id: replyToId,
+        type: "message",
+        text: "❌ Failed to validate tool execution. Please try again.",
+        attachments: [],
+      });
+    } catch (updateError) {
+      localLogger.error(
+        { error: updateError, replyToId },
+        "Failed to update approval card with error"
+      );
+    }
+  } else {
+    // Update the card with success message, removing the buttons
+    const resultText = `Agent **@${agentName}**'s request to use tool **${toolName}** was ${
+      approved === "approved" ? "✅ approved" : "❌ rejected"
+    }`;
+
+    try {
+      await updateActivity(context, {
+        id: replyToId,
+        type: "message",
+        text: resultText,
+        attachments: [],
+      });
+
+      localLogger.info(
+        {
+          conversationId,
+          messageId,
+          actionId,
+          approved,
+          replyToId,
+        },
+        "Tool approval completed and card disabled"
+      );
+    } catch (updateError) {
+      localLogger.error(
+        { error: updateError, replyToId },
+        "Failed to update approval card with result"
+      );
+    }
   }
 }
 

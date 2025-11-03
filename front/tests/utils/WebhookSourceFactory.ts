@@ -33,7 +33,7 @@ export class WebhookSourceFactory {
       this.workspace.sId
     );
 
-    const result = await WebhookSourceResource.makeNew(auth, {
+    return WebhookSourceResource.makeNew(auth, {
       workspaceId: this.workspace.id,
       name: cachedName,
       urlSecret: options.urlSecret ?? faker.string.alphanumeric(64),
@@ -43,7 +43,5 @@ export class WebhookSourceFactory {
       provider: options.provider ?? null,
       subscribedEvents: options.subscribedEvents ?? [],
     });
-
-    return result;
   }
 }

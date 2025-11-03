@@ -1,9 +1,7 @@
 import {
   Avatar,
-  BellIcon,
   Card,
   CardActionButton,
-  Chip,
   TimeIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -11,19 +9,18 @@ import cronstrue from "cronstrue";
 import { useMemo } from "react";
 
 import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { getIcon } from "@app/components/resources/resources_icons";
 import { useUser } from "@app/lib/swr/user";
-import type { TriggerKind } from "@app/types/assistant/triggers";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 
-function getIcon(kind: TriggerKind) {
-  switch (kind) {
+function getTriggerIcon(trigger: AgentBuilderTriggerType) {
+  switch (trigger.kind) {
     case "schedule":
-      return (
-        <TimeIcon className="h-4 w-4 text-foreground dark:text-foreground-night" />
-      );
+      // There's actually no dark mode here since we're in an Avatar (fixed background).
+      return <TimeIcon className="h-4 w-4 text-foreground" />;
     case "webhook":
-      return (
-        <BellIcon className="h-4 w-4 text-foreground dark:text-foreground-night" />
-      );
+      const IconComponent = getIcon(normalizeWebhookIcon(trigger.provider));
+      return <IconComponent className="h-4 w-4 text-foreground" />;
     default:
       return null;
   }
@@ -79,11 +76,8 @@ export const TriggerCard = ({
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          <Avatar visual={getIcon(trigger.kind)} size="xs" />
+          <Avatar visual={getTriggerIcon(trigger)} size="xs" />
           <span className="truncate">{trigger.name}</span>
-          {!trigger.enabled && (
-            <Chip size="mini" color="rose" label="Disabled" />
-          )}
         </div>
         <span className="text-muted-foreground dark:text-muted-foreground-night">
           <span className="line-clamp-2 break-words">{description}</span>

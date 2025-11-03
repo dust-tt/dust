@@ -12,8 +12,8 @@ const showReactScan = isDev && process.env.REACT_SCAN === "true";
 
 const CONTENT_SECURITY_POLICIES = [
   "default-src 'none';",
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval' dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.cr-relay.com *.licdn.com *.datadoghq-browser-agent.com *.doubleclick.net *.hsadspixel.net *.wistia.net ${showReactScan ? "unpkg.com" : ""};`,
-  `script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.cr-relay.com *.licdn.com *.datadoghq-browser-agent.com *.doubleclick.net *.hsadspixel.net *.wistia.net *.hsappstatic.net *.hubspotusercontent-eu1.net import-cdn.default.com ${showReactScan ? "unpkg.com" : ""};`,
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.cr-relay.com *.licdn.com *.datadoghq-browser-agent.com *.doubleclick.net *.hsadspixel.net *.wistia.net *.ads-twitter.com ${showReactScan ? "unpkg.com" : ""};`,
+  `script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.cr-relay.com *.licdn.com *.datadoghq-browser-agent.com *.doubleclick.net *.hsadspixel.net *.wistia.net *.hsappstatic.net *.hubspotusercontent-eu1.net import-cdn.default.com *.ads-twitter.com ${showReactScan ? "unpkg.com" : ""};`,
   `style-src 'self' 'unsafe-inline' *.fontawesome.com *.googleapis.com;`,
   `style-src-elem 'self' 'unsafe-inline' *.fontawesome.com *.googleapis.com *.gstatic.com;`,
   `img-src 'self' data: blob: webkit-fake-url: https:;`,
@@ -258,27 +258,8 @@ const config = {
     }
     return config;
   },
-  eslint: {
-    // By default, `next lint` only runs on pages/, app/, components/, lib/, and src/
-    // directories. We want to run it in all directories
-    dirs: [
-      "admin",
-      "components",
-      "config",
-      "hooks",
-      "lib",
-      "logger",
-      // "mailing", Not putting migrations as it generates a lot of noise in linter, especially raw SQL
-      // "migrations", Not putting migrations as it generates a lot of noise in linter, especially raw SQL
-      "pages",
-      "poke",
-      "prompt",
-      "scripts",
-      "temporal",
-      "tests",
-      "types",
-    ],
-  },
+  // We don't use next lint anymore, it's removed in next 16. So we disable it here.
+  // eslint: false
 };
 
 module.exports = withBundleAnalyzer(config);

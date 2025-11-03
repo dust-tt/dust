@@ -6,6 +6,69 @@ import { XMLParser, XMLValidator } from "fast-xml-parser";
 
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
+// Microsoft Teams Message Types
+
+export interface TeamsUser {
+  id: string;
+  displayName: string;
+  userIdentityType: string;
+}
+
+export interface TeamsIdentitySet {
+  application: unknown | null;
+  device: unknown | null;
+  user: TeamsUser | null;
+}
+
+export interface TeamsMessageBody {
+  contentType: "html" | "text";
+  content: string;
+}
+
+export interface TeamsChannelIdentity {
+  teamId: string;
+  channelId: string;
+}
+
+export interface TeamsMentionedIdentity {
+  application: unknown | null;
+  device: unknown | null;
+  conversation: unknown | null;
+  user: TeamsUser | null;
+}
+
+export interface TeamsMention {
+  id: number;
+  mentionText: string;
+  mentioned: TeamsMentionedIdentity;
+}
+
+export interface TeamsMessage {
+  id: string;
+  replyToId: string | null;
+  etag: string;
+  messageType: string;
+  createdDateTime: string;
+  lastModifiedDateTime: string;
+  lastEditedDateTime: string | null;
+  deletedDateTime: string | null;
+  subject: string | null;
+  summary: string | null;
+  chatId: string | null;
+  importance: string;
+  locale: string;
+  webUrl: string;
+  policyViolation: unknown | null;
+  eventDetail: unknown | null;
+  from: TeamsIdentitySet;
+  body: TeamsMessageBody;
+  channelIdentity: TeamsChannelIdentity | null;
+  attachments: unknown[];
+  mentions: TeamsMention[];
+  reactions: unknown[];
+  messageHistory: unknown[];
+}
+
 export async function getGraphClient(
   authInfo?: AuthInfo
 ): Promise<Client | null> {
@@ -17,6 +80,21 @@ export async function getGraphClient(
   return GraphClient.init({
     authProvider: (done) => done(null, accessToken),
   });
+}
+
+export async function getDriveItemEndpoint(
+  itemId?: string,
+  driveId?: string,
+  siteId?: string
+): Promise<string> {
+  const path = itemId ? `/items/${itemId}` : "";
+  if (driveId) {
+    return `/drives/${driveId}${path}`;
+  }
+  if (siteId) {
+    return `/sites/${siteId}/drive${path}`;
+  }
+  throw new Error("Either driveId or siteId must be provided");
 }
 
 /**
@@ -216,4 +294,26 @@ export function extractTextFromDocx(buffer: Buffer): string {
       `Failed to extract text from docx: ${normalizeError(error).message}`
     );
   }
+}
+
+/**
+ * Parses a cell reference to row and column numbers
+ * @param cell - The cell reference to parse (e.g. "A1", "B2", "AA10")
+ * @returns The row and column numbers (e.g. { row: 1, col: 1 } for "A1")
+ */
+export function parseCellRef(cell: string): { row: number; col: number } {
+  const match = cell.match(/^([A-Z]+)(\d+)$/);
+  if (!match) {
+    throw new Error("Invalid cell reference");
+  }
+  const colStr = match[1];
+  const rowNum = parseInt(match[2], 10);
+
+  // Convert column letters to number (A=1, B=2, ..., Z=26, AA=27, etc.)
+  let colNum = 0;
+  for (let i = 0; i < colStr.length; i++) {
+    colNum = colNum * 26 + (colStr.charCodeAt(i) - 64);
+  }
+
+  return { row: rowNum, col: colNum };
 }

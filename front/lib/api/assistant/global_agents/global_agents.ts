@@ -18,6 +18,7 @@ import {
   _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
 import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
+import { _getFeedbackAnalyzerGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/feedback_analyzer";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import {
@@ -54,6 +55,7 @@ import { getDataSourcesAndWorkspaceIdForGlobalAgents } from "@app/lib/api/assist
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AgentConfigurationType,
@@ -61,9 +63,9 @@ import type {
   GlobalAgentStatus,
   WhitelistableFeature,
 } from "@app/types";
-import { isDevelopment } from "@app/types";
 import {
   GLOBAL_AGENTS_SID,
+  isDevelopment,
   isGlobalAgentId,
   isProviderWhitelisted,
 } from "@app/types";
@@ -84,6 +86,8 @@ function getGlobalAgent({
   dataWarehousesMCPServerView,
   slideshowMCPServerView,
   deepDiveMCPServerView,
+  agentMemoryMCPServerView,
+  memories,
   featureFlags,
 }: {
   auth: Authenticator;
@@ -101,6 +105,8 @@ function getGlobalAgent({
   dataWarehousesMCPServerView: MCPServerViewResource | null;
   slideshowMCPServerView: MCPServerViewResource | null;
   deepDiveMCPServerView: MCPServerViewResource | null;
+  agentMemoryMCPServerView: MCPServerViewResource | null;
+  memories: AgentMemoryResource[];
   featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType | null {
   const settings =
@@ -356,8 +362,12 @@ function getGlobalAgent({
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
         searchMCPServerView,
+        dataSourcesFileSystemMCPServerView,
+        toolsetsMCPServerView,
         deepDiveMCPServerView,
         interactiveContentMCPServerView,
+        agentMemoryMCPServerView,
+        memories,
         featureFlags,
       });
       break;
@@ -393,6 +403,13 @@ function getGlobalAgent({
         settings,
       });
       break;
+    case GLOBAL_AGENTS_SID.FEEDBACK_ANALYZER:
+      agentConfiguration = _getFeedbackAnalyzerGlobalAgent({
+        auth,
+        settings,
+        interactiveContentMCPServerView,
+      });
+      break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
       if (isDevelopment()) {
@@ -416,6 +433,7 @@ function getGlobalAgent({
 // to be accessible to users moving forward.
 const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.CLAUDE_2,
+  GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
   GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
@@ -429,6 +447,7 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.MISTRAL_SMALL,
   GLOBAL_AGENTS_SID.NOTION,
   GLOBAL_AGENTS_SID.O1_MINI,
+  GLOBAL_AGENTS_SID.GPT4,
   GLOBAL_AGENTS_SID.SLACK,
   // Hidden helper sub-agent, only invoked via run_agent by deep-dive
   GLOBAL_AGENTS_SID.DUST_TASK,
@@ -470,6 +489,7 @@ export async function getGlobalAgents(
     dataWarehousesMCPServerView,
     slideshowMCPServerView,
     deepDiveMCPServerView,
+    agentMemoryMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -538,6 +558,12 @@ export async function getGlobalAgents(
           "deep_dive"
         )
       : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "agent_memory"
+        )
+      : null,
   ]);
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
@@ -570,6 +596,28 @@ export async function getGlobalAgents(
     );
   }
 
+  if (!flags.includes("agent_builder_observability")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.FEEDBACK_ANALYZER
+    );
+  }
+
+  let memories: AgentMemoryResource[] = [];
+  if (
+    variant === "full" &&
+    flags.includes("dust_global_agent_memory") &&
+    agentMemoryMCPServerView &&
+    auth.user() &&
+    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST)
+  ) {
+    memories = await AgentMemoryResource.findByAgentConfigurationIdAndUser(
+      auth,
+      {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      }
+    );
+  }
+
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
   const agentCandidates = agentsIdsToFetch.map((sId) =>
@@ -589,6 +637,8 @@ export async function getGlobalAgents(
       dataWarehousesMCPServerView,
       slideshowMCPServerView,
       deepDiveMCPServerView,
+      agentMemoryMCPServerView,
+      memories,
       featureFlags: flags,
     })
   );

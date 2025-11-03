@@ -354,7 +354,7 @@ function createServer(
 
         // If rootNodeId is provided and is a data source node ID, search only in
         // the data source. If rootNodeId is provided and is a regular node ID,
-        // reset all view_filters to this node, so only descendents of this node
+        // add this node to all filters so that only descendents of this node
         // are searched. It is not straightforward to guess which data source it
         // belongs to, this is why irrelevant data sources are not directly
         // filtered out.
@@ -367,9 +367,35 @@ function createServer(
             (view) => view.data_source_id === dataSourceNodeId
           );
         } else if (rootNodeId) {
+          // Checking that we do have access to the root node.
+          const rootNodeSearchResult = await coreAPI.searchNodes({
+            filter: {
+              data_source_views: viewFilter,
+              node_ids: [rootNodeId],
+            },
+          });
+          if (rootNodeSearchResult.isErr()) {
+            return new Err(
+              new MCPError(
+                `Failed to search content: ${rootNodeSearchResult.error.message}`
+              )
+            );
+          }
+          // If we could not access the root node, we return an error early here.
+          if (
+            rootNodeSearchResult.value.nodes.length === 0 ||
+            rootNodeSearchResult.value.nodes[0].node_id !== rootNodeId
+          ) {
+            return new Err(
+              new MCPError(`Could not find node: ${rootNodeId}`, {
+                tracked: false,
+              })
+            );
+          }
+
           viewFilter = viewFilter.map((view) => ({
             ...view,
-            view_filter: [rootNodeId],
+            filter: [rootNodeId],
           }));
         }
 

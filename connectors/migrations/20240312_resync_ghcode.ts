@@ -28,6 +28,7 @@ async function main() {
           LIVE ? "LIVE" : "DRY"
         })`
       );
+      // eslint-disable-next-line no-unused-expressions
       LIVE &&
         (await launchGithubFullSyncWorkflow({
           connectorId: connector.id,

@@ -1,17 +1,12 @@
-import type { ReasoningEffortIdType } from "@app/types/assistant/models/types";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
 
-export const REASONING_EFFORT_IDS = [
-  "none",
-  "light",
-  "medium",
-  "high",
-] as const;
+export const REASONING_EFFORTS = ["none", "light", "medium", "high"] as const;
 
-export const isReasoningEffortId = (
-  reasoningEffortId: string
-): reasoningEffortId is ReasoningEffortIdType =>
-  REASONING_EFFORT_IDS.includes(reasoningEffortId as ReasoningEffortIdType);
+export const isReasoningEffort = (
+  reasoningEffort: string
+): reasoningEffort is ReasoningEffort =>
+  REASONING_EFFORTS.includes(reasoningEffort as ReasoningEffort);
 
 export const ReasoningEffortCodec =
-  ioTsEnum<(typeof REASONING_EFFORT_IDS)[number]>(REASONING_EFFORT_IDS);
+  ioTsEnum<(typeof REASONING_EFFORTS)[number]>(REASONING_EFFORTS);

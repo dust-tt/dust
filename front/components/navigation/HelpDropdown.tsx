@@ -27,7 +27,7 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID, isAgentMention } from "@app/types";
 
 export function HelpDropdown({
   owner,
@@ -65,7 +65,9 @@ export function HelpDropdown({
           ? input
           : `@help ${input.trimStart()}`;
         const mentionsWithHelp = mentions.some(
-          (mention) => mention.configurationId === GLOBAL_AGENTS_SID.HELPER
+          (mention) =>
+            isAgentMention(mention) &&
+            mention.configurationId === GLOBAL_AGENTS_SID.HELPER
         )
           ? mentions
           : [
@@ -95,7 +97,7 @@ export function HelpDropdown({
           });
         } else {
           void router.push(
-            `/w/${owner.sId}/assistant/${conversationRes.value.sId}`
+            getConversationRoute(owner.sId, conversationRes.value.sId)
           );
         }
       },

@@ -1,15 +1,19 @@
 import {
   Button,
-  Checkbox,
   ChevronDownIcon,
   CollapsibleComponent,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
   Label,
+  ListSelectIcon,
   SliderToggle,
+  TextArea,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
@@ -76,16 +80,31 @@ export function CreateWebhookSourceFormContent({
       <Controller
         control={form.control}
         name="name"
-        render={({ field }) => (
+        render={({ field, fieldState }) => (
           <Input
             {...field}
             label="Name"
             placeholder="Name..."
-            isError={form.formState.errors.name !== undefined}
-            message={form.formState.errors.name?.message}
+            isError={fieldState.error !== undefined}
+            message={fieldState.error?.message}
             messageStatus="error"
             autoFocus
           />
+        )}
+      />
+      <Controller
+        control={form.control}
+        name="description"
+        render={({ field }) => (
+          <div className="space-y-2">
+            <Label htmlFor="trigger-description">Description (optional)</Label>
+            <TextArea
+              {...field}
+              id="trigger-description"
+              rows={3}
+              placeholder="Help your team understand when to use this trigger."
+            />
+          </div>
         )}
       />
 
@@ -93,59 +112,107 @@ export function CreateWebhookSourceFormContent({
         <Controller
           control={form.control}
           name="subscribedEvents"
-          render={({ fieldState }) => (
-            <div className="space-y-3">
-              <Label htmlFor="subscribedEvents">Subscribed events</Label>
-              <div className="space-y-2">
-                {WEBHOOK_PRESETS[provider].events.map((event) => {
-                  const isSelected = selectedEvents.includes(event.value);
-                  return (
-                    <div
-                      key={event.value}
-                      className="flex items-center space-x-3"
-                    >
-                      <Checkbox
-                        id={`${provider}-event-${event.value}`}
-                        checked={isSelected}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            form.setValue(
-                              "subscribedEvents",
-                              [...selectedEvents, event.value],
-                              { shouldValidate: true, shouldDirty: true }
-                            );
-                          } else {
-                            form.setValue(
-                              "subscribedEvents",
-                              selectedEvents.filter((e) => e !== event.value),
-                              { shouldValidate: true, shouldDirty: true }
-                            );
-                          }
-                        }}
+          render={({ fieldState }) => {
+            const allEvents = WEBHOOK_PRESETS[provider].events;
+            const allSelected = selectedEvents.length === allEvents.length;
+            const dropDownLabel =
+              selectedEvents.length === 0
+                ? "Select events"
+                : allSelected
+                  ? `All events (${selectedEvents.length}) selected`
+                  : `${selectedEvents.length} event${selectedEvents.length > 1 ? "s" : ""} selected`;
+
+            const handleSelectAll = () => {
+              form.setValue(
+                "subscribedEvents",
+                allEvents.map((e) => e.value),
+                { shouldValidate: true, shouldDirty: true }
+              );
+            };
+
+            const handleUnselectAll = () => {
+              form.setValue("subscribedEvents", [], {
+                shouldValidate: true,
+                shouldDirty: true,
+              });
+            };
+
+            return (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="subscribedEvents">Events to watch</Label>
+                <p>Choose which events will activate this trigger</p>
+                <div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        label={dropDownLabel}
+                        variant="outline"
+                        icon={ChevronDownIcon}
                       />
-                      <div className="grid gap-1.5 leading-none">
-                        <label
-                          htmlFor={`${provider}-event-${event.value}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {event.name}
-                        </label>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-72" align="start">
+                      <div className="flex gap-2 p-2">
+                        <Button
+                          label="Select all"
+                          icon={ListSelectIcon}
+                          variant="primary"
+                          size="xs"
+                          onClick={handleSelectAll}
+                          disabled={allSelected}
+                        />
+                        <Button
+                          label="Unselect all"
+                          icon={XMarkIcon}
+                          variant="primary"
+                          size="xs"
+                          onClick={handleUnselectAll}
+                          disabled={selectedEvents.length === 0}
+                        />
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {fieldState.error && (
-                <div className="dark:text-warning-night flex items-center gap-1 text-xs text-warning">
-                  {fieldState.error.message}
+                      <DropdownMenuSeparator />
+                      {allEvents.map((event) => {
+                        const isSelected = selectedEvents.includes(event.value);
+                        return (
+                          <DropdownMenuCheckboxItem
+                            key={event.value}
+                            checked={isSelected}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                form.setValue(
+                                  "subscribedEvents",
+                                  [...selectedEvents, event.value],
+                                  { shouldValidate: true, shouldDirty: true }
+                                );
+                              } else {
+                                form.setValue(
+                                  "subscribedEvents",
+                                  selectedEvents.filter(
+                                    (e) => e !== event.value
+                                  ),
+                                  { shouldValidate: true, shouldDirty: true }
+                                );
+                              }
+                            }}
+                            onSelect={(e) => e.preventDefault()}
+                            label={event.name}
+                          />
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              )}
-            </div>
-          )}
+                {fieldState.error && (
+                  <div className="dark:text-warning-night flex items-center gap-1 text-xs text-warning">
+                    {fieldState.error.message}
+                  </div>
+                )}
+              </div>
+            );
+          }}
         />
       )}
 
-      {provider && provider !== "test" && (
+      {provider && (
         <CreateWebhookSourceWithProviderForm
           owner={owner}
           provider={provider}

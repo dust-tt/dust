@@ -22,7 +22,7 @@ import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/config
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import config from "@app/lib/api/config";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import type { DustError } from "@app/lib/error";
 import {
@@ -70,50 +70,58 @@ import {
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
-/**
- * Get one specific version of a single agent
- */
-async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
+export async function getAgentConfigurationsWithVersion<
+  V extends AgentFetchVariant,
+>(
   auth: Authenticator,
-  {
-    agentId,
-    agentVersion,
-    variant,
-  }: { agentId: string; agentVersion: number; variant: V }
+  agentIdsWithVersion: { agentId: string; agentVersion: number }[],
+  { variant }: { variant: V }
 ): Promise<
-  | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
-  | null
+  V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
 > {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  assert(!isGlobalAgentId(agentId), "Global agents are not versioned.");
+  const globalAgentIds = agentIdsWithVersion
+    .map(({ agentId }) => agentId)
+    .filter(isGlobalAgentId);
 
-  const agentModels = await AgentConfiguration.findAll({
+  let globalAgents: AgentConfigurationType[] = [];
+  if (globalAgentIds.length > 0) {
+    globalAgents = await getGlobalAgents(auth, globalAgentIds, variant);
+  }
+
+  const workspaceAgentModels = await AgentConfiguration.findAll({
     where: {
-      // Relies on the indexes (workspaceId), (sId, version).
       workspaceId: owner.id,
-      sId: agentId,
-      version: agentVersion,
+      [Op.or]: agentIdsWithVersion
+        .filter(({ agentId }) => !isGlobalAgentId(agentId))
+        .map(({ agentId: sId, agentVersion: version }) => ({
+          sId,
+          version,
+        })),
     },
-    order: [["version", "DESC"]],
   });
 
   const allowedAgentModels = await filterAgentsByRequestedSpaces(
     auth,
-    agentModels
+    workspaceAgentModels
   );
-  const agents = await enrichAgentConfigurations(auth, allowedAgentModels, {
-    variant,
-  });
+  const workspaceAgents = await enrichAgentConfigurations(
+    auth,
+    allowedAgentModels,
+    {
+      variant,
+    }
+  );
 
-  return (
-    (agents[0] as V extends "light"
-      ? LightAgentConfigurationType
-      : AgentConfigurationType) || null
-  );
+  const agents = [...globalAgents, ...workspaceAgents];
+
+  return agents as V extends "light"
+    ? LightAgentConfigurationType[]
+    : AgentConfigurationType[];
 }
 
 /**
@@ -249,12 +257,19 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
   | null
 > {
   return tracer.trace("getAgentConfiguration", async () => {
-    if (agentVersion !== undefined) {
-      return getAgentConfigurationWithVersion(auth, {
-        agentId,
-        agentVersion,
-        variant,
-      });
+    if (agentVersion !== undefined && !isGlobalAgentId(agentId)) {
+      const [agent] = await getAgentConfigurationsWithVersion(
+        auth,
+        [{ agentId, agentVersion }],
+        {
+          variant,
+        }
+      );
+      return (
+        (agent as V extends "light"
+          ? LightAgentConfigurationType
+          : AgentConfigurationType) || null
+      );
     }
     const [agent] = await getAgentConfigurations(auth, {
       agentIds: [agentId],
@@ -1175,12 +1190,6 @@ export async function filterAgentsByRequestedSpaces(
   auth: Authenticator,
   agents: AgentConfiguration[]
 ) {
-  const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
-  const hasRequestedSpaceIdsFF = featureFlags.includes(
-    "use_requested_space_ids"
-  );
-
   const uniqSpaceIds = Array.from(
     new Set(agents.flatMap((agent) => agent.requestedSpaceIds))
   );
@@ -1205,47 +1214,5 @@ export async function filterAgentsByRequestedSpaces(
     )
   );
 
-  if (hasRequestedSpaceIdsFF) {
-    return allowedBySpaceIds;
-  }
-
-  const allowedByGroupIds = validAgents.filter((agent) =>
-    auth.canRead(
-      Authenticator.createResourcePermissionsFromGroupIds(
-        agent.requestedGroupIds.map((groupIds) =>
-          groupIds.map((groupId) =>
-            GroupResource.modelIdToSId({
-              id: groupId,
-              workspaceId: workspace.id,
-            })
-          )
-        )
-      )
-    )
-  );
-
-  if (allowedByGroupIds.length !== allowedBySpaceIds.length) {
-    const allowedByGroupIdsOnly = allowedByGroupIds.filter(
-      (groupAgent) =>
-        !allowedBySpaceIds.some(
-          (spaceAgent) => spaceAgent.sId === groupAgent.sId
-        )
-    );
-    const allowedBySpaceIdsOnly = allowedBySpaceIds.filter(
-      (spaceAgent) =>
-        !allowedByGroupIds.some(
-          (groupAgent) => groupAgent.sId === spaceAgent.sId
-        )
-    );
-    logger.warn(
-      {
-        workspaceId: workspace.sId,
-        allowedByGroupIdsOnly: allowedByGroupIdsOnly.map((agent) => agent.sId),
-        allowedBySpaceIdsOnly: allowedBySpaceIdsOnly.map((agent) => agent.sId),
-      },
-      "[REQUESTED_SPACE_IDS] Allowed by group ids and space ids differ for agents"
-    );
-  }
-
-  return allowedByGroupIds;
+  return allowedBySpaceIds;
 }

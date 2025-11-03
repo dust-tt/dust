@@ -1,24 +1,20 @@
 import {
   Chip,
-  Citation,
-  CitationIcons,
-  CitationTitle,
   CodeBlock,
   CollapsibleComponent,
   ContentBlockWrapper,
   ContentMessage,
   FaviconIcon,
-  Icon,
   InformationCircleIcon,
   Markdown,
   PaginatedCitationsGrid,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { useCallback } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { toolGeneratedFileToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type {
   ReasoningSuccessOutputType,
   SqlQueryOutputType,
@@ -107,69 +103,23 @@ export function SqlQueryBlock({ resource }: SqlQueryBlockProps) {
 
 interface ToolGeneratedFileDetailsProps {
   resource: ToolGeneratedFileType;
-  icon: React.ComponentType<{ className?: string }>;
   owner: LightWorkspaceType;
 }
 
 export function ToolGeneratedFileDetails({
   resource,
-  icon,
   owner,
 }: ToolGeneratedFileDetailsProps) {
-  const sendNotification = useSendNotification();
-
-  const handleDownload = useCallback(() => {
-    try {
-      const downloadUrl = `/api/w/${owner.sId}/files/${resource.fileId}?action=download`;
-      // Open the download URL in a new tab/window. Otherwise we get a CORS error due to the redirection
-      // to cloud storage.
-      window.open(downloadUrl, "_blank");
-    } catch (error) {
-      console.error("Download failed:", error);
-      sendNotification({
-        title: "Download Failed",
-        type: "error",
-        description: "An error occurred while opening the download link.",
-      });
-    }
-  }, [resource.fileId, sendNotification, owner.sId]);
-
+  const file = {
+    ...resource,
+    sourceUrl: `/api/w/${owner.sId}/files/${resource.fileId}`,
+  };
   return (
-    <>
-      <div>
-        <Citation
-          className="w-48 min-w-48 max-w-48"
-          containerClassName="my-2"
-          onClick={handleDownload}
-          tooltip={resource.title}
-        >
-          <CitationIcons>
-            <Icon visual={icon} />
-          </CitationIcons>
-          <CitationTitle>{resource.title}</CitationTitle>
-        </Citation>
-      </div>
-      {resource.snippet && (
-        <CollapsibleComponent
-          rootProps={{ defaultOpen: false }}
-          triggerChildren={
-            <span className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
-              Preview
-            </span>
-          }
-          contentChildren={
-            <div className="py-2">
-              <CodeBlock
-                className="language-csv max-h-60 overflow-y-auto"
-                wrapLongLines={true}
-              >
-                {resource.snippet}
-              </CodeBlock>
-            </div>
-          }
-        />
-      )}
-    </>
+    <AttachmentCitation
+      attachmentCitation={toolGeneratedFileToAttachmentCitation(file)}
+      owner={owner}
+      conversationId={null}
+    />
   );
 }
 
@@ -210,7 +160,7 @@ export function SearchResultDetails({
             {
               description: r.resource.text,
               title: r.resource.title,
-              icon: <FaviconIcon websiteUrl={r.resource.uri} size="sm" />,
+              icon: <FaviconIcon websiteUrl={r.resource.uri} />,
               href: r.resource.uri,
             },
           ];
@@ -289,7 +239,7 @@ export function SearchResultDetails({
           {actionOutput && viewType === "sidebar" && (
             <div>
               <CollapsibleComponent
-                rootProps={{ defaultOpen: true }}
+                rootProps={{ defaultOpen: false }}
                 triggerChildren={
                   <span className="text-sm font-bold text-foreground dark:text-foreground-night">
                     Results

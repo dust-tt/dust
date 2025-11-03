@@ -1,9 +1,14 @@
-import { Button, ExternalLinkIcon, Label, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  CloudArrowLeftRightIcon,
+  Label,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { LightWorkspaceType, OAuthConnectionType } from "@app/types";
-import { setupOAuthConnection } from "@app/types";
+import { normalizeError, setupOAuthConnection } from "@app/types";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
@@ -33,9 +38,11 @@ export function CreateWebhookSourceWithProviderForm({
     null
   );
   const [isConnectingProvider, setIsConnectingToProvider] = useState(false);
+  const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
+  const [isExtraConfigValid, setIsExtraConfigValid] = useState(false);
 
   const preset = WEBHOOK_PRESETS[provider];
-  const kindName = preset.name;
+  const OAuthExtraConfigInput = preset.components.oauthExtraConfigInput;
 
   const handleConnectToProvider = async () => {
     if (!owner) {
@@ -49,63 +56,76 @@ export function CreateWebhookSourceWithProviderForm({
         owner,
         provider,
         useCase: "webhooks",
-        extraConfig: {},
+        extraConfig,
       });
 
       if (connectionRes.isErr()) {
         sendNotification({
           type: "error",
-          title: `Failed to connect to ${kindName}`,
+          title: `Failed to connect to ${preset.name}`,
           description: connectionRes.error.message,
         });
       } else {
         setConnection(connectionRes.value);
         sendNotification({
           type: "success",
-          title: `Connected to ${kindName}`,
-          description: "Fetching your repositories and organizations...",
+          title: `Connected to ${preset.name}`,
+          description: "Fetching additional data for configuration...",
         });
       }
     } catch (error) {
       sendNotification({
         type: "error",
-        title: `Failed to connect to ${kindName}`,
-        description: error instanceof Error ? error.message : "Unknown error",
+        title: `Failed to connect to ${preset.name}`,
+        description: normalizeError(error).message,
       });
     } finally {
       setIsConnectingToProvider(false);
     }
   };
+  const hasConnectionPage = !!preset.webhookPageUrl;
+  const buttonLabel = connection
+    ? hasConnectionPage
+      ? `Edit connection`
+      : `Connected`
+    : `Connect`;
 
   return (
     <div className="flex flex-col space-y-4">
       <div>
-        <Label>{kindName} Connection</Label>
+        <Label>{preset.name} Connection</Label>
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Connect your {kindName} account to select repositories and
-          organizations to follow.
+          {preset.name} connection is required
         </p>
+        {OAuthExtraConfigInput && (
+          <div className="mt-4">
+            <OAuthExtraConfigInput
+              extraConfig={extraConfig}
+              setExtraConfig={setExtraConfig}
+              setIsExtraConfigValid={setIsExtraConfigValid}
+            />
+          </div>
+        )}
+
         <div className="mt-2 flex items-center gap-2">
           <Button
             variant={"outline"}
-            label={
-              connection ? `Connected to ${kindName}` : `Connect to ${kindName}`
+            label={buttonLabel}
+            icon={CloudArrowLeftRightIcon}
+            // if we are not connected, click starts the OAuth flow
+            // if we are connected with a connection page URL, click opens that page
+            // otherwise button is disabled
+            onClick={
+              connection
+                ? () => window.open(preset.webhookPageUrl, "_blank")
+                : handleConnectToProvider
             }
-            icon={preset.icon}
-            onClick={handleConnectToProvider}
-            disabled={isConnectingProvider || !!connection}
+            disabled={
+              isConnectingProvider ||
+              (!!connection && !hasConnectionPage) ||
+              (OAuthExtraConfigInput ? !isExtraConfigValid : false)
+            }
           />
-          {connection && preset.webhookPageUrl && (
-            <a
-              href={preset.webhookPageUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-action-500 hover:text-action-600 dark:text-action-400 dark:hover:text-action-300 inline-flex items-center gap-1 text-sm"
-            >
-              Edit connection
-              <ExternalLinkIcon className="h-3 w-3" />
-            </a>
-          )}
           {isConnectingProvider && <Spinner size="sm" />}
         </div>
       </div>

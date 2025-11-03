@@ -175,7 +175,7 @@ const InputBarContainer = ({
         {
           type: "pastedAttachment",
           attrs: { fileId, title, textContent },
-          text: `:pasted_attachment[${title}]{fileId=${fileId}}`,
+          text: `:pasted_content[${title}]{pastedId=${fileId}}`,
         },
         { type: "text", text: " " },
       ];
@@ -359,6 +359,13 @@ const InputBarContainer = ({
         }
       }
     },
+    onError: (error) => {
+      sendNotification({
+        type: "error",
+        title: "Failed to transcribe voice",
+        description: normalizeError(error).message,
+      });
+    },
   });
 
   // Update the editor ref when the editor is created.
@@ -467,7 +474,8 @@ const InputBarContainer = ({
   const { animate } = useContext(InputBarContext);
   useEffect(() => {
     if (animate) {
-      editorService.focusEnd();
+      // Schedule focus to avoid flushing during render lifecycle.
+      queueMicrotask(() => editorService.focusEnd());
     }
   }, [animate, editorService]);
 

@@ -167,6 +167,7 @@ export function ConversationMenu({
   const doDelete = useDeleteConversation(owner);
   const leaveOrDelete = useCallback(async () => {
     const res = await doDelete(conversation);
+    // eslint-disable-next-line no-unused-expressions
     isConversationDisplayed &&
       res &&
       void router.push(getConversationRoute(owner.sId));
@@ -213,7 +214,10 @@ export function ConversationMenu({
   };
 
   return (
-    <div onClick={(e) => e.stopPropagation()}>
+    <div
+      onClick={(e) => e.stopPropagation()}
+      onContextMenu={(e) => e.stopPropagation()}
+    >
       <DeleteConversationsDialog
         isOpen={showDeleteDialog}
         type="selection"

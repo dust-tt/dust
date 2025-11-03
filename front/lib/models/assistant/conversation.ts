@@ -317,6 +317,7 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
   declare message?: NonAttribute<Message>;
   declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
 
+  declare modelInteractionDurationMs: number | null;
   declare completedAt: Date | null;
 }
 
@@ -388,6 +389,11 @@ AgentMessage.init(
       allowNull: false,
       defaultValue: 0,
     },
+    modelInteractionDurationMs: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
     completedAt: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -397,7 +403,11 @@ AgentMessage.init(
   {
     modelName: "agent_message",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["workspaceId"], concurrently: true }],
+    indexes: [
+      { fields: ["workspaceId"], concurrently: true },
+      // Index for agent-based data retention queries.
+      { fields: ["workspaceId", "agentConfigurationId"], concurrently: true },
+    ],
   }
 );
 
@@ -410,6 +420,7 @@ export class AgentMessageFeedback extends WorkspaceAwareModel<AgentMessageFeedba
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
   declare isConversationShared: boolean;
+  declare dismissed: boolean;
 
   declare thumbDirection: AgentMessageFeedbackDirection;
   declare content: string | null;
@@ -447,6 +458,11 @@ AgentMessageFeedback.init(
       allowNull: true,
     },
     isConversationShared: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    dismissed: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
@@ -584,6 +600,11 @@ Message.init(
       },
       {
         fields: ["workspaceId", "conversationId", "sId"],
+      },
+      // Index for data retention workflow - optimizes GROUP BY with MAX(createdAt).
+      {
+        fields: ["workspaceId", "conversationId", "createdAt"],
+        concurrently: true,
       },
     ],
     hooks: {

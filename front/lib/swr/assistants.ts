@@ -19,8 +19,10 @@ import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentConfigurationAnalyticsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/analytics";
+import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
+import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
 import type { GetToolExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-execution";
-import type { GetToolLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-latency";
+import type { GetToolStepIndexResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-step-index";
 import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/usage-metrics";
 import type { GetVersionMarkersResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/version-markers";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
@@ -256,12 +258,14 @@ interface AgentConfigurationFeedbacksByDescVersionProps {
   workspaceId: string;
   agentConfigurationId: string | null;
   limit: number;
+  filter?: "unseen" | "all";
 }
 
 export function useAgentConfigurationFeedbacksByDescVersion({
   workspaceId,
   agentConfigurationId,
   limit,
+  filter = "unseen",
 }: AgentConfigurationFeedbacksByDescVersionProps) {
   const agentConfigurationFeedbacksFetcher: Fetcher<{
     feedbacks: (
@@ -269,13 +273,6 @@ export function useAgentConfigurationFeedbacksByDescVersion({
       | AgentMessageFeedbackWithMetadataType
     )[];
   }> = fetcher;
-
-  const urlParams = new URLSearchParams({
-    limit: limit.toString(),
-    orderColumn: "id",
-    orderDirection: "desc",
-    withMetadata: "true",
-  });
 
   const [hasMore, setHasMore] = useState(true);
 
@@ -292,6 +289,15 @@ export function useAgentConfigurationFeedbacksByDescVersion({
           setHasMore(false);
           return null;
         }
+
+        // Build URLSearchParams fresh for each page to avoid param accumulation.
+        const urlParams = new URLSearchParams({
+          limit: limit.toString(),
+          orderColumn: "id",
+          orderDirection: "desc",
+          withMetadata: "true",
+          filter,
+        });
 
         if (previousPageData !== null) {
           const lastIdValue =
@@ -792,10 +798,64 @@ export function useAgentUsageMetrics({
   );
 
   return {
-    usageMetrics: data ?? null,
+    usageMetrics: data?.points ?? emptyArray(),
     isUsageMetricsLoading: !error && !data && !disabled,
     isUsageMetricsError: error,
     isUsageMetricsValidating: isValidating,
+  };
+}
+
+export function useAgentLatency({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetLatencyResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/latency?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    latency: data?.points ?? emptyArray(),
+    isLatencyLoading: !error && !data && !disabled,
+    isLatencyError: error,
+    isLatencyValidating: isValidating,
+  };
+}
+
+export function useAgentFeedbackDistribution({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetFeedbackDistributionResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/feedback-distribution?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    feedbackDistribution: data?.points ?? emptyArray(),
+    isFeedbackDistributionLoading: !error && !data && !disabled,
+    isFeedbackDistributionError: error,
+    isFeedbackDistributionValidating: isValidating,
   };
 }
 
@@ -819,7 +879,7 @@ export function useAgentVersionMarkers({
   );
 
   return {
-    versionMarkers: data?.versionMarkers ?? null,
+    versionMarkers: data?.versionMarkers ?? emptyArray(),
     isVersionMarkersLoading: !error && !data && !disabled,
     isVersionMarkersError: error,
     isVersionMarkersValidating: isValidating,
@@ -846,14 +906,14 @@ export function useAgentToolExecution({
   );
 
   return {
-    toolExecutionByVersion: data?.byVersion ?? null,
+    toolExecutionByVersion: data?.byVersion ?? emptyArray(),
     isToolExecutionLoading: !error && !data && !disabled,
     isToolExecutionError: error,
     isToolExecutionValidating: isValidating,
   };
 }
 
-export function useAgentToolLatency({
+export function useAgentToolStepIndex({
   workspaceId,
   agentConfigurationId,
   days = DEFAULT_PERIOD_DAYS,
@@ -864,8 +924,8 @@ export function useAgentToolLatency({
   days?: number;
   disabled?: boolean;
 }) {
-  const fetcherFn: Fetcher<GetToolLatencyResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-latency?days=${days}`;
+  const fetcherFn: Fetcher<GetToolStepIndexResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-step-index?days=${days}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
@@ -873,9 +933,9 @@ export function useAgentToolLatency({
   );
 
   return {
-    toolLatencyByVersion: data?.byVersion ?? null,
-    isToolLatencyLoading: !error && !data && !disabled,
-    isToolLatencyError: error,
-    isToolLatencyValidating: isValidating,
+    toolStepIndexByStep: data?.byStep ?? emptyArray(),
+    isToolStepIndexLoading: !error && !data && !disabled,
+    isToolStepIndexError: error,
+    isToolStepIndexValidating: isValidating,
   };
 }

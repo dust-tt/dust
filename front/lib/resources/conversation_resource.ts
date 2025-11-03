@@ -5,7 +5,7 @@ import type {
 } from "sequelize";
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
 import {
   AgentMessage,
@@ -31,11 +31,9 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import logger from "@app/logger/logger";
 import type {
   ConversationMCPServerViewType,
   ConversationType,
-  ConversationVisibility,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   ParticipantActionType,
@@ -47,17 +45,28 @@ import { ConversationError, Err, normalizeError, Ok } from "@app/types";
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
   includeTest?: boolean;
+  dangerouslySkipPermissionFiltering?: boolean;
 };
+
+interface UserParticipation {
+  actionRequired: boolean;
+  unread: boolean;
+  updated: number;
+}
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface ConversationResource
   extends ReadonlyAttributesType<ConversationModel> {}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ConversationResource extends BaseResource<ConversationModel> {
   static model: ModelStaticWorkspaceAware<ConversationModel> =
     ConversationModel;
+
+  // User-specific participation fields (populated when conversations are listed for a user).
+  private userParticipation?: UserParticipation;
 
   static async makeNew(
     auth: Authenticator,
@@ -118,10 +127,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         ? []
         : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds);
 
-    const featureFlags = await getFeatureFlags(workspace);
-    const hasRequestedSpaceIdsFF = featureFlags.includes(
-      "use_requested_space_ids"
-    );
+    if (fetchConversationOptions?.dangerouslySkipPermissionFiltering) {
+      return conversations.map((c) => new this(this.model, c.get()));
+    }
 
     // Filter out conversations that reference missing/deleted spaces.
     // There are two reasons why a space may be missing here:
@@ -137,7 +145,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // Create space-to-groups mapping once for efficient permission checks.
     const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
 
-    const newSpaceBasedAccessible = validConversations.filter((c) =>
+    const spaceBasedAccessible = validConversations.filter((c) =>
       auth.canRead(
         createResourcePermissionsFromSpacesWithMap(
           spaceIdToGroupsMap,
@@ -147,38 +155,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       )
     );
 
-    if (newSpaceBasedAccessible.length !== validConversations.length) {
-      // If the feature flag is enabled, only return the accessible conversations.
-      // TODO(2025-10-23 REQUESTED_SPACE_IDS): Remove this FF check.
-      if (hasRequestedSpaceIdsFF) {
-        return newSpaceBasedAccessible;
-      }
-
-      // Compare new space-based permissions with legacy group-based permissions.
-      const legacyGroupBasedAccessible = validConversations.filter((c) =>
-        ConversationResource.canAccessConversation(auth, c)
-      );
-
-      if (
-        newSpaceBasedAccessible.length !== legacyGroupBasedAccessible.length
-      ) {
-        // Otherwise, log a warning showing the difference between new and legacy permissions.
-        logger.warn(
-          {
-            workspaceId: workspace.sId,
-            validConversations: validConversations.map((c) => c.sId),
-            newSpaceBasedAccessible: newSpaceBasedAccessible.map((c) => c.sId),
-            legacyGroupBasedAccessible: legacyGroupBasedAccessible.map(
-              (c) => c.sId
-            ),
-          },
-          "[REQUESTED_SPACE_IDS] Mismatch between new space-based and legacy group-based permission results. " +
-            "Returning all valid conversations for backward compatibility."
-        );
-      }
-    }
-
-    return validConversations;
+    return spaceBasedAccessible;
   }
 
   static triggerIdToSId(triggerId: number | null, workspaceId: number) {
@@ -367,6 +344,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           required: true,
           attributes: [],
           where: {
+            workspaceId,
             agentConfigurationId,
           },
         },
@@ -394,23 +372,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return conversations.map((c) => c.sId);
   }
 
-  static canAccessConversation(
-    auth: Authenticator,
-    conversation:
-      | ConversationWithoutContentType
-      | ConversationType
-      | ConversationResource
-  ): boolean {
-    const requestedGroupIds =
-      conversation instanceof ConversationResource
-        ? conversation.getRequestedGroupIdsFromModel(auth)
-        : conversation.requestedGroupIds;
-
-    return auth.canRead(
-      Authenticator.createResourcePermissionsFromGroupIds(requestedGroupIds)
-    );
-  }
-
   static async fetchConversationWithoutContent(
     auth: Authenticator,
     sId: string,
@@ -420,17 +381,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
     const conversation = await this.fetchById(auth, sId, {
       includeDeleted: options?.includeDeleted,
+      dangerouslySkipPermissionFiltering:
+        options?.dangerouslySkipPermissionFiltering,
     });
 
     if (!conversation) {
       return new Err(new ConversationError("conversation_not_found"));
-    }
-
-    if (
-      !options?.dangerouslySkipPermissionFiltering &&
-      !ConversationResource.canAccessConversation(auth, conversation)
-    ) {
-      return new Err(new ConversationError("conversation_access_restricted"));
     }
 
     const { actionRequired, unread } =
@@ -468,70 +424,70 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
-  // TODO(2025-10-22 flav): Use baseFetchWithAuthorization.
   static async listConversationsForUser(
-    auth: Authenticator,
-    options?: FetchConversationOptions
-  ): Promise<ConversationWithoutContentType[]> {
-    const owner = auth.getNonNullableWorkspace();
+    auth: Authenticator
+  ): Promise<ConversationResource[]> {
     const user = auth.getNonNullableUser();
 
-    const includedConversationVisibilities: ConversationVisibility[] = [
-      "unlisted",
-    ];
-
-    if (options?.includeDeleted) {
-      includedConversationVisibilities.push("deleted");
-    }
-    if (options?.includeTest) {
-      includedConversationVisibilities.push("test");
-    }
-
+    // First get all participations for the user to get conversation IDs and metadata.
     const participations = await ConversationParticipantModel.findAll({
       attributes: [
-        "userId",
-        "updatedAt",
+        "actionRequired",
         "conversationId",
         "unread",
-        "actionRequired",
+        "updatedAt",
+        "userId",
       ],
       where: {
         userId: user.id,
-        workspaceId: owner.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
-      include: [
-        {
-          model: ConversationModel,
-          required: true,
-          where: {
-            visibility: { [Op.in]: includedConversationVisibilities },
-          },
-        },
-      ],
       order: [["updatedAt", "DESC"]],
     });
 
-    return participations.reduce((acc, p) => {
-      const c = p.conversation;
+    if (participations.length === 0) {
+      return [];
+    }
 
-      if (c) {
-        const resource = new this(this.model, c.get());
-        acc.push({
-          id: c.id,
-          created: c.createdAt.getTime(),
-          updated: p.updatedAt.getTime(),
-          unread: p.unread,
-          actionRequired: p.actionRequired,
-          hasError: c.hasError,
-          sId: c.sId,
-          title: c.title,
-          requestedGroupIds: resource.getRequestedGroupIdsFromModel(auth),
-          requestedSpaceIds: resource.getRequestedSpaceIdsFromModel(auth),
-        });
+    const conversationIds = participations.map((p) => p.conversationId);
+
+    // Use baseFetchWithAuthorization to get conversations with proper authorization.
+    const conversations = await this.baseFetchWithAuthorization(
+      auth,
+      {},
+      {
+        where: {
+          id: { [Op.in]: conversationIds },
+          visibility: { [Op.eq]: "unlisted" },
+        },
       }
+    );
 
-      return acc;
-    }, [] as ConversationWithoutContentType[]);
+    const participationMap = new Map(
+      participations.map((p) => [
+        p.conversationId,
+        {
+          actionRequired: p.actionRequired,
+          unread: p.unread,
+          updated: p.updatedAt.getTime(),
+        },
+      ])
+    );
+
+    // Attach participation data to resources.
+    conversations.forEach((c) => {
+      const participation = participationMap.get(c.id);
+      if (participation) {
+        c.userParticipation = participation;
+      }
+    });
+
+    // Sort by participation updated time descending.
+    return conversations.sort(
+      (a, b) =>
+        (b.userParticipation?.updated ?? 0) -
+        (a.userParticipation?.updated ?? 0)
+    );
   }
 
   static async listConversationsForTrigger(
@@ -1078,5 +1034,41 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: workspace.id,
       })
     );
+  }
+
+  toJSON(): ConversationWithoutContentType {
+    // If conversation is fetched for a user, use the participation data.
+    const participation = this.userParticipation ?? {
+      actionRequired: false,
+      unread: false,
+      updated: this.updatedAt.getTime(),
+    };
+
+    return {
+      actionRequired: participation.actionRequired,
+      created: this.createdAt.getTime(),
+      hasError: this.hasError,
+      id: this.id,
+      // TODO(REQUESTED_SPACE_IDS 2025-10-24): Stop exposing this once all logic is centralized
+      // in baseFetchWithAuthorization.
+      requestedGroupIds: this.requestedGroupIds.map((groups) =>
+        groups.map((g) =>
+          GroupResource.modelIdToSId({
+            id: g,
+            workspaceId: this.workspaceId,
+          })
+        )
+      ),
+      requestedSpaceIds: this.requestedSpaceIds.map((id) =>
+        SpaceResource.modelIdToSId({
+          id,
+          workspaceId: this.workspaceId,
+        })
+      ),
+      sId: this.sId,
+      title: this.title,
+      unread: participation.unread,
+      updated: participation.updated,
+    };
   }
 }

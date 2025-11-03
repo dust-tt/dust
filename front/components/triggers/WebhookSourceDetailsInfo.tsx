@@ -1,7 +1,7 @@
 import {
   ActionIcons,
   Button,
-  Checkbox,
+  Chip,
   ClipboardIcon,
   cn,
   EyeIcon,
@@ -26,11 +26,7 @@ import type { WebhookSourceFormValues } from "@app/components/triggers/forms/web
 import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
-import {
-  buildWebhookUrl,
-  DEFAULT_WEBHOOK_ICON,
-  normalizeWebhookIcon,
-} from "@app/lib/webhookSource";
+import { buildWebhookUrl, normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
@@ -150,7 +146,7 @@ export function WebhookSourceDetailsInfo({
                 >
                   <IconPicker
                     icons={ActionIcons}
-                    selectedIcon={selectedIcon ?? DEFAULT_WEBHOOK_ICON}
+                    selectedIcon={normalizeWebhookIcon(selectedIcon)}
                     onIconSelect={(iconName: string) => {
                       form.setValue("icon", iconName, { shouldDirty: true });
                       setIsPopoverOpen(false);
@@ -168,7 +164,7 @@ export function WebhookSourceDetailsInfo({
             {...descriptionField}
             id="trigger-description"
             rows={3}
-            placeholder="Enter a description for this trigger"
+            placeholder="Help your team understand when to use this trigger."
           />
         </div>
       </div>
@@ -201,41 +197,29 @@ export function WebhookSourceDetailsInfo({
               />
             );
           })()}
-
-        <div>
-          <Page.H variant="h6">Source Name</Page.H>
-          <Page.P>{webhookSourceView.webhookSource.name}</Page.P>
-        </div>
         {provider && WEBHOOK_PRESETS[provider].events.length > 0 && (
           <div className="space-y-3">
             <Page.H variant="h6">Subscribed events</Page.H>
-            <div className="space-y-2">
-              {WEBHOOK_PRESETS[provider].events.map((event) => {
-                const isSubscribed =
-                  webhookSourceView.webhookSource.subscribedEvents.includes(
-                    event.value
+            <div>
+              {webhookSourceView.webhookSource.subscribedEvents
+                .map((eventValue) => {
+                  const event = WEBHOOK_PRESETS[provider].events.find(
+                    (e) => e.value === eventValue
                   );
-                return (
-                  <div
-                    key={event.value}
-                    className="flex items-center space-x-3"
-                  >
-                    <Checkbox
-                      id={`${provider}-event-${event.value}`}
-                      checked={isSubscribed}
-                      disabled
-                    />
-                    <div className="grid gap-1.5 leading-none">
-                      <label
-                        htmlFor={`${provider}-event-${event.value}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {event.name}
-                      </label>
-                    </div>
-                  </div>
-                );
-              })}
+                  return event ? event.name : eventValue;
+                })
+                .map((event) => {
+                  return (
+                    <Chip
+                      key={event}
+                      size="xs"
+                      color="primary"
+                      className="m-0.5"
+                    >
+                      {event}
+                    </Chip>
+                  );
+                })}
             </div>
           </div>
         )}

@@ -110,6 +110,8 @@ export const createAgentMessages = async ({
             skipToolsValidation: agentMessageRow.skipToolsValidation,
             contents: [],
             parsedContents: {},
+            modelInteractionDurationMs:
+              agentMessageRow.modelInteractionDurationMs,
           } satisfies AgentMessageType,
         };
       })();

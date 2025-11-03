@@ -18,8 +18,10 @@ import { useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { FeedbacksSection } from "@app/components/agent_builder/FeedbacksSection";
-import { useAgentAnalytics } from "@app/lib/swr/assistants";
-import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import {
+  useAgentAnalytics,
+  useAgentConfiguration,
+} from "@app/lib/swr/assistants";
 import { removeNulls } from "@app/types";
 
 const PERIODS = [
@@ -208,14 +210,10 @@ export function AgentBuilderPerformance({
         </CardGrid>
       )}
       {agentConfiguration.scope !== "global" && (
-        <div className="flex-1 overflow-y-auto">
-          <Page.SectionHeader title="Feedback" />
-          <FeedbacksSection
-            owner={owner}
-            agentConfigurationId={agentConfiguration.sId}
-            gridMode={false}
-          />
-        </div>
+        <FeedbacksSection
+          owner={owner}
+          agentConfigurationId={agentConfiguration.sId}
+        />
       )}
     </div>
   );

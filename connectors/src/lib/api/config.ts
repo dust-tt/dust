@@ -40,6 +40,22 @@ export const apiConfig = {
   getConnectorsPublicURL: (): string => {
     return EnvironmentConfig.getEnvVariable("CONNECTORS_PUBLIC_URL");
   },
+  getMicrosoftBotId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("MICROSOFT_BOT_ID");
+  },
+  getMicrosoftBotPassword: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("MICROSOFT_BOT_PASSWORD");
+  },
+  getMicrosoftBotTenantId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("MICROSOFT_BOT_TENANT_ID");
+  },
+  getIsMicrosoftPrimaryRegion: (): boolean => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable(
+        "MICROSOFT_BOT_IS_PRIMARY_REGION"
+      ) === "true"
+    );
+  },
   getDiscordAppPublicKey: (): string => {
     return EnvironmentConfig.getEnvVariable("DISCORD_APP_PUBLIC_KEY");
   },

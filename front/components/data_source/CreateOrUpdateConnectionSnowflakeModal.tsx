@@ -450,6 +450,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               e.preventDefault();
               e.stopPropagation();
               setIsLoading(true);
+              // eslint-disable-next-line no-unused-expressions
               dataSourceToUpdate
                 ? await updateSnowflakeConnection()
                 : await createSnowflakeConnection();

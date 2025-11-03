@@ -4,7 +4,7 @@ import type {
   ExtractSpecificKeys,
   MODEL_IDS,
   MODEL_PROVIDER_IDS,
-  REASONING_EFFORT_IDS,
+  REASONING_EFFORTS,
   SUPPORTED_MODEL_CONFIGS,
   WhitelistableFeature,
 } from "@app/types";
@@ -53,6 +53,9 @@ export type ModelConfigurationType = {
   // Denotes model is able to take a response format request parameter
   supportsResponseFormat?: boolean;
 
+  // Supports prompt caching feature.
+  supportsPromptCaching?: boolean;
+
   featureFlag?: WhitelistableFeature;
   customAssistantFeatureFlag?: WhitelistableFeature;
 };
@@ -64,11 +67,11 @@ export type SupportedModel = ExtractSpecificKeys<
   (typeof SUPPORTED_MODEL_CONFIGS)[number],
   "providerId" | "modelId"
 >;
-export type ReasoningEffortIdType = (typeof REASONING_EFFORT_IDS)[number];
+export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 export type ReasoningModelConfigurationType = {
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
-  reasoningEffort: ReasoningEffortIdType | null;
+  reasoningEffort: ReasoningEffort | null;
   temperature: number | null;
 };
 export type EmbeddingProviderIdType = (typeof EMBEDDING_PROVIDER_IDS)[number];

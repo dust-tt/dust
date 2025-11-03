@@ -23,6 +23,11 @@ import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils"
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+} from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
 
 function ToolsPickerLoading({ count = 5 }: { count?: number }) {
@@ -109,6 +114,11 @@ export function ToolsPicker({
       onOpenChange={(open) => {
         setIsOpen(open);
         if (open) {
+          trackEvent({
+            area: TRACKING_AREAS.TOOLS,
+            object: "tool_picker",
+            action: TRACKING_ACTIONS.OPEN,
+          });
           setSearchText("");
         }
       }}
@@ -165,9 +175,10 @@ export function ToolsPicker({
                     description={getMcpServerViewDescription(v)}
                     truncateText
                     onClick={(e) => {
-                      onSelect(v);
                       e.stopPropagation();
                       e.preventDefault();
+                      onSelect(v);
+                      setIsOpen(false);
                     }}
                   />
                 );

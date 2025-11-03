@@ -8,7 +8,7 @@ import {
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { PaginationParams } from "@app/lib/api/pagination";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -439,6 +439,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         error,
         configuration: agentConfiguration,
         skipToolsValidation: agentMessage.skipToolsValidation,
+        modelInteractionDurationMs: agentMessage.modelInteractionDurationMs,
       } satisfies AgentMessageType;
 
       if (viewType === "full") {
@@ -606,7 +607,7 @@ type RenderMessageVariant = "light" | "full";
 
 export async function batchRenderMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
-  conversationId: string,
+  conversation: ConversationResource,
   messages: Message[],
   viewType: V
 ): Promise<
@@ -618,7 +619,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   const [userMessages, agentMessagesRes, contentFragments] = await Promise.all([
     batchRenderUserMessages(auth, messages),
     batchRenderAgentMessages(auth, messages, viewType),
-    batchRenderContentFragment(auth, conversationId, messages),
+    batchRenderContentFragment(auth, conversation.sId, messages),
   ]);
 
   if (agentMessagesRes.isErr()) {
@@ -626,10 +627,6 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   }
 
   const agentMessages = agentMessagesRes.value;
-
-  if (agentMessages.some((m) => !canReadMessage(auth, m))) {
-    return new Err(new ConversationError("conversation_access_restricted"));
-  }
 
   const renderedMessages = [
     ...userMessages,
@@ -669,7 +666,7 @@ export async function fetchConversationMessages(
 
   const renderedMessagesRes = await batchRenderMessages(
     auth,
-    conversationId,
+    conversation,
     messages,
     "light"
   );
@@ -685,18 +682,6 @@ export async function fetchConversationMessages(
     lastValue: renderedMessages.at(0)?.rank ?? null,
     messages: renderedMessages,
   });
-}
-
-export function canReadMessage(
-  auth: Authenticator,
-  message: AgentMessageType | LightAgentMessageType
-) {
-  // TODO(2025-10-17 thomas): Update permission to use space requirements.
-  return auth.canRead(
-    Authenticator.createResourcePermissionsFromGroupIds(
-      message.configuration.requestedGroupIds
-    )
-  );
 }
 
 export async function fetchMessageInConversation(

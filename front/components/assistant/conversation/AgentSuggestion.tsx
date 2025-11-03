@@ -7,9 +7,17 @@ import {
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useCallback, useMemo, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { mentionAgent } from "@app/lib/mentions";
@@ -57,9 +65,22 @@ export function AgentSuggestion({
 
   const sendNotification = useSendNotification();
 
+  const autoSelectedMessageIdRef = useRef<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuggestion, setShowSuggestion] = useState(false);
 
   const router = useRouter();
+  const { setSelectedAgent } = useContext(InputBarContext);
+
+  const dustAgent = agentConfigurations.find(
+    (agent) => agent.sId === GLOBAL_AGENTS_SID.DUST && agent.status === "active"
+  );
+
+  useEffect(() => {
+    if (!dustAgent) {
+      setShowSuggestion(true);
+    }
+  }, [dustAgent]);
 
   const { submit: handleSelectSuggestion } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
@@ -90,6 +111,10 @@ export function AgentSuggestion({
           title: "Error adding mention to message",
           description: data.error.message,
         });
+        // In case the auto-selection failed, we show the suggestion.
+        if (dustAgent && !showSuggestion) {
+          setShowSuggestion(true);
+        }
       }
     }
   );
@@ -125,6 +150,31 @@ export function AgentSuggestion({
     [router]
   );
 
+  useEffect(() => {
+    if (
+      !dustAgent ||
+      userMessage.id === -1 ||
+      userMessage.sId.startsWith("placeholder") ||
+      userMessage.sId === autoSelectedMessageIdRef.current
+    ) {
+      return;
+    }
+
+    autoSelectedMessageIdRef.current = userMessage.sId;
+    setSelectedAgent({ configurationId: dustAgent.sId });
+    void handleSelectSuggestion(dustAgent);
+  }, [
+    dustAgent,
+    userMessage.id,
+    userMessage.sId,
+    setSelectedAgent,
+    handleSelectSuggestion,
+  ]);
+
+  if (!showSuggestion) {
+    return null;
+  }
+
   return (
     <div className="flex flex-col items-start gap-6">
       <Page.SectionHeader
@@ -147,7 +197,15 @@ export function AgentSuggestion({
               subtitle={agent.lastAuthors?.join(", ") ?? ""}
               title={agent.name}
               pictureUrl={agent.pictureUrl}
-              onClick={() => handleSelectSuggestion(agent)}
+              onClick={async () => {
+                if (isLoading) {
+                  return;
+                }
+                setIsLoading(true);
+                setSelectedAgent({ configurationId: agent.sId });
+                await handleSelectSuggestion(agent);
+                setIsLoading(false);
+              }}
               variant="secondary"
               action={
                 <AssistantCardMore onClick={() => showAgentDetails(agent)} />
@@ -162,11 +220,13 @@ export function AgentSuggestion({
           owner={owner}
           agents={allSortedAgents}
           onItemClick={async (agent) => {
-            if (!isLoading) {
-              setIsLoading(true);
-              await handleSelectSuggestion(agent);
-              setIsLoading(false);
+            if (isLoading) {
+              return;
             }
+            setIsLoading(true);
+            setSelectedAgent({ configurationId: agent.sId });
+            await handleSelectSuggestion(agent);
+            setIsLoading(false);
           }}
           pickerButton={
             <Button

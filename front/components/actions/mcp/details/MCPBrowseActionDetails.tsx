@@ -1,4 +1,4 @@
-import { GlobeAltIcon } from "@dust-tt/sparkle";
+import { FaviconIcon, GlobeAltIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
@@ -38,9 +38,12 @@ export function MCPBrowseActionDetails({
             {(viewType === "conversation" || browseResults.length === 0) && urls
               ? urls.map((url, idx) => (
                   <div
-                    className="flex max-h-60 flex-col overflow-y-auto overflow-x-hidden pb-1"
+                    className="group flex max-h-60 flex-row gap-x-1 overflow-y-auto overflow-x-hidden pb-1"
                     key={idx}
                   >
+                    <span className="grayscale transition-all duration-150 ease-in-out group-hover:grayscale-0">
+                      <FaviconIcon websiteUrl={url} />
+                    </span>
                     <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                       {url}
                     </span>
@@ -95,7 +98,6 @@ export function MCPBrowseActionDetails({
               <ToolGeneratedFileDetails
                 key={file.fileId}
                 resource={file}
-                icon={GlobeAltIcon}
                 owner={owner}
               />
             ))}

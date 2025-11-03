@@ -1,4 +1,3 @@
-import type { estypes } from "@elastic/elasticsearch";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -6,6 +5,7 @@ import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolLatencyByVersion } from "@app/lib/api/assistant/observability/tool_latency";
 import { fetchToolLatencyMetrics } from "@app/lib/api/assistant/observability/tool_latency";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -18,22 +18,6 @@ const QuerySchema = z.object({
 export type GetToolLatencyResponse = {
   byVersion: ToolLatencyByVersion[];
 };
-
-function buildAgentAnalyticsBaseQuery(
-  workspaceId: string,
-  agentId: string,
-  days: number
-): estypes.QueryDslQueryContainer {
-  return {
-    bool: {
-      filter: [
-        { term: { workspace_id: workspaceId } },
-        { term: { agent_id: agentId } },
-        { range: { timestamp: { gte: `now-${days}d/d` } } },
-      ],
-    },
-  };
-}
 
 async function handler(
   req: NextApiRequest,
@@ -91,11 +75,11 @@ async function handler(
       const days = q.data.days ?? DEFAULT_PERIOD_DAYS;
       const owner = auth.getNonNullableWorkspace();
 
-      const baseQuery = buildAgentAnalyticsBaseQuery(
-        owner.sId,
-        assistant.sId,
-        days
-      );
+      const baseQuery = buildAgentAnalyticsBaseQuery({
+        workspaceId: owner.sId,
+        agentId: assistant.sId,
+        days,
+      });
 
       const toolLatencyResult = await fetchToolLatencyMetrics(baseQuery);
 

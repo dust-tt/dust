@@ -145,7 +145,7 @@ export const AdminTriggersList = ({
         cell: (info: CellContext<RowData, SpaceType[]>) => {
           const globalSpace = info.getValue().find((s) => s.kind === "global");
           const accessibleTo = globalSpace
-            ? "Everyone"
+            ? "Workspace"
             : info
                 .getValue()
                 .filter((s) => s.kind === "regular")
@@ -208,7 +208,7 @@ export const AdminTriggersList = ({
     return columns;
   }, [setAgentSId]);
 
-  const createWebhook = (provider: WebhookProvider) => {
+  const createWebhook = (provider: WebhookProvider | null) => {
     setSheetMode({ type: "create", provider });
   };
 

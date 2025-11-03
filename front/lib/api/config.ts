@@ -53,6 +53,12 @@ const config = {
   getSendgridApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("SENDGRID_API_KEY");
   },
+  getSupportEmailAddress: (): { name: string; email: string } => {
+    return {
+      name: "Dust team",
+      email: "support@dust.tt",
+    };
+  },
   getInvitationEmailTemplate: (): string => {
     return EnvironmentConfig.getEnvVariable(
       "SENDGRID_INVITATION_EMAIL_TEMPLATE_ID"

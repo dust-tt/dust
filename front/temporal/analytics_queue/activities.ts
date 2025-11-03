@@ -2,21 +2,31 @@ import assert from "assert";
 
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
+import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
 import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import {
+  AgentMessage,
+  Message,
+  UserMessage,
+} from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AgentMessageType } from "@app/types";
 import { normalizeError } from "@app/types";
-import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type {
+  AgentLoopArgs,
+  AgentMessageRef,
+} from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageAnalyticsData,
+  AgentMessageAnalyticsFeedback,
   AgentMessageAnalyticsTokens,
   AgentMessageAnalyticsToolUsed,
 } from "@app/types/assistant/analytics";
@@ -62,15 +72,17 @@ export async function storeAgentAnalyticsActivity(
     agent_id: agentConfiguration.sId,
     agent_version: agentConfiguration.version.toString(),
     conversation_id: conversation.sId,
-    // TODO(observability 21025-10-20): Add support for latency once defined.
-    latency_ms: 0,
+    latency_ms: agentMessageRow.modelInteractionDurationMs ?? 0,
     message_id: agentMessage.sId,
     status: agentMessage.status,
+    // TODO(observability 21025-10-29): Use agentMessage.created timestamp to index documents
     timestamp: new Date(userMessage.created).toISOString(),
     tokens,
     tools_used: toolsUsed,
     user_id: userMessage.user?.sId ?? "unknown",
     workspace_id: workspace.sId,
+    feedbacks: [],
+    content: agentMessage.content,
   };
 
   await storeToElasticsearch(document);
@@ -165,11 +177,6 @@ async function collectToolUsageFromMessage(
 
     assert(actionResource, "Action resource not found for action");
 
-    // TODO:(observability) This is not accurate as the action is created before tool validation
-    // is required. Meaning it accounts for the delay of user's validation time.
-    const executionTimeMs =
-      actionResource?.updatedAt.getTime() - actionResource?.createdAt.getTime();
-
     return {
       step_index: action.step,
       server_name:
@@ -177,7 +184,7 @@ async function collectToolUsageFromMessage(
       tool_name:
         action.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
         action.functionCallName,
-      execution_time_ms: executionTimeMs,
+      execution_time_ms: actionResource.executionDurationMs,
       status: action.status,
     };
   });
@@ -212,4 +219,87 @@ async function storeToElasticsearch(
 
     throw error;
   }
+}
+
+export async function storeAgentMessageFeedbackActivity(
+  authType: AuthenticatorType,
+  {
+    message,
+  }: {
+    message: AgentMessageRef;
+  }
+): Promise<void> {
+  const auth = await Authenticator.fromJSON(authType);
+
+  const workspace = auth.getNonNullableWorkspace();
+
+  const agentMessageRow = await Message.findOne({
+    where: {
+      sId: message.agentMessageId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!agentMessageRow?.agentMessage) {
+    throw new Error(`Agent message not found: ${message.agentMessageId}`);
+  }
+
+  if (!agentMessageRow.parentId) {
+    throw new Error(`Agent message has no parent: ${message.agentMessageId}`);
+  }
+
+  const agentMessageModel = agentMessageRow.agentMessage;
+
+  const userMessageRow = await Message.findOne({
+    where: {
+      id: agentMessageRow.parentId,
+      conversationId: agentMessageRow.conversationId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!userMessageRow?.userMessage) {
+    throw new Error(
+      `User message not found for agent message: ${message.agentMessageId}`
+    );
+  }
+
+  const agentMessageFeedbacks =
+    await AgentMessageFeedbackResource.listByAgentMessageModelId(
+      auth,
+      agentMessageModel.id
+    );
+
+  const allFeedbacks: AgentMessageAnalyticsFeedback[] =
+    agentMessageFeedbacks.map((agentMessageFeedback) => ({
+      feedback_id: agentMessageFeedback.id,
+      user_id: agentMessageFeedback.user?.sId ?? "unknown",
+      thumb_direction: agentMessageFeedback.thumbDirection,
+      content: agentMessageFeedback.content ?? undefined,
+      dismissed: agentMessageFeedback.dismissed,
+      is_conversation_shared: agentMessageFeedback.isConversationShared,
+      created_at: agentMessageFeedback.createdAt.toISOString(),
+    }));
+
+  await updateAnalyticsFeedback(auth, {
+    message: {
+      sId: agentMessageRow.sId,
+    },
+    createdTimestamp: userMessageRow.createdAt.getTime(),
+    feedbacks: allFeedbacks,
+  });
 }

@@ -81,7 +81,7 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
   if (node.type === "pastedAttachment") {
     const title = node.attrs?.title ?? "";
     const fileId = node.attrs?.fileId ?? "";
-    textContent += `:pasted_attachment[${title}]{fileId=${fileId}}`;
+    textContent += `:pasted_content[${title}]{pastedId=${fileId}}`;
   }
 
   // If the node has content, recursively get text and mentions from each child node
@@ -356,72 +356,77 @@ const useCustomEditor = ({
     }
   }, [suggestions, editor]);
 
-  // setting after as we need the editor to be initialized
-  editor?.setOptions({
-    editorProps: {
-      handleKeyDown: (view, event) => {
-        const submitMessageKey = localStorage.getItem("submitMessageKey");
-        const isCmdEnterForSubmission =
-          isSubmitMessageKey(submitMessageKey) &&
-          submitMessageKey === "cmd+enter";
-        const isEnterForSubmission = !isCmdEnterForSubmission;
-
-        // Check if this is a submission key combination based on user preferences
-        const isSubmissionKey =
-          (isEnterForSubmission &&
-            event.key === "Enter" &&
-            !event.shiftKey &&
-            !event.ctrlKey &&
-            !event.metaKey &&
-            !event.altKey) ||
-          (isCmdEnterForSubmission && event.key === "Enter" && event.metaKey);
-
-        if (isSubmissionKey) {
-          const mentionPluginState = mentionPluginKey.getState(view.state);
-          // Let the mention extension handle the event if its dropdown is currently opened.
-          if (mentionPluginState?.active) {
-            return false;
-          }
-
-          // On mobile, we want to let the user go to the next line and not immediately send
-          if (isMobile(navigator)) {
-            return false;
-          }
-
-          // Prevent the default Enter key behavior
-          event.preventDefault();
-
-          const clearEditor = () => {
-            editor.commands.clearContent();
-          };
-
-          const setLoading = (loading: boolean) => {
-            if (loading) {
-              editor?.view.dom.classList.add("loading-text");
-            } else {
-              editor?.view.dom.classList.remove("loading-text");
-            }
-            return editor?.setEditable(!loading);
-          };
-
-          onEnterKeyDown(
-            editor.isEmpty,
-            editorService.getMarkdownAndMentions(),
-            clearEditor,
-            setLoading
-          );
-
-          // Return true to indicate that this key event has been handled.
-          return true;
-        }
-
-        // Return false to let other keydown handlers or TipTap's default behavior process the event.
-        return false;
-      },
-    },
-  });
-
   const editorService = useEditorService(editor);
+
+  // Set keydown handler after editor is initialized to avoid synchronous updates during render.
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+    editor.setOptions({
+      editorProps: {
+        handleKeyDown: (view, event) => {
+          const submitMessageKey = localStorage.getItem("submitMessageKey");
+          const isCmdEnterForSubmission =
+            isSubmitMessageKey(submitMessageKey) &&
+            submitMessageKey === "cmd+enter";
+          const isEnterForSubmission = !isCmdEnterForSubmission;
+
+          // Check if this is a submission key combination based on user preferences
+          const isSubmissionKey =
+            (isEnterForSubmission &&
+              event.key === "Enter" &&
+              !event.shiftKey &&
+              !event.ctrlKey &&
+              !event.metaKey &&
+              !event.altKey) ||
+            (isCmdEnterForSubmission && event.key === "Enter" && event.metaKey);
+
+          if (isSubmissionKey) {
+            const mentionPluginState = mentionPluginKey.getState(view.state);
+            // Let the mention extension handle the event if its dropdown is currently opened.
+            if (mentionPluginState?.active) {
+              return false;
+            }
+
+            // On mobile, we want to let the user go to the next line and not immediately send
+            if (isMobile(navigator)) {
+              return false;
+            }
+
+            // Prevent the default Enter key behavior
+            event.preventDefault();
+
+            const clearEditor = () => {
+              editor.commands.clearContent();
+            };
+
+            const setLoading = (loading: boolean) => {
+              if (loading) {
+                editor?.view.dom.classList.add("loading-text");
+              } else {
+                editor?.view.dom.classList.remove("loading-text");
+              }
+              return editor?.setEditable(!loading);
+            };
+
+            onEnterKeyDown(
+              editor.isEmpty,
+              editorService.getMarkdownAndMentions(),
+              clearEditor,
+              setLoading
+            );
+
+            // Return true to indicate that this key event has been handled.
+            return true;
+          }
+
+          // Return false to let other keydown handlers or TipTap's default behavior process the event.
+          return false;
+        },
+      },
+    });
+  }, [editor, editorService, onEnterKeyDown]);
 
   // Expose the editor instance and the editor service.
   return {

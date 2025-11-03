@@ -1,5 +1,6 @@
 import type {
   AgentActionPublicType,
+  APIError,
   ConversationPublicType,
   PublicPostContentFragmentRequestBody,
   PublicPostMessagesRequestBody,
@@ -25,6 +26,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import { getHeaderFromUserEmail } from "@connectors/types";
 
 import {
+  createBasicToolApprovalAdaptiveCard,
   createResponseAdaptiveCard,
   createStreamingAdaptiveCard,
 } from "./adaptive_cards";
@@ -94,6 +96,21 @@ export async function botAnswerMessage(
   const activeAgentConfigurations = agentConfigurationsRes.value.filter(
     (ac) => ac.status === "active"
   );
+
+  // Teams sends mentions as <at>name</at> XML-style tags
+  const botName = context.activity.recipient?.name;
+  if (botName) {
+    const matches = message.match(/<at>.*?<\/at>/gi);
+    if (matches) {
+      for (const m of matches) {
+        const mentionedName = m.replace(/<\/?at>/gi, "").trim();
+        // Remove mention if it matches the bot's name (case-insensitive)
+        if (mentionedName.toLowerCase() === botName.toLowerCase()) {
+          message = message.replace(m, "").trim();
+        }
+      }
+    }
+  }
 
   // Process mentions in Teams messages (similar to Slack but for Teams format)
   // Teams mentions come in a different format than Slack
@@ -435,6 +452,94 @@ async function streamAgentResponse({
       case "agent_action_success":
         actions.push(event.action);
         break;
+      case "tool_approve_execution": {
+        localLogger.info(
+          {
+            connectorId: connector.id,
+            conversationId: conversation.sId,
+            eventConversationId: event.conversationId,
+            messageId: event.messageId,
+            actionId: event.actionId,
+            toolName: event.metadata.toolName,
+            agentName: event.metadata.agentName,
+          },
+          "Tool validation request"
+        );
+
+        // Find the MicrosoftBotMessage to get the microsoftBotMessageId
+        const microsoftBotMessage = await MicrosoftBotMessage.findOne({
+          where: {
+            connectorId: connector.id,
+            dustConversationId: conversation.sId,
+          },
+          order: [["createdAt", "DESC"]],
+        });
+
+        if (!microsoftBotMessage) {
+          localLogger.error(
+            {
+              connectorId: connector.id,
+              conversationId: conversation.sId,
+            },
+            "No MicrosoftBotMessage found for tool approval request"
+          );
+          break;
+        }
+
+        // Get the user's AAD Object ID for user-specific view
+        const userAadObjectId = microsoftBotMessage.userAadObjectId;
+
+        if (!userAadObjectId) {
+          localLogger.error(
+            {
+              connectorId: connector.id,
+              conversationId: conversation.sId,
+              microsoftBotMessageId: microsoftBotMessage.id,
+            },
+            "No userAadObjectId found, cannot send approval card with user-specific view"
+          );
+          break;
+        }
+
+        // Send approval card in thread with user-specific view
+        // The original user sees interactive buttons, others see a read-only message
+        const approvalCard = createBasicToolApprovalAdaptiveCard({
+          agentName: event.metadata.agentName,
+          toolName: event.metadata.toolName,
+          conversationId: event.conversationId,
+          messageId: event.messageId,
+          actionId: event.actionId,
+          workspaceId: connector.workspaceId,
+          microsoftBotMessageId: microsoftBotMessage.id,
+          userAadObjectId: context.activity.from.id, // Pass user ID for user-specific views
+        });
+
+        try {
+          await updateActivity(context, {
+            id: agentActivityId,
+            ...approvalCard,
+          });
+          localLogger.info(
+            {
+              connectorId: connector.id,
+              conversationId: conversation.sId,
+              toolName: event.metadata.toolName,
+              agentActivityId,
+            },
+            "Sent tool approval card to user"
+          );
+        } catch (error) {
+          localLogger.error(
+            {
+              error,
+              connectorId: connector.id,
+              conversationId: conversation.sId,
+            },
+            "Failed to send tool approval card"
+          );
+        }
+        break;
+      }
       default:
         // Ignore other events
         break;
@@ -721,4 +826,135 @@ export async function sendFeedback({
     },
     "Feedback submitted from Teams"
   );
+}
+
+export async function botValidateToolExecution({
+  context,
+  connector,
+  approved,
+  conversationId,
+  messageId,
+  actionId,
+  microsoftBotMessageId,
+  agentName,
+  toolName,
+  localLogger,
+}: {
+  context: TurnContext;
+  connector: ConnectorResource;
+  approved: "approved" | "rejected";
+  conversationId: string;
+  messageId: string;
+  actionId: string;
+  microsoftBotMessageId: number;
+  agentName: string;
+  toolName: string;
+  localLogger: Logger;
+}): Promise<Result<undefined, APIError | Error>> {
+  // Validate user first
+  const validatedUser = await validateTeamsUser(
+    context,
+    connector,
+    localLogger
+  );
+  if (!validatedUser) {
+    return new Ok(undefined);
+  }
+
+  const { email } = validatedUser;
+
+  // Find the MicrosoftBotMessage
+  const microsoftBotMessage = await MicrosoftBotMessage.findOne({
+    where: { id: microsoftBotMessageId },
+  });
+
+  if (!microsoftBotMessage) {
+    localLogger.error(
+      { microsoftBotMessageId },
+      "No MicrosoftBotMessage found for tool validation"
+    );
+    return new Err(new Error("Missing Microsoft bot message"));
+  }
+
+  const dustAPI = new DustAPI(
+    { url: apiConfig.getDustFrontAPIUrl() },
+    {
+      workspaceId: connector.workspaceId,
+      apiKey: connector.workspaceAPIKey,
+      extraHeaders: {
+        ...getHeaderFromUserEmail(email),
+      },
+    },
+    localLogger
+  );
+
+  // Call validateAction on Dust API
+  const res = await dustAPI.validateAction({
+    conversationId,
+    messageId,
+    actionId,
+    approved,
+  });
+
+  if (res.isErr()) {
+    localLogger.error(
+      {
+        error: res.error,
+        conversationId,
+        messageId,
+        actionId,
+      },
+      "Failed to validate action on Dust API"
+    );
+    return res;
+  }
+
+  // Retry blocked actions on the main conversation if it differs from the event's conversation
+  if (
+    microsoftBotMessage.dustConversationId &&
+    microsoftBotMessage.dustConversationId !== conversationId
+  ) {
+    const retryRes = await dustAPI.retryMessage({
+      conversationId,
+      messageId,
+      blockedOnly: true,
+    });
+
+    if (retryRes.isErr()) {
+      localLogger.error(
+        {
+          error: retryRes.error,
+          connectorId: connector.id,
+          mainConversationId: microsoftBotMessage.dustConversationId,
+          eventConversationId: conversationId,
+          agentMessageId: messageId,
+        },
+        "Failed to retry blocked actions on the main conversation"
+      );
+    } else {
+      localLogger.info(
+        {
+          connectorId: connector.id,
+          mainConversationId: microsoftBotMessage.dustConversationId,
+          eventConversationId: conversationId,
+          agentMessageId: messageId,
+        },
+        "Successfully retried blocked actions on the main conversation"
+      );
+    }
+  }
+
+  localLogger.info(
+    {
+      conversationId,
+      messageId,
+      actionId,
+      approved,
+      agentName,
+      toolName,
+    },
+    "Tool validation completed"
+  );
+
+  return new Ok(undefined);
 }

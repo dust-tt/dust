@@ -230,6 +230,10 @@ export const CoreAPIDatasourceViewFilterSchema = t.intersection([
   t.partial({
     search_scope: CoreAPISearchScopeSchema,
     filter: t.array(t.string),
+    tags: t.type({
+      in: t.union([t.readonlyArray(t.string), t.null]),
+      not: t.union([t.readonlyArray(t.string), t.null]),
+    }),
   }),
 ]);
 
@@ -1486,6 +1490,36 @@ export class CoreAPI {
         credentials,
       }),
     });
+
+    return this._resultFromResponse(response);
+  }
+
+  async tokenizeBatchCount({
+    texts,
+    modelId,
+    providerId,
+  }: {
+    texts: string[];
+    modelId: string;
+    providerId: string;
+  }): Promise<CoreAPIResponse<{ counts: number[] }>> {
+    const credentials = dustManagedCredentials();
+    const response = await this._fetchWithError(
+      `${this._url}/tokenize/batch/count`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        keepalive: false,
+        body: JSON.stringify({
+          texts,
+          model_id: modelId,
+          provider_id: providerId,
+          credentials,
+        }),
+      }
+    );
 
     return this._resultFromResponse(response);
   }

@@ -214,6 +214,8 @@ export class AgentMCPActionModel extends WorkspaceAwareModel<AgentMCPActionModel
   declare toolConfiguration: LightMCPToolConfigurationType;
   declare stepContext: StepContext;
 
+  declare executionDurationMs: number | null;
+
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
 
   declare agentMessage?: NonAttribute<AgentMessage>;
@@ -264,6 +266,11 @@ AgentMCPActionModel.init(
       type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: {},
+    },
+    executionDurationMs: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
@@ -357,9 +364,11 @@ AgentMCPActionOutputItem.init(
     sequelize: frontSequelize,
     indexes: [
       {
+        // TODO(2025-10-29 flav) Remove once index below has been created.
         fields: ["workspaceId"],
         concurrently: true,
       },
+      { fields: ["workspaceId", "id"], concurrently: true },
       {
         fields: ["agentMCPActionId"],
         concurrently: true,

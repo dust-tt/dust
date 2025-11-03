@@ -5,7 +5,6 @@ import {
   ClipboardCheckIcon,
   ClipboardIcon,
   ConversationMessage,
-  DocumentIcon,
   InteractiveImageGrid,
   Markdown,
   Separator,
@@ -44,23 +43,21 @@ import {
   isMessageTemporayState,
 } from "@app/components/assistant/conversation/types";
 import {
+  agentMentionDirective,
+  getAgentMentionPlugin,
+} from "@app/components/markdown/AgentMentionBlock";
+import {
   CitationsContext,
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import { getImgPlugin, imgDirective } from "@app/components/markdown/Image";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
-import { getCitationIcon } from "@app/components/markdown/MCPReferenceCitation";
-import {
-  getMentionPlugin,
-  mentionDirective,
-} from "@app/components/markdown/MentionBlock";
 import {
   getVisualizationPlugin,
   sanitizeVisualizationContent,
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { useCancelMessage } from "@app/lib/swr/conversations";
@@ -100,7 +97,6 @@ export function AgentMessage({
   owner,
 }: AgentMessageProps) {
   const sId = getMessageSId(messageStreamState);
-  const { isDark } = useTheme();
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     React.useState<boolean>(false);
@@ -180,19 +176,13 @@ export function AgentMessage({
         Record<string, MCPReferenceCitation>
       >((acc, [key, citation]) => {
         if (citation) {
-          const IconComponent = getCitationIcon(
-            citation.provider,
-            isDark,
-            citation.faviconUrl,
-            citation.href
-          );
           return {
             ...acc,
             [key]: {
+              provider: citation.provider,
               href: citation.href,
               title: citation.title,
               description: citation.description,
-              icon: <IconComponent />,
               contentType: citation.contentType,
               fileId: key,
             },
@@ -200,7 +190,7 @@ export function AgentMessage({
         }
         return acc;
       }, {}),
-    [agentMessageToRender.citations, isDark]
+    [agentMessageToRender.citations]
   );
 
   // GenerationContext: to know if we are generating or not.
@@ -610,7 +600,8 @@ function AgentMessageContent({
         sId
       ),
       sup: CiteBlock,
-      mention: getMentionPlugin(owner),
+      // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
+      mention: getAgentMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
     }),
     [owner, conversationId, sId, agentConfiguration.sId]
@@ -618,7 +609,7 @@ function AgentMessageContent({
 
   const additionalMarkdownPlugins: PluggableList = React.useMemo(
     () => [
-      mentionDirective,
+      agentMentionDirective,
       getCiteDirective(),
       visualizationDirective,
       imgDirective,
@@ -743,7 +734,6 @@ function AgentMessageContent({
                 fileId: file.fileId,
                 contentType: file.contentType,
                 href: `/api/w/${owner.sId}/files/${file.fileId}`,
-                icon: <DocumentIcon />,
                 title: file.title,
               },
             })),

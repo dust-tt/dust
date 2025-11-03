@@ -586,7 +586,14 @@ export function MCPServerViewsSheet({
                   <DustAppSection />
                 )}
 
-                {requirements.requiresSecretConfiguration && <SecretSection />}
+                {requirements.developerSecretSelection && (
+                  <SecretSection
+                    customDescription={
+                      mcpServerView.server
+                        .developerSecretSelectionDescription ?? undefined
+                    }
+                  />
+                )}
 
                 {requirements.mayRequireJsonSchemaConfiguration && (
                   <JsonSchemaSection

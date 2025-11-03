@@ -7,6 +7,7 @@ import type {
 import { literal, Op, QueryTypes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import type { WebhookRequestStatus } from "@app/lib/models/assistant/triggers/webhook_request";
 import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
 import type { WebhookRequestTriggerStatus } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
 import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
@@ -59,12 +60,15 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     });
   }
 
-  async markRelatedTrigger(
-    this: WebhookRequestResource,
-    trigger: TriggerType,
-    status: WebhookRequestTriggerStatus,
-    errorMessage?: string
-  ) {
+  async markRelatedTrigger({
+    trigger,
+    status,
+    errorMessage,
+  }: {
+    trigger: TriggerType;
+    status: WebhookRequestTriggerStatus;
+    errorMessage?: string;
+  }) {
     await WebhookRequestTriggerModel.create({
       workspaceId: this.workspaceId,
       webhookRequestId: this.id,
@@ -78,15 +82,11 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     blob: CreationAttributes<WebhookRequestModel>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WebhookRequestResource, Error>> {
-    try {
-      const webhookRequest = await WebhookRequestModel.create(blob, {
-        transaction,
-      });
+    const webhookRequest = await this.model.create(blob, {
+      transaction,
+    });
 
-      return new Ok(new this(WebhookRequestModel, webhookRequest.get()));
-    } catch (error) {
-      return new Err(error as Error);
-    }
+    return new Ok(new this(this.model, webhookRequest.get()));
   }
 
   private static async baseFetch(
@@ -108,7 +108,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     return res.map((c) => new this(this.model, c.get()));
   }
 
-  static async fetchById(
+  static async fetchByModelIdWithAuth(
     auth: Authenticator,
     id: ModelId
   ): Promise<WebhookRequestResource | null> {
@@ -130,20 +130,29 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     auth: Authenticator,
     webhookSourceId: ModelId,
     options: ResourceFindOptions<WebhookRequestModel> = {}
-  ): Promise<Result<WebhookRequestResource[], Error>> {
-    try {
-      const resources = await this.baseFetch(auth, {
-        ...options,
-        where: {
-          ...options.where,
-          webhookSourceId,
-        },
-      });
+  ): Promise<WebhookRequestResource[]> {
+    return this.baseFetch(auth, {
+      ...options,
+      where: {
+        ...options.where,
+        webhookSourceId,
+      },
+    });
+  }
 
-      return new Ok(resources);
-    } catch (error) {
-      return new Err(error as Error);
+  static async listByStatus(
+    auth: Authenticator,
+    {
+      status,
+    }: {
+      status: WebhookRequestStatus;
     }
+  ): Promise<WebhookRequestResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        status,
+      },
+    });
   }
 
   static async getWorkspaceIdsWithTooManyRequests({
@@ -273,5 +282,43 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     } catch (error) {
       return new Err(error as Error);
     }
+  }
+
+  static async deleteByWebhookSourceId(
+    auth: Authenticator,
+    webhookSourceId: ModelId,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<{ affectedCount: number }> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Fetch only the IDs of webhook requests to minimize data transfer
+    const webhookRequests = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        webhookSourceId,
+      },
+      attributes: ["id"],
+      transaction,
+    });
+
+    // Delete all request triggers for these webhook requests
+    await WebhookRequestTriggerModel.destroy({
+      where: {
+        workspaceId: workspace.id,
+        webhookRequestId: webhookRequests.map((r) => r.id),
+      },
+      transaction,
+    });
+
+    // Delete all webhook requests for this webhook source
+    const affectedCount = await this.model.destroy({
+      where: {
+        workspaceId: workspace.id,
+        webhookSourceId,
+      },
+      transaction,
+    });
+
+    return { affectedCount };
   }
 }

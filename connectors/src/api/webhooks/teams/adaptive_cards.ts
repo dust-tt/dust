@@ -6,7 +6,6 @@ import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 
 const DUST_URL = "https://dust.tt/home";
-const TEAMS_HELP_URL = "https://docs.dust.tt/docs/teams";
 
 /**
  * Creates an Adaptive Card for Teams with the AI response, conversation link, and agent selector
@@ -308,6 +307,233 @@ export function createErrorAdaptiveCard({
   };
 }
 
+/**
+ * Creates the basic Adaptive Card for tool execution approval for everyone (read-only, no actions)
+ */
+export function createBasicToolApprovalAdaptiveCard(data: {
+  agentName: string;
+  toolName: string;
+  conversationId: string;
+  messageId: string;
+  actionId: string;
+  workspaceId: string;
+  microsoftBotMessageId: number;
+  userAadObjectId: string;
+}): Partial<Activity> {
+  const basicCard: AdaptiveCard = {
+    type: "AdaptiveCard",
+    $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+    version: "1.4",
+    refresh: {
+      action: {
+        type: "Action.Execute",
+        title: "Tool execution approval",
+        verb: "toolExecutionApproval",
+        data,
+      },
+      userIds: [data.userAadObjectId],
+    },
+    body: [
+      {
+        type: "TextBlock",
+        text: "Tool validation Required",
+        weight: "Bolder",
+        size: "Large",
+        spacing: "Medium",
+      },
+      {
+        type: "Container",
+        spacing: "Medium",
+        items: [
+          {
+            type: "TextBlock",
+            text: `Agent **@${data.agentName}** is requesting permission to use tool **${data.toolName}**`,
+            wrap: true,
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "_Waiting for user approval..._",
+            wrap: true,
+            spacing: "Small",
+            size: "Small",
+            color: "Accent",
+            isSubtle: true,
+          },
+        ],
+      },
+    ],
+  };
+
+  return {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: {
+          ...basicCard,
+        },
+      },
+    ],
+  };
+}
+
+/**
+ * Creates an interactive Adaptive Card for tool execution approval for the original sender (with buttons)
+ */
+export function createInteractiveToolApprovalAdaptiveCard(data: {
+  agentName: string;
+  toolName: string;
+  conversationId: string;
+  messageId: string;
+  actionId: string;
+  workspaceId: string;
+  microsoftBotMessageId: number;
+}): AdaptiveCard {
+  return {
+    type: "AdaptiveCard",
+    $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+    version: "1.4",
+    body: [
+      {
+        type: "TextBlock",
+        text: "Tool validation Required",
+        weight: "Bolder",
+        size: "Large",
+        spacing: "Medium",
+      },
+      {
+        type: "Container",
+        spacing: "Medium",
+        items: [
+          {
+            type: "TextBlock",
+            text: `Agent **@${data.agentName}** is requesting permission to use tool **${data.toolName}**`,
+            wrap: true,
+            spacing: "Small",
+          },
+        ],
+      },
+    ],
+    actions: [
+      {
+        type: "Action.Execute",
+        title: "Approve",
+        verb: "approve_tool",
+        data,
+      },
+      {
+        type: "Action.Execute",
+        title: "Reject",
+        verb: "reject_tool",
+        data,
+      },
+    ],
+  };
+}
+
+/**
+ * Creates a welcome adaptive card for new installations
+ */
+export function createWelcomeAdaptiveCard(): Partial<Activity> {
+  const card: AdaptiveCard = {
+    type: "AdaptiveCard",
+    $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+    version: "1.4",
+    body: [
+      {
+        type: "Container",
+        items: [
+          {
+            type: "TextBlock",
+            text: "🎉 Welcome to Dust!",
+            weight: "Bolder",
+            size: "Large",
+            spacing: "Medium",
+            horizontalAlignment: "Center",
+          },
+          {
+            type: "TextBlock",
+            text: "Thank you for installing Dust in Microsoft Teams!",
+            wrap: true,
+            spacing: "Medium",
+            horizontalAlignment: "Center",
+          },
+        ],
+      },
+      {
+        type: "Container",
+        spacing: "Medium",
+        separator: true,
+        items: [
+          {
+            type: "TextBlock",
+            text: "**Getting Started**",
+            weight: "Bolder",
+            spacing: "Medium",
+          },
+          {
+            type: "TextBlock",
+            text: "To start using Dust in Teams, make sure to:",
+            wrap: true,
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "• Enable the integration in your Workspace settings",
+            wrap: true,
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "• Configure your agents to work with Teams",
+            wrap: true,
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "• Start chatting by mentioning an agent",
+            wrap: true,
+            spacing: "Small",
+          },
+        ],
+      },
+      {
+        type: "Container",
+        spacing: "Medium",
+        separator: true,
+        items: [
+          {
+            type: "TextBlock",
+            text: "📚 [Read the full documentation](https://docs.dust.tt/docs/dust-in-teams) to learn more about using Dust in Teams.",
+            wrap: true,
+            size: "Small",
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "Need help? Visit [dust.tt](https://dust.tt) for support.",
+            wrap: true,
+            size: "Small",
+            spacing: "Small",
+            color: "Accent",
+          },
+        ],
+      },
+    ],
+  };
+
+  return {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: card,
+      },
+    ],
+  };
+}
+
 function createFooterText({
   assistantName,
   conversationUrl,
@@ -330,7 +556,7 @@ function createFooterText({
     }
   }
 
-  const baseLinks = `[Browse agents](${assistantsUrl}) | [Use Dust in Teams](${TEAMS_HELP_URL}) | [Learn more](${DUST_URL})`;
+  const baseLinks = `[Browse agents](${assistantsUrl}) | [Learn more](${DUST_URL})`;
 
   return conversationUrl
     ? `${attribution}[Go to full conversation](${conversationUrl}) | ${baseLinks}`

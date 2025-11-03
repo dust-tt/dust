@@ -10,7 +10,6 @@ import {
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { createAgentMessages } from "@app/lib/api/assistant/conversation/mentions";
-import { canReadMessage } from "@app/lib/api/assistant/messages";
 import {
   getContentFragmentGroupIds,
   getContentFragmentSpaceIds,
@@ -365,16 +364,6 @@ export async function postUserMessage(
     });
   }
 
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err({
-      status_code: 403,
-      api_error: {
-        type: "conversation_access_restricted",
-        message: "Conversation cannot be accessed.",
-      },
-    });
-  }
-
   // Check plan and rate limit.
   const messageLimit = await isMessagesLimitReached({
     owner,
@@ -694,16 +683,6 @@ export async function editUserMessage(
     });
   }
 
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err({
-      status_code: 403,
-      api_error: {
-        type: "conversation_access_restricted",
-        message: "Conversation cannot be accessed.",
-      },
-    });
-  }
-
   if (auth.user()?.id !== message.user?.id) {
     return new Err({
       status_code: 403,
@@ -1014,16 +993,6 @@ export async function retryAgentMessage(
     message: AgentMessageType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
-  if (!canReadMessage(auth, message)) {
-    return new Err({
-      status_code: 403,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The message to retry is not accessible.",
-      },
-    });
-  }
-
   let agentMessageResult: {
     agentMessage: AgentMessageType;
     agentMessageRow: AgentMessage;
@@ -1130,6 +1099,7 @@ export async function retryAgentMessage(
         skipToolsValidation: agentMessageRow.skipToolsValidation,
         contents: [],
         parsedContents: {},
+        modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
       };
 
       return {
@@ -1222,10 +1192,6 @@ export async function postNewContentFragment(
   const owner = auth.workspace();
   if (!owner || owner.id !== conversation.owner.id) {
     throw new Error("Invalid auth for conversation.");
-  }
-
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationError("conversation_access_restricted"));
   }
 
   const upsertAttachmentRes = await maybeUpsertFileAttachment(auth, {

@@ -2,7 +2,12 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  emptyArray,
+  fetcher,
+  getErrorFromResponse,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type { GetWebhookRequestsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers/[tId]/webhook_requests";
 import type { GetWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/webhook_source_views";
 import type {
@@ -123,36 +128,34 @@ export function useCreateWebhookSource({
   const createWebhookSource = async (
     input: PostWebhookSourcesBody
   ): Promise<WebhookSourceForAdminType | null> => {
-    try {
-      const response = await fetch(`/api/w/${owner.sId}/webhook_sources`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(input),
-      });
+    const response = await fetch(`/api/w/${owner.sId}/webhook_sources`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+    });
 
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
+    if (!response.ok) {
+      const errorData = await getErrorFromResponse(response);
 
-      sendNotification({
-        type: "success",
-        title: `Successfully created webhook source`,
-      });
-
-      void mutateWebhookSourcesWithViews();
-
-      const result = await response.json();
-      return result.webhookSource;
-    } catch (error) {
       sendNotification({
         type: "error",
-        title: `Failed to create webhook source`,
+        title: `Error archiving agents`,
+        description: `Error: ${errorData.message}`,
       });
-
       return null;
     }
+
+    sendNotification({
+      type: "success",
+      title: "Successfully created webhook source",
+    });
+
+    void mutateWebhookSourcesWithViews();
+
+    const result = await response.json();
+    return result.webhookSource;
   };
 
   return createWebhookSource;

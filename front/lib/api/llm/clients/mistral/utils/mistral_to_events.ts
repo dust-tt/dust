@@ -6,11 +6,8 @@ import type {
 import { CompletionResponseStreamChoiceFinishReason } from "@mistralai/mistralai/models/components";
 import compact from "lodash/compact";
 
-import type {
-  LLMEvent,
-  ProviderMetadata,
-  ToolCallEvent,
-} from "@app/lib/api/llm/types/events";
+import type { LLMEvent, ToolCallEvent } from "@app/lib/api/llm/types/events";
+import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import type { ExpectedDeltaMessage } from "@app/lib/api/llm/types/predicates";
 import {
   isCorrectCompletionEvent,
@@ -25,7 +22,7 @@ export async function* streamLLMEvents({
   metadata,
 }: {
   completionEvents: AsyncIterable<CompletionEvent>;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }): AsyncGenerator<LLMEvent> {
   // Mistral does not send a "report" with concatenated text chunks
   // So we have to aggregate it ourselves as we receive text chunks
@@ -126,7 +123,7 @@ export function toLLMEvents({
   metadata,
 }: {
   delta: ExpectedDeltaMessage;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }): LLMEvent[] {
   const { content, toolCalls } = delta;
 
@@ -149,7 +146,7 @@ function toToolEvent({
   metadata,
 }: {
   toolCall: ToolCall;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }): ToolCallEvent | null {
   if (!isCorrectToolCall(toolCall)) {
     return null;
@@ -173,7 +170,7 @@ function toStreamEvents({
   metadata,
 }: {
   content: string | Array<ContentChunk>;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }): LLMEvent[] {
   if (isString(content)) {
     return [
@@ -200,7 +197,7 @@ function contentChunkToLLMEvent({
   metadata,
 }: {
   chunk: ContentChunk;
-  metadata: ProviderMetadata;
+  metadata: LLMClientMetadata;
 }): LLMEvent | null {
   switch (chunk.type) {
     case "text": {

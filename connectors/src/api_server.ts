@@ -182,7 +182,10 @@ export function startServer(port: number) {
     webhookDiscordAppHandler
   );
 
-  app.post("/webhooks/:webhook_secret/teams_messages", webhookTeamsAPIHandler);
+  app.post(
+    "/webhooks/:webhook_secret/microsoft_teams_bot",
+    webhookTeamsAPIHandler
+  );
 
   // /configuration/ is the new configration method, replacing the old /config/ method
   app.patch(

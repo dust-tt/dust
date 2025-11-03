@@ -84,6 +84,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "google_calendar",
   "google_drive",
   "google_sheets",
+  "http_client",
   "hubspot",
   "image_generation",
   "include_data",
@@ -91,6 +92,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "slideshow",
   "jira",
   "microsoft_drive",
+  "microsoft_excel",
   "microsoft_teams",
   "missing_action_catcher",
   "monday",
@@ -114,6 +116,11 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "web_search_&_browse",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
+] as const;
+
+export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
+  "web_search_&_browse",
+  "http_client",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -544,13 +551,23 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
+      // Read operations - never ask
       search_messages: "never_ask",
       semantic_search_messages: "never_ask",
       list_users: "never_ask",
       list_public_channels: "never_ask",
+      list_channels: "never_ask",
+      list_joined_channels: "never_ask",
       list_threads: "never_ask",
-      post_message: "low",
+      read_thread_messages: "never_ask",
       get_user: "never_ask",
+      get_channel_details: "never_ask",
+
+      // Write operations - low stakes
+      post_message: "low",
+      schedule_message: "low",
+      add_reaction: "low",
+      remove_reaction: "low",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1010,7 +1027,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "OpenaiLogo",
       documentationUrl: null,
       instructions: null,
-      requiresSecret: true,
+      developerSecretSelection: "required",
     },
   },
   confluence: {
@@ -1053,7 +1070,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: true,
     tools_stakes: {
       text_to_speech: "low",
-      text_to_discussion: "low",
+      text_to_dialogue: "low",
     },
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
@@ -1071,9 +1088,7 @@ The directive should be used to display a clickable version of the agent name in
     id: 35,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("microsoft_drive_mcp_server");
-    },
+    isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
       search_in_files: "never_ask",
@@ -1092,7 +1107,7 @@ The directive should be used to display a clickable version of the agent name in
         provider: "microsoft_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
         scope:
-          "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All" as const,
+          "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All offline_access" as const,
       },
       icon: "MicrosoftLogo",
       documentationUrl: "https://docs.dust.tt/docs/microsoft-drive-tool-setup",
@@ -1103,9 +1118,7 @@ The directive should be used to display a clickable version of the agent name in
     id: 36,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("microsoft_teams_mcp_server");
-    },
+    isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
       search_messages_content: "never_ask",
@@ -1126,7 +1139,7 @@ The directive should be used to display a clickable version of the agent name in
         provider: "microsoft_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
         scope:
-          "User.Read User.ReadBasic.All Team.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send" as const,
+          "User.Read User.ReadBasic.All Team.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access" as const,
       },
       icon: "MicrosoftTeamsLogo",
       documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
@@ -1153,6 +1166,66 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ActionMegaphoneIcon",
       documentationUrl: null,
       instructions: null,
+    },
+  },
+  microsoft_excel: {
+    id: 38,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: {
+      list_excel_files: "never_ask",
+      get_worksheets: "never_ask",
+      read_worksheet: "never_ask",
+      write_worksheet: "high",
+      create_worksheet: "low",
+      clear_range: "high",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "microsoft_excel",
+      version: "1.0.0",
+      description: "Work with Excel files in SharePoint.",
+      authorization: {
+        provider: "microsoft_tools" as const,
+        supported_use_cases: ["personal_actions"] as const,
+        scope:
+          "User.Read Files.ReadWrite.All Sites.Read.All offline_access" as const,
+      },
+      icon: "MicrosoftExcelLogo",
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  http_client: {
+    id: 39,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("http_client_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      send_request: "low",
+      websearch: "never_ask",
+      webbrowser: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "http_client",
+      version: "1.0.0",
+      description:
+        "Make HTTP requests to external APIs with optional Bearer token authentication.",
+      authorization: null,
+      icon: "ActionGlobeAltIcon",
+      documentationUrl: null,
+      instructions: null,
+      developerSecretSelectionDescription:
+        "This is optional. If set, this secret will be used as a default Bearer token (Authorization header) for HTTP requests.",
+      developerSecretSelection: "optional",
     },
   },
   [SEARCH_SERVER_NAME]: {
@@ -1407,7 +1480,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ValTownLogo",
       documentationUrl: "https://docs.dust.tt/docs/val-town",
       instructions: null,
-      requiresSecret: true,
+      developerSecretSelection: "required",
     },
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.

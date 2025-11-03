@@ -67,8 +67,8 @@ async function handler(
 
   // Only allow conversation Frame files.
   if (
-    !frameFile.isInteractiveContent &&
-    frameFile.contentType === frameContentType
+    !frameFile.isInteractiveContent ||
+    frameFile.contentType !== frameContentType
   ) {
     return apiError(req, res, {
       status_code: 400,

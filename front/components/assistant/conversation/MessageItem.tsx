@@ -67,6 +67,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               }),
             }
           );
+
           if (res.ok) {
             if (feedbackContent && !shouldRemoveExistingFeedback) {
               sendNotification({
@@ -76,6 +77,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 type: "success",
               });
             }
+
             await mutate(
               `/api/w/${context.owner.sId}/assistant/conversations/${context.conversationId}/feedbacks`
             );
@@ -84,6 +86,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       );
 
     const messageFeedback = context.feedbacksByMessageId[sId];
+
     const messageFeedbackWithSubmit: FeedbackSelectorProps = {
       feedback: messageFeedback
         ? {

@@ -652,7 +652,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_to_yaml"
   | "anthropic_vertex_fallback"
   | "claude_4_opus_feature"
-  | "co_edition"
   | "confluence_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
@@ -660,7 +659,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"
-  | "dust_default_haiku_feature"
   | "elevenlabs_tool"
   | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
@@ -674,9 +672,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_transcripts"
   | "legacy_dust_apps"
   | "llm_router_direct_requests"
-  | "microsoft_drive_mcp_server"
   | "microsoft_teams_bot"
-  | "microsoft_teams_mcp_server"
   | "monday_tool"
   | "noop_model_feature"
   | "notion_private_integration"
@@ -703,9 +699,11 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "elevenlabs_tool"
   | "agent_builder_observability"
   | "legacy_dust_apps"
-  | "dust_default_haiku_feature"
   | "llm_router_direct_requests"
   | "mentions_v2"
+  | "dust_global_agent_memory"
+  | "dust_global_data_source_file_system"
+  | "http_client_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2818,6 +2816,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTableIcon"
   | "ActionTimeIcon"
   | "AsanaLogo"
+  | "CanvaLogo"
   | "CommandLineIcon"
   | "ConfluenceLogo"
   | "DriveLogo"
@@ -2828,6 +2827,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GoogleSpreadsheetLogo"
   | "FreshserviceLogo"
   | "HubspotLogo"
+  | "MicrosoftExcelLogo"
   | "MicrosoftOutlookLogo"
   | "MicrosoftTeamsLogo"
   | "JiraLogo"
@@ -2840,6 +2840,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "StripeLogo"
   | "OpenaiLogo"
   | "ValTownLogo"
+  | "ZendeskLogo"
 >();
 
 const CustomServerIconSchema = FlexibleEnumSchema<
