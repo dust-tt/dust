@@ -122,9 +122,10 @@ function HeaderGlobalSelector({
     if (
       mode === "version" &&
       !selectedVersion &&
-      (versionMarkers?.length ?? 0) > 0
+      versionMarkers &&
+      versionMarkers.length > 0
     ) {
-      const latest = versionMarkers![versionMarkers!.length - 1];
+      const latest = versionMarkers[versionMarkers.length - 1];
       setSelectedVersion(latest.version);
     }
   }, [mode, selectedVersion, versionMarkers, setSelectedVersion]);
