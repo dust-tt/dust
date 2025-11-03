@@ -273,7 +273,6 @@ export function _getDustGlobalAgent(
         modelId: modelConfiguration.modelId,
         temperature: 0.7,
         reasoningEffort: modelConfiguration.defaultReasoningEffort,
-        promptCaching: modelConfiguration.supportsPromptCaching,
       }
     : dummyModelConfiguration;
 

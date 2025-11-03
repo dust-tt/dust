@@ -12,7 +12,6 @@ import { Err, Ok } from "@app/types";
 export interface LLMConfig {
   functionCall?: string | null;
   modelId: ModelIdType;
-  promptCaching?: boolean;
   providerId: ModelProviderIdType;
   reasoningEffort?: string;
   responseFormat?: string;

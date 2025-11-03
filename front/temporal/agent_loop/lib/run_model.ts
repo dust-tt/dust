@@ -366,11 +366,6 @@ export async function runModelActivity(
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
   }
 
-  // Set prompt_caching from agent configuration
-  if (agentConfiguration.model.promptCaching) {
-    runConfig.MODEL.prompt_caching = agentConfiguration.model.promptCaching;
-  }
-
   // Errors occurring during the multi-actions-agent dust app may be retryable.
   // Their implicit code should be "multi_actions_error".
   async function handlePossiblyRetryableError(message: string) {
