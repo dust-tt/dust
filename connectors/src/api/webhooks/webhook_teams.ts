@@ -235,11 +235,25 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
               break;
             }
 
+            localLogger.info(
+              {
+                agentName: validatedData.agentName,
+                toolName: validatedData.toolName,
+                conversationId: validatedData.conversationId,
+                messageId: validatedData.messageId,
+                microsoftBotMessageId: validatedData.microsoftBotMessageId,
+              },
+              "Handling tool execution approval card refresh"
+            );
+
             res.status(200).json({
               type: "application/vnd.microsoft.card.adaptive",
               value: createInteractiveToolApprovalAdaptiveCard(validatedData),
             });
           } else {
+            localLogger.info({
+              verb: context.activity.value?.action?.verb,
+            }, "Handling invoke activity other than tool execution approval")
             await handleToolApproval(context, connector, localLogger);
           }
           break;
