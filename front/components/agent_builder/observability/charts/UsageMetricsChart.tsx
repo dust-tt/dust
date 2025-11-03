@@ -3,7 +3,6 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -20,6 +19,7 @@ import { useObservability } from "@app/components/agent_builder/observability/Ob
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { filterTimeSeriesByVersionWindow } from "@app/components/agent_builder/observability/utils";
 import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
@@ -108,8 +108,14 @@ export function UsageMetricsChart({
   }));
 
   const data = useMemo(
-    () => usageMetrics?.points ?? [],
-    [usageMetrics?.points]
+    () =>
+      filterTimeSeriesByVersionWindow(
+        usageMetrics?.points,
+        mode,
+        selectedVersion,
+        versionMarkers ?? []
+      ),
+    [usageMetrics?.points, mode, selectedVersion, versionMarkers]
   );
 
   return (
@@ -118,6 +124,9 @@ export function UsageMetricsChart({
       isLoading={isUsageMetricsLoading}
       errorMessage={
         isUsageMetricsError ? "Failed to load observability data." : undefined
+      }
+      emptyMessage={
+        data.length === 0 ? "No usage metrics for this selection." : undefined
       }
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
@@ -192,25 +201,6 @@ export function UsageMetricsChart({
               boxShadow: "none",
             }}
           />
-          {(versionMarkers ?? []).map((m) => {
-            const isSelected =
-              mode === "version" && selectedVersion === m.version;
-            return (
-              <ReferenceLine
-                key={m.version}
-                x={m.timestamp}
-                stroke={"hsl(var(--primary))"}
-                strokeWidth={isSelected ? 3 : 1.5}
-                strokeDasharray="5 5"
-                label={{
-                  value: `v${m.version}`,
-                  position: "top",
-                  fill: "hsl(var(--muted-foreground))",
-                }}
-                ifOverflow="extendDomain"
-              />
-            );
-          })}
           {/* Areas for each usage metric */}
           <Area
             type="natural"

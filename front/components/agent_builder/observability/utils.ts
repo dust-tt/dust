@@ -2,6 +2,9 @@ import {
   OTHER_TOOLS_LABEL,
   TOOL_COLORS,
 } from "@app/components/agent_builder/observability/constants";
+import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
+
+export type VersionMarker = { version: string; timestamp: string };
 
 export type ValuesPayload = { values: Record<string, number> };
 
@@ -50,4 +53,39 @@ export function selectTopTools(
     })
     .slice(0, maxTools)
     .map(([toolName]) => toolName);
+}
+
+// Filters a generic time-series of points with a `date` string to the
+// selected version window determined by version markers. If no selection or
+// markers are provided, returns the original points.
+export function filterTimeSeriesByVersionWindow<T extends { date: string }>(
+  points: T[] | undefined,
+  mode: ObservabilityMode,
+  selectedVersion: string | null,
+  versionMarkers?: VersionMarker[] | null
+): T[] {
+  const pts = points ?? [];
+  if (!pts.length) {
+    return pts;
+  }
+
+  if (mode !== "version" || !selectedVersion || !versionMarkers?.length) {
+    return pts;
+  }
+
+  const idx = versionMarkers.findIndex((m) => m.version === selectedVersion);
+  if (idx < 0) {
+    return pts;
+  }
+
+  const start = new Date(versionMarkers[idx].timestamp).getTime();
+  const end =
+    idx + 1 < versionMarkers.length
+      ? new Date(versionMarkers[idx + 1].timestamp).getTime()
+      : undefined;
+
+  return pts.filter((p) => {
+    const t = new Date(p.date).getTime();
+    return t >= start && (end === undefined || t < end);
+  });
 }
