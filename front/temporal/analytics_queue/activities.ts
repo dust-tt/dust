@@ -177,12 +177,6 @@ async function collectToolUsageFromMessage(
 
     assert(actionResource, "Action resource not found for action");
 
-    // TODO:(observability) handle null values here
-    const executionTimeMs =
-      actionResource?.endDateMs && actionResource?.startDateMs
-        ? actionResource.endDateMs - actionResource.startDateMs
-        : null;
-
     return {
       step_index: action.step,
       server_name:
@@ -190,7 +184,8 @@ async function collectToolUsageFromMessage(
       tool_name:
         action.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
         action.functionCallName,
-      execution_time_ms: executionTimeMs ?? 0,
+      // TODO:(observability) handle null values here
+      execution_time_ms: actionResource.executionDurationMs ?? 0,
       status: action.status,
     };
   });
