@@ -183,7 +183,6 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           activityType: context.activity.type,
           activityName: context.activity.name,
           conversationId: context.activity.conversation?.id,
-          text: context.activity.text,
         },
         "Received Teams activity"
       );

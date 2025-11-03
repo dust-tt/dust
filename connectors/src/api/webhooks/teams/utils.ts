@@ -39,11 +39,13 @@ export async function getConnector(context: TurnContext) {
   }
 
   if (!tenantId) {
-    logger.error("No tenant ID found in Teams context");
     return;
   }
 
-  logger.info({ tenantId }, "Found tenant ID in Teams context");
+  logger.info(
+    { tenantId, connectorProvider: "microsoft_bot" },
+    "Found tenant ID in Teams context"
+  );
 
   // Find the bot configuration for this tenant
   const botConfig =
@@ -51,7 +53,7 @@ export async function getConnector(context: TurnContext) {
 
   if (!botConfig || !botConfig.botEnabled) {
     logger.error(
-      { tenantId },
+      { tenantId, connectorProvider: "microsoft_bot" },
       "No Microsoft Bot configuration found for tenant"
     );
     return;
@@ -63,6 +65,7 @@ export async function getConnector(context: TurnContext) {
   if (!connector) {
     logger.error(
       {
+        connectorProvider: "microsoft_bot",
         connectorId: botConfig.connectorId,
         tenantId,
       },
@@ -74,15 +77,6 @@ export async function getConnector(context: TurnContext) {
     );
     return;
   }
-
-  logger.info(
-    {
-      connectorId: connector.id,
-      tenantId,
-      workspaceId: connector.workspaceId,
-    },
-    "Found matching Microsoft Bot connector"
-  );
 
   return connector;
 }
