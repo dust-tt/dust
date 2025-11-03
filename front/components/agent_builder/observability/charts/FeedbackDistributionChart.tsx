@@ -3,7 +3,6 @@ import {
   CartesianGrid,
   Line,
   LineChart,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -57,10 +56,35 @@ export function FeedbackDistributionChart({
     colorClassName: FEEDBACK_DISTRIBUTION_PALETTE[key],
   }));
 
-  const data = useMemo(
-    () => feedbackDistribution?.points ?? [],
-    [feedbackDistribution?.points]
-  );
+  const data = useMemo(() => {
+    const points = feedbackDistribution?.points ?? [];
+
+    if (!points.length) {
+      return points;
+    }
+
+    // In version mode, filter the time series to the selected version window.
+    if (mode === "version" && selectedVersion && versionMarkers?.length) {
+      const idx = versionMarkers.findIndex(
+        (m) => m.version === selectedVersion
+      );
+      if (idx >= 0) {
+        const start = new Date(versionMarkers[idx].timestamp).getTime();
+        const end =
+          idx + 1 < versionMarkers.length
+            ? new Date(versionMarkers[idx + 1].timestamp).getTime()
+            : undefined;
+
+        return points.filter((p) => {
+          // Points are by day (YYYY-MM-DD). Construct a Date for comparison.
+          const t = new Date(p.date).getTime();
+          return t >= start && (end === undefined || t < end);
+        });
+      }
+    }
+
+    return points;
+  }, [feedbackDistribution?.points, mode, selectedVersion, versionMarkers]);
 
   return (
     <ChartContainer
@@ -109,25 +133,6 @@ export function FeedbackDistributionChart({
               boxShadow: "none",
             }}
           />
-          {(versionMarkers ?? []).map((m) => {
-            const isSelected =
-              mode === "version" && selectedVersion === m.version;
-            return (
-              <ReferenceLine
-                key={m.version}
-                x={m.timestamp}
-                stroke={"hsl(var(--primary))"}
-                strokeWidth={isSelected ? 3 : 1.5}
-                strokeDasharray="5 5"
-                label={{
-                  value: `v${m.version}`,
-                  position: "top",
-                  fill: "hsl(var(--muted-foreground))",
-                }}
-                ifOverflow="extendDomain"
-              />
-            );
-          })}
           <Line
             type="monotone"
             dataKey="positive"

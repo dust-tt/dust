@@ -3,7 +3,6 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -107,10 +106,34 @@ export function UsageMetricsChart({
     colorClassName: USAGE_METRICS_PALETTE[key],
   }));
 
-  const data = useMemo(
-    () => usageMetrics?.points ?? [],
-    [usageMetrics?.points]
-  );
+  const data = useMemo(() => {
+    const points = usageMetrics?.points ?? [];
+
+    if (!points.length) {
+      return points;
+    }
+
+    // In version mode, filter the time series to the selected version window.
+    if (mode === "version" && selectedVersion && versionMarkers?.length) {
+      const idx = versionMarkers.findIndex(
+        (m) => m.version === selectedVersion
+      );
+      if (idx >= 0) {
+        const start = new Date(versionMarkers[idx].timestamp).getTime();
+        const end =
+          idx + 1 < versionMarkers.length
+            ? new Date(versionMarkers[idx + 1].timestamp).getTime()
+            : undefined;
+
+        return points.filter((p) => {
+          const t = new Date(p.date).getTime();
+          return t >= start && (end === undefined || t < end);
+        });
+      }
+    }
+
+    return points;
+  }, [usageMetrics?.points, mode, selectedVersion, versionMarkers]);
 
   return (
     <ChartContainer
@@ -118,6 +141,9 @@ export function UsageMetricsChart({
       isLoading={isUsageMetricsLoading}
       errorMessage={
         isUsageMetricsError ? "Failed to load observability data." : undefined
+      }
+      emptyMessage={
+        data.length === 0 ? "No usage metrics for this selection." : undefined
       }
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
@@ -192,25 +218,6 @@ export function UsageMetricsChart({
               boxShadow: "none",
             }}
           />
-          {(versionMarkers ?? []).map((m) => {
-            const isSelected =
-              mode === "version" && selectedVersion === m.version;
-            return (
-              <ReferenceLine
-                key={m.version}
-                x={m.timestamp}
-                stroke={"hsl(var(--primary))"}
-                strokeWidth={isSelected ? 3 : 1.5}
-                strokeDasharray="5 5"
-                label={{
-                  value: `v${m.version}`,
-                  position: "top",
-                  fill: "hsl(var(--muted-foreground))",
-                }}
-                ifOverflow="extendDomain"
-              />
-            );
-          })}
           {/* Areas for each usage metric */}
           <Area
             type="natural"
