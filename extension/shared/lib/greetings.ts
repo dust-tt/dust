@@ -34,7 +34,6 @@ const GREETINGS = [
   "Smile, [Name]! 😄",
   "Lookin' good, [Name]! 👍",
   "What's cooking, [Name]? 🍳",
-  "How's the family, [Name]? 👨‍👩‍👧‍👦",
   "Stay cool, [Name]! ❄️",
   "Keep shining, [Name]! 💎",
   "You're a star, [Name]! ⭐",
