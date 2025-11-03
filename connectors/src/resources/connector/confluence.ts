@@ -38,32 +38,30 @@ export class ConfluenceConnectorStrategy
     connector: ConnectorResource,
     transaction: Transaction
   ): Promise<void> {
-    await Promise.all([
-      ConfluenceConfiguration.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction,
-      }),
-      ConfluenceSpace.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction,
-      }),
-      ConfluenceFolder.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction,
-      }),
-      ConfluencePage.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction,
-      }),
-    ]);
+    await ConfluenceConfiguration.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await ConfluenceSpace.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await ConfluenceFolder.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await ConfluencePage.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
   }
 
   async fetchConfigurationsbyConnectorIds(): Promise<
