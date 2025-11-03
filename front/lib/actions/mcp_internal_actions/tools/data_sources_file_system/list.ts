@@ -44,7 +44,7 @@ export function registerListTool(
     name,
     extraDescription,
     areTagsDynamic,
-  }: { name: string; extraDescription?: string; areTagsDynamic?: boolean }
+  }: { name: string; extraDescription?: string; areTagsDynamic: boolean }
 ) {
   const baseDescription =
     "List the direct contents of a node. Can be used to see what is inside a specific folder from " +

@@ -25,7 +25,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   ConnectorProvider,
   CoreAPIDatasourceViewFilter,
-  CoreApiFilter,
+  CoreAPIFilter,
   CoreAPISearchFilter,
   DataSourceViewType,
   Result,
@@ -519,7 +519,7 @@ export async function getCoreSearchArgs(
 export function toCoreApiFilter(filter: {
   in: string[] | null;
   not: string[] | null;
-}): CoreApiFilter {
+}): CoreAPIFilter {
   const inFilter = filter.in?.length ? filter.in : null;
   const notFilter = filter.not?.length ? filter.not : null;
 
