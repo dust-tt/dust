@@ -43,9 +43,8 @@ const _webhookNotionAPIHandler = async (
   // REVIEW: do we need to add signature verification, or is this covered by having a secret URL?
   // If we want verification, we need to store the verification token somewhere.
 
-  // At this point, TypeScript knows payload is NotionWebhookEvent
-  const workspaceId = payload.workspace_id;
-  if (!workspaceId) {
+  const notionWorkspaceId = payload.workspace_id;
+  if (!notionWorkspaceId) {
     logger.error(
       {
         payload,
@@ -60,24 +59,20 @@ const _webhookNotionAPIHandler = async (
     });
   }
 
-  // Find connector from the Notion workspace ID
+  // Find the connector state from the Notion workspace ID
   const notionConnectorState = await NotionConnectorState.findOne({
-    where: {
-      notionWorkspaceId: workspaceId,
-    },
+    where: { notionWorkspaceId },
   });
 
   if (!notionConnectorState) {
     logger.warn(
-      {
-        workspaceId,
-      },
-      "Received Notion webhook for unknown workspace"
+      { notionWorkspaceId },
+      "Received Notion webhook for unknown Notion workspace"
     );
     return res.status(200).end();
   }
 
-  // Find connector
+  // Now get the actual connector
   const connector = await ConnectorResource.fetchById(
     notionConnectorState.connectorId
   );
@@ -86,7 +81,7 @@ const _webhookNotionAPIHandler = async (
     logger.error(
       {
         connectorId: notionConnectorState.connectorId,
-        workspaceId,
+        notionWorkspaceId,
       },
       "Received Notion webhook for unknown or invalid connector"
     );
@@ -95,10 +90,7 @@ const _webhookNotionAPIHandler = async (
 
   if (connector.isPaused()) {
     logger.info(
-      {
-        connectorId: connector.id,
-        workspaceId,
-      },
+      { connectorId: connector.id },
       "Received webhook for paused connector, skipping."
     );
     return res.status(200).end();
@@ -107,7 +99,7 @@ const _webhookNotionAPIHandler = async (
   logger.info(
     {
       connectorId: connector.id,
-      workspaceId,
+      workspaceId: notionWorkspaceId,
       type: payload.type,
       entity: payload.entity?.id,
     },
@@ -122,7 +114,7 @@ const _webhookNotionAPIHandler = async (
       {
         err,
         connectorId: connector.id,
-        workspaceId,
+        notionWorkspaceId,
       },
       "Failed to launch Notion webhook processing workflow"
     );
