@@ -233,7 +233,7 @@ async function handler(
             status_code: 500,
             api_error: {
               type: "internal_server_error",
-              message: `Failed to create remote webhook: ${result.error.message}`,
+              message: result.error.message,
             },
           });
         }
