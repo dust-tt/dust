@@ -293,7 +293,7 @@ async function runTest(
             break;
           case "reasoning_generated":
             fullReasoning = event.content.text;
-            const signature = event.metadata.signature || "";
+            const signature = event.metadata.signature ?? "";
             conversationHistory.push({
               role: "assistant",
               name: "Assistant",
