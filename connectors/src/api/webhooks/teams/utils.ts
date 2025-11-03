@@ -38,6 +38,10 @@ export async function getConnector(context: TurnContext) {
     tenantId = context.activity.channelData.tenantId;
   }
 
+  if (!tenantId) {
+    return;
+  }
+
   logger.info(
     { tenantId, connectorProvider: "microsoft_bot" },
     "Found tenant ID in Teams context"
