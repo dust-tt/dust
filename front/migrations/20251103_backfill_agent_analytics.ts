@@ -10,6 +10,8 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -227,8 +229,37 @@ async function backfillAgentAnalytics(
   );
 }
 
-makeScript({}, async ({ execute }, logger) => {
-  return runOnAllWorkspaces(async (workspace) => {
-    await backfillAgentAnalytics(workspace, logger, execute);
-  });
-});
+makeScript(
+  {
+    workspaceId: {
+      type: "string",
+      demandOption: false,
+      description: "Run on a single workspace (optional)",
+    },
+  },
+  async ({ execute, workspaceId }, logger) => {
+    if (workspaceId) {
+      // Run on a single workspace
+      const workspace = await WorkspaceModel.findOne({
+        where: {
+          sId: workspaceId,
+        },
+      });
+
+      if (!workspace) {
+        throw new Error(`Workspace not found: ${workspaceId}`);
+      }
+
+      await backfillAgentAnalytics(
+        renderLightWorkspaceType({ workspace }),
+        logger,
+        execute
+      );
+    } else {
+      // Run on all workspaces
+      return runOnAllWorkspaces(async (workspace) => {
+        await backfillAgentAnalytics(workspace, logger, execute);
+      });
+    }
+  }
+);
