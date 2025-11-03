@@ -447,6 +447,8 @@ const DEFAULT_PRICING = MODEL_PRICING[DEFAULT_PRICING_MODEL_ID];
 
 /**
  * Calculate the cost in USD for token usage.
+ * Note: promptTokens currently includes cached read and cache write tokens for some providers.
+ * To avoid double counting, price all promptTokens at base input rate, then adjust with deltas.
  */
 function calculateTokenUsageCostForUsage(usage: RunUsageType): number {
   const pricing = MODEL_PRICING[usage.modelId] ?? DEFAULT_PRICING;
@@ -457,12 +459,14 @@ function calculateTokenUsageCostForUsage(usage: RunUsageType): number {
   const cachedReadRate = pricing.cache_read_input_tokens ?? pricing.input;
   const cacheWriteRate = pricing.cache_creation_input_tokens ?? pricing.input;
 
-  const inputCost = (usage.promptTokens / 1_000_000) * pricing.input;
-  const cachedReadCost = (cachedReadTokens / 1_000_000) * cachedReadRate;
-  const cacheWriteCost = (cacheWriteTokens / 1_000_000) * cacheWriteRate;
+  const basePromptCost = (usage.promptTokens / 1_000_000) * pricing.input;
+  const cachedReadDelta =
+    (cachedReadTokens / 1_000_000) * (cachedReadRate - pricing.input);
+  const cacheWriteDelta =
+    (cacheWriteTokens / 1_000_000) * (cacheWriteRate - pricing.input);
   const outputCost = (usage.completionTokens / 1_000_000) * pricing.output;
 
-  return inputCost + cachedReadCost + cacheWriteCost + outputCost;
+  return basePromptCost + cachedReadDelta + cacheWriteDelta + outputCost;
 }
 
 export function calculateTokenUsageCost(usages: RunUsageType[]): number {
