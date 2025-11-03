@@ -80,13 +80,13 @@ export function CreateWebhookSourceFormContent({
       <Controller
         control={form.control}
         name="name"
-        render={({ field }) => (
+        render={({ field, fieldState }) => (
           <Input
             {...field}
             label="Name"
             placeholder="Name..."
-            isError={form.formState.errors.name !== undefined}
-            message={form.formState.errors.name?.message}
+            isError={fieldState.error !== undefined}
+            message={fieldState.error?.message}
             messageStatus="error"
             autoFocus
           />
