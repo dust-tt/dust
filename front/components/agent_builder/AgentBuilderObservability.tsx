@@ -13,6 +13,7 @@ import { useEffect } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { FeedbackDistributionChart } from "@app/components/agent_builder/observability/charts/FeedbackDistributionChart";
+import { LatencyChart } from "@app/components/agent_builder/observability/charts/LatencyChart";
 import { ToolUsageChart } from "@app/components/agent_builder/observability/charts/ToolUsageChart";
 import { UsageMetricsChart } from "@app/components/agent_builder/observability/charts/UsageMetricsChart";
 import {
@@ -29,7 +30,6 @@ import {
   useAgentConfiguration,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
-import { LatencyChart } from "./observability/charts/LatencyChart";
 
 interface AgentBuilderObservabilityProps {
   agentConfigurationSId: string;
