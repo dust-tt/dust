@@ -256,11 +256,25 @@ export class RunResource extends BaseResource<RunModel> {
 
   async recordRunUsage(usages: RunUsageType[]) {
     await RunUsageModel.bulkCreate(
-      usages.map((usage) => ({
-        runId: this.id,
-        workspaceId: this.workspaceId,
-        ...usage,
-      }))
+      usages.map(
+        ({
+          providerId,
+          modelId,
+          promptTokens,
+          completionTokens,
+          cachedTokens,
+          cacheCreationTokens,
+        }) => ({
+          runId: this.id,
+          workspaceId: this.workspaceId,
+          providerId,
+          modelId,
+          promptTokens,
+          completionTokens,
+          cachedTokens,
+          cacheCreationTokens: cacheCreationTokens ?? null,
+        })
+      )
     );
   }
 
@@ -278,6 +292,7 @@ export class RunResource extends BaseResource<RunModel> {
       promptTokens: usage.promptTokens,
       providerId: usage.providerId as ModelProviderIdType,
       cachedTokens: usage.cachedTokens,
+      cacheCreationTokens: usage.cacheCreationTokens,
     }));
   }
 }
@@ -297,4 +312,6 @@ export interface RunUsageType {
   promptTokens: number;
   providerId: ModelProviderIdType;
   cachedTokens: number | null;
+  // Optional: tokens spent writing to cache (e.g., Anthropic cache creation)
+  cacheCreationTokens?: number | null;
 }
