@@ -18,11 +18,7 @@ import type {
   ModelMessageTypeMultiActionsWithoutContentFragment,
   UserMessageTypeModel,
 } from "@app/types";
-import {
-  assertNever,
-  isString,
-  safeParseJSON,
-} from "@app/types";
+import { assertNever, isString, safeParseJSON } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
@@ -59,6 +55,7 @@ function assistantContentToParam(
         text: content.value,
       };
     case "reasoning":
+      // TODO(LLM-Router): better typing for signature extraction
       assert(content.value.reasoning, "Reasoning content is missing reasoning");
       const metadata = safeParseJSON(content.value.metadata);
       if (metadata.isErr()) {
