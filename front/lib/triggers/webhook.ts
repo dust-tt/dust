@@ -110,7 +110,7 @@ export const checkWebhookRequestForRateLimit = async (
   }
 };
 
-export const processWebhookRequest = async (
+export async function processWebhookRequest(
   auth: Authenticator,
   {
     webhookSource,
@@ -119,9 +119,9 @@ export const processWebhookRequest = async (
   }: {
     webhookSource: WebhookSourceForAdminType;
     headers: IncomingHttpHeaders;
-    body: any;
+    body: unknown;
   }
-) => {
+): Promise<Result<void, Error>> {
   // Store on GCS as a file
   const content = JSON.stringify({
     headers: Object.fromEntries(
@@ -178,7 +178,9 @@ export const processWebhookRequest = async (
     );
     return new Err(normalizedError);
   }
-};
+
+  return new Ok(undefined);
+}
 
 export async function fetchRecentWebhookRequestTriggersWithPayload(
   auth: Authenticator,
