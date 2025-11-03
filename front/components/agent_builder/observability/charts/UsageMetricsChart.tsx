@@ -110,12 +110,12 @@ export function UsageMetricsChart({
   const data = useMemo(
     () =>
       filterTimeSeriesByVersionWindow(
-        usageMetrics?.points,
+        usageMetrics,
         mode,
         selectedVersion,
-        versionMarkers ?? []
+        versionMarkers
       ),
-    [usageMetrics?.points, mode, selectedVersion, versionMarkers]
+    [usageMetrics, mode, selectedVersion, versionMarkers]
   );
 
   return (

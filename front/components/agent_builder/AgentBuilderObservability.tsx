@@ -13,6 +13,7 @@ import { useEffect } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { FeedbackDistributionChart } from "@app/components/agent_builder/observability/charts/FeedbackDistributionChart";
+import { LatencyChart } from "@app/components/agent_builder/observability/charts/LatencyChart";
 import { ToolUsageChart } from "@app/components/agent_builder/observability/charts/ToolUsageChart";
 import { UsageMetricsChart } from "@app/components/agent_builder/observability/charts/UsageMetricsChart";
 import {
@@ -79,6 +80,7 @@ export function AgentBuilderObservability({
               <ChartContainerSkeleton />
               <ChartContainerSkeleton />
               <ChartContainerSkeleton />
+              <ChartContainerSkeleton />
             </>
           ) : (
             <>
@@ -91,6 +93,10 @@ export function AgentBuilderObservability({
                 agentConfigurationId={agentConfiguration.sId}
               />
               <ToolUsageChart
+                workspaceId={owner.sId}
+                agentConfigurationId={agentConfiguration.sId}
+              />
+              <LatencyChart
                 workspaceId={owner.sId}
                 agentConfigurationId={agentConfiguration.sId}
               />

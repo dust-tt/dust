@@ -3,11 +3,8 @@ import { z } from "zod";
 
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type {
-  UsageMetricsInterval,
-  UsageMetricsPoint,
-} from "@app/lib/api/assistant/observability/usage_metrics";
-import { fetchUsageMetrics } from "@app/lib/api/assistant/observability/usage_metrics";
+import type { LatencyPoint } from "@app/lib/api/assistant/observability/latency";
+import { fetchLatency } from "@app/lib/api/assistant/observability/latency";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -16,17 +13,15 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional(),
-  interval: z.enum(["day", "week"]).optional(),
 });
 
-export type GetUsageMetricsResponse = {
-  interval: UsageMetricsInterval;
-  points: UsageMetricsPoint[];
+export type GetLatencyResponse = {
+  points: LatencyPoint[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetUsageMetricsResponse>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetLatencyResponse>>,
   auth: Authenticator
 ) {
   if (typeof req.query.aId !== "string") {
@@ -78,7 +73,6 @@ async function handler(
       }
 
       const days = q.data.days ?? DEFAULT_PERIOD_DAYS;
-      const interval = q.data.interval ?? "day";
 
       const owner = auth.getNonNullableWorkspace();
 
@@ -88,10 +82,10 @@ async function handler(
         days,
       });
 
-      const usageMetricsResult = await fetchUsageMetrics(baseQuery, interval);
+      const latencyResult = await fetchLatency(baseQuery);
 
-      if (usageMetricsResult.isErr()) {
-        const e = usageMetricsResult.error;
+      if (latencyResult.isErr()) {
+        const e = latencyResult.error;
         return apiError(req, res, {
           status_code: 500,
           api_error: {
@@ -102,8 +96,7 @@ async function handler(
       }
 
       return res.status(200).json({
-        interval,
-        points: usageMetricsResult.value,
+        points: latencyResult.value,
       });
     }
     default:
