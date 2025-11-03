@@ -112,16 +112,14 @@ export class JiraClient {
     );
 
     if (validationResult.isErr()) {
-      return new Err(
-        new Error(`Failed to create webhook: ${validationResult.error.message}`)
-      );
+      return new Err(new Error(validationResult.error.message));
     }
 
     const data = validationResult.value;
     const result = data.webhookRegistrationResult?.[0];
     if (!result?.createdWebhookId) {
       const errors = result?.errors?.join(", ") ?? "Unknown error";
-      return new Err(new Error(`Failed to create webhook: ${errors}`));
+      return new Err(new Error(errors));
     }
 
     return new Ok({ id: String(result.createdWebhookId) });
