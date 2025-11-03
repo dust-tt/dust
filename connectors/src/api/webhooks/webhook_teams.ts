@@ -251,9 +251,12 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
               type: "application/vnd.microsoft.card.adaptive",
               value: createInteractiveToolApprovalAdaptiveCard(validatedData),
             };
-            localLogger.info(response, "Tool execution approval card refresh response");
+            localLogger.info(
+              response,
+              "Tool execution approval card refresh response"
+            );
 
-            res.set('Content-Type', 'application/json; charset=utf-8');
+            res.set("Content-Type", "application/json; charset=utf-8");
             res.status(200).json(response);
           } else {
             localLogger.info(
