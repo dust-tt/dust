@@ -167,6 +167,15 @@ const finishStopLLMEvents = [
     },
     metadata,
   },
+  {
+    type: "token_usage",
+    content: {
+      inputTokens: 3186,
+      outputTokens: 192,
+      totalTokens: 3378,
+    },
+    metadata,
+  },
 ];
 
 const functionCallLLMEvents = [
@@ -190,6 +199,15 @@ const functionCallLLMEvents = [
     type: "text_generated",
     content: {
       text: "Hi !",
+    },
+    metadata,
+  },
+  {
+    type: "token_usage",
+    content: {
+      inputTokens: 1766,
+      outputTokens: 128,
+      totalTokens: 1894,
     },
     metadata,
   },

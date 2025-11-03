@@ -6,6 +6,10 @@ import {
   ANTHROPIC_WHITELISTED_NON_REASONING_MODEL_IDS,
   ANTHROPIC_WHITELISTED_REASONING_MODEL_IDS,
 } from "@app/lib/api/llm/clients/anthropic/types";
+import {
+  GOOGLE_AI_STUDIO_WHITELISTED_NON_REASONING_MODEL_IDS,
+  GOOGLE_AI_STUDIO_WHITELISTED_REASONING_MODEL_IDS,
+} from "@app/lib/api/llm/clients/google/types";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
@@ -81,11 +85,12 @@ const REASONING_PARAMETER_CONFIGS: {
   },
 ];
 
-function generateAnthropicThinkingTestConfigs(
+function generateThinkingTestConfigs(
+  provider: ModelProviderIdType,
   modelId: ModelIdType
 ): TestConfig[] {
   return REASONING_PARAMETER_CONFIGS.map((params) => ({
-    provider: "anthropic",
+    provider: provider,
     modelId: modelId,
     ...params,
   }));
@@ -102,22 +107,29 @@ const NON_REASONING_PARAMETER_CONFIGS: {
   },
 ];
 
-function generateAnthropicNotThinkingTestConfigs(
+function generateNotThinkingTestConfigs(
+  provider: ModelProviderIdType,
   modelId: ModelIdType
 ): TestConfig[] {
   return NON_REASONING_PARAMETER_CONFIGS.map((params) => ({
-    provider: "anthropic",
+    provider: provider,
     modelId: modelId,
     ...params,
   }));
 }
 
 const TEST_CONFIGS: TestConfig[] = [
-  ...ANTHROPIC_WHITELISTED_REASONING_MODEL_IDS.flatMap(
-    generateAnthropicThinkingTestConfigs
+  ...ANTHROPIC_WHITELISTED_REASONING_MODEL_IDS.flatMap((modelId) =>
+    generateThinkingTestConfigs("anthropic", modelId)
   ),
-  ...ANTHROPIC_WHITELISTED_NON_REASONING_MODEL_IDS.flatMap(
-    generateAnthropicNotThinkingTestConfigs
+  ...ANTHROPIC_WHITELISTED_NON_REASONING_MODEL_IDS.flatMap((modelId) =>
+    generateNotThinkingTestConfigs("anthropic", modelId)
+  ),
+  ...GOOGLE_AI_STUDIO_WHITELISTED_NON_REASONING_MODEL_IDS.flatMap((modelId) =>
+    generateNotThinkingTestConfigs("google_ai_studio", modelId)
+  ),
+  ...GOOGLE_AI_STUDIO_WHITELISTED_REASONING_MODEL_IDS.flatMap((modelId) =>
+    generateThinkingTestConfigs("google_ai_studio", modelId)
   ),
 ];
 
