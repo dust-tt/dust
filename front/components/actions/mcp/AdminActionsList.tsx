@@ -247,7 +247,7 @@ export const AdminActionsList = ({
             <DataTable.CellContent>
               <div className="flex items-center gap-2">
                 {globalSpace
-                  ? "Everyone"
+                  ? "Workspace"
                   : info
                       .getValue()
                       .filter((s) => s.kind === "regular")
