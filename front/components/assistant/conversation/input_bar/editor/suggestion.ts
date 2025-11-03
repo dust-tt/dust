@@ -1,3 +1,4 @@
+import { compareAgentSuggestionsForSort } from "@app/lib/mentions/editor/suggestion";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 
@@ -42,12 +43,13 @@ function filterAndSortEditorSuggestionAgents(
 ) {
   return suggestions
     .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
-    .sort((a, b) =>
-      compareForFuzzySort(
-        lowerCaseQuery,
-        a.label.toLocaleLowerCase(),
-        b.label.toLocaleLowerCase()
-      )
+    .sort(
+      (a, b) =>
+        compareForFuzzySort(
+          lowerCaseQuery,
+          a.label.toLocaleLowerCase(),
+          b.label.toLocaleLowerCase()
+        ) || compareAgentSuggestionsForSort(a, b)
     )
     .sort((a, b) => {
       // If within SUGGESTION_DISPLAY_LIMIT there's one from SUGGESTION_PRIORITY, we move it to the top.
