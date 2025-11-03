@@ -590,19 +590,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     };
   }
 
-  async markAsRunning(): Promise<void> {
-    await this.update({
-      status: "running",
-      startDateMs: Math.round(Date.now()),
-    });
-  }
-
-  async setEndDate(): Promise<void> {
-    await this.update({
-      endDateMs: Math.round(Date.now()),
-    });
-  }
-
   async updateStatus(
     status: ToolExecutionStatus
   ): Promise<[affectedCount: number]> {

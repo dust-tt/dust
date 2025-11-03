@@ -214,8 +214,7 @@ export class AgentMCPActionModel extends WorkspaceAwareModel<AgentMCPActionModel
   declare toolConfiguration: LightMCPToolConfigurationType;
   declare stepContext: StepContext;
 
-  declare startDateMs: number | null;
-  declare endDateMs: number | null;
+  declare executionDurationMs: number | null;
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
 
@@ -268,12 +267,7 @@ AgentMCPActionModel.init(
       allowNull: false,
       defaultValue: {},
     },
-    startDateMs: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      defaultValue: null,
-    },
-    endDateMs: {
+    executionDurationMs: {
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null,
