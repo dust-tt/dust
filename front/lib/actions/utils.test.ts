@@ -1,13 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
-import type { UserResource } from "@app/lib/resources/user_resource";
-import { UserFactory } from "@app/tests/utils/UserFactory";
-
 import {
   hasUserAlwaysApprovedTool,
   setUserAlwaysApprovedTool,
-} from "./tool_status";
+} from "@app/lib/actions/tool_status";
+import type { UserResource } from "@app/lib/resources/user_resource";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 
 describe("Tool validation utilities", () => {
   let user: UserResource;
