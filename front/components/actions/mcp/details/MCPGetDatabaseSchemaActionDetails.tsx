@@ -53,7 +53,7 @@ function DatabaseSchemaSection({
 }) {
   return (
     <CollapsibleComponent
-      rootProps={{ defaultOpen: true }}
+      rootProps={{ defaultOpen: false }}
       triggerChildren={
         <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
           Database Schema

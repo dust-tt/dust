@@ -1099,6 +1099,7 @@ export async function retryAgentMessage(
         skipToolsValidation: agentMessageRow.skipToolsValidation,
         contents: [],
         parsedContents: {},
+        modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
       };
 
       return {

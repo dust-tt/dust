@@ -7,10 +7,12 @@ import type {
   Organization,
   OrganizationDomain,
 } from "@workos-inc/node";
+import { NotFoundException } from "@workos-inc/node";
 import assert from "assert";
 
 import { createAndLogMembership } from "@app/lib/api/signup";
 import { determineUserRoleFromGroups } from "@app/lib/api/user";
+import { getWorkOS } from "@app/lib/api/workos/client";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import {
   fetchOrCreateWorkOSUserWithEmail,
@@ -408,6 +410,52 @@ async function handleGroupUpsert(
   event: DirectoryGroup
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+  const groupByName = await GroupResource.fetchByName(auth, event.name);
+  if (groupByName && groupByName.workOSGroupId !== event.id) {
+    // Conflict - another group with the same name already exists.
+
+    // First check if this group still exists in workos.
+    try {
+      await getWorkOS().directorySync.getGroup(event.id);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        // Group doesn't exist, just ignore the event.
+        return;
+      }
+      throw error;
+    }
+
+    // Another group with the same name exists and is not a provisioned group, throw an error.
+    if (groupByName.kind !== "provisioned" || !groupByName.workOSGroupId) {
+      throw new Error(
+        `Group "${groupByName.name}" already exists and is not a provisioned group`
+      );
+    }
+
+    // Look for this other group in workos and delete it if it doesn't exist anymore.
+    try {
+      await getWorkOS().directorySync.getGroup(groupByName.workOSGroupId);
+      throw new Error(
+        `Group "${groupByName.name}" still exists in workos with id "${groupByName.workOSGroupId}"`
+      );
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        logger.info(
+          {
+            error,
+            workOsGroupId: groupByName.workOSGroupId,
+            groupByName: groupByName.toJSON(),
+          },
+          "Group not found in workos (404), deleting local group"
+        );
+        await groupByName.delete(auth);
+      } else {
+        throw error;
+      }
+    }
+  }
+
   await GroupResource.upsertByWorkOSGroupId(auth, event);
 }
 

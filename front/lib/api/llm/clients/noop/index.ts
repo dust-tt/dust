@@ -13,7 +13,7 @@ export class NoopLLM extends LLM {
     super(auth, args);
   }
 
-  async *stream({
+  async *internalStream({
     conversation: _conversation,
     prompt: _prompt,
   }: {

@@ -551,13 +551,23 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
+      // Read operations - never ask
       search_messages: "never_ask",
       semantic_search_messages: "never_ask",
       list_users: "never_ask",
       list_public_channels: "never_ask",
+      list_channels: "never_ask",
+      list_joined_channels: "never_ask",
       list_threads: "never_ask",
-      post_message: "low",
+      read_thread_messages: "never_ask",
       get_user: "never_ask",
+      get_channel_details: "never_ask",
+
+      // Write operations - low stakes
+      post_message: "low",
+      schedule_message: "low",
+      add_reaction: "low",
+      remove_reaction: "low",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,

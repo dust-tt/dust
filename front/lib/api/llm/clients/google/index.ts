@@ -49,7 +49,7 @@ export class GoogleLLM extends LLM {
     });
   }
 
-  async *stream({
+  async *internalStream({
     conversation,
     prompt,
     specifications,

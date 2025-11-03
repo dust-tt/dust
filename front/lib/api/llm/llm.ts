@@ -1,22 +1,16 @@
 import { randomUUID } from "crypto";
 
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { LLMTraceBuffer } from "@app/lib/api/llm/traces/buffer";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type { LLMParameters } from "@app/lib/api/llm/types/options";
-import type { Authenticator } from "@app/lib/auth";
 import type {
-  ModelConversationTypeMultiActions,
-  ModelIdType,
-  ReasoningEffort,
-} from "@app/types";
-import { normalizeError } from "@app/types";
-
-export interface LLMWithTracingParameters extends LLMParameters {
-  context?: LLMTraceContext;
-}
+  LLMParameters,
+  StreamParameters,
+} from "@app/lib/api/llm/types/options";
+import type { Authenticator } from "@app/lib/auth";
+import type { ModelIdType, ReasoningEffort, Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -29,20 +23,19 @@ export abstract class LLM {
   protected readonly context?: LLMTraceContext;
   protected readonly runId: string;
 
-  constructor(
+  protected constructor(
     auth: Authenticator,
     {
-      modelId,
-      temperature,
-      reasoningEffort,
       bypassFeatureFlag = false,
       context,
-    }: LLMWithTracingParameters
+      modelId,
+      reasoningEffort = "none",
+      temperature = AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced,
+    }: LLMParameters
   ) {
     this.modelId = modelId;
-    this.temperature =
-      temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced;
-    this.reasoningEffort = reasoningEffort ?? "none";
+    this.temperature = temperature;
+    this.reasoningEffort = reasoningEffort;
     this.bypassFeatureFlag = bypassFeatureFlag;
 
     // Initialize tracing.
@@ -51,30 +44,16 @@ export abstract class LLM {
     this.runId = `llm_${randomUUID()}`;
   }
 
-  protected abstract stream({
-    conversation,
-    prompt,
-    specifications,
-  }: {
-    conversation: ModelConversationTypeMultiActions;
-    prompt: string;
-    specifications: AgentActionSpecification[];
-  }): AsyncGenerator<LLMEvent>;
-
   /**
-   * Public method that wraps the abstract stream() with tracing functionality
+   * Private method that wraps the abstract stream() with tracing functionality
    */
-  async *streamWithTracing({
+  private async *streamWithTracing({
     conversation,
     prompt,
     specifications,
-  }: {
-    conversation: ModelConversationTypeMultiActions;
-    prompt: string;
-    specifications: AgentActionSpecification[];
-  }): AsyncGenerator<LLMEvent> {
+  }: StreamParameters): AsyncGenerator<LLMEvent> {
     if (!this.context) {
-      yield* this.stream({ conversation, prompt, specifications });
+      yield* this.internalStream({ conversation, prompt, specifications });
       return;
     }
 
@@ -95,7 +74,7 @@ export abstract class LLM {
     let error: Error | null = null;
 
     try {
-      for await (const event of this.stream({
+      for await (const event of this.internalStream({
         conversation,
         prompt,
         specifications,
@@ -124,4 +103,28 @@ export abstract class LLM {
   getRunId(): string {
     return this.runId;
   }
+
+  stream({
+    conversation,
+    prompt,
+    specifications,
+  }: StreamParameters): Result<AsyncGenerator<LLMEvent>, Error> {
+    try {
+      return new Ok(
+        this.streamWithTracing({
+          conversation,
+          prompt,
+          specifications,
+        })
+      );
+    } catch (error) {
+      return new Err(normalizeError(Error));
+    }
+  }
+
+  protected abstract internalStream({
+    conversation,
+    prompt,
+    specifications,
+  }: StreamParameters): AsyncGenerator<LLMEvent>;
 }

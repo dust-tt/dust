@@ -1,5 +1,7 @@
 import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
 import { isAnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
+import { FireworksLLM } from "@app/lib/api/llm/clients/fireworks";
+import { isFireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
 import { GoogleLLM } from "@app/lib/api/llm/clients/google";
 import { isGoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
@@ -13,6 +15,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
+async function hasFeatureFlag(auth: Authenticator): Promise<boolean> {
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  return featureFlags.includes("llm_router_direct_requests");
+}
+
 export async function getLLM(
   auth: Authenticator,
   { modelId, temperature, reasoningEffort, bypassFeatureFlag }: LLMParameters,
@@ -25,10 +32,7 @@ export async function getLLM(
     return null;
   }
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const hasFeature =
-    bypassFeatureFlag ?? featureFlags.includes("llm_router_direct_requests");
-
+  const hasFeature = bypassFeatureFlag ?? (await hasFeatureFlag(auth));
   if (!hasFeature) {
     return null;
   }
@@ -70,6 +74,15 @@ export async function getLLM(
       reasoningEffort,
       bypassFeatureFlag,
       context,
+    });
+  }
+
+  if (isFireworksWhitelistedModelId(modelId)) {
+    return new FireworksLLM({
+      modelId,
+      temperature,
+      reasoningEffort,
+      bypassFeatureFlag,
     });
   }
 

@@ -45,4 +45,5 @@ export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   feedbacks: AgentMessageAnalyticsFeedback[];
   user_id: string;
   workspace_id: string;
+  content: string | null;
 }

@@ -2,53 +2,51 @@ import { OpenAI } from "openai";
 import type { ReasoningEffort as OpenAiReasoningEffort } from "openai/resources/shared";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { OpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+import type { FireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
 import {
   isOpenAIResponsesWhitelistedReasoningModelId,
   REASONING_EFFORT_TO_OPENAI_REASONING,
 } from "@app/lib/api/llm/clients/openai/types";
-import type { LLMWithTracingParameters } from "@app/lib/api/llm/llm";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import type {
+  LLMClientMetadata,
+  LLMParameters,
+} from "@app/lib/api/llm/types/options";
 import {
   toInput,
   toTool,
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
-import type { Authenticator } from "@app/lib/auth";
 import type { ModelConversationTypeMultiActions } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
-export class OpenAIResponsesLLM extends LLM {
+export class FireworksLLM extends LLM {
   private client: OpenAI;
   private metadata: LLMClientMetadata = {
     clientId: "openai_responses",
     modelId: this.modelId,
   };
-  private reasoning: { effort: OpenAiReasoningEffort; summary: "auto" } | null;
+  private readonly reasoning: {
+    effort: OpenAiReasoningEffort;
+    summary: "auto";
+  } | null;
 
-  constructor(
-    auth: Authenticator,
-    {
+  constructor({
+    modelId,
+    temperature,
+    reasoningEffort,
+    bypassFeatureFlag,
+  }: LLMParameters & {
+    modelId: FireworksWhitelistedModelId;
+  }) {
+    super({
       modelId,
       temperature,
       reasoningEffort,
       bypassFeatureFlag,
-      context,
-    }: LLMWithTracingParameters & { modelId: OpenAIResponsesWhitelistedModelId }
-  ) {
-    super(auth, {
-      modelId,
-      temperature,
-      reasoningEffort,
-      bypassFeatureFlag,
-      context,
     });
 
-    // OpenAI throws an error if reasoning is set for non reasoning models
-    // TODO(LLM-Router 2025-10-28): handle o3 models differently : temperature should be set to 0
-    // TODO(LLM-Router 2025-10-28): handle GPT-5 models differently : temperature not supported
     this.reasoning = isOpenAIResponsesWhitelistedReasoningModelId(modelId)
       ? {
           effort: REASONING_EFFORT_TO_OPENAI_REASONING[this.reasoningEffort],
@@ -56,17 +54,17 @@ export class OpenAIResponsesLLM extends LLM {
         }
       : null;
 
-    const { OPENAI_API_KEY, OPENAI_BASE_URL } = dustManagedCredentials();
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY environment variable is required");
+    const { FIREWORKS_API_KEY } = dustManagedCredentials();
+    if (!FIREWORKS_API_KEY) {
+      throw new Error("FIREWORKS_API_KEY environment variable is required");
     }
     this.client = new OpenAI({
-      apiKey: OPENAI_API_KEY,
-      baseURL: OPENAI_BASE_URL ?? "https://api.openai.com/v1",
+      apiKey: FIREWORKS_API_KEY,
+      baseURL: "https://api.fireworks.ai/inference/v1",
     });
   }
 
-  async *internalStream({
+  protected async *internalStream({
     conversation,
     prompt,
     specifications,

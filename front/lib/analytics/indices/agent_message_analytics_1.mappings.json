@@ -27,6 +27,10 @@
     "latency_ms": {
       "type": "integer"
     },
+    "content": {
+      "type": "text",
+      "index": "false"
+    },
     "tokens": {
       "type": "object",
       "properties": {
