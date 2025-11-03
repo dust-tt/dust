@@ -8,8 +8,24 @@ import type { Authenticator } from "@app/lib/auth";
 
 // NoopLLM is a dummy LLM that simply returns "Soupinou!".
 export class NoopLLM extends LLM {
-  constructor(auth: Authenticator, args: LLMParameters & { modelId: "noop" }) {
-    super(auth, args);
+  constructor(
+    auth: Authenticator,
+    {
+      bypassFeatureFlag,
+      context,
+      modelId,
+      reasoningEffort,
+      temperature,
+    }: LLMParameters & { modelId: "noop" }
+  ) {
+    super(auth, {
+      bypassFeatureFlag,
+      context,
+      modelId,
+      reasoningEffort,
+      temperature,
+      clientId: "noop",
+    });
   }
 
   async *internalStream({

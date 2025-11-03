@@ -9,7 +9,6 @@ import {
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
-  LLMClientMetadata,
   LLMParameters,
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
@@ -23,10 +22,6 @@ import { dustManagedCredentials } from "@app/types";
 
 export class FireworksLLM extends LLM {
   private client: OpenAI;
-  private metadata: LLMClientMetadata = {
-    clientId: "openai_responses",
-    modelId: this.modelId,
-  };
   private readonly reasoning: {
     effort: OpenAiReasoningEffort;
     summary: "auto";
@@ -50,6 +45,7 @@ export class FireworksLLM extends LLM {
       modelId,
       reasoningEffort,
       temperature,
+      clientId: "openai_responses",
     });
 
     this.reasoning = isOpenAIResponsesWhitelistedReasoningModelId(modelId)

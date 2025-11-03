@@ -9,7 +9,6 @@ import {
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
-  LLMClientMetadata,
   LLMParameters,
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
@@ -23,11 +22,11 @@ import { dustManagedCredentials } from "@app/types";
 
 export class OpenAIResponsesLLM extends LLM {
   private client: OpenAI;
-  private metadata: LLMClientMetadata = {
-    clientId: "openai_responses",
-    modelId: this.modelId,
-  };
-  private reasoning: { effort: OpenAiReasoningEffort; summary: "auto" } | null;
+
+  private readonly reasoning: {
+    effort: OpenAiReasoningEffort;
+    summary: "auto";
+  } | null;
 
   constructor(
     auth: Authenticator,
@@ -45,6 +44,7 @@ export class OpenAIResponsesLLM extends LLM {
       modelId,
       reasoningEffort,
       temperature,
+      clientId: "openai_responses",
     });
 
     // OpenAI throws an error if reasoning is set for non reasoning models
