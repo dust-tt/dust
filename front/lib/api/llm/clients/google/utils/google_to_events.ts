@@ -119,11 +119,11 @@ function tokenUsage(
       // toolUsePromptTokenCount represents the number of tokens in the results
       // from tool executions, which are provided back to the model as input
       inputTokens:
-        usage?.promptTokenCount ?? 0 + (usage?.toolUsePromptTokenCount ?? 0),
+        (usage?.promptTokenCount ?? 0) + (usage?.toolUsePromptTokenCount ?? 0),
       outputTokens: usage?.candidatesTokenCount ?? 0,
       totalTokens: usage?.totalTokenCount ?? 0,
-      cachedTokens: usage?.cachedContentTokenCount ?? 0,
-      reasoningTokens: usage?.thoughtsTokenCount ?? 0,
+      cachedTokens: usage?.cachedContentTokenCount,
+      reasoningTokens: usage?.thoughtsTokenCount,
     },
     metadata,
   };
