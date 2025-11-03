@@ -23,6 +23,7 @@ import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
+import { filterTimeSeriesByVersionWindow } from "@app/components/agent_builder/observability/utils";
 
 interface UsageMetricsData {
   messages: number;
@@ -106,34 +107,16 @@ export function UsageMetricsChart({
     colorClassName: USAGE_METRICS_PALETTE[key],
   }));
 
-  const data = useMemo(() => {
-    const points = usageMetrics?.points ?? [];
-
-    if (!points.length) {
-      return points;
-    }
-
-    // In version mode, filter the time series to the selected version window.
-    if (mode === "version" && selectedVersion && versionMarkers?.length) {
-      const idx = versionMarkers.findIndex(
-        (m) => m.version === selectedVersion
-      );
-      if (idx >= 0) {
-        const start = new Date(versionMarkers[idx].timestamp).getTime();
-        const end =
-          idx + 1 < versionMarkers.length
-            ? new Date(versionMarkers[idx + 1].timestamp).getTime()
-            : undefined;
-
-        return points.filter((p) => {
-          const t = new Date(p.date).getTime();
-          return t >= start && (end === undefined || t < end);
-        });
-      }
-    }
-
-    return points;
-  }, [usageMetrics?.points, mode, selectedVersion, versionMarkers]);
+  const data = useMemo(
+    () =>
+      filterTimeSeriesByVersionWindow(
+        usageMetrics?.points,
+        mode,
+        selectedVersion,
+        versionMarkers ?? []
+      ),
+    [usageMetrics?.points, mode, selectedVersion, versionMarkers]
+  );
 
   return (
     <ChartContainer

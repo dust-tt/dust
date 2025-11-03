@@ -22,6 +22,7 @@ import {
   useAgentFeedbackDistribution,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
+import { filterTimeSeriesByVersionWindow } from "@app/components/agent_builder/observability/utils";
 
 interface FeedbackDistributionChartProps {
   workspaceId: string;
@@ -56,35 +57,16 @@ export function FeedbackDistributionChart({
     colorClassName: FEEDBACK_DISTRIBUTION_PALETTE[key],
   }));
 
-  const data = useMemo(() => {
-    const points = feedbackDistribution?.points ?? [];
-
-    if (!points.length) {
-      return points;
-    }
-
-    // In version mode, filter the time series to the selected version window.
-    if (mode === "version" && selectedVersion && versionMarkers?.length) {
-      const idx = versionMarkers.findIndex(
-        (m) => m.version === selectedVersion
-      );
-      if (idx >= 0) {
-        const start = new Date(versionMarkers[idx].timestamp).getTime();
-        const end =
-          idx + 1 < versionMarkers.length
-            ? new Date(versionMarkers[idx + 1].timestamp).getTime()
-            : undefined;
-
-        return points.filter((p) => {
-          // Points are by day (YYYY-MM-DD). Construct a Date for comparison.
-          const t = new Date(p.date).getTime();
-          return t >= start && (end === undefined || t < end);
-        });
-      }
-    }
-
-    return points;
-  }, [feedbackDistribution?.points, mode, selectedVersion, versionMarkers]);
+  const data = useMemo(
+    () =>
+      filterTimeSeriesByVersionWindow(
+        feedbackDistribution?.points,
+        mode,
+        selectedVersion,
+        versionMarkers ?? []
+      ),
+    [feedbackDistribution?.points, mode, selectedVersion, versionMarkers]
+  );
 
   return (
     <ChartContainer
