@@ -112,9 +112,11 @@ export function useWebhookFilterGenerator({
     async ({
       naturalDescription,
       eventSchema,
+      signal,
     }: {
       naturalDescription: string;
       eventSchema: Record<string, any>;
+      signal?: AbortSignal;
     }): Promise<{ filter: string }> => {
       const r = await fetcher(
         `/api/w/${workspace.sId}/assistant/agent_configurations/webhook_filter_generator`,
@@ -124,6 +126,7 @@ export function useWebhookFilterGenerator({
             naturalDescription,
             eventSchema,
           }),
+          signal,
         }
       );
 
