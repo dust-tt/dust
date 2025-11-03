@@ -183,16 +183,21 @@ export function getGlobalAgentAuthorName(agentId: string): string {
   }
 }
 
-const CUSTOM_ORDER: string[] = [
+// Not exhaustive.
+const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST,
   GLOBAL_AGENTS_SID.DEEP_DIVE,
   GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
   GLOBAL_AGENTS_SID.GPT5,
   GLOBAL_AGENTS_SID.GEMINI_PRO,
   GLOBAL_AGENTS_SID.MISTRAL_LARGE,
-  GLOBAL_AGENTS_SID.HELPER,
-  GLOBAL_AGENTS_SID.NOOP,
+  GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU,
+  GLOBAL_AGENTS_SID.GPT5_MINI,
+  GLOBAL_AGENTS_SID.GPT4,
 ];
+const globalAgentIndexMap = new Map(
+  GLOBAL_AGENTS_SORT_ORDER.map((id, index) => [id, index])
+);
 
 // This function implements our general strategy to sort agents to users (input bar, agent list,
 // agent suggestions...).
@@ -207,31 +212,16 @@ export function compareAgentsForSort(
     return 1;
   }
 
-  if (a.sId === GLOBAL_AGENTS_SID.DUST) {
-    return -1;
-  }
-  if (b.sId === GLOBAL_AGENTS_SID.DUST) {
-    return 1;
-  }
+  const aGlobalIndex = globalAgentIndexMap.get(a.sId) ?? -1;
+  const bGlobalIndex = globalAgentIndexMap.get(b.sId) ?? -1;
 
-  if (a.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
+  if (aGlobalIndex !== -1 && bGlobalIndex !== -1) {
+    return aGlobalIndex - bGlobalIndex;
+  }
+  if (aGlobalIndex !== -1) {
     return -1;
   }
-  if (b.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
-    return 1;
-  }
-
-  if (a.sId === GLOBAL_AGENTS_SID.GPT5) {
-    return -1;
-  }
-  if (b.sId === GLOBAL_AGENTS_SID.GPT5) {
-    return 1;
-  }
-
-  if (a.sId === GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET) {
-    return -1;
-  }
-  if (b.sId === GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET) {
+  if (bGlobalIndex !== -1) {
     return 1;
   }
 
@@ -242,21 +232,6 @@ export function compareAgentsForSort(
   if (b.scope !== "global" && a.scope === "global") {
     return 1;
   }
-
-  // Check for customOrder (slack, notion, googledrive, github, claude)
-  const aIndex = CUSTOM_ORDER.indexOf(a.sId);
-  const bIndex = CUSTOM_ORDER.indexOf(b.sId);
-
-  if (aIndex !== -1 && bIndex !== -1) {
-    return aIndex - bIndex; // Both are in customOrder, sort them accordingly
-  }
-
-  if (aIndex !== -1) {
-    return -1;
-  } // Only a is in customOrder, it comes first
-  if (bIndex !== -1) {
-    return 1;
-  } // Only b is in customOrder, it comes first
 
   // default: sort alphabetically
   return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
