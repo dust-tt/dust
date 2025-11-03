@@ -1,6 +1,5 @@
 import { assertNever } from "@dust-tt/sparkle";
 
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { getLLM } from "@app/lib/api/llm";
 import {
   ANTHROPIC_WHITELISTED_NON_REASONING_MODEL_IDS,
@@ -14,9 +13,13 @@ import {
   MISTRAL_GENERIC_WHITELISTED_MODEL_IDS,
   MISTRAL_WHITELISTED_MODEL_IDS_WITHOUT_IMAGE_SUPPORT,
 } from "@app/lib/api/llm/clients/mistral/types";
-import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
+import type {
+  ResponseChecker,
+  TestConfig,
+  TestConversation,
+} from "@app/scripts/llm_router/types";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -28,35 +31,6 @@ import type {
 } from "@app/types/assistant/generation";
 
 const SYSTEM_PROMPT = "You are a helpful assistant.";
-
-type TestConfig = LLMParameters & { provider: ModelProviderIdType } & {
-  support?: {
-    imageInputs?: boolean;
-  };
-};
-
-type ResponseChecker =
-  | {
-      type: "text_contains";
-      substring: string;
-    }
-  | {
-      type: "has_tool_call";
-      toolName: string;
-      expectedArguments: string;
-    }
-  | null;
-
-interface TestConversation {
-  id: string;
-  name: string;
-  systemPrompt: string;
-  conversationActions: ModelConversationTypeMultiActions[];
-  /** Array of response checkers aligned with the conversation actions */
-  expectedInResponses: ResponseChecker[];
-  specifications?: AgentActionSpecification[];
-  skipConfig?: (config: TestConfig) => boolean;
-}
 
 /**
  * Creates a mock Authenticator for testing purposes.
