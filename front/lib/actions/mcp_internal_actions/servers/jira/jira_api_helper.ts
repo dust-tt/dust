@@ -34,7 +34,6 @@ import {
   JiraIssueWithAttachmentsSchema,
   JiraProjectSchema,
   JiraProjectVersionSchema,
-  JiraResourceSchema,
   JiraSearchResultSchema,
   JiraTransitionIssueSchema,
   JiraTransitionsSchema,
@@ -45,6 +44,7 @@ import {
   SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import { JiraClient } from "@app/lib/api/jira";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -84,44 +84,12 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
     baseUrl: string;
   }
 ): Promise<Result<z.infer<T>, JiraErrorResult>> {
-  try {
-    const response = await fetch(`${options.baseUrl}${endpoint}`, {
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      method: options.method || "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      ...(options.body && { body: JSON.stringify(options.body) }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      const msg = `JIRA API error: ${response.status} ${response.statusText} - ${errorBody}`;
-      logger.error(`[JIRA MCP Server] ${msg}`);
-      return new Err(msg);
-    }
-
-    const responseText = await response.text();
-    if (!responseText) {
-      return new Ok(undefined);
-    }
-
-    const rawData = JSON.parse(responseText);
-    const parseResult = schema.safeParse(rawData);
-
-    if (!parseResult.success) {
-      const msg = `Invalid JIRA response format: ${parseResult.error.message}`;
-      logger.error(`[JIRA MCP Server] ${msg}`);
-      return new Err(msg);
-    }
-
-    return new Ok(parseResult.data);
-  } catch (error: unknown) {
-    logger.error(`[JIRA MCP Server] JIRA API call failed for ${endpoint}:`);
-    return new Err(normalizeError(error).message);
-  }
+  const client = new JiraClient(accessToken);
+  return client.jiraApiCall(endpoint, schema, {
+    method: options.method,
+    body: options.body,
+    baseUrl: options.baseUrl,
+  });
 }
 
 async function listUsersPage(
@@ -353,16 +321,8 @@ async function getJiraResourceInfo(accessToken: string): Promise<{
   url: string;
   name: string;
 } | null> {
-  const result = await jiraApiCall(
-    {
-      endpoint: "/oauth/token/accessible-resources",
-      accessToken,
-    },
-    JiraResourceSchema,
-    {
-      baseUrl: "https://api.atlassian.com",
-    }
-  );
+  const client = new JiraClient(accessToken);
+  const result = await client.getAccessibleResources();
 
   if (result.isErr()) {
     return null;
@@ -384,13 +344,8 @@ async function getJiraResourceInfo(accessToken: string): Promise<{
 export async function getJiraBaseUrl(
   accessToken: string
 ): Promise<string | null> {
-  const resourceInfo = await getJiraResourceInfo(accessToken);
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const cloudId = resourceInfo?.id || null;
-  if (cloudId) {
-    return `https://api.atlassian.com/ex/jira/${cloudId}`;
-  }
-  return null;
+  const client = new JiraClient(accessToken);
+  return client.getJiraBaseUrl();
 }
 
 export async function createComment(

@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
+import { JiraClient } from "@app/lib/api/jira";
 import type { Authenticator } from "@app/lib/auth";
 import type { JiraAdditionalData } from "@app/lib/triggers/built-in-webhooks/jira/jira_api_types";
-import { JiraClient } from "@app/lib/triggers/built-in-webhooks/jira/jira_client";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isString, OAuthAPI, Ok } from "@app/types";

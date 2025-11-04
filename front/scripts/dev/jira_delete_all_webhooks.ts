@@ -1,5 +1,5 @@
 import config from "@app/lib/api/config";
-import { JiraClient } from "@app/lib/triggers/built-in-webhooks/jira/jira_client";
+import { JiraClient } from "@app/lib/api/jira";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { OAuthAPI } from "@app/types";

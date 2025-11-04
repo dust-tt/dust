@@ -1,22 +1,71 @@
+import type { z } from "zod";
+
 import type {
   JiraProjectType,
   JiraResourceType,
   JiraWebhookType,
-} from "@app/lib/triggers/built-in-webhooks/jira/jira_api_types";
+} from "@app/lib/api/jira/types";
 import {
   JiraCreateWebhookResponseSchema,
   JiraProjectsResponseSchema,
   JiraResourceSchema,
   JiraWebhooksResponseSchema,
-  validateJiraApiResponse,
-} from "@app/lib/triggers/built-in-webhooks/jira/jira_api_types";
+} from "@app/lib/api/jira/types";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
-// TODO(2025-10-28 aubin): consolidate with the MCP server.
+type JiraErrorResult = string;
+
+async function validateJiraApiResponse<T extends z.ZodTypeAny>(
+  response: Response,
+  schema: T
+): Promise<Result<z.infer<T>, Error>> {
+  if (!response.ok) {
+    const errorText = await response.text();
+    return new Err(
+      new Error(`API request failed: ${response.statusText} - ${errorText}`)
+    );
+  }
+
+  let data: unknown;
+  try {
+    const responseText = await response.text();
+    if (!responseText) {
+      return new Ok(undefined);
+    }
+    data = JSON.parse(responseText);
+  } catch (error) {
+    return new Err(
+      new Error(
+        `Failed to parse JSON response: ${normalizeError(error).message}`
+      )
+    );
+  }
+
+  const parseResult = schema.safeParse(data);
+  if (!parseResult.success) {
+    return new Err(
+      new Error(
+        `API response validation failed: ${parseResult.error.message}. Response: ${JSON.stringify(data)}`
+      )
+    );
+  }
+
+  return new Ok(parseResult.data);
+}
 
 export class JiraClient {
-  constructor(private readonly accessToken: string) {}
+  private readonly accessToken: string;
+  private resourceInfoCache: {
+    id: string;
+    url: string;
+    name: string;
+  } | null = null;
+
+  constructor(accessToken: string) {
+    this.accessToken = accessToken;
+  }
 
   async getAccessibleResources(): Promise<Result<JiraResourceType[], Error>> {
     const response = await fetch(
@@ -30,20 +79,44 @@ export class JiraClient {
       }
     );
 
-    const validationResult = await validateJiraApiResponse(
-      response,
-      JiraResourceSchema.array()
-    );
+    return validateJiraApiResponse(response, JiraResourceSchema.array());
+  }
 
-    if (validationResult.isErr()) {
-      return new Err(
-        new Error(
-          `Failed to fetch accessible resources: ${validationResult.error.message}`
-        )
-      );
+  private async getJiraResourceInfo(): Promise<{
+    id: string;
+    url: string;
+    name: string;
+  } | null> {
+    if (this.resourceInfoCache) {
+      return this.resourceInfoCache;
     }
 
-    return new Ok(validationResult.value);
+    const result = await this.getAccessibleResources();
+    if (result.isErr()) {
+      return null;
+    }
+
+    const resources = result.value;
+    if (resources && resources.length > 0) {
+      const resource = resources[0];
+      this.resourceInfoCache = {
+        id: resource.id,
+        url: resource.url,
+        name: resource.name,
+      };
+      return this.resourceInfoCache;
+    }
+
+    return null;
+  }
+
+  async getJiraBaseUrl(): Promise<string | null> {
+    const resourceInfo = await this.getJiraResourceInfo();
+    const cloudId = resourceInfo?.id ?? null;
+    if (cloudId) {
+      return `https://api.atlassian.com/ex/jira/${cloudId}`;
+    }
+    return null;
   }
 
   async getProjects(
@@ -202,5 +275,68 @@ export class JiraClient {
     }
 
     return new Ok(undefined);
+  }
+
+  async jiraApiCall<T extends z.ZodTypeAny>(
+    endpoint: string,
+    schema: T,
+    options: {
+      method?: "GET" | "POST" | "PUT" | "DELETE";
+      body?: unknown;
+      baseUrl?: string;
+    } = {}
+  ): Promise<Result<z.infer<T>, JiraErrorResult>> {
+    const baseUrl =
+      options.baseUrl ?? (await this.getJiraBaseUrl()) ?? undefined;
+    if (!baseUrl) {
+      return new Err("Failed to retrieve JIRA base URL");
+    }
+
+    try {
+      const fetchOptions: RequestInit = {
+        method: options.method ?? "GET",
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      };
+
+      if (options.body) {
+        fetchOptions.body = JSON.stringify(options.body);
+      }
+
+      const response = await fetch(`${baseUrl}${endpoint}`, fetchOptions);
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        const msg = `JIRA API error: ${response.status} ${response.statusText} - ${errorBody}`;
+        logger.error(`[JIRA Client] ${msg}`);
+        return new Err(msg);
+      }
+
+      const responseText = await response.text();
+      if (!responseText) {
+        return new Ok(undefined);
+      }
+
+      const rawData = JSON.parse(responseText);
+      const parseResult = schema.safeParse(rawData);
+
+      if (!parseResult.success) {
+        const msg = `Invalid JIRA response format: ${parseResult.error.message}`;
+        logger.error(`[JIRA Client] ${msg}`);
+        return new Err(msg);
+      }
+
+      return new Ok(parseResult.data);
+    } catch (error: unknown) {
+      logger.error(`[JIRA Client] JIRA API call failed for ${endpoint}:`);
+      return new Err(normalizeError(error).message);
+    }
+  }
+
+  getAccessToken(): string {
+    return this.accessToken;
   }
 }
