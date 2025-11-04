@@ -15,6 +15,7 @@ import {
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { isIncludedInDefaultCompanyData } from "@app/lib/data_sources";
 import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -344,7 +345,7 @@ export function _getDustGlobalAgent(
   const actions: MCPServerConfigurationType[] = [];
 
   const dataSourceViews = preFetchedDataSources.dataSourceViews.filter(
-    (dsView) => dsView.dataSource.assistantDefaultSelected === true
+    (dsView) => isIncludedInDefaultCompanyData(dsView.dataSource)
   );
 
   // Decide which MCP server to use for data sources: default `search`,
