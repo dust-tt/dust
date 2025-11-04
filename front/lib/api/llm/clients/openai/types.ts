@@ -48,15 +48,15 @@ export function isOpenAIResponsesWhitelistedModelId(
 export function getOpenAIModelFamilyFromModelId(
   modelId: OpenAIWhitelistedModelId
 ): OpenAIModelFamily {
-  for (const family of OPENAI_MODEL_FAMILIES) {
-    const config = OPENAI_MODEL_FAMILY_CONFIGS[family];
-    if (config.modelIds.includes(modelId)) {
-      return family;
-    }
-  }
-  throw new Error(
-    `Model ID ${modelId} does not belong to any OpenAI model family`
+  const family = OPENAI_MODEL_FAMILIES.find((family) =>
+    OPENAI_MODEL_FAMILY_CONFIGS[family].modelIds.includes(modelId)
   );
+  if (!family) {
+    throw new Error(
+      `Model ID ${modelId} does not belong to any OpenAI model family`
+    );
+  }
+  return family;
 }
 
 export function overwriteLLMParameters(
