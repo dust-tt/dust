@@ -34,18 +34,19 @@ export function WebhookEditionFilters({
 }: WebhookEditionFiltersProps) {
   const { setError, control } = useFormContext<TriggerViewsSheetFormValues>();
 
-  const selectedEvent = useWatch({ control, name: "webhook.event" });
+  const selectedEventValue = useWatch({ control, name: "webhook.event" });
 
-  const selectedEventSchema = useMemo<WebhookEvent | null>(() => {
-    if (!selectedEvent || !selectedPreset) {
+  const selectedEvent = useMemo<WebhookEvent | null>(() => {
+    if (!selectedEventValue || !selectedPreset) {
       return null;
     }
 
     return (
-      selectedPreset.events.find((event) => event.value === selectedEvent) ??
-      null
+      selectedPreset.events.find(
+        (event) => event.value === selectedEventValue
+      ) ?? null
     );
-  }, [selectedEvent, selectedPreset]);
+  }, [selectedEventValue, selectedPreset]);
   const {
     field: filterField,
     fieldState: { error: filterError },
@@ -68,7 +69,7 @@ export function WebhookEditionFilters({
 
   const triggerFilterGeneration = useDebounceWithAbort(
     async (txt: string, signal: AbortSignal) => {
-      if (txt.length < MIN_DESCRIPTION_LENGTH || !selectedEventSchema) {
+      if (txt.length < MIN_DESCRIPTION_LENGTH || !selectedEvent) {
         setFilterGenerationStatus("idle");
         return;
       }
@@ -76,7 +77,7 @@ export function WebhookEditionFilters({
       try {
         const result = await generateFilter({
           naturalDescription: txt,
-          eventSchema: selectedEventSchema.schema,
+          event: selectedEvent,
           signal,
         });
 
@@ -154,7 +155,7 @@ export function WebhookEditionFilters({
             value={naturalDescriptionValue ?? ""}
             disabled={!isEditor}
             onChange={(e) => {
-              if (!selectedEvent || !selectedPreset) {
+              if (!selectedEventValue || !selectedPreset) {
                 setError("webhook.event", {
                   type: "manual",
                   message: "Please select an event first",

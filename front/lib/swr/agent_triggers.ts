@@ -22,6 +22,7 @@ import type {
 import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
 import type { LightWorkspaceType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+import type { WebhookEvent } from "@app/types/triggers/webhooks_source_preset";
 
 export function useAgentTriggers({
   workspaceId,
@@ -115,11 +116,11 @@ export function useWebhookFilterGenerator({
   const generateFilter = useCallback(
     async ({
       naturalDescription,
-      eventSchema,
+      event,
       signal,
     }: {
       naturalDescription: string;
-      eventSchema: Record<string, unknown>;
+      event: WebhookEvent;
       signal?: AbortSignal;
     }): Promise<{ filter: string }> => {
       const r: PostWebhookFilterGeneratorResponseBody = await fetcher(
@@ -128,7 +129,7 @@ export function useWebhookFilterGenerator({
           method: "POST",
           body: JSON.stringify({
             naturalDescription,
-            eventSchema,
+            eventSchema: event.schema ?? null,
           } satisfies PostWebhookFilterGeneratorRequestBody),
           signal,
         }
