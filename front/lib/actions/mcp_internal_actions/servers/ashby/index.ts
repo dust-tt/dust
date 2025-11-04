@@ -22,7 +22,8 @@ function createServer(
 
   server.tool(
     "search_candidates",
-    "Search for candidates in Ashby ATS by name and/or email. Returns up to 100 matching candidates. Use this when you need to find specific candidates.",
+    "Search for candidates in Ashby ATS by name and/or email. " +
+      "Returns up to 100 matching candidates.",
     {
       email: z
         .string()
@@ -86,7 +87,8 @@ function createServer(
               type: "text" as const,
               text:
                 resultText +
-                "\n\nNote: Results are limited to 100 candidates. Consider refining your search if you need more specific results.",
+                "\n\nNote: Results are limited to 100 candidates. " +
+                "Consider refining your search if you need more specific results.",
             },
           ]);
         }
@@ -103,7 +105,7 @@ function createServer(
 
   server.tool(
     "get_report_data",
-    "Retrieve report data from Ashby ATS synchronously and save as a CSV file. Maximum 30 second timeout. For longer-running reports, consider using smaller date ranges or filters.",
+    "Retrieve report data from Ashby ATS synchronously and save as a CSV file.",
     {
       reportId: z
         .string()
@@ -155,7 +157,10 @@ function createServer(
         const csvContent = await toCsv(csvRows);
         const base64Content = Buffer.from(csvContent).toString("base64");
 
-        const resultText = `Report data retrieved successfully!\n\nReport ID: ${reportId}\nRows: ${response.data.length}\nFields: ${fieldNames.join(", ")}\n\nThe data has been saved as a CSV file.`;
+        const resultText =
+          `Report data retrieved successfully!\n\nReport ID: ${reportId}\n` +
+          `Rows: ${response.data.length}\nFields: ${fieldNames.join(", ")}\n\n` +
+          "The data has been saved as a CSV file.";
 
         return new Ok([
           {
@@ -178,63 +183,142 @@ function createServer(
 
   server.tool(
     "submit_feedback",
-    "Submit feedback for a candidate application in Ashby ATS. Requires applicationId, feedbackFormDefinitionId, and values object containing feedback data.",
+    "Submit feedback for a candidate application in Ashby ATS. Searches for the " +
+      "candidate by name and/or email, then submits feedback for their application. " +
+      "Returns an error if no candidate or multiple candidates are found.",
     {
-      applicationId: z
+      email: z
         .string()
-        .uuid()
-        .describe("UUID of the application to submit feedback for."),
+        .optional()
+        .describe("Email address of the candidate to search for."),
+      name: z
+        .string()
+        .optional()
+        .describe("Name of the candidate to search for."),
       feedbackFormDefinitionId: z
         .string()
         .uuid()
         .describe("UUID of the feedback form definition to use."),
-      values: z
+      feedbackForm: z
         .record(z.unknown())
         .describe(
-          "Object mapping feedback field paths to their values. Value formats depend on field types: Boolean (boolean), Date (YYYY-MM-DD string), Email (email string), Number (integer), RichText ({type: 'PlainText', value: string}), Score ({score: 1-4}), Phone/String (string), ValueSelect (string option), MultiValueSelect (array of strings)."
+          "Object mapping feedback field paths to their values. Value formats depend " +
+            "on field types: Boolean (boolean), Date (YYYY-MM-DD string), Email (email string), " +
+            "Number (integer), RichText ({type: 'PlainText', value: string}), Score " +
+            "({score: 1-4}), Phone/String (string), ValueSelect (string option), " +
+            "MultiValueSelect (array of strings)."
         ),
       userId: z
         .string()
         .uuid()
         .optional()
         .describe("UUID of the user submitting the feedback (optional)."),
-      interviewEventId: z
-        .string()
-        .uuid()
-        .optional()
-        .describe(
-          "UUID of the interview event this feedback is associated with (optional)."
-        ),
-      authorId: z
-        .string()
-        .uuid()
-        .optional()
-        .describe("UUID of the author submitting the feedback (optional)."),
     },
     withToolLogging(
       auth,
       { toolNameForMonitoring: "ashby_create_feedback", agentLoopContext },
       async ({
-        applicationId,
+        email,
+        name,
         feedbackFormDefinitionId,
-        values,
+        feedbackForm,
         userId,
-        interviewEventId,
-        authorId,
       }) => {
+        if (!email && !name) {
+          return new Err(
+            new MCPError(
+              "At least one search parameter (email or name) must be provided."
+            )
+          );
+        }
+
         const apiKeyResult = await getAshbyApiKey(auth, agentLoopContext);
         if (apiKeyResult.isErr()) {
           return new Err(apiKeyResult.error);
         }
 
         const client = new AshbyClient(apiKeyResult.value);
+
+        const searchResult = await client.searchCandidates({ email, name });
+        if (searchResult.isErr()) {
+          return new Err(
+            new MCPError(
+              `Failed to search for candidate: ${searchResult.error.message}`
+            )
+          );
+        }
+
+        const candidates = searchResult.value.results;
+
+        if (candidates.length === 0) {
+          const searchParams = [
+            email ? `email: ${email}` : null,
+            name ? `name: ${name}` : null,
+          ]
+            .filter(Boolean)
+            .join(", ");
+          return new Err(
+            new MCPError(
+              `No candidate found matching search criteria (${searchParams}).`
+            )
+          );
+        }
+
+        if (candidates.length > 1) {
+          const candidateList = candidates
+            .map((c) => `- ${c.name} (${c.id})`)
+            .join("\n");
+          return new Err(
+            new MCPError(
+              `Multiple candidates found (${candidates.length}). ` +
+                `Please provide more specific search criteria.\n\nFound candidates:\n${candidateList}`
+            )
+          );
+        }
+
+        const candidate = candidates[0];
+        const candidateInfoResult = await client.getCandidateInfo({
+          candidateId: candidate.id,
+        });
+
+        if (candidateInfoResult.isErr()) {
+          return new Err(
+            new MCPError(
+              `Failed to get candidate details: ${candidateInfoResult.error.message}`
+            )
+          );
+        }
+
+        const candidateInfo = candidateInfoResult.value;
+
+        if (
+          !candidateInfo.applicationIds ||
+          candidateInfo.applicationIds.length === 0
+        ) {
+          return new Err(
+            new MCPError(
+              `Candidate ${candidateInfo.name} (${candidateInfo.id}) has no applications.`
+            )
+          );
+        }
+
+        if (candidateInfo.applicationIds.length > 1) {
+          return new Err(
+            new MCPError(
+              `Candidate ${candidateInfo.name} (${candidateInfo.id}) has multiple ` +
+                `applications (${candidateInfo.applicationIds.length}). ` +
+                "Please specify which application to submit feedback for."
+            )
+          );
+        }
+
+        const applicationId = candidateInfo.applicationIds[0];
+
         const result = await client.submitFeedback({
           applicationId,
           feedbackFormDefinitionId,
-          values,
+          feedbackForm,
           userId,
-          interviewEventId,
-          authorId,
         });
 
         if (result.isErr()) {
@@ -250,7 +334,10 @@ function createServer(
           })
           .join("\n");
 
-        const resultText = `Feedback submitted successfully!\n\nApplication ID: ${applicationId}\nFeedback Form: ${feedbackFormDefinitionId}\n\nSubmitted values:\n${submittedFields}`;
+        const resultText =
+          `Feedback submitted successfully!\n\nCandidate: ${candidateInfo.name} ` +
+          `(${candidateInfo.id})\nApplication ID: ${applicationId}\nFeedback Form: ` +
+          `${feedbackFormDefinitionId}\n\nSubmitted values:\n${submittedFields}`;
 
         return new Ok([
           {

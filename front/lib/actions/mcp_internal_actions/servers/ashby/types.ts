@@ -26,6 +26,7 @@ export const AshbyCandidateSchema = z.object({
     )
     .optional(),
   createdAt: z.string(),
+  applicationIds: z.array(z.string()).optional(),
 });
 
 export type AshbyCandidate = z.infer<typeof AshbyCandidateSchema>;
@@ -42,10 +43,8 @@ export type AshbyCandidateListResponse = z.infer<
 export const AshbyFeedbackSubmitRequestSchema = z.object({
   applicationId: z.string().uuid(),
   feedbackFormDefinitionId: z.string().uuid(),
-  values: z.record(z.unknown()),
+  feedbackForm: z.record(z.unknown()),
   userId: z.string().uuid().optional(),
-  interviewEventId: z.string().uuid().optional(),
-  authorId: z.string().uuid().optional(),
 });
 
 export type AshbyFeedbackSubmitRequest = z.infer<
@@ -97,4 +96,18 @@ export const AshbyCandidateSearchResponseSchema = z.object({
 
 export type AshbyCandidateSearchResponse = z.infer<
   typeof AshbyCandidateSearchResponseSchema
+>;
+
+export const AshbyCandidateInfoRequestSchema = z.object({
+  candidateId: z.string(),
+});
+
+export type AshbyCandidateInfoRequest = z.infer<
+  typeof AshbyCandidateInfoRequestSchema
+>;
+
+export const AshbyCandidateInfoResponseSchema = AshbyCandidateSchema;
+
+export type AshbyCandidateInfoResponse = z.infer<
+  typeof AshbyCandidateInfoResponseSchema
 >;
