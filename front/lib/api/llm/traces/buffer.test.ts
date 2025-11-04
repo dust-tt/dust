@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker";
 import { expect, test, vi } from "vitest";
 
-import { LLMTraceBuffer } from "@app/lib/api/llm/traces/buffer";
+import { LLMTraceBuffer, type LLMRunId } from "@app/lib/api/llm/traces/buffer";
 import type {
   TextDeltaEvent,
   TextGeneratedEvent,
@@ -62,7 +62,7 @@ class LLMEventFactory {
 }
 
 // Helper to create buffer with test data
-function createTestBuffer(runId?: string, workspaceId?: string) {
+function createTestBuffer(runId?: LLMRunId, workspaceId?: string) {
   const buffer = new LLMTraceBuffer(
     runId ?? `llm_${faker.string.uuid()}`,
     workspaceId ?? faker.string.uuid(),

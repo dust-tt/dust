@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
-import { LLMTraceBuffer } from "@app/lib/api/llm/traces/buffer";
+import { LLMTraceBuffer, createLLMRunId, type LLMRunId } from "@app/lib/api/llm/traces/buffer";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
@@ -23,7 +23,7 @@ export abstract class LLM {
   // Tracing fields.
   protected readonly authenticator: Authenticator;
   protected readonly context?: LLMTraceContext;
-  protected readonly runId: string;
+  protected readonly runId: LLMRunId;
 
   protected constructor(
     auth: Authenticator,
@@ -45,7 +45,7 @@ export abstract class LLM {
     // Initialize tracing.
     this.authenticator = auth;
     this.context = context;
-    this.runId = `llm_${randomUUID()}`;
+    this.runId = createLLMRunId(randomUUID());
   }
 
   /**
@@ -102,9 +102,9 @@ export abstract class LLM {
   }
 
   /**
-   * Get the runId for this LLM instance
+   * Get the runId for this LLM instance (includes llm_ prefix)
    */
-  getRunId(): string {
+  getRunId(): LLMRunId {
     return this.runId;
   }
 

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 
+import type { LLMTrace } from "@app/lib/api/llm/traces/types";
 import { emptyArray, fetcher } from "@app/lib/swr/swr";
 import type { PokeFetchAssistantTemplateResponse } from "@app/pages/api/poke/templates/[tId]";
 import type { PullTemplatesResponseBody } from "@app/pages/api/poke/templates/pull";
@@ -105,6 +106,32 @@ export function usePokeConversation({
     isConversationLoading: !error && !data,
     isConversationError: error,
     mutateConversation: mutate,
+  };
+}
+
+export function usePokeLLMTrace({
+  workspace,
+  runId,
+  disabled,
+}: {
+  workspace: LightWorkspaceType;
+  runId: string | null;
+  disabled?: boolean;
+}) {
+  const llmTraceFetcher: Fetcher<{ trace: LLMTrace | null }> = fetcher;
+
+  const { data, error, mutate } = useSWR(
+    runId && !disabled
+      ? `/api/poke/workspaces/${workspace.sId}/llm-traces/${runId}`
+      : null,
+    llmTraceFetcher
+  );
+
+  return {
+    trace: data ? data.trace : null,
+    isLLMTraceLoading: !error && !data && !disabled,
+    isLLMTraceError: error,
+    mutateLLMTrace: mutate,
   };
 }
 

@@ -10,6 +10,7 @@ import type {
   TokenUsage,
   ToolCall,
 } from "@app/lib/api/llm/types/events";
+import type { Authenticator } from "@app/lib/auth";
 import { getLLMTracesBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
 import type {
@@ -17,6 +18,24 @@ import type {
   ModelIdType,
   ReasoningEffort,
 } from "@app/types";
+
+const LLM_RUN_PREFIX = "llm_";
+
+export type LLMRunId = `${typeof LLM_RUN_PREFIX}${string}`;
+
+/**
+ * Check if a runId starts with the LLM prefix
+ */
+export function isLLMRunId(runId: string): runId is LLMRunId {
+  return runId.startsWith(LLM_RUN_PREFIX);
+}
+
+/**
+ * Create an LLM run ID from a base ID
+ */
+export function createLLMRunId(baseId: string): LLMRunId {
+  return `${LLM_RUN_PREFIX}${baseId}`;
+}
 
 /**
  * Buffer for LLM trace data with output size limits to prevent memory issues.
@@ -42,7 +61,7 @@ export class LLMTraceBuffer {
   private toolCalls: ToolCall[] = [];
 
   constructor(
-    private readonly runId: string,
+    private readonly runId: LLMRunId,
     private readonly workspaceId: string,
     private readonly context: LLMTraceContext
   ) {}
@@ -356,5 +375,42 @@ export class LLMTraceBuffer {
     } catch (err) {
       return Buffer.byteLength(String(obj), "utf8");
     }
+  }
+}
+
+/**
+ * Fetches an LLM trace from GCS storage.
+ * Only works for runIds that start with the LLM prefix.
+ */
+export async function fetchLLMTrace(
+  auth: Authenticator,
+  { runId }: { runId: string }
+): Promise<LLMTrace | null> {
+  if (!isLLMRunId(runId)) {
+    return null;
+  }
+
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+
+  const bucket = getLLMTracesBucket();
+  const filePath = `${workspaceId}/${runId}.json`;
+
+  try {
+    const traceContent = await bucket.fetchFileContent(filePath);
+    const trace = JSON.parse(traceContent) as LLMTrace;
+
+    return trace;
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        gcsPath: filePath,
+        runId,
+        workspaceId,
+      },
+      "Failed to fetch LLM trace from GCS"
+    );
+
+    return null;
   }
 }
