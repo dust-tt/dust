@@ -31,8 +31,18 @@ vi.mock("@app/lib/triggers/temporal/common/client", () => ({
   })),
 }));
 
+vi.mock("@app/lib/triggers/temporal/webhook/client", () => ({
+  launchAgentTriggerWebhookWorkflow: vi.fn(async () => ({
+    isOk: () => true,
+    isErr: () => false,
+    value: undefined,
+  })),
+}));
+
 vi.mock("@app/lib/file_storage", () => ({
-  getWebhookRequestsBucket: vi.fn(() => ({})),
+  getWebhookRequestsBucket: () => ({
+    uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
+  }),
 }));
 
 import handler from ".";
