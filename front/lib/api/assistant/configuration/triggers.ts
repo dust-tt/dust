@@ -1,7 +1,8 @@
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { Authenticator } from "@app/lib/auth";
-import { getDustProdAction } from "@app/lib/registry";
-import { cloneBaseConfig } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { Result } from "@app/types";
 import {
   Err,
@@ -130,7 +131,7 @@ export async function generateWebhookFilter(
     eventSchema,
   }: {
     naturalDescription: string;
-    eventSchema: Record<string, unknown>;
+    eventSchema: JSONSchema;
   }
 ): Promise<Result<{ filter: string }, Error>> {
   const owner = auth.getNonNullableWorkspace();
