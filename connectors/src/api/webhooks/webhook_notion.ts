@@ -1,10 +1,6 @@
 import type { Request, Response } from "express";
 
 import { launchNotionWebhookProcessingWorkflow } from "@connectors/connectors/notion/temporal/client";
-import type {
-  NotionWebhookEvent,
-  NotionWebhookEventPayload,
-} from "@connectors/connectors/notion/temporal/signals";
 import { NotionConnectorState } from "@connectors/lib/models/notion";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
@@ -17,6 +13,16 @@ type NotionWebhookResBody = WithConnectorsAPIErrorReponse<null>;
 
 type NotionWebhookVerification = {
   verification_token: string;
+};
+
+type NotionWebhookEventPayload = {
+  workspace_id: string;
+  type: string;
+  entity?: {
+    id: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
 };
 
 type NotionWebhookPayload =
@@ -122,15 +128,12 @@ const _webhookNotionAPIHandler = async (
     return res.status(200).end();
   }
 
-  // Minimal event object with only the fields we care about
-  const event: NotionWebhookEvent = {
-    type: payload.type,
-    entity_id: payload.entity?.id,
-  };
-
   // Launch or signal the webhook processing workflow
   try {
-    await launchNotionWebhookProcessingWorkflow(connector.id, event);
+    await launchNotionWebhookProcessingWorkflow(connector.id, {
+      type: payload.type,
+      entity_id: payload.entity?.id,
+    });
   } catch (err) {
     logger.error(
       {
