@@ -34,7 +34,7 @@ export class WebhookForwarder {
       this.forwardToTarget({ target, endpoint, method, body, headers })
     );
 
-    return await Promise.allSettled(requests);
+    return Promise.allSettled(requests);
   }
 
   private async forwardToTarget({
