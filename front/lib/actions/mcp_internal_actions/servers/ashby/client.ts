@@ -1,10 +1,9 @@
+import type { z } from "zod";
+
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
-  AshbyCandidateListResponse,
   AshbyFeedbackSubmitRequest,
-  AshbyFeedbackSubmitResponse,
   AshbyReportSynchronousRequest,
-  AshbyReportSynchronousResponse,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 import {
   AshbyCandidateListResponseSchema,
@@ -17,7 +16,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { decrypt, Err, normalizeError, Ok } from "@app/types";
+import { decrypt, Err, Ok } from "@app/types";
 
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
 
@@ -77,166 +76,77 @@ export class AshbyClient {
     return `Basic ${credentials}`;
   }
 
+  private async postRequest<T extends z.Schema>(
+    endpoint: string,
+    data: unknown,
+    schema: T
+  ): Promise<Result<z.infer<T>, Error>> {
+    const response = await fetch(`${ASHBY_API_BASE_URL}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: this.getAuthHeader(),
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return new Err(
+        new Error(
+          `Ashby API error (${response.status}): ${errorText || response.statusText}`
+        )
+      );
+    }
+
+    const rawData = await response.json();
+    const parseResult = schema.safeParse(rawData);
+
+    if (!parseResult.success) {
+      logger.error("[Ashby MCP Server] Invalid API response format", {
+        error: parseResult.error.message,
+        rawData,
+      });
+      return new Err(
+        new Error(
+          `Invalid Ashby API response format: ${parseResult.error.message}`
+        )
+      );
+    }
+
+    return new Ok(parseResult.data);
+  }
+
   async listCandidates({
     cursor,
     limit = 100,
   }: {
     cursor?: string;
     limit?: number;
-  }): Promise<Result<AshbyCandidateListResponse, Error>> {
-    const response = await fetch(`${ASHBY_API_BASE_URL}/candidate.list`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: this.getAuthHeader(),
-      },
-      body: JSON.stringify({
+  }) {
+    return this.postRequest(
+      "candidate.list",
+      {
         cursor,
         limit,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return new Err(
-        new Error(
-          `Ashby API error (${response.status}): ${errorText || response.statusText}`
-        )
-      );
-    }
-
-    const responseText = await response.text();
-    if (!responseText) {
-      return new Err(new Error("Ashby API returned empty response"));
-    }
-
-    let rawData: unknown;
-    try {
-      rawData = JSON.parse(responseText);
-    } catch (e) {
-      const error = normalizeError(e);
-      return new Err(new Error(`Invalid JSON response: ${error.message}`));
-    }
-
-    const parseResult = AshbyCandidateListResponseSchema.safeParse(rawData);
-
-    if (!parseResult.success) {
-      logger.error("[Ashby MCP Server] Invalid API response format", {
-        error: parseResult.error.message,
-        rawData,
-      });
-      return new Err(
-        new Error(
-          `Invalid Ashby API response format: ${parseResult.error.message}`
-        )
-      );
-    }
-
-    return new Ok(parseResult.data);
-  }
-
-  async submitFeedback(
-    request: AshbyFeedbackSubmitRequest
-  ): Promise<Result<AshbyFeedbackSubmitResponse, Error>> {
-    const response = await fetch(
-      `${ASHBY_API_BASE_URL}/applicationFeedback.submit`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: this.getAuthHeader(),
-        },
-        body: JSON.stringify(request),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return new Err(
-        new Error(
-          `Ashby API error (${response.status}): ${errorText || response.statusText}`
-        )
-      );
-    }
-
-    const responseText = await response.text();
-    if (!responseText) {
-      return new Err(new Error("Ashby API returned empty response"));
-    }
-
-    let rawData: unknown;
-    try {
-      rawData = JSON.parse(responseText);
-    } catch (e) {
-      const error = normalizeError(e);
-      return new Err(new Error(`Invalid JSON response: ${error.message}`));
-    }
-
-    const parseResult = AshbyFeedbackSubmitResponseSchema.safeParse(rawData);
-
-    if (!parseResult.success) {
-      logger.error("[Ashby MCP Server] Invalid API response format", {
-        error: parseResult.error.message,
-        rawData,
-      });
-      return new Err(
-        new Error(
-          `Invalid Ashby API response format: ${parseResult.error.message}`
-        )
-      );
-    }
-
-    return new Ok(parseResult.data);
-  }
-
-  async getReportData(
-    request: AshbyReportSynchronousRequest
-  ): Promise<Result<AshbyReportSynchronousResponse, Error>> {
-    const response = await fetch(`${ASHBY_API_BASE_URL}/report.synchronous`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: this.getAuthHeader(),
       },
-      body: JSON.stringify(request),
-    });
+      AshbyCandidateListResponseSchema
+    );
+  }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      return new Err(
-        new Error(
-          `Ashby API error (${response.status}): ${errorText || response.statusText}`
-        )
-      );
-    }
+  async submitFeedback(request: AshbyFeedbackSubmitRequest) {
+    return this.postRequest(
+      "applicationFeedback.submit",
+      request,
+      AshbyFeedbackSubmitResponseSchema
+    );
+  }
 
-    const responseText = await response.text();
-    if (!responseText) {
-      return new Err(new Error("Ashby API returned empty response"));
-    }
-
-    let rawData: unknown;
-    try {
-      rawData = JSON.parse(responseText);
-    } catch (e) {
-      const error = normalizeError(e);
-      return new Err(new Error(`Invalid JSON response: ${error.message}`));
-    }
-
-    const parseResult = AshbyReportSynchronousResponseSchema.safeParse(rawData);
-
-    if (!parseResult.success) {
-      logger.error("[Ashby MCP Server] Invalid API response format", {
-        error: parseResult.error.message,
-        rawData,
-      });
-      return new Err(
-        new Error(
-          `Invalid Ashby API response format: ${parseResult.error.message}`
-        )
-      );
-    }
-
-    return new Ok(parseResult.data);
+  async getReportData(request: AshbyReportSynchronousRequest) {
+    return this.postRequest(
+      "report.synchronous",
+      request,
+      AshbyReportSynchronousResponseSchema
+    );
   }
 }
