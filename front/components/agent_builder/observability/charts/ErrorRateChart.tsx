@@ -112,14 +112,11 @@ export function ErrorRateChart({
 
   return (
     <ChartContainer
-      title={
-        <div className="flex items-center gap-2">
-          <span>Error rate</span>
-          {!isErrorRateLoading &&
-            !isErrorRateError &&
-            data.length > 0 &&
-            getStatusChip()}
-        </div>
+      title="Error rate"
+      statusChip={
+        !isErrorRateLoading && !isErrorRateError && data.length > 0
+          ? getStatusChip()
+          : undefined
       }
       isLoading={isErrorRateLoading}
       errorMessage={
