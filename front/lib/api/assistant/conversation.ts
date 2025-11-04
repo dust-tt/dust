@@ -28,6 +28,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
   AgentMessage,
+  ConversationModel,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
@@ -229,6 +230,31 @@ export async function getConversationMessageType(
   }
 
   return null;
+}
+
+export async function getMessageConversationId(
+  auth: Authenticator,
+  { messageId }: { messageId: number }
+): Promise<{ conversationId: string | null; messageId: string | null }> {
+  const messageRow = await Message.findOne({
+    attributes: ["sId"],
+    where: {
+      sId: messageId,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    include: [
+      {
+        model: ConversationModel,
+        as: "conversation",
+        attributes: ["sId"],
+      },
+    ],
+  });
+
+  return {
+    conversationId: messageRow?.conversation?.sId ?? null,
+    messageId: messageRow?.sId ?? null,
+  };
 }
 
 export async function getLastUserMessage(

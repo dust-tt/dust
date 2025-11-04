@@ -1,12 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getMessageConversationId } from "@app/lib/api/assistant/conversation";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  ConversationModel,
-  Message,
-} from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { apiError } from "@app/logger/withlogging";
 import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
@@ -89,23 +86,10 @@ async function handler(
         await feedback.undismiss();
       }
 
-      const agentMessageRow = await Message.findOne({
-        attributes: ["sId"],
-        where: {
-          agentMessageId: feedback.agentMessageId,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-        include: [
-          {
-            model: ConversationModel,
-            as: "conversation",
-            attributes: ["sId"],
-          },
-        ],
-      });
-
-      const conversationId = agentMessageRow?.conversation?.sId;
-      const agentMessageId = agentMessageRow?.sId;
+      const { conversationId, messageId: agentMessageId } =
+        await getMessageConversationId(auth, {
+          messageId: feedback.agentMessageId,
+        });
 
       if (conversationId && agentMessageId) {
         await launchAgentMessageFeedbackWorkflow(auth, {
