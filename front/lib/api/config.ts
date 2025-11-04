@@ -230,6 +230,9 @@ const config = {
   getOAuthDiscordClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_DISCORD_CLIENT_ID");
   },
+  getOAuthFathomClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_FATHOM_CLIENT_ID");
+  },
 
   // Text extraction.
   getTextExtractionUrl: (): string => {
