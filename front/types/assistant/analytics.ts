@@ -1,6 +1,6 @@
 import type { ThumbReaction } from "@app/components/assistant/conversation/FeedbackSelector";
 import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
-import type { AgentMessageType } from "@app/types";
+import type { AgentMessageStatus } from "@app/types";
 
 /**
  * Types for agent analytics data stored in Elasticsearch
@@ -38,7 +38,7 @@ export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   conversation_id: string;
   latency_ms: number;
   message_id: string;
-  status: AgentMessageType["status"];
+  status: AgentMessageStatus;
   timestamp: string; // ISO date string.
   tokens: AgentMessageAnalyticsTokens;
   tools_used: AgentMessageAnalyticsToolUsed[];

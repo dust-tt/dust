@@ -13,6 +13,7 @@ interface ChartContainerProps {
   emptyMessage?: string;
   children: ReactNode;
   additionalControls?: ReactNode;
+  statusChip?: ReactNode;
 }
 
 export function ChartContainer({
@@ -22,6 +23,7 @@ export function ChartContainer({
   emptyMessage,
   children,
   additionalControls,
+  statusChip,
 }: ChartContainerProps) {
   const message = isLoading ? null : errorMessage ?? emptyMessage;
 
@@ -33,7 +35,10 @@ export function ChartContainer({
       )}
     >
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-medium text-foreground">{title}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-medium text-foreground">{title}</h3>
+          {statusChip}
+        </div>
         <div className="flex items-center gap-3">{additionalControls}</div>
       </div>
       {isLoading || message ? (
