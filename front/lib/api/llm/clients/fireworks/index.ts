@@ -1,11 +1,7 @@
 import { APIError, OpenAI } from "openai";
-import type { ReasoningEffort as OpenAiReasoningEffort } from "openai/resources/shared";
 
 import type { FireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
-import {
-  isOpenAIResponsesWhitelistedReasoningModelId,
-  REASONING_EFFORT_TO_OPENAI_REASONING,
-} from "@app/lib/api/llm/clients/openai/types";
+import { overwriteLLMParameters } from "@app/lib/api/llm/clients/fireworks/types";
 import { LLM } from "@app/lib/api/llm/llm";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -16,6 +12,7 @@ import type {
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
+  toReasoning,
   toTool,
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
@@ -24,38 +21,14 @@ import { dustManagedCredentials } from "@app/types";
 
 export class FireworksLLM extends LLM {
   private client: OpenAI;
-  private readonly reasoning: {
-    effort: OpenAiReasoningEffort;
-    summary: "auto";
-  } | null;
 
   constructor(
     auth: Authenticator,
-    {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
-    }: LLMParameters & {
+    llmParameters: LLMParameters & {
       modelId: FireworksWhitelistedModelId;
     }
   ) {
-    super(auth, {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
-      clientId: "openai_responses",
-    });
-
-    this.reasoning = isOpenAIResponsesWhitelistedReasoningModelId(modelId)
-      ? {
-          effort: REASONING_EFFORT_TO_OPENAI_REASONING[this.reasoningEffort],
-          summary: "auto",
-        }
-      : null;
+    super(auth, overwriteLLMParameters(llmParameters));
 
     const { FIREWORKS_API_KEY } = dustManagedCredentials();
     if (!FIREWORKS_API_KEY) {
@@ -78,7 +51,7 @@ export class FireworksLLM extends LLM {
         input: toInput(prompt, conversation),
         stream: true,
         temperature: this.temperature,
-        reasoning: this.reasoning,
+        reasoning: toReasoning(this.reasoningEffort),
         tools: specifications.map(toTool),
       });
 
