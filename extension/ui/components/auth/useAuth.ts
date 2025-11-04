@@ -220,7 +220,6 @@ export const useAuthHook = () => {
       object: "login",
       action: TRACKING_ACTIONS.LOGIN,
       extra: {
-        is_extension: true,
         workspace_count: user.workspaces.length,
         has_selected_workspace: !!user.selectedWorkspace,
       },

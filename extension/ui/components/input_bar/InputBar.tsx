@@ -314,7 +314,6 @@ export function AssistantInputBar({
         agent_count: mentions.length,
         attachment_count: attachedNodes.length + newFiles.length,
         is_tab_included: isTabIncluded,
-        is_extension: true,
       },
     });
 
