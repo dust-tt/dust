@@ -137,13 +137,8 @@ export function ToolUsageChart({
             tickMargin={8}
             domain={[0, 100]}
             ticks={[0, 20, 40, 60, 80, 100]}
+            tickFormatter={(value) => `${value}%`}
             allowDecimals={false}
-            label={{
-              value: "Usage %",
-              angle: -90,
-              position: "insideLeft",
-              style: { textAnchor: "middle" },
-            }}
           />
           <Tooltip
             cursor={false}
