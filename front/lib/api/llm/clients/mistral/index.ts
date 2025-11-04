@@ -9,7 +9,6 @@ import { streamLLMEvents } from "@app/lib/api/llm/clients/mistral/utils/mistral_
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
-  LLMClientMetadata,
   LLMParameters,
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
@@ -18,10 +17,7 @@ import { dustManagedCredentials } from "@app/types";
 
 export class MistralLLM extends LLM {
   private client: Mistral;
-  private metadata: LLMClientMetadata = {
-    clientId: "mistral",
-    modelId: this.modelId,
-  };
+
   constructor(
     auth: Authenticator,
     {
@@ -38,6 +34,7 @@ export class MistralLLM extends LLM {
       modelId,
       reasoningEffort,
       temperature,
+      clientId: "mistral",
     });
     const { MISTRAL_API_KEY } = dustManagedCredentials();
     if (!MISTRAL_API_KEY) {

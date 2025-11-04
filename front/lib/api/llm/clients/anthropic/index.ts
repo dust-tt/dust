@@ -11,7 +11,6 @@ import {
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
-  LLMClientMetadata,
   LLMParameters,
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
@@ -22,11 +21,7 @@ import { dustManagedCredentials } from "@app/types";
 
 export class AnthropicLLM extends LLM {
   private client: Anthropic;
-  private metadata: LLMClientMetadata = {
-    clientId: "anthropic",
-    modelId: this.modelId,
-  };
-  private thinkingConfig?: ThinkingConfigParam;
+  private readonly thinkingConfig?: ThinkingConfigParam;
   private modelConfig: (typeof SUPPORTED_MODEL_CONFIGS)[number];
 
   constructor(
@@ -45,6 +40,7 @@ export class AnthropicLLM extends LLM {
       reasoningEffort,
       bypassFeatureFlag,
       context,
+      clientId: "anthropic",
     });
     const { ANTHROPIC_API_KEY } = dustManagedCredentials();
     if (!ANTHROPIC_API_KEY) {
