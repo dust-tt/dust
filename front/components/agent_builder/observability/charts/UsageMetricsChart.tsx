@@ -19,13 +19,18 @@ import { useObservability } from "@app/components/agent_builder/observability/Ob
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
-import { filterTimeSeriesByVersionWindow } from "@app/components/agent_builder/observability/utils";
+import {
+  filterTimeSeriesByVersionWindow,
+  findVersionMarkerForDate,
+} from "@app/components/agent_builder/observability/utils";
+import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
 
 interface UsageMetricsData {
+  date: string;
   messages: number;
   conversations: number;
   activeUsers: number;
@@ -42,21 +47,29 @@ function isUsageMetricsData(data: unknown): data is UsageMetricsData {
 }
 
 function UsageMetricsTooltip(
-  props: TooltipContentProps<number, string>
+  props: TooltipContentProps<number, string> & {
+    versionMarkers: AgentVersionMarker[];
+  }
 ): JSX.Element | null {
-  const { active, payload, label } = props;
+  const { active, payload, label, versionMarkers } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
+
   const first = payload[0];
   if (!first?.payload || !isUsageMetricsData(first.payload)) {
     return null;
   }
+
   const row = first.payload;
   const title = typeof label === "string" ? label : String(label);
+
+  const versionMarker = findVersionMarkerForDate(row.date, versionMarkers);
+  const version = versionMarker ? ` - v${versionMarker.version}` : "";
+
   return (
     <ChartTooltipCard
-      title={title}
+      title={`${title}${version}`}
       rows={[
         {
           label: "Messages",
@@ -189,7 +202,9 @@ export function UsageMetricsChart({
             tickMargin={8}
           />
           <Tooltip
-            content={UsageMetricsTooltip}
+            content={(props: TooltipContentProps<number, string>) => (
+              <UsageMetricsTooltip {...props} versionMarkers={versionMarkers} />
+            )}
             cursor={false}
             wrapperStyle={{ outline: "none" }}
             contentStyle={{
