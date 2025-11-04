@@ -152,7 +152,6 @@
     "sanitize-html": "^2.13.0",
     "sequelize": "^6.31.0",
     "sharp": "^0.33.5",
-    "showdown": "^2.1.0",
     "slackify-markdown": "^4.4.0",
     "sqids": "^0.3.0",
     "sqlite3": "^5.1.6",
