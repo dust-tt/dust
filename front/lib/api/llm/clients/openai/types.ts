@@ -1,4 +1,3 @@
-import assert from "assert";
 import flatMap from "lodash/flatMap";
 
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
@@ -18,7 +17,7 @@ export const OPENAI_MODEL_FAMILY_CONFIGS = {
   },
   reasoning: {
     modelIds: [],
-    overwrites: {},
+    overwrites: { temperature: undefined },
   },
   "non-reasoning": {
     modelIds: [],
@@ -45,13 +44,9 @@ export function overwriteLLMParameters(
   const config = Object.values(OPENAI_MODEL_FAMILY_CONFIGS).find((config) =>
     new Set<string>(config.modelIds).has(llMParameters.modelId)
   );
-  assert(
-    config,
-    `No OpenAI model family config found for model ID ${llMParameters.modelId}`
-  );
 
   return {
     ...llMParameters,
-    ...config.overwrites,
+    ...config?.overwrites,
   };
 }

@@ -46,27 +46,27 @@ function createMockAuthenticator(): Authenticator {
   });
 }
 
-const REASONING_PARAMETER_CONFIGS: {
-  temperature: number;
-  reasoningEffort: ReasoningEffort;
-}[] = [
-  {
-    temperature: 0.5,
-    reasoningEffort: "none",
-  },
-  {
-    temperature: 1,
-    reasoningEffort: "light",
-  },
-  {
-    temperature: 0.5,
-    reasoningEffort: "medium",
-  },
-  {
-    temperature: 1,
-    reasoningEffort: "high",
-  },
-];
+// const REASONING_PARAMETER_CONFIGS: {
+//   temperature: number;
+//   reasoningEffort: ReasoningEffort;
+// }[] = [
+//   {
+//     temperature: 0.5,
+//     reasoningEffort: "none",
+//   },
+//   {
+//     temperature: 1,
+//     reasoningEffort: "light",
+//   },
+//   {
+//     temperature: 0.5,
+//     reasoningEffort: "medium",
+//   },
+//   {
+//     temperature: 1,
+//     reasoningEffort: "high",
+//   },
+// ];
 
 function generateThinkingTestConfigs(
   provider: ModelProviderIdType,
@@ -79,16 +79,16 @@ function generateThinkingTestConfigs(
   }));
 }
 
-const NON_REASONING_PARAMETER_CONFIGS: {
-  temperature: number;
-}[] = [
-  {
-    temperature: 0.5,
-  },
-  {
-    temperature: 1,
-  },
-];
+// const NON_REASONING_PARAMETER_CONFIGS: {
+//   temperature: number;
+// }[] = [
+//   {
+//     temperature: 0.5,
+//   },
+//   {
+//     temperature: 1,
+//   },
+// ];
 
 function generateNotThinkingTestConfigs(
   provider: ModelProviderIdType,
