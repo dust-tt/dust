@@ -98,9 +98,8 @@ export function ErrorRateChart({
     colorClassName: ERROR_RATE_PALETTE[key],
   }));
 
-  const latestErrorRate = data[data.length - 1]?.errorRate ?? 0;
-
   const getStatusChip = () => {
+    const latestErrorRate = data[data.length - 1]?.errorRate ?? 0;
     if (latestErrorRate < WARNING_THRESHOLD) {
       return <Chip color="success" size="xs" label="HEALTHY" />;
     } else if (latestErrorRate < CRITICAL_THRESHOLD) {
