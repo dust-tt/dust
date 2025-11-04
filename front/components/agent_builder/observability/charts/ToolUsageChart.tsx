@@ -126,7 +126,7 @@ export function ToolUsageChart({
             label={{
               value: xAxisLabel,
               position: "insideBottom",
-              offset: -2,
+              offset: -8,
               style: { textAnchor: "middle" },
             }}
           />

@@ -240,15 +240,16 @@ export function UsageMetricsChart({
             fill="url(#fillActiveUsers)"
             stroke="currentColor"
           />
-          {versionMarkers.map((versionMarker) => (
-            <ReferenceLine
-              key={versionMarker.timestamp}
-              x={versionMarker.timestamp}
-              strokeDasharray="5 5"
-              strokeWidth={0.5}
-              stroke="#FFBE2C"
-            />
-          ))}
+          {mode === "timeRange" &&
+            versionMarkers.map((versionMarker) => (
+              <ReferenceLine
+                key={versionMarker.timestamp}
+                x={versionMarker.timestamp}
+                strokeDasharray="5 5"
+                strokeWidth={1}
+                stroke="hsl(var(--chart-5))"
+              />
+            ))}
         </AreaChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />
