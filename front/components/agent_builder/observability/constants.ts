@@ -5,9 +5,9 @@ export type ObservabilityTimeRangeType =
 export const DEFAULT_PERIOD_DAYS = 14;
 
 export const USAGE_METRICS_PALETTE = {
-  messages: "text-[hsl(var(--chart-1))]",
-  conversations: "text-[hsl(var(--chart-2))]",
-  activeUsers: "text-[hsl(var(--chart-3))]",
+  messages: "text-golden-500 dark:text-golden-500-night",
+  conversations: "text-blue-400 dark:text-blue-400-night",
+  activeUsers: "text-violet-300 dark:text-violet-300-night",
 } as const;
 
 export const USAGE_METRICS_LEGEND = [
@@ -17,7 +17,7 @@ export const USAGE_METRICS_LEGEND = [
 ] as const;
 
 export const LATENCY_PALETTE = {
-  average: "text-[hsl(var(--chart-5))]",
+  average: "text-blue-400 dark:text-blue-400-night",
 } as const;
 
 export const LATENCY_LEGEND = [
@@ -36,13 +36,12 @@ export const VERSION_MARKER_STYLE = {
   labelOffsetIncrement: 15,
 } as const;
 
-// TODO: find a way to display more tools
 export const TOOL_COLORS = [
-  "text-[hsl(var(--chart-1))]",
-  "text-[hsl(var(--chart-2))]",
-  "text-[hsl(var(--chart-3))]",
-  "text-[hsl(var(--chart-4))]",
-  "text-[hsl(var(--chart-5))]",
+  "text-orange-300 dark:text-orange-300-night",
+  "text-golden-200 dark:text-golden-200-night",
+  "text-rose-200 dark:text-rose-200-night",
+  "text-violet-300 dark:text-violet-300-night",
+  "text-rose-300 dark:text-rose-300-night",
 ] as const;
 
 export const MAX_TOOLS_DISPLAYED = 5;
@@ -50,8 +49,8 @@ export const MAX_TOOLS_DISPLAYED = 5;
 export const OTHER_TOOLS_LABEL = "Others";
 
 export const FEEDBACK_DISTRIBUTION_PALETTE = {
-  positive: "text-[hsl(var(--chart-1))]",
-  negative: "text-[hsl(var(--chart-4))]",
+  positive: "text-green-400 dark:text-green-400-night",
+  negative: "text-rose-400 dark:text-rose-400-night",
 } as const;
 
 export const FEEDBACK_DISTRIBUTION_LEGEND = [
