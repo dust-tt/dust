@@ -103,9 +103,8 @@ export class AshbyClient {
     const parseResult = schema.safeParse(rawData);
 
     if (!parseResult.success) {
-      logger.error("[Ashby MCP Server] Invalid API response format", {
+      logger.error("[Ashby] Invalid API response format", {
         error: parseResult.error.message,
-        rawData,
       });
       return new Err(
         new Error(
