@@ -85,7 +85,7 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
   }
 ): Promise<Result<z.infer<T>, JiraErrorResult>> {
   const client = new JiraClient(accessToken);
-  return client.jiraApiCall(endpoint, schema, {
+  return client.callAPI(endpoint, schema, {
     method: options.method,
     body: options.body,
     baseUrl: options.baseUrl,

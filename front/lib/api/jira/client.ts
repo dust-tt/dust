@@ -277,7 +277,7 @@ export class JiraClient {
     return new Ok(undefined);
   }
 
-  async jiraApiCall<T extends z.ZodTypeAny>(
+  private async callAPI<T extends z.ZodTypeAny>(
     endpoint: string,
     schema: T,
     options: {
@@ -286,8 +286,10 @@ export class JiraClient {
       baseUrl?: string;
     } = {}
   ): Promise<Result<z.infer<T>, JiraErrorResult>> {
-    const baseUrl =
-      options.baseUrl ?? (await this.getJiraBaseUrl()) ?? undefined;
+    let baseUrl = options.baseUrl;
+    if (!baseUrl) {
+      baseUrl = (await this.getJiraBaseUrl()) ?? undefined;
+    }
     if (!baseUrl) {
       return new Err("Failed to retrieve JIRA base URL");
     }
