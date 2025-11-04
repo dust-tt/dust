@@ -12,10 +12,8 @@ import type { AgentBuilderTriggerType } from "@app/components/agent_builder/Agen
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useUser } from "@app/lib/swr/user";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
-import {
-  WEBHOOK_PRESETS,
-  WebhookSourceViewType,
-} from "@app/types/triggers/webhooks";
+import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 function getTriggerIcon(trigger: AgentBuilderTriggerType) {
   switch (trigger.kind) {
@@ -70,7 +68,7 @@ export const TriggerCard = ({
     } catch (error) {
       return "";
     }
-  }, [trigger.kind, trigger.configuration]);
+  }, [trigger.kind, trigger.configuration, webhookSourceView?.customName]);
 
   return (
     <Card

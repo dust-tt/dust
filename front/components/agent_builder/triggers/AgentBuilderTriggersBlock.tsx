@@ -6,6 +6,7 @@ import {
   Hoverable,
   Spinner,
 } from "@dust-tt/sparkle";
+import uniqBy from "lodash/uniqBy";
 import React, { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -23,7 +24,6 @@ import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import uniqBy from "lodash/uniqBy";
 
 interface AgentBuilderTriggersBlockProps {
   owner: LightWorkspaceType;
@@ -87,7 +87,7 @@ export function AgentBuilderTriggersBlock({
           accessibleSpaceIds.has(view.spaceId)
         ),
         (view) => view.webhookSource.sId
-      ),
+      ).sort((a, b) => (a.createdAt >= b.createdAt ? -1 : 1)),
     [webhookSourceViews, accessibleSpaceIds]
   );
 

@@ -75,7 +75,7 @@ export function TriggerSelectionPageContent({
                 <ActionCard
                   key={view.sId}
                   icon={getIcon(normalizeWebhookIcon(view.icon))}
-                  label={view.customName + " - " + view.webhookSource.sId}
+                  label={view.webhookSource.name}
                   description={
                     view.description ||
                     `Trigger this agent with ${view.customName}.`
