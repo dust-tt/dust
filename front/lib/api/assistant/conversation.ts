@@ -239,7 +239,7 @@ export async function getMessageConversationId(
   const messageRow = await Message.findOne({
     attributes: ["sId"],
     where: {
-      sId: messageId,
+      agentMessageId: messageId,
       workspaceId: auth.getNonNullableWorkspace().id,
     },
     include: [
