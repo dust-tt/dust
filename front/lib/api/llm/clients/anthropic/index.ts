@@ -70,13 +70,15 @@ export class AnthropicLLM extends LLM {
       const events = this.client.messages.stream({
         model: this.modelId,
         thinking: toThinkingConfig(this.reasoningEffort),
-        system: [{
-          type: "text",
-          text: prompt,
-          cache_control: {
-            type: "ephemeral",
+        system: [
+          {
+            type: "text",
+            text: prompt,
+            cache_control: {
+              type: "ephemeral",
+            },
           },
-        }],
+        ],
         messages,
         temperature: this.temperature ?? undefined,
         stream: true,
