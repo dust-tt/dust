@@ -114,8 +114,7 @@ export async function locateTreeCallback(
       filter: {
         node_ids: parentNodeIds,
         data_source_views: makeCoreSearchNodesFilters(
-          agentDataSourceConfigurations,
-          { tagsIn, tagsNot }
+          agentDataSourceConfigurations
         ),
       },
     });
