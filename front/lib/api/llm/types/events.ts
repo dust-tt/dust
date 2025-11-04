@@ -44,7 +44,7 @@ export interface TextGeneratedEvent {
 export interface ReasoningGeneratedEvent {
   type: "reasoning_generated";
   content: Text;
-  metadata: LLMClientMetadata & { signature?: string };
+  metadata: LLMClientMetadata & { encrypted_content?: string };
 }
 
 export type LLMOutputItem =

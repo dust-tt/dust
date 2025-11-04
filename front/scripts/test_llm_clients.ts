@@ -421,7 +421,7 @@ async function runTest(
             break;
           case "reasoning_generated":
             fullReasoning = event.content.text;
-            const signature = event.metadata.signature ?? "";
+            const encryptedContent = event.metadata.encrypted_content ?? "";
             conversationHistory.push({
               role: "assistant",
               name: "Assistant",
@@ -430,7 +430,9 @@ async function runTest(
                   type: "reasoning",
                   value: {
                     reasoning: event.content.text,
-                    metadata: JSON.stringify({ signature: signature }),
+                    metadata: JSON.stringify({
+                      encrypted_content: encryptedContent,
+                    }),
                     tokens: 12,
                     provider: config.provider,
                   },
