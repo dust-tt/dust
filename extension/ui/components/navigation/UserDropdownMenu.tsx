@@ -1,3 +1,4 @@
+import { trackEvent, TRACKING_AREAS } from "@app/shared/lib/tracking";
 import type { StoredUser } from "@app/shared/services/auth";
 import { useAuth } from "@app/ui/components/auth/AuthProvider";
 import { useTheme } from "@app/ui/hooks/useTheme";
@@ -72,17 +73,47 @@ export const UserDropdownMenu = ({
               <DropdownMenuRadioItem
                 value="light"
                 label="Light"
-                onClick={() => void updateTheme("light")}
+                onClick={() => {
+                  trackEvent({
+                    area: TRACKING_AREAS.SETTINGS,
+                    object: "theme_change",
+                    action: "select",
+                    extra: {
+                      theme: "light",
+                    },
+                  });
+                  void updateTheme("light");
+                }}
               />
               <DropdownMenuRadioItem
                 value="dark"
                 label="Dark"
-                onClick={() => void updateTheme("dark")}
+                onClick={() => {
+                  trackEvent({
+                    area: TRACKING_AREAS.SETTINGS,
+                    object: "theme_change",
+                    action: "select",
+                    extra: {
+                      theme: "dark",
+                    },
+                  });
+                  void updateTheme("dark");
+                }}
               />
               <DropdownMenuRadioItem
                 value="system"
                 label="System"
-                onClick={() => void updateTheme("system")}
+                onClick={() => {
+                  trackEvent({
+                    area: TRACKING_AREAS.SETTINGS,
+                    object: "theme_change",
+                    action: "select",
+                    extra: {
+                      theme: "system",
+                    },
+                  });
+                  void updateTheme("system");
+                }}
               />
             </DropdownMenuRadioGroup>
           </DropdownMenuSubContent>

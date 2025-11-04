@@ -151,6 +151,8 @@ export const getConfig = async ({
         COMMIT_HASH: getCommitHash(),
         DATADOG_CLIENT_TOKEN: process.env.DATADOG_CLIENT_TOKEN || "",
         DATADOG_ENV: isDevelopment ? "dev" : "prod",
+        POSTHOG_KEY: process.env.POSTHOG_KEY || "",
+        POSTHOG_HOST: "https://eu.i.posthog.com",
       }),
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],

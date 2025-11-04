@@ -2,6 +2,7 @@ import type { AttachSelectionMessage } from "@app/platforms/chrome/messages";
 import { usePlatform } from "@app/shared/context/PlatformContext";
 import { useDustAPI } from "@app/shared/lib/dust_api";
 import { getSpaceIcon } from "@app/shared/lib/spaces";
+import { trackEvent, TRACKING_AREAS } from "@app/shared/lib/tracking";
 import type { ContentFragmentsType } from "@app/shared/lib/types";
 import {
   classNames,
@@ -296,6 +297,26 @@ export function AssistantInputBar({
         );
       }
     }
+
+    // Track message submission
+    const mentionedAgents = agentConfigurations.filter((a) =>
+      mentions.some((m) => m.configurationId === a.sId)
+    );
+
+    trackEvent({
+      area: TRACKING_AREAS.CONVERSATION,
+      object: "message_send",
+      action: "submit",
+      extra: {
+        has_attachments: attachedNodes.length > 0 || newFiles.length > 0,
+        has_agents: mentionedAgents.length > 0,
+        is_new_conversation: !conversation,
+        agent_count: mentions.length,
+        attachment_count: attachedNodes.length + newFiles.length,
+        is_tab_included: isTabIncluded,
+        is_extension: true,
+      },
+    });
 
     void onSubmit(markdown, mentions, {
       uploaded: newFiles,

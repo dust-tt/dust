@@ -1,4 +1,11 @@
 import { usePlatform } from "@app/shared/context/PlatformContext";
+import {
+  identifyUser,
+  resetUser,
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+} from "@app/shared/lib/tracking";
 import type { StoredTokens, StoredUser } from "@app/shared/services/auth";
 import {
   AuthError,
@@ -38,6 +45,17 @@ export const useAuthHook = () => {
 
   const handleLogout = useCallback(async () => {
     setIsLoading(true);
+
+    // Track logout
+    trackEvent({
+      area: TRACKING_AREAS.EXTENSION_AUTH,
+      object: "logout",
+      action: TRACKING_ACTIONS.LOGOUT,
+    });
+
+    // Reset Posthog user identification
+    resetUser();
+
     const success = await platform.auth.logout();
     if (!success) {
       // TODO(EXT): User facing error message if logout failed.
@@ -150,6 +168,17 @@ export const useAuthHook = () => {
       return;
     }
 
+    // Track workspace selection
+    trackEvent({
+      area: TRACKING_AREAS.WORKSPACE,
+      object: "workspace_select",
+      action: TRACKING_ACTIONS.SELECT,
+      extra: {
+        workspace_id: workspace.sId,
+        workspace_name: workspace.name,
+      },
+    });
+
     setUser(updatedUser);
   };
 
@@ -184,6 +213,27 @@ export const useAuthHook = () => {
     setTokens(tokens);
     setAuthError(null);
     setUser(user);
+
+    // Track login and identify user
+    trackEvent({
+      area: TRACKING_AREAS.EXTENSION_AUTH,
+      object: "login",
+      action: TRACKING_ACTIONS.LOGIN,
+      extra: {
+        is_extension: true,
+        workspace_count: user.workspaces.length,
+        has_selected_workspace: !!user.selectedWorkspace,
+      },
+    });
+
+    // Identify user in Posthog
+    identifyUser(user.sId, {
+      email: user.email,
+      workspace_count: user.workspaces.length,
+      dust_domain: user.dustDomain,
+      is_extension_user: true,
+    });
+
     setIsLoading(false);
   }, [forcedConnection]);
 
