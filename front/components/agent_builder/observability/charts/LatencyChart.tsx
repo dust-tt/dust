@@ -95,17 +95,16 @@ export function LatencyChart({
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
           <defs>
-            <linearGradient id="fillAverage" x1="0" y1="0" x2="0" y2="1">
-              <stop
-                offset="5%"
-                stopColor="hsl(var(--chart-1))"
-                stopOpacity={0.8}
-              />
-              <stop
-                offset="95%"
-                stopColor="hsl(var(--chart-1))"
-                stopOpacity={0.1}
-              />
+            <linearGradient
+              id="fillAverage"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+              className={LATENCY_PALETTE.average}
+            >
+              <stop offset="5%" stopColor="currentColor" stopOpacity={0.8} />
+              <stop offset="95%" stopColor="currentColor" stopOpacity={0.1} />
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} className="stroke-border" />
@@ -149,8 +148,9 @@ export function LatencyChart({
             type="natural"
             dataKey="average"
             name="Average latency"
-            fill="url(#fillMessages)"
-            stroke="hsl(var(--chart-1))"
+            className={LATENCY_PALETTE.average}
+            fill="url(#fillAverage)"
+            stroke="currentColor"
           />
         </AreaChart>
       </ResponsiveContainer>
