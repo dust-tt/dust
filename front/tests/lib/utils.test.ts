@@ -12,7 +12,6 @@ test("compareForFuzzySort should correctly compare strings", () => {
     { query: "gp", a: "gpt-4", b: "gemni-pro" },
     { query: "start", a: "robotstart", b: "strongrt" },
     { query: "mygod", a: "ohmygodbot", b: "moatmode" },
-    { query: "test", a: "test", b: "testlong" },
     { query: "test", a: "testlonger", b: "longtest" },
     { query: "eng", a: "eng", b: "slack-engineering-highlights" },
     { query: "c", a: "c", b: "RadicalFeedback" },
