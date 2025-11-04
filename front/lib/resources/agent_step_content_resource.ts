@@ -265,14 +265,20 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     );
 
     return messages
-      .filter((m): m is typeof m & { agentMessage: NonNullable<typeof m.agentMessage> } => !!m.agentMessage)
+      .filter(
+        (
+          m
+        ): m is typeof m & {
+          agentMessage: NonNullable<typeof m.agentMessage>;
+        } => !!m.agentMessage
+      )
       .map((m) => ({
         messageSId: m.sId,
         agentMessageId: m.agentMessage.id,
         agentConfigurationId: m.agentMessage.agentConfigurationId,
-        stepContents: (stepContentsByAgentMessageId[m.agentMessage.id] ?? []).sort(
-          (a, b) => a.step - b.step || a.index - b.index
-        ),
+        stepContents: (
+          stepContentsByAgentMessageId[m.agentMessage.id] ?? []
+        ).sort((a, b) => a.step - b.step || a.index - b.index),
       }));
   }
 
