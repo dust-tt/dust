@@ -80,6 +80,7 @@ import {
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   DataSourceConfig,
@@ -3535,4 +3536,5 @@ export async function processWebhookEventActivity({
     },
     "Processing Notion webhook event"
   );
+  statsDClient.increment("notion.webhook_events", 1);
 }
