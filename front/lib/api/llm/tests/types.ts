@@ -1,13 +1,17 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type {
   ModelConversationTypeMultiActions,
   ModelIdType,
   ModelProviderIdType,
+  ReasoningEffort,
 } from "@app/types";
-import { GPT_5_MODEL_ID } from "@app/types";
 
-export type TestConfig = LLMParameters & { provider: ModelProviderIdType };
+export type TestConfig = {
+  modelId: ModelIdType;
+  temperature?: number | undefined;
+  reasoningEffort?: ReasoningEffort | undefined;
+  provider: ModelProviderIdType;
+};
 
 export type ResponseChecker =
   | {
@@ -31,23 +35,12 @@ export interface TestConversation {
   specifications?: AgentActionSpecification[];
 }
 
-export const PERMISSIVE_TEST_CONFIGS = [
-  {
-    temperature: 0.5,
-    reasoningEffort: "none",
-  },
-  {
-    temperature: 1,
-    reasoningEffort: "light",
-  },
-  {
-    temperature: 0.5,
-    reasoningEffort: "medium",
-  },
-  {
-    temperature: 1,
-    reasoningEffort: "high",
-  },
-] as const;
+export interface RunnabletestConversation {
+  name: string;
+  run: (config: TestConfig) => Promise<void>;
+}
 
-export const OPENAI_MODEL_IDS_TO_TEST: ModelIdType[] = [GPT_5_MODEL_ID];
+export interface ConfigParams {
+  temperature?: number;
+  reasoningEffort?: ReasoningEffort;
+}

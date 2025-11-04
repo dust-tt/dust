@@ -5,6 +5,7 @@ import { overwriteLLMParameters } from "@app/lib/api/llm/clients/openai/types";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
+  LLMClientMetadata,
   LLMParameters,
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
@@ -19,7 +20,7 @@ import { dustManagedCredentials } from "@app/types";
 
 export class OpenAIResponsesLLM extends LLM {
   private client: OpenAI;
-  private metadata: LLMClientMetadata = {
+  protected metadata: LLMClientMetadata = {
     clientId: "openai_responses",
     modelId: this.modelId,
   };
@@ -49,7 +50,7 @@ export class OpenAIResponsesLLM extends LLM {
       model: this.modelId,
       input: toInput(prompt, conversation),
       stream: true,
-      temperature: this.temperature,
+      temperature: this.temperature ?? undefined,
       reasoning: toReasoning(this.reasoningEffort),
       tools: specifications.map(toTool),
     });

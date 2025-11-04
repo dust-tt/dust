@@ -1,14 +1,58 @@
-/**
- * @vitest-environment node
- */
-import { describe, expect, it, vi } from "vitest";
+import { vi } from "vitest";
 
-import { OpenAIResponsesLLM } from "@app/lib/api/llm/clients/openai";
-import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
-import { Authenticator } from "@app/lib/auth";
-import { GPT_5_MINI_MODEL_ID } from "@app/types";
+import type { OpenAIModelFamily } from "@app/lib/api/llm/clients/openai/types";
+import {
+  getOpenAIModelFamilyFromModelId,
+  OPENAI_WHITELISTED_MODEL_IDS,
+} from "@app/lib/api/llm/clients/openai/types";
+import { TEST_CONVERSATIONS } from "@app/lib/api/llm/tests/conversations";
+import { LLMClientTestSuite } from "@app/lib/api/llm/tests/LLMClientTestSuite";
+import type { ConfigParams, TestConfig } from "@app/lib/api/llm/tests/types";
+import type { TestConversation } from "@app/scripts/llm_router/types";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 
-// Mock the dustManagedCredentials function BEFORE importing anything else
+const OPENAI_MODEL_FAMILY_TO_TEST_CONFIGS: Record<
+  OpenAIModelFamily,
+  ConfigParams[]
+> = {
+  o3: [
+    { reasoningEffort: "none" },
+    { reasoningEffort: "light" },
+    { reasoningEffort: "medium" },
+    { reasoningEffort: "high" },
+  ],
+  reasoning: [
+    { reasoningEffort: "none" },
+    { reasoningEffort: "light", temperature: 0 },
+    { reasoningEffort: "medium", temperature: 1 },
+    { reasoningEffort: "high" },
+  ],
+  "non-reasoning": [{ temperature: 1 }, { temperature: 0 }],
+};
+
+// Mock the openai module to inject dangerouslyAllowBrowser: true
+vi.mock("openai", async (importOriginal) => {
+  const actual = await importOriginal();
+  // @ts-expect-error actual is unknown
+  const OriginalOpenAI = actual.OpenAI;
+
+  class OpenAIWithBrowserSupport extends OriginalOpenAI {
+    constructor(config: ConstructorParameters<typeof OriginalOpenAI>[0]) {
+      super({
+        ...config,
+        dangerouslyAllowBrowser: true,
+      });
+    }
+  }
+
+  return {
+    // @ts-expect-error actual is unknown
+    ...actual,
+    OpenAI: OpenAIWithBrowserSupport,
+  };
+});
+
+// Inject Dust managed OpenAI credentials for testing
 vi.mock("@app/types", async (importOriginal) => {
   const actual = await importOriginal();
 
@@ -22,84 +66,25 @@ vi.mock("@app/types", async (importOriginal) => {
   };
 });
 
-function createMockAuthenticator(): Authenticator {
-  return new Authenticator({
-    workspace: null,
-    user: null,
-    role: "none",
-    groups: [],
-    subscription: null,
-  });
+class OpenAiTestSuite extends LLMClientTestSuite {
+  protected provider = "openai" as const;
+  protected models = OPENAI_WHITELISTED_MODEL_IDS;
+
+  protected getTestConfig(modelId: ModelIdType): TestConfig[] {
+    const family = getOpenAIModelFamilyFromModelId(modelId);
+    return OPENAI_MODEL_FAMILY_TO_TEST_CONFIGS[family].map((configParams) => ({
+      ...configParams,
+      modelId,
+      provider: this.provider,
+    }));
+  }
+
+  protected getSupportedConversations(
+    _modelId: ModelIdType
+  ): TestConversation[] {
+    // Run all conversations for all OpenAI models
+    return TEST_CONVERSATIONS;
+  }
 }
 
-describe("OpenAI client", () => {
-  it("should handle simple math conversation", async () => {
-    const llm = new OpenAIResponsesLLM(createMockAuthenticator(), {
-      modelId: GPT_5_MINI_MODEL_ID as OpenAIWhitelistedModelId,
-      temperature: 0.5,
-      reasoningEffort: "none",
-    });
-
-    const conversation = {
-      messages: [
-        {
-          role: "user" as const,
-          name: "User",
-          content: [
-            {
-              type: "text" as const,
-              text: "Be concise. What is 2+2? Just give the number.",
-            },
-          ],
-        },
-      ],
-    };
-
-    const systemPrompt = "You are a helpful assistant.";
-
-    // Actually call the stream method and verify the result
-    const result = llm.stream({
-      conversation,
-      prompt: systemPrompt,
-      specifications: [],
-    });
-
-    expect(result.isErr()).toBe(false);
-
-    if (!result.isErr()) {
-      let responseFromDeltas = "";
-      let fullResponse = "";
-      let outputTokens: number | null = null;
-      const events = [];
-
-      // Collect all events from the stream
-      for await (const event of result.value) {
-        events.push(event);
-
-        switch (event.type) {
-          case "text_delta":
-            responseFromDeltas += event.content.delta;
-            break;
-          case "text_generated":
-            fullResponse = event.content.text;
-            break;
-          case "token_usage":
-            outputTokens = event.content.outputTokens;
-            break;
-        }
-      }
-
-      // Verify we got events
-      expect(events.length).toBeGreaterThan(0);
-
-      // Verify we got a response containing "4"
-      expect(responseFromDeltas.toLowerCase()).toContain("4");
-
-      // Verify consistency between deltas and full response
-      expect(fullResponse).toBe(responseFromDeltas);
-
-      // Verify we got token usage information
-      expect(outputTokens).toBeGreaterThan(0);
-    }
-  });
-});
+new OpenAiTestSuite().generateTests();
