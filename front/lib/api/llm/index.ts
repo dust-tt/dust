@@ -96,7 +96,7 @@ export async function getLLM(
       reasoningEffort,
     });
   }
-  
+
   if (isXaiWhitelistedModelId(modelId)) {
     return new XaiLLM(auth, {
       modelId,
