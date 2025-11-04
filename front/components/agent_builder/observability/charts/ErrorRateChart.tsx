@@ -158,6 +158,18 @@ export function ErrorRateChart({
               boxShadow: "none",
             }}
           />
+          <ReferenceLine
+            y={5}
+            stroke="hsl(var(--warning))"
+            strokeDasharray="3 3"
+            strokeWidth={1.5}
+          />
+          <ReferenceLine
+            y={10}
+            stroke="hsl(var(--destructive))"
+            strokeDasharray="3 3"
+            strokeWidth={1.5}
+          />
           <Area
             type="natural"
             dataKey="errorRate"
