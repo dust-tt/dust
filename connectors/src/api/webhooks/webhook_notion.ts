@@ -1,7 +1,10 @@
 import type { Request, Response } from "express";
 
 import { launchNotionWebhookProcessingWorkflow } from "@connectors/connectors/notion/temporal/client";
-import type { NotionWebhookEvent } from "@connectors/connectors/notion/temporal/signals";
+import type {
+  NotionWebhookEvent,
+  NotionWebhookEventPayload,
+} from "@connectors/connectors/notion/temporal/signals";
 import { NotionConnectorState } from "@connectors/lib/models/notion";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
@@ -16,7 +19,9 @@ type NotionWebhookVerification = {
   verification_token: string;
 };
 
-type NotionWebhookPayload = NotionWebhookVerification | NotionWebhookEvent;
+type NotionWebhookPayload =
+  | NotionWebhookVerification
+  | NotionWebhookEventPayload;
 
 const _webhookNotionAPIHandler = async (
   req: Request<
@@ -40,8 +45,7 @@ const _webhookNotionAPIHandler = async (
     return res.status(200).end();
   }
 
-  // REVIEW: do we need to add signature verification, or is this covered by having a secret URL?
-  // If we want verification, we need to store the verification token somewhere.
+  // TODO: we need to add signature verification. We'll need to store the verification token somewhere.
 
   const notionWorkspaceId = payload.workspace_id;
   if (!notionWorkspaceId) {
@@ -106,9 +110,27 @@ const _webhookNotionAPIHandler = async (
     "Received Notion webhook event"
   );
 
+  if (payload.entity == null) {
+    logger.warn(
+      {
+        connectorId: connector.id,
+        notionWorkspaceId,
+        payload,
+      },
+      "Received Notion webhook event with no entity, skipping."
+    );
+    return res.status(200).end();
+  }
+
+  // Minimal event object with only the fields we care about
+  const event: NotionWebhookEvent = {
+    type: payload.type,
+    entity_id: payload.entity?.id,
+  };
+
   // Launch or signal the webhook processing workflow
   try {
-    await launchNotionWebhookProcessingWorkflow(connector.id, payload);
+    await launchNotionWebhookProcessingWorkflow(connector.id, event);
   } catch (err) {
     logger.error(
       {

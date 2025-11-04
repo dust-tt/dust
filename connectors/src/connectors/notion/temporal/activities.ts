@@ -3526,16 +3526,12 @@ export async function processWebhookEventActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  // Extract event type and affected entity ID from the event payload
-  const eventType = event.type;
-  const entityId = event.entity?.id;
-
   // TODO: Implement the actual processing logic based on event type
   logger.info(
     {
       ...loggerArgs,
-      eventType,
-      entityId,
+      eventType: event.type,
+      entityId: event.entity_id,
     },
     "[Notion Webhook] Processing webhook event"
   );
