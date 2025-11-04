@@ -2,7 +2,6 @@ import {
   Button,
   CheckIcon,
   ChevronDownIcon,
-  ChevronRightIcon,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
@@ -194,20 +193,18 @@ const AgentMessageView = ({
               {" • "}
               agent logs :{" "}
               {message.runUrls.map(({ runId, url, isLLM }, i) => (
-                <span key={`runId-${i}`} className="inline-flex items-center space-x-1">
-                  <a
-                    href={url}
-                    target="_blank"
-                    className="text-highlight-500"
-                  >
+                <span
+                  key={`runId-${i}`}
+                  className="inline-flex items-center space-x-1"
+                >
+                  <a href={url} target="_blank" className="text-highlight-500">
                     {runId.substring(0, 8)}
                   </a>
                   {isLLM && (
                     <span className="rounded-sm bg-blue-100 px-1 py-0.5 text-xs text-blue-800">
                       LLM
                     </span>
-                  )}
-                  {" "}
+                  )}{" "}
                 </span>
               ))}
             </>

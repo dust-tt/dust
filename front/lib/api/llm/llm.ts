@@ -1,7 +1,8 @@
 import { randomUUID } from "crypto";
 
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
-import { LLMTraceBuffer, createLLMRunId, type LLMRunId } from "@app/lib/api/llm/traces/buffer";
+import type { LLMRunId } from "@app/lib/api/llm/traces/buffer";
+import { createLLMRunId, LLMTraceBuffer } from "@app/lib/api/llm/traces/buffer";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {

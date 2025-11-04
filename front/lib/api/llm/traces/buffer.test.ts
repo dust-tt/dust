@@ -1,7 +1,8 @@
 import { faker } from "@faker-js/faker";
 import { expect, test, vi } from "vitest";
 
-import { LLMTraceBuffer, type LLMRunId } from "@app/lib/api/llm/traces/buffer";
+import type { LLMRunId } from "@app/lib/api/llm/traces/buffer";
+import { LLMTraceBuffer } from "@app/lib/api/llm/traces/buffer";
 import type {
   TextDeltaEvent,
   TextGeneratedEvent,
