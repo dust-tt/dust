@@ -573,14 +573,10 @@ impl LLM for AnthropicLLM {
             usage: Some(LLMTokenUsage {
                 prompt_tokens: c.usage.input_tokens
                     + c.usage.cache_read_input_tokens.unwrap_or(0)
-                    // TODO(cache-writes): Once LLMTokenUsage supports reporting cache writes separately,
-                    // don't add the cache creation input tokens here.
                     + c.usage.cache_creation_input_tokens.unwrap_or(0),
                 completion_tokens: c.usage.output_tokens,
                 cached_tokens: c.usage.cache_read_input_tokens,
-                // TODO(cache-writes): Once LLMTokenUsage supports reporting cache writes separately,
-                // add the field below to LLMTokenUsage (in providers/llm.rs) and uncomment the next line.
-                // cache_creation_input_tokens: c.usage.cache_creation_input_tokens,
+                cache_creation_input_tokens: c.usage.cache_creation_input_tokens,
                 // Note: the model can actually use less than that, but best we can do is report
                 // the full budget.
                 reasoning_tokens: thinking_budget,
