@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import Anthropic, { APIError } from "@anthropic-ai/sdk";
 import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
@@ -8,10 +8,11 @@ import {
   toMessage,
   toTool,
 } from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
+import { handleError } from "@app/lib/api/llm/clients/anthropic/utils/errors";
 import { LLM } from "@app/lib/api/llm/llm";
+import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
-  LLMClientMetadata,
   LLMParameters,
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
@@ -22,11 +23,7 @@ import { dustManagedCredentials } from "@app/types";
 
 export class AnthropicLLM extends LLM {
   private client: Anthropic;
-  private metadata: LLMClientMetadata = {
-    clientId: "anthropic",
-    modelId: this.modelId,
-  };
-  private thinkingConfig?: ThinkingConfigParam;
+  private readonly thinkingConfig?: ThinkingConfigParam;
   private modelConfig: (typeof SUPPORTED_MODEL_CONFIGS)[number];
 
   constructor(
@@ -45,6 +42,7 @@ export class AnthropicLLM extends LLM {
       reasoningEffort,
       bypassFeatureFlag,
       context,
+      clientId: "anthropic",
     });
     const { ANTHROPIC_API_KEY } = dustManagedCredentials();
     if (!ANTHROPIC_API_KEY) {
@@ -72,21 +70,28 @@ export class AnthropicLLM extends LLM {
     prompt,
     specifications,
   }: StreamParameters): AsyncGenerator<LLMEvent> {
-    const messages = conversation.messages.map(toMessage);
+    try {
+      const messages = conversation.messages.map(toMessage);
 
-    const events = this.client.messages.stream({
-      model: this.modelId,
-      thinking: this.thinkingConfig,
-      system: prompt,
-      messages,
-      // Thinking isn’t compatible with temperature: `temperature` may only be set to 1 when thinking is enabled.
-      temperature: this.thinkingConfig ? 1 : this.temperature,
-      stream: true,
+      const events = this.client.messages.stream({
+        model: this.modelId,
+        thinking: this.thinkingConfig,
+        system: prompt,
+        messages,
+        // Thinking isn’t compatible with temperature: `temperature` may only be set to 1 when thinking is enabled.
+        temperature: this.thinkingConfig ? 1 : this.temperature,
+        stream: true,
+        tools: specifications.map(toTool),
+        max_tokens: this.modelConfig.generationTokensCount,
+      });
 
-      tools: specifications.map(toTool),
-      max_tokens: this.modelConfig.generationTokensCount,
-    });
-
-    yield* streamLLMEvents(events, this.metadata);
+      yield* streamLLMEvents(events, this.metadata);
+    } catch (err) {
+      if (err instanceof APIError) {
+        yield handleError(err, this.metadata);
+      } else {
+        yield handleGenericError(err, this.metadata);
+      }
+    }
   }
 }

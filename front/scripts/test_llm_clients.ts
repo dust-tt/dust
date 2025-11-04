@@ -10,6 +10,15 @@ import {
   GOOGLE_AI_STUDIO_WHITELISTED_NON_REASONING_MODEL_IDS,
   GOOGLE_AI_STUDIO_WHITELISTED_REASONING_MODEL_IDS,
 } from "@app/lib/api/llm/clients/google/types";
+import {
+  MISTRAL_GENERIC_WHITELISTED_MODEL_IDS,
+  MISTRAL_WHITELISTED_MODEL_IDS_WITHOUT_IMAGE_SUPPORT,
+} from "@app/lib/api/llm/clients/mistral/types";
+import {
+  XAI_WHITELISTED_MODELS_WITHOUT_IMAGE_SUPPORT,
+  XAI_WHITELISTED_NON_REASONING_MODEL_IDS,
+  XAI_WHITELISTED_REASONING_MODEL_IDS,
+} from "@app/lib/api/llm/clients/xai/types";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
@@ -25,7 +34,11 @@ import type {
 
 const SYSTEM_PROMPT = "You are a helpful assistant.";
 
-type TestConfig = LLMParameters & { provider: ModelProviderIdType };
+type TestConfig = LLMParameters & { provider: ModelProviderIdType } & {
+  support?: {
+    imageInputs?: boolean;
+  };
+};
 
 type ResponseChecker =
   | {
@@ -47,6 +60,7 @@ interface TestConversation {
   /** Array of response checkers aligned with the conversation actions */
   expectedInResponses: ResponseChecker[];
   specifications?: AgentActionSpecification[];
+  skipConfig?: (config: TestConfig) => boolean;
 }
 
 /**
@@ -119,18 +133,50 @@ function generateNotThinkingTestConfigs(
 }
 
 const TEST_CONFIGS: TestConfig[] = [
+  // Anthropic
   ...ANTHROPIC_WHITELISTED_REASONING_MODEL_IDS.flatMap((modelId) =>
     generateThinkingTestConfigs("anthropic", modelId)
   ),
   ...ANTHROPIC_WHITELISTED_NON_REASONING_MODEL_IDS.flatMap((modelId) =>
     generateNotThinkingTestConfigs("anthropic", modelId)
   ),
+
+  // Google AI Studio
   ...GOOGLE_AI_STUDIO_WHITELISTED_NON_REASONING_MODEL_IDS.flatMap((modelId) =>
     generateNotThinkingTestConfigs("google_ai_studio", modelId)
   ),
   ...GOOGLE_AI_STUDIO_WHITELISTED_REASONING_MODEL_IDS.flatMap((modelId) =>
     generateThinkingTestConfigs("google_ai_studio", modelId)
   ),
+
+  // Mistral
+  ...MISTRAL_GENERIC_WHITELISTED_MODEL_IDS.flatMap((modelId) =>
+    generateNotThinkingTestConfigs("mistral", modelId)
+  ),
+  ...MISTRAL_WHITELISTED_MODEL_IDS_WITHOUT_IMAGE_SUPPORT.flatMap((modelId) =>
+    generateNotThinkingTestConfigs("mistral", modelId)
+  ).map((config) => ({
+    ...config,
+    support: {
+      imageInputs: false,
+    },
+  })),
+
+  // xAI
+  ...XAI_WHITELISTED_NON_REASONING_MODEL_IDS.flatMap((modelId) =>
+    generateNotThinkingTestConfigs("xai", modelId)
+  ),
+  ...XAI_WHITELISTED_REASONING_MODEL_IDS.flatMap((modelId) =>
+    generateThinkingTestConfigs("xai", modelId)
+  ),
+  ...XAI_WHITELISTED_MODELS_WITHOUT_IMAGE_SUPPORT.flatMap((modelId) =>
+    generateNotThinkingTestConfigs("xai", modelId)
+  ).map((config) => ({
+    ...config,
+    support: {
+      imageInputs: false,
+    },
+  })),
 ];
 
 function userMessage(text: string): ModelConversationTypeMultiActions {
@@ -185,7 +231,7 @@ function userToolCall(
       {
         role: "function",
         name: toolName,
-        function_call_id: "1",
+        function_call_id: "000000001",
         content: toolOutput,
       },
     ],
@@ -279,6 +325,10 @@ const TEST_CONVERSATIONS: TestConversation[] = [
       ),
     ],
     expectedInResponses: [containsTextChecker("cat")],
+    skipConfig: (config: TestConfig) => {
+      const supportImagesInput = config.support?.imageInputs ?? true;
+      return !supportImagesInput;
+    },
   },
 ];
 
@@ -305,11 +355,14 @@ async function runTest(
   conversation: TestConversation,
   execute: boolean
 ): Promise<void> {
+  const skipped = conversation.skipConfig
+    ? conversation.skipConfig(config)
+    : false;
   console.log(
-    `- Testing ${config.provider} - ${config.modelId} - T=${config.temperature} - R=${config.reasoningEffort} - ${conversation.name}`
+    `- Testing ${config.provider} - ${config.modelId} - T=${config.temperature} - R=${config.reasoningEffort} - ${conversation.name}${skipped ? " [skipped]" : ""}`
   );
 
-  if (!execute) {
+  if (!execute || skipped) {
     return;
   }
 
@@ -335,26 +388,22 @@ async function runTest(
 
       conversationHistory.push(...conversationAction.messages);
 
-      const eventStreamResult = llm.stream({
+      const events = llm.stream({
         conversation: { messages: conversationHistory },
         prompt: conversation.systemPrompt,
         specifications: conversation.specifications ?? [],
       });
 
-      if (eventStreamResult.isErr()) {
-        throw eventStreamResult.error;
-      }
-
       let responseFromDeltas = "";
       let fullResponse = "";
       let reasoningFromDeltas = "";
       let fullReasoning = "";
-      let outputTokens = null;
+      let outputTokens: number | null = null;
       const toolCalls: { name: string; arguments: string }[] = [];
       let toolCallId = 1;
 
       // Collect all events
-      for await (const event of eventStreamResult.value) {
+      for await (const event of events) {
         switch (event.type) {
           case "text_delta":
             responseFromDeltas += event.content.delta;
@@ -406,13 +455,15 @@ async function runTest(
                 {
                   type: "function_call",
                   value: {
-                    id: `${toolCallId++}`,
+                    // mistral only support ids of size 9
+                    id: toolCallId.toString().padStart(9, "0"),
                     name: event.content.name,
                     arguments: event.content.arguments,
                   },
                 },
               ],
             });
+            toolCallId++;
             break;
         }
       }
@@ -429,7 +480,7 @@ async function runTest(
         );
       }
 
-      if (outputTokens === null) {
+      if (outputTokens === null || outputTokens === 0) {
         console.log(`   ⚠️ No token usage event received`);
       }
 

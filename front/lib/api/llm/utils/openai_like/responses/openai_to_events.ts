@@ -63,8 +63,10 @@ function responseOutputToEvent(
       return {
         type: "error",
         content: {
+          type: "refusal_error",
+          isRetryable: false,
           message: responseOutput.refusal,
-          code: 500,
+          statusCode: 500,
         },
         metadata,
       };

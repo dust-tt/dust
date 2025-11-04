@@ -245,18 +245,24 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
               "Handling tool execution approval card refresh"
             );
 
-            const response = {
+            const cardResponse = {
               statusCode: 200,
               type: "application/vnd.microsoft.card.adaptive",
               value: createInteractiveToolApprovalAdaptiveCard(validatedData),
             };
             localLogger.info(
-              response,
-              "Tool execution approval card refresh response"
+              cardResponse,
+              "Invoke reponse: tool execution approval card refresh response"
             );
 
-            res.set("Content-Type", "application/json; charset=utf-8");
-            res.status(200).json(response);
+            // For Bot Framework invoke activities, send response through context
+            await context.sendActivity({
+              type: "invokeResponse",
+              value: {
+                status: 200,
+                body: cardResponse,
+              },
+            });
           } else {
             localLogger.info(
               {

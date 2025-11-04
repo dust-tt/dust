@@ -6,8 +6,12 @@ import { GoogleLLM } from "@app/lib/api/llm/clients/google";
 import { isGoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
 import { isMistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
+import { NoopLLM } from "@app/lib/api/llm/clients/noop";
+import { isNoopWhitelistedModelId } from "@app/lib/api/llm/clients/noop/types";
 import { OpenAIResponsesLLM } from "@app/lib/api/llm/clients/openai";
 import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+import { XaiLLM } from "@app/lib/api/llm/clients/xai";
+import { isXaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
@@ -79,6 +83,22 @@ export async function getLLM(
 
   if (isFireworksWhitelistedModelId(modelId)) {
     return new FireworksLLM(auth, {
+      modelId,
+      temperature,
+      reasoningEffort,
+      bypassFeatureFlag,
+    });
+  }
+  if (isNoopWhitelistedModelId(modelId)) {
+    return new NoopLLM(auth, {
+      modelId,
+      temperature,
+      reasoningEffort,
+    });
+  }
+
+  if (isXaiWhitelistedModelId(modelId)) {
+    return new XaiLLM(auth, {
       modelId,
       temperature,
       reasoningEffort,

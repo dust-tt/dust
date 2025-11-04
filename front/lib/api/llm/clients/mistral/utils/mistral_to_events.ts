@@ -2,11 +2,16 @@ import type {
   CompletionEvent,
   ContentChunk,
   ToolCall,
+  UsageInfo,
 } from "@mistralai/mistralai/models/components";
 import { CompletionResponseStreamChoiceFinishReason } from "@mistralai/mistralai/models/components";
 import compact from "lodash/compact";
 
-import type { LLMEvent, ToolCallEvent } from "@app/lib/api/llm/types/events";
+import type {
+  LLMEvent,
+  TokenUsageEvent,
+  ToolCallEvent,
+} from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import type { ExpectedDeltaMessage } from "@app/lib/api/llm/types/predicates";
 import {
@@ -79,7 +84,12 @@ export async function* streamLLMEvents({
         textDelta = "";
         yield {
           type: "error" as const,
-          content: { message: "Maximum length reached", code: 413 },
+          content: {
+            type: "maximum_length",
+            isRetryable: false,
+            message: "Maximum length reached",
+            statusCode: 0,
+          },
           metadata,
         };
         break;
@@ -91,8 +101,10 @@ export async function* streamLLMEvents({
         yield {
           type: "error" as const,
           content: {
+            type: "stop_error",
+            isRetryable: false,
             message: "An error occurred during completion",
-            code: 500,
+            statusCode: 0,
           },
           metadata,
         };
@@ -114,6 +126,10 @@ export async function* streamLLMEvents({
         logger.error(`Unknown finish reason: ${choice.finishReason}`);
         break;
       }
+    }
+    // Whatever the completion, yield the token usage
+    if (completionEvent.data.usage) {
+      yield toTokenUsage({ usage: completionEvent.data.usage, metadata });
     }
   }
 }
@@ -139,6 +155,24 @@ export function toLLMEvents({
   }
 
   return toStreamEvents({ content, metadata });
+}
+
+function toTokenUsage({
+  usage,
+  metadata,
+}: {
+  usage: UsageInfo;
+  metadata: LLMClientMetadata;
+}): TokenUsageEvent {
+  return {
+    type: "token_usage",
+    content: {
+      inputTokens: usage.promptTokens ?? 0,
+      outputTokens: usage.completionTokens ?? 0,
+      totalTokens: usage.totalTokens ?? 0,
+    },
+    metadata,
+  };
 }
 
 function toToolEvent({

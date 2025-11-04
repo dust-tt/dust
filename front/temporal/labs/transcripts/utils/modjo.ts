@@ -139,8 +139,10 @@ function validateModjoResponse(
   );
 }
 
-// Maximum supported call length buffer to account for long calls
-const MAX_SUPPORTED_CALL_LENGTH_HOURS = 2;
+// Buffer configuration for handling long calls
+// Using a sliding window approach with overlap to ensure we don't miss any calls
+const CALL_BUFFER_HOURS = 6; // Increased buffer for very long calls (meetings can be 4+ hours)
+const MIN_LOOKBACK_HOURS = 24; // Minimum lookback even if last sync was recent
 const MODJO_API_URL = "https://api.modjo.ai";
 
 export async function retrieveModjoTranscripts(
@@ -199,21 +201,36 @@ export async function retrieveModjoTranscripts(
     const mostRecentHistoryDate =
       await transcriptsConfiguration.getMostRecentHistoryDate();
     if (mostRecentHistoryDate) {
-      // Subtract buffer to account for long calls that may have started before last sync
-      fromDateTime = new Date(
-        mostRecentHistoryDate.getTime() -
-          MAX_SUPPORTED_CALL_LENGTH_HOURS * 60 * 60 * 1000
-      ).toISOString();
+      // Calculate lookback time with buffer for long calls
+      const bufferMs = CALL_BUFFER_HOURS * 60 * 60 * 1000;
+      const minLookbackMs = MIN_LOOKBACK_HOURS * 60 * 60 * 1000;
+
+      // Use the larger of: buffer from last sync OR minimum lookback
+      const lookbackFromLastSync = mostRecentHistoryDate.getTime() - bufferMs;
+      const minLookbackTime = Date.now() - minLookbackMs;
+      const effectiveLookback = Math.min(lookbackFromLastSync, minLookbackTime);
+
+      fromDateTime = new Date(effectiveLookback).toISOString();
+
       localLogger.info(
-        { fromDateTime, buffer: `${MAX_SUPPORTED_CALL_LENGTH_HOURS} hours` },
-        "[retrieveModjoTranscripts] Subsequent sync - retrieving transcripts since last sync with buffer"
+        {
+          fromDateTime,
+          lastSyncDate: mostRecentHistoryDate.toISOString(),
+          bufferHours: CALL_BUFFER_HOURS,
+          minLookbackHours: MIN_LOOKBACK_HOURS,
+          effectiveLookbackHours:
+            (Date.now() - effectiveLookback) / (60 * 60 * 1000),
+        },
+        "[retrieveModjoTranscripts] Subsequent sync - using sliding window approach"
       );
     } else {
-      // Fallback to 1 day if we can't get the most recent date
-      fromDateTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      // Fallback to minimum lookback if we can't get the most recent date
+      fromDateTime = new Date(
+        Date.now() - MIN_LOOKBACK_HOURS * 60 * 60 * 1000
+      ).toISOString();
       localLogger.info(
-        {},
-        "[retrieveModjoTranscripts] Fallback to 1-day sync - couldn't get most recent history date"
+        { lookbackHours: MIN_LOOKBACK_HOURS },
+        "[retrieveModjoTranscripts] Fallback sync - couldn't get most recent history date"
       );
     }
   }
@@ -222,144 +239,225 @@ export async function retrieveModjoTranscripts(
   let page = 1;
   const perPage = 15;
 
+  // Retry configuration
+  const MAX_RETRIES_PER_PAGE = 3;
+  const MAX_CONSECUTIVE_FAILURES = 3;
+  const INITIAL_RETRY_DELAY_MS = 1000;
+
   let hasMorePages = true;
+  let consecutivePageFailures = 0;
+
   while (hasMorePages) {
-    try {
-      const response = await fetch(`${MODJO_API_URL}/v1/calls/exports`, {
-        method: "POST",
-        headers: {
-          "X-API-KEY": modjoApiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          pagination: { page, perPage },
-          filters: {
-            callStartDateRange: {
-              start: fromDateTime,
-              end: new Date().toISOString(),
+    let pageSuccess = false;
+    let retryCount = 0;
+
+    // Retry loop for individual page
+    while (retryCount <= MAX_RETRIES_PER_PAGE && !pageSuccess) {
+      try {
+        // Add exponential backoff for retries
+        if (retryCount > 0) {
+          const delayMs = INITIAL_RETRY_DELAY_MS * Math.pow(2, retryCount - 1);
+          localLogger.info(
+            {
+              page,
+              retryCount,
+              delayMs,
             },
+            "[retrieveModjoTranscripts] Retrying page after delay"
+          );
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+
+        const response = await fetch(`${MODJO_API_URL}/v1/calls/exports`, {
+          method: "POST",
+          headers: {
+            "X-API-KEY": modjoApiKey,
+            "Content-Type": "application/json",
           },
-          relations: {
-            recording: true,
-            highlights: true,
-            transcript: true,
-            speakers: true,
-            tags: true,
-            contacts: true,
-            account: true,
-            deal: true,
-          },
-        }),
-      });
+          body: JSON.stringify({
+            pagination: { page, perPage },
+            filters: {
+              callStartDateRange: {
+                start: fromDateTime,
+                end: new Date().toISOString(),
+              },
+            },
+            relations: {
+              recording: true,
+              highlights: true,
+              transcript: true,
+              speakers: true,
+              tags: true,
+              contacts: true,
+              account: true,
+              deal: true,
+            },
+          }),
+        });
 
-      if (!response.ok) {
-        localLogger.error(
-          {
-            status: response.status,
-            body: await response.text(),
-          },
-          "[retrieveModjoTranscripts] Error fetching new transcripts from Modjo. Stopping."
-        );
-        return fileIdsToProcess;
-      }
+        if (!response.ok) {
+          // Handle rate limiting specifically
+          if (response.status === 429) {
+            localLogger.warn(
+              {
+                page,
+                retryCount,
+                status: response.status,
+              },
+              "[retrieveModjoTranscripts] Rate limited by Modjo API"
+            );
+            retryCount++;
+            continue;
+          }
 
-      const rawData = await response.json();
-      const validatedDataResult = validateModjoResponse(rawData);
+          // For other errors, log but still retry
+          localLogger.error(
+            {
+              status: response.status,
+              body: await response.text(),
+              page,
+              retryCount,
+            },
+            "[retrieveModjoTranscripts] Error fetching page from Modjo"
+          );
+          retryCount++;
+          continue;
+        }
 
-      if (either.isLeft(validatedDataResult)) {
-        localLogger.error(
-          { error: validatedDataResult.left },
-          "[retrieveModjoTranscripts] Invalid response data from Modjo"
-        );
-        return fileIdsToProcess;
-      }
+        const rawData = await response.json();
+        const validatedDataResult = validateModjoResponse(rawData);
 
-      const validatedData = validatedDataResult.right;
+        if (either.isLeft(validatedDataResult)) {
+          localLogger.error(
+            { error: validatedDataResult.left, page, retryCount },
+            "[retrieveModjoTranscripts] Invalid response data from Modjo"
+          );
+          retryCount++;
+          continue;
+        }
 
-      if (!validatedData.values || validatedData.values.length === 0) {
-        localLogger.info(
-          {
-            page,
-            totalProcessed: fileIdsToProcess.length,
-          },
-          "[retrieveModjoTranscripts] No new transcripts found from Modjo."
-        );
-        break;
-      }
+        const validatedData = validatedDataResult.right;
 
-      // Process current page
-      for (const call of validatedData.values) {
-        const fileId = call.callId?.toString();
-        if (!fileId) {
+        if (!validatedData.values || validatedData.values.length === 0) {
           localLogger.info(
             {
               page,
               totalProcessed: fileIdsToProcess.length,
             },
-            "[retrieveModjoTranscripts] call has no ID. Skipping."
+            "[retrieveModjoTranscripts] No new transcripts found from Modjo."
           );
-          continue;
-        }
-        const history = await transcriptsConfiguration.fetchHistoryForFileId(
-          auth,
-          fileId
-        );
-
-        if (history) {
-          localLogger.info(
-            { fileId },
-            "[retrieveModjoTranscripts] call already processed. Skipping."
-          );
-          continue;
+          // This is a successful response with no data - not an error
+          pageSuccess = true;
+          hasMorePages = false;
+          break;
         }
 
-        fileIdsToProcess.push(fileId);
-      }
+        // Process current page
+        for (const call of validatedData.values) {
+          const fileId = call.callId?.toString();
+          if (!fileId) {
+            localLogger.info(
+              {
+                page,
+                totalProcessed: fileIdsToProcess.length,
+              },
+              "[retrieveModjoTranscripts] call has no ID. Skipping."
+            );
+            continue;
+          }
+          const history = await transcriptsConfiguration.fetchHistoryForFileId(
+            auth,
+            fileId
+          );
 
-      const paginationInfo = validatedData.pagination;
-      localLogger.info(
-        {
-          page,
-          totalProcessed: fileIdsToProcess.length,
-          pageSize: validatedData.values.length,
-          totalValues: paginationInfo?.totalValues,
-          lastPage: paginationInfo?.lastPage,
-          nextPage: paginationInfo?.nextPage,
-        },
-        "[retrieveModjoTranscripts] Processed page of Modjo transcripts"
-      );
+          if (history) {
+            localLogger.info(
+              { fileId },
+              "[retrieveModjoTranscripts] call already processed. Skipping."
+            );
+            continue;
+          }
 
-      // Check if we should continue to next page
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      if (paginationInfo?.nextPage && page < (paginationInfo.lastPage || 0)) {
-        page = paginationInfo.nextPage;
-      } else if (
-        !paginationInfo?.nextPage ||
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        page >= (paginationInfo.lastPage || 0)
-      ) {
-        hasMorePages = false;
+          fileIdsToProcess.push(fileId);
+        }
+
+        const paginationInfo = validatedData.pagination;
         localLogger.info(
           {
-            finalPage: page,
-            totalTranscriptsFound: fileIdsToProcess.length,
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            totalCallsReviewed: paginationInfo?.totalValues || 0,
+            page,
+            totalProcessed: fileIdsToProcess.length,
+            pageSize: validatedData.values.length,
+            totalValues: paginationInfo?.totalValues,
+            lastPage: paginationInfo?.lastPage,
+            nextPage: paginationInfo?.nextPage,
           },
-          "[retrieveModjoTranscripts] Completed pagination - no more pages"
+          "[retrieveModjoTranscripts] Processed page of Modjo transcripts"
         );
-      } else {
-        page++;
+
+        // Mark page as successful
+        pageSuccess = true;
+        consecutivePageFailures = 0; // Reset consecutive failure counter on success
+
+        if (paginationInfo?.nextPage) {
+          page = paginationInfo.nextPage;
+        } else {
+          hasMorePages = false;
+          localLogger.info(
+            {
+              finalPage: page,
+              totalTranscriptsFound: fileIdsToProcess.length,
+              totalCallsReviewed: paginationInfo?.totalValues ?? 0,
+            },
+            "[retrieveModjoTranscripts] Completed pagination - no more pages"
+          );
+        }
+      } catch (error) {
+        localLogger.error(
+          {
+            error,
+            page,
+            retryCount,
+            totalProcessedSoFar: fileIdsToProcess.length,
+          },
+          "[retrieveModjoTranscripts] Error processing Modjo transcripts page"
+        );
+        retryCount++;
       }
-    } catch (error) {
+    }
+
+    // Handle page failure after all retries exhausted
+    if (!pageSuccess) {
+      consecutivePageFailures++;
       localLogger.error(
         {
-          error,
           page,
-          totalProcessedSoFar: fileIdsToProcess.length,
-          perPage,
+          consecutivePageFailures,
+          maxConsecutiveFailures: MAX_CONSECUTIVE_FAILURES,
         },
-        "[retrieveModjoTranscripts] Error processing Modjo transcripts page - stopping pagination"
+        "[retrieveModjoTranscripts] Page failed after all retries"
+      );
+
+      // Check for global failure condition
+      if (consecutivePageFailures >= MAX_CONSECUTIVE_FAILURES) {
+        localLogger.error(
+          {
+            consecutivePageFailures,
+            totalProcessedBeforeFailure: fileIdsToProcess.length,
+          },
+          "[retrieveModjoTranscripts] Too many consecutive page failures - stopping sync"
+        );
+        break;
+      }
+
+      // Without pagination info from a successful response, we can't safely determine the next page
+      // We must stop here to avoid skipping pages and missing data
+      localLogger.error(
+        {
+          page,
+          consecutiveFailures: consecutivePageFailures,
+          totalProcessedSoFar: fileIdsToProcess.length,
+        },
+        "[retrieveModjoTranscripts] Cannot determine next page after failure - stopping to prevent data loss"
       );
       break;
     }

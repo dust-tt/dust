@@ -5,18 +5,20 @@ import { LLMTraceBuffer } from "@app/lib/api/llm/traces/buffer";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
+  LLMClientMetadata,
   LLMParameters,
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import type { ModelIdType, ReasoningEffort, Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { ModelIdType, ReasoningEffort } from "@app/types";
+import { normalizeError } from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
   protected temperature: number;
   protected reasoningEffort: ReasoningEffort;
   protected bypassFeatureFlag: boolean;
+  protected metadata: LLMClientMetadata;
 
   // Tracing fields.
   protected readonly authenticator: Authenticator;
@@ -28,15 +30,17 @@ export abstract class LLM {
     {
       bypassFeatureFlag = false,
       context,
+      clientId,
       modelId,
       reasoningEffort = "none",
       temperature = AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced,
-    }: LLMParameters
+    }: LLMParameters & { clientId: string }
   ) {
     this.modelId = modelId;
     this.temperature = temperature;
     this.reasoningEffort = reasoningEffort;
     this.bypassFeatureFlag = bypassFeatureFlag;
+    this.metadata = { clientId, modelId };
 
     // Initialize tracing.
     this.authenticator = auth;
@@ -45,7 +49,7 @@ export abstract class LLM {
   }
 
   /**
-   * Private method that wraps the abstract stream() with tracing functionality
+   * Private method that wraps the abstract internalStream() with tracing functionality
    */
   private async *streamWithTracing({
     conversation,
@@ -104,22 +108,16 @@ export abstract class LLM {
     return this.runId;
   }
 
-  stream({
+  async *stream({
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): Result<AsyncGenerator<LLMEvent>, Error> {
-    try {
-      return new Ok(
-        this.streamWithTracing({
-          conversation,
-          prompt,
-          specifications,
-        })
-      );
-    } catch (error) {
-      return new Err(normalizeError(Error));
-    }
+  }: StreamParameters): AsyncGenerator<LLMEvent> {
+    yield* this.streamWithTracing({
+      conversation,
+      prompt,
+      specifications,
+    });
   }
 
   protected abstract internalStream({

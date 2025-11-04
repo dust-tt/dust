@@ -1,4 +1,4 @@
-import { OpenAI } from "openai";
+import { APIError, OpenAI } from "openai";
 import type { ReasoningEffort as OpenAiReasoningEffort } from "openai/resources/shared";
 
 import type { OpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
@@ -9,10 +9,10 @@ import {
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
-  LLMClientMetadata,
   LLMParameters,
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
   toTool,
@@ -21,13 +21,15 @@ import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/op
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types";
 
+import { handleGenericError } from "../../types/errors";
+
 export class OpenAIResponsesLLM extends LLM {
   private client: OpenAI;
-  private metadata: LLMClientMetadata = {
-    clientId: "openai_responses",
-    modelId: this.modelId,
-  };
-  private reasoning: { effort: OpenAiReasoningEffort; summary: "auto" } | null;
+
+  private readonly reasoning: {
+    effort: OpenAiReasoningEffort;
+    summary: "auto";
+  } | null;
 
   constructor(
     auth: Authenticator,
@@ -45,6 +47,7 @@ export class OpenAIResponsesLLM extends LLM {
       modelId,
       reasoningEffort,
       temperature,
+      clientId: "openai_responses",
     });
 
     // OpenAI throws an error if reasoning is set for non reasoning models
@@ -61,6 +64,7 @@ export class OpenAIResponsesLLM extends LLM {
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY environment variable is required");
     }
+
     this.client = new OpenAI({
       apiKey: OPENAI_API_KEY,
       baseURL: OPENAI_BASE_URL ?? "https://api.openai.com/v1",
@@ -72,15 +76,23 @@ export class OpenAIResponsesLLM extends LLM {
     prompt,
     specifications,
   }: StreamParameters): AsyncGenerator<LLMEvent> {
-    const events = await this.client.responses.create({
-      model: this.modelId,
-      input: toInput(prompt, conversation),
-      stream: true,
-      temperature: this.temperature,
-      reasoning: this.reasoning,
-      tools: specifications.map(toTool),
-    });
+    try {
+      const events = await this.client.responses.create({
+        model: this.modelId,
+        input: toInput(prompt, conversation),
+        stream: true,
+        temperature: this.temperature,
+        reasoning: this.reasoning,
+        tools: specifications.map(toTool),
+      });
 
-    yield* streamLLMEvents(events, this.metadata);
+      yield* streamLLMEvents(events, this.metadata);
+    } catch (err) {
+      if (err instanceof APIError) {
+        yield handleError(err, this.metadata);
+      } else {
+        yield handleGenericError(err, this.metadata);
+      }
+    }
   }
 }
