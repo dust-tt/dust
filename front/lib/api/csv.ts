@@ -19,12 +19,41 @@ export type CSVRecord = Record<
   string | number | boolean | null | undefined
 >;
 
+/**
+ * Neutralizes potential formula injection in CSV values.
+ * If a value starts with =, +, -, or @, prefix it with a single quote
+ * to prevent spreadsheet software from interpreting it as a formula.
+ */
+function neutralizeFormulaInjection(value: unknown): string {
+  const str = String(value);
+  const FORMULA_CHARS = ["=", "+", "-", "@"];
+
+  if (str.length > 0 && FORMULA_CHARS.includes(str[0])) {
+    return `'${str}`;
+  }
+
+  return str;
+}
+
 export const toCsv = (
   records: Array<CSVRecord>,
   options: { header: boolean } = { header: true }
 ): Promise<string> => {
+  // Sanitize all string values to prevent formula injection
+  const sanitizedRecords = records.map((record) => {
+    const sanitized: CSVRecord = {};
+    for (const [key, value] of Object.entries(record)) {
+      if (typeof value === "string") {
+        sanitized[key] = neutralizeFormulaInjection(value);
+      } else {
+        sanitized[key] = value;
+      }
+    }
+    return sanitized;
+  });
+
   return new Promise((resolve, reject) => {
-    stringify(records, options, (err, data) => {
+    stringify(sanitizedRecords, options, (err, data) => {
       if (err) {
         reject(err);
       }
