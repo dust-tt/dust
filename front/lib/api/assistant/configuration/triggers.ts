@@ -1,5 +1,3 @@
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -10,6 +8,7 @@ import {
   getSmallWhitelistedModel,
   Ok,
 } from "@app/types";
+import type { WebhookEvent } from "@app/types/triggers/webhooks_source_preset";
 
 function isValidIANATimezone(timezone: string): boolean {
   // Get the list of all supported IANA timezones
@@ -129,12 +128,10 @@ export async function generateWebhookFilter(
   auth: Authenticator,
   {
     naturalDescription,
-    eventSchema,
-    eventSample,
+    event,
   }: {
     naturalDescription: string;
-    eventSchema: JSONSchema;
-    eventSample: Record<string, unknown>;
+    event: WebhookEvent;
   }
 ): Promise<Result<{ filter: string }, Error>> {
   const owner = auth.getNonNullableWorkspace();
@@ -159,9 +156,9 @@ export async function generateWebhookFilter(
     config,
     [
       {
-        naturalDescription: naturalDescription,
-        expectedPayloadDescription: eventSchema,
-        eventSample,
+        naturalDescription,
+        expectedPayloadDescription: event.schema,
+        eventSample: event.sample,
       },
     ],
     {

@@ -71,8 +71,7 @@ async function handler(
 
       const r = await generateWebhookFilter(auth, {
         naturalDescription,
-        eventSchema: event.schema,
-        eventSample: event.sample,
+        event,
       });
 
       if (r.isErr()) {
