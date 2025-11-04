@@ -119,7 +119,8 @@ export function FeedbackDistributionChart({
             type="monotone"
             dataKey="positive"
             name="Positive"
-            stroke="hsl(var(--chart-1))"
+            className={FEEDBACK_DISTRIBUTION_PALETTE.positive}
+            stroke="currentColor"
             strokeWidth={2}
             dot={false}
           />
@@ -127,7 +128,8 @@ export function FeedbackDistributionChart({
             type="monotone"
             dataKey="negative"
             name="Negative"
-            stroke="hsl(var(--chart-4))"
+            className={FEEDBACK_DISTRIBUTION_PALETTE.negative}
+            stroke="currentColor"
             strokeWidth={2}
             dot={false}
           />

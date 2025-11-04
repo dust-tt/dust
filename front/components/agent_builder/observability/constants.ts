@@ -49,8 +49,8 @@ export const MAX_TOOLS_DISPLAYED = 5;
 export const OTHER_TOOLS_LABEL = "Others";
 
 export const FEEDBACK_DISTRIBUTION_PALETTE = {
-  positive: "text-[hsl(var(--chart-1))]",
-  negative: "text-[hsl(var(--chart-4))]",
+  positive: "text-green-400 dark:text-green-400-night",
+  negative: "text-rose-400 dark:text-rose-400-night",
 } as const;
 
 export const FEEDBACK_DISTRIBUTION_LEGEND = [
