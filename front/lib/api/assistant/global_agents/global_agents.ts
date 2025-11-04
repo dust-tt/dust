@@ -87,6 +87,7 @@ function getGlobalAgent({
   slideshowMCPServerView,
   deepDiveMCPServerView,
   agentMemoryMCPServerView,
+  includeDataMCPServerView,
   memories,
   featureFlags,
 }: {
@@ -106,6 +107,7 @@ function getGlobalAgent({
   slideshowMCPServerView: MCPServerViewResource | null;
   deepDiveMCPServerView: MCPServerViewResource | null;
   agentMemoryMCPServerView: MCPServerViewResource | null;
+  includeDataMCPServerView: MCPServerViewResource | null;
   memories: AgentMemoryResource[];
   featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType | null {
@@ -408,6 +410,7 @@ function getGlobalAgent({
         auth,
         settings,
         interactiveContentMCPServerView,
+        includeDataMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.NOOP:
@@ -490,6 +493,7 @@ export async function getGlobalAgents(
     slideshowMCPServerView,
     deepDiveMCPServerView,
     agentMemoryMCPServerView,
+    includeDataMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -562,6 +566,12 @@ export async function getGlobalAgents(
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
           "agent_memory"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "include_data"
         )
       : null,
   ]);
@@ -638,6 +648,7 @@ export async function getGlobalAgents(
       slideshowMCPServerView,
       deepDiveMCPServerView,
       agentMemoryMCPServerView,
+      includeDataMCPServerView,
       memories,
       featureFlags: flags,
     })
