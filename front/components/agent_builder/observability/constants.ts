@@ -5,9 +5,9 @@ export type ObservabilityTimeRangeType =
 export const DEFAULT_PERIOD_DAYS = 14;
 
 export const USAGE_METRICS_PALETTE = {
-  messages: "text-[hsl(var(--chart-1))]",
-  conversations: "text-[hsl(var(--chart-2))]",
-  activeUsers: "text-[hsl(var(--chart-3))]",
+  messages: "text-golden-500 dark:text-golden-500-night",
+  conversations: "text-blue-400 dark:text-blue-400-night",
+  activeUsers: "text-violet-300 dark:text-violet-300-night",
 } as const;
 
 export const USAGE_METRICS_LEGEND = [

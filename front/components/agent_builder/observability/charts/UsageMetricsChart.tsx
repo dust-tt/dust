@@ -135,41 +135,39 @@ export function UsageMetricsChart({
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
           <defs>
-            <linearGradient id="fillMessages" x1="0" y1="0" x2="0" y2="1">
-              <stop
-                offset="5%"
-                stopColor="hsl(var(--chart-1))"
-                stopOpacity={0.8}
-              />
-              <stop
-                offset="95%"
-                stopColor="hsl(var(--chart-1))"
-                stopOpacity={0.1}
-              />
+            {/* Gradients use currentColor; color is set via classes */}
+            <linearGradient
+              id="fillMessages"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+              className={USAGE_METRICS_PALETTE.messages}
+            >
+              <stop offset="5%" stopColor="currentColor" stopOpacity={0.8} />
+              <stop offset="95%" stopColor="currentColor" stopOpacity={0.1} />
             </linearGradient>
-            <linearGradient id="fillConversations" x1="0" y1="0" x2="0" y2="1">
-              <stop
-                offset="5%"
-                stopColor="hsl(var(--chart-2))"
-                stopOpacity={0.8}
-              />
-              <stop
-                offset="95%"
-                stopColor="hsl(var(--chart-2))"
-                stopOpacity={0.1}
-              />
+            <linearGradient
+              id="fillConversations"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+              className={USAGE_METRICS_PALETTE.conversations}
+            >
+              <stop offset="5%" stopColor="currentColor" stopOpacity={0.8} />
+              <stop offset="95%" stopColor="currentColor" stopOpacity={0.1} />
             </linearGradient>
-            <linearGradient id="fillActiveUsers" x1="0" y1="0" x2="0" y2="1">
-              <stop
-                offset="5%"
-                stopColor="hsl(var(--chart-3))"
-                stopOpacity={0.8}
-              />
-              <stop
-                offset="95%"
-                stopColor="hsl(var(--chart-3))"
-                stopOpacity={0.1}
-              />
+            <linearGradient
+              id="fillActiveUsers"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+              className={USAGE_METRICS_PALETTE.activeUsers}
+            >
+              <stop offset="5%" stopColor="currentColor" stopOpacity={0.8} />
+              <stop offset="95%" stopColor="currentColor" stopOpacity={0.1} />
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} className="stroke-border" />
@@ -206,22 +204,25 @@ export function UsageMetricsChart({
             type="natural"
             dataKey="messages"
             name="Messages"
+            className={USAGE_METRICS_PALETTE.messages}
             fill="url(#fillMessages)"
-            stroke="hsl(var(--chart-1))"
+            stroke="currentColor"
           />
           <Area
             type="natural"
             dataKey="conversations"
             name="Conversations"
+            className={USAGE_METRICS_PALETTE.conversations}
             fill="url(#fillConversations)"
-            stroke="hsl(var(--chart-2))"
+            stroke="currentColor"
           />
           <Area
             type="natural"
             dataKey="activeUsers"
             name="Active users"
+            className={USAGE_METRICS_PALETTE.activeUsers}
             fill="url(#fillActiveUsers)"
-            stroke="hsl(var(--chart-3))"
+            stroke="currentColor"
           />
         </AreaChart>
       </ResponsiveContainer>
