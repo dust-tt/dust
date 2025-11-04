@@ -57,7 +57,7 @@ async function handler(
 
       const eventSchema = WEBHOOK_PRESETS[provider].events.find(
         (event) => event.value === eventValue
-      );
+      )?.schema;
 
       if (!eventSchema) {
         return apiError(req, res, {
