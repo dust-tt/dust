@@ -21,6 +21,7 @@ export type RedisUsageTagsType =
   | "public_api_limits"
   | "reasoning_generation"
   | "retry_agent_message"
+  | "transcription_session"
   | "update_authors"
   | "cache_with_redis"
   | "user_message_events";

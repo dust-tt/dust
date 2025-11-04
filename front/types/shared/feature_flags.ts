@@ -221,6 +221,20 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable notifications",
     stage: "dust_only",
   },
+  dust_global_agent_memory: {
+    description: "Enable agent memory tool on the @dust global agent",
+    stage: "dust_only",
+  },
+  dust_global_data_source_file_system: {
+    description:
+      "Use the Data Sources File System MCP server on the @dust global agent (replaces search tool server)",
+    stage: "dust_only",
+  },
+  realtime_voice_transcription: {
+    description:
+      "Enable real-time voice transcription using ElevenLabs Scribe Realtime",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
