@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { ApiError, GoogleGenAI } from "@google/genai";
 
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import {
@@ -7,6 +7,7 @@ import {
 } from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/google/utils/google_to_events";
 import { LLM } from "@app/lib/api/llm/llm";
+import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
@@ -14,6 +15,8 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types";
+
+import { handleError } from "./utils/errors";
 
 export class GoogleLLM extends LLM {
   private client: GoogleGenAI;
@@ -52,29 +55,36 @@ export class GoogleLLM extends LLM {
     prompt,
     specifications,
   }: StreamParameters): AsyncGenerator<LLMEvent> {
-    const contents = await Promise.all(conversation.messages.map(toContent));
-
-    const generateContentResponses =
-      await this.client.models.generateContentStream({
-        model: this.modelId,
-        contents,
-        config: {
-          temperature: this.temperature,
-          tools: specifications.map(toTool),
-          systemInstruction: { text: prompt },
-          // We only need one
-          candidateCount: 1,
-          thinkingConfig: {
-            includeThoughts: true,
-            // TODO(LLM-Router 2025-10-27): update according to effort
-            thinkingBudget: 1024,
+    try {
+      const contents = await Promise.all(conversation.messages.map(toContent));
+      const generateContentResponses =
+        await this.client.models.generateContentStream({
+          model: this.modelId,
+          contents,
+          config: {
+            temperature: this.temperature,
+            tools: specifications.map(toTool),
+            systemInstruction: { text: prompt },
+            // We only need one
+            candidateCount: 1,
+            thinkingConfig: {
+              includeThoughts: true,
+              // TODO(LLM-Router 2025-10-27): update according to effort
+              thinkingBudget: 1024,
+            },
           },
-        },
-      });
+        });
 
-    yield* streamLLMEvents({
-      generateContentResponses,
-      metadata: this.metadata,
-    });
+      yield* streamLLMEvents({
+        generateContentResponses,
+        metadata: this.metadata,
+      });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        yield handleError(err, this.metadata);
+      } else {
+        yield handleGenericError(err, this.metadata);
+      }
+    }
   }
 }

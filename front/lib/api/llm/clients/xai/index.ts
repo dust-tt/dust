@@ -1,4 +1,4 @@
-import { OpenAI } from "openai";
+import OpenAI, { APIError } from "openai";
 import type { ReasoningEffort as OpenAiReasoningEffort } from "openai/resources/shared";
 
 import {
@@ -7,11 +7,13 @@ import {
 } from "@app/lib/api/llm/clients/openai/types";
 import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import { LLM } from "@app/lib/api/llm/llm";
+import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
   toTool,
@@ -70,15 +72,23 @@ export class XaiLLM extends LLM {
     prompt,
     specifications,
   }: StreamParameters): AsyncGenerator<LLMEvent> {
-    const events = await this.client.responses.create({
-      model: this.modelId,
-      input: toInput(prompt, conversation, "system"),
-      stream: true,
-      temperature: this.temperature,
-      reasoning: this.reasoning,
-      tools: specifications.map(toTool),
-    });
+    try {
+      const events = await this.client.responses.create({
+        model: this.modelId,
+        input: toInput(prompt, conversation, "system"),
+        stream: true,
+        temperature: this.temperature,
+        reasoning: this.reasoning,
+        tools: specifications.map(toTool),
+      });
 
-    yield* streamLLMEvents(events, this.metadata);
+      yield* streamLLMEvents(events, this.metadata);
+    } catch (err) {
+      if (err instanceof APIError) {
+        yield handleError(err, this.metadata);
+      } else {
+        yield handleGenericError(err, this.metadata);
+      }
+    }
   }
 }
