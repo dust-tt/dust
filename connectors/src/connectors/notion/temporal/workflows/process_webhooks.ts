@@ -13,9 +13,10 @@ import type { ModelId } from "@connectors/types";
 const { processWebhookEventActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
+const MAX_EVENTS_BEFORE_CONTINUE_AS_NEW = 4000;
 
-// This is a long-running workflow that processes Notion webhook events.
-// It receives events via signals and processes them using an activity.
+// Long-running workflow that processes Notion webhook events.
+// Auto-terminates if no events arrive for 5 minutes.
 export async function notionProcessWebhooksWorkflow({
   connectorId,
 }: {
@@ -29,10 +30,11 @@ export async function notionProcessWebhooksWorkflow({
   });
 
   for (;;) {
-    // Wait until at least one event is present; wakes instantly on signal
-    await condition(() => eventQueue.length > 0);
+    // Wait an event, but stop the workflow if no events arrive for 5 minutes
+    if (!(await condition(() => eventQueue.length > 0, "5 minutes"))) {
+      return;
+    }
 
-    // Drain the queue before waiting again
     while (eventQueue.length > 0) {
       const event = eventQueue.shift();
       if (event) {
@@ -44,8 +46,8 @@ export async function notionProcessWebhooksWorkflow({
       }
     }
 
-    // After 4000 events, call continueAsNew() to limit history growth
-    if (processedCount > 4000) {
+    // After we reach our max, call continueAsNew() to limit history growth
+    if (processedCount > MAX_EVENTS_BEFORE_CONTINUE_AS_NEW) {
       await continueAsNew({ connectorId });
       return;
     }
