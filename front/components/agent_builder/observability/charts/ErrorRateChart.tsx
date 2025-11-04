@@ -22,6 +22,9 @@ import { ChartLegend } from "@app/components/agent_builder/observability/shared/
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { useAgentErrorRate } from "@app/lib/swr/assistants";
 
+const WARNING_THRESHOLD = 5;
+const CRITICAL_THRESHOLD = 10;
+
 interface ErrorRateData {
   total: number;
   failed: number;
@@ -101,9 +104,9 @@ export function ErrorRateChart({
       : 0;
 
   const getStatusChip = () => {
-    if (averageErrorRate < 5) {
+    if (averageErrorRate < WARNING_THRESHOLD) {
       return <Chip color="success" size="xs" label="HEALTHY" />;
-    } else if (averageErrorRate < 10) {
+    } else if (averageErrorRate < CRITICAL_THRESHOLD) {
       return <Chip color="info" size="xs" label="WARNING" />;
     } else {
       return <Chip color="warning" size="xs" label="CRITICAL" />;
