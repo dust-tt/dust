@@ -21,7 +21,7 @@ export const LATENCY_PALETTE = {
 } as const;
 
 export const LATENCY_LEGEND = [
-  { key: "average", label: "Average latency" },
+  { key: "average", label: "Average time to complete output" },
 ] as const;
 
 export const CHART_HEIGHT = 260;

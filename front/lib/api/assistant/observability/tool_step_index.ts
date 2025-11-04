@@ -1,6 +1,7 @@
 import type { estypes } from "@elastic/elasticsearch";
 
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import { asDisplayToolName } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -86,7 +87,9 @@ export async function fetchToolStepIndexDistribution(
 
     const tools: ToolStepIndexByStep["tools"] = {};
     toolBuckets.forEach((tb) => {
-      tools[tb.key] = { count: tb.doc_count ?? DEFAULT_METRIC_VALUE };
+      tools[asDisplayToolName(tb.key)] = {
+        count: tb.doc_count ?? DEFAULT_METRIC_VALUE,
+      };
     });
 
     return {

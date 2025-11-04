@@ -55,6 +55,33 @@ export function selectTopTools(
     .map(([toolName]) => toolName);
 }
 
+// Finds the version marker that is active for the given date.
+// Returns the marker whose timestamp is <= date and whose next marker's timestamp > date.
+// If date is before all markers, returns null.
+// If date is after all markers, returns the last marker.
+export function findVersionMarkerForDate(
+  date: string | Date,
+  versionMarkers: VersionMarker[]
+): VersionMarker | null {
+  if (!versionMarkers.length) {
+    return null;
+  }
+
+  const targetTime = new Date(date).getTime();
+
+  // Binary search could be used here for better performance with many markers,
+  // but linear search is simple and sufficient for typical use cases
+  for (let i = versionMarkers.length - 1; i >= 0; i--) {
+    const markerTime = new Date(versionMarkers[i].timestamp).getTime();
+    if (targetTime >= markerTime) {
+      return versionMarkers[i];
+    }
+  }
+
+  // Date is before all markers
+  return null;
+}
+
 // Filters a generic time-series of points with a `date` string to the
 // selected version window determined by version markers. If no selection or
 // markers are provided, returns the original points.

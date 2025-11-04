@@ -47,7 +47,7 @@ function LatencyTooltip(
       title={title}
       rows={[
         {
-          label: "Average latency",
+          label: "Average time",
           value: `${row.average}s`,
           colorClassName: LATENCY_PALETTE.average,
         },
@@ -124,14 +124,9 @@ export function LatencyChart({
             tickLine={false}
             axisLine={false}
             tickMargin={8}
+            tickFormatter={(value) => `${value}s`}
             type="number"
             allowDecimals={true}
-            label={{
-              value: "Average latency (s)",
-              angle: -90,
-              position: "insideLeft",
-              style: { textAnchor: "middle" },
-            }}
           />
           <Tooltip
             content={LatencyTooltip}
@@ -147,7 +142,7 @@ export function LatencyChart({
           <Area
             type="natural"
             dataKey="average"
-            name="Average latency"
+            name="Average time to complete output"
             className={LATENCY_PALETTE.average}
             fill="url(#fillAverage)"
             stroke="currentColor"
