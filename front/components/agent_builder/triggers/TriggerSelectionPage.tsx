@@ -56,47 +56,38 @@ export function TriggerSelectionPageContent({
       />
 
       <div className="flex flex-col gap-4 py-2">
-        {showSchedule && (
-          <>
-            <span className="text-lg font-semibold">Top triggers</span>
-            <div className="grid grid-cols-2 gap-3">
-              <ActionCard
-                icon={TimeIcon}
-                label="Schedule"
-                description="Trigger this agent on a schedule"
-                isSelected={false}
-                canAdd
-                onClick={onScheduleSelect}
-                cardContainerClassName="h-36"
-              />
-            </div>
-          </>
-        )}
+        <div className="grid grid-cols-2 gap-3">
+          {showSchedule && (
+            <ActionCard
+              icon={TimeIcon}
+              label="Schedule"
+              description="Trigger this agent on a schedule"
+              isSelected={false}
+              canAdd
+              onClick={onScheduleSelect}
+              cardContainerClassName="h-36"
+            />
+          )}
 
-        {filteredWebhookSourceViews.length > 0 && (
-          <div className="flex flex-col gap-4">
-            <span className="text-lg font-semibold">Other triggers</span>
-            <div className="grid grid-cols-2 gap-3">
-              {filteredWebhookSourceViews.map((view) => {
-                return (
-                  <ActionCard
-                    key={view.sId}
-                    icon={getIcon(normalizeWebhookIcon(view.icon))}
-                    label={view.customName}
-                    description={
-                      view.description ||
-                      `Trigger this agent with ${view.customName}.`
-                    }
-                    isSelected={false}
-                    canAdd
-                    onClick={() => onWebhookSelect(view)}
-                    cardContainerClassName="h-36"
-                  />
-                );
-              })}
-            </div>
-          </div>
-        )}
+          {filteredWebhookSourceViews.length > 0 &&
+            filteredWebhookSourceViews.map((view) => {
+              return (
+                <ActionCard
+                  key={view.sId}
+                  icon={getIcon(normalizeWebhookIcon(view.icon))}
+                  label={view.customName + " - " + view.webhookSource.sId}
+                  description={
+                    view.description ||
+                    `Trigger this agent with ${view.customName}.`
+                  }
+                  isSelected={false}
+                  canAdd
+                  onClick={() => onWebhookSelect(view)}
+                  cardContainerClassName="h-36"
+                />
+              );
+            })}
+        </div>
       </div>
 
       {!showSchedule && filteredWebhookSourceViews.length === 0 && (

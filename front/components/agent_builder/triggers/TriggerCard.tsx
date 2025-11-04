@@ -12,6 +12,10 @@ import type { AgentBuilderTriggerType } from "@app/components/agent_builder/Agen
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useUser } from "@app/lib/swr/user";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
+import {
+  WEBHOOK_PRESETS,
+  WebhookSourceViewType,
+} from "@app/types/triggers/webhooks";
 
 function getTriggerIcon(trigger: AgentBuilderTriggerType) {
   switch (trigger.kind) {
@@ -19,7 +23,11 @@ function getTriggerIcon(trigger: AgentBuilderTriggerType) {
       // There's actually no dark mode here since we're in an Avatar (fixed background).
       return <TimeIcon className="h-4 w-4 text-foreground" />;
     case "webhook":
-      const IconComponent = getIcon(normalizeWebhookIcon(trigger.provider));
+      const IconComponent = getIcon(
+        normalizeWebhookIcon(
+          trigger.provider ? WEBHOOK_PRESETS[trigger.provider].icon : null
+        )
+      );
       return <IconComponent className="h-4 w-4 text-foreground" />;
     default:
       return null;
@@ -27,12 +35,14 @@ function getTriggerIcon(trigger: AgentBuilderTriggerType) {
 }
 interface TriggerCardProps {
   trigger: AgentBuilderTriggerType;
+  webhookSourceView: WebhookSourceViewType | undefined;
   onRemove: () => void;
   onEdit?: () => void;
 }
 
 export const TriggerCard = ({
   trigger,
+  webhookSourceView,
   onRemove,
   onEdit,
 }: TriggerCardProps) => {
@@ -47,12 +57,19 @@ export const TriggerCard = ({
       ) {
         return `Runs ${cronstrue.toString(trigger.configuration.cron)}.`;
       } else if (trigger.kind === "webhook") {
-        return "Triggered by webhook.";
+        return (
+          "Triggered " +
+          (trigger.configuration.event
+            ? "by " + trigger.configuration.event + " events"
+            : "") +
+          " on " +
+          webhookSourceView?.customName +
+          "'s source."
+        );
       }
     } catch (error) {
-      // Ignore.
+      return "";
     }
-    return "";
   }, [trigger.kind, trigger.configuration]);
 
   return (
