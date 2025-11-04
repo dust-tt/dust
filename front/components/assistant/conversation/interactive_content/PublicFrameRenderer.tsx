@@ -83,7 +83,8 @@ export function PublicFrameRenderer({
             visualization={{
               code: frameContent ?? "",
               complete: true,
-              identifier: `viz-${fileId}`,
+              // identifier: `viz-${fileId}`,
+              identifier: shareToken,
             }}
             key={`viz-${fileId}`}
             isInDrawer

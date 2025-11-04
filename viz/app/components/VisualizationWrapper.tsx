@@ -250,10 +250,12 @@ export function VisualizationWrapperWithErrorBoundary({
   identifier,
   allowedOrigins,
   isFullHeight = false,
+  prefetchedFiles = [],
 }: {
   identifier: string;
   allowedOrigins: string[];
   isFullHeight?: boolean;
+  prefetchedFiles?: { fileId: string; data: string; mimeType: string }[];
 }) {
   const sendCrossDocumentMessage = useMemo(
     () =>
@@ -281,6 +283,7 @@ export function VisualizationWrapperWithErrorBoundary({
         api={api}
         identifier={identifier}
         isFullHeight={isFullHeight}
+        preFetchedFiles={prefetchedFiles}
       />
     </ErrorBoundary>
   );
@@ -292,10 +295,12 @@ export function VisualizationWrapper({
   api,
   identifier,
   isFullHeight = false,
+  preFetchedFiles,
 }: {
   api: ReturnType<typeof useVisualizationAPI>;
   identifier: string;
   isFullHeight?: boolean;
+  preFetchedFiles: { fileId: string; data: string; mimeType: string }[];
 }) {
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
 
@@ -312,6 +317,47 @@ export function VisualizationWrapper({
   } = api;
 
   const memoizedDownloadFile = useDownloadFileCallback(downloadFile);
+
+  // Convert pre-fetched files to File objects.
+  const fileCache = useMemo(() => {
+    const cache = new Map<string, File>();
+
+    console.log(
+      ">> Getting pre-fetched files for visualization:",
+      preFetchedFiles
+    );
+
+    preFetchedFiles.forEach(({ fileId, data, mimeType }) => {
+      try {
+        // Convert base64 to Blob.
+        const binaryString = atob(data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: mimeType });
+        const file = new File([blob], fileId, { type: mimeType });
+        cache.set(fileId, file);
+      } catch (err) {
+        console.error(`Failed to process file ${fileId}:`, err);
+      }
+    });
+
+    return cache;
+  }, [preFetchedFiles]);
+
+  // Custom useFile that ONLY reads from cache (no RPC)
+  const useFileFromCache = (fileId: string) => {
+    const [file] = useState<File | null>(() => {
+      const cached = fileCache.get(fileId);
+      if (!cached) {
+        console.error(`File ${fileId} not pre-fetched`);
+        return null;
+      }
+      return cached;
+    });
+    return file;
+  };
 
   useEffect(() => {
     const loadCode = async () => {
@@ -345,7 +391,11 @@ export function VisualizationWrapper({
                     "@dust/slideshow/v1": dustSlideshowV1,
                     "@dust/react-hooks": {
                       triggerUserFileDownload: memoizedDownloadFile,
-                      useFile: (fileId: string) => useFile(fileId, fetchFile),
+                      // useFile: (fileId: string) => useFile(fileId, fetchFile),
+                      useFile: (fileId: string) =>
+                        preFetchedFiles.length > 0
+                          ? useFileFromCache(fileId)
+                          : useFile(fileId, fetchFile),
                     },
                   },
                 }),

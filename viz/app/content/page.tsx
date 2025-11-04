@@ -1,4 +1,4 @@
-import { VisualizationWrapperWithErrorBoundary } from "@viz/app/components/VisualizationWrapper";
+import { ServerVisualizationWrapper } from "@viz/app/content/ServerVisualizationWrapper";
 
 type RenderVisualizationSearchParams = {
   identifier: string;
@@ -12,13 +12,19 @@ export default function RenderVisualization({
 }: {
   searchParams: RenderVisualizationSearchParams;
 }) {
-  const isFullHeight = searchParams.fullHeight === 'true';
+  const isFullHeight = searchParams.fullHeight === "true";
   const allowedOrigins = ALLOWED_VISUALIZATION_ORIGIN
-    ? ALLOWED_VISUALIZATION_ORIGIN.split(',').map((s) => s.trim())
+    ? ALLOWED_VISUALIZATION_ORIGIN.split(",").map((s) => s.trim())
     : [];
 
+  const identifier = searchParams.identifier;
+
+  if (!identifier) {
+    return <div>Missing identifier</div>;
+  }
+
   return (
-    <VisualizationWrapperWithErrorBoundary
+    <ServerVisualizationWrapper
       identifier={searchParams.identifier}
       allowedOrigins={allowedOrigins}
       isFullHeight={isFullHeight}
