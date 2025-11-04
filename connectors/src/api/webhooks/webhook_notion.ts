@@ -6,6 +6,7 @@ import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -135,7 +136,7 @@ const _webhookNotionAPIHandler = async (
   } catch (err) {
     logger.error(
       {
-        err,
+        err: normalizeError(err),
         connectorId: connector.id,
         notionWorkspaceId,
       },

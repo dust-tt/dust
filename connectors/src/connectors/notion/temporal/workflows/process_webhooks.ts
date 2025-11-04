@@ -30,7 +30,7 @@ export async function notionProcessWebhooksWorkflow({
   });
 
   for (;;) {
-    // Wait an event, but stop the workflow if no events arrive for 5 minutes
+    // Wait for an event, but stop the workflow if no events arrive for 5 minutes.
     if (!(await condition(() => eventQueue.length > 0, "5 minutes"))) {
       return;
     }
@@ -46,7 +46,7 @@ export async function notionProcessWebhooksWorkflow({
       }
     }
 
-    // After we reach our max, call continueAsNew() to limit history growth
+    // After we reach our max, call continueAsNew() to limit history growth.
     if (processedCount > MAX_EVENTS_BEFORE_CONTINUE_AS_NEW) {
       await continueAsNew({ connectorId });
       return;
