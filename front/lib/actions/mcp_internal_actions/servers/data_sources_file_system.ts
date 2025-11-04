@@ -10,13 +10,14 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
 import { findCallback } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/find";
-import { registerListTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
+import { listToolCallback } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
 import { locateTreeCallback } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/locate_tree";
 import { searchCallback } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/search";
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
   DataSourceFilesystemFindInputSchema,
+  DataSourceFilesystemListInputSchema,
   DataSourceFilesystemLocateTreeInputSchema,
   SearchWithNodesInputSchema,
   TagsInputSchema,
@@ -41,10 +42,12 @@ function createServer(
     name: FILESYSTEM_CAT_TOOL_NAME,
   });
 
-  registerListTool(auth, server, agentLoopContext, {
-    name: FILESYSTEM_LIST_TOOL_NAME,
-    areTagsDynamic,
-  });
+  const listToolDescription =
+    "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
+    "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
+    "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
+    "the next step's nodeId. If a node output by this tool or the find tool has children " +
+    "(hasChildren: true), it means that this tool can be used again on it.";
 
   const searchToolDescription =
     "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
@@ -62,6 +65,20 @@ function createServer(
     "the last node being the target node.";
 
   if (!areTagsDynamic) {
+    server.tool(
+      FILESYSTEM_LIST_TOOL_NAME,
+      listToolDescription,
+      DataSourceFilesystemListInputSchema.shape,
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) => listToolCallback(auth, params)
+      )
+    );
     server.tool(
       SEARCH_TOOL_NAME,
       searchToolDescription,
@@ -112,6 +129,28 @@ function createServer(
     registerFindTagsTool(auth, server, agentLoopContext, {
       name: FIND_TAGS_TOOL_NAME,
     });
+
+    server.tool(
+      FILESYSTEM_LIST_TOOL_NAME,
+      listToolDescription,
+      {
+        ...DataSourceFilesystemListInputSchema.shape,
+        ...TagsInputSchema.shape,
+      },
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) =>
+          listToolCallback(auth, params, {
+            tagsIn: params.tagsIn,
+            tagsNot: params.tagsNot,
+          })
+      )
+    );
 
     server.tool(
       SEARCH_TOOL_NAME,
