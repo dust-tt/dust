@@ -44,10 +44,10 @@ function ErrorRateTooltip({
     return null;
   }
   const first = payload[0];
-  if (!first?.payload || !isErrorRateData(first.payload)) {
+  const row = first.payload;
+  if (!row || !isErrorRateData(row)) {
     return null;
   }
-  const row = first.payload;
   const title = typeof label === "number" ? String(label) : label;
   return (
     <ChartTooltipCard
@@ -98,7 +98,7 @@ export function ErrorRateChart({
     colorClassName: ERROR_RATE_PALETTE[key],
   }));
 
-  const latestErrorRate = data[data.length - 1].errorRate ?? 0;
+  const latestErrorRate = data[data.length - 1]?.errorRate ?? 0;
 
   const getStatusChip = () => {
     if (latestErrorRate < WARNING_THRESHOLD) {
