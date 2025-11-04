@@ -190,6 +190,7 @@ export function _getFeedbackAnalyzerIncludeDataToolConfiguration({
           dataSourceViewId:
             config.getDustAppsInteractiveContentDatasourceViewId(),
           filter: {
+            tags: null,
             parents: {
               in: [
                 config.getDustAppsInteractiveContentFeedbackAnalysisTemplateFileName(),
