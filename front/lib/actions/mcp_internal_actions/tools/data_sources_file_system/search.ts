@@ -29,6 +29,7 @@ import {
   SearchWithNodesInputSchema,
   TagsInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
+import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -128,6 +129,14 @@ async function searchToolCallback(
   }
   const agentDataSourceConfigurations =
     agentDataSourceConfigurationsResult.value;
+
+  const authRes = await ensureAuthorizedDataSourceViews(
+    auth,
+    agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
+  );
+  if (authRes.isErr()) {
+    return new Err(authRes.error);
+  }
 
   const coreSearchArgsResults = await concurrentExecutor(
     dataSources,

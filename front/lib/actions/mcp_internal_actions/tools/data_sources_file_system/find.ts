@@ -25,6 +25,7 @@ import {
   DataSourceFilesystemFindInputSchema,
   TagsInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
+import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -107,6 +108,14 @@ async function findToolCallback(
     return new Err(new MCPError(fetchResult.error.message));
   }
   const agentDataSourceConfigurations = fetchResult.value;
+
+  const authRes = await ensureAuthorizedDataSourceViews(
+    auth,
+    agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
+  );
+  if (authRes.isErr()) {
+    return new Err(authRes.error);
+  }
 
   const conflictingTags = checkConflictingTags(
     agentDataSourceConfigurations.map(({ filter }) => filter.tags),
