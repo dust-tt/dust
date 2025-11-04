@@ -138,18 +138,11 @@ export async function processWebhookRequest(
   const bucket = getWebhookRequestsBucket();
 
   // Store in DB
-  const webhookRequestRes = await WebhookRequestResource.makeNew({
+  const webhookRequest = await WebhookRequestResource.makeNew({
     workspaceId: auth.getNonNullableWorkspace().id,
     webhookSourceId: webhookSource.id,
     status: "received",
   });
-
-  // Failure when storing in DB
-  if (webhookRequestRes.isErr()) {
-    return webhookRequestRes;
-  }
-
-  const webhookRequest = webhookRequestRes.value;
 
   const gcsPath = WebhookRequestResource.getGcsPath({
     workspaceId: auth.getNonNullableWorkspace().sId,
