@@ -12,6 +12,7 @@ import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers"
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { toCsv } from "@app/lib/api/csv";
 import type { Authenticator } from "@app/lib/auth";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types";
 
 function createServer(
@@ -302,17 +303,38 @@ function createServer(
           );
         }
 
-        if (candidateInfo.applicationIds.length > 1) {
+        const applicationInfo = await concurrentExecutor(
+          candidateInfo.applicationIds,
+          async (appId) => client.getApplicationInfo({ applicationId: appId }),
+          { concurrency: 10 }
+        );
+
+        const activeApplications = [];
+        for (const appResult of applicationInfo) {
+          if (appResult.isOk() && !appResult.value.archiveReason) {
+            activeApplications.push(appResult.value);
+          }
+        }
+
+        if (activeApplications.length === 0) {
           return new Err(
             new MCPError(
-              `Candidate ${candidateInfo.name} (${candidateInfo.id}) has multiple ` +
-                `applications (${candidateInfo.applicationIds.length}). ` +
-                "Please specify which application to submit feedback for."
+              `Candidate ${candidateInfo.name} (${candidateInfo.id}) has no active applications.`
             )
           );
         }
 
-        const applicationId = candidateInfo.applicationIds[0];
+        if (activeApplications.length > 1) {
+          return new Err(
+            new MCPError(
+              `Candidate ${candidateInfo.name} (${candidateInfo.id}) has multiple ` +
+                `active applications (${activeApplications.length}). Could not determine which ` +
+                "one to submit the feedback for."
+            )
+          );
+        }
+
+        const applicationId = activeApplications[0].id;
 
         const result = await client.submitFeedback({
           applicationId,

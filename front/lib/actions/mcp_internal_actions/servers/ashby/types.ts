@@ -111,3 +111,37 @@ export const AshbyCandidateInfoResponseSchema = AshbyCandidateSchema;
 export type AshbyCandidateInfoResponse = z.infer<
   typeof AshbyCandidateInfoResponseSchema
 >;
+
+export const AshbyApplicationInfoRequestSchema = z.object({
+  applicationId: z.string(),
+});
+
+export type AshbyApplicationInfoRequest = z.infer<
+  typeof AshbyApplicationInfoRequestSchema
+>;
+
+export const AshbyApplicationInfoResponseSchema = z.object({
+  id: z.string(),
+  candidateId: z.string(),
+  jobId: z.string(),
+  status: z.string().optional(),
+  archiveReason: z
+    .object({
+      id: z.string(),
+      text: z.string(),
+      reasonType: z.string(),
+    })
+    .optional()
+    .nullable(),
+  currentInterviewStage: z
+    .object({
+      id: z.string(),
+      title: z.string(),
+    })
+    .optional()
+    .nullable(),
+});
+
+export type AshbyApplicationInfoResponse = z.infer<
+  typeof AshbyApplicationInfoResponseSchema
+>;
