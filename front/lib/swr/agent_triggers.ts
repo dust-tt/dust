@@ -15,6 +15,10 @@ import type {
   PostTextAsCronRuleRequestBody,
   PostTextAsCronRuleResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/text_as_cron_rule";
+import type {
+  PostWebhookFilterGeneratorRequestBody,
+  PostWebhookFilterGeneratorResponseBody,
+} from "@app/pages/api/w/[wId]/assistant/agent_configurations/webhook_filter_generator";
 import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
 import type { LightWorkspaceType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -115,17 +119,17 @@ export function useWebhookFilterGenerator({
       signal,
     }: {
       naturalDescription: string;
-      eventSchema: Record<string, any>;
+      eventSchema: Record<string, unknown>;
       signal?: AbortSignal;
     }): Promise<{ filter: string }> => {
-      const r = await fetcher(
+      const r: PostWebhookFilterGeneratorResponseBody = await fetcher(
         `/api/w/${workspace.sId}/assistant/agent_configurations/webhook_filter_generator`,
         {
           method: "POST",
           body: JSON.stringify({
             naturalDescription,
             eventSchema,
-          }),
+          } satisfies PostWebhookFilterGeneratorRequestBody),
           signal,
         }
       );
