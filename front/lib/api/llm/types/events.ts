@@ -1,3 +1,4 @@
+import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 
 export type Delta = {
@@ -73,14 +74,9 @@ export interface SuccessCompletionEvent {
   metadata: LLMClientMetadata;
 }
 
-export interface CompletionError {
-  message: string;
-  code: number;
-}
-
-export interface ErrorCompletionEvent {
+export interface ErrorEvent {
   type: "error";
-  content: CompletionError;
+  content: LLMErrorInfo;
   metadata: LLMClientMetadata;
 }
 
@@ -92,4 +88,4 @@ export type LLMEvent =
   | ReasoningGeneratedEvent
   | TokenUsageEvent
   | SuccessCompletionEvent
-  | ErrorCompletionEvent;
+  | ErrorEvent;

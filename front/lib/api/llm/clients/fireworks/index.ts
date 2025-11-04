@@ -1,13 +1,15 @@
-import { OpenAI } from "openai";
+import { APIError, OpenAI } from "openai";
 
 import type { FireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
 import { overwriteLLMParameters } from "@app/lib/api/llm/clients/fireworks/types";
 import { LLM } from "@app/lib/api/llm/llm";
+import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
   toReasoning,
@@ -43,15 +45,23 @@ export class FireworksLLM extends LLM {
     prompt,
     specifications,
   }: StreamParameters): AsyncGenerator<LLMEvent> {
-    const events = await this.client.responses.create({
-      model: this.modelId,
-      input: toInput(prompt, conversation),
-      stream: true,
-      temperature: this.temperature,
-      reasoning: toReasoning(this.reasoningEffort),
-      tools: specifications.map(toTool),
-    });
+    try {
+      const events = await this.client.responses.create({
+        model: this.modelId,
+        input: toInput(prompt, conversation),
+        stream: true,
+        temperature: this.temperature,
+        reasoning: toReasoning(this.reasoningEffort),
+        tools: specifications.map(toTool),
+      });
 
-    yield* streamLLMEvents(events, this.metadata);
+      yield* streamLLMEvents(events, this.metadata);
+    } catch (err) {
+      if (err instanceof APIError) {
+        yield handleError(err, this.metadata);
+      } else {
+        yield handleGenericError(err, this.metadata);
+      }
+    }
   }
 }

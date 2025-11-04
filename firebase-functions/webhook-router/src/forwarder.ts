@@ -16,7 +16,7 @@ export class WebhookForwarder {
     endpoint: string;
     method: string;
     headers: IncomingHttpHeaders;
-  }): Promise<void> {
+  }): Promise<PromiseSettledResult<Response>[]> {
     const targets = [
       {
         region: "US",
@@ -34,7 +34,7 @@ export class WebhookForwarder {
       this.forwardToTarget({ target, endpoint, method, body, headers })
     );
 
-    await Promise.allSettled(requests);
+    return Promise.allSettled(requests);
   }
 
   private async forwardToTarget({
@@ -49,7 +49,7 @@ export class WebhookForwarder {
     method: string;
     target: { region: string; url: string; secret: string };
     headers: IncomingHttpHeaders;
-  }): Promise<void> {
+  }): Promise<Response> {
     try {
       const response = await this.createRequest({
         baseUrl: target.url,
@@ -66,6 +66,8 @@ export class WebhookForwarder {
         endpoint,
         status: response.status,
       });
+
+      return response;
     } catch (error) {
       console.error("Webhook forwarding failed", {
         component: "forwarder",
@@ -73,6 +75,8 @@ export class WebhookForwarder {
         endpoint,
         error: error instanceof Error ? error.message : String(error),
       });
+
+      throw error;
     }
   }
 

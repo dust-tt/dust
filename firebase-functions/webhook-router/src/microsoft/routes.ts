@@ -25,26 +25,36 @@ async function handleTeamsWebhook(
   secretManager: SecretManager
 ): Promise<void> {
   try {
-    // Respond immediately to Teams (Bot Framework expects 200)
-    res.status(200).send();
-
     // Get secrets for forwarding (already validated by middleware)
     const secrets = await secretManager.getSecrets();
 
     // Forward to regions asynchronously
-    await new WebhookForwarder(secrets).forwardToRegions({
+    const responses = await new WebhookForwarder(secrets).forwardToRegions({
       body: req.body,
       endpoint,
       method: req.method,
       headers: req.headers,
     });
+
+    // Find one successful response that is a 200 status code
+    const successfulResponse = responses
+      .filter((response) => response.status === "fulfilled")
+      .map((response) => response.value)
+      .find((response) => response.status === 200);
+
+    // If a successful response is found, return the response body
+    if (successfulResponse) {
+      const responseBody = await successfulResponse.json();
+      res.set("Content-Type", "application/json; charset=utf-8");
+      res.status(200).json(responseBody);
+    }
   } catch (error) {
     console.error("Teams webhook router error", {
       component: "teams-routes",
       endpoint,
       error: error instanceof Error ? error.message : String(error),
     });
-
+  } finally {
     if (!res.headersSent) {
       res.status(200).send();
     }

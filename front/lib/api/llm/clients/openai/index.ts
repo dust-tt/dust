@@ -1,4 +1,4 @@
-import { OpenAI } from "openai";
+import { APIError, OpenAI } from "openai";
 
 import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
 import { overwriteLLMParameters } from "@app/lib/api/llm/clients/openai/types";
@@ -9,6 +9,7 @@ import type {
   LLMParameters,
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
   toReasoning,
@@ -17,6 +18,8 @@ import {
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types";
+
+import { handleGenericError } from "../../types/errors";
 
 export class OpenAIResponsesLLM extends LLM {
   private client: OpenAI;
@@ -35,6 +38,7 @@ export class OpenAIResponsesLLM extends LLM {
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY environment variable is required");
     }
+
     this.client = new OpenAI({
       apiKey: OPENAI_API_KEY,
       baseURL: OPENAI_BASE_URL ?? "https://api.openai.com/v1",
@@ -46,15 +50,23 @@ export class OpenAIResponsesLLM extends LLM {
     prompt,
     specifications,
   }: StreamParameters): AsyncGenerator<LLMEvent> {
-    const events = await this.client.responses.create({
-      model: this.modelId,
-      input: toInput(prompt, conversation),
-      stream: true,
-      temperature: this.temperature ?? undefined,
-      reasoning: toReasoning(this.reasoningEffort),
-      tools: specifications.map(toTool),
-    });
+    try {
+      const events = await this.client.responses.create({
+        model: this.modelId,
+        input: toInput(prompt, conversation),
+        stream: true,
+        temperature: this.temperature ?? undefined,
+        reasoning: toReasoning(this.reasoningEffort),
+        tools: specifications.map(toTool),
+      });
 
-    yield* streamLLMEvents(events, this.metadata);
+      yield* streamLLMEvents(events, this.metadata);
+    } catch (err) {
+      if (err instanceof APIError) {
+        yield handleError(err, this.metadata);
+      } else {
+        yield handleGenericError(err, this.metadata);
+      }
+    }
   }
 }

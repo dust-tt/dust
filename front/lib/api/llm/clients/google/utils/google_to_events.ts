@@ -95,10 +95,12 @@ export async function* streamLLMEvents({
         reasoningContentParts = "";
         textContentParts = "";
         yield {
-          type: "error" as const,
+          type: "error",
           content: {
+            type: "stop_error",
+            isRetryable: false,
             message: "An error occurred during completion",
-            code: 500,
+            statusCode: 0,
           },
           metadata,
         };

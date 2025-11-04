@@ -10,9 +10,8 @@ import type {
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import type { ModelIdType, ReasoningEffort, Result } from "@app/types";
-import { Err } from "@app/types";
-import { normalizeError, Ok } from "@app/types";
+import type { ModelIdType, ReasoningEffort } from "@app/types";
+import { normalizeError } from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -50,7 +49,7 @@ export abstract class LLM {
   }
 
   /**
-   * Private method that wraps the abstract stream() with tracing functionality
+   * Private method that wraps the abstract internalStream() with tracing functionality
    */
   private async *streamWithTracing({
     conversation,
@@ -109,22 +108,16 @@ export abstract class LLM {
     return this.runId;
   }
 
-  stream({
+  async *stream({
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): Result<AsyncGenerator<LLMEvent>, Error> {
-    try {
-      return new Ok(
-        this.streamWithTracing({
-          conversation,
-          prompt,
-          specifications,
-        })
-      );
-    } catch (error) {
-      return new Err(normalizeError(Error));
-    }
+  }: StreamParameters): AsyncGenerator<LLMEvent> {
+    yield* this.streamWithTracing({
+      conversation,
+      prompt,
+      specifications,
+    });
   }
 
   protected abstract internalStream({
