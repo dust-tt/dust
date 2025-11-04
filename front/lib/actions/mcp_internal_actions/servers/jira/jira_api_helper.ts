@@ -82,7 +82,7 @@ async function listUsersPage(
   });
 
   const client = new JiraClient(accessToken);
-  return client.callAPI(
+  return client.call(
     `/rest/api/3/users/search?${params.toString()}`,
     JiraUsersSearchResultSchema,
     { baseUrl }
@@ -187,7 +187,7 @@ export async function getIssue({
   );
   params.set("fields", fieldList);
 
-  const result = await new JiraClient(accessToken).callAPI(`/rest/api/3/issue/${issueKey}?${params.toString()}`,
+  const result = await new JiraClient(accessToken).call(`/rest/api/3/issue/${issueKey}?${params.toString()}`,
     JiraIssueSchema,
     { baseUrl }
   );
@@ -216,7 +216,7 @@ export async function getProjects(
 ): Promise<
   Result<z.infer<typeof JiraProjectSchema>[] | null, JiraErrorResult>
 > {
-  const result = await new JiraClient(accessToken).callAPI("/rest/api/3/project",
+  const result = await new JiraClient(accessToken).call("/rest/api/3/project",
     z.array(JiraProjectSchema),
     { baseUrl }
   );
@@ -231,7 +231,7 @@ export async function getProjectVersions(
 ): Promise<
   Result<z.infer<typeof JiraProjectVersionSchema>[], JiraErrorResult>
 > {
-  const result = await new JiraClient(accessToken).callAPI(`/rest/api/3/project/${projectKey}/versions`,
+  const result = await new JiraClient(accessToken).call(`/rest/api/3/project/${projectKey}/versions`,
     z.array(JiraProjectVersionSchema),
     {
       baseUrl,
@@ -246,7 +246,7 @@ export async function getProject(
   accessToken: string,
   projectKey: string
 ): Promise<Result<z.infer<typeof JiraProjectSchema> | null, JiraErrorResult>> {
-  const result = await new JiraClient(accessToken).callAPI(`/rest/api/3/project/${projectKey}`,
+  const result = await new JiraClient(accessToken).call(`/rest/api/3/project/${projectKey}`,
     JiraProjectSchema,
     { baseUrl }
   );
@@ -261,7 +261,7 @@ export async function getTransitions(
 ): Promise<
   Result<z.infer<typeof JiraTransitionsSchema> | null, JiraErrorResult>
 > {
-  const result = await new JiraClient(accessToken).callAPI(`/rest/api/3/issue/${issueKey}/transitions`,
+  const result = await new JiraClient(accessToken).call(`/rest/api/3/issue/${issueKey}/transitions`,
     JiraTransitionsSchema,
     { baseUrl }
   );
@@ -336,7 +336,7 @@ export async function createComment(
     requestBody.visibility = visibility;
   }
 
-  const result = await new JiraClient(accessToken).callAPI(`/rest/api/3/issue/${issueKey}/comment`,
+  const result = await new JiraClient(accessToken).call(`/rest/api/3/issue/${issueKey}/comment`,
     JiraCommentSchema,
     {
       method: "POST",
@@ -396,7 +396,7 @@ export async function searchIssues(
     requestBody.nextPageToken = nextPageToken;
   }
 
-  const result = await new JiraClient(accessToken).callAPI(`/rest/api/3/search/jql`,
+  const result = await new JiraClient(accessToken).call(`/rest/api/3/search/jql`,
     JiraSearchResultSchema,
     {
       baseUrl,
@@ -453,7 +453,7 @@ export async function searchJiraIssuesUsingJql(
     requestBody.nextPageToken = nextPageToken;
   }
 
-  const result = await new JiraClient(accessToken).callAPI(`/rest/api/3/search/jql`,
+  const result = await new JiraClient(accessToken).call(`/rest/api/3/search/jql`,
     JiraSearchResultSchema,
     {
       baseUrl,
@@ -489,7 +489,7 @@ export async function getIssueTypes(
     total: z.number().optional(),
   });
 
-  const result = await new JiraClient(accessToken).callAPI(`/rest/api/3/issue/createmeta/${projectKey}/issuetypes`,
+  const result = await new JiraClient(accessToken).call(`/rest/api/3/issue/createmeta/${projectKey}/issuetypes`,
     IssueTypesResponseSchema,
     { baseUrl }
   );
@@ -511,7 +511,7 @@ export async function getIssueFields(
   Result<z.infer<typeof JiraCreateMetaSchema> | null, JiraErrorResult>
 > {
   const endpoint = `/rest/api/3/issue/createmeta/${projectKey}/issuetypes/${issueTypeId}`;
-  const result = await new JiraClient(accessToken).callAPI(
+  const result = await new JiraClient(accessToken).call(
     endpoint,
     JiraCreateMetaSchema,
     { baseUrl }
@@ -524,7 +524,7 @@ async function getUserInfo(
   baseUrl: string,
   accessToken: string
 ): Promise<Result<z.infer<typeof JiraUserInfoSchema>, JiraErrorResult>> {
-  return new JiraClient(accessToken).callAPI("/rest/api/3/myself",
+  return new JiraClient(accessToken).call("/rest/api/3/myself",
     JiraUserInfoSchema,
     { baseUrl }
   );
@@ -579,7 +579,7 @@ export async function transitionIssue(
     };
   }
 
-  const result = await new JiraClient(accessToken).callAPI(`/rest/api/3/issue/${issueKey}/transitions`,
+  const result = await new JiraClient(accessToken).call(`/rest/api/3/issue/${issueKey}/transitions`,
     JiraTransitionIssueSchema,
     {
       method: "POST",
@@ -600,7 +600,7 @@ export async function getAllFields(
     JiraErrorResult
   >
 > {
-  const result = await new JiraClient(accessToken).callAPI("/rest/api/3/field",
+  const result = await new JiraClient(accessToken).call("/rest/api/3/field",
     JiraFieldsSchema,
     { baseUrl }
   );
@@ -640,7 +640,7 @@ export async function listFieldSummaries(
     JiraErrorResult
   >
 > {
-  const result = await new JiraClient(accessToken).callAPI("/rest/api/3/field",
+  const result = await new JiraClient(accessToken).call("/rest/api/3/field",
     JiraFieldsSchema,
     { baseUrl }
   );
@@ -696,7 +696,7 @@ export async function createIssue(
     issueData
   );
 
-  const result = await new JiraClient(accessToken).callAPI("/rest/api/3/issue",
+  const result = await new JiraClient(accessToken).call("/rest/api/3/issue",
     JiraIssueSchema,
     {
       method: "POST",
@@ -731,7 +731,7 @@ export async function updateIssue(
     updateData
   );
 
-  const result = await new JiraClient(accessToken).callAPI(`/rest/api/3/issue/${issueKey}`,
+  const result = await new JiraClient(accessToken).call(`/rest/api/3/issue/${issueKey}`,
     z.void(),
     {
       method: "PUT",
@@ -785,7 +785,7 @@ export async function createIssueLink(
     };
   }
 
-  const result = await new JiraClient(accessToken).callAPI("/rest/api/3/issueLink",
+  const result = await new JiraClient(accessToken).call("/rest/api/3/issueLink",
     z.void(),
     {
       method: "POST",
@@ -802,7 +802,7 @@ export async function deleteIssueLink(
   accessToken: string,
   linkId: string
 ): Promise<Result<void, JiraErrorResult>> {
-  const result = await new JiraClient(accessToken).callAPI(`/rest/api/3/issueLink/${linkId}`,
+  const result = await new JiraClient(accessToken).call(`/rest/api/3/issueLink/${linkId}`,
     z.void(),
     {
       method: "DELETE",
@@ -817,7 +817,7 @@ export async function getIssueLinkTypes(
   baseUrl: string,
   accessToken: string
 ): Promise<Result<z.infer<typeof JiraIssueLinkTypeSchema>[], JiraErrorResult>> {
-  const result = await new JiraClient(accessToken).callAPI("/rest/api/3/issueLinkType",
+  const result = await new JiraClient(accessToken).call("/rest/api/3/issueLinkType",
     z.object({
       issueLinkTypes: z.array(JiraIssueLinkTypeSchema),
     }),
@@ -1038,7 +1038,7 @@ export async function getIssueAttachments({
 }): Promise<
   Result<z.infer<typeof JiraAttachmentsResultSchema>, JiraErrorResult>
 > {
-  const result = await new JiraClient(accessToken).callAPI(`/rest/api/2/issue/${issueKey}?fields=attachment`,
+  const result = await new JiraClient(accessToken).call(`/rest/api/2/issue/${issueKey}?fields=attachment`,
     JiraIssueWithAttachmentsSchema,
     { baseUrl }
   );

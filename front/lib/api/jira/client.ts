@@ -13,7 +13,6 @@ import {
 } from "@app/lib/api/jira/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { safeParseJSON } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 type JiraErrorResult = string;
@@ -29,24 +28,12 @@ async function validateJiraApiResponse<T extends z.ZodTypeAny>(
     );
   }
 
-  const responseText = await response.text();
-  if (!responseText) {
-    return new Ok(undefined);
-  }
-  const dataResult = safeParseJSON(responseText);
-  if (dataResult.isErr()) {
-    return new Err(
-      new Error(
-        `Failed to parse JSON response: ${normalizeError(dataResult.error).message}`
-      )
-    );
-  }
-
-  const parseResult = schema.safeParse(dataResult.value);
+  const rawData = await response.json();
+  const parseResult = schema.safeParse(rawData);
   if (!parseResult.success) {
     return new Err(
       new Error(
-        `API response validation failed: ${parseResult.error.message}. Response: ${JSON.stringify(dataResult.value)}`
+        `API response validation failed: ${parseResult.error.message}. Response: ${JSON.stringify(rawData)}`
       )
     );
   }
@@ -276,7 +263,7 @@ export class JiraClient {
     return new Ok(undefined);
   }
 
-  async callAPI<T extends z.ZodTypeAny>(
+  async call<T extends z.ZodTypeAny>(
     endpoint: string,
     schema: T,
     options: {
@@ -316,12 +303,7 @@ export class JiraClient {
         return new Err(msg);
       }
 
-      const responseText = await response.text();
-      if (!responseText) {
-        return new Ok(undefined);
-      }
-
-      const rawData = JSON.parse(responseText);
+      const rawData = await response.json();
       const parseResult = schema.safeParse(rawData);
 
       if (!parseResult.success) {
