@@ -1,5 +1,6 @@
 import { Err, Ok } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
@@ -29,6 +30,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
 import { CoreAPI } from "@app/types";
 
 const FILESYSTEM_FIND_TOOL_DESCRIPTION =
@@ -96,7 +98,7 @@ async function findToolCallback(
     mimeTypes,
   }: DataSourceFilesystemFindInputType,
   additionalDynamicTags?: TagsInputType
-) {
+): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   const fetchResult = await getAgentDataSourceConfigurations(auth, dataSources);

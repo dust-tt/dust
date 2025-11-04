@@ -1,12 +1,12 @@
-import type { SearchResultResourceType } from "@dust-tt/client";
 import { Err, INTERNAL_MIME_TYPES, Ok, removeNulls } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { assert } from "vitest";
+import assert from "assert";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   makeQueryResource,
   renderSearchResults,

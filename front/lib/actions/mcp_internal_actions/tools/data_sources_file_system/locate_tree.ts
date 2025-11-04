@@ -1,5 +1,6 @@
 import { Err, INTERNAL_MIME_TYPES, Ok, removeNulls } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -26,7 +27,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { CoreAPIContentNode } from "@app/types";
+import type { CoreAPIContentNode, Result } from "@app/types";
 import { CoreAPI, DATA_SOURCE_NODE_ID } from "@app/types";
 
 const FILESYSTEM_LOCATE_IN_TREE_TOOL_DESCRIPTION =
@@ -88,7 +89,7 @@ async function locateTreeToolCallback(
   auth: Authenticator,
   { nodeId, dataSources }: DataSourceFilesystemLocateTreeInputType,
   additionalDynamicTags?: TagsInputType
-) {
+): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const fetchResult = await getAgentDataSourceConfigurations(auth, dataSources);
 
