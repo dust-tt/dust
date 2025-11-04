@@ -140,7 +140,9 @@ export function CreateWebhookSourceFormContent({
             return (
               <div className="flex flex-col gap-2">
                 <Label htmlFor="subscribedEvents">Events to watch</Label>
-                <p>Choose which events will activate this trigger</p>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Choose which events will activate this trigger
+                </p>
                 <div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

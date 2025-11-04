@@ -9,7 +9,6 @@ import { streamLLMEvents } from "@app/lib/api/llm/clients/google/utils/google_to
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
-  LLMClientMetadata,
   LLMParameters,
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
@@ -18,10 +17,7 @@ import { dustManagedCredentials } from "@app/types";
 
 export class GoogleLLM extends LLM {
   private client: GoogleGenAI;
-  private metadata: LLMClientMetadata = {
-    clientId: "google_ai_studio",
-    modelId: this.modelId,
-  };
+
   constructor(
     auth: Authenticator,
     {
@@ -38,6 +34,7 @@ export class GoogleLLM extends LLM {
       modelId,
       reasoningEffort,
       temperature,
+      clientId: "google_ai_studio",
     });
     const { GOOGLE_AI_STUDIO_API_KEY } = dustManagedCredentials();
     if (!GOOGLE_AI_STUDIO_API_KEY) {

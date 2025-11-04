@@ -6,6 +6,8 @@ import { GoogleLLM } from "@app/lib/api/llm/clients/google";
 import { isGoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
 import { isMistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
+import { NoopLLM } from "@app/lib/api/llm/clients/noop";
+import { isNoopWhitelistedModelId } from "@app/lib/api/llm/clients/noop/types";
 import { OpenAIResponsesLLM } from "@app/lib/api/llm/clients/openai";
 import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
@@ -83,6 +85,14 @@ export async function getLLM(
       temperature,
       reasoningEffort,
       bypassFeatureFlag,
+    });
+  }
+
+  if (isNoopWhitelistedModelId(modelId)) {
+    return new NoopLLM(auth, {
+      modelId,
+      temperature,
+      reasoningEffort,
     });
   }
 
