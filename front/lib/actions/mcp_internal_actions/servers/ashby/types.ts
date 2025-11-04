@@ -145,3 +145,22 @@ export const AshbyApplicationInfoResponseSchema = z.object({
 export type AshbyApplicationInfoResponse = z.infer<
   typeof AshbyApplicationInfoResponseSchema
 >;
+
+export const AshbyFeedbackFormDefinitionSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  isArchived: z.boolean().optional(),
+});
+
+export type AshbyFeedbackFormDefinition = z.infer<
+  typeof AshbyFeedbackFormDefinitionSchema
+>;
+
+export const AshbyFeedbackFormDefinitionListResponseSchema = z.object({
+  results: z.array(AshbyFeedbackFormDefinitionSchema),
+  moreDataAvailable: z.boolean().optional(),
+});
+
+export type AshbyFeedbackFormDefinitionListResponse = z.infer<
+  typeof AshbyFeedbackFormDefinitionListResponseSchema
+>;

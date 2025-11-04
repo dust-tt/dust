@@ -199,7 +199,10 @@ function createServer(
       feedbackFormDefinitionId: z
         .string()
         .uuid()
-        .describe("UUID of the feedback form definition to use."),
+        .optional()
+        .describe(
+          "UUID of the feedback form definition to use. If not provided, will attempt to auto-detect. If multiple forms are available, an error will be returned with the list of available forms."
+        ),
       feedbackForm: z
         .record(z.unknown())
         .describe(
@@ -336,9 +339,50 @@ function createServer(
 
         const applicationId = activeApplications[0].id;
 
+        let resolvedFeedbackFormDefinitionId = feedbackFormDefinitionId;
+
+        if (!resolvedFeedbackFormDefinitionId) {
+          const formsResult = await client.listFeedbackFormDefinitions();
+
+          if (formsResult.isErr()) {
+            return new Err(
+              new MCPError(
+                `Failed to list feedback form definitions: ${formsResult.error.message}`
+              )
+            );
+          }
+
+          const activeForms = formsResult.value.results.filter(
+            (form) => !form.isArchived
+          );
+
+          if (activeForms.length === 0) {
+            return new Err(
+              new MCPError(
+                "No active feedback form definitions found in the organization."
+              )
+            );
+          }
+
+          if (activeForms.length > 1) {
+            const formsList = activeForms
+              .map((form) => `- ${form.title} (ID: ${form.id})`)
+              .join("\n");
+            return new Err(
+              new MCPError(
+                `Multiple feedback form definitions found (${activeForms.length}). ` +
+                  `Please specify which one to use via the feedbackFormDefinitionId parameter.\n\n` +
+                  `Available forms:\n${formsList}`
+              )
+            );
+          }
+
+          resolvedFeedbackFormDefinitionId = activeForms[0].id;
+        }
+
         const result = await client.submitFeedback({
           applicationId,
-          feedbackFormDefinitionId,
+          feedbackFormDefinitionId: resolvedFeedbackFormDefinitionId,
           feedbackForm,
           userId,
         });

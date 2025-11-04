@@ -13,6 +13,7 @@ import {
   AshbyCandidateInfoResponseSchema,
   AshbyCandidateListResponseSchema,
   AshbyCandidateSearchResponseSchema,
+  AshbyFeedbackFormDefinitionListResponseSchema,
   AshbyFeedbackSubmitResponseSchema,
   AshbyReportSynchronousResponseSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
@@ -176,6 +177,14 @@ export class AshbyClient {
       "application.info",
       request,
       AshbyApplicationInfoResponseSchema
+    );
+  }
+
+  async listFeedbackFormDefinitions() {
+    return this.postRequest(
+      "feedbackFormDefinition.list",
+      {},
+      AshbyFeedbackFormDefinitionListResponseSchema
     );
   }
 }
