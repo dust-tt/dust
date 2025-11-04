@@ -1,8 +1,14 @@
 import { CreateWebhookGithubConnection } from "@app/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection";
 import { WebhookSourceGithubDetails } from "@app/lib/triggers/built-in-webhooks/github/components/WebhookSourceGithubDetails";
 import { GitHubWebhookService } from "@app/lib/triggers/built-in-webhooks/github/github_webhook_service";
-import { issuesSchema } from "@app/lib/triggers/built-in-webhooks/github/schemas/json_schema_issues";
-import { prSchema } from "@app/lib/triggers/built-in-webhooks/github/schemas/json_schema_pr";
+import {
+  issuesExample,
+  issuesSchema,
+} from "@app/lib/triggers/built-in-webhooks/github/schemas/json_schema_issues";
+import {
+  prExample,
+  prSchema,
+} from "@app/lib/triggers/built-in-webhooks/github/schemas/json_schema_pr";
 import type {
   PresetWebhook,
   WebhookEvent,
@@ -14,6 +20,7 @@ const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
   description:
     "Activity related to pull requests. The type of activity is specified in the `action` property of the payload object.",
   schema: prSchema,
+  sample: prExample,
 };
 
 const GITHUB_ISSUES_EVENT: WebhookEvent = {
@@ -22,6 +29,7 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
   description:
     "Activity related to an issue. The type of activity is specified in the `action` property of the payload object.",
   schema: issuesSchema,
+  sample: issuesExample,
 };
 
 export const GITHUB_WEBHOOK_PRESET: PresetWebhook<"github"> = {
