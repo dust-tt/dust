@@ -11,10 +11,7 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  FIND_TAGS_TOOL_NAME,
-  PROCESS_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import { PROCESS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   ConfigurableToolInputSchemas,
@@ -340,10 +337,7 @@ function createServer(
       toolImplementation
     );
 
-    registerFindTagsTool(auth, server, agentLoopContext, {
-      name: FIND_TAGS_TOOL_NAME,
-      extraDescription: `This tool is meant to be used before the ${PROCESS_TOOL_NAME} tool.`,
-    });
+    registerFindTagsTool(auth, server, agentLoopContext);
   } else {
     server.tool(
       PROCESS_TOOL_NAME,
