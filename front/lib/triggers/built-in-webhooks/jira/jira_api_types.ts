@@ -12,7 +12,7 @@ const JiraProjectSchema = z.object({
   id: z.string(),
   key: z.string(),
   name: z.string(),
-  self: z.string(),
+  self: z.string().optional(),
 });
 
 export function isJiraProject(data: unknown): data is JiraProjectType {

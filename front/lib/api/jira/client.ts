@@ -13,6 +13,7 @@ import {
 } from "@app/lib/api/jira/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
+import { safeParseJSON } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 type JiraErrorResult = string;
@@ -28,26 +29,24 @@ async function validateJiraApiResponse<T extends z.ZodTypeAny>(
     );
   }
 
-  let data: unknown;
-  try {
-    const responseText = await response.text();
-    if (!responseText) {
-      return new Ok(undefined);
-    }
-    data = JSON.parse(responseText);
-  } catch (error) {
+  const responseText = await response.text();
+  if (!responseText) {
+    return new Ok(undefined);
+  }
+  const dataResult = safeParseJSON(responseText);
+  if (dataResult.isErr()) {
     return new Err(
       new Error(
-        `Failed to parse JSON response: ${normalizeError(error).message}`
+        `Failed to parse JSON response: ${normalizeError(dataResult.error).message}`
       )
     );
   }
 
-  const parseResult = schema.safeParse(data);
+  const parseResult = schema.safeParse(dataResult.value);
   if (!parseResult.success) {
     return new Err(
       new Error(
-        `API response validation failed: ${parseResult.error.message}. Response: ${JSON.stringify(data)}`
+        `API response validation failed: ${parseResult.error.message}. Response: ${JSON.stringify(dataResult.value)}`
       )
     );
   }
@@ -277,7 +276,7 @@ export class JiraClient {
     return new Ok(undefined);
   }
 
-  private async callAPI<T extends z.ZodTypeAny>(
+  async callAPI<T extends z.ZodTypeAny>(
     endpoint: string,
     schema: T,
     options: {
