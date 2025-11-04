@@ -170,10 +170,10 @@ async function searchCallback(
     );
   }
 
-  const conflictingTags = checkConflictingTags(coreSearchArgs, {
-    tagsIn,
-    tagsNot,
-  });
+  const conflictingTags = checkConflictingTags(
+    coreSearchArgs.map(({ filter }) => filter.tags),
+    { tagsIn, tagsNot }
+  );
   if (conflictingTags) {
     return new Err(new MCPError(conflictingTags, { tracked: false }));
   }
@@ -441,15 +441,30 @@ function createServer(
     )
   );
 
-  registerListTool(auth, server, agentLoopContext, {
-    name: FILESYSTEM_LIST_TOOL_NAME,
-  });
-
   // Check if tags are dynamic before creating the search tool.
   const areTagsDynamic = agentLoopContext
     ? shouldAutoGenerateTags(agentLoopContext)
     : false;
 
+  if (areTagsDynamic) {
+    // If tags are dynamic, then we add a tool for the agent to discover tags and let it pass tags
+    // in the search tool.
+    const toolsSupportingTagsFiltering = [
+      SEARCH_TOOL_NAME,
+      FILESYSTEM_LIST_TOOL_NAME,
+    ];
+    registerFindTagsTool(auth, server, agentLoopContext, {
+      name: FIND_TAGS_TOOL_NAME,
+      extraDescription: `This tool is meant to be used before any of the following tools: ${toolsSupportingTagsFiltering.join(", ")}.`,
+    });
+  }
+
+  registerListTool(auth, server, agentLoopContext, {
+    name: FILESYSTEM_LIST_TOOL_NAME,
+    areTagsDynamic,
+  });
+
+  // TODO(ap): Move every tool registration in dedicated file.
   if (!areTagsDynamic) {
     server.tool(
       SEARCH_TOOL_NAME,
@@ -467,13 +482,6 @@ function createServer(
       )
     );
   } else {
-    // If tags are dynamic, then we add a tool for the agent to discover tags and let it pass tags
-    // in the search tool.
-    registerFindTagsTool(auth, server, agentLoopContext, {
-      name: FIND_TAGS_TOOL_NAME,
-      extraDescription: `This tool is meant to be used before the ${SEARCH_TOOL_NAME} tool.`,
-    });
-
     server.tool(
       SEARCH_TOOL_NAME,
       "Perform a semantic search within the folders and files designated by `nodeIds`. All " +

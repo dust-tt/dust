@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { FILESYSTEM_LIST_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -8,11 +9,19 @@ import {
   isDataSourceNodeId,
   makeQueryResourceForList,
 } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
+import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import { DataSourceFilesystemListInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
+import type {
+  DataSourceFilesystemListInputType,
+  TagsInputType,
+} from "@app/lib/actions/mcp_internal_actions/types";
+import {
+  DataSourceFilesystemListInputSchema,
+  TagsInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -31,7 +40,11 @@ export function registerListTool(
   auth: Authenticator,
   server: McpServer,
   agentLoopContext: AgentLoopContextType | undefined,
-  { name, extraDescription }: { name: string; extraDescription?: string }
+  {
+    name,
+    extraDescription,
+    areTagsDynamic,
+  }: { name: string; extraDescription?: string; areTagsDynamic: boolean }
 ) {
   const baseDescription =
     "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
@@ -43,151 +56,185 @@ export function registerListTool(
     ? baseDescription + " " + extraDescription
     : baseDescription;
 
-  server.tool(
-    name,
-    toolDescription,
-    DataSourceFilesystemListInputSchema.shape,
-    withToolLogging(
-      auth,
+  if (areTagsDynamic) {
+    server.tool(
+      name,
+      toolDescription,
       {
-        toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
-        agentLoopContext,
-        enableAlerting: true,
+        ...DataSourceFilesystemListInputSchema.shape,
+        ...TagsInputSchema.shape,
       },
-      async ({
-        nodeId,
-        dataSources,
-        limit,
-        mimeTypes,
-        sortBy,
-        nextPageCursor,
-      }) => {
-        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-        const fetchResult = await getAgentDataSourceConfigurations(
-          auth,
-          dataSources
-        );
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) =>
+          listToolCallback(auth, params, {
+            tagsIn: params.tagsIn,
+            tagsNot: params.tagsNot,
+          })
+      )
+    );
+  } else {
+    server.tool(
+      name,
+      toolDescription,
+      DataSourceFilesystemListInputSchema.shape,
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) => listToolCallback(auth, params)
+      )
+    );
+  }
+}
 
-        if (fetchResult.isErr()) {
-          return new Err(new MCPError(fetchResult.error.message));
-        }
-        const agentDataSourceConfigurations = fetchResult.value;
+async function listToolCallback(
+  auth: Authenticator,
+  {
+    nodeId,
+    dataSources,
+    limit,
+    mimeTypes,
+    sortBy,
+    nextPageCursor,
+  }: DataSourceFilesystemListInputType,
+  additionalDynamicTags: TagsInputType = {}
+): Promise<Result<CallToolResult["content"], MCPError>> {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const fetchResult = await getAgentDataSourceConfigurations(auth, dataSources);
 
-        const authRes = await ensureAuthorizedDataSourceViews(
-          auth,
-          agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
-        );
-        if (authRes.isErr()) {
-          return new Err(authRes.error);
-        }
+  if (fetchResult.isErr()) {
+    return new Err(new MCPError(fetchResult.error.message));
+  }
+  const agentDataSourceConfigurations = fetchResult.value;
 
-        const options = {
-          cursor: nextPageCursor,
-          limit,
-          sort: sortBy
-            ? [
-                {
-                  field: sortBy,
-                  direction: getSearchNodesSortDirection(sortBy),
-                },
-              ]
-            : undefined,
-        };
-
-        let searchResult: Result<CoreAPISearchNodesResponse, CoreAPIError>;
-
-        if (!nodeId) {
-          // When nodeId is null, search for data sources only.
-          const dataSourceViewFilter = makeCoreSearchNodesFilters(
-            agentDataSourceConfigurations
-          ).map((view) => ({
-            ...view,
-            search_scope: "data_source_name" as const,
-          }));
-
-          searchResult = await coreAPI.searchNodes({
-            filter: {
-              data_source_views: dataSourceViewFilter,
-              mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
-            },
-            options,
-          });
-        } else if (isDataSourceNodeId(nodeId)) {
-          // If it's a data source node ID, extract the data source ID and list its root contents.
-          const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
-          if (!dataSourceId) {
-            return new Err(
-              new MCPError("Invalid data source node ID format", {
-                tracked: false,
-              })
-            );
-          }
-
-          const dataSourceConfig = agentDataSourceConfigurations.find(
-            ({ dataSource }) => dataSource.dustAPIDataSourceId === dataSourceId
-          );
-
-          if (!dataSourceConfig) {
-            return new Err(
-              new MCPError(`Data source not found for ID: ${dataSourceId}`)
-            );
-          }
-
-          searchResult = await coreAPI.searchNodes({
-            filter: {
-              data_source_views: makeCoreSearchNodesFilters([dataSourceConfig]),
-              node_ids: dataSourceConfig.filter.parents?.in ?? undefined,
-              parent_id: dataSourceConfig.filter.parents?.in
-                ? undefined
-                : ROOT_PARENT_ID,
-              mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
-            },
-            options,
-          });
-        } else {
-          // Regular node listing.
-          const dataSourceViewFilter = makeCoreSearchNodesFilters(
-            agentDataSourceConfigurations
-          );
-
-          searchResult = await coreAPI.searchNodes({
-            filter: {
-              data_source_views: dataSourceViewFilter,
-              parent_id: nodeId,
-              mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
-            },
-            options,
-          });
-        }
-
-        if (searchResult.isErr()) {
-          return new Err(
-            new MCPError(
-              `Failed to list folder contents: ${searchResult.error.message}`
-            )
-          );
-        }
-
-        return new Ok([
-          {
-            type: "resource",
-            resource: makeQueryResourceForList(
-              nodeId,
-              mimeTypes,
-              nextPageCursor
-            ),
-          },
-          {
-            type: "resource",
-            resource: renderSearchResults(
-              searchResult.value,
-              agentDataSourceConfigurations
-            ),
-          },
-        ]);
-      }
-    )
+  const authRes = await ensureAuthorizedDataSourceViews(
+    auth,
+    agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
   );
+  if (authRes.isErr()) {
+    return new Err(authRes.error);
+  }
+
+  const conflictingTags = checkConflictingTags(
+    agentDataSourceConfigurations.map(({ filter }) => filter.tags),
+    additionalDynamicTags
+  );
+  if (conflictingTags) {
+    return new Err(new MCPError(conflictingTags, { tracked: false }));
+  }
+
+  const options = {
+    cursor: nextPageCursor,
+    limit,
+    sort: sortBy
+      ? [
+          {
+            field: sortBy,
+            direction: getSearchNodesSortDirection(sortBy),
+          },
+        ]
+      : undefined,
+  };
+
+  let searchResult: Result<CoreAPISearchNodesResponse, CoreAPIError>;
+
+  if (!nodeId) {
+    // When nodeId is null, search for data sources only.
+    const dataSourceViewFilter = makeCoreSearchNodesFilters(
+      agentDataSourceConfigurations,
+      additionalDynamicTags
+    ).map((view) => ({
+      ...view,
+      search_scope: "data_source_name" as const,
+    }));
+
+    searchResult = await coreAPI.searchNodes({
+      filter: {
+        data_source_views: dataSourceViewFilter,
+        mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+      },
+      options,
+    });
+  } else if (isDataSourceNodeId(nodeId)) {
+    // If it's a data source node ID, extract the data source ID and list its root contents.
+    const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
+    if (!dataSourceId) {
+      return new Err(
+        new MCPError("Invalid data source node ID format", {
+          tracked: false,
+        })
+      );
+    }
+
+    const dataSourceConfig = agentDataSourceConfigurations.find(
+      ({ dataSource }) => dataSource.dustAPIDataSourceId === dataSourceId
+    );
+
+    if (!dataSourceConfig) {
+      return new Err(
+        new MCPError(`Data source not found for ID: ${dataSourceId}`)
+      );
+    }
+
+    searchResult = await coreAPI.searchNodes({
+      filter: {
+        data_source_views: makeCoreSearchNodesFilters(
+          [dataSourceConfig],
+          additionalDynamicTags
+        ),
+        node_ids: dataSourceConfig.filter.parents?.in ?? undefined,
+        parent_id: dataSourceConfig.filter.parents?.in
+          ? undefined
+          : ROOT_PARENT_ID,
+        mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+      },
+      options,
+    });
+  } else {
+    // Regular node listing.
+    searchResult = await coreAPI.searchNodes({
+      filter: {
+        data_source_views: makeCoreSearchNodesFilters(
+          agentDataSourceConfigurations,
+          additionalDynamicTags
+        ),
+        parent_id: nodeId,
+        mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+      },
+      options,
+    });
+  }
+
+  if (searchResult.isErr()) {
+    return new Err(
+      new MCPError(
+        `Failed to list folder contents: ${searchResult.error.message}`
+      )
+    );
+  }
+
+  return new Ok([
+    {
+      type: "resource",
+      resource: makeQueryResourceForList(nodeId, mimeTypes, nextPageCursor),
+    },
+    {
+      type: "resource",
+      resource: renderSearchResults(
+        searchResult.value,
+        agentDataSourceConfigurations
+      ),
+    },
+  ]);
 }
 
 function getSearchNodesSortDirection(
