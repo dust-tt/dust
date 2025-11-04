@@ -405,7 +405,7 @@ export function _getDustGlobalAgent(
   // Decide which MCP server to use for data sources: default `search`,
   // or `data_sources_file_system` when the feature flag is enabled.
   const dataSourcesServerView = hasFilesystemTools
-    ? dataSourcesFileSystemMCPServerView ?? null
+    ? (dataSourcesFileSystemMCPServerView ?? null)
     : searchMCPServerView;
 
   // Only add the action if there are data sources and the chosen MCP server is available.
