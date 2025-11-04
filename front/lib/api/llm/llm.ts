@@ -11,7 +11,6 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelIdType, ReasoningEffort } from "@app/types";
-import { normalizeError } from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -75,8 +74,6 @@ export abstract class LLM {
       temperature: this.temperature,
     });
 
-    let error: Error | null = null;
-
     try {
       for await (const event of this.internalStream({
         conversation,
@@ -86,18 +83,9 @@ export abstract class LLM {
         buffer.addEvent(event);
         yield event;
       }
-    } catch (err) {
-      error = normalizeError(err);
-      throw err;
     } finally {
       const durationMs = Date.now() - startTime;
-      buffer
-        .writeToGCS({
-          durationMs,
-          error,
-          startTime,
-        })
-        .catch(() => {});
+      buffer.writeToGCS({ durationMs, startTime }).catch(() => {});
     }
   }
 

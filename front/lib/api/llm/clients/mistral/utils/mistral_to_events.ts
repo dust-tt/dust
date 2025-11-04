@@ -12,6 +12,7 @@ import type {
   TokenUsageEvent,
   ToolCallEvent,
 } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import type { ExpectedDeltaMessage } from "@app/lib/api/llm/types/predicates";
 import {
@@ -82,32 +83,31 @@ export async function* streamLLMEvents({
         // yield error event after all received events
         yield* yieldEvents(events);
         textDelta = "";
-        yield {
-          type: "error" as const,
-          content: {
+        yield new EventError(
+          {
             type: "maximum_length",
             isRetryable: false,
             message: "Maximum length reached",
             statusCode: 0,
           },
-          metadata,
-        };
+          metadata
+        );
         break;
       }
       case CompletionResponseStreamChoiceFinishReason.Error: {
         // yield error event after all received events
         yield* yieldEvents(events);
         textDelta = "";
-        yield {
-          type: "error" as const,
-          content: {
+        yield new EventError(
+          {
             type: "stop_error",
             isRetryable: false,
             message: "An error occurred during completion",
             statusCode: 0,
           },
-          metadata,
-        };
+          metadata
+        );
+
         break;
       }
       // Streaming ends with a text response
