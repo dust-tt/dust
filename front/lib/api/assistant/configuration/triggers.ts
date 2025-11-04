@@ -130,7 +130,7 @@ export async function generateWebhookFilter(
     eventSchema,
   }: {
     naturalDescription: string;
-    eventSchema: Record<string, any>;
+    eventSchema: Record<string, unknown>;
   }
 ): Promise<Result<{ filter: string }, Error>> {
   const owner = auth.getNonNullableWorkspace();
