@@ -130,7 +130,6 @@ interface AgentMessageViewProps {
 
 const AgentMessageView = ({
   message,
-  multiActionsApp,
   useMarkdown,
   workspaceId,
 }: AgentMessageViewProps) => {
