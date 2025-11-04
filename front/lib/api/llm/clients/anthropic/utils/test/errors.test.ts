@@ -33,7 +33,6 @@ describe("handleError (Anthropic)", () => {
     const event = handleError(err, metadata) as EventError;
     expect(event.type).toBe("error");
     expect(event.metadata).toEqual(metadata);
-    expect(event.content.statusCode).toBe(429);
     expect(event.content.message.toLowerCase()).toContain("rate limit");
     expect(event.content.message).toContain("anthropic");
   });
@@ -46,7 +45,6 @@ describe("handleError (Anthropic)", () => {
       makeHeaders()
     );
     const event = handleError(err, metadata) as EventError;
-    expect(event.content.statusCode).toBe(400);
     expect(event.content.message.toLowerCase()).toContain("invalid request");
   });
 
@@ -58,7 +56,6 @@ describe("handleError (Anthropic)", () => {
       makeHeaders()
     );
     const event = handleError(err, metadata) as EventError;
-    expect(event.content.statusCode).toBe(401);
     expect(event.content.message.toLowerCase()).toContain("authentication");
   });
 
@@ -70,7 +67,6 @@ describe("handleError (Anthropic)", () => {
       makeHeaders()
     );
     const event = handleError(err, metadata) as EventError;
-    expect(event.content.statusCode).toBe(403);
     expect(event.content.message.toLowerCase()).toContain("permission");
   });
 
@@ -82,7 +78,6 @@ describe("handleError (Anthropic)", () => {
       makeHeaders()
     );
     const event = handleError(err, metadata) as EventError;
-    expect(event.content.statusCode).toBe(404);
     expect(event.content.message.toLowerCase()).toContain("not found");
   });
 
@@ -94,7 +89,6 @@ describe("handleError (Anthropic)", () => {
       makeHeaders()
     );
     const event = handleError(err, metadata) as EventError;
-    expect(event.content.statusCode).toBe(500);
     expect(event.content.message.toLowerCase()).toContain("server error");
   });
 });

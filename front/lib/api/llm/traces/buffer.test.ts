@@ -67,7 +67,6 @@ class LLMEventFactory {
         type: "maximum_length",
         isRetryable: false,
         message: "Maximum length reached",
-        statusCode: 0,
       },
       { clientId: "test", modelId: "gpt-4-turbo" }
     );

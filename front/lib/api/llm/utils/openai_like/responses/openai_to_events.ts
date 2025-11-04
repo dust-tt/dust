@@ -66,7 +66,6 @@ function responseOutputToEvent(
           type: "refusal_error",
           isRetryable: false,
           message: responseOutput.refusal,
-          statusCode: 500,
         },
         metadata
       );

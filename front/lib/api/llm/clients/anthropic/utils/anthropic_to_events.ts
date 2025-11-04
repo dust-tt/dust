@@ -214,7 +214,6 @@ function* handleStopReason(
           type: "stop_error",
           message: `Stop reason: ${stopReason}`,
           isRetryable: false,
-          statusCode: 0,
         },
         metadata
       );

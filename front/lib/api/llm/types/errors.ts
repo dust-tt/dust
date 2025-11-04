@@ -26,7 +26,6 @@ export interface LLMErrorInfo {
   type: LLMErrorType;
   message: string;
   isRetryable: boolean;
-  statusCode: number;
   originalError?: unknown;
 }
 
@@ -70,7 +69,6 @@ export function categorizeLLMError(
       type: "rate_limit_error",
       message: `Rate limit exceeded for ${metadata.clientId}/${metadata.modelId}. ${normalized.message}`,
       isRetryable: true,
-      statusCode: statusCode ?? 429,
       originalError: error,
     };
   }
@@ -86,7 +84,6 @@ export function categorizeLLMError(
       type: "overloaded_error",
       message: `${metadata.clientId} service is overloaded. ${normalized.message}`,
       isRetryable: true,
-      statusCode: statusCode ?? 503,
       originalError: error,
     };
   }
@@ -103,7 +100,6 @@ export function categorizeLLMError(
       type: "context_length_exceeded",
       message: `Context length exceeded for ${metadata.clientId}/${metadata.modelId}. ${normalized.message}`,
       isRetryable: false,
-      statusCode: statusCode ?? 400,
       originalError: error,
     };
   }
@@ -118,7 +114,6 @@ export function categorizeLLMError(
       type: "authentication_error",
       message: `Authentication failed for ${metadata.clientId}. ${normalized.message}`,
       isRetryable: false,
-      statusCode: statusCode ?? 401,
       originalError: error,
     };
   }
@@ -132,7 +127,6 @@ export function categorizeLLMError(
       type: "permission_error",
       message: `Permission denied for ${metadata.clientId}. ${normalized.message}`,
       isRetryable: false,
-      statusCode: statusCode ?? 403,
       originalError: error,
     };
   }
@@ -142,7 +136,6 @@ export function categorizeLLMError(
       type: "not_found_error",
       message: `Resource not found for ${metadata.clientId}. ${normalized.message}`,
       isRetryable: false,
-      statusCode: statusCode ?? 404,
       originalError: error,
     };
   }
@@ -157,7 +150,6 @@ export function categorizeLLMError(
       type: "invalid_request_error",
       message: `Invalid request to ${metadata.clientId}. ${normalized.message}`,
       isRetryable: false,
-      statusCode: statusCode ?? 400,
       originalError: error,
     };
   }
@@ -174,7 +166,6 @@ export function categorizeLLMError(
       type: "network_error",
       message: `Network error connecting to ${metadata.clientId}. ${normalized.message}`,
       isRetryable: true,
-      statusCode: statusCode ?? 500,
       originalError: error,
     };
   }
@@ -185,7 +176,6 @@ export function categorizeLLMError(
       type: "timeout_error",
       message: `Request timeout for ${metadata.clientId}. ${normalized.message}`,
       isRetryable: true,
-      statusCode: statusCode ?? 500,
       originalError: error,
     };
   }
@@ -200,7 +190,6 @@ export function categorizeLLMError(
       type: "stream_error",
       message: `Stream error from ${metadata.clientId}. ${normalized.message}`,
       isRetryable: true,
-      statusCode: statusCode ?? 500,
       originalError: error,
     };
   }
@@ -214,7 +203,6 @@ export function categorizeLLMError(
       type: "server_error",
       message: `Server error from ${metadata.clientId}. ${normalized.message}`,
       isRetryable: true,
-      statusCode: statusCode ?? 500,
       originalError: error,
     };
   }
@@ -223,7 +211,6 @@ export function categorizeLLMError(
     type: "unknown_error",
     message: `Unknown error from ${metadata.clientId}: ${normalized.message}`,
     isRetryable: false,
-    statusCode: statusCode ?? 500,
     originalError: error,
   };
 }
