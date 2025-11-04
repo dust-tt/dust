@@ -14,6 +14,7 @@ import {
   _getToolsetsToolsConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isIncludedInDefaultCompanyData } from "@app/lib/data_sources";
 import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
@@ -131,6 +132,29 @@ At the start of each conversation or when encountering any request that might be
 Enable relevant toolsets before attempting to fulfill the request. Never assume or reply that you cannot do something before checking the toolsets available.
 </toolsets_guidelines>`,
 
+  help: `<help_guidelines>
+When the user asks questions specifically about how to use Dust, its features, capabilities, or needs help understanding Dust:
+
+1. Use the \`search_dust_docs\` tool to search the official Dust documentation for accurate information.
+2. Always perform web searches using site:dust.tt to find up-to-date information about Dust.
+3. Provide clear, straightforward answers with accuracy and empathy.
+4. Use bullet points and steps to guide the user effectively.
+5. NEVER invent features or capabilities that Dust does not have.
+6. NEVER make promises about future features.
+7. Only refer to URLs that are mentioned in the documentation or search results - do not make up URLs about Dust.
+8. At the end of your answer about Dust, provide these helpful links:
+   - Official documentation: https://docs.dust.tt
+   - Community support on Slack: https://dust-community.tightknit.community/join
+
+Examples of help queries:
+- "How do I create an agent in Dust?"
+- "What are Dust's data source capabilities?"
+- "Can Dust integrate with Slack?"
+- "How does Dust's memory feature work?"
+
+Remember: Always base your answers on the documentation and search results. If you don't know the answer after searching, be honest about it.
+</help_guidelines>`,
+
   memory: (memories: AgentMemoryResource[]) => {
     const memoryList = memories.length
       ? memories.map(formatMemory).join("\n")
@@ -200,11 +224,13 @@ function buildInstructions({
   hasDeepDive,
   hasFilesystemTools,
   hasAgentMemory,
+  hasHelpDocs,
   memories,
 }: {
   hasDeepDive: boolean;
   hasFilesystemTools: boolean;
   hasAgentMemory: boolean;
+  hasHelpDocs: boolean;
   memories: AgentMemoryResource[];
 }): string {
   const parts: string[] = [
@@ -214,6 +240,7 @@ function buildInstructions({
       : INSTRUCTION_SECTIONS.simpleRequests,
     hasFilesystemTools && INSTRUCTION_SECTIONS.companyData,
     INSTRUCTION_SECTIONS.toolsets,
+    hasHelpDocs && INSTRUCTION_SECTIONS.help,
     hasAgentMemory && INSTRUCTION_SECTIONS.memory(memories),
   ].filter((part): part is string => typeof part === "string");
 
@@ -282,11 +309,13 @@ export function _getDustGlobalAgent(
     dataSourcesFileSystemMCPServerView !== null;
 
   const hasAgentMemory = agentMemoryMCPServerView !== null;
+  const hasHelpDocs = searchMCPServerView !== null;
 
   const instructions = buildInstructions({
     hasDeepDive: !!deepDiveMCPServerView,
     hasFilesystemTools,
     hasAgentMemory,
+    hasHelpDocs,
     memories,
   });
 
@@ -340,6 +369,34 @@ export function _getDustGlobalAgent(
   }
 
   const actions: MCPServerConfigurationType[] = [];
+
+  // Add search_dust_docs action for help capabilities
+  if (searchMCPServerView) {
+    actions.push({
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.DUST + "-search-dust-docs",
+      type: "mcp_server_configuration",
+      name: "search_dust_docs",
+      description: "The documentation of the Dust platform.",
+      mcpServerViewId: searchMCPServerView.sId,
+      internalMCPServerId: searchMCPServerView.internalMCPServerId,
+      dataSources: [
+        {
+          dataSourceViewId: config.getDustAppsHelperDatasourceViewId(),
+          workspaceId: config.getDustAppsWorkspaceId(),
+          filter: { parents: null, tags: null },
+        },
+      ],
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      secretName: null,
+    });
+  }
 
   const dataSourceViews = preFetchedDataSources.dataSourceViews.filter(
     (dsView) => isIncludedInDefaultCompanyData(dsView.dataSource)
