@@ -19,10 +19,6 @@ import { dustManagedCredentials } from "@app/types";
 
 export class FireworksLLM extends LLM {
   private client: OpenAI;
-  private readonly reasoning: {
-    effort: OpenAiReasoningEffort;
-    summary: "auto";
-  } | null;
 
   constructor(
     auth: Authenticator,

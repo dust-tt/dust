@@ -7,8 +7,11 @@ import {
 } from "@app/lib/api/llm/clients/openai/types";
 import { TEST_CONVERSATIONS } from "@app/lib/api/llm/tests/conversations";
 import { LLMClientTestSuite } from "@app/lib/api/llm/tests/LLMClientTestSuite";
-import type { ConfigParams, TestConfig } from "@app/lib/api/llm/tests/types";
-import type { TestConversation } from "@app/scripts/llm_router/types";
+import type {
+  ConfigParams,
+  TestConfig,
+  TestConversation,
+} from "@app/lib/api/llm/tests/types";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 
 const OPENAI_MODEL_FAMILY_TO_TEST_CONFIGS: Record<

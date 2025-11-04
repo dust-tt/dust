@@ -4,8 +4,8 @@ import { runConversation } from "@app/lib/api/llm/tests/conversations";
 import type {
   RunnabletestConversation as RunnableTestConversation,
   TestConfig,
+  TestConversation,
 } from "@app/lib/api/llm/tests/types";
-import type { TestConversation } from "@app/scripts/llm_router/types";
 import type { ModelIdType, ModelProviderIdType } from "@app/types";
 
 const TIMEOUT = 60 * 1000; // 60 seconds

@@ -388,11 +388,15 @@ async function runTest(
 
       conversationHistory.push(...conversationAction.messages);
 
-      const events = llm.stream({
+      const eventStreamResult = llm.stream({
         conversation: { messages: conversationHistory },
         prompt: conversation.systemPrompt,
         specifications: conversation.specifications ?? [],
       });
+
+      if (eventStreamResult.isErr()) {
+        throw eventStreamResult.error;
+      }
 
       let responseFromDeltas = "";
       let fullResponse = "";
@@ -403,7 +407,7 @@ async function runTest(
       let toolCallId = 1;
 
       // Collect all events
-      for await (const event of events) {
+      for await (const event of eventStreamResult.value) {
         switch (event.type) {
           case "text_delta":
             responseFromDeltas += event.content.delta;
