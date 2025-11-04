@@ -196,6 +196,7 @@ export function _getFeedbackAnalyzerIncludeDataToolConfiguration({
               ],
               not: [],
             },
+            tags: null,
           },
           workspaceId: config.getDustAppsWorkspaceId(),
         },
