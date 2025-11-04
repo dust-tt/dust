@@ -8,6 +8,7 @@ import type {
   TokenUsageEvent,
   ToolCallEvent,
 } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 
 // Mock GCS bucket to avoid external dependencies.
 vi.mock("@app/lib/file_storage", () => ({
@@ -58,6 +59,18 @@ class LLMEventFactory {
       },
       metadata: { clientId: "test", modelId: "gpt-4-turbo" },
     };
+  }
+
+  static error(): EventError {
+    return new EventError(
+      {
+        type: "maximum_length",
+        isRetryable: false,
+        message: "Maximum length reached",
+        statusCode: 0,
+      },
+      { clientId: "test", modelId: "gpt-4-turbo" }
+    );
   }
 }
 
@@ -188,7 +201,6 @@ test("buffer generates complete trace JSON", () => {
     startTimestamp: "2024-01-01T00:00:00.000Z",
     endTimestamp: "2024-01-01T00:00:01.000Z",
     durationMs: 1000,
-    error: null,
   });
 
   expect(trace.runId).toBe(runId);
@@ -210,7 +222,6 @@ test("buffer includes truncation metadata when truncated", () => {
     startTimestamp: "2024-01-01T00:00:00.000Z",
     endTimestamp: "2024-01-01T00:00:01.000Z",
     durationMs: 1000,
-    error: null,
   });
 
   expect(trace.metadata.bufferTruncated).toBe(true);
@@ -223,16 +234,15 @@ test("buffer handles error traces correctly", () => {
 
   // Add some content before error.
   buffer.addEvent(LLMEventFactory.textDelta("Partial content"));
+  buffer.addEvent(LLMEventFactory.error());
 
-  const error = new Error("Test error");
   const trace = buffer.toTraceJSON({
     startTimestamp: "2024-01-01T00:00:00.000Z",
     endTimestamp: "2024-01-01T00:00:01.000Z",
     durationMs: 1000,
-    error,
   });
 
-  expect(trace.error?.message).toBe("Test error");
+  expect(trace.error?.message).toBe("Maximum length reached");
   expect(trace.error?.partialCompletion).toBe(true);
   expect(trace.output).toBeUndefined();
 });

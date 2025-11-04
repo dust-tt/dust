@@ -9,6 +9,7 @@ import { hash as blake3 } from "blake3";
 import crypto from "crypto";
 
 import type { LLMEvent, TokenUsageEvent } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 
 function newId(): string {
@@ -94,16 +95,15 @@ export async function* streamLLMEvents({
         yield tokenUsage(generateContentResponse.usageMetadata, metadata);
         reasoningContentParts = "";
         textContentParts = "";
-        yield {
-          type: "error",
-          content: {
+        yield new EventError(
+          {
             type: "stop_error",
             isRetryable: false,
             message: "An error occurred during completion",
             statusCode: 0,
           },
-          metadata,
-        };
+          metadata
+        );
         break;
       }
     }

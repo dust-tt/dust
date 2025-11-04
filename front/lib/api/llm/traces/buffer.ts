@@ -6,6 +6,7 @@ import type {
   ProcessedLLMEvents,
 } from "@app/lib/api/llm/traces/types";
 import type {
+  EventError,
   LLMEvent,
   TokenUsage,
   ToolCall,
@@ -37,6 +38,7 @@ export class LLMTraceBuffer {
 
   private content = "";
   private finishReason: LLMTraceOutput["finishReason"] = "unknown";
+  private endingError: EventError | undefined;
   private reasoning = "";
   private tokenUsage: TokenUsage | undefined;
   private toolCalls: ToolCall[] = [];
@@ -138,6 +140,7 @@ export class LLMTraceBuffer {
 
       case "error":
         // TODO(2025-10-31 DIRECT_LLM): Wire finishReason from LLM event if available.
+        this.endingError = event;
         this.finishReason = "error";
         break;
     }
@@ -202,12 +205,10 @@ export class LLMTraceBuffer {
   toTraceJSON({
     durationMs,
     endTimestamp,
-    error,
     startTimestamp,
   }: {
     durationMs: number;
     endTimestamp: string;
-    error: Error | null;
     startTimestamp: string;
   }): LLMTrace {
     if (!this.input) {
@@ -227,9 +228,9 @@ export class LLMTraceBuffer {
       workspaceId: this.workspaceId,
     };
 
-    if (error) {
+    if (this.endingError) {
       trace.error = {
-        message: error.message,
+        message: this.endingError.message,
         partialCompletion:
           this.content.length > 0 ||
           this.reasoning.length > 0 ||
@@ -279,11 +280,9 @@ export class LLMTraceBuffer {
   async writeToGCS({
     startTime,
     durationMs,
-    error,
   }: {
     startTime: number;
     durationMs: number;
-    error: Error | null;
   }): Promise<void> {
     const startTimestamp = new Date(startTime).toISOString();
     const endTimestamp = new Date(startTime + durationMs).toISOString();
@@ -292,7 +291,6 @@ export class LLMTraceBuffer {
       const trace = this.toTraceJSON({
         durationMs,
         endTimestamp,
-        error,
         startTimestamp,
       });
       const bucket = getLLMTracesBucket();
@@ -313,7 +311,7 @@ export class LLMTraceBuffer {
           modelId: this.input?.modelId,
           gcsPath: this.filePath,
           durationMs,
-          hasError: !!error,
+          hasError: !!this.endingError,
           bufferTruncated: this.truncated,
           capturedBytes: this.outputByteSize,
           llmTrace: true,

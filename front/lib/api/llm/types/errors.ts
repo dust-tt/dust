@@ -1,4 +1,5 @@
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { normalizeError } from "@app/types";
 
@@ -33,11 +34,7 @@ export function handleGenericError(
   error: unknown,
   metadata: LLMClientMetadata
 ): LLMEvent {
-  return {
-    type: "error",
-    content: categorizeLLMError(error, metadata),
-    metadata,
-  };
+  return new EventError(categorizeLLMError(error, metadata), metadata);
 }
 
 /**

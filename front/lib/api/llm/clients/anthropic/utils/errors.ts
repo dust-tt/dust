@@ -3,6 +3,7 @@ import { APIConnectionError } from "@anthropic-ai/sdk";
 
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { normalizeError } from "@app/types";
 
@@ -11,11 +12,7 @@ export const handleError = (
   err: APIError,
   metadata: LLMClientMetadata
 ): LLMEvent => {
-  return {
-    type: "error",
-    content: categorizeAnthropicError(err, metadata),
-    metadata,
-  };
+  return new EventError(categorizeAnthropicError(err, metadata), metadata);
 };
 
 // From BaseAnthropic.shouldRetry

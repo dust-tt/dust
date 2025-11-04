@@ -2,6 +2,7 @@ import type { ApiError } from "@google/genai";
 
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { normalizeError } from "@app/types";
 
@@ -10,11 +11,7 @@ export const handleError = (
   err: ApiError,
   metadata: LLMClientMetadata
 ): LLMEvent => {
-  return {
-    type: "error",
-    content: categorizeGenAIError(err, metadata),
-    metadata,
-  };
+  return new EventError(categorizeGenAIError(err, metadata), metadata);
 };
 
 // Yes, this is mainly duplicated between all providers. We know for sure each provider has a different error handling and http status code.
