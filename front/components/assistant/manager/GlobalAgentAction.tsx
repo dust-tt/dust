@@ -1,4 +1,12 @@
-import { Dialog, DialogContainer, DialogContent, DialogFooter, DialogHeader, DialogTitle, SliderToggle } from "@dust-tt/sparkle";
+import {
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  SliderToggle,
+} from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
