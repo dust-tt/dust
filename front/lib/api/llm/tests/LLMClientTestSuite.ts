@@ -12,6 +12,24 @@ const TIMEOUT = 60 * 1000; // 60 seconds
 
 const RUN_LLM_TESTS = process.env.VITE_RUN_LLM_TESTS === "true";
 
+/**
+ * Abstract test suite for LLM clients.
+ *
+ * Generates and runs tests for different models, configurations and conversations for a given LLM provider.
+ *
+ * These tests are disable by default as we don't want to run them on every CI run (dues to costs of LLM usage).
+ * To enable them, set the environment variable VITE_RUN_LLM_TESTS to "true".
+ * Additionally, make sure to provide the necessary API keys via environment variables.
+ *
+ * Example of running the tests with OpenAI:
+ *
+ * ```bash
+ * VITE_RUN_LLM_TESTS=true NODE_ENV=test VITE_DUST_MANAGED_OPENAI_API_KEY=$DUST_MANAGED_OPENAI_API_KEY npm run test -- __test__/openai.test.ts
+ * ```
+ *
+ * It is recommended to run these tests locally before pushing changes that affect LLM clients,
+ * for instance when adding a new model.
+ */
 export abstract class LLMClientTestSuite {
   protected abstract provider: ModelProviderIdType;
   protected abstract models: ModelIdType[];
