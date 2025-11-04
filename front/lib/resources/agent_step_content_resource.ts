@@ -201,6 +201,81 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     );
   }
 
+  /**
+   * Convenience helper to resolve a list of message sIds to their associated
+   * agent message ids and fetch their step contents (optionally latest-only).
+   * Returns an array grouped by message sId to keep call-sites free of
+   * Sequelize models.
+   */
+  static async fetchByMessageSIds(
+    auth: Authenticator,
+    {
+      messageSIds,
+      latestVersionsOnly = false,
+    }: {
+      messageSIds: string[];
+      latestVersionsOnly?: boolean;
+    }
+  ): Promise<
+    {
+      messageSId: string;
+      agentMessageId: ModelId;
+      agentConfigurationId: string;
+      stepContents: AgentStepContentResource[];
+    }[]
+  > {
+    if (!messageSIds.length) {
+      return [];
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    const messages = await Message.findAll({
+      where: {
+        workspaceId: owner.id,
+        sId: { [Op.in]: messageSIds },
+      },
+      include: [
+        {
+          model: AgentMessage,
+          as: "agentMessage",
+          required: true,
+        },
+      ],
+    });
+
+    const agentMessageIds = messages
+      .map((m) => m.agentMessage?.id)
+      .filter((id): id is ModelId => !!id);
+
+    const stepContents = await this.fetchByAgentMessages(auth, {
+      agentMessageIds,
+      latestVersionsOnly,
+    });
+
+    const stepContentsByAgentMessageId = stepContents.reduce(
+      (acc, sc) => {
+        if (!acc[sc.agentMessageId]) {
+          acc[sc.agentMessageId] = [] as AgentStepContentResource[];
+        }
+        acc[sc.agentMessageId].push(sc);
+        return acc;
+      },
+      {} as Record<ModelId, AgentStepContentResource[]>
+    );
+
+    return messages
+      .filter((m): m is typeof m & { agentMessage: NonNullable<typeof m.agentMessage> } => !!m.agentMessage)
+      .map((m) => ({
+        messageSId: m.sId,
+        agentMessageId: m.agentMessage.id,
+        agentConfigurationId: m.agentMessage.agentConfigurationId,
+        stepContents: (stepContentsByAgentMessageId[m.agentMessage.id] ?? []).sort(
+          (a, b) => a.step - b.step || a.index - b.index
+        ),
+      }));
+  }
+
   static async listFunctionCallsForAgent(
     auth: Authenticator,
     {
