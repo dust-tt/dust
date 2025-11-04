@@ -76,6 +76,9 @@ async function backfillAgentAnalytics(
         model: ConversationModel,
         as: "conversation",
         required: true,
+        where: {
+          visibility: ["unlisted", "workspace"],
+        },
       },
     ],
     order: [["createdAt", "ASC"]],
