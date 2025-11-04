@@ -4,13 +4,19 @@ import * as t from "io-ts";
 
 import { getSupportedNonImageMimeTypes } from "../../files";
 
+const AgentMentionSchema = t.type({
+  // TODO: add a type="agent" but this requires to be backwards compatible with the old API, not doing for now
+  configurationId: t.string,
+});
+const UserMentionSchema = t.type({ type: t.literal("user"), userId: t.string });
+
 export const MessageBaseSchema = t.type({
   content: t.refinement(
     t.string,
     (s): s is string => s.length > 0,
     "NonEmptyString"
   ),
-  mentions: t.array(t.type({ configurationId: t.string })),
+  mentions: t.array(t.union([AgentMentionSchema, UserMentionSchema])),
   context: t.intersection([
     t.type({
       timezone: t.string,
