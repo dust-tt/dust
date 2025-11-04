@@ -17,7 +17,7 @@ export const USAGE_METRICS_LEGEND = [
 ] as const;
 
 export const LATENCY_PALETTE = {
-  average: "text-[hsl(var(--chart-5))]",
+  average: "text-blue-400 dark:text-blue-400-night",
 } as const;
 
 export const LATENCY_LEGEND = [
