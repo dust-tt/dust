@@ -289,7 +289,7 @@ export async function storeAgentMessageFeedbackActivity(
       feedback_id: agentMessageFeedback.id,
       user_id: agentMessageFeedback.user?.sId ?? "unknown",
       thumb_direction: agentMessageFeedback.thumbDirection,
-      content: agentMessageFeedback.content ?? undefined,
+      content: undefined,
       dismissed: agentMessageFeedback.dismissed,
       is_conversation_shared: agentMessageFeedback.isConversationShared,
       created_at: agentMessageFeedback.createdAt.toISOString(),
