@@ -1,9 +1,9 @@
 import {
+  ActionFrameIcon,
   ArrowPathIcon,
   Button,
   ContextItem,
   DiscordLogo,
-  DocumentTextIcon,
   GlobeAltIcon,
   Input,
   MicIcon,
@@ -504,7 +504,7 @@ function InteractiveContentSharingToggle({ owner }: { owner: WorkspaceType }) {
     <ContextItem
       title="Public Frame sharing"
       subElement="Allow Frames to be shared publicly via links"
-      visual={<DocumentTextIcon className="h-6 w-6" />}
+      visual={<ActionFrameIcon className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={
         <SliderToggle
