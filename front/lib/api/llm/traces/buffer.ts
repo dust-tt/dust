@@ -19,7 +19,7 @@ import type {
   ReasoningEffort,
 } from "@app/types";
 
-const LLM_RUN_PREFIX = "llm_";
+const LLM_RUN_PREFIX = "llm_run_";
 
 export type LLMRunId = `${typeof LLM_RUN_PREFIX}${string}`;
 

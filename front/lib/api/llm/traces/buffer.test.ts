@@ -2,7 +2,7 @@ import { faker } from "@faker-js/faker";
 import { expect, test, vi } from "vitest";
 
 import type { LLMRunId } from "@app/lib/api/llm/traces/buffer";
-import { LLMTraceBuffer } from "@app/lib/api/llm/traces/buffer";
+import { createLLMRunId, LLMTraceBuffer } from "@app/lib/api/llm/traces/buffer";
 import type {
   TextDeltaEvent,
   TextGeneratedEvent,
@@ -65,7 +65,7 @@ class LLMEventFactory {
 // Helper to create buffer with test data
 function createTestBuffer(runId?: LLMRunId, workspaceId?: string) {
   const buffer = new LLMTraceBuffer(
-    runId ?? `llm_${faker.string.uuid()}`,
+    runId ?? createLLMRunId(`llm_run_${faker.string.uuid()}`),
     workspaceId ?? faker.string.uuid(),
     {
       operationType: "agent_conversation",
