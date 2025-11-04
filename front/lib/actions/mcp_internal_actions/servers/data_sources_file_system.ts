@@ -171,7 +171,7 @@ async function searchCallback(
   }
 
   const conflictingTags = checkConflictingTags(
-    coreSearchArgs.map(({ filter }) => filter),
+    coreSearchArgs.map(({ filter }) => filter.tags),
     { tagsIn, tagsNot }
   );
   if (conflictingTags) {

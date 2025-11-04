@@ -3,10 +3,7 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
-import type {
-  DataSourceConfiguration,
-  DataSourceFilter,
-} from "@app/lib/api/assistant/configuration/types";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 
 function hasTagAutoMode(dataSourceConfigurations: DataSourceConfiguration[]) {
   return dataSourceConfigurations.some(
@@ -45,12 +42,12 @@ export function shouldAutoGenerateTags(
  * If a tag is both included and excluded, we will not get any result.
  */
 export function checkConflictingTags(
-  dataSourceFilters: DataSourceFilter[],
+  tagsFilters: ({ in: string[] | null; not: string[] | null } | null)[],
   { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] }
 ): string | null {
-  for (const filter of dataSourceFilters) {
-    const configTagsIn = filter.tags?.in ?? [];
-    const configTagsNot = filter.tags?.not ?? [];
+  for (const tagFilter of tagsFilters) {
+    const configTagsIn = tagFilter?.in ?? [];
+    const configTagsNot = tagFilter?.not ?? [];
 
     const finalTagsIn = [...configTagsIn, ...(tagsIn ?? [])];
     const finalTagsNot = [...configTagsNot, ...(tagsNot ?? [])];

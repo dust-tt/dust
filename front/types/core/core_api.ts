@@ -163,14 +163,15 @@ export type CoreAPIQueryResult = {
   value: Record<string, string | number | boolean | null | undefined>;
 };
 
-export type CoreAPIFilter = {
-  in: string[] | null;
-  not: string[] | null;
-} | null;
-
 export type CoreAPISearchFilter = {
-  tags: CoreAPIFilter;
-  parents: CoreAPIFilter;
+  tags: {
+    in: string[] | null;
+    not: string[] | null;
+  } | null;
+  parents: {
+    in: string[] | null;
+    not: string[] | null;
+  } | null;
   timestamp: {
     gt: number | null;
     lt: number | null;

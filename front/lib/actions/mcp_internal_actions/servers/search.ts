@@ -122,7 +122,7 @@ export async function searchFunction({
   }
 
   const conflictingTagsError = checkConflictingTags(
-    coreSearchArgs.map(({ filter }) => filter),
+    coreSearchArgs.map(({ filter }) => filter.tags),
     { tagsIn, tagsNot }
   );
   if (conflictingTagsError) {

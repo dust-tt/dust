@@ -125,7 +125,7 @@ async function listToolCallback(
   }
 
   const conflictingTags = checkConflictingTags(
-    agentDataSourceConfigurations.map(({ filter }) => filter),
+    agentDataSourceConfigurations.map(({ filter }) => filter.tags),
     additionalDynamicTags
   );
   if (conflictingTags) {
