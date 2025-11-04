@@ -252,17 +252,11 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
             };
             localLogger.info(
               cardResponse,
-              "Invoke reponse: tool execution approval card refresh response"
+              "Tool execution approval card refresh response"
             );
 
-            // For Bot Framework invoke activities, send response through context
-            await context.sendActivity({
-              type: "invokeResponse",
-              value: {
-                status: 200,
-                body: cardResponse,
-              },
-            });
+            res.set("Content-Type", "application/json; charset=utf-8");
+            res.status(200).json(cardResponse);
           } else {
             localLogger.info(
               {
