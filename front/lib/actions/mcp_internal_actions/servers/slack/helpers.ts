@@ -83,6 +83,26 @@ export function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
   };
 }
 
+// Minimal user information returned to reduce context window usage.
+export type MinimalUserInfo = {
+  id: string;
+  name: string;
+  real_name: string;
+  display_name: string;
+  email?: string;
+};
+
+// Clean user payload to keep only essential fields.
+export function cleanUserPayload(user: Member): MinimalUserInfo {
+  return {
+    id: user.id ?? "",
+    name: user.name ?? "",
+    real_name: user.real_name ?? "",
+    display_name: user.profile?.display_name ?? "",
+    email: user.profile?.email,
+  };
+}
+
 export const getPublicChannels = async ({
   slackClient,
 }: GetPublicChannelsArgs): Promise<ChannelWithIdAndName[]> => {
@@ -501,7 +521,7 @@ export async function executeListUsers(
       );
 
       if (filteredUsers.length > 0) {
-        return buildFilteredListResponse<Member>(
+        return buildFilteredListResponse<Member, MinimalUserInfo>(
           users,
           nameFilter,
           (user, normalizedFilter) =>
@@ -514,14 +534,15 @@ export async function executeListUsers(
           (count, hasFilter, filterText) =>
             hasFilter
               ? `The workspace has ${count} users containing "${filterText}"`
-              : `The workspace has ${count} users`
+              : `The workspace has ${count} users`,
+          cleanUserPayload
         );
       }
     }
   } while (cursor);
 
   // No filter or no matches found after checking all pages.
-  return buildFilteredListResponse<Member>(
+  return buildFilteredListResponse<Member, MinimalUserInfo>(
     users,
     nameFilter,
     (user, normalizedFilter) =>
@@ -534,7 +555,8 @@ export async function executeListUsers(
     (count, hasFilter, filterText) =>
       hasFilter
         ? `The workspace has ${count} users containing "${filterText}"`
-        : `The workspace has ${count} users`
+        : `The workspace has ${count} users`,
+    cleanUserPayload
   );
 }
 
