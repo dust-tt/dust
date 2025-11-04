@@ -425,8 +425,6 @@ export async function launchNotionWebhookProcessingWorkflow(
       connectorId,
     },
   });
-
-  logger.info({ connectorId }, "Signaled Notion webhook processing workflow");
 }
 
 export async function getSyncWorkflow(connectorId: ModelId): Promise<{

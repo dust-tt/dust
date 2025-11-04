@@ -3533,6 +3533,6 @@ export async function processWebhookEventActivity({
       eventType: event.type,
       entityId: event.entity_id,
     },
-    "[Notion Webhook] Processing webhook event"
+    "Processing Notion webhook event"
   );
 }

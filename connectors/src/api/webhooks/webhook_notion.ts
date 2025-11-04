@@ -109,7 +109,6 @@ const _webhookNotionAPIHandler = async (
   logger.info(
     {
       connectorId: connector.id,
-      workspaceId: notionWorkspaceId,
       type: payload.type,
       entity: payload.entity?.id,
     },
@@ -120,7 +119,6 @@ const _webhookNotionAPIHandler = async (
     logger.warn(
       {
         connectorId: connector.id,
-        notionWorkspaceId,
         payload,
       },
       "Received Notion webhook event with no entity, skipping."
