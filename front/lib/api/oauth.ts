@@ -5,6 +5,7 @@ import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
 } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
+import { AshbyOAuthProvider } from "@app/lib/api/oauth/providers/ashby";
 import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence";
 import { ConfluenceToolsOAuthProvider } from "@app/lib/api/oauth/providers/confluence_tools";
 import { DiscordOAuthProvider } from "@app/lib/api/oauth/providers/discord";
@@ -49,6 +50,7 @@ export type OAuthError = {
 
 // DO NOT USE THIS DIRECTLY, USE getProviderStrategy instead.
 const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
+  ashby: new AshbyOAuthProvider(),
   confluence: new ConfluenceOAuthProvider(),
   confluence_tools: new ConfluenceToolsOAuthProvider(),
   discord: new DiscordOAuthProvider(),
