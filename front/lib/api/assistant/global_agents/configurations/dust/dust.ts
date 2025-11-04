@@ -281,9 +281,7 @@ export function _getDustGlobalAgent(
     featureFlags.includes("dust_global_data_source_file_system") &&
     dataSourcesFileSystemMCPServerView !== null;
 
-  const hasAgentMemory =
-    featureFlags.includes("dust_global_agent_memory") &&
-    agentMemoryMCPServerView !== null;
+  const hasAgentMemory = agentMemoryMCPServerView !== null;
 
   const instructions = buildInstructions({
     hasDeepDive: !!deepDiveMCPServerView,
