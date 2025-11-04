@@ -76,7 +76,7 @@ export function WebhookEditionFilters({
       try {
         const result = await generateFilter({
           naturalDescription: txt,
-          eventSchema: selectedEventSchema,
+          eventSchema: selectedEventSchema.schema,
           signal,
         });
 
