@@ -145,6 +145,30 @@ function interleaveConditionalNewlines(parts: string[]): string[] {
   return out;
 }
 
+/**
+ * Reconstructs the raw message content from agent step contents.
+ * Returns content exactly as stored, with all tags and delimiters intact.
+ */
+export function reconstructContentFromStepContents({
+  stepContents,
+}: {
+  stepContents: AgentStepContentResource[];
+}): string {
+  const textContents: TextContentType[] = [];
+
+  for (const sc of stepContents) {
+    if (sc.value.type === "text_content") {
+      textContents.push(sc.value);
+    }
+  }
+
+  const textFragments = interleaveConditionalNewlines(
+    textContents.map((c) => c.value)
+  );
+
+  return textFragments.join("");
+}
+
 async function batchRenderUserMessages(
   auth: Authenticator,
   messages: Message[]
