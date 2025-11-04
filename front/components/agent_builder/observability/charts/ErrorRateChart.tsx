@@ -43,7 +43,7 @@ function ErrorRateTooltip({
     return null;
   }
   const row = first.payload;
-  const title = typeof label === "string" ? label : String(label);
+  const title = typeof label === "number" ? String(label) : label;
   return (
     <ChartTooltipCard
       title={title}
