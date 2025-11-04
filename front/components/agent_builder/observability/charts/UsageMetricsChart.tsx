@@ -3,6 +3,7 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -239,6 +240,15 @@ export function UsageMetricsChart({
             fill="url(#fillActiveUsers)"
             stroke="currentColor"
           />
+          {versionMarkers.map((versionMarker) => (
+            <ReferenceLine
+              key={versionMarker.timestamp}
+              x={versionMarker.timestamp}
+              strokeDasharray="5 5"
+              strokeWidth={0.5}
+              stroke="#FFBE2C"
+            />
+          ))}
         </AreaChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />
