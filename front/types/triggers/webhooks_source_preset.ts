@@ -31,7 +31,7 @@ export type WebhookEvent = {
   schema: JSONSchema;
 
   // Sample event that will be shown to the model to help it generate a filter.
-  sample: Record<string, unknown>;
+  sample: Record<string, unknown> | null;
 };
 
 export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
