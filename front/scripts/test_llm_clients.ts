@@ -1,5 +1,6 @@
 import { assertNever } from "@dust-tt/sparkle";
 
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { getLLM } from "@app/lib/api/llm";
 import {
   ANTHROPIC_WHITELISTED_NON_REASONING_MODEL_IDS,
@@ -13,13 +14,14 @@ import {
   MISTRAL_GENERIC_WHITELISTED_MODEL_IDS,
   MISTRAL_WHITELISTED_MODEL_IDS_WITHOUT_IMAGE_SUPPORT,
 } from "@app/lib/api/llm/clients/mistral/types";
+import {
+  XAI_WHITELISTED_MODELS_WITHOUT_IMAGE_SUPPORT,
+  XAI_WHITELISTED_NON_REASONING_MODEL_IDS,
+  XAI_WHITELISTED_REASONING_MODEL_IDS,
+} from "@app/lib/api/llm/clients/xai/types";
+import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
-import type {
-  ResponseChecker,
-  TestConfig,
-  TestConversation,
-} from "@app/scripts/llm_router/types";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -31,6 +33,35 @@ import type {
 } from "@app/types/assistant/generation";
 
 const SYSTEM_PROMPT = "You are a helpful assistant.";
+
+type TestConfig = LLMParameters & { provider: ModelProviderIdType } & {
+  support?: {
+    imageInputs?: boolean;
+  };
+};
+
+type ResponseChecker =
+  | {
+      type: "text_contains";
+      substring: string;
+    }
+  | {
+      type: "has_tool_call";
+      toolName: string;
+      expectedArguments: string;
+    }
+  | null;
+
+interface TestConversation {
+  id: string;
+  name: string;
+  systemPrompt: string;
+  conversationActions: ModelConversationTypeMultiActions[];
+  /** Array of response checkers aligned with the conversation actions */
+  expectedInResponses: ResponseChecker[];
+  specifications?: AgentActionSpecification[];
+  skipConfig?: (config: TestConfig) => boolean;
+}
 
 /**
  * Creates a mock Authenticator for testing purposes.
@@ -46,27 +77,27 @@ function createMockAuthenticator(): Authenticator {
   });
 }
 
-// const REASONING_PARAMETER_CONFIGS: {
-//   temperature: number;
-//   reasoningEffort: ReasoningEffort;
-// }[] = [
-//   {
-//     temperature: 0.5,
-//     reasoningEffort: "none",
-//   },
-//   {
-//     temperature: 1,
-//     reasoningEffort: "light",
-//   },
-//   {
-//     temperature: 0.5,
-//     reasoningEffort: "medium",
-//   },
-//   {
-//     temperature: 1,
-//     reasoningEffort: "high",
-//   },
-// ];
+const REASONING_PARAMETER_CONFIGS: {
+  temperature: number;
+  reasoningEffort: ReasoningEffort;
+}[] = [
+  {
+    temperature: 0.5,
+    reasoningEffort: "none",
+  },
+  {
+    temperature: 1,
+    reasoningEffort: "light",
+  },
+  {
+    temperature: 0.5,
+    reasoningEffort: "medium",
+  },
+  {
+    temperature: 1,
+    reasoningEffort: "high",
+  },
+];
 
 function generateThinkingTestConfigs(
   provider: ModelProviderIdType,
@@ -79,16 +110,16 @@ function generateThinkingTestConfigs(
   }));
 }
 
-// const NON_REASONING_PARAMETER_CONFIGS: {
-//   temperature: number;
-// }[] = [
-//   {
-//     temperature: 0.5,
-//   },
-//   {
-//     temperature: 1,
-//   },
-// ];
+const NON_REASONING_PARAMETER_CONFIGS: {
+  temperature: number;
+}[] = [
+  {
+    temperature: 0.5,
+  },
+  {
+    temperature: 1,
+  },
+];
 
 function generateNotThinkingTestConfigs(
   provider: ModelProviderIdType,
@@ -124,6 +155,22 @@ const TEST_CONFIGS: TestConfig[] = [
   ),
   ...MISTRAL_WHITELISTED_MODEL_IDS_WITHOUT_IMAGE_SUPPORT.flatMap((modelId) =>
     generateNotThinkingTestConfigs("mistral", modelId)
+  ).map((config) => ({
+    ...config,
+    support: {
+      imageInputs: false,
+    },
+  })),
+
+  // xAI
+  ...XAI_WHITELISTED_NON_REASONING_MODEL_IDS.flatMap((modelId) =>
+    generateNotThinkingTestConfigs("xai", modelId)
+  ),
+  ...XAI_WHITELISTED_REASONING_MODEL_IDS.flatMap((modelId) =>
+    generateThinkingTestConfigs("xai", modelId)
+  ),
+  ...XAI_WHITELISTED_MODELS_WITHOUT_IMAGE_SUPPORT.flatMap((modelId) =>
+    generateNotThinkingTestConfigs("xai", modelId)
   ).map((config) => ({
     ...config,
     support: {
@@ -341,15 +388,11 @@ async function runTest(
 
       conversationHistory.push(...conversationAction.messages);
 
-      const eventStreamResult = llm.stream({
+      const events = llm.stream({
         conversation: { messages: conversationHistory },
         prompt: conversation.systemPrompt,
         specifications: conversation.specifications ?? [],
       });
-
-      if (eventStreamResult.isErr()) {
-        throw eventStreamResult.error;
-      }
 
       let responseFromDeltas = "";
       let fullResponse = "";
@@ -360,7 +403,7 @@ async function runTest(
       let toolCallId = 1;
 
       // Collect all events
-      for await (const event of eventStreamResult.value) {
+      for await (const event of events) {
         switch (event.type) {
           case "text_delta":
             responseFromDeltas += event.content.delta;
