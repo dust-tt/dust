@@ -567,7 +567,6 @@ export function _getDeepDiveGlobalAgent(
     modelId: modelConfig.modelConfiguration.modelId,
     temperature: 1.0,
     reasoningEffort: modelConfig.reasoningEffort,
-    promptCaching: true,
   };
 
   deepAgent.model = model;
