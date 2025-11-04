@@ -2,11 +2,13 @@ import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
+  AshbyCandidateSearchRequest,
   AshbyFeedbackSubmitRequest,
   AshbyReportSynchronousRequest,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 import {
   AshbyCandidateListResponseSchema,
+  AshbyCandidateSearchResponseSchema,
   AshbyFeedbackSubmitResponseSchema,
   AshbyReportSynchronousResponseSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
@@ -146,6 +148,14 @@ export class AshbyClient {
       "report.synchronous",
       request,
       AshbyReportSynchronousResponseSchema
+    );
+  }
+
+  async searchCandidates(request: AshbyCandidateSearchRequest) {
+    return this.postRequest(
+      "candidate.search",
+      request,
+      AshbyCandidateSearchResponseSchema
     );
   }
 }

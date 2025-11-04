@@ -20,6 +20,110 @@ function createServer(
   const server = makeInternalMCPServer("ashby");
 
   server.tool(
+    "search_candidates",
+    "Search for candidates in Ashby ATS by name and/or email. Returns up to 100 matching candidates. Use this when you need to find specific candidates.",
+    {
+      email: z
+        .string()
+        .optional()
+        .describe("Email address to search for (partial matches supported)."),
+      name: z
+        .string()
+        .optional()
+        .describe("Name to search for (partial matches supported)."),
+    },
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "ashby_search_candidates", agentLoopContext },
+      async ({ email, name }) => {
+        if (!email && !name) {
+          return new Err(
+            new MCPError(
+              "At least one search parameter (email or name) must be provided."
+            )
+          );
+        }
+
+        const apiKeyResult = await getAshbyApiKey(auth, agentLoopContext);
+        if (apiKeyResult.isErr()) {
+          return new Err(apiKeyResult.error);
+        }
+
+        const client = new AshbyClient(apiKeyResult.value);
+        const result = await client.searchCandidates({ email, name });
+
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(`Failed to search candidates: ${result.error.message}`)
+          );
+        }
+
+        const response = result.value;
+
+        if (response.results.length === 0) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: "No candidates found matching the search criteria.",
+            },
+          ]);
+        }
+
+        const candidatesText = response.results
+          .map((candidate) => {
+            const lines = [`ID: ${candidate.id}`, `Name: ${candidate.name}`];
+
+            if (candidate.primaryEmailAddress) {
+              lines.push(`Email: ${candidate.primaryEmailAddress.value}`);
+            }
+
+            if (candidate.phoneNumbers && candidate.phoneNumbers.length > 0) {
+              lines.push(
+                `Phone: ${candidate.phoneNumbers.map((p) => p.value).join(", ")}`
+              );
+            }
+
+            if (candidate.createdAt) {
+              lines.push(
+                `Created: ${new Date(candidate.createdAt).toISOString()}`
+              );
+            }
+
+            return lines.join("\n");
+          })
+          .join("\n\n---\n\n");
+
+        const searchParams = [
+          email ? `email: ${email}` : null,
+          name ? `name: ${name}` : null,
+        ]
+          .filter(Boolean)
+          .join(", ");
+
+        const resultText = `Found ${response.results.length} candidate(s) matching search (${searchParams}):\n\n${candidatesText}`;
+
+        if (response.results.length === 100) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text:
+                resultText +
+                "\n\nNote: Results are limited to 100 candidates. Consider refining your search if you need more specific results.",
+            },
+          ]);
+        }
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: resultText,
+          },
+        ]);
+      }
+    )
+  );
+
+  server.tool(
     "list_candidates",
     "List all candidates from Ashby ATS. Returns candidate information including name, email, phone, and creation date.",
     {
@@ -173,7 +277,7 @@ function createServer(
   );
 
   server.tool(
-    "create_feedback",
+    "submit_feedback",
     "Submit feedback for a candidate application in Ashby ATS. Requires applicationId, feedbackFormDefinitionId, and values object containing feedback data.",
     {
       applicationId: z
