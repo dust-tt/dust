@@ -98,11 +98,11 @@ export function AgentBuilderObservability({
                 workspaceId={owner.sId}
                 agentConfigurationId={agentConfiguration.sId}
               />
-              <LatencyChart
+              <ErrorRateChart
                 workspaceId={owner.sId}
                 agentConfigurationId={agentConfiguration.sId}
               />
-              <ErrorRateChart
+              <LatencyChart
                 workspaceId={owner.sId}
                 agentConfigurationId={agentConfiguration.sId}
               />
