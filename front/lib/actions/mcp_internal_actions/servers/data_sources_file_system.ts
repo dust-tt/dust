@@ -32,42 +32,39 @@ function createServer(
 ): McpServer {
   const server = makeInternalMCPServer("data_sources_file_system");
 
-  registerCatTool(auth, server, agentLoopContext, {
-    name: FILESYSTEM_CAT_TOOL_NAME,
-  });
-
-  server.tool(
-    FILESYSTEM_FIND_TOOL_NAME,
-    "Find content based on their title starting from a specific node. Can be used to find specific " +
-      "nodes by searching for their titles. The query title can be omitted to list all nodes " +
-      "starting from a specific node. This is like using 'find' in Unix.",
-    DataSourceFilesystemFindInputSchema.shape,
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
-        agentLoopContext,
-        enableAlerting: true,
-      },
-      async (params) => findCallback(auth, params)
-    )
-  );
-
   // Check if tags are dynamic before creating the search tool.
   const areTagsDynamic = agentLoopContext
     ? shouldAutoGenerateTags(agentLoopContext)
     : false;
+
+  registerCatTool(auth, server, agentLoopContext, {
+    name: FILESYSTEM_CAT_TOOL_NAME,
+  });
 
   registerListTool(auth, server, agentLoopContext, {
     name: FILESYSTEM_LIST_TOOL_NAME,
     areTagsDynamic,
   });
 
+  const searchToolDescription =
+    "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
+    "children of the designated nodes will be searched.";
+
+  const findToolDescription =
+    "Find content based on their title starting from a specific node. Can be used to find specific " +
+    "nodes by searching for their titles. The query title can be omitted to list all nodes " +
+    "starting from a specific node. This is like using 'find' in Unix.";
+
+  const locateInTreeToolDescription =
+    "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
+    "This is useful for understanding where a specific node is located within the data source structure. " +
+    "The path is returned as a list of nodes, with the first node being the data source root and " +
+    "the last node being the target node.";
+
   if (!areTagsDynamic) {
     server.tool(
       SEARCH_TOOL_NAME,
-      "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
-        "children of the designated nodes will be searched.",
+      searchToolDescription,
       SearchWithNodesInputSchema.shape,
       withToolLogging(
         auth,
@@ -79,6 +76,36 @@ function createServer(
         async (params) => searchCallback(auth, agentLoopContext, params)
       )
     );
+
+    server.tool(
+      FILESYSTEM_FIND_TOOL_NAME,
+      findToolDescription,
+      DataSourceFilesystemFindInputSchema.shape,
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) => findCallback(auth, params)
+      )
+    );
+
+    server.tool(
+      FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+      locateInTreeToolDescription,
+      DataSourceFilesystemLocateTreeInputSchema.shape,
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) => locateTreeCallback(auth, params)
+      )
+    );
   } else {
     // If tags are dynamic, then we add a tool for the agent to discover tags and let it pass tags
     // in the search tool.
@@ -88,8 +115,7 @@ function createServer(
 
     server.tool(
       SEARCH_TOOL_NAME,
-      "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
-        "children of the designated nodes will be searched.",
+      searchToolDescription,
       {
         ...SearchWithNodesInputSchema.shape,
         ...TagsInputSchema.shape,
@@ -108,25 +134,51 @@ function createServer(
           })
       )
     );
-  }
 
-  server.tool(
-    FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
-    "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
-      "This is useful for understanding where a specific node is located within the data source structure. " +
-      "The path is returned as a list of nodes, with the first node being the data source root and " +
-      "the last node being the target node.",
-    DataSourceFilesystemLocateTreeInputSchema.shape,
-    withToolLogging(
-      auth,
+    server.tool(
+      FILESYSTEM_FIND_TOOL_NAME,
+      findToolDescription,
       {
-        toolNameForMonitoring: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
-        agentLoopContext,
-        enableAlerting: true,
+        ...DataSourceFilesystemFindInputSchema.shape,
+        ...TagsInputSchema.shape,
       },
-      async (params) => locateTreeCallback(auth, params)
-    )
-  );
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) =>
+          findCallback(auth, params, {
+            tagsIn: params.tagsIn,
+            tagsNot: params.tagsNot,
+          })
+      )
+    );
+
+    server.tool(
+      FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+      locateInTreeToolDescription,
+      {
+        ...DataSourceFilesystemLocateTreeInputSchema.shape,
+        ...TagsInputSchema.shape,
+      },
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) =>
+          locateTreeCallback(auth, params, {
+            tagsIn: params.tagsIn,
+            tagsNot: params.tagsNot,
+          })
+      )
+    );
+  }
 
   return server;
 }
