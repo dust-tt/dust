@@ -46,6 +46,19 @@ function isValidGeminiInlineDataPart(
   return GeminiInlineDataPartSchema.safeParse(part).success;
 }
 
+const OpenAIImageWithDataSchema = z.object({
+  b64_json: z.string(),
+});
+
+type OpenAIImageWithData = z.infer<typeof OpenAIImageWithDataSchema>;
+
+// Type guard to validate OpenAI images with data.
+function isValidOpenAIImageWithData(
+  image: unknown
+): image is OpenAIImageWithData {
+  return OpenAIImageWithDataSchema.safeParse(image).success;
+}
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -264,8 +277,7 @@ function createServer(
             }
 
             const imagesWithData = result.data.filter(
-              (r): r is typeof r & { b64_json: string } =>
-                r.b64_json !== undefined && r.b64_json !== null
+              isValidOpenAIImageWithData
             );
 
             if (imagesWithData.length === 0) {

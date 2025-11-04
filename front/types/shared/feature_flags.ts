@@ -57,7 +57,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   gemini_image_generation: {
     description:
       "Use Gemini 2.5 Flash Image instead of OpenAI for image generation",
-    stage: "dust_only",
+    stage: "rolling_out",
   },
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
