@@ -156,7 +156,6 @@ async function handler(
 
   if (result.isErr()) {
     statsDClient.increment("webhook_error.count", 1, [
-      `error_type:${result.error.code}`,
       `provider:${provider}`,
       `workspace_id:${workspace.sId}`,
     ]);
