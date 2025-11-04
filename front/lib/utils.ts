@@ -279,8 +279,12 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
 
   // Favor exact match
   if (a.length !== b.length) {
-    if (a === query) return -1;
-    if (b === query) return 1;
+    if (a === query) {
+      return -1;
+    }
+    if (b === query) {
+      return 1;
+    }
   }
 
   return 0;
