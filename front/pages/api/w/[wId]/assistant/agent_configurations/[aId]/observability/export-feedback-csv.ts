@@ -9,6 +9,7 @@ import {
 } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -178,7 +179,21 @@ async function handler(
       useCase: "conversation",
     });
 
-    await file.uploadContent(auth, csvContent);
+    // Use processAndStoreFile to create both original and processed versions
+    const uploadResult = await processAndStoreFile(auth, {
+      file,
+      content: { type: "string", value: csvContent },
+    });
+
+    if (uploadResult.isErr()) {
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: `Failed to upload file: ${uploadResult.error.message}`,
+        },
+      });
+    }
 
     // Return only the file ID
     res.status(200).json({ fileId: file.sId, filename });

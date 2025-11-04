@@ -140,13 +140,22 @@ async function handler(
     });
   }
 
-  await processWebhookRequest(auth, {
+  const result = await processWebhookRequest(auth, {
     webhookSource: webhookSource.toJSONForAdmin(),
     headers,
     body,
   });
 
-  // Always return success as the processing will be done in the background
+  if (result.isErr()) {
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "webhook_processing_error",
+        message: result.error.message,
+      },
+    });
+  }
+
   return res.status(200).json({ success: true });
 }
 

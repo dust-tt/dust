@@ -99,11 +99,12 @@ function toToolCallOutputItem(
 
 export function toInput(
   prompt: string,
-  conversation: ModelConversationTypeMultiActions
+  conversation: ModelConversationTypeMultiActions,
+  promptRole: "system" | "developer" = "developer"
 ): ResponseInput {
   const inputs: ResponseInput = [];
   inputs.push({
-    role: "developer",
+    role: promptRole,
     content: [{ type: "input_text", text: prompt }],
   });
 
