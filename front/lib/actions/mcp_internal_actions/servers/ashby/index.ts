@@ -1,12 +1,24 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { toCsv } from "@app/lib/api/csv";
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type {
+  AshbyCandidateListResponse,
+  AshbyFeedbackSubmitRequest,
+  AshbyFeedbackSubmitResponse,
+  AshbyReportSynchronousRequest,
+  AshbyReportSynchronousResponse,
+} from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
+import {
+  AshbyCandidateListResponseSchema,
+  AshbyFeedbackSubmitResponseSchema,
+  AshbyReportSynchronousResponseSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { toCsv } from "@app/lib/api/csv";
 import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
@@ -14,88 +26,6 @@ import type { Result } from "@app/types";
 import { decrypt, Err, normalizeError, Ok } from "@app/types";
 
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
-
-const AshbyCandidateSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  primaryEmailAddress: z
-    .object({
-      value: z.string(),
-      type: z.string(),
-    })
-    .optional(),
-  phoneNumbers: z
-    .array(
-      z.object({
-        value: z.string(),
-        type: z.string(),
-      })
-    )
-    .optional(),
-  socialLinks: z
-    .array(
-      z.object({
-        value: z.string(),
-        type: z.string(),
-      })
-    )
-    .optional(),
-  createdAt: z.string(),
-});
-
-type AshbyCandidate = z.infer<typeof AshbyCandidateSchema>;
-
-const AshbyCandidateListResponseSchema = z.object({
-  results: z.array(AshbyCandidateSchema),
-  nextCursor: z.string().optional(),
-});
-
-type AshbyCandidateListResponse = z.infer<
-  typeof AshbyCandidateListResponseSchema
->;
-
-const AshbyFeedbackSubmitRequestSchema = z.object({
-  applicationId: z.string().uuid(),
-  feedbackFormDefinitionId: z.string().uuid(),
-  values: z.record(z.unknown()),
-  userId: z.string().uuid().optional(),
-  interviewEventId: z.string().uuid().optional(),
-  authorId: z.string().uuid().optional(),
-});
-
-type AshbyFeedbackSubmitRequest = z.infer<
-  typeof AshbyFeedbackSubmitRequestSchema
->;
-
-const AshbyFeedbackSubmitResponseSchema = z.object({
-  submittedValues: z.record(z.unknown()),
-});
-
-type AshbyFeedbackSubmitResponse = z.infer<
-  typeof AshbyFeedbackSubmitResponseSchema
->;
-
-const AshbyReportSynchronousRequestSchema = z.object({
-  reportId: z.string().uuid(),
-});
-
-type AshbyReportSynchronousRequest = z.infer<
-  typeof AshbyReportSynchronousRequestSchema
->;
-
-const AshbyReportSynchronousResponseSchema = z.object({
-  data: z.array(z.record(z.unknown())),
-  fields: z.array(
-    z.object({
-      name: z.string(),
-      type: z.string(),
-    })
-  ),
-});
-
-type AshbyReportSynchronousResponse = z.infer<
-  typeof AshbyReportSynchronousResponseSchema
->;
 
 async function getAshbyApiKey(
   auth: Authenticator,
@@ -268,17 +198,14 @@ class AshbyClient {
   async getReportData(
     request: AshbyReportSynchronousRequest
   ): Promise<Result<AshbyReportSynchronousResponse, Error>> {
-    const response = await fetch(
-      `${ASHBY_API_BASE_URL}/report.synchronous`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: this.getAuthHeader(),
-        },
-        body: JSON.stringify(request),
-      }
-    );
+    const response = await fetch(`${ASHBY_API_BASE_URL}/report.synchronous`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: this.getAuthHeader(),
+      },
+      body: JSON.stringify(request),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -450,9 +377,7 @@ function createServer(
           for (const fieldName of fieldNames) {
             const value = row[fieldName];
             csvRow[fieldName] =
-              value === null || value === undefined
-                ? ""
-                : String(value);
+              value === null || value === undefined ? "" : String(value);
           }
           return csvRow;
         });
