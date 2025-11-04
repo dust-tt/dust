@@ -30,10 +30,11 @@ function isErrorRateData(data: unknown): data is ErrorRateData {
   return typeof data === "object" && data !== null && "errorRate" in data;
 }
 
-function ErrorRateTooltip(
-  props: TooltipContentProps<number, string>
-): JSX.Element | null {
-  const { active, payload, label } = props;
+function ErrorRateTooltip({
+  active,
+  payload,
+  label,
+}: TooltipContentProps<number, string>): JSX.Element | null {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -65,13 +66,15 @@ function ErrorRateTooltip(
   );
 }
 
+interface ErrorRateChartProps {
+  workspaceId: string;
+  agentConfigurationId: string;
+}
+
 export function ErrorRateChart({
   workspaceId,
   agentConfigurationId,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-}) {
+}: ErrorRateChartProps) {
   const { period } = useObservability();
   const {
     errorRate: data,
