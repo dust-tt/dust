@@ -36,13 +36,12 @@ export const VERSION_MARKER_STYLE = {
   labelOffsetIncrement: 15,
 } as const;
 
-// TODO: find a way to display more tools
 export const TOOL_COLORS = [
-  "text-[hsl(var(--chart-1))]",
-  "text-[hsl(var(--chart-2))]",
-  "text-[hsl(var(--chart-3))]",
-  "text-[hsl(var(--chart-4))]",
-  "text-[hsl(var(--chart-5))]",
+  "text-orange-300 dark:text-orange-300-night",
+  "text-golden-200 dark:text-golden-200-night",
+  "text-rose-200 dark:text-rose-200-night",
+  "text-violet-300 dark:text-violet-300-night",
+  "text-rose-300 dark:text-rose-300-night",
 ] as const;
 
 export const MAX_TOOLS_DISPLAYED = 5;
