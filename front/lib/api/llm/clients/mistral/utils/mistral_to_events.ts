@@ -88,7 +88,6 @@ export async function* streamLLMEvents({
             type: "maximum_length",
             isRetryable: false,
             message: "Maximum length reached",
-            statusCode: 0,
           },
           metadata
         );
@@ -103,7 +102,6 @@ export async function* streamLLMEvents({
             type: "stop_error",
             isRetryable: false,
             message: "An error occurred during completion",
-            statusCode: 0,
           },
           metadata
         );

@@ -46,7 +46,6 @@ describe("handleError (Mistral)", () => {
     const event = handleError(err, metadata) as EventError;
     expect(event.type).toBe("error");
     expect(event.metadata).toEqual(metadata);
-    expect(event.content.statusCode).toBe(429);
     expect(event.content.message.toLowerCase()).toContain("rate limit");
     expect(event.content.message.toLowerCase()).toContain("mistral");
   });
@@ -70,7 +69,6 @@ describe("handleError (Mistral)", () => {
       { response: res, request: req, body: "{}" }
     );
     const event = handleError(err, metadata) as EventError;
-    expect(event.content.statusCode).toBe(400);
     expect(event.content.message.toLowerCase()).toContain("invalid request");
   });
 
@@ -86,7 +84,6 @@ describe("handleError (Mistral)", () => {
       body: awaitBody(res),
     });
     const event = handleError(err, metadata) as EventError;
-    expect(event.content.statusCode).toBe(401);
     expect(event.content.message.toLowerCase()).toContain("authentication");
   });
 
@@ -102,7 +99,6 @@ describe("handleError (Mistral)", () => {
       body: awaitBody(res),
     });
     const event = handleError(err, metadata) as EventError;
-    expect(event.content.statusCode).toBe(403);
     expect(event.content.message.toLowerCase()).toContain("permission");
   });
 
@@ -118,7 +114,6 @@ describe("handleError (Mistral)", () => {
       body: awaitBody(res),
     });
     const event = handleError(err, metadata) as EventError;
-    expect(event.content.statusCode).toBe(404);
     expect(event.content.message.toLowerCase()).toContain("not found");
   });
 
@@ -134,7 +129,6 @@ describe("handleError (Mistral)", () => {
       body: awaitBody(res),
     });
     const event = handleError(err, metadata) as EventError;
-    expect(event.content.statusCode).toBe(500);
     expect(event.content.message.toLowerCase()).toContain("server error");
   });
 
@@ -157,7 +151,6 @@ describe("handleError (Mistral)", () => {
       { response: res, request: req, body: "{}" }
     );
     const event = handleError(err, metadata) as EventError;
-    expect(event.content.statusCode).toBe(400);
     expect(event.content.message.toLowerCase()).toContain("context");
   });
 });

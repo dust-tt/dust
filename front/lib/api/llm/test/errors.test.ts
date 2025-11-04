@@ -21,15 +21,10 @@ function makeErrorLikeWithStatus(message: string, status: number) {
 
 function expectCommon(
   info: ReturnType<typeof categorizeLLMError>,
-  {
-    type,
-    isRetryable,
-    statusCode,
-  }: { type: string; isRetryable: boolean; statusCode: number }
+  { type, isRetryable }: { type: string; isRetryable: boolean }
 ) {
   expect(info.type).toBe(type);
   expect(info.isRetryable).toBe(isRetryable);
-  expect(info.statusCode).toBe(statusCode);
   // Message should include client id.
   expect(info.message).toContain(String(metadata.clientId));
 }
@@ -43,7 +38,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "rate_limit_error",
       isRetryable: true,
-      statusCode: 429,
     });
     expect(info.message.toLowerCase()).toContain("rate limit");
   });
@@ -56,7 +50,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "rate_limit_error",
       isRetryable: true,
-      statusCode: 429,
     });
   });
 
@@ -68,7 +61,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "overloaded_error",
       isRetryable: true,
-      statusCode: 503,
     });
     expect(info.message.toLowerCase()).toContain("overloaded");
   });
@@ -81,7 +73,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "overloaded_error",
       isRetryable: true,
-      statusCode: 503,
     });
   });
 
@@ -93,7 +84,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "context_length_exceeded",
       isRetryable: false,
-      statusCode: 400,
     });
   });
 
@@ -105,7 +95,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "authentication_error",
       isRetryable: false,
-      statusCode: 401,
     });
   });
 
@@ -117,7 +106,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "authentication_error",
       isRetryable: false,
-      statusCode: 401,
     });
   });
 
@@ -129,7 +117,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "permission_error",
       isRetryable: false,
-      statusCode: 403,
     });
   });
 
@@ -141,7 +128,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "permission_error",
       isRetryable: false,
-      statusCode: 403,
     });
   });
 
@@ -153,7 +139,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "not_found_error",
       isRetryable: false,
-      statusCode: 404,
     });
   });
 
@@ -162,7 +147,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "not_found_error",
       isRetryable: false,
-      statusCode: 404,
     });
   });
 
@@ -174,7 +158,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "invalid_request_error",
       isRetryable: false,
-      statusCode: 400,
     });
   });
 
@@ -186,7 +169,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "invalid_request_error",
       isRetryable: false,
-      statusCode: 400,
     });
   });
 
@@ -195,7 +177,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "network_error",
       isRetryable: true,
-      statusCode: 500,
     });
   });
 
@@ -204,7 +185,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "timeout_error",
       isRetryable: true,
-      statusCode: 500,
     });
   });
 
@@ -213,7 +193,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "stream_error",
       isRetryable: true,
-      statusCode: 500,
     });
   });
 
@@ -225,7 +204,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "server_error",
       isRetryable: true,
-      statusCode: 500,
     });
   });
 
@@ -237,7 +215,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "server_error",
       isRetryable: true,
-      statusCode: 500,
     });
   });
 
@@ -249,7 +226,6 @@ describe("categorizeLLMError", () => {
     expectCommon(info, {
       type: "unknown_error",
       isRetryable: false,
-      statusCode: 500,
     });
   });
 });
