@@ -6,6 +6,7 @@ import {
   AshbyClient,
   getAshbyApiKey,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/client";
+import { renderCandidateList } from "@app/lib/actions/mcp_internal_actions/servers/ashby/rendering";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -69,30 +70,7 @@ function createServer(
           ]);
         }
 
-        const candidatesText = response.results
-          .map((candidate) => {
-            const lines = [`ID: ${candidate.id}`, `Name: ${candidate.name}`];
-
-            if (candidate.primaryEmailAddress) {
-              lines.push(`Email: ${candidate.primaryEmailAddress.value}`);
-            }
-
-            if (candidate.phoneNumbers && candidate.phoneNumbers.length > 0) {
-              lines.push(
-                `Phone: ${candidate.phoneNumbers.map((p) => p.value).join(", ")}`
-              );
-            }
-
-            if (candidate.createdAt) {
-              lines.push(
-                `Created: ${new Date(candidate.createdAt).toISOString()}`
-              );
-            }
-
-            return lines.join("\n");
-          })
-          .join("\n\n---\n\n");
-
+        const candidatesText = renderCandidateList(response.results);
         const searchParams = [
           email ? `email: ${email}` : null,
           name ? `name: ${name}` : null,
@@ -161,30 +139,7 @@ function createServer(
         }
 
         const response = result.value;
-        const candidatesText = response.results
-          .map((candidate) => {
-            const lines = [`ID: ${candidate.id}`, `Name: ${candidate.name}`];
-
-            if (candidate.primaryEmailAddress) {
-              lines.push(`Email: ${candidate.primaryEmailAddress.value}`);
-            }
-
-            if (candidate.phoneNumbers && candidate.phoneNumbers.length > 0) {
-              lines.push(
-                `Phone: ${candidate.phoneNumbers.map((p) => p.value).join(", ")}`
-              );
-            }
-
-            if (candidate.createdAt) {
-              lines.push(
-                `Created: ${new Date(candidate.createdAt).toISOString()}`
-              );
-            }
-
-            return lines.join("\n");
-          })
-          .join("\n\n---\n\n");
-
+        const candidatesText = renderCandidateList(response.results);
         let resultText = `Found ${response.results.length} candidate(s):\n\n${candidatesText}`;
 
         if (response.nextCursor) {
