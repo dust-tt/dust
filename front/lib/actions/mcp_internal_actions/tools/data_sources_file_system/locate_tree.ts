@@ -7,6 +7,7 @@ import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
 } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
+import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
@@ -20,7 +21,8 @@ import { CoreAPI, DATA_SOURCE_NODE_ID, Err, Ok, removeNulls } from "@app/types";
 
 export async function locateTreeCallback(
   auth: Authenticator,
-  { nodeId, dataSources }: DataSourceFilesystemLocateTreeInputType
+  { nodeId, dataSources }: DataSourceFilesystemLocateTreeInputType,
+  { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] } = {}
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const fetchResult = await getAgentDataSourceConfigurations(auth, dataSources);
@@ -29,6 +31,14 @@ export async function locateTreeCallback(
     return new Err(new MCPError(fetchResult.error.message));
   }
   const agentDataSourceConfigurations = fetchResult.value;
+
+  const conflictingTags = checkConflictingTags(
+    agentDataSourceConfigurations.map(({ filter }) => filter.tags),
+    { tagsIn, tagsNot }
+  );
+  if (conflictingTags) {
+    return new Err(new MCPError(conflictingTags, { tracked: false }));
+  }
 
   if (isDataSourceNodeId(nodeId)) {
     const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
@@ -76,7 +86,8 @@ export async function locateTreeCallback(
     filter: {
       node_ids: [nodeId],
       data_source_views: makeCoreSearchNodesFilters(
-        agentDataSourceConfigurations
+        agentDataSourceConfigurations,
+        { tagsIn, tagsNot }
       ),
     },
   });
@@ -103,7 +114,8 @@ export async function locateTreeCallback(
       filter: {
         node_ids: parentNodeIds,
         data_source_views: makeCoreSearchNodesFilters(
-          agentDataSourceConfigurations
+          agentDataSourceConfigurations,
+          { tagsIn, tagsNot }
         ),
       },
     });

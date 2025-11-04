@@ -236,7 +236,8 @@ export async function searchCallback(
       filter: {
         node_ids: searchNodeIds,
         data_source_views: makeCoreSearchNodesFilters(
-          agentDataSourceConfigurations
+          agentDataSourceConfigurations,
+          { tagsIn, tagsNot }
         ),
       },
       options: {

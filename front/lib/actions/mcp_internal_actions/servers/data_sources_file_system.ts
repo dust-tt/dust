@@ -36,23 +36,6 @@ function createServer(
     name: FILESYSTEM_CAT_TOOL_NAME,
   });
 
-  server.tool(
-    FILESYSTEM_FIND_TOOL_NAME,
-    "Find content based on their title starting from a specific node. Can be used to find specific " +
-      "nodes by searching for their titles. The query title can be omitted to list all nodes " +
-      "starting from a specific node. This is like using 'find' in Unix.",
-    DataSourceFilesystemFindInputSchema.shape,
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
-        agentLoopContext,
-        enableAlerting: true,
-      },
-      async (params) => findCallback(auth, params)
-    )
-  );
-
   // Check if tags are dynamic before creating the search tool.
   const areTagsDynamic = agentLoopContext
     ? shouldAutoGenerateTags(agentLoopContext)
@@ -77,6 +60,41 @@ function createServer(
           enableAlerting: true,
         },
         async (params) => searchCallback(auth, agentLoopContext, params)
+      )
+    );
+
+    server.tool(
+      FILESYSTEM_FIND_TOOL_NAME,
+      "Find content based on their title starting from a specific node. Can be used to find specific " +
+        "nodes by searching for their titles. The query title can be omitted to list all nodes " +
+        "starting from a specific node. This is like using 'find' in Unix.",
+      DataSourceFilesystemFindInputSchema.shape,
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) => findCallback(auth, params)
+      )
+    );
+
+    server.tool(
+      FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+      "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
+        "This is useful for understanding where a specific node is located within the data source structure. " +
+        "The path is returned as a list of nodes, with the first node being the data source root and " +
+        "the last node being the target node.",
+      DataSourceFilesystemLocateTreeInputSchema.shape,
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) => locateTreeCallback(auth, params)
       )
     );
   } else {
@@ -108,25 +126,56 @@ function createServer(
           })
       )
     );
-  }
 
-  server.tool(
-    FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
-    "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
-      "This is useful for understanding where a specific node is located within the data source structure. " +
-      "The path is returned as a list of nodes, with the first node being the data source root and " +
-      "the last node being the target node.",
-    DataSourceFilesystemLocateTreeInputSchema.shape,
-    withToolLogging(
-      auth,
+    server.tool(
+      FILESYSTEM_FIND_TOOL_NAME,
+      "Find content based on their title starting from a specific node. Can be used to find specific " +
+        "nodes by searching for their titles. The query title can be omitted to list all nodes " +
+        "starting from a specific node. This is like using 'find' in Unix.",
       {
-        toolNameForMonitoring: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
-        agentLoopContext,
-        enableAlerting: true,
+        ...DataSourceFilesystemFindInputSchema.shape,
+        ...TagsInputSchema.shape,
       },
-      async (params) => locateTreeCallback(auth, params)
-    )
-  );
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) =>
+          findCallback(auth, params, {
+            tagsIn: params.tagsIn,
+            tagsNot: params.tagsNot,
+          })
+      )
+    );
+
+    server.tool(
+      FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+      "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
+        "This is useful for understanding where a specific node is located within the data source structure. " +
+        "The path is returned as a list of nodes, with the first node being the data source root and " +
+        "the last node being the target node.",
+      {
+        ...DataSourceFilesystemLocateTreeInputSchema.shape,
+        ...TagsInputSchema.shape,
+      },
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) =>
+          locateTreeCallback(auth, params, {
+            tagsIn: params.tagsIn,
+            tagsNot: params.tagsNot,
+          })
+      )
+    );
+  }
 
   return server;
 }
