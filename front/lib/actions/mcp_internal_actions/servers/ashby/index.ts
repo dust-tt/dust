@@ -102,61 +102,6 @@ function createServer(
   );
 
   server.tool(
-    "list_candidates",
-    "List all candidates from Ashby ATS. Returns candidate information including name, email, phone, and creation date.",
-    {
-      cursor: z
-        .string()
-        .optional()
-        .describe(
-          "Pagination cursor from a previous response to get the next page of results."
-        ),
-      limit: z
-        .number()
-        .min(1)
-        .max(250)
-        .optional()
-        .describe(
-          "Maximum number of candidates to return (default: 100, max: 250)."
-        ),
-    },
-    withToolLogging(
-      auth,
-      { toolNameForMonitoring: "ashby_list_candidates", agentLoopContext },
-      async ({ cursor, limit }) => {
-        const apiKeyResult = await getAshbyApiKey(auth, agentLoopContext);
-        if (apiKeyResult.isErr()) {
-          return new Err(apiKeyResult.error);
-        }
-
-        const client = new AshbyClient(apiKeyResult.value);
-        const result = await client.listCandidates({ cursor, limit });
-
-        if (result.isErr()) {
-          return new Err(
-            new MCPError(`Failed to list candidates: ${result.error.message}`)
-          );
-        }
-
-        const response = result.value;
-        const candidatesText = renderCandidateList(response.results);
-        let resultText = `Found ${response.results.length} candidate(s):\n\n${candidatesText}`;
-
-        if (response.nextCursor) {
-          resultText += `\n\nMore results available. Use cursor: ${response.nextCursor}`;
-        }
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: resultText,
-          },
-        ]);
-      }
-    )
-  );
-
-  server.tool(
     "get_report_data",
     "Retrieve report data from Ashby ATS synchronously and save as a CSV file. Maximum 30 second timeout. For longer-running reports, consider using smaller date ranges or filters.",
     {
