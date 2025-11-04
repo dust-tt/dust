@@ -1,8 +1,13 @@
 import { DEFAULT_AGENT_ROUTER_ACTION_NAME } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
-import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import {
+  autoInternalMCPServerNameToSId,
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { DEEP_DIVE_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import {
@@ -140,11 +145,29 @@ Tables are identified by ids in the format 'table-<dataSourceId>-<nodeId>'.
 The dataSourceId can typically be found by exploring the warehouse, each warehouse is identified by an id in the format 'warehouse-<dataSourceId>'.
 </data_warehouses_guidelines>`,
 
-  toolsets: `<toolsets_guidelines>
+  toolsets: (availableToolsets: MCPServerViewResource[]) => {
+    const toolsetsList = availableToolsets
+      .map((toolset) => {
+        const mcpServerView = toolset.toJSON();
+        const name = getMcpServerViewDisplayName(mcpServerView);
+        const description = getMcpServerViewDescription(mcpServerView);
+        return `- **${name}**: ${description}`;
+      })
+      .join("\n");
+
+    return `<toolsets_guidelines>
 The "toolsets" tools allow listing and enabling additional tools.
-At the start of each conversation or when encountering any request that might benefit from specialized tools, use \`toolsets__list\` to discover available toolsets.
-Enable relevant toolsets before attempting to fulfill the request. Never assume or reply that you cannot do something before checking the toolsets available.
-</toolsets_guidelines>`,
+
+<available_toolsets>
+${toolsetsList.length > 0 ? toolsetsList : "No additional toolsets are currently available."}
+</available_toolsets>
+
+When encountering any request that might benefit from specialized tools, review the available toolsets above.
+Enable relevant toolsets using \`toolsets__enable\` before attempting to fulfill the request.
+The \`toolsets__list\` tool can be used if you need to refresh the list of available toolsets during the conversation.
+Never assume or reply that you cannot do something before checking if there's a relevant toolset available.
+</toolsets_guidelines>`;
+  },
 
   memory: (memories: AgentMemoryResource[]) => {
     const memoryList = memories.length
@@ -216,13 +239,17 @@ function buildInstructions({
   hasFilesystemTools,
   hasDataWarehouses,
   hasAgentMemory,
+  hasToolsets,
   memories,
+  availableToolsets,
 }: {
   hasDeepDive: boolean;
   hasFilesystemTools: boolean;
   hasDataWarehouses: boolean;
   hasAgentMemory: boolean;
+  hasToolsets: boolean;
   memories: AgentMemoryResource[];
+  availableToolsets: MCPServerViewResource[];
 }): string {
   const parts: string[] = [
     INSTRUCTION_SECTIONS.primary,
@@ -231,7 +258,7 @@ function buildInstructions({
       : INSTRUCTION_SECTIONS.simpleRequests,
     hasFilesystemTools && INSTRUCTION_SECTIONS.companyData,
     hasDataWarehouses && INSTRUCTION_SECTIONS.warehouses,
-    INSTRUCTION_SECTIONS.toolsets,
+    hasToolsets && INSTRUCTION_SECTIONS.toolsets(availableToolsets),
     hasAgentMemory && INSTRUCTION_SECTIONS.memory(memories),
   ].filter((part): part is string => typeof part === "string");
 
@@ -254,6 +281,7 @@ export function _getDustGlobalAgent(
 
     agentMemoryMCPServerView,
     memories,
+    availableToolsets,
     featureFlags,
   }: {
     settings: GlobalAgentSettings | null;
@@ -268,6 +296,7 @@ export function _getDustGlobalAgent(
     dataWarehousesMCPServerView: MCPServerViewResource | null;
     agentMemoryMCPServerView: MCPServerViewResource | null;
     memories: AgentMemoryResource[];
+    availableToolsets: MCPServerViewResource[];
     featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
@@ -303,6 +332,17 @@ export function _getDustGlobalAgent(
     dataSourcesFileSystemMCPServerView !== null;
 
   const hasAgentMemory = agentMemoryMCPServerView !== null;
+  const hasToolsets = toolsetsMCPServerView !== null;
+
+  // Filter available toolsets (similar to toolsets>list logic).
+  // Only include tools with no requirements and that are not auto-hidden.
+  const filteredAvailableToolsets = availableToolsets.filter((toolset) => {
+    const mcpServerView = toolset.toJSON();
+    return (
+      getMCPServerRequirements(mcpServerView).noRequirement &&
+      mcpServerView.server.availability !== "auto_hidden_builder"
+    );
+  });
 
   const dataWarehousesAction = getCompanyDataWarehousesAction(
     preFetchedDataSources,
@@ -314,6 +354,8 @@ export function _getDustGlobalAgent(
     hasFilesystemTools,
     hasDataWarehouses: !!dataWarehousesAction,
     hasAgentMemory,
+    hasToolsets,
+    availableToolsets: filteredAvailableToolsets,
     memories,
   });
 
