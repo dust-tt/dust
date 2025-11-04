@@ -1,6 +1,7 @@
 import {
   BarChartIcon,
   Button,
+  ListCheckIcon,
   MagicIcon,
   ScrollArea,
   SidebarRightCloseIcon,
@@ -64,20 +65,20 @@ function PanelHeader({
                   icon={TestTubeIcon}
                   onClick={() => onTabChange("testing")}
                 />
-                <TabsTrigger
-                  value="performance"
-                  label="Performance"
-                  icon={BarChartIcon}
-                  onClick={() => onTabChange("performance")}
-                />
                 {showObservability && (
                   <TabsTrigger
                     value="observability"
-                    label="Observability"
-                    icon={ActivityIcon}
+                    label="Insights"
+                    icon={BarChartIcon}
                     onClick={() => onTabChange("observability")}
                   />
                 )}
+                <TabsTrigger
+                  value="performance"
+                  label="Performance"
+                  icon={ListCheckIcon}
+                  onClick={() => onTabChange("performance")}
+                />
                 {hasTemplate && (
                   <TabsTrigger
                     value="template"
@@ -137,7 +138,7 @@ function CollapsedTabs({
           icon={ActivityIcon}
           variant="ghost"
           size="sm"
-          tooltip="Observability"
+          tooltip="Insights"
           onClick={() => onTabSelect("observability")}
         />
       )}
@@ -178,16 +179,16 @@ function ExpandedContent({
           <AgentBuilderPreview />
         </div>
       )}
-      {selectedTab === "performance" && (
+      {selectedTab === "observability" && agentConfigurationSId && (
         <div className="flex-1 overflow-y-auto p-4">
-          <AgentBuilderPerformance
+          <AgentBuilderObservability
             agentConfigurationSId={agentConfigurationSId}
           />
         </div>
       )}
-      {selectedTab === "observability" && agentConfigurationSId && (
+      {selectedTab === "performance" && (
         <div className="flex-1 overflow-y-auto p-4">
-          <AgentBuilderObservability
+          <AgentBuilderPerformance
             agentConfigurationSId={agentConfigurationSId}
           />
         </div>

@@ -2,14 +2,19 @@ import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
+  CardGrid,
   cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
   LoadingBlock,
+  Spinner,
+  ValueCard,
 } from "@dust-tt/sparkle";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { ErrorRateChart } from "@app/components/agent_builder/observability/charts/ErrorRateChart";
@@ -28,6 +33,7 @@ import {
 } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { StartConversationWithFredButton } from "@app/components/agent_builder/observability/StartConversationWithFredButton";
 import {
+  useAgentAnalytics,
   useAgentConfiguration,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
@@ -36,16 +42,33 @@ interface AgentBuilderObservabilityProps {
   agentConfigurationSId: string;
 }
 
+const PERIODS = [
+  { value: 7, label: "Last 7 days" },
+  { value: 15, label: "Last 15 days" },
+  { value: 30, label: "Last 30 days" },
+] as const;
+
+type PeriodValue = (typeof PERIODS)[number]["value"];
+const DEFAULT_PERIOD_VALUE: PeriodValue = 30;
+
 export function AgentBuilderObservability({
   agentConfigurationSId,
 }: AgentBuilderObservabilityProps) {
   const { owner } = useAgentBuilderContext();
+  const [period, setPeriod] = useState(DEFAULT_PERIOD_VALUE);
 
   const { agentConfiguration, isAgentConfigurationLoading } =
     useAgentConfiguration({
       workspaceId: owner.sId,
       agentConfigurationId: agentConfigurationSId,
     });
+
+  const { agentAnalytics, isAgentAnalyticsLoading } = useAgentAnalytics({
+    workspaceId: owner.sId,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    agentConfigurationId: agentConfiguration?.sId || null,
+    period,
+  });
 
   if (!agentConfiguration) {
     return null;
@@ -55,16 +78,88 @@ export function AgentBuilderObservability({
     <ObservabilityProvider>
       <div className="flex h-full flex-col space-y-6 overflow-y-auto">
         <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground dark:text-foreground-night">
-              Observability
-            </h2>
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Monitor key metrics and performance indicators for your agent.
-            </span>
-          </div>
+          <h2 className="text-lg font-semibold text-foreground dark:text-foreground-night">
+            Insights
+          </h2>
 
           <HeaderGlobalSelector agentConfigurationId={agentConfigurationSId} />
+        </div>
+
+        <div>
+          {isAgentAnalyticsLoading ? (
+            <div className="w-full p-6">
+              <Spinner variant="dark" />
+            </div>
+          ) : (
+            <CardGrid>
+              <ValueCard
+                title="Active Users"
+                className="h-24"
+                content={
+                  <div className="flex flex-col gap-1 text-2xl">
+                    {agentAnalytics?.users ? (
+                      <>
+                        <div className="truncate text-foreground dark:text-foreground-night">
+                          {agentAnalytics.users.length}
+                        </div>
+                      </>
+                    ) : (
+                      "-"
+                    )}
+                  </div>
+                }
+              />
+              <ValueCard
+                title="Messages / active user"
+                className="h-24"
+                content={
+                  <div className="flex flex-row gap-2 text-2xl">
+                    {agentAnalytics?.mentions
+                      ? `${agentAnalytics.mentions.messageCount}`
+                      : "-"}
+                  </div>
+                }
+              />
+              <ValueCard
+                title="Error rate"
+                className="h-24"
+                content={
+                  <div className="flex flex-row gap-2 text-2xl">
+                    {agentAnalytics?.mentions
+                      ? `${agentAnalytics.mentions.conversationCount}`
+                      : "-"}
+                  </div>
+                }
+              />
+              <ValueCard
+                title="Reactions"
+                className="h-24"
+                content={
+                  <div className="flex flex-row gap-4 text-2xl">
+                    {agentConfiguration.scope !== "global" &&
+                    agentAnalytics?.feedbacks ? (
+                      <>
+                        <div className="flex flex-row items-center">
+                          <HandThumbUpIcon className="w-7 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
+                          <div>
+                            {agentAnalytics.feedbacks.positiveFeedbacks}
+                          </div>
+                        </div>
+                        <div className="flex flex-row items-center">
+                          <HandThumbDownIcon className="w-7 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
+                          <div>
+                            {agentAnalytics.feedbacks.negativeFeedbacks}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      "-"
+                    )}
+                  </div>
+                }
+              />
+            </CardGrid>
+          )}
         </div>
 
         <div className="flex gap-2">
