@@ -260,3 +260,13 @@ export function isDataSourceFilesystemListInputType(
 ): input is DataSourceFilesystemListInputType {
   return DataSourceFilesystemListInputSchema.safeParse(input).success;
 }
+
+export const DataSourceFilesystemLocateTreeInputSchema = z.object({
+  nodeId: z.string().describe("The ID of the node to locate in the tree."),
+  dataSources:
+    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+});
+
+export type DataSourceFilesystemLocateTreeInputType = z.infer<
+  typeof DataSourceFilesystemLocateTreeInputSchema
+>;

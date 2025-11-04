@@ -1,0 +1,205 @@
+import { Err, Ok } from "@dust-tt/client";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  FILESYSTEM_FIND_TOOL_NAME,
+  FILESYSTEM_LIST_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
+import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
+import {
+  extractDataSourceIdFromNodeId,
+  makeQueryResourceForFind,
+} from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
+import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
+import {
+  getAgentDataSourceConfigurations,
+  makeCoreSearchNodesFilters,
+} from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import type {
+  DataSourceFilesystemFindInputType,
+  TagsInputType,
+} from "@app/lib/actions/mcp_internal_actions/types";
+import {
+  DataSourceFilesystemFindInputSchema,
+  TagsInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
+import { CoreAPI } from "@app/types";
+
+const FILESYSTEM_FIND_TOOL_DESCRIPTION =
+  "Find content based on their title starting from a specific node. Can be used to find specific " +
+  "nodes by searching for their titles. The query title can be omitted to list all nodes " +
+  "starting from a specific node. This is like using 'find' in Unix.";
+
+export function registerFindTool(
+  auth: Authenticator,
+  server: McpServer,
+  agentLoopContext: AgentLoopContextType | undefined
+) {
+  server.tool(
+    FILESYSTEM_FIND_TOOL_NAME,
+    FILESYSTEM_FIND_TOOL_DESCRIPTION,
+    DataSourceFilesystemFindInputSchema.shape,
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
+      async (params) => findToolCallback(auth, params)
+    )
+  );
+}
+
+export function registerFindToolWithDynamicTags(
+  auth: Authenticator,
+  server: McpServer,
+  agentLoopContext: AgentLoopContextType | undefined
+) {
+  server.tool(
+    FILESYSTEM_FIND_TOOL_NAME,
+    FILESYSTEM_FIND_TOOL_DESCRIPTION,
+    {
+      ...DataSourceFilesystemFindInputSchema.shape,
+      ...TagsInputSchema.shape,
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
+      async (params) =>
+        findToolCallback(auth, params, {
+          tagsIn: params.tagsIn,
+          tagsNot: params.tagsNot,
+        })
+    )
+  );
+}
+
+async function findToolCallback(
+  auth: Authenticator,
+  {
+    query,
+    dataSources,
+    limit,
+    nextPageCursor,
+    rootNodeId,
+    mimeTypes,
+  }: DataSourceFilesystemFindInputType,
+  additionalDynamicTags?: TagsInputType
+) {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  const fetchResult = await getAgentDataSourceConfigurations(auth, dataSources);
+
+  if (fetchResult.isErr()) {
+    return new Err(new MCPError(fetchResult.error.message));
+  }
+  const agentDataSourceConfigurations = fetchResult.value;
+
+  const conflictingTags = checkConflictingTags(
+    agentDataSourceConfigurations.map(({ filter }) => filter.tags),
+    additionalDynamicTags ?? {}
+  );
+  if (conflictingTags) {
+    return new Err(new MCPError(conflictingTags, { tracked: false }));
+  }
+
+  const dataSourceNodeId = rootNodeId
+    ? extractDataSourceIdFromNodeId(rootNodeId)
+    : null;
+
+  // If rootNodeId is provided and is a data source node ID, search only in
+  // the data source. If rootNodeId is provided and is a regular node ID,
+  // add this node to all filters so that only descendents of this node
+  // are searched. It is not straightforward to guess which data source it
+  // belongs to, this is why irrelevant data sources are not directly
+  // filtered out.
+  let viewFilter = makeCoreSearchNodesFilters({
+    agentDataSourceConfigurations,
+    additionalDynamicTags,
+  });
+
+  if (dataSourceNodeId) {
+    viewFilter = viewFilter.filter(
+      (view) => view.data_source_id === dataSourceNodeId
+    );
+  } else if (rootNodeId) {
+    // Checking that we do have access to the root node.
+    const rootNodeSearchResult = await coreAPI.searchNodes({
+      filter: {
+        data_source_views: viewFilter,
+        node_ids: [rootNodeId],
+      },
+    });
+    if (rootNodeSearchResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to search content: ${rootNodeSearchResult.error.message}`
+        )
+      );
+    }
+    // If we could not access the root node, we return an error early here.
+    if (
+      rootNodeSearchResult.value.nodes.length === 0 ||
+      rootNodeSearchResult.value.nodes[0].node_id !== rootNodeId
+    ) {
+      return new Err(
+        new MCPError(`Could not find node: ${rootNodeId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    viewFilter = viewFilter.map((view) => ({
+      ...view,
+      filter: [rootNodeId],
+    }));
+  }
+
+  const searchResult = await coreAPI.searchNodes({
+    query,
+    filter: {
+      data_source_views: viewFilter,
+      mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
+    },
+    options: {
+      cursor: nextPageCursor,
+      limit,
+    },
+  });
+
+  if (searchResult.isErr()) {
+    return new Err(
+      new MCPError(`Failed to search content: ${searchResult.error.message}`)
+    );
+  }
+
+  return new Ok([
+    {
+      type: "resource" as const,
+      resource: makeQueryResourceForFind(
+        query,
+        rootNodeId,
+        mimeTypes,
+        nextPageCursor
+      ),
+    },
+    {
+      type: "resource" as const,
+      resource: renderSearchResults(
+        searchResult.value,
+        agentDataSourceConfigurations
+      ),
+    },
+  ]);
+}

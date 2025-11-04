@@ -36,64 +36,60 @@ import type {
 } from "@app/types";
 import { CoreAPI, Err, Ok } from "@app/types";
 
+const FILESYSTEM_LIST_TOOL_DESCRIPTION =
+  "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
+  "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
+  "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
+  "the next step's nodeId. If a node output by this tool or the find tool has children " +
+  "(hasChildren: true), it means that this tool can be used again on it.";
+
 export function registerListTool(
   auth: Authenticator,
   server: McpServer,
-  agentLoopContext: AgentLoopContextType | undefined,
-  {
-    name,
-    extraDescription,
-    areTagsDynamic,
-  }: { name: string; extraDescription?: string; areTagsDynamic: boolean }
+  agentLoopContext: AgentLoopContextType | undefined
 ) {
-  const baseDescription =
-    "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
-    "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
-    "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
-    "the next step's nodeId. If a node output by this tool or the find tool has children " +
-    "(hasChildren: true), it means that this tool can be used again on it.";
-  const toolDescription = extraDescription
-    ? baseDescription + " " + extraDescription
-    : baseDescription;
-
-  if (areTagsDynamic) {
-    server.tool(
-      name,
-      toolDescription,
+  server.tool(
+    FILESYSTEM_LIST_TOOL_NAME,
+    FILESYSTEM_LIST_TOOL_DESCRIPTION,
+    DataSourceFilesystemListInputSchema.shape,
+    withToolLogging(
+      auth,
       {
-        ...DataSourceFilesystemListInputSchema.shape,
-        ...TagsInputSchema.shape,
+        toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
       },
-      withToolLogging(
-        auth,
-        {
-          toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
-          agentLoopContext,
-          enableAlerting: true,
-        },
-        async (params) =>
-          listToolCallback(auth, params, {
-            tagsIn: params.tagsIn,
-            tagsNot: params.tagsNot,
-          })
-      )
-    );
-  } else {
-    server.tool(
-      name,
-      toolDescription,
-      DataSourceFilesystemListInputSchema.shape,
-      withToolLogging(
-        auth,
-        {
-          toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
-          agentLoopContext,
-          enableAlerting: true,
-        },
-        async (params) => listToolCallback(auth, params)
-      )
-    );
-  }
+      async (params) => listToolCallback(auth, params)
+    )
+  );
+}
+
+export function registerListToolWithDynamicTags(
+  auth: Authenticator,
+  server: McpServer,
+  agentLoopContext: AgentLoopContextType | undefined
+) {
+  server.tool(
+    FILESYSTEM_LIST_TOOL_NAME,
+    FILESYSTEM_LIST_TOOL_DESCRIPTION,
+    {
+      ...DataSourceFilesystemListInputSchema.shape,
+      ...TagsInputSchema.shape,
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
+      async (params) =>
+        listToolCallback(auth, params, {
+          tagsIn: params.tagsIn,
+          tagsNot: params.tagsNot,
+        })
+    )
+  );
 }
 
 async function listToolCallback(
@@ -106,7 +102,7 @@ async function listToolCallback(
     sortBy,
     nextPageCursor,
   }: DataSourceFilesystemListInputType,
-  additionalDynamicTags: TagsInputType = {}
+  additionalDynamicTags?: TagsInputType
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const fetchResult = await getAgentDataSourceConfigurations(auth, dataSources);
@@ -126,7 +122,7 @@ async function listToolCallback(
 
   const conflictingTags = checkConflictingTags(
     agentDataSourceConfigurations.map(({ filter }) => filter.tags),
-    additionalDynamicTags
+    additionalDynamicTags ?? {}
   );
   if (conflictingTags) {
     return new Err(new MCPError(conflictingTags, { tracked: false }));
@@ -149,10 +145,10 @@ async function listToolCallback(
 
   if (!nodeId) {
     // When nodeId is null, search for data sources only.
-    const dataSourceViewFilter = makeCoreSearchNodesFilters(
+    const dataSourceViewFilter = makeCoreSearchNodesFilters({
       agentDataSourceConfigurations,
-      additionalDynamicTags
-    ).map((view) => ({
+      additionalDynamicTags,
+    }).map((view) => ({
       ...view,
       search_scope: "data_source_name" as const,
     }));
@@ -187,10 +183,10 @@ async function listToolCallback(
 
     searchResult = await coreAPI.searchNodes({
       filter: {
-        data_source_views: makeCoreSearchNodesFilters(
-          [dataSourceConfig],
-          additionalDynamicTags
-        ),
+        data_source_views: makeCoreSearchNodesFilters({
+          agentDataSourceConfigurations: [dataSourceConfig],
+          additionalDynamicTags,
+        }),
         node_ids: dataSourceConfig.filter.parents?.in ?? undefined,
         parent_id: dataSourceConfig.filter.parents?.in
           ? undefined
@@ -203,10 +199,10 @@ async function listToolCallback(
     // Regular node listing.
     searchResult = await coreAPI.searchNodes({
       filter: {
-        data_source_views: makeCoreSearchNodesFilters(
+        data_source_views: makeCoreSearchNodesFilters({
           agentDataSourceConfigurations,
-          additionalDynamicTags
-        ),
+          additionalDynamicTags,
+        }),
         parent_id: nodeId,
         mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
       },

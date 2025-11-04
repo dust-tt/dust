@@ -41,30 +41,28 @@ export type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
   dataSourceView: DataSourceViewResource;
 };
 
-export function makeCoreSearchNodesFilters(
-  agentDataSourceConfigurations: ResolvedDataSourceConfiguration[],
-  additionalDynamicTags?: TagsInputType
-): CoreAPIDatasourceViewFilter[] {
+export function makeCoreSearchNodesFilters({
+  agentDataSourceConfigurations,
+  additionalDynamicTags,
+}: {
+  agentDataSourceConfigurations: ResolvedDataSourceConfiguration[];
+  additionalDynamicTags?: TagsInputType;
+}): CoreAPIDatasourceViewFilter[] {
   return agentDataSourceConfigurations.map(
     ({ dataSource, dataSourceView, filter }) => ({
       data_source_id: dataSource.dustAPIDataSourceId,
       view_filter: dataSourceView.parentsIn ?? [],
       filter: filter.parents?.in ?? undefined,
-      // FIXME(ap): Remove additionalDynamicTags condition and add support in other file system tools.
-      ...(additionalDynamicTags
-        ? {
-            tags: {
-              in: [
-                ...(filter.tags?.in ?? []),
-                ...(additionalDynamicTags?.tagsIn ?? []),
-              ],
-              not: [
-                ...(filter.tags?.not ?? []),
-                ...(additionalDynamicTags?.tagsNot ?? []),
-              ],
-            },
-          }
-        : {}),
+      tags: {
+        in: [
+          ...(filter.tags?.in ?? []),
+          ...(additionalDynamicTags?.tagsIn ?? []),
+        ],
+        not: [
+          ...(filter.tags?.not ?? []),
+          ...(additionalDynamicTags?.tagsNot ?? []),
+        ],
+      },
     })
   );
 }

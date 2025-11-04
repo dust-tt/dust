@@ -1,3 +1,4 @@
+import type { TagsInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -43,7 +44,7 @@ export function shouldAutoGenerateTags(
  */
 export function checkConflictingTags(
   tagsFilters: ({ in: string[] | null; not: string[] | null } | null)[],
-  { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] }
+  { tagsIn, tagsNot }: TagsInputType
 ): string | null {
   for (const tagFilter of tagsFilters) {
     const configTagsIn = tagFilter?.in ?? [];

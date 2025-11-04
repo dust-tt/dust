@@ -51,19 +51,12 @@ const catToolInputSchema = {
 export function registerCatTool(
   auth: Authenticator,
   server: McpServer,
-  agentLoopContext: AgentLoopContextType | undefined,
-  { name, extraDescription }: { name: string; extraDescription?: string }
+  agentLoopContext: AgentLoopContextType | undefined
 ) {
-  const baseDescription =
-    "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
-    "The nodeId can be obtained using the 'find', 'list' or 'search' tools.";
-  const toolDescription = extraDescription
-    ? baseDescription + "\n" + extraDescription
-    : baseDescription;
-
   server.tool(
-    name,
-    toolDescription,
+    FILESYSTEM_CAT_TOOL_NAME,
+    "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
+      "The nodeId can be obtained using the 'find', 'list' or 'search' tools.",
     catToolInputSchema,
     withToolLogging(
       auth,
@@ -98,9 +91,9 @@ export function registerCatTool(
         const searchResult = await coreAPI.searchNodes({
           filter: {
             node_ids: [nodeId],
-            data_source_views: makeCoreSearchNodesFilters(
-              agentDataSourceConfigurations
-            ),
+            data_source_views: makeCoreSearchNodesFilters({
+              agentDataSourceConfigurations,
+            }),
           },
         });
 

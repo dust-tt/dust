@@ -34,23 +34,16 @@ export const findTagsSchema = {
 export function registerFindTagsTool(
   auth: Authenticator,
   server: McpServer,
-  agentLoopContext: AgentLoopContextType | undefined,
-  { name, extraDescription }: { name: string; extraDescription?: string }
+  agentLoopContext: AgentLoopContextType | undefined
 ) {
-  const baseDescription =
-    `Find exact matching labels (also called tags).` +
-    "Restricting or excluding content succeeds only with existing labels. " +
-    "Searching without verifying labels first typically returns no results." +
-    "The output of this tool can typically be used in `tagsIn` (if we want " +
-    "to restrict the search to specific tags) or `tagsNot` (if we want to " +
-    "exclude specific tags) parameters.";
-  const toolDescription = extraDescription
-    ? baseDescription + "\n" + extraDescription
-    : baseDescription;
-
   server.tool(
-    name,
-    toolDescription,
+    FIND_TAGS_TOOL_NAME,
+    `Find exact matching labels (also called tags).` +
+      "Restricting or excluding content succeeds only with existing labels. " +
+      "Searching without verifying labels first typically returns no results." +
+      "The output of this tool can typically be used in `tagsIn` (if we want " +
+      "to restrict the search to specific tags) or `tagsNot` (if we want to " +
+      "exclude specific tags) parameters.",
     findTagsSchema,
     withToolLogging(
       auth,
