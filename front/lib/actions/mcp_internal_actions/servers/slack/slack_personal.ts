@@ -318,6 +318,13 @@ const _getSlackAIEnablementStatus = async ({
   accessToken: string;
 }): Promise<SlackAIStatus> => {
   try {
+    logger.info(
+      {
+        tokenPrefix: accessToken.substring(0, 10),
+      },
+      "[SLACK_AI_DEBUG] Calling assistant.search.info API"
+    );
+
     const assistantSearchInfo = await fetch(
       "https://slack.com/api/assistant.search.info",
       {
@@ -330,17 +337,37 @@ const _getSlackAIEnablementStatus = async ({
     );
 
     if (!assistantSearchInfo.ok) {
-      logger.warn("assistant.search.info returned !ok");
+      logger.warn(
+        {
+          status: assistantSearchInfo.status,
+          statusText: assistantSearchInfo.statusText,
+        },
+        "[SLACK_AI_DEBUG] assistant.search.info returned !ok"
+      );
       return "disconnected";
     }
 
     const assistantSearchInfoJson = await assistantSearchInfo.json();
 
-    return assistantSearchInfoJson.is_ai_search_enabled
+    const status = assistantSearchInfoJson.is_ai_search_enabled
       ? "enabled"
       : "disabled";
+
+    logger.info(
+      {
+        is_ai_search_enabled: assistantSearchInfoJson.is_ai_search_enabled,
+        slackResponse: assistantSearchInfoJson,
+        finalStatus: status,
+      },
+      "[SLACK_AI_DEBUG] Slack AI status determined"
+    );
+
+    return status;
   } catch (e) {
-    logger.warn({ error: e }, "Error fetching Slack AI enablement status");
+    logger.warn(
+      { error: e },
+      "[SLACK_AI_DEBUG] Error fetching Slack AI enablement status"
+    );
     return "disconnected";
   }
 };
@@ -373,6 +400,16 @@ async function createServer(
         accessToken: c.access_token,
       })
     : "disconnected";
+
+  logger.info(
+    {
+      mcpServerId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      slackAIStatus,
+      hasConnection: !!c,
+    },
+    "[SLACK_AI_DEBUG] Slack MCP server initialization - determining tools to register"
+  );
 
   // If we're not connected to Slack, we arbitrarily include the first search tool, just so there is one.
   // in the list. As soon as we're connected, it will show the correct one.
