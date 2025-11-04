@@ -1,17 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { fetchLLMTrace, isLLMRunId } from "@app/lib/api/llm/traces/buffer";
-import type { LLMTrace } from "@app/lib/api/llm/traces/types";
+import { fetchLLMTrace, isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 
-export type GetLLMTraceResponseBody = {
-  trace: LLMTrace | null;
-};
+interface GetLLMTraceResponseBody {
+  trace: unknown | null;
+}
 
 async function handler(
   req: NextApiRequest,
@@ -33,7 +32,7 @@ async function handler(
   const auth = await Authenticator.fromSuperUserSession(session, wId);
 
   // Validate that this is actually an LLM runId.
-  if (!isLLMRunId(runId)) {
+  if (!isLLMTraceId(runId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

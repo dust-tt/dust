@@ -12,7 +12,7 @@ import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { isLLMRunId } from "@app/lib/api/llm/traces/buffer";
+import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeLLMTrace } from "@app/poke/swr";
 import type { LightWorkspaceType } from "@app/types";
@@ -37,7 +37,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   }
 
   const runId = context.params?.runId;
-  if (!runId || !isString(runId) || !isLLMRunId(runId)) {
+  if (!runId || !isString(runId) || !isLLMTraceId(runId)) {
     return {
       notFound: true,
     };

@@ -1,8 +1,11 @@
 import { randomUUID } from "crypto";
 
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
-import type { LLMRunId } from "@app/lib/api/llm/traces/buffer";
-import { createLLMRunId, LLMTraceBuffer } from "@app/lib/api/llm/traces/buffer";
+import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
+import {
+  createLLMTraceId,
+  LLMTraceBuffer,
+} from "@app/lib/api/llm/traces/buffer";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
@@ -24,7 +27,7 @@ export abstract class LLM {
   // Tracing fields.
   protected readonly authenticator: Authenticator;
   protected readonly context?: LLMTraceContext;
-  protected readonly runId: LLMRunId;
+  protected readonly traceId: LLMTraceId;
 
   protected constructor(
     auth: Authenticator,
@@ -46,7 +49,7 @@ export abstract class LLM {
     // Initialize tracing.
     this.authenticator = auth;
     this.context = context;
-    this.runId = createLLMRunId(randomUUID());
+    this.traceId = createLLMTraceId(randomUUID());
   }
 
   /**
@@ -63,7 +66,7 @@ export abstract class LLM {
     }
 
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
-    const buffer = new LLMTraceBuffer(this.runId, workspaceId, this.context);
+    const buffer = new LLMTraceBuffer(this.traceId, workspaceId, this.context);
 
     const startTime = Date.now();
 
@@ -103,10 +106,10 @@ export abstract class LLM {
   }
 
   /**
-   * Get the runId for this LLM instance (includes llm_ prefix)
+   * Get the traceId for this LLM instance (includes llm_trace_ prefix)
    */
-  getRunId(): LLMRunId {
-    return this.runId;
+  getTraceId(): LLMTraceId {
+    return this.traceId;
   }
 
   async *stream({

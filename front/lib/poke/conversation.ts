@@ -1,5 +1,5 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { isLLMRunId } from "@app/lib/api/llm/traces/buffer";
+import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { getDustProdAction } from "@app/lib/registry";
@@ -53,7 +53,7 @@ export async function getPokeConversation(
           // Generate URLs for runIds.
           if (runIds) {
             m.runUrls = runIds.map((runId) => {
-              const isLLM = isLLMRunId(runId);
+              const isLLM = isLLMTraceId(runId);
               const url = isLLM
                 ? `/poke/${owner.sId}/llm-traces/${runId}`
                 : `/w/${multiActionsApp.app.workspaceId}/spaces/${multiActionsApp.app.appSpaceId}/apps/${multiActionsApp.app.appId}/runs/${runId}`;

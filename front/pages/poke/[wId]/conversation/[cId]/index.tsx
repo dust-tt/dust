@@ -198,7 +198,7 @@ const AgentMessageView = ({
                   className="inline-flex items-center space-x-1"
                 >
                   <a href={url} target="_blank" className="text-highlight-500">
-                    {runId.substring(0, 8)}
+                    {runId.substring(0, 16)}
                   </a>
                   {isLLM && (
                     <span className="rounded-sm bg-blue-100 px-1 py-0.5 text-xs text-blue-800">

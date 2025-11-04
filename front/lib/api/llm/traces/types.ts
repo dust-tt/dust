@@ -88,7 +88,7 @@ export interface LLMTrace {
   input: LLMTraceInput;
   metadata: LLMTraceMetadata;
   output?: LLMTraceOutput;
-  runId: string;
+  traceId: string;
   workspaceId: string;
 }
 
