@@ -78,12 +78,18 @@ export class EventError extends Error {
   public readonly type = "error";
   public readonly content: LLMErrorInfo;
   public readonly metadata: LLMClientMetadata;
+  public readonly accumulatedErrors: EventError[] = [];
 
-  constructor(content: LLMErrorInfo, metadata: LLMClientMetadata) {
+  constructor(
+    content: LLMErrorInfo,
+    metadata: LLMClientMetadata,
+    accumulatedErrors: EventError[] = []
+  ) {
     super(content.message);
 
     this.content = content;
     this.metadata = metadata;
+    this.accumulatedErrors = accumulatedErrors;
   }
 }
 

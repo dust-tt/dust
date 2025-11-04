@@ -62,6 +62,8 @@ export class AnthropicLLM extends LLM {
     }
     this.client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,
+      // We want to handle the retries ourselves
+      maxRetries: 0,
     });
   }
 

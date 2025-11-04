@@ -64,6 +64,8 @@ export class XaiLLM extends LLM {
     this.client = new OpenAI({
       apiKey: XAI_API_KEY,
       baseURL: "https://api.x.ai/v1",
+      // We want to handle the retries ourselves
+      maxRetries: 0,
     });
   }
 

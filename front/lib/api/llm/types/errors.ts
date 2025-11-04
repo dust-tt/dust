@@ -20,7 +20,9 @@ export type LLMErrorType =
   | "timeout_error"
   | "server_error"
   | "stream_error"
-  | "unknown_error";
+  | "unknown_error"
+  // Other
+  | "maximum_retries";
 
 export interface LLMErrorInfo {
   type: LLMErrorType;

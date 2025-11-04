@@ -64,6 +64,8 @@ export class FireworksLLM extends LLM {
     this.client = new OpenAI({
       apiKey: FIREWORKS_API_KEY,
       baseURL: "https://api.fireworks.ai/inference/v1",
+      // We want to handle the retries ourselves
+      maxRetries: 0,
     });
   }
 
