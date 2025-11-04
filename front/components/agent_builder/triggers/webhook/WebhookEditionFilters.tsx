@@ -34,19 +34,8 @@ export function WebhookEditionFilters({
 }: WebhookEditionFiltersProps) {
   const { setError, control } = useFormContext<TriggerViewsSheetFormValues>();
 
-  const selectedEventValue = useWatch({ control, name: "webhook.event" });
+  const selectedEvent = useWatch({ control, name: "webhook.event" });
 
-  const selectedEvent = useMemo<WebhookEvent | null>(() => {
-    if (!selectedEventValue || !selectedPreset) {
-      return null;
-    }
-
-    return (
-      selectedPreset.events.find(
-        (event) => event.value === selectedEventValue
-      ) ?? null
-    );
-  }, [selectedEventValue, selectedPreset]);
   const {
     field: filterField,
     fieldState: { error: filterError },
@@ -69,7 +58,12 @@ export function WebhookEditionFilters({
 
   const triggerFilterGeneration = useDebounceWithAbort(
     async (txt: string, signal: AbortSignal) => {
-      if (txt.length < MIN_DESCRIPTION_LENGTH || !selectedEvent) {
+      if (
+        txt.length < MIN_DESCRIPTION_LENGTH ||
+        !selectedEvent ||
+        !webhookSourceView ||
+        !webhookSourceView.provider
+      ) {
         setFilterGenerationStatus("idle");
         return;
       }
@@ -78,6 +72,7 @@ export function WebhookEditionFilters({
         const result = await generateFilter({
           naturalDescription: txt,
           event: selectedEvent,
+          provider: webhookSourceView.provider,
           signal,
         });
 
@@ -155,7 +150,7 @@ export function WebhookEditionFilters({
             value={naturalDescriptionValue ?? ""}
             disabled={!isEditor}
             onChange={(e) => {
-              if (!selectedEventValue || !selectedPreset) {
+              if (!selectedEvent || !selectedPreset) {
                 setError("webhook.event", {
                   type: "manual",
                   message: "Please select an event first",
