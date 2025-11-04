@@ -98,15 +98,12 @@ export function ErrorRateChart({
     colorClassName: ERROR_RATE_PALETTE[key],
   }));
 
-  const averageErrorRate =
-    data.length > 0
-      ? data.reduce((sum, point) => sum + point.errorRate, 0) / data.length
-      : 0;
+  const latestErrorRate = data[data.length - 1].errorRate ?? 0;
 
   const getStatusChip = () => {
-    if (averageErrorRate < WARNING_THRESHOLD) {
+    if (latestErrorRate < WARNING_THRESHOLD) {
       return <Chip color="success" size="xs" label="HEALTHY" />;
-    } else if (averageErrorRate < CRITICAL_THRESHOLD) {
+    } else if (latestErrorRate < CRITICAL_THRESHOLD) {
       return <Chip color="info" size="xs" label="WARNING" />;
     } else {
       return <Chip color="warning" size="xs" label="CRITICAL" />;
