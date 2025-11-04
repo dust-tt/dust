@@ -1,7 +1,9 @@
+import { Chip } from "@dust-tt/sparkle";
 import {
   Area,
   AreaChart,
   CartesianGrid,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -93,9 +95,32 @@ export function ErrorRateChart({
     colorClassName: ERROR_RATE_PALETTE[key],
   }));
 
+  const averageErrorRate =
+    data.length > 0
+      ? data.reduce((sum, point) => sum + point.errorRate, 0) / data.length
+      : 0;
+
+  const getStatusChip = () => {
+    if (averageErrorRate < 5) {
+      return <Chip color="success" size="xs" label="HEALTHY" />;
+    } else if (averageErrorRate < 10) {
+      return <Chip color="info" size="xs" label="WARNING" />;
+    } else {
+      return <Chip color="warning" size="xs" label="CRITICAL" />;
+    }
+  };
+
   return (
     <ChartContainer
-      title="Error rate"
+      title={
+        <div className="flex items-center gap-2">
+          <span>Error rate</span>
+          {!isErrorRateLoading &&
+            !isErrorRateError &&
+            data.length > 0 &&
+            getStatusChip()}
+        </div>
+      }
       isLoading={isErrorRateLoading}
       errorMessage={
         isErrorRateError ? "Failed to load observability data." : undefined

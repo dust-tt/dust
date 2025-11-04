@@ -7,7 +7,7 @@ import {
 } from "@app/components/agent_builder/observability/constants";
 
 interface ChartContainerProps {
-  title: string;
+  title: string | ReactNode;
   isLoading: boolean;
   errorMessage?: string;
   emptyMessage?: string;
