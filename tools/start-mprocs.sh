@@ -1,4 +1,4 @@
-#bin/bash
+#!/bin/bash
 
 # Tiny script to start the dev environment using mprocs.
 # Needed to clear the dist of the sdks-js project before starting front so it waits for the sdks-js to be ready.
