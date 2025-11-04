@@ -3,7 +3,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { getDustProdAction } from "@app/lib/registry";
 import { cloneBaseConfig } from "@app/lib/registry";
 import type { Result } from "@app/types";
-import { Err, getSmallWhitelistedModel, Ok } from "@app/types";
+import {
+  Err,
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+  Ok,
+} from "@app/types";
 
 function isValidIANATimezone(timezone: string): boolean {
   // Get the list of all supported IANA timezones
@@ -130,7 +135,7 @@ export async function generateWebhookFilter(
 ): Promise<Result<{ filter: string }, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getSmallWhitelistedModel(owner);
+  const model = getLargeWhitelistedModel(owner);
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate filter")
