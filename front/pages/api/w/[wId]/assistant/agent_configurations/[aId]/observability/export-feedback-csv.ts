@@ -3,18 +3,23 @@ import { z } from "zod";
 
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { reconstructContentFromStepContents } from "@app/lib/api/assistant/messages";
 import {
   buildAgentAnalyticsBaseQuery,
   buildFeedbackQuery,
 } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { escapeCsvField } from "@app/lib/api/csv";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { ModelId, WithAPIErrorResponse } from "@app/types";
+import { normalizeError } from "@app/types";
 import type { AgentMessageAnalyticsData } from "@app/types/assistant/analytics";
 
 const PAGE_SIZE = 1000;
@@ -31,18 +36,6 @@ const CSV_HEADERS = [
   "feedback_created_at",
   "agent_message_content",
 ];
-
-function escapeCsvField(v: unknown): string {
-  const s = v === undefined || v === null ? "" : String(v);
-  // Neutralize formula injection by prefixing dangerous characters with a single quote
-  // This prevents spreadsheet software from interpreting the field as a formula
-  const FORMULA_CHARS = ["=", "+", "-", "@"];
-  const neutralized =
-    s.length > 0 && FORMULA_CHARS.includes(s[0]) ? `'${s}` : s;
-  // Always quote and escape quotes by doubling.
-  const escaped = neutralized.replace(/"/g, '""');
-  return `"${escaped}"`;
-}
 
 async function handler(
   req: NextApiRequest,
@@ -145,9 +138,84 @@ async function handler(
   }
 
   const hits = result.value.hits.hits;
+
+  // 1) Collect all message sIds that have feedbacks
+  const messageSIds: string[] = [];
   for (const h of hits) {
-    const d = h._source as AgentMessageAnalyticsData | undefined;
-    if (!d || !Array.isArray(d.feedbacks)) {
+    if (!h._source) {
+      continue;
+    }
+    const d = h._source;
+    if (!Array.isArray(d.feedbacks) || d.feedbacks.length === 0) {
+      continue;
+    }
+    messageSIds.push(d.message_id);
+  }
+
+  // 2) Resolve message sIds to agent messages and fetch step contents via Resource
+  const resolved = await AgentStepContentResource.fetchByMessageSIds(auth, {
+    messageSIds,
+    latestVersionsOnly: true,
+  });
+
+  const agentMessageIdByMessageSId = new Map<string, ModelId>();
+  const stepContentsByAgentMessageId: Record<
+    ModelId,
+    AgentStepContentResource[]
+  > = {};
+  for (const r of resolved) {
+    agentMessageIdByMessageSId.set(r.messageSId, r.agentMessageId);
+    stepContentsByAgentMessageId[r.agentMessageId] = r.stepContents;
+  }
+
+  const messagesWithoutContent = messageSIds.filter(
+    (sId) => !agentMessageIdByMessageSId.has(sId)
+  );
+  if (messagesWithoutContent.length > 0) {
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        agentConfigurationId: assistant.sId,
+        messagesWithoutContentCount: messagesWithoutContent.length,
+        totalMessages: messageSIds.length,
+      },
+      "Some messages with feedback have no step contents"
+    );
+  }
+
+  // 5) Build content map: message sId -> reconstructed content from step contents
+  const contentByMessageSId = new Map<string, string>();
+
+  for (const [messageSId, agentMessageId] of agentMessageIdByMessageSId) {
+    const stepContents = (
+      stepContentsByAgentMessageId[agentMessageId] ?? []
+    ).sort((a, b) => a.step - b.step || a.index - b.index);
+
+    try {
+      const content = reconstructContentFromStepContents({
+        stepContents,
+      });
+      contentByMessageSId.set(messageSId, content);
+    } catch (err) {
+      logger.warn(
+        {
+          messageSId,
+          agentMessageId,
+          error: normalizeError(err),
+          workspaceId: owner.sId,
+        },
+        "[Feedback] - Failed to reconstruct content for message"
+      );
+      contentByMessageSId.set(messageSId, "");
+    }
+  }
+
+  for (const h of hits) {
+    if (!h._source) {
+      continue;
+    }
+    const d = h._source;
+    if (!Array.isArray(d.feedbacks)) {
       continue;
     }
     for (const f of d.feedbacks) {
@@ -158,7 +226,7 @@ async function handler(
         escapeCsvField(f.content ?? ""),
         escapeCsvField(f.thumb_direction),
         escapeCsvField(f.created_at),
-        escapeCsvField(""), // agent_message_content (filled in a later step if needed)
+        escapeCsvField(contentByMessageSId.get(d.message_id) ?? ""),
       ];
       rows.push(row.join(","));
     }
