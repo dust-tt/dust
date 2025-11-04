@@ -2,11 +2,16 @@ import type {
   CompletionEvent,
   ContentChunk,
   ToolCall,
+  UsageInfo,
 } from "@mistralai/mistralai/models/components";
 import { CompletionResponseStreamChoiceFinishReason } from "@mistralai/mistralai/models/components";
 import compact from "lodash/compact";
 
-import type { LLMEvent, ToolCallEvent } from "@app/lib/api/llm/types/events";
+import type {
+  LLMEvent,
+  TokenUsageEvent,
+  ToolCallEvent,
+} from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import type { ExpectedDeltaMessage } from "@app/lib/api/llm/types/predicates";
 import {
@@ -115,6 +120,10 @@ export async function* streamLLMEvents({
         break;
       }
     }
+    // Whatever the completion, yield the token usage
+    if (completionEvent.data.usage) {
+      yield toTokenUsage({ usage: completionEvent.data.usage, metadata });
+    }
   }
 }
 
@@ -139,6 +148,24 @@ export function toLLMEvents({
   }
 
   return toStreamEvents({ content, metadata });
+}
+
+function toTokenUsage({
+  usage,
+  metadata,
+}: {
+  usage: UsageInfo;
+  metadata: LLMClientMetadata;
+}): TokenUsageEvent {
+  return {
+    type: "token_usage",
+    content: {
+      inputTokens: usage.promptTokens ?? 0,
+      outputTokens: usage.completionTokens ?? 0,
+      totalTokens: usage.totalTokens ?? 0,
+    },
+    metadata,
+  };
 }
 
 function toToolEvent({

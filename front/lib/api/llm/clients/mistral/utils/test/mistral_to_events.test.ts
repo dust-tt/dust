@@ -168,6 +168,15 @@ const finishStopLLMEvents = [
     },
     metadata,
   },
+  {
+    type: "token_usage",
+    content: {
+      inputTokens: 3186,
+      outputTokens: 192,
+      totalTokens: 3378,
+    },
+    metadata,
+  },
 ];
 
 const finishToolCallLLMEvents = [
@@ -191,6 +200,15 @@ const finishToolCallLLMEvents = [
       id: "DdHr7L197",
       name: "web_search_browse__websearch",
       arguments: '{"query": "Paris France weather forecast October 23 2025"}',
+    },
+    metadata,
+  },
+  {
+    type: "token_usage",
+    content: {
+      inputTokens: 1766,
+      outputTokens: 128,
+      totalTokens: 1894,
     },
     metadata,
   },
