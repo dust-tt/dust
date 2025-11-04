@@ -9,7 +9,8 @@ import {
   buildFeedbackQuery,
 } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { escapeCsvField } from "@app/lib/api/csv";
+import type { CSVRecord } from "@app/lib/api/csv";
+import { toCsv } from "@app/lib/api/csv";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
@@ -28,14 +29,6 @@ const QuerySchema = z.object({
   days: z.coerce.number().positive().optional(),
   uploadAsFile: z.enum(["true", "false"]).optional(),
 });
-
-// Build CSV header
-const CSV_HEADERS = [
-  "feedback_content",
-  "thumbDirection",
-  "feedback_created_at",
-  "agent_message_content",
-];
 
 async function handler(
   req: NextApiRequest,
@@ -117,10 +110,6 @@ async function handler(
     days: days ?? DEFAULT_PERIOD_DAYS,
     feedbackNestedQuery: buildFeedbackQuery({ dismissed: false }),
   });
-
-  // Collect rows (incremental implementation: accumulate in memory)
-  const rows: string[] = [];
-  rows.push(CSV_HEADERS.map(escapeCsvField).join(","));
 
   // Fetch first page deterministically (extend to pagination later if needed)
   const result = await searchAnalytics<AgentMessageAnalyticsData>(baseQuery, {
@@ -210,6 +199,7 @@ async function handler(
     }
   }
 
+  const records: CSVRecord[] = [];
   for (const h of hits) {
     if (!h._source) {
       continue;
@@ -222,17 +212,16 @@ async function handler(
       if (f.dismissed) {
         continue;
       }
-      const row = [
-        escapeCsvField(f.content ?? ""),
-        escapeCsvField(f.thumb_direction),
-        escapeCsvField(f.created_at),
-        escapeCsvField(contentByMessageSId.get(d.message_id) ?? ""),
-      ];
-      rows.push(row.join(","));
+      records.push({
+        feedback_content: f.content ?? "",
+        thumbDirection: f.thumb_direction,
+        feedback_created_at: f.created_at,
+        agent_message_content: contentByMessageSId.get(d.message_id) ?? "",
+      });
     }
   }
 
-  const csvContent = rows.join("\n");
+  const csvContent = await toCsv(records, { header: true });
   const filename = `feedback_${assistant.sId}_${days}d.csv`;
 
   if (uploadAsFile === "true") {
