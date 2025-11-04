@@ -3536,5 +3536,5 @@ export async function processWebhookEventActivity({
     },
     "Processing Notion webhook event"
   );
-  statsDClient.increment("notion.webhook_events", 1);
+  statsDClient.increment("notion.webhook_events", 1, [`type:${event.type}`]);
 }
