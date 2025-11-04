@@ -56,7 +56,7 @@ const _webhookNotionAPIHandler = async (
 
   const notionWorkspaceId = payload.workspace_id;
   if (!notionWorkspaceId) {
-    logger.error(
+    logger.warn(
       {
         payload,
       },
@@ -89,7 +89,7 @@ const _webhookNotionAPIHandler = async (
   );
 
   if (!connector || connector.type !== "notion") {
-    logger.error(
+    logger.warn(
       {
         connectorId: notionConnectorState.connectorId,
         notionWorkspaceId,
@@ -102,7 +102,7 @@ const _webhookNotionAPIHandler = async (
   if (connector.isPaused()) {
     logger.info(
       { connectorId: connector.id },
-      "Received webhook for paused connector, skipping."
+      "Received Notion webhook for paused connector, skipping."
     );
     return res.status(200).end();
   }
