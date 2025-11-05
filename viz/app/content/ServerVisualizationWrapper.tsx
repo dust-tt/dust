@@ -1,68 +1,77 @@
-import { VisualizationWrapperWithErrorBoundary } from "@viz/app/components/VisualizationWrapper";
 import { extractFileIds } from "@viz/app/lib/parseFileIds";
+import type { PreFetchedFile } from "@viz/app/lib/data-apis/cache-data-api";
+import { ServerVisualizationWrapperClient } from "@viz/app/content/ServerVisualizationWrapperClient";
+import logger from "@viz/app/lib/logger";
 
-interface PreFetchedFile {
-  fileId: string;
-  data: string; // base64
-  mimeType: string;
+interface ServerSideVisualizationWrapperProps {
+  accessToken: string;
+  allowedOrigins: string[];
+  identifier: string;
+  isFullHeight?: boolean;
 }
 
-export async function ServerVisualizationWrapper({
-  identifier,
+/**
+ * Server-side visualization wrapper for JWT-authenticated public frames
+ * 
+ * This component runs on the server and:
+ * 1. Pre-fetches visualization code using the JWT access token
+ * 2. Extracts file IDs from the code and pre-fetches all referenced files
+ * 3. Passes the pre-fetched plain data to the client wrapper
+ * 
+ * This approach avoids the React Server Component serialization boundary issue
+ * by passing plain objects instead of class instances to the client component.
+ */
+export async function ServerSideVisualizationWrapper({
+  accessToken,
   allowedOrigins,
+  identifier,
   isFullHeight = false,
-}: {
-  identifier: string;
-  allowedOrigins: string[];
-  isFullHeight?: boolean;
-}) {
-  // Extract share token from identifier if needed
-  // Assuming identifier could be a share token or contain one
-  const shareToken = identifier.startsWith("viz-")
-    ? identifier.replace("viz-", "")
-    : identifier;
-
+}: ServerSideVisualizationWrapperProps) {
+  let prefetchedCode: string | undefined;
   let preFetchedFiles: PreFetchedFile[] = [];
 
   try {
-    // SERVER-SIDE: Fetch code from the public API
-    const codeResponse = await fetch(
-      `${
-        process.env.DUST_API_URL || "http://localhost:3000"
-      }/api/v1/public/frames/${shareToken}`,
-      {
-        cache: "no-store",
-      }
-    );
+    const headers: Record<string, string> = {};
 
-    console.log(">> Fetched code response for visualization:", codeResponse);
+    // Retrieve content of the visualization using the access token.
+    headers["Authorization"] = `Bearer ${accessToken}`;
+    const endpoint = `${process.env.DUST_FRONT_API}/api/v1/viz/content`;
+
+    const codeResponse = await fetch(endpoint, {
+      headers,
+      cache: "no-store",
+    });
 
     if (codeResponse.ok) {
-      const code = await codeResponse.json();
+      const responseData = await codeResponse.json();
+      prefetchedCode = responseData.content;
 
-      console.log(">> code:", code);
+      if (!prefetchedCode) {
+        logger.warn({ identifier }, "No code content found for visualization");
+        prefetchedCode = undefined;
 
-      // SERVER-SIDE: Extract fileIds from code
-      const fileIds = extractFileIds(code.content);
+        return;
+      }
+
+      // SERVER-SIDE: Extract string literal fileIds from code.
+      const fileIds = extractFileIds(prefetchedCode);
 
       if (fileIds.length > 0) {
-        // SERVER-SIDE: Fetch all files
+        // SERVER-SIDE: Fetch all files.
         const fetchedFiles = await Promise.all(
           fileIds.map(async (fileId) => {
             try {
-              // Use the same file fetching endpoint pattern as PublicFrameServer
-              const fileResponse = await fetch(
-                `${
-                  process.env.DUST_API_URL || "http://localhost:3000"
-                }/api/v1/public/frames/${shareToken}/files/${fileId}`,
-                {
-                  cache: "no-store",
-                }
-              );
+              const fileEndpoint = `${process.env.DUST_FRONT_API}/api/v1/viz/files/${fileId}`;
+
+              const fileResponse = await fetch(fileEndpoint, {
+                headers,
+                cache: "no-store",
+              });
 
               if (!fileResponse.ok) {
-                console.warn(
-                  `Failed to fetch file ${fileId}: ${fileResponse.status}`
+                logger.warn(
+                  { fileId, status: fileResponse.status },
+                  "Failed to fetch file"
                 );
                 return null;
               }
@@ -73,12 +82,12 @@ export async function ServerVisualizationWrapper({
                 "application/octet-stream";
 
               return {
-                fileId,
                 data: Buffer.from(arrayBuffer).toString("base64"),
+                fileId,
                 mimeType,
               };
             } catch (err) {
-              console.error(`Failed to fetch file ${fileId}:`, err);
+              logger.error({ fileId }, "Failed to fetch file");
               return null;
             }
           })
@@ -87,25 +96,23 @@ export async function ServerVisualizationWrapper({
         preFetchedFiles = fetchedFiles.filter(
           (f): f is PreFetchedFile => f !== null
         );
-        console.log(
-          `Pre-fetched ${preFetchedFiles.length} files for visualization`
-        );
       }
     } else {
-      console.warn(
-        `Failed to fetch code for ${shareToken}: ${codeResponse.status}`
+      logger.warn(
+        { identifier, status: codeResponse.status },
+        "Failed to fetch code"
       );
     }
   } catch (err) {
-    console.error("Error pre-fetching files:", err);
-    // Fall back to empty array - existing RPC system will handle file fetching
+    logger.error({ err }, "Error pre-fetching files:");
   }
 
   return (
-    <VisualizationWrapperWithErrorBoundary
-      identifier={identifier}
+    <ServerVisualizationWrapperClient
       allowedOrigins={allowedOrigins}
+      identifier={identifier}
       isFullHeight={isFullHeight}
+      prefetchedCode={prefetchedCode}
       prefetchedFiles={preFetchedFiles}
     />
   );

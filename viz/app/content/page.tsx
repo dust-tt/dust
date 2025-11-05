@@ -1,9 +1,11 @@
-import { ServerVisualizationWrapper } from "@viz/app/content/ServerVisualizationWrapper";
+import { ClientVisualizationWrapper } from "@viz/app/content/ClientVisualizationWrapper";
+import { ServerSideVisualizationWrapper } from "@viz/app/content/ServerVisualizationWrapper";
 
-type RenderVisualizationSearchParams = {
-  identifier: string;
+interface RenderVisualizationSearchParams {
+  accessToken?: string;
   fullHeight?: string;
-};
+  identifier?: string;
+}
 
 const { ALLOWED_VISUALIZATION_ORIGIN } = process.env;
 
@@ -12,22 +14,36 @@ export default function RenderVisualization({
 }: {
   searchParams: RenderVisualizationSearchParams;
 }) {
-  const isFullHeight = searchParams.fullHeight === "true";
   const allowedOrigins = ALLOWED_VISUALIZATION_ORIGIN
     ? ALLOWED_VISUALIZATION_ORIGIN.split(",").map((s) => s.trim())
     : [];
 
-  const identifier = searchParams.identifier;
+  const { accessToken, fullHeight, identifier } = searchParams;
 
-  if (!identifier) {
-    return <div>Missing identifier</div>;
+  const isFullHeight = fullHeight === "true";
+
+  // Use SSR approach for access tokens (publicly accessible).
+  if (accessToken) {
+    return (
+      <ServerSideVisualizationWrapper
+        accessToken={accessToken}
+        allowedOrigins={allowedOrigins}
+        identifier={identifier!}
+        isFullHeight={isFullHeight}
+      />
+    );
   }
 
-  return (
-    <ServerVisualizationWrapper
-      identifier={searchParams.identifier}
-      allowedOrigins={allowedOrigins}
-      isFullHeight={isFullHeight}
-    />
-  );
+  // Use RPC approach for regular identifiers (other flows).
+  if (identifier) {
+    return (
+      <ClientVisualizationWrapper
+        identifier={identifier}
+        allowedOrigins={allowedOrigins}
+        isFullHeight={isFullHeight}
+      />
+    );
+  }
+
+  return <div>Missing access token or identifier</div>;
 }

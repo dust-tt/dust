@@ -1,5 +1,6 @@
 import { parse } from "@babel/parser";
 import traverse from "@babel/traverse";
+import logger from "@viz/app/lib/logger";
 
 export function extractFileIds(code: string): string[] {
   const fileIds = new Set<string>();
@@ -12,7 +13,7 @@ export function extractFileIds(code: string): string[] {
 
     traverse(ast, {
       CallExpression(path) {
-        // Look for: useFile("fil_xxx")
+        // Look for: useFile("fil_xxx").
         if (
           path.node.callee.type === "Identifier" &&
           path.node.callee.name === "useFile" &&
@@ -20,7 +21,7 @@ export function extractFileIds(code: string): string[] {
         ) {
           const arg = path.node.arguments[0];
 
-          // Only extract string literals (ignore variables)
+          // Only extract string literals (ignore variables).
           if (arg.type === "StringLiteral") {
             fileIds.add(arg.value);
           }
@@ -28,8 +29,8 @@ export function extractFileIds(code: string): string[] {
       },
     });
   } catch (err) {
-    // If parsing fails, return empty (fail gracefully)
-    console.error("Failed to parse frame code:", err);
+    // If parsing fails, return empty (fail gracefully).
+    logger.error({ err }, "Failed to parse frame code:");
   }
 
   return Array.from(fileIds);

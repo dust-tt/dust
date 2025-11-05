@@ -1,17 +1,12 @@
 "use client";
 
-import { isDevelopment } from "@viz/app/types";
-import type {
-  CommandResultMap,
-  VisualizationRPCCommand,
-  VisualizationRPCRequestMap,
+import {
+  isDevelopment,
+  type CommandResultMap,
+  type VisualizationRPCCommand,
+  type VisualizationRPCRequestMap,
 } from "@viz/app/types";
-import type {
-  SupportedMessage,
-  SupportedEventType,
-} from "@viz/app/types/messages";
 
-import { validateMessage } from "@viz/app/types/messages";
 import { Spinner } from "@viz/app/components/Components";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { toBlob, toSvg } from "html-to-image";
@@ -25,6 +20,17 @@ import * as utilsAll from "@viz/lib/utils";
 import * as shadcnAll from "@viz/components/ui";
 import * as lucideAll from "lucide-react";
 import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
+import {
+  SupportedEventType,
+  SupportedMessage,
+  validateMessage,
+} from "@viz/app/types/messages";
+import {
+  VisualizationAPI,
+  VisualizationConfig,
+  VisualizationDataAPI,
+  VisualizationUIAPI,
+} from "@viz/app/lib/visualization-api";
 
 // Regular expressions to capture the value inside a className attribute.
 // We check both double and single quotes separately to handle mixed usage.
@@ -83,48 +89,7 @@ function validateTailwindCode(code: string): void {
 export function useVisualizationAPI(
   sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>,
   { allowedOrigins }: { allowedOrigins: string[] }
-) {
-  const [error, setError] = useState<Error | null>(null);
-
-  const fetchCode = useCallback(async (): Promise<string | null> => {
-    try {
-      const result = await sendCrossDocumentMessage("getCodeToExecute", null);
-
-      const { code } = result;
-      if (!code) {
-        setError(new Error("No code found in response from app."));
-        return null;
-      }
-
-      return code;
-    } catch (error) {
-      console.error(error);
-      setError(
-        error instanceof Error
-          ? error
-          : new Error("Failed to fetch visualization code from app.")
-      );
-
-      return null;
-    }
-  }, [sendCrossDocumentMessage]);
-
-  const fetchFile = useCallback(
-    async (fileId: string): Promise<File | null> => {
-      const res = await sendCrossDocumentMessage("getFile", { fileId });
-
-      const { fileBlob: blob } = res;
-
-      if (!blob) {
-        setError(new Error("Failed to fetch file."));
-        return null;
-      }
-
-      return new File([blob], "fileId", { type: blob.type });
-    },
-    [sendCrossDocumentMessage]
-  );
-
+): VisualizationUIAPI {
   const sendHeightToParent = useCallback(
     async ({ height }: { height: number | null }) => {
       if (height === null) {
@@ -192,23 +157,17 @@ export function useVisualizationAPI(
     addEventListener,
     displayCode,
     downloadFile,
-    error,
-    fetchCode,
-    fetchFile,
     sendHeightToParent,
   };
 }
 
-const useFile = (
-  fileId: string,
-  fetchFile: (fileId: string) => Promise<File | null>
-) => {
+function useFile(fileId: string, dataAPI: VisualizationDataAPI) {
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
     const fetch = async () => {
       try {
-        const fetchedFile = await fetchFile(fileId);
+        const fetchedFile = await dataAPI.fetchFile(fileId);
         setFile(fetchedFile);
       } catch (err) {
         setFile(null);
@@ -218,10 +177,10 @@ const useFile = (
     if (fileId) {
       fetch();
     }
-  }, [fileId, fetchFile]);
+  }, [dataAPI, fileId]);
 
   return file;
-};
+}
 
 function useDownloadFileCallback(
   downloadFile: (blob: Blob, filename?: string) => Promise<void>
@@ -247,16 +206,11 @@ interface RunnerParams {
 }
 
 export function VisualizationWrapperWithErrorBoundary({
-  identifier,
-  allowedOrigins,
-  isFullHeight = false,
-  prefetchedFiles = [],
+  config,
 }: {
-  identifier: string;
-  allowedOrigins: string[];
-  isFullHeight?: boolean;
-  prefetchedFiles?: { fileId: string; data: string; mimeType: string }[];
+  config: VisualizationConfig;
 }) {
+  const { identifier, allowedOrigins, isFullHeight = false, dataAPI } = config;
   const sendCrossDocumentMessage = useMemo(
     () =>
       makeSendCrossDocumentMessage({
@@ -265,9 +219,15 @@ export function VisualizationWrapperWithErrorBoundary({
       }),
     [identifier, allowedOrigins]
   );
-  const api = useVisualizationAPI(sendCrossDocumentMessage, {
+
+  const uiAPI = useVisualizationAPI(sendCrossDocumentMessage, {
     allowedOrigins,
   });
+
+  const api: VisualizationAPI = useMemo(
+    () => ({ data: dataAPI, ui: uiAPI }),
+    [dataAPI, uiAPI]
+  );
 
   return (
     <ErrorBoundary
@@ -279,12 +239,7 @@ export function VisualizationWrapperWithErrorBoundary({
         });
       }}
     >
-      <VisualizationWrapper
-        api={api}
-        identifier={identifier}
-        isFullHeight={isFullHeight}
-        preFetchedFiles={prefetchedFiles}
-      />
+      <VisualizationWrapper config={config} api={api} />
     </ErrorBoundary>
   );
 }
@@ -292,117 +247,64 @@ export function VisualizationWrapperWithErrorBoundary({
 // This component renders the generated code.
 // It gets the generated code via message passing to the host window.
 export function VisualizationWrapper({
+  config,
   api,
-  identifier,
-  isFullHeight = false,
-  preFetchedFiles,
 }: {
-  api: ReturnType<typeof useVisualizationAPI>;
-  identifier: string;
-  isFullHeight?: boolean;
-  preFetchedFiles: { fileId: string; data: string; mimeType: string }[];
+  config: VisualizationConfig;
+  api: VisualizationAPI;
 }) {
+  const { identifier, isFullHeight = false } = config;
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
 
-  const {
-    fetchCode,
-    fetchFile,
-    error,
-    sendHeightToParent,
-    downloadFile,
-    displayCode,
-    addEventListener,
-  } = api;
+  const { sendHeightToParent, downloadFile, displayCode, addEventListener } =
+    api.ui;
 
   const memoizedDownloadFile = useDownloadFileCallback(downloadFile);
-
-  // Convert pre-fetched files to File objects.
-  const fileCache = useMemo(() => {
-    const cache = new Map<string, File>();
-
-    console.log(
-      ">> Getting pre-fetched files for visualization:",
-      preFetchedFiles
-    );
-
-    preFetchedFiles.forEach(({ fileId, data, mimeType }) => {
-      try {
-        // Convert base64 to Blob.
-        const binaryString = atob(data);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        const blob = new Blob([bytes], { type: mimeType });
-        const file = new File([blob], fileId, { type: mimeType });
-        cache.set(fileId, file);
-      } catch (err) {
-        console.error(`Failed to process file ${fileId}:`, err);
-      }
-    });
-
-    return cache;
-  }, [preFetchedFiles]);
-
-  // Custom useFile that ONLY reads from cache (no RPC)
-  const useFileFromCache = (fileId: string) => {
-    const [file] = useState<File | null>(() => {
-      const cached = fileCache.get(fileId);
-      if (!cached) {
-        console.error(`File ${fileId} not pre-fetched`);
-        return null;
-      }
-      return cached;
-    });
-    return file;
-  };
 
   useEffect(() => {
     const loadCode = async () => {
       try {
-        const fetchedCode = await fetchCode();
-        if (!fetchedCode) {
-          setErrorMessage(new Error("No visualization code found"));
-        } else {
-          // Validate Tailwind code before processing to catch arbitrary values early. Error gets
-          // exposed to user for retry, providing feedback to the model
-          validateTailwindCode(fetchedCode);
-
-          setRunnerParams({
-            code: "() => {import Comp from '@dust/generated-code'; return (<Comp />);}",
-            scope: {
-              import: {
-                react: reactAll,
-                recharts: rechartsAll,
-                shadcn: shadcnAll,
-                utils: utilsAll,
-                "lucide-react": lucideAll,
-                "@dust/slideshow/v1": dustSlideshowV1,
-                "@dust/generated-code": importCode(fetchedCode, {
-                  import: {
-                    papaparse: papaparseAll,
-                    react: reactAll,
-                    recharts: rechartsAll,
-                    shadcn: shadcnAll,
-                    utils: utilsAll,
-                    "lucide-react": lucideAll,
-                    "@dust/slideshow/v1": dustSlideshowV1,
-                    "@dust/react-hooks": {
-                      triggerUserFileDownload: memoizedDownloadFile,
-                      // useFile: (fileId: string) => useFile(fileId, fetchFile),
-                      useFile: (fileId: string) =>
-                        preFetchedFiles.length > 0
-                          ? useFileFromCache(fileId)
-                          : useFile(fileId, fetchFile),
-                    },
-                  },
-                }),
-              },
-            },
-          });
+        const codeToUse = await api.data.fetchCode();
+        if (!codeToUse) {
+          setErrorMessage(
+            new Error("No code provided to visualization component")
+          );
+          return;
         }
+        // Validate Tailwind code before processing to catch arbitrary values early. Error gets
+        // exposed to user for retry, providing feedback to the model.
+        validateTailwindCode(codeToUse);
+
+        setRunnerParams({
+          code: "() => {import Comp from '@dust/generated-code'; return (<Comp />);}",
+          scope: {
+            import: {
+              react: reactAll,
+              recharts: rechartsAll,
+              shadcn: shadcnAll,
+              utils: utilsAll,
+              "lucide-react": lucideAll,
+              "@dust/slideshow/v1": dustSlideshowV1,
+              "@dust/generated-code": importCode(codeToUse, {
+                import: {
+                  papaparse: papaparseAll,
+                  react: reactAll,
+                  recharts: rechartsAll,
+                  shadcn: shadcnAll,
+                  utils: utilsAll,
+                  "lucide-react": lucideAll,
+                  "@dust/slideshow/v1": dustSlideshowV1,
+                  "@dust/react-hooks": {
+                    triggerUserFileDownload: memoizedDownloadFile,
+                    useFile: (fileId: string) => useFile(fileId, api.data),
+                  },
+                },
+              }),
+            },
+          },
+        });
       } catch (error) {
         setErrorMessage(
           error instanceof Error
@@ -413,7 +315,7 @@ export function VisualizationWrapper({
     };
 
     loadCode();
-  }, [fetchCode, fetchFile, memoizedDownloadFile]);
+  }, [memoizedDownloadFile, api.data]);
 
   const { ref } = useResizeDetector({
     handleHeight: true,
@@ -475,12 +377,6 @@ export function VisualizationWrapper({
   const handleDisplayCode = useCallback(async () => {
     await displayCode();
   }, [displayCode]);
-
-  useEffect(() => {
-    if (error) {
-      setErrorMessage(error);
-    }
-  }, [error]);
 
   // Add message listeners for export requests.
   useEffect(() => {
@@ -569,6 +465,7 @@ export function makeSendCrossDocumentMessage({
   ) => {
     return new Promise<CommandResultMap[T]>((resolve, reject) => {
       const messageUniqueId = Math.random().toString();
+
       const listener = (event: MessageEvent) => {
         if (!allowedOrigins.includes(event.origin)) {
           console.log(
