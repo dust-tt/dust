@@ -4,6 +4,7 @@ import type {
   AgentBuilderTriggerType,
   AgentBuilderWebhookTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/lib/triggers/common";
 import type { UserTypeWithWorkspaces } from "@app/types";
 import { asDisplayName } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
@@ -20,6 +21,7 @@ export const WebhookFormSchema = z.object({
   filter: z.string().optional(),
   includePayload: z.boolean().default(false),
   naturalDescription: z.string().optional(),
+  executionPerDayLimitOverride: z.number(),
 });
 
 export type WebhookFormValues = z.infer<typeof WebhookFormSchema>;
@@ -47,6 +49,9 @@ export function getWebhookFormDefaultValues({
     filter: trigger?.configuration.filter ?? "",
     includePayload: trigger?.configuration.includePayload ?? true,
     naturalDescription: trigger?.naturalLanguageDescription ?? "",
+    executionPerDayLimitOverride:
+      trigger?.executionPerDayLimitOverride ??
+      DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
   };
 }
 
@@ -83,5 +88,6 @@ export function formValuesToWebhookTriggerData({
       editTrigger?.kind === "webhook"
         ? editTrigger.editorName
         : user.fullName ?? undefined,
+    executionPerDayLimitOverride: webhook.executionPerDayLimitOverride,
   };
 }
