@@ -52,7 +52,6 @@ export async function analyzeInvitationContext(
     logger.warn(
       {
         userId: user.id,
-        email: user.email,
         invitationCount: pendingInvitations.length,
         workspaces: pendingInvitations.map((i) => ({
           id: i.workspace.sId,
