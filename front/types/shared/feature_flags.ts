@@ -54,6 +54,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to experimental Google AI Studio models",
     stage: "on_demand",
   },
+  gemini_image_generation: {
+    description:
+      "Use Gemini 2.5 Flash Image instead of OpenAI for image generation",
+    stage: "rolling_out",
+  },
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",
@@ -212,10 +217,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   mentions_v2: {
     description: "Enable mentions v2, aka mention users",
     stage: "on_demand",
-  },
-  dust_global_agent_memory: {
-    description: "Enable agent memory tool on the @dust global agent",
-    stage: "dust_only",
   },
   dust_global_data_source_file_system: {
     description:

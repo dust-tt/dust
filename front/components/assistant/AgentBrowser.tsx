@@ -51,7 +51,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { isBuilder } from "@app/types";
+import { compareAgentsForSort, isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
@@ -305,7 +305,9 @@ export function AgentBrowser({
               assistantSearch,
               getAgentSearchString(a),
               getAgentSearchString(b)
-            ) || (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
+            ) ||
+            (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0) ||
+            compareAgentsForSort(a, b)
           );
         });
 

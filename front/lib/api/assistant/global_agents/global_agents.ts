@@ -355,6 +355,7 @@ function getGlobalAgent({
         toolsetsMCPServerView,
         deepDiveMCPServerView,
         interactiveContentMCPServerView,
+        dataWarehousesMCPServerView,
         agentMemoryMCPServerView,
         memories,
         featureFlags,
@@ -602,7 +603,6 @@ export async function getGlobalAgents(
   let memories: AgentMemoryResource[] = [];
   if (
     variant === "full" &&
-    flags.includes("dust_global_agent_memory") &&
     agentMemoryMCPServerView &&
     auth.user() &&
     agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST)

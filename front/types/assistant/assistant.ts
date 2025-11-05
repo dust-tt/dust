@@ -1,6 +1,7 @@
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import {
   CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import {
   GEMINI_2_5_FLASH_MODEL_CONFIG,
@@ -26,9 +27,7 @@ import {
   GROK_4_FAST_NON_REASONING_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
-
-import type { WorkspaceType } from "../user";
-import type { LightAgentConfigurationType } from "./agent";
+import type { WorkspaceType } from "@app/types/user";
 
 export function getSmallWhitelistedModel(
   owner: WorkspaceType
@@ -73,7 +72,7 @@ export function getLargeWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "anthropic")) {
-    return CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG;
+    return CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG;
   }
   return getLargeNonAnthropicWhitelistedModel(owner);
 }
@@ -201,10 +200,14 @@ const globalAgentIndexMap = new Map(
 
 // This function implements our general strategy to sort agents to users (input bar, agent list,
 // agent suggestions...).
-export function compareAgentsForSort(
-  a: LightAgentConfigurationType,
-  b: LightAgentConfigurationType
-) {
+export function compareAgentsForSort<
+  T extends {
+    sId: string;
+    userFavorite: boolean | undefined;
+    scope: AgentConfigurationScope;
+    name: string;
+  },
+>(a: T, b: T): number {
   if (a.userFavorite && !b.userFavorite) {
     return -1;
   }

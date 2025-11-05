@@ -7,8 +7,11 @@ export const GEMINI_2_FLASH_MODEL_ID = "gemini-2.0-flash" as const;
 export const GEMINI_2_FLASH_LITE_MODEL_ID = "gemini-2.0-flash-lite" as const;
 export const GEMINI_2_5_PRO_PREVIEW_MODEL_ID = "gemini-2.5-pro-preview-03-25";
 export const GEMINI_2_5_FLASH_MODEL_ID = "gemini-2.5-flash" as const;
+export const GEMINI_2_5_FLASH_IMAGE_MODEL_ID =
+  "gemini-2.5-flash-image" as const;
 export const GEMINI_2_5_FLASH_LITE_MODEL_ID = "gemini-2.5-flash-lite" as const;
 export const GEMINI_2_5_PRO_MODEL_ID = "gemini-2.5-pro" as const;
+
 // These Gemini preview models are deprecated (either replaced by a GA model or not making it to GA)
 export const GEMINI_2_FLASH_PREVIEW_MODEL_ID = "gemini-2.0-flash-exp" as const;
 export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID =

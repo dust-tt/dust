@@ -8,6 +8,7 @@ import type {
 import type { Response } from "openai/resources/responses/responses";
 
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { assertNever } from "@app/types";
 
@@ -60,16 +61,15 @@ function responseOutputToEvent(
         metadata,
       };
     case "refusal":
-      return {
-        type: "error",
-        content: {
+      return new EventError(
+        {
           type: "refusal_error",
           isRetryable: false,
           message: responseOutput.refusal,
-          statusCode: 500,
         },
-        metadata,
-      };
+        metadata
+      );
+
     default:
       assertNever(responseOutput);
   }

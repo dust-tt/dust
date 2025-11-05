@@ -70,6 +70,41 @@ export function MCPAgentMemoryRecordActionDetails({
   );
 }
 
+export function MCPAgentMemoryEditActionDetails({
+  toolOutput,
+  viewType,
+  toolName,
+}: ToolExecutionDetailsProps & { toolName: string }) {
+  const updatedMemories = useMemo(
+    () => parseMemoriesFromOutput(toolOutput),
+    [toolOutput]
+  );
+  const toolNameText =
+    toolName === "compact_memory"
+      ? "Compact Agent Memory"
+      : "Edit Agent Memory";
+  const subTitleText =
+    toolName === "compact_memory" ? "Compacted memories" : "Edited memories";
+  return (
+    <ActionDetailsWrapper
+      viewType={viewType}
+      actionName={toolNameText}
+      visual={ActionLightbulbIcon}
+    >
+      <div className="flex flex-col gap-4 pt-4">
+        <div className="flex flex-col gap-2">
+          <div className="heading-base">{subTitleText}</div>
+          {updatedMemories.length === 0 ? (
+            <ActionCard actionText={"*No memories remaining.*"} />
+          ) : (
+            <MemoriesCardList memories={updatedMemories} />
+          )}
+        </div>
+      </div>
+    </ActionDetailsWrapper>
+  );
+}
+
 export function MCPAgentMemoryEraseActionDetails({
   toolParams,
   toolOutput,

@@ -119,7 +119,7 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
   if (a.length !== b.length) {
     return a.length - b.length;
   }
-  return a.localeCompare(b);
+  return 0;
 }
 
 /**
@@ -165,8 +165,10 @@ export function filterAndSortAgents(
   );
 
   if (searchText.length > 0) {
-    filtered.sort((a, b) =>
-      compareForFuzzySort(lowerCaseSearchText, a.name, b.name)
+    filtered.sort(
+      (a, b) =>
+        compareForFuzzySort(lowerCaseSearchText, a.name, b.name) ||
+        compareAgentsForSort(a, b)
     );
   }
 
@@ -198,10 +200,14 @@ const globalAgentIndexMap = new Map(
 
 // This function implements our general strategy to sort agents to users (input bar, agent list,
 // agent suggestions...).
-export function compareAgentsForSort(
-  a: LightAgentConfigurationType,
-  b: LightAgentConfigurationType
-) {
+export function compareAgentsForSort<
+  T extends {
+    sId: string;
+    userFavorite: boolean;
+    scope: string;
+    name: string;
+  },
+>(a: T, b: T): number {
   if (a.userFavorite && !b.userFavorite) {
     return -1;
   }

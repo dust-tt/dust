@@ -1,6 +1,7 @@
 import type { estypes } from "@elastic/elasticsearch";
 
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import { asDisplayToolName } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -100,7 +101,7 @@ export async function fetchToolExecutionMetrics(
 
       const successRate = total > 0 ? Math.round((succeeded / total) * 100) : 0;
 
-      tools[tb.key] = {
+      tools[asDisplayToolName(tb.key)] = {
         count: total,
         successRate,
       };

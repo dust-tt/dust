@@ -6,10 +6,12 @@ import type {
   ProcessedLLMEvents,
 } from "@app/lib/api/llm/traces/types";
 import type {
+  EventError,
   LLMEvent,
   TokenUsage,
   ToolCall,
 } from "@app/lib/api/llm/types/events";
+import type { Authenticator } from "@app/lib/auth";
 import { getLLMTracesBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
 import type {
@@ -17,6 +19,25 @@ import type {
   ModelIdType,
   ReasoningEffort,
 } from "@app/types";
+import { safeParseJSON } from "@app/types";
+
+const LLM_TRACE_PREFIX = "llm_trace_";
+
+export type LLMTraceId = `${typeof LLM_TRACE_PREFIX}${string}`;
+
+/**
+ * Check if a traceId starts with the LLM prefix
+ */
+export function isLLMTraceId(traceId: string): traceId is LLMTraceId {
+  return traceId.startsWith(LLM_TRACE_PREFIX);
+}
+
+/**
+ * Create an LLM trace ID from a base ID
+ */
+export function createLLMTraceId(baseId: string): LLMTraceId {
+  return `${LLM_TRACE_PREFIX}${baseId}`;
+}
 
 /**
  * Buffer for LLM trace data with output size limits to prevent memory issues.
@@ -37,12 +58,13 @@ export class LLMTraceBuffer {
 
   private content = "";
   private finishReason: LLMTraceOutput["finishReason"] = "unknown";
+  private endingError: EventError | undefined;
   private reasoning = "";
   private tokenUsage: TokenUsage | undefined;
   private toolCalls: ToolCall[] = [];
 
   constructor(
-    private readonly runId: string,
+    private readonly traceId: LLMTraceId,
     private readonly workspaceId: string,
     private readonly context: LLMTraceContext
   ) {}
@@ -61,9 +83,9 @@ export class LLMTraceBuffer {
     conversation: ModelConversationTypeMultiActions;
     modelId: ModelIdType;
     prompt: string;
-    reasoningEffort: ReasoningEffort;
+    reasoningEffort: ReasoningEffort | null;
     specifications: unknown[];
-    temperature: number;
+    temperature: number | null;
   }) {
     this.input = {
       conversation,
@@ -138,6 +160,7 @@ export class LLMTraceBuffer {
 
       case "error":
         // TODO(2025-10-31 DIRECT_LLM): Wire finishReason from LLM event if available.
+        this.endingError = event;
         this.finishReason = "error";
         break;
     }
@@ -202,12 +225,10 @@ export class LLMTraceBuffer {
   toTraceJSON({
     durationMs,
     endTimestamp,
-    error,
     startTimestamp,
   }: {
     durationMs: number;
     endTimestamp: string;
-    error: Error | null;
     startTimestamp: string;
   }): LLMTrace {
     if (!this.input) {
@@ -223,13 +244,13 @@ export class LLMTraceBuffer {
         modelId: this.input.modelId,
         startTimestamp,
       },
-      runId: this.runId,
+      traceId: this.traceId,
       workspaceId: this.workspaceId,
     };
 
-    if (error) {
+    if (this.endingError) {
       trace.error = {
-        message: error.message,
+        message: this.endingError.message,
         partialCompletion:
           this.content.length > 0 ||
           this.reasoning.length > 0 ||
@@ -261,7 +282,7 @@ export class LLMTraceBuffer {
   }
 
   get filePath(): string {
-    return `${this.workspaceId}/${this.runId}.json`;
+    return `${this.workspaceId}/${this.traceId}.json`;
   }
 
   isTruncated(): boolean {
@@ -279,11 +300,9 @@ export class LLMTraceBuffer {
   async writeToGCS({
     startTime,
     durationMs,
-    error,
   }: {
     startTime: number;
     durationMs: number;
-    error: Error | null;
   }): Promise<void> {
     const startTimestamp = new Date(startTime).toISOString();
     const endTimestamp = new Date(startTime + durationMs).toISOString();
@@ -292,7 +311,6 @@ export class LLMTraceBuffer {
       const trace = this.toTraceJSON({
         durationMs,
         endTimestamp,
-        error,
         startTimestamp,
       });
       const bucket = getLLMTracesBucket();
@@ -305,7 +323,7 @@ export class LLMTraceBuffer {
 
       logger.info(
         {
-          runId: this.runId,
+          traceId: this.traceId,
           workspaceId: this.workspaceId,
           operationType: this.context.operationType,
           contextId: this.context.contextId,
@@ -313,7 +331,7 @@ export class LLMTraceBuffer {
           modelId: this.input?.modelId,
           gcsPath: this.filePath,
           durationMs,
-          hasError: !!error,
+          hasError: !!this.endingError,
           bufferTruncated: this.truncated,
           capturedBytes: this.outputByteSize,
           llmTrace: true,
@@ -326,7 +344,7 @@ export class LLMTraceBuffer {
           outputSize: this.outputByteSize,
           bufferTruncated: this.truncated,
           error: writeError,
-          runId: this.runId,
+          traceId: this.traceId,
           workspaceId: this.workspaceId,
         },
         "Failed to write LLM trace to GCS"
@@ -356,5 +374,46 @@ export class LLMTraceBuffer {
     } catch (err) {
       return Buffer.byteLength(String(obj), "utf8");
     }
+  }
+}
+
+/**
+ * Fetches an LLM trace from GCS storage.
+ * Only works for runIds that start with the LLM prefix.
+ */
+export async function fetchLLMTrace(
+  auth: Authenticator,
+  { runId }: { runId: string }
+): Promise<unknown | null> {
+  if (!isLLMTraceId(runId)) {
+    return null;
+  }
+
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+
+  const bucket = getLLMTracesBucket();
+  const filePath = `${workspaceId}/${runId}.json`;
+
+  try {
+    const traceContent = await bucket.fetchFileContent(filePath);
+
+    const traceRes = safeParseJSON(traceContent);
+    if (!traceRes.isOk()) {
+      return traceContent;
+    }
+
+    return traceRes.value;
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        gcsPath: filePath,
+        runId,
+        workspaceId,
+      },
+      "Failed to fetch LLM trace from GCS"
+    );
+
+    return null;
   }
 }

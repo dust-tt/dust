@@ -79,7 +79,7 @@ export class AnthropicLLM extends LLM {
         system: prompt,
         messages,
         // Thinking isn’t compatible with temperature: `temperature` may only be set to 1 when thinking is enabled.
-        temperature: this.thinkingConfig ? 1 : this.temperature,
+        temperature: this.thinkingConfig ? 1 : this.temperature ?? undefined,
         stream: true,
         tools: specifications.map(toTool),
         max_tokens: this.modelConfig.generationTokensCount,

@@ -58,6 +58,7 @@ type PokeAgentActionType = AgentMessageType["actions"][number] & {
 
 export type PokeAgentMessageType = Omit<AgentMessageType, "actions"> & {
   runIds?: string[] | null;
+  runUrls?: { runId: string; url: string; isLLM: boolean }[] | null;
   actions: PokeAgentActionType[];
 };
 

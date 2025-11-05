@@ -1,8 +1,8 @@
-export const OBSERVABILITY_TIME_RANGE = [7, 14, 30] as const;
+export const OBSERVABILITY_TIME_RANGE = [7, 14, 30, 90] as const;
 export type ObservabilityTimeRangeType =
   (typeof OBSERVABILITY_TIME_RANGE)[number];
 
-export const DEFAULT_PERIOD_DAYS = 14;
+export const DEFAULT_PERIOD_DAYS = 30;
 
 export const USAGE_METRICS_PALETTE = {
   messages: "text-golden-500 dark:text-golden-500-night",
@@ -21,7 +21,7 @@ export const LATENCY_PALETTE = {
 } as const;
 
 export const LATENCY_LEGEND = [
-  { key: "average", label: "Average latency" },
+  { key: "average", label: "Average time to complete output" },
 ] as const;
 
 export const CHART_HEIGHT = 260;

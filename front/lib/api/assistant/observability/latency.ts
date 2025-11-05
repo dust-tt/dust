@@ -63,7 +63,9 @@ export async function fetchLatency(
       return {
         date,
         messages: b.doc_count ?? DEFAULT_METRIC_VALUE,
-        average: (b.avg_latency_ms?.value ?? DEFAULT_METRIC_VALUE) / 1000,
+        average: Number(
+          ((b.avg_latency_ms?.value ?? DEFAULT_METRIC_VALUE) / 1000).toFixed(2)
+        ),
       };
     });
 

@@ -18,6 +18,7 @@ import type {
   TokenUsageEvent,
   ToolCallEvent,
 } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { safeParseJSON } from "@app/types";
 
@@ -208,16 +209,14 @@ function* handleStopReason(
       break;
     case "max_tokens":
     case "refusal":
-      yield {
-        type: "error",
-        content: {
+      yield new EventError(
+        {
           type: "stop_error",
           message: `Stop reason: ${stopReason}`,
           isRetryable: false,
-          statusCode: 0,
         },
-        metadata,
-      };
+        metadata
+      );
       break;
   }
 }

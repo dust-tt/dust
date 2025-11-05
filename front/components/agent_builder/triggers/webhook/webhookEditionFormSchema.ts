@@ -35,10 +35,10 @@ export function getWebhookFormDefaultValues({
     name:
       trigger?.name ??
       (webhookSourceView
-        ? `${webhookSourceView.webhookSource.name} trigger` +
-          webhookSourceView.provider
-          ? `(${asDisplayName(webhookSourceView.provider)})`
-          : ""
+        ? `${webhookSourceView?.webhookSource.name}` +
+          (webhookSourceView?.provider
+            ? ` - ${asDisplayName(webhookSourceView?.provider)}`
+            : "")
         : "Webhook Trigger"),
     enabled: trigger?.enabled ?? true,
     customPrompt: trigger?.customPrompt ?? "",
@@ -70,7 +70,7 @@ export function formValuesToWebhookTriggerData({
       ? webhook.naturalDescription?.trim() ?? null
       : null,
     kind: "webhook",
-    provider: webhookSourceView?.provider ?? null,
+    provider: webhookSourceView?.provider ?? undefined,
     configuration: {
       includePayload: webhook.includePayload,
       event: webhook.event,

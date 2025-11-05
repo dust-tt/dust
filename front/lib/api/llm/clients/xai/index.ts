@@ -1,10 +1,5 @@
 import OpenAI, { APIError } from "openai";
-import type { ReasoningEffort as OpenAiReasoningEffort } from "openai/resources/shared";
 
-import {
-  isOpenAIResponsesWhitelistedReasoningModelId,
-  REASONING_EFFORT_TO_OPENAI_REASONING,
-} from "@app/lib/api/llm/clients/openai/types";
 import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import { LLM } from "@app/lib/api/llm/llm";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
@@ -16,6 +11,7 @@ import type {
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
+  toReasoning,
   toTool,
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
@@ -24,10 +20,6 @@ import { dustManagedCredentials } from "@app/types";
 
 export class XaiLLM extends LLM {
   private client: OpenAI;
-  private readonly reasoning: {
-    effort: OpenAiReasoningEffort;
-    summary: "auto";
-  } | null;
 
   constructor(
     auth: Authenticator,
@@ -50,13 +42,6 @@ export class XaiLLM extends LLM {
       clientId: "openai_responses",
     });
 
-    this.reasoning = isOpenAIResponsesWhitelistedReasoningModelId(modelId)
-      ? {
-          effort: REASONING_EFFORT_TO_OPENAI_REASONING[this.reasoningEffort],
-          summary: "auto",
-        }
-      : null;
-
     const { XAI_API_KEY } = dustManagedCredentials();
     if (!XAI_API_KEY) {
       throw new Error("XAI_API_KEY environment variable is required");
@@ -78,7 +63,7 @@ export class XaiLLM extends LLM {
         input: toInput(prompt, conversation, "system"),
         stream: true,
         temperature: this.temperature,
-        reasoning: this.reasoning,
+        reasoning: toReasoning(this.reasoningEffort),
         tools: specifications.map(toTool),
       });
 

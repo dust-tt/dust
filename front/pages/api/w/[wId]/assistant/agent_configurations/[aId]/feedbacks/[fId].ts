@@ -1,10 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getMessageConversationId } from "@app/lib/api/assistant/conversation";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { apiError } from "@app/logger/withlogging";
+import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
 import type { WithAPIErrorResponse } from "@app/types";
 
 async function handler(
@@ -29,6 +31,7 @@ async function handler(
     agentId: aId,
     variant: "light",
   });
+
   if (!agentConfiguration) {
     return apiError(req, res, {
       status_code: 404,
@@ -55,6 +58,7 @@ async function handler(
         feedbackId: fId,
         agentConfigurationId: aId,
       });
+
       if (!feedback) {
         return apiError(req, res, {
           status_code: 404,
@@ -80,6 +84,20 @@ async function handler(
         await feedback.dismiss();
       } else {
         await feedback.undismiss();
+      }
+
+      const { conversationId, messageId: agentMessageId } =
+        await getMessageConversationId(auth, {
+          messageId: feedback.agentMessageId,
+        });
+
+      if (conversationId && agentMessageId) {
+        await launchAgentMessageFeedbackWorkflow(auth, {
+          message: {
+            conversationId,
+            agentMessageId,
+          },
+        });
       }
 
       res.status(200).json({ success: true });

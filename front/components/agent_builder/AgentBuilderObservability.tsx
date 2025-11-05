@@ -167,13 +167,18 @@ function HeaderGlobalSelector({
       {mode === "timeRange" ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button label={`${period}d`} size="xs" variant="outline" isSelect />
+            <Button
+              label={`${period} days`}
+              size="xs"
+              variant="outline"
+              isSelect
+            />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {OBSERVABILITY_TIME_RANGE.map((p) => (
               <DropdownMenuItem
                 key={p}
-                label={`${p}d`}
+                label={`${p} days`}
                 onClick={() => setPeriod(p)}
               />
             ))}

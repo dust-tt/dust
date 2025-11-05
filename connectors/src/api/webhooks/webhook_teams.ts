@@ -205,14 +205,8 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
               value: createInteractiveToolApprovalAdaptiveCard(validatedData),
             };
 
-            // For Bot Framework invoke activities, send response through context
-            await context.sendActivity({
-              type: "invokeResponse",
-              value: {
-                status: 200,
-                body: cardResponse,
-              },
-            });
+            res.set("Content-Type", "application/json; charset=utf-8");
+            res.status(200).json(cardResponse);
           } else {
             await handleToolApproval(context, connector, localLogger);
           }
