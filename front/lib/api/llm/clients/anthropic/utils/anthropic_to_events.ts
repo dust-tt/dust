@@ -280,10 +280,8 @@ function tokenUsage(
     content: {
       inputTokens: usage.input_tokens ?? 0,
       outputTokens: usage.output_tokens,
-      // TODO(LLM-Router) Need to split between cache read and hit
-      cachedTokens:
-        (usage.cache_creation_input_tokens ?? 0) +
-        (usage.cache_read_input_tokens ?? 0),
+      cachedTokens: usage.cache_read_input_tokens ?? 0,
+      cacheCreationTokens: usage.cache_creation_input_tokens ?? 0,
       totalTokens: (usage.input_tokens ?? 0) + usage.output_tokens,
     },
     metadata,
