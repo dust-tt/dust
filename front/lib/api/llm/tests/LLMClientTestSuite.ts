@@ -17,7 +17,7 @@ const RUN_LLM_TESTS = process.env.VITE_RUN_LLM_TESTS === "true";
  *
  * Generates and runs tests for different models, configurations and conversations for a given LLM provider.
  *
- * These tests are disable by default as we don't want to run them on every CI run (dues to costs of LLM usage).
+ * These tests are disabled by default as we don't want to run them on every CI run (dues to costs of LLM usage).
  * To enable them, set the environment variable VITE_RUN_LLM_TESTS to "true".
  * Additionally, make sure to provide the necessary API keys via environment variables.
  *
@@ -28,7 +28,7 @@ const RUN_LLM_TESTS = process.env.VITE_RUN_LLM_TESTS === "true";
  * ```
  *
  * It is recommended to run these tests locally before pushing changes that affect LLM clients,
- * for instance when adding a new model.
+ * for instance, when adding a new model.
  */
 export abstract class LLMClientTestSuite {
   protected abstract provider: ModelProviderIdType;
