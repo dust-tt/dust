@@ -86,7 +86,7 @@ export function RunPluginDialog({
 
   // Scroll to feedback section when error or result appears
   useEffect(() => {
-    if ((error || result) && feedbackRef.current) {
+    if ((error ?? result) && feedbackRef.current) {
       feedbackRef.current.scrollIntoView({
         behavior: "smooth",
         block: "nearest",
