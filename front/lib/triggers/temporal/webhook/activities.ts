@@ -18,7 +18,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { ContentFragmentInputWithFileIdType } from "@app/types";
-import { assertNever, errorToString, normalizeError } from "@app/types";
+import { assertNever, errorToString } from "@app/types";
 import type { WebhookTriggerType } from "@app/types/assistant/triggers";
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
@@ -263,12 +263,8 @@ export async function runTriggerWebhookActivity({
         `workspace_id:${workspaceId}`,
         `trigger_id:${trigger.sId}`,
       ];
-        // Filter triggers by payload matching
-        statsDClient.increment(
-          "webhook_filter.events_processed.count",
-          1,
-          tags
-        );
+      // Filter triggers by payload matching
+      statsDClient.increment("webhook_filter.events_processed.count", 1, tags);
 
       const parsedFilterResult = parseMatcherExpression(filter);
       if (parsedFilterResult.isErr()) {
@@ -284,12 +280,11 @@ export async function runTriggerWebhookActivity({
         continue;
       }
 
-        const r = matchPayload(body, parsedFilter);
-        if (r) {
-          statsDClient.increment("webhook_filter.events_passed.count", 1, tags);
+      const payloadMatchesFilter = matchPayload(body, parsedFilterResult.value);
+      if (payloadMatchesFilter) {
+        statsDClient.increment("webhook_filter.events_passed.count", 1, tags);
 
-          filteredTriggers.push(trigger);
-        }
+        filteredTriggers.push(trigger);
       }
     }
   }
