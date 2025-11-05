@@ -2639,13 +2639,23 @@ export type FileUploadedRequestResponseType = z.infer<
 >;
 
 export const PublicFrameResponseBodySchema = z.object({
-  content: z.string().optional(),
-  file: FileTypeSchema,
+  accessToken: z.string(),
   conversationUrl: z.string().nullable(),
+  file: FileTypeSchema,
 });
 
 export type PublicFrameResponseBodyType = z.infer<
   typeof PublicFrameResponseBodySchema
+>;
+
+export const PublicVizContentResponseBodySchema = z.object({
+  content: z.string(),
+  contentType: z.string(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export type PublicVizContentResponseBodyType = z.infer<
+  typeof PublicVizContentResponseBodySchema
 >;
 
 export const MembershipOriginType = FlexibleEnumSchema<
