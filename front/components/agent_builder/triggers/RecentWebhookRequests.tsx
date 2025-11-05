@@ -12,6 +12,7 @@ import { useWebhookRequestTriggersForTrigger } from "@app/lib/swr/webhook_source
 import type { LightWorkspaceType } from "@app/types";
 
 import { WebhookRequestStatusBadge } from "./WebhookRequestStatusBadge";
+import Link from "next/link";
 
 interface RecentWebhookRequestsProps {
   owner: LightWorkspaceType;
@@ -32,14 +33,12 @@ export function RecentWebhookRequests({
         <Label className="cursor-pointer">Recent Requests</Label>
       }
       contentChildren={
-        <div className="pt-2">
-          <RecentWebhookRequestsContent
-            isOpen={isOpen}
-            owner={owner}
-            agentConfigurationId={agentConfigurationId}
-            trigger={trigger}
-          />
-        </div>
+        <RecentWebhookRequestsContent
+          isOpen={isOpen}
+          owner={owner}
+          agentConfigurationId={agentConfigurationId}
+          trigger={trigger}
+        />
       }
     />
   );
@@ -97,8 +96,31 @@ function RecentWebhookRequestsContent({
     );
   }
 
+  const wasRateLimited = webhookRequests.some(
+    (request) => request.status === "rate_limited"
+  );
+
   return (
     <div className="space-y-2">
+      {wasRateLimited && (
+        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p>
+            Some requests were rate limited.
+            <br />
+            <b>Consider increasing this trigger&apos;s rate limit</b>, or
+            contact support to increase this specific trigger&apos;s rate limit.
+          </p>
+          <Link
+            href="https://docs.dust.tt/update/docs/rate-limiting#/"
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            Learn more
+          </Link>{" "}
+          about webhook trigger rate limiting.
+        </div>
+      )}
       {webhookRequests.map((request) => (
         <div
           key={request.id}

@@ -188,7 +188,7 @@ export function WebhookEditionFilters({
             <br />
             See documentation on{" "}
             <Link
-              href="https://docs.dust.tt/docs/filter-webhooks-payload#/f"
+              href="https://docs.dust.tt/docs/filter-webhooks-payload#/"
               target="_blank"
               rel="noreferrer"
               className="underline"
