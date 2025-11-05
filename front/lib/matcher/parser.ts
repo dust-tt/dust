@@ -1,14 +1,14 @@
-import { assertNever } from "@app/types";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
-
-import type { LogicalOp, MatcherExpression, Operation } from "./types";
 import {
   isDyadicOperation,
   isMonadicOperation,
   isOperator,
   isVariadicOperation,
-} from "./types";
+} from "@app/lib/matcher/types";
+import { assertNever } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+
+import type { LogicalOp, MatcherExpression, Operation } from "./types";
 
 type ParserState = {
   expression: string;
