@@ -60,28 +60,28 @@ impl Provider for FathomConnectionProvider {
             Some(token) => token,
             None => Err(anyhow!("Missing `access_token` in response from Fathom"))?,
         };
-        // expires_in is the number of seconds until the token expires.
-        let expires_in = match raw_json.get("expires_in") {
+
+        let access_token_expiry = match raw_json.get("expires_in") {
             Some(serde_json::Value::Number(n)) => match n.as_u64() {
-                Some(n) => n,
-                None => Err(anyhow!("Invalid `expires_in` in response from Fathom"))?,
+                Some(expires_in) => Some(
+                    utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
+                ),
+                None => None,
             },
-            _ => Err(anyhow!("Missing `expires_in` in response from Fathom"))?,
+            _ => None,
         };
-        let refresh_token = match raw_json["refresh_token"].as_str() {
-            Some(token) => token,
-            None => Err(anyhow!("Missing `refresh_token` in response from Fathom"))?,
-        };
+
+        let refresh_token = raw_json["refresh_token"]
+            .as_str()
+            .map(|s| s.to_string());
 
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             extra_metadata: None,
             code: code.to_string(),
             access_token: access_token.to_string(),
-            access_token_expiry: Some(
-                utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
-            ),
-            refresh_token: Some(refresh_token.to_string()),
+            access_token_expiry,
+            refresh_token,
             raw_json,
         })
     }
@@ -93,7 +93,11 @@ impl Provider for FathomConnectionProvider {
     ) -> Result<RefreshResult, ProviderError> {
         let refresh_token = match connection.unseal_refresh_token() {
             Ok(Some(token)) => token,
-            Ok(None) => Err(anyhow!("Missing `refresh_token` in Fathom connection"))?,
+            Ok(None) => {
+                return Err(ProviderError::ActionNotSupportedError(
+                    "Fathom connection has no refresh token".to_string(),
+                ))
+            }
             Err(e) => Err(e)?,
         };
 
@@ -116,25 +120,25 @@ impl Provider for FathomConnectionProvider {
             Some(token) => token,
             None => Err(anyhow!("Missing `access_token` in response from Fathom"))?,
         };
-        // expires_in is the number of seconds until the token expires.
-        let expires_in = match raw_json.get("expires_in") {
+
+        let access_token_expiry = match raw_json.get("expires_in") {
             Some(serde_json::Value::Number(n)) => match n.as_u64() {
-                Some(n) => n,
-                None => Err(anyhow!("Invalid `expires_in` in response from Fathom"))?,
+                Some(expires_in) => Some(
+                    utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
+                ),
+                None => None,
             },
-            _ => Err(anyhow!("Missing `expires_in` in response from Fathom"))?,
+            _ => None,
         };
-        let refresh_token = match raw_json["refresh_token"].as_str() {
-            Some(token) => token,
-            None => Err(anyhow!("Missing `refresh_token` in response from Fathom"))?,
-        };
+
+        let refresh_token = raw_json["refresh_token"]
+            .as_str()
+            .map(|s| s.to_string());
 
         Ok(RefreshResult {
             access_token: access_token.to_string(),
-            access_token_expiry: Some(
-                utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
-            ),
-            refresh_token: Some(refresh_token.to_string()),
+            access_token_expiry,
+            refresh_token,
             raw_json,
         })
     }
