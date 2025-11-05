@@ -155,7 +155,17 @@ function createServer(
 
         const response = result.value;
 
-        if (response.data.length === 0) {
+        if (!response.success) {
+          return new Err(
+            new MCPError(
+              `Report retrieval failed: ${response.results.failureReason ?? "Unknown error"}`
+            )
+          );
+        }
+
+        const reportData = response.results.reportData;
+
+        if (reportData.data.length === 0) {
           return new Ok([
             {
               type: "text" as const,
@@ -164,14 +174,16 @@ function createServer(
           ]);
         }
 
-        const fieldNames = response.fields.map((f) => f.name);
-        const csvRows = response.data.map((row) => {
+        const fieldNames = reportData.columnNames;
+        const [_, ...dataRows] = reportData.data;
+
+        const csvRows = dataRows.map((row) => {
           const csvRow: Record<string, string> = {};
-          for (const fieldName of fieldNames) {
-            const value = row[fieldName];
+          fieldNames.forEach((fieldName, index) => {
+            const value = row[index];
             csvRow[fieldName] =
               value === null || value === undefined ? "" : String(value);
-          }
+          });
           return csvRow;
         });
 
@@ -179,8 +191,12 @@ function createServer(
         const base64Content = Buffer.from(csvContent).toString("base64");
 
         const resultText =
-          `Report data retrieved successfully!\n\nReport ID: ${reportId}\n` +
-          `Rows: ${response.data.length}\nFields: ${fieldNames.join(", ")}\n\n` +
+          `Report data retrieved successfully!\n\n` +
+          `Report ID: ${reportId}\n` +
+          `Title: ${reportData.metadata.title}\n` +
+          `Updated: ${reportData.metadata.updatedAt}\n` +
+          `Rows: ${dataRows.length}\n` +
+          `Fields: ${fieldNames.join(", ")}\n\n` +
           "The data has been saved as a CSV file.";
 
         return new Ok([
@@ -194,7 +210,7 @@ function createServer(
               uri: `ashby-report-${reportId}.csv`,
               mimeType: "text/csv",
               blob: base64Content,
-              text: `Ashby report data (${response.data.length} rows)`,
+              text: `Ashby report data (${dataRows.length} rows)`,
             },
           },
         ]);

@@ -43,13 +43,22 @@ export type AshbyReportSynchronousRequest = z.infer<
 >;
 
 export const AshbyReportSynchronousResponseSchema = z.object({
-  data: z.array(z.record(z.unknown())),
-  fields: z.array(
-    z.object({
-      name: z.string(),
-      type: z.string(),
-    })
-  ),
+  success: z.boolean(),
+  results: z.object({
+    requestId: z.string(),
+    status: z.string(),
+    reportData: z.object({
+      data: z.array(z.array(z.union([z.string(), z.number()]))),
+      columnNames: z.array(z.string()),
+      metadata: z
+        .object({
+          updatedAt: z.string(),
+          title: z.string(),
+        })
+        .passthrough(),
+    }),
+    failureReason: z.string().nullable(),
+  }),
 });
 
 export const AshbyCandidateSearchRequestSchema = z.object({
