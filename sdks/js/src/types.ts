@@ -59,8 +59,6 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "claude-4-sonnet-20250514"
   | "claude-haiku-4-5-20251001"
   | "claude-sonnet-4-5-20250929"
-  | "claude-2.1"
-  | "claude-instant-1.2"
   | "mistral-large-latest"
   | "mistral-medium"
   | "mistral-small-latest"

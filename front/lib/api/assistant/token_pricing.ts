@@ -138,14 +138,6 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     cache_creation_input_tokens: 1.25,
     cache_read_input_tokens: 0.1,
   },
-  "claude-2.1": {
-    input: 8.0,
-    output: 24.0,
-  },
-  "claude-instant-1.2": {
-    input: 0.8,
-    output: 2.4,
-  },
   "mistral-large-latest": {
     input: 2.0,
     output: 6.0,
@@ -358,10 +350,6 @@ const LEGACY_MODEL_PRICING: Record<string, PricingEntry> = {
   "o1-mini-2024-09-12": {
     input: 3.0,
     output: 12.0,
-  },
-  "claude-2.0": {
-    input: 8.0,
-    output: 24.0,
   },
   "claude-3-sonnet-20240229": {
     input: 3.0,
