@@ -21,8 +21,9 @@ export const AshbyCandidateSchema = z
     socialLinks: z
       .array(
         z.object({
-          value: z.string(),
           type: z.string(),
+          value: z.string().optional(),
+          url: z.string().optional(),
         })
       )
       .optional(),
