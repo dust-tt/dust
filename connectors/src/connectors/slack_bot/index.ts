@@ -42,7 +42,7 @@ import type {
 import { isSlackAutoReadPatterns, safeParseJSON } from "@connectors/types";
 import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
 
-const { SLACK_BOT_CLIENT_ID, SLACK_BOT_CLIENT_SECRET } = process.env;
+const { SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } = process.env;
 
 export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigurationType> {
   readonly provider: ConnectorProvider = "slack_bot";
@@ -293,8 +293,8 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
           );
           const uninstallRes = await uninstallSlack(
             connectionId,
-            SLACK_BOT_CLIENT_ID,
-            SLACK_BOT_CLIENT_SECRET
+            SLACK_CLIENT_ID,
+            SLACK_CLIENT_SECRET
           );
 
           if (uninstallRes.isErr()) {
@@ -375,8 +375,8 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
       try {
         const uninstallRes = await uninstallSlack(
           connector.connectionId,
-          SLACK_BOT_CLIENT_ID,
-          SLACK_BOT_CLIENT_SECRET
+          SLACK_CLIENT_ID,
+          SLACK_CLIENT_SECRET
         );
 
         if (uninstallRes.isErr() && !force) {
