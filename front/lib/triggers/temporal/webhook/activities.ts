@@ -258,22 +258,23 @@ export async function runTriggerWebhookActivity({
       // No filter, add the trigger
       filteredTriggers.push(trigger);
     } else {
+      const tags = [
+        `provider:${provider}`,
+        `workspace_id:${workspaceId}`,
+        `trigger_id:${trigger.sId}`,
+      ];
       try {
         // Filter triggers by payload matching
-        statsDClient.increment("webhook_filter.events_processed.count", 1, [
-          `provider:${provider}`,
-          `workspace_id:${workspaceId}`,
-          `trigger_id:${trigger.sId}`,
-        ]);
+        statsDClient.increment(
+          "webhook_filter.events_processed.count",
+          1,
+          tags
+        );
 
         const parsedFilter = parseMatcherExpression(filter);
         const r = matchPayload(body, parsedFilter);
         if (r) {
-          statsDClient.increment("webhook_filter.events_passed.count", 1, [
-            `provider:${provider}`,
-            `workspace_id:${workspaceId}`,
-            `trigger_id:${trigger.sId}`,
-          ]);
+          statsDClient.increment("webhook_filter.events_passed.count", 1, tags);
 
           filteredTriggers.push(trigger);
         }
