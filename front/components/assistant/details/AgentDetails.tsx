@@ -112,10 +112,7 @@ export function AgentDetails({
 
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const showEditorsTabs = agentId != null && !isGlobalAgent;
-  const showTriggersTabs =
-    agentId != null &&
-    !isGlobalAgent &&
-    featureFlags.includes("hootl_subscriptions");
+  const showTriggersTabs = agentId != null && !isGlobalAgent;
   const showAgentMemory = !!agentConfiguration?.actions.find(
     isMCPConfigurationForAgentMemory
   );

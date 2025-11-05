@@ -23,11 +23,13 @@ import type { LightAgentConfigurationType } from "@app/types";
 interface AgentTriggersTabProps {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
+  onNavigateToNewTrigger?: () => void;
 }
 
 export function AgentTriggersTab({
   agentConfiguration,
   owner,
+  onNavigateToNewTrigger,
 }: AgentTriggersTabProps) {
   const { triggers, isTriggersLoading } = useAgentTriggers({
     workspaceId: owner.sId,
@@ -36,14 +38,16 @@ export function AgentTriggersTab({
 
   const [isLoading, setIsLoading] = useState(false);
 
-  const subscribe = useAddTriggerSubscriber({
-    workspaceId: owner.sId,
-    agentConfigurationId: agentConfiguration.sId,
-  });
-  const unsubscribe = useRemoveTriggerSubscriber({
-    workspaceId: owner.sId,
-    agentConfigurationId: agentConfiguration.sId,
-  });
+  /**
+   * const subscribe = useAddTriggerSubscriber({
+   *   workspaceId: owner.sId,
+   *   agentConfigurationId: agentConfiguration.sId,
+   * });
+   * const unsubscribe = useRemoveTriggerSubscriber({
+   *   workspaceId: owner.sId,
+   *   agentConfigurationId: agentConfiguration.sId,
+   * });
+   */
 
   const editionURL = getAgentBuilderRoute(owner.sId, agentConfiguration.sId);
 
@@ -55,6 +59,17 @@ export function AgentTriggersTab({
         </div>
       ) : (
         <div className="flex w-full flex-col gap-2">
+          {onNavigateToNewTrigger && (
+            <div className="mb-2">
+              <Button
+                label="New Trigger"
+                icon={BellIcon}
+                variant="primary"
+                size="sm"
+                onClick={onNavigateToNewTrigger}
+              />
+            </div>
+          )}
           {triggers.length === 0 && (
             <div className="text-muted-foreground">
               No triggers setup for this agent, yet.
@@ -81,15 +96,18 @@ export function AgentTriggersTab({
                     <div className="font-semibold">{trigger.name}</div>
                   </div>
                   <div className="self-end">
-                    {trigger.isEditor ? (
-                      <Button
-                        label="Manage"
-                        icon={PencilSquareIcon}
-                        href={editionURL}
-                        variant="outline"
-                        size="sm"
-                      />
-                    ) : trigger.isSubscriber ? (
+                    {
+                      trigger.isEditor && (
+                        <Button
+                          label="Manage"
+                          icon={PencilSquareIcon}
+                          href={editionURL}
+                          variant="outline"
+                          size="sm"
+                        />
+                      )
+
+                      /**trigger.isSubscriber ? (
                       <Button
                         label="Unsubscribe"
                         icon={XMarkIcon}
@@ -102,7 +120,7 @@ export function AgentTriggersTab({
                           await unsubscribe(trigger.sId);
                           setIsLoading(false);
                         }}
-                      />
+                      /> 
                     ) : (
                       <Button
                         label="Subscribe"
@@ -117,7 +135,8 @@ export function AgentTriggersTab({
                           setIsLoading(false);
                         }}
                       />
-                    )}
+                    ) */
+                    }
                   </div>
                 </div>
                 {trigger.kind === "schedule" && (

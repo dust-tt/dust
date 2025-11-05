@@ -150,10 +150,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",
   },
-  hootl_subscriptions: {
-    description: "Subscription feature for Schedule & Triggers.",
-    stage: "dust_only",
-  },
   hootl_dev_webhooks: {
     description: "GitHub webhooks for Human Out Of The Loop (aka Triggers)",
     stage: "dust_only",

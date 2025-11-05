@@ -664,7 +664,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "gemini_image_generation"
   | "google_sheets_tool"
   | "hootl_dev_webhooks"
-  | "hootl_subscriptions"
   | "hootl_webhooks"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
