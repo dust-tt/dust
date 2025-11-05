@@ -43,36 +43,6 @@ AgentScheduledExecutionModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    conversationId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: "conversations",
-        key: "id",
-      },
-      onDelete: "CASCADE",
-      onUpdate: "CASCADE",
-    },
-    agentMessageId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: "agent_messages",
-        key: "id",
-      },
-      onDelete: "CASCADE",
-      onUpdate: "CASCADE",
-    },
-    userMessageId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: "messages",
-        key: "id",
-      },
-      onDelete: "CASCADE",
-      onUpdate: "CASCADE",
-    },
     workflowId: {
       type: DataTypes.TEXT,
       allowNull: false,
@@ -117,6 +87,7 @@ AgentScheduledExecutionModel.belongsTo(ConversationModel, {
     name: "conversationId",
     allowNull: false,
   },
+  onDelete: "RESTRICT",
 });
 
 AgentScheduledExecutionModel.belongsTo(AgentMessage, {
@@ -125,6 +96,7 @@ AgentScheduledExecutionModel.belongsTo(AgentMessage, {
     name: "agentMessageId",
     allowNull: false,
   },
+  onDelete: "RESTRICT",
 });
 
 AgentScheduledExecutionModel.belongsTo(Message, {
@@ -133,4 +105,5 @@ AgentScheduledExecutionModel.belongsTo(Message, {
     name: "userMessageId",
     allowNull: false,
   },
+  onDelete: "RESTRICT",
 });
