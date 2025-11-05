@@ -130,10 +130,7 @@ export enum GLOBAL_AGENTS_SID {
   CLAUDE_4_5_HAIKU = "claude-4.5-haiku",
   CLAUDE_4_5_SONNET = "claude-4.5-sonnet",
   CLAUDE_4_SONNET = "claude-4-sonnet",
-  CLAUDE_3_OPUS = "claude-3-opus",
-  CLAUDE_3_SONNET = "claude-3-sonnet",
   CLAUDE_3_HAIKU = "claude-3-haiku",
-  CLAUDE_3_7_SONNET = "claude-3-7-sonnet",
   MISTRAL_LARGE = "mistral-large",
   MISTRAL_MEDIUM = "mistral-medium",
   //!\ TEMPORARY WORKAROUND: Renaming 'mistral' to 'mistral-small' is not feasible since
