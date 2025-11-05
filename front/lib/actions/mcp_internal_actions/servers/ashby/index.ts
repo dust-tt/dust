@@ -179,7 +179,7 @@ function createServer(
 
         const {
           columnNames,
-          data: [_, ...dataRows],
+          data: [_headerRow, ...dataRows],
         } = reportData;
 
         const csvRows = dataRows.map((row) => {
