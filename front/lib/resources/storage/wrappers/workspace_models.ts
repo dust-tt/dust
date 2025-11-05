@@ -73,6 +73,21 @@ interface WorkspaceTenantIsolationSecurityBypassOptions<T>
   dangerouslyBypassWorkspaceIsolationSecurity?: boolean;
 }
 
+interface WorkspaceTenantIsolationSecurityBypassUpdateOptions<T>
+  extends UpdateOptions<T> {
+  /**
+   * When true, BYPASSES CRITICAL TENANT ISOLATION SECURITY for this update.
+   *
+   * SECURITY REQUIREMENT: You MUST include a comment explaining why this security bypass
+   * is necessary using the format:
+   * // WORKSPACE_ISOLATION_BYPASS: [explanation]
+   *
+   * This should only be used in critical scenarios where an update legitimately needs
+   * to operate across workspaces or without workspace context.
+   */
+  dangerouslyBypassWorkspaceIsolationSecurity?: boolean;
+}
+
 function isWorkspaceIsolationBypassEnabled<T>(
   options: FindOptions<T>
 ): options is WorkspaceTenantIsolationSecurityBypassOptions<T> {
@@ -193,6 +208,12 @@ export type ModelStaticWorkspaceAware<M extends WorkspaceAwareModel> =
       identifier: any,
       options: WorkspaceTenantIsolationSecurityBypassOptions<Attributes<M>>
     ): Promise<M | null>;
+    update(
+      values: Partial<Attributes<M>>,
+      options: WorkspaceTenantIsolationSecurityBypassUpdateOptions<
+        Attributes<M>
+      >
+    ): Promise<[affectedCount: number]>;
   };
 export type ModelStaticSoftDeletable<
   M extends SoftDeletableWorkspaceAwareModel,
