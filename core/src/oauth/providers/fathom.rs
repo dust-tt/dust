@@ -63,17 +63,15 @@ impl Provider for FathomConnectionProvider {
 
         let access_token_expiry = match raw_json.get("expires_in") {
             Some(serde_json::Value::Number(n)) => match n.as_u64() {
-                Some(expires_in) => Some(
-                    utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
-                ),
+                Some(expires_in) => {
+                    Some(utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000)
+                }
                 None => None,
             },
             _ => None,
         };
 
-        let refresh_token = raw_json["refresh_token"]
-            .as_str()
-            .map(|s| s.to_string());
+        let refresh_token = raw_json["refresh_token"].as_str().map(|s| s.to_string());
 
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
@@ -123,17 +121,15 @@ impl Provider for FathomConnectionProvider {
 
         let access_token_expiry = match raw_json.get("expires_in") {
             Some(serde_json::Value::Number(n)) => match n.as_u64() {
-                Some(expires_in) => Some(
-                    utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
-                ),
+                Some(expires_in) => {
+                    Some(utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000)
+                }
                 None => None,
             },
             _ => None,
         };
 
-        let refresh_token = raw_json["refresh_token"]
-            .as_str()
-            .map(|s| s.to_string());
+        let refresh_token = raw_json["refresh_token"].as_str().map(|s| s.to_string());
 
         Ok(RefreshResult {
             access_token: access_token.to_string(),
