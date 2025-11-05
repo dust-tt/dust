@@ -13,6 +13,8 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 
+const DEFAULT_SEARCH_LIMIT = 20;
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -22,7 +24,7 @@ function createServer(
   server.tool(
     "search_candidates",
     "Search for candidates in Ashby ATS by name and/or email. " +
-      "Returns up to 100 matching candidates.",
+      `Returns up to ${DEFAULT_SEARCH_LIMIT} matching candidates by default.`,
     {
       email: z
         .string()
@@ -80,13 +82,13 @@ function createServer(
 
         const resultText = `Found ${response.results.length} candidate(s) matching search (${searchParams}):\n\n${candidatesText}`;
 
-        if (response.results.length === 100) {
+        if (response.results.length === DEFAULT_SEARCH_LIMIT) {
           return new Ok([
             {
               type: "text" as const,
               text:
                 resultText +
-                "\n\nNote: Results are limited to 100 candidates. " +
+                `\n\nNote: Results are limited to ${DEFAULT_SEARCH_LIMIT} candidates. ` +
                 "Consider refining your search if you need more specific results.",
             },
           ]);
