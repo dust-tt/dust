@@ -28,7 +28,7 @@ import type {
 } from "@app/types";
 import { CoreAPI, Err, Ok } from "@app/types";
 
-export async function listToolCallback(
+export async function listCallback(
   auth: Authenticator,
   {
     nodeId,

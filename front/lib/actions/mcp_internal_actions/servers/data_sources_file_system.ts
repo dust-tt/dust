@@ -10,7 +10,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
 import { findCallback } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/find";
-import { listToolCallback } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
+import { listCallback } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
 import { locateTreeCallback } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/locate_tree";
 import { searchCallback } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/search";
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
@@ -76,7 +76,7 @@ function createServer(
           agentLoopContext,
           enableAlerting: true,
         },
-        async (params) => listToolCallback(auth, params)
+        async (params) => listCallback(auth, params)
       )
     );
     server.tool(
@@ -145,7 +145,7 @@ function createServer(
           enableAlerting: true,
         },
         async (params) =>
-          listToolCallback(auth, params, {
+          listCallback(auth, params, {
             tagsIn: params.tagsIn,
             tagsNot: params.tagsNot,
           })
