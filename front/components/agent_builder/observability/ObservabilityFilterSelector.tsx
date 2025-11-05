@@ -15,11 +15,13 @@ import { OBSERVABILITY_TIME_RANGE } from "@app/components/agent_builder/observab
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 
+interface ObservabilityFilterSelectorProps {
+  agentConfigurationId: string;
+}
+
 export function ObservabilityFilterSelector({
   agentConfigurationId,
-}: {
-  agentConfigurationId: string;
-}) {
+}: ObservabilityFilterSelectorProps) {
   const {
     mode,
     setMode,
