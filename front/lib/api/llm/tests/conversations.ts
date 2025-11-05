@@ -214,6 +214,7 @@ export const runConversation = async (
     let reasoningFromDeltas = "";
     let fullReasoning = "";
     let outputTokens: number | null = null;
+    let totalTokens: number | null = null;
     const toolCalls: { name: string; arguments: string }[] = [];
     let toolCallId = 1;
 
@@ -257,6 +258,7 @@ export const runConversation = async (
           break;
         case "token_usage":
           outputTokens = event.content.outputTokens;
+          totalTokens = event.content.totalTokens;
           break;
         case "error":
           throw new Error(`LLM Error: ${event.content.message}`);
@@ -291,8 +293,14 @@ export const runConversation = async (
     expect(fullReasoning, "Full reasoning should match deltas").toBe(
       reasoningFromDeltas
     );
-    expect(outputTokens).not.toBeNull();
-    expect(outputTokens).toBeGreaterThan(0);
+    // Google answers 0 for short answers, so let's check that we got at least 1 total token
+    if (outputTokens === 0) {
+      expect(totalTokens).not.toBeNull();
+      expect(totalTokens).toBeGreaterThan(0);
+    } else {
+      expect(outputTokens).not.toBeNull();
+      expect(outputTokens).toBeGreaterThan(0);
+    }
 
     if (expectedInResponse !== null) {
       switch (expectedInResponse.type) {
