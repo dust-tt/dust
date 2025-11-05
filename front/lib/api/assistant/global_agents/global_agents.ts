@@ -18,7 +18,6 @@ import {
   _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
 import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
-import { _getFeedbackAnalyzerGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/feedback_analyzer";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import {
@@ -88,7 +87,6 @@ function getGlobalAgent({
   slideshowMCPServerView,
   deepDiveMCPServerView,
   agentMemoryMCPServerView,
-  includeDataMCPServerView,
   memories,
   availableToolsets,
   featureFlags,
@@ -109,7 +107,6 @@ function getGlobalAgent({
   slideshowMCPServerView: MCPServerViewResource | null;
   deepDiveMCPServerView: MCPServerViewResource | null;
   agentMemoryMCPServerView: MCPServerViewResource | null;
-  includeDataMCPServerView: MCPServerViewResource | null;
   memories: AgentMemoryResource[];
   availableToolsets: MCPServerViewResource[];
   featureFlags: WhitelistableFeature[];
@@ -397,14 +394,6 @@ function getGlobalAgent({
         settings,
       });
       break;
-    case GLOBAL_AGENTS_SID.FEEDBACK_ANALYZER:
-      agentConfiguration = _getFeedbackAnalyzerGlobalAgent({
-        auth,
-        settings,
-        interactiveContentMCPServerView,
-        includeDataMCPServerView,
-      });
-      break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
       if (isDevelopment()) {
@@ -485,7 +474,6 @@ export async function getGlobalAgents(
     slideshowMCPServerView,
     deepDiveMCPServerView,
     agentMemoryMCPServerView,
-    includeDataMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -560,12 +548,6 @@ export async function getGlobalAgents(
           "agent_memory"
         )
       : null,
-    variant === "full"
-      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "include_data"
-        )
-      : null,
   ]);
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
@@ -595,12 +577,6 @@ export async function getGlobalAgents(
   if (!flags.includes("deepseek_r1_global_agent_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1
-    );
-  }
-
-  if (!flags.includes("agent_builder_observability")) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.FEEDBACK_ANALYZER
     );
   }
 
@@ -652,7 +628,6 @@ export async function getGlobalAgents(
       slideshowMCPServerView,
       deepDiveMCPServerView,
       agentMemoryMCPServerView,
-      includeDataMCPServerView,
       memories,
       availableToolsets,
       featureFlags: flags,

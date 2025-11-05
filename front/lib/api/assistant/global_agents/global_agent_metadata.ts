@@ -37,14 +37,6 @@ type AgentMetadata = {
 
 export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
   switch (sId) {
-    case GLOBAL_AGENTS_SID.FEEDBACK_ANALYZER:
-      return {
-        sId: GLOBAL_AGENTS_SID.FEEDBACK_ANALYZER,
-        name: "Fred",
-        description:
-          "Analyze agent feedback to surface trends, themes, and actionable improvements.",
-        pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
-      };
     case GLOBAL_AGENTS_SID.HELPER:
       return {
         sId: GLOBAL_AGENTS_SID.HELPER,
