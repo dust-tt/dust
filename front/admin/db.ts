@@ -18,6 +18,7 @@ import {
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
 import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
+import { AgentScheduledExecutionModel } from "@app/lib/models/assistant/agent_scheduled_execution";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -121,6 +122,7 @@ async function main() {
   await TriggerSubscriberModel.sync({ alter: true });
   await WebhookRequestModel.sync({ alter: true });
   await WebhookRequestTriggerModel.sync({ alter: true });
+  await AgentScheduledExecutionModel.sync({ alter: true });
 
   await ConversationModel.sync({ alter: true });
   await ConversationParticipantModel.sync({ alter: true });
