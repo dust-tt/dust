@@ -20,7 +20,10 @@ import { ChartContainer } from "@app/components/agent_builder/observability/shar
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
-import { useAgentLatency, useAgentVersionMarkers } from "@app/lib/swr/assistants";
+import {
+  useAgentLatency,
+  useAgentVersionMarkers,
+} from "@app/lib/swr/assistants";
 
 interface LatencyData {
   messages: number;
