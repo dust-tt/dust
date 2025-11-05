@@ -659,7 +659,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disallow_agent_creation_to_users"
   | "discord_bot"
   | "elevenlabs_tool"
-  | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
   | "gemini_image_generation"
   | "google_sheets_tool"
