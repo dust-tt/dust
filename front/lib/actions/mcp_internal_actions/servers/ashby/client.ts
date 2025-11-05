@@ -2,23 +2,11 @@ import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
-  AshbyApplicationInfoRequest,
-  AshbyCandidateInfoRequest,
   AshbyCandidateSearchRequest,
-  AshbyFeedbackSubmitRequest,
-  AshbyInterviewInfoRequest,
-  AshbyInterviewListRequest,
   AshbyReportSynchronousRequest,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 import {
-  AshbyApplicationInfoResponseSchema,
-  AshbyCandidateInfoResponseSchema,
-  AshbyCandidateListResponseSchema,
   AshbyCandidateSearchResponseSchema,
-  AshbyFeedbackFormDefinitionListResponseSchema,
-  AshbyFeedbackSubmitResponseSchema,
-  AshbyInterviewInfoResponseSchema,
-  AshbyInterviewListResponseSchema,
   AshbyReportSynchronousResponseSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -130,31 +118,6 @@ export class AshbyClient {
     return new Ok(parseResult.data);
   }
 
-  async listCandidates({
-    cursor,
-    limit = 100,
-  }: {
-    cursor?: string;
-    limit?: number;
-  }) {
-    return this.postRequest(
-      "candidate.list",
-      {
-        cursor,
-        limit,
-      },
-      AshbyCandidateListResponseSchema
-    );
-  }
-
-  async submitFeedback(request: AshbyFeedbackSubmitRequest) {
-    return this.postRequest(
-      "applicationFeedback.submit",
-      request,
-      AshbyFeedbackSubmitResponseSchema
-    );
-  }
-
   async getReportData(request: AshbyReportSynchronousRequest) {
     return this.postRequest(
       "report.synchronous",
@@ -168,46 +131,6 @@ export class AshbyClient {
       "candidate.search",
       request,
       AshbyCandidateSearchResponseSchema
-    );
-  }
-
-  async getCandidateInfo(request: AshbyCandidateInfoRequest) {
-    return this.postRequest(
-      "candidate.info",
-      request,
-      AshbyCandidateInfoResponseSchema
-    );
-  }
-
-  async getApplicationInfo(request: AshbyApplicationInfoRequest) {
-    return this.postRequest(
-      "application.info",
-      request,
-      AshbyApplicationInfoResponseSchema
-    );
-  }
-
-  async listFeedbackFormDefinitions() {
-    return this.postRequest(
-      "feedbackFormDefinition.list",
-      {},
-      AshbyFeedbackFormDefinitionListResponseSchema
-    );
-  }
-
-  async getInterviewInfo(request: AshbyInterviewInfoRequest) {
-    return this.postRequest(
-      "interview.info",
-      request,
-      AshbyInterviewInfoResponseSchema
-    );
-  }
-
-  async listInterviews(request: AshbyInterviewListRequest) {
-    return this.postRequest(
-      "interview.list",
-      request,
-      AshbyInterviewListResponseSchema
     );
   }
 }
