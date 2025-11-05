@@ -1238,7 +1238,9 @@ The directive should be used to display a clickable version of the agent name in
     },
     isPreview: false,
     tools_stakes: {
-      list_candidates: "never_ask",
+      submit_feedback: "high",
+      search_candidates: "never_ask",
+      get_report_data: "never_ask",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
