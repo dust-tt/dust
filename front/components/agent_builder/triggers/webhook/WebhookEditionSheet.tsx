@@ -29,6 +29,7 @@ import type {
   PresetWebhook,
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
+import Link from "next/link";
 
 interface WebhookEditionNameInputProps {
   isEditor: boolean;
@@ -101,20 +102,33 @@ function WebhookEditionExecutionLimit({
   });
 
   const limitOptions = [
-    { label: "1/hour", value: 24 },
-    { label: "2/hour", value: 48 },
-    { label: "4/hour", value: 96 },
+    { label: "10/day", value: 10 },
+    { label: "25/day", value: 25 },
+    { label: "50/day", value: 50 },
   ];
 
   return (
     <div className="flex flex-col space-y-1">
-      <Label htmlFor="execution-limit">Execution rate limit</Label>
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Maximum number of times this trigger can execute per hour. This is
-        smoothed out over a 24 hour period.
-      </p>
+      <Label htmlFor="execution-limit">Execution limit</Label>
+      <div className="pb-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <p>
+          Maximum number of times this trigger can execute per hour. This is
+          smoothed out over a 24 hour period.
+        </p>
+        <p className="font-semibold">
+          <Link
+            href="https://docs.dust.tt/update/docs/rate-limiting#/"
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            Learn more
+          </Link>{" "}
+          about webhook trigger rate limiting.
+        </p>
+      </div>
       <ButtonsSwitchList
-        defaultValue={executionLimit.toString() ?? "48"}
+        defaultValue={executionLimit.toString()}
         className="w-fit"
       >
         {limitOptions.map((option) => (

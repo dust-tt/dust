@@ -107,18 +107,18 @@ function RecentWebhookRequestsContent({
           <p>
             Some requests were rate limited.
             <br />
-            <b>Consider increasing this trigger&apos;s rate limit</b>, or
-            contact support to increase this specific trigger&apos;s rate limit.
+            <span className="font-semibold">
+              Consider increasing this trigger&apos;s rate limit
+            </span>{" "}
+            or contact{" "}
+            <a
+              href="mailto:support@dust.tt?subject=Increase%20Webhook%20Trigger%20Rate%20Limit"
+              className="underline"
+            >
+              support@dust.tt
+            </a>{" "}
+            to increase it even further.
           </p>
-          <Link
-            href="https://docs.dust.tt/update/docs/rate-limiting#/"
-            target="_blank"
-            rel="noreferrer"
-            className="underline"
-          >
-            Learn more
-          </Link>{" "}
-          about webhook trigger rate limiting.
         </div>
       )}
       {webhookRequests.map((request) => (
