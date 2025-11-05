@@ -5,6 +5,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import moment from "moment";
+import Link from "next/link";
 import React, { useState } from "react";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -12,7 +13,6 @@ import { useWebhookRequestTriggersForTrigger } from "@app/lib/swr/webhook_source
 import type { LightWorkspaceType } from "@app/types";
 
 import { WebhookRequestStatusBadge } from "./WebhookRequestStatusBadge";
-import Link from "next/link";
 
 interface RecentWebhookRequestsProps {
   owner: LightWorkspaceType;
