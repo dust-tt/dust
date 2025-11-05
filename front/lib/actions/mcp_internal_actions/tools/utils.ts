@@ -50,7 +50,6 @@ export function makeCoreSearchNodesFilters(
       data_source_id: dataSource.dustAPIDataSourceId,
       view_filter: dataSourceView.parentsIn ?? [],
       filter: filter.parents?.in ?? undefined,
-      // FIXME(ap): Remove additionalDynamicTags condition and add support in other file system tools.
       ...(additionalDynamicTags
         ? {
             tags: {
