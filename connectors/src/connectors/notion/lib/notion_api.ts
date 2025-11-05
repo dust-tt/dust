@@ -79,6 +79,32 @@ function normalizeNotionEndpoint(url: string): string {
 }
 
 /**
+ * Sanitizes endpoint strings for metrics/logs to avoid leaking raw identifiers
+ * and to reduce cardinality of metric tags.
+ */
+function sanitizeEndpointForMetrics(endpoint: string | undefined): string {
+  if (!endpoint) return "unknown";
+  try {
+    const parts = endpoint.split("/").map((seg) => {
+      if (!seg) return "";
+      // Replace UUID-like segments
+      if (/^[a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{12}$/i.test(seg)) {
+        return "{id}";
+      }
+      // Replace very long segments which may contain secrets or high-cardinality ids
+      if (seg.length > 20) return "{id}";
+      // Replace base64-like or very dense segments
+      if (/^[A-Za-z0-9_\-]{40,}$/.test(seg)) return "{id}";
+      return seg;
+    });
+    const sanitized = parts.join("/");
+    return sanitized || "/";
+  } catch {
+    return "unknown";
+  }
+}
+
+/**
  * Creates an instrumented fetch function for Notion API calls.
  * Tracks metrics for all HTTP requests with tags for endpoint, status, method, region, and service.
  */
@@ -101,18 +127,21 @@ function createInstrumentedNotionFetch() {
     try {
       endpoint = normalizeNotionEndpoint(url);
     } catch {
+      // Avoid logging raw URLs which may contain sensitive identifiers.
       logger.debug(
-        `Could not normalize Notion endpoint: ${url} stats collection will be skipped`
+        "Could not normalize Notion endpoint; stats collection will be skipped"
       );
       collectStats = false;
     }
+
+    const sanitizedEndpoint = sanitizeEndpointForMetrics(endpoint);
 
     const baseTags = [
       "provider:notion",
       "service:connectors",
       `region:${region}`,
       `method:${method}`,
-      `endpoint:${endpoint}`,
+      `endpoint:${sanitizedEndpoint}`,
     ];
 
     let status: string = "error";
@@ -146,7 +175,8 @@ function createInstrumentedNotionFetch() {
         const duration = Date.now() - startTime;
         const tags = [...baseTags, `status:${status}`, `http_code:${httpCode}`];
 
-        logger.warn(`tags: ${tags}`);
+        // Do not log raw tag arrays which might contain sensitive values.
+        logger.debug({ endpoint: sanitizedEndpoint, status, http_code: httpCode, duration }, "Emitting Notion API metrics");
         statsDClient.increment("external.api.calls", 1, tags);
         statsDClient.distribution("external.api.duration", duration, tags);
       }
