@@ -10,9 +10,11 @@ import { useCallback, useMemo } from "react";
 import { useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { TagSearchSection } from "@app/components/assistant_builder/tags/TagSearchSection";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
+import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   DataSourceTag,
   DataSourceViewType,
@@ -25,6 +27,14 @@ export function DataSourceViewTagsFilterDropdown() {
   const { updateSourcesTags, toggleInConversationFiltering } =
     useDataSourceBuilderContext();
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
+  const additionalConfiguration = useWatch<
+    MCPFormData,
+    "configuration.additionalConfiguration"
+  >({
+    name: "configuration.additionalConfiguration",
+  });
+  const isExploratorySearchEnabled =
+    additionalConfiguration[ADVANCED_SEARCH_SWITCH] === true;
 
   const dataSourceViews = sources.in.reduce((acc, source) => {
     if (source.type === "data_source") {
@@ -187,11 +197,21 @@ export function DataSourceViewTagsFilterDropdown() {
         collisionPadding={20}
       >
         <div className="flex flex-col gap-8 p-2">
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             <Page.SectionHeader
               title="Filtering"
               description="Filter to only include content bearing must-have labels, and exclude content with must-not-have labels."
             />
+            {isExploratorySearchEnabled && (
+              <div className="rounded-md bg-info-100 p-3 text-xs text-info-900 dark:bg-info-900/20 dark:text-info-200">
+                In exploratory search mode, the agent will respect label
+                filtering{" "}
+                <span className="font-semibold">
+                  except when listing folders or files
+                </span>
+                .
+              </div>
+            )}
           </div>
 
           <TagSearchSection

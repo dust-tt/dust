@@ -43,14 +43,15 @@ export type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
 
 export function makeCoreSearchNodesFilters(
   agentDataSourceConfigurations: ResolvedDataSourceConfiguration[],
-  additionalDynamicTags?: TagsInputType
+  additionalDynamicTags?: TagsInputType,
+  options: { useTagFilters: boolean } = { useTagFilters: false }
 ): CoreAPIDatasourceViewFilter[] {
   return agentDataSourceConfigurations.map(
     ({ dataSource, dataSourceView, filter }) => ({
       data_source_id: dataSource.dustAPIDataSourceId,
       view_filter: dataSourceView.parentsIn ?? [],
       filter: filter.parents?.in ?? undefined,
-      ...(additionalDynamicTags
+      ...(options.useTagFilters
         ? {
             tags: {
               in: [

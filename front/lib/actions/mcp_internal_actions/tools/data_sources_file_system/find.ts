@@ -57,10 +57,11 @@ export async function findCallback(
   // are searched. It is not straightforward to guess which data source it
   // belongs to, this is why irrelevant data sources are not directly
   // filtered out.
-  let viewFilter = makeCoreSearchNodesFilters(agentDataSourceConfigurations, {
-    tagsIn,
-    tagsNot,
-  });
+  let viewFilter = makeCoreSearchNodesFilters(
+    agentDataSourceConfigurations,
+    { tagsIn, tagsNot },
+    { useTagFilters: true }
+  );
 
   if (dataSourceNodeId) {
     viewFilter = viewFilter.filter(

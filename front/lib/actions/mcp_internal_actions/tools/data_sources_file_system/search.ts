@@ -237,7 +237,8 @@ export async function searchCallback(
         node_ids: searchNodeIds,
         data_source_views: makeCoreSearchNodesFilters(
           agentDataSourceConfigurations,
-          { tagsIn, tagsNot }
+          { tagsIn, tagsNot },
+          { useTagFilters: true }
         ),
       },
       options: {
