@@ -4,10 +4,11 @@ import type {
   AgentBuilderTriggerType,
   AgentBuilderWebhookTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/lib/triggers/common";
 import type { UserTypeWithWorkspaces } from "@app/types";
 import { asDisplayName } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+
+const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 50; // Default to 50 executions per day
 
 export const WebhookFormSchema = z.object({
   name: z
