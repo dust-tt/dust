@@ -2,7 +2,6 @@
 import React, { useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
-import type { ReactMarkdownProps } from "react-markdown/lib/ast-to-react";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkDirective from "remark-directive";
@@ -10,31 +9,41 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 
-import { Checkbox, Chip } from "@sparkle/components";
-import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
-import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
-import { LiBlock, OlBlock, UlBlock } from "@sparkle/components/markdown/List";
-import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
-import { ParagraphBlock } from "@sparkle/components/markdown/ParagraphBlock";
-import { PreBlock } from "@sparkle/components/markdown/PreBlock";
+import { Chip } from "@sparkle/components";
+import { MemoBlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
+import { MemoCodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
 import {
-  TableBlock,
-  TableBodyBlock,
-  TableDataBlock,
-  TableHeadBlock,
-  TableHeaderBlock,
+  markdownHeaderClasses,
+  MemoH1Block,
+  MemoH2Block,
+  MemoH3Block,
+  MemoH4Block,
+  MemoH5Block,
+  MemoH6Block,
+} from "@sparkle/components/markdown/HeaderBlocks";
+import { MemoInputBlock } from "@sparkle/components/markdown/InputBlock";
+import { MemoLinkBlock } from "@sparkle/components/markdown/LinkBlock";
+import {
+  MemoLiBlock,
+  MemoOlBlock,
+  MemoUlBlock,
+} from "@sparkle/components/markdown/List";
+import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
+import { MemoParagraphBlock } from "@sparkle/components/markdown/ParagraphBlock";
+import { MemoPreBlock } from "@sparkle/components/markdown/PreBlock";
+import {
+  MemoTableBlock,
+  MemoTableBodyBlock,
+  MemoTableDataBlock,
+  MemoTableHeadBlock,
+  MemoTableHeaderBlock,
 } from "@sparkle/components/markdown/TableBlock";
+import {
+  MemoHorizontalRuleBlock,
+  MemoStrongBlock,
+} from "@sparkle/components/markdown/TextFormattingBlocks";
 import { sanitizeContent } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
-
-export const markdownHeaderClasses = {
-  h1: "s-heading-2xl",
-  h2: "s-heading-xl",
-  h3: "s-heading-lg",
-  h4: "s-text-base s-font-semibold",
-  h5: "s-text-sm s-font-semibold",
-  h6: "s-text-sm s-font-regular s-italic",
-};
 
 const sizes = {
   p: "s-text-base s-leading-7",
@@ -89,123 +98,113 @@ export function Markdown({
   // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
   const markdownComponents: Components = useMemo(() => {
     return {
-      pre: ({ children }) => <PreBlock>{children}</PreBlock>,
-      a: LinkBlock,
-      ul: ({ children }) => (
-        <UlBlock
+      pre: ({ children, node }) => (
+        <MemoPreBlock node={node}>{children}</MemoPreBlock>
+      ),
+      a: MemoLinkBlock,
+      ul: ({ children, node }) => (
+        <MemoUlBlock
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
           textColor={textColor}
+          node={node}
         >
           {children}
-        </UlBlock>
+        </MemoUlBlock>
       ),
-      ol: ({ children, start }) => (
-        <OlBlock
+      ol: ({ children, start, node }) => (
+        <MemoOlBlock
           start={start}
           textColor={textColor}
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
+          node={node}
         >
           {children}
-        </OlBlock>
+        </MemoOlBlock>
       ),
-      li: ({ children }) => (
-        <LiBlock
+      li: ({ children, node }) => (
+        <MemoLiBlock
           textColor={textColor}
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
+          node={node}
         >
           {children}
-        </LiBlock>
+        </MemoLiBlock>
       ),
-      p: ({ children }) => (
-        <ParagraphBlock
+      p: ({ children, node }) => (
+        <MemoParagraphBlock
           textColor={textColor}
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
+          node={node}
         >
           {children}
-        </ParagraphBlock>
+        </MemoParagraphBlock>
       ),
-      table: TableBlock,
-      thead: TableHeadBlock,
-      tbody: TableBodyBlock,
-      th: TableHeaderBlock,
-      td: TableDataBlock,
-      h1: ({ children }) => (
-        <h1
-          className={cn(
-            "s-pb-2 s-pt-4",
-            forcedTextSize ? forcedTextSize : sizes.h1,
-            textColor
-          )}
+      table: MemoTableBlock,
+      thead: MemoTableHeadBlock,
+      tbody: MemoTableBodyBlock,
+      th: MemoTableHeaderBlock,
+      td: MemoTableDataBlock,
+      h1: ({ children, node }) => (
+        <MemoH1Block
+          textColor={textColor}
+          forcedTextSize={forcedTextSize}
+          node={node}
         >
           {children}
-        </h1>
+        </MemoH1Block>
       ),
-      h2: ({ children }) => (
-        <h2
-          className={cn(
-            "s-pb-2 s-pt-4",
-            forcedTextSize ? forcedTextSize : sizes.h2,
-            textColor
-          )}
+      h2: ({ children, node }) => (
+        <MemoH2Block
+          textColor={textColor}
+          forcedTextSize={forcedTextSize}
+          node={node}
         >
           {children}
-        </h2>
+        </MemoH2Block>
       ),
-      h3: ({ children }) => (
-        <h3
-          className={cn(
-            "s-pb-2 s-pt-4",
-            forcedTextSize ? forcedTextSize : sizes.h3,
-            textColor
-          )}
+      h3: ({ children, node }) => (
+        <MemoH3Block
+          textColor={textColor}
+          forcedTextSize={forcedTextSize}
+          node={node}
         >
           {children}
-        </h3>
+        </MemoH3Block>
       ),
-      h4: ({ children }) => (
-        <h4
-          className={cn(
-            "s-pb-2 s-pt-3",
-            forcedTextSize ? forcedTextSize : sizes.h4,
-            textColor
-          )}
+      h4: ({ children, node }) => (
+        <MemoH4Block
+          textColor={textColor}
+          forcedTextSize={forcedTextSize}
+          node={node}
         >
           {children}
-        </h4>
+        </MemoH4Block>
       ),
-      h5: ({ children }) => (
-        <h5
-          className={cn(
-            "s-pb-1.5 s-pt-2.5",
-            forcedTextSize ? forcedTextSize : sizes.h5,
-            textColor
-          )}
+      h5: ({ children, node }) => (
+        <MemoH5Block
+          textColor={textColor}
+          forcedTextSize={forcedTextSize}
+          node={node}
         >
           {children}
-        </h5>
+        </MemoH5Block>
       ),
-      h6: ({ children }) => (
-        <h6
-          className={cn(
-            "s-pb-1.5 s-pt-2.5",
-            forcedTextSize ? forcedTextSize : sizes.h6,
-            textColor
-          )}
+      h6: ({ children, node }) => (
+        <MemoH6Block
+          textColor={textColor}
+          forcedTextSize={forcedTextSize}
+          node={node}
         >
           {children}
-        </h6>
+        </MemoH6Block>
       ),
-      strong: ({ children }) => (
-        <strong className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
-          {children}
-        </strong>
+      strong: ({ children, node }) => (
+        <MemoStrongBlock node={node}>{children}</MemoStrongBlock>
       ),
-      input: Input,
-      blockquote: BlockquoteBlock,
-      hr: () => (
-        <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
-      ),
-      code: CodeBlockWithExtendedSupport,
+      input: MemoInputBlock,
+      blockquote: MemoBlockquoteBlock,
+      hr: MemoHorizontalRuleBlock,
+      code: MemoCodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
   }, [textColor, additionalMarkdownComponents]);
@@ -254,75 +253,4 @@ export function Markdown({
       </div>
     );
   }
-}
-
-function LinkBlock({
-  href,
-  children,
-}: {
-  href?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={cn(
-        "s-break-all s-font-semibold s-transition-all s-duration-200 s-ease-in-out hover:s-underline",
-        "s-text-highlight dark:s-text-highlight-night",
-        "hover:s-text-highlight-400 dark:hover:s-text-highlight-400-night",
-        "active:s-text-highlight-dark dark:active:s-text-highlight-dark-night"
-      )}
-    >
-      {children}
-    </a>
-  );
-}
-
-type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "ref"> &
-  ReactMarkdownProps & {
-    ref?: React.Ref<HTMLInputElement>;
-  };
-
-function Input({
-  type,
-  checked,
-  className,
-  onChange,
-  ref,
-  ...props
-}: InputProps) {
-  const inputRef = React.useRef<HTMLInputElement>(null);
-  React.useImperativeHandle(ref, () => inputRef.current!);
-
-  if (type !== "checkbox") {
-    return (
-      <input
-        ref={inputRef}
-        type={type}
-        checked={checked}
-        className={className}
-        {...props}
-      />
-    );
-  }
-
-  const handleCheckedChange = (isChecked: boolean) => {
-    onChange?.({
-      target: { type: "checkbox", checked: isChecked },
-    } as React.ChangeEvent<HTMLInputElement>);
-  };
-
-  return (
-    <div className="s-inline-flex s-items-center">
-      <Checkbox
-        ref={inputRef as React.Ref<HTMLButtonElement>}
-        size="xs"
-        checked={checked}
-        className="s-translate-y-[3px]"
-        onCheckedChange={handleCheckedChange}
-      />
-    </div>
-  );
 }
