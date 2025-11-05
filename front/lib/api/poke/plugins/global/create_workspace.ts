@@ -3,9 +3,12 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { config } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
+import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Plan } from "@app/lib/models/plan";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { getRegionDisplay } from "@app/lib/poke/regions";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { isEmailValid } from "@app/lib/utils";
 import { Err, Ok } from "@app/types";
 
@@ -48,6 +51,13 @@ export const createWorkspacePlugin = createPlugin({
           "End date of the subscription, format: YYYY-MM-DD. Leave empty for no end date. If an end date is set, the workspace will automatically downgraded the day after the end date.",
         required: false,
       },
+      revokeExistingInvitations: {
+        type: "boolean",
+        label: "Revoke Existing Invitations",
+        description:
+          "If checked, revokes all pending invitations for this email before creating the new workspace. This ensures the user will only have one invitation.",
+        defaultValue: false,
+      },
     },
   },
   populateAsyncArgs: async () => {
@@ -81,6 +91,50 @@ export const createWorkspacePlugin = createPlugin({
     const name = args.name.trim();
     if (name.length === 0) {
       return new Err(new Error("Name is required."));
+    }
+
+    const existingUser = await UserResource.fetchByEmail(email);
+    const allPendingInvitations =
+      await MembershipInvitationResource.getAllPendingForEmail(email);
+
+    const infoMessages: string[] = [];
+    let revokedCount = 0;
+
+    if (allPendingInvitations.length > 0) {
+      if (args.revokeExistingInvitations) {
+        const invitationIds = allPendingInvitations.map((inv) => inv.id);
+        const [updatedCount] = await MembershipInvitationModel.update(
+          { status: "revoked" },
+          {
+            where: {
+              id: invitationIds,
+              status: "pending",
+            },
+          }
+        );
+        revokedCount = updatedCount;
+        infoMessages.push(
+          `✅ Revoked ${revokedCount} existing invitation${revokedCount > 1 ? "s" : ""} for ${email}`
+        );
+      } else {
+        // Block if invitations exist and not revoking them
+        let errorMessage = `Cannot create workspace: ${email} has ${allPendingInvitations.length} pending invitation${allPendingInvitations.length > 1 ? "s" : ""}:\n`;
+
+        allPendingInvitations.forEach((inv, index) => {
+          errorMessage += `\n${index + 1}. "${inv.workspace.name}" (id: ${inv.workspace.sId})`;
+        });
+
+        errorMessage +=
+          "\n\nTo proceed, check 'Revoke Existing Invitations' to ensure the user only has one invitation.";
+
+        return new Err(new Error(errorMessage));
+      }
+    }
+
+    if (existingUser) {
+      infoMessages.push(
+        `ℹ️ User ${email} already exists (id: ${existingUser.sId})`
+      );
     }
 
     // Extract the selected plan code from the enum array (empty string means no plan)
@@ -125,13 +179,18 @@ export const createWorkspacePlugin = createPlugin({
       return new Err(new Error(result.error_message));
     }
 
-    let message = `Workspace created (id: ${workspace.sId}) and invitation sent to ${result.email}.`;
+    let message = `✅ Workspace created (id: ${workspace.sId}) and invitation sent to ${result.email}.`;
 
     if (planCode) {
       message += `\nPlan: ${planCode}`;
       if (args.endDate) {
         message += ` (expires: ${args.endDate})`;
       }
+    }
+
+    // Add any info messages about what we did
+    if (infoMessages.length > 0) {
+      message += "\n\n" + infoMessages.join("\n");
     }
 
     return new Ok({

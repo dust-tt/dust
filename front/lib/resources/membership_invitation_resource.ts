@@ -47,6 +47,8 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         status: "pending",
       },
       include: [WorkspaceModel],
+      // Order by createdAt to ensure consistent behavior - oldest invitation first
+      order: [["createdAt", "ASC"]],
       // WORKSPACE_ISOLATION_BYPASS: We don't know the workspace yet, the user is not authed
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
@@ -76,6 +78,28 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
           workspace: invitation.workspace,
         })
       : null;
+  }
+
+  static async getAllPendingForEmail(
+    email: string
+  ): Promise<MembershipInvitationResource[]> {
+    const invitations = await this.model.findAll({
+      where: {
+        inviteEmail: email,
+        status: "pending",
+      },
+      include: [WorkspaceModel],
+      order: [["createdAt", "ASC"]],
+      // WORKSPACE_ISOLATION_BYPASS: We don't know the workspace yet, the user is not authed
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    return invitations.map(
+      (invitation) =>
+        new MembershipInvitationResource(this.model, invitation.get(), {
+          workspace: invitation.workspace,
+        })
+    );
   }
 
   static async getPendingForToken(

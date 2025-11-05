@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
+import { analyzeInvitationContext } from "@app/lib/api/invitation_context";
 import {
   handleEnterpriseSignUpFlow,
   handleMembershipInvite,
@@ -112,13 +113,14 @@ async function handler(
     targetFlow = flow;
   } else {
     if (userCreated) {
-      // When user is just created, check whether they have a pending invitation. If they do, it is
-      // assumed they are coming from the invitation link and have seen the join page; we redirect
-      // (after workos login) to this URL with inviteToken appended. The user will then end up on the
-      // workspace's welcome page (see comment's PR)
-      const pendingInvitation =
-        await MembershipInvitationResource.getPendingForEmail(user.email);
-      if (pendingInvitation) {
+      const invitationContext = await analyzeInvitationContext(user, {
+        inviteToken: typeof inviteToken === "string" ? inviteToken : undefined,
+        targetWorkspaceId,
+      });
+
+      // Only auto-redirect if conditions are met (single invitation, no existing context)
+      if (invitationContext.shouldAutoRedirect) {
+        const pendingInvitation = invitationContext.pendingInvitations[0];
         const signUpUrl = await getSignInUrl({
           signupCallbackUrl: `/api/login?inviteToken=${getMembershipInvitationToken(pendingInvitation.id)}`,
           invitationEmail: pendingInvitation.inviteEmail,
