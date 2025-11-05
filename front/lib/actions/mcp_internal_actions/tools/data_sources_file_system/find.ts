@@ -6,6 +6,7 @@ import {
   extractDataSourceIdFromNodeId,
   makeQueryResourceForFind,
 } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
+import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
@@ -26,7 +27,8 @@ export async function findCallback(
     nextPageCursor,
     rootNodeId,
     mimeTypes,
-  }: DataSourceFilesystemFindInputType
+  }: DataSourceFilesystemFindInputType,
+  { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] } = {}
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
@@ -36,6 +38,14 @@ export async function findCallback(
     return new Err(new MCPError(fetchResult.error.message));
   }
   const agentDataSourceConfigurations = fetchResult.value;
+
+  const conflictingTags = checkConflictingTags(
+    agentDataSourceConfigurations.map(({ filter }) => filter.tags),
+    { tagsIn, tagsNot }
+  );
+  if (conflictingTags) {
+    return new Err(new MCPError(conflictingTags, { tracked: false }));
+  }
 
   const dataSourceNodeId = rootNodeId
     ? extractDataSourceIdFromNodeId(rootNodeId)
@@ -47,7 +57,10 @@ export async function findCallback(
   // are searched. It is not straightforward to guess which data source it
   // belongs to, this is why irrelevant data sources are not directly
   // filtered out.
-  let viewFilter = makeCoreSearchNodesFilters(agentDataSourceConfigurations);
+  let viewFilter = makeCoreSearchNodesFilters(agentDataSourceConfigurations, {
+    tagsIn,
+    tagsNot,
+  });
 
   if (dataSourceNodeId) {
     viewFilter = viewFilter.filter(

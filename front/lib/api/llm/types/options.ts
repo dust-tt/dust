@@ -10,8 +10,8 @@ export type LLMParameters = {
   bypassFeatureFlag?: boolean;
   context?: LLMTraceContext;
   modelId: ModelIdType;
-  reasoningEffort?: ReasoningEffort;
-  temperature?: number;
+  reasoningEffort?: ReasoningEffort | null;
+  temperature?: number | null;
 };
 
 export type LLMClientMetadata = {

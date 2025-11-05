@@ -25,8 +25,7 @@ const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
  * Used for direct Teams attachments (smba.trafficmanager.net URLs)
  */
 export async function downloadTeamsAttachment(
-  attachmentUrl: string,
-  localLogger: Logger
+  attachmentUrl: string
 ): Promise<Result<Buffer, Error>> {
   // Validate URL to prevent SSRF attacks
   const url = new URL(attachmentUrl);
@@ -73,14 +72,6 @@ export async function downloadTeamsAttachment(
   }
 
   const buffer = Buffer.from(response.data);
-  localLogger.info(
-    {
-      attachmentUrl,
-      fileSize: buffer.length,
-      statusCode: response.status,
-    },
-    "Teams attachment downloaded successfully"
-  );
 
   return new Ok(buffer);
 }
@@ -99,32 +90,14 @@ export async function processFileAttachments(
 
     // Determine the actual content type for the file
     let actualContentType: string = "application/octet-stream";
-    if (attachment.contentType === "reference") {
-      // For Teams reference attachments, get MIME type from file extension
-      const fileExtension = fileName.split(".").pop()?.toLowerCase();
-      // actualContentType =
-      //   getFileTypeFromExtension(fileExtension) || "application/octet-stream";
-      localLogger.info(
-        {
-          fileName,
-          fileExtension,
-          contentUrl: attachment.contentUrl,
-        },
-        `Processing Teams reference attachment`
-      );
-    } else {
-      actualContentType = attachment.contentType || "application/octet-stream";
+    if (attachment.contentType && attachment.contentType !== "reference") {
+      actualContentType = attachment.contentType;
     }
 
     let fileContent: Buffer | null = null;
 
     if (attachment.contentType === "reference" && attachment.contentUrl) {
       // For SharePoint/OneDrive files, use Microsoft Graph API approach
-      localLogger.info(
-        { fileName, contentUrl: attachment.contentUrl },
-        "Downloading Teams reference file using Microsoft Graph API"
-      );
-
       const sharepointFileInfoRes = await getSharepointFileInfo(
         attachment.contentUrl,
         microsoftGraphClient,
@@ -169,14 +142,8 @@ export async function processFileAttachments(
       actualContentType = mimeType;
     } else if (attachment.contentUrl) {
       // For direct file attachments, use Bot Framework authentication
-      localLogger.info(
-        { fileName, contentUrl: attachment },
-        "Downloading direct Teams file attachment"
-      );
-
       const downloadResult = await downloadTeamsAttachment(
-        attachment.contentUrl,
-        localLogger
+        attachment.contentUrl
       );
       if (downloadResult.isErr()) {
         localLogger.warn(
@@ -203,29 +170,11 @@ export async function processFileAttachments(
         !fileName.toLowerCase().endsWith(`.${fileType.ext}`)
       ) {
         fileName = fileName + `.${fileType.ext}`;
-        localLogger.info(
-          {
-            originalFileName: attachment.name || "teams_file",
-            newFileName: fileName,
-            detectedExtension: fileType.ext,
-          },
-          "Added file extension based on detected file type"
-        );
       }
-
-      localLogger.info(
-        {
-          fileName,
-          detectedContentType: actualContentType,
-          originalContentType: attachment.contentType,
-          fileSize: fileContent.length,
-        },
-        "Successfully downloaded and analyzed direct Teams file attachment"
-      );
     } else {
       // Check if this is an HTML content attachment (inline content, not a file)
       if (attachment.contentType === "text/html" || !attachment.contentUrl) {
-        localLogger.debug(
+        localLogger.warn(
           {
             fileName,
             contentType: attachment.contentType,
@@ -268,12 +217,6 @@ export async function processFileAttachments(
       continue;
     }
 
-    // Log the content type for debugging but proceed with upload
-    localLogger.info(
-      { fileName, actualContentType, fileSize: fileContent.length },
-      "Preparing Teams file attachment for Dust upload"
-    );
-
     // Create file object with proper buffer handling
     let fileObject: File;
     try {
@@ -305,16 +248,6 @@ export async function processFileAttachments(
       fileObject,
     };
 
-    localLogger.info(
-      {
-        fileName,
-        contentType: uploadParams.contentType,
-        fileSize: uploadParams.fileSize,
-        useCase: uploadParams.useCase,
-      },
-      "Uploading Teams file attachment to Dust"
-    );
-
     const fileRes = await dustAPI.uploadFile(uploadParams);
 
     if (fileRes.isOk()) {
@@ -324,10 +257,6 @@ export async function processFileAttachments(
         fileId: fileRes.value.sId,
         context: null,
       });
-      localLogger.info(
-        { fileName, actualContentType, fileId: fileRes.value.sId },
-        "Successfully uploaded Teams file attachment"
-      );
     } else {
       localLogger.error(
         { fileName, error: fileRes.error },

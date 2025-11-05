@@ -608,3 +608,55 @@ export const prSchema: JSONSchema = {
   },
   required: ["action", "number", "pull_request", "repository", "sender"],
 };
+
+export const prExample = {
+  action: "opened",
+  number: 15,
+  pull_request: {
+    url: "https://api.github.com/repos/example_org/example_repo/pulls/15",
+    id: 1211243938,
+    html_url: "https://github.com/example_org/example_repo/pull/15",
+    number: 15,
+    state: "open",
+    locked: false,
+    title: "Add new feature",
+    user: {
+      login: "octocat",
+      id: 1234567,
+      avatar_url: "https://avatars.githubusercontent.com/u/1234567?v=4",
+      type: "User",
+    },
+    body: "This PR adds a new feature to improve performance",
+    created_at: "2023-01-20T09:03:04Z",
+    updated_at: "2023-01-20T09:03:04Z",
+    closed_at: null,
+    merged_at: null,
+    draft: false,
+    head: {
+      label: "example_org:feature-branch",
+      ref: "feature-branch",
+      sha: "07a6048532c799c58bf7eafdbc7d4eaf6b6bbde6",
+    },
+    base: {
+      label: "example_org:main",
+      ref: "main",
+      sha: "caf87bf0162986f2874ec1b668f1d576b9f99e76",
+    },
+  },
+  repository: {
+    id: 553972582,
+    name: "example_repo",
+    full_name: "example_org/example_repo",
+    owner: {
+      login: "example_org",
+      id: 2345678,
+    },
+    html_url: "https://github.com/example_org/example_repo",
+    description: "Example repository",
+  },
+  sender: {
+    login: "octocat",
+    id: 1234567,
+    type: "User",
+  },
+};

@@ -1,7 +1,6 @@
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { Authenticator } from "@app/lib/auth";
-import { getDustProdAction } from "@app/lib/registry";
-import { cloneBaseConfig } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { Result } from "@app/types";
 import {
   Err,
@@ -9,6 +8,7 @@ import {
   getSmallWhitelistedModel,
   Ok,
 } from "@app/types";
+import type { WebhookEvent } from "@app/types/triggers/webhooks_source_preset";
 
 function isValidIANATimezone(timezone: string): boolean {
   // Get the list of all supported IANA timezones
@@ -29,6 +29,9 @@ export const TOO_FREQUENT_MESSAGE =
 
 export const WEBHOOK_FILTER_GENERIC_ERROR_MESSAGE =
   "Unable to generate a filter. Please try rephrasing.";
+
+const CRON_REGEXP =
+  /^((((\d+,)+\d+|(\d+(\/|-|#)\d+)|\d+L?|\*(\/\d+)?|L(-\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)$/;
 
 export async function generateCronRule(
   auth: Authenticator,
@@ -108,9 +111,7 @@ export async function generateCronRule(
   if (
     !cronRule ||
     cronRule.split(" ").length !== 5 ||
-    !cronRule.match(
-      /^((((\d+,)+\d+|(\d+(\/|-|#)\d+)|\d+L?|\*(\/\d+)?|L(-\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)$/
-    )
+    !cronRule.match(CRON_REGEXP)
   ) {
     return new Err(new Error(GENERIC_ERROR_MESSAGE));
   }
@@ -127,10 +128,10 @@ export async function generateWebhookFilter(
   auth: Authenticator,
   {
     naturalDescription,
-    eventSchema,
+    event,
   }: {
     naturalDescription: string;
-    eventSchema: Record<string, any>;
+    event: WebhookEvent;
   }
 ): Promise<Result<{ filter: string }, Error>> {
   const owner = auth.getNonNullableWorkspace();
@@ -155,8 +156,9 @@ export async function generateWebhookFilter(
     config,
     [
       {
-        naturalDescription: naturalDescription,
-        expectedPayloadDescription: eventSchema,
+        naturalDescription,
+        expectedPayloadDescription: event.schema,
+        eventSample: event.sample,
       },
     ],
     {

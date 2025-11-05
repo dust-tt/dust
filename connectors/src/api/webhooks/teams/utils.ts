@@ -42,11 +42,6 @@ export async function getConnector(context: TurnContext) {
     return;
   }
 
-  logger.info(
-    { tenantId, connectorProvider: "microsoft_bot" },
-    "Found tenant ID in Teams context"
-  );
-
   // Find the bot configuration for this tenant
   const botConfig =
     await MicrosoftBotConfigurationResource.fetchByTenantId(tenantId);

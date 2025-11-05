@@ -1,7 +1,11 @@
 import { faker } from "@faker-js/faker";
 import { expect, test, vi } from "vitest";
 
-import { LLMTraceBuffer } from "@app/lib/api/llm/traces/buffer";
+import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
+import {
+  createLLMTraceId,
+  LLMTraceBuffer,
+} from "@app/lib/api/llm/traces/buffer";
 import type {
   TextDeltaEvent,
   TextGeneratedEvent,
@@ -74,9 +78,9 @@ class LLMEventFactory {
 }
 
 // Helper to create buffer with test data
-function createTestBuffer(runId?: string, workspaceId?: string) {
+function createTestBuffer(traceId?: LLMTraceId, workspaceId?: string) {
   const buffer = new LLMTraceBuffer(
-    runId ?? `llm_${faker.string.uuid()}`,
+    traceId ?? createLLMTraceId(faker.string.uuid()),
     workspaceId ?? faker.string.uuid(),
     {
       operationType: "agent_conversation",
@@ -187,9 +191,9 @@ test("buffer calculates size correctly for UTF-8 content", () => {
 });
 
 test("buffer generates complete trace JSON", () => {
-  const runId = `llm_${faker.string.uuid()}`;
+  const traceId = createLLMTraceId(faker.string.uuid());
   const workspaceId = faker.string.uuid();
-  const buffer = createTestBuffer(runId, workspaceId);
+  const buffer = createTestBuffer(traceId, workspaceId);
 
   // Add some events.
   buffer.addEvent(LLMEventFactory.textDelta("Hello world"));
@@ -202,7 +206,7 @@ test("buffer generates complete trace JSON", () => {
     durationMs: 1000,
   });
 
-  expect(trace.runId).toBe(runId);
+  expect(trace.traceId).toBe(traceId);
   expect(trace.workspaceId).toBe(workspaceId);
   expect(trace.metadata.durationMs).toBe(1000);
   expect(trace.output?.content).toBe("Hello world");

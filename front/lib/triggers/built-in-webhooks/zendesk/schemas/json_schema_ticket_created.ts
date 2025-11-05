@@ -148,3 +148,38 @@ export const ticketCreatedSchema: JSONSchema = {
     },
   },
 };
+
+export const ticketCreatedExample = {
+  account_id: 22129848,
+  detail: {
+    actor_id: "8447388090494",
+    assignee_id: "8447388090494",
+    brand_id: "8447346621310",
+    created_at: "2025-01-08T10:12:07Z",
+    custom_status: "8447320465790",
+    description: "Customer is experiencing login issues with the mobile app",
+    external_id: null,
+    form_id: "8646151517822",
+    group_id: "8447320466430",
+    id: "5158",
+    is_public: true,
+    organization_id: "8447346622462",
+    priority: "HIGH",
+    requester_id: "8447388090494",
+    status: "OPEN",
+    subject: "Cannot login to mobile app",
+    submitter_id: "8447388090494",
+    tags: ["mobile", "login"],
+    type: "PROBLEM",
+    updated_at: "2025-01-08T10:12:07Z",
+    via: {
+      channel: "web_service",
+    },
+  },
+  event: {},
+  id: "cbe4028c-7239-495d-b020-f22348516046",
+  subject: "zen:ticket:5158",
+  time: "2025-01-08T10:12:07.672717030Z",
+  type: "zen:event-type:ticket.created",
+  zendesk_event_version: "2022-11-06",
+};

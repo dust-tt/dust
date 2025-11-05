@@ -1,8 +1,8 @@
-import { useMemo } from "react";
 import {
   Area,
   AreaChart,
   CartesianGrid,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -19,13 +19,19 @@ import { useObservability } from "@app/components/agent_builder/observability/Ob
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
-import { filterTimeSeriesByVersionWindow } from "@app/components/agent_builder/observability/utils";
+import {
+  filterTimeSeriesByVersionWindow,
+  findVersionMarkerForDate,
+  padSeriesToTimeRange,
+} from "@app/components/agent_builder/observability/utils";
+import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
 
 interface UsageMetricsData {
+  date: string;
   messages: number;
   conversations: number;
   activeUsers: number;
@@ -42,21 +48,29 @@ function isUsageMetricsData(data: unknown): data is UsageMetricsData {
 }
 
 function UsageMetricsTooltip(
-  props: TooltipContentProps<number, string>
+  props: TooltipContentProps<number, string> & {
+    versionMarkers: AgentVersionMarker[];
+  }
 ): JSX.Element | null {
-  const { active, payload, label } = props;
+  const { active, payload, label, versionMarkers } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
+
   const first = payload[0];
   if (!first?.payload || !isUsageMetricsData(first.payload)) {
     return null;
   }
+
   const row = first.payload;
   const title = typeof label === "string" ? label : String(label);
+
+  const versionMarker = findVersionMarkerForDate(row.date, versionMarkers);
+  const version = versionMarker ? ` - v${versionMarker.version}` : "";
+
   return (
     <ChartTooltipCard
-      title={title}
+      title={`${title}${version}`}
       rows={[
         {
           label: "Messages",
@@ -107,15 +121,18 @@ export function UsageMetricsChart({
     colorClassName: USAGE_METRICS_PALETTE[key],
   }));
 
-  const data = useMemo(
-    () =>
-      filterTimeSeriesByVersionWindow(
-        usageMetrics,
-        mode,
-        selectedVersion,
-        versionMarkers
-      ),
-    [usageMetrics, mode, selectedVersion, versionMarkers]
+  const filteredData = filterTimeSeriesByVersionWindow(
+    usageMetrics,
+    mode,
+    selectedVersion,
+    versionMarkers
+  );
+
+  const data = padSeriesToTimeRange<UsageMetricsData>(
+    filteredData,
+    mode,
+    period,
+    (date) => ({ date, messages: 0, conversations: 0, activeUsers: 0 })
   );
 
   return (
@@ -189,7 +206,9 @@ export function UsageMetricsChart({
             tickMargin={8}
           />
           <Tooltip
-            content={UsageMetricsTooltip}
+            content={(props: TooltipContentProps<number, string>) => (
+              <UsageMetricsTooltip {...props} versionMarkers={versionMarkers} />
+            )}
             cursor={false}
             wrapperStyle={{ outline: "none" }}
             contentStyle={{
@@ -201,7 +220,7 @@ export function UsageMetricsChart({
           />
           {/* Areas for each usage metric */}
           <Area
-            type="natural"
+            type="monotone"
             dataKey="messages"
             name="Messages"
             className={USAGE_METRICS_PALETTE.messages}
@@ -209,7 +228,7 @@ export function UsageMetricsChart({
             stroke="currentColor"
           />
           <Area
-            type="natural"
+            type="monotone"
             dataKey="conversations"
             name="Conversations"
             className={USAGE_METRICS_PALETTE.conversations}
@@ -217,13 +236,23 @@ export function UsageMetricsChart({
             stroke="currentColor"
           />
           <Area
-            type="natural"
+            type="monotone"
             dataKey="activeUsers"
             name="Active users"
             className={USAGE_METRICS_PALETTE.activeUsers}
             fill="url(#fillActiveUsers)"
             stroke="currentColor"
           />
+          {mode === "timeRange" &&
+            versionMarkers.map((versionMarker) => (
+              <ReferenceLine
+                key={versionMarker.timestamp}
+                x={versionMarker.timestamp}
+                strokeDasharray="5 5"
+                strokeWidth={1}
+                stroke="hsl(var(--chart-5))"
+              />
+            ))}
         </AreaChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />

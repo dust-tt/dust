@@ -82,7 +82,6 @@ export async function storeAgentAnalyticsActivity(
     user_id: userMessage.user?.sId ?? "unknown",
     workspace_id: workspace.sId,
     feedbacks: [],
-    content: null,
   };
 
   await storeToElasticsearch(document);
@@ -289,7 +288,6 @@ export async function storeAgentMessageFeedbackActivity(
       feedback_id: agentMessageFeedback.id,
       user_id: agentMessageFeedback.user?.sId ?? "unknown",
       thumb_direction: agentMessageFeedback.thumbDirection,
-      content: undefined,
       dismissed: agentMessageFeedback.dismissed,
       is_conversation_shared: agentMessageFeedback.isConversationShared,
       created_at: agentMessageFeedback.createdAt.toISOString(),

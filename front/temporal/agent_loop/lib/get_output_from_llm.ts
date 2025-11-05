@@ -169,7 +169,6 @@ export async function getOutputFromLLMStream(
       contents,
     },
     nativeChainOfThought,
-    // Later we will send another id that will enable debugging
-    dustRunId: "",
+    dustRunId: llm.getTraceId(),
   });
 }

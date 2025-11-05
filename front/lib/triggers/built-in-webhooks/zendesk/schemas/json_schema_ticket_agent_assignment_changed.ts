@@ -157,3 +157,25 @@ export const ticketAgentAssignmentChangedSchema: JSONSchema = {
     },
   },
 };
+
+export const ticketAgentAssignmentChangedExample = {
+  account_id: 22129848,
+  detail: {
+    id: "5158",
+    subject: "Cannot login to mobile app",
+    status: "OPEN",
+    priority: "URGENT",
+    assignee_id: "8447388090496",
+    created_at: "2025-01-08T10:12:07Z",
+    updated_at: "2025-01-08T12:15:45Z",
+  },
+  event: {
+    previous: 8447388090494,
+    current: 8447388090496,
+  },
+  id: "c6d7e8f9-0a1b-2c3d-4e5f-6a7b8c9d0e1f",
+  subject: "zen:ticket:5158",
+  time: "2025-01-08T12:15:45.789012345Z",
+  type: "zen:event-type:ticket.agent_assignment_changed",
+  zendesk_event_version: "2022-11-06",
+};
