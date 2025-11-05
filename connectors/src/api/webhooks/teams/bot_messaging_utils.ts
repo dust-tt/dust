@@ -1,5 +1,5 @@
 import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
+import { Err, normalizeError, Ok } from "@dust-tt/client";
 import axios from "axios";
 import type { Activity, TurnContext } from "botbuilder";
 
@@ -107,9 +107,7 @@ export async function sendActivity(
 
     return new Err(new Error("Cannot send activity - no activity ID"));
   } catch (error) {
-    return new Err(
-      error instanceof Error ? error : new Error("Failed to send activity")
-    );
+    return new Err(normalizeError(error));
   }
 }
 
@@ -122,7 +120,7 @@ export async function updateActivity(
   context: TurnContext,
   activity: Partial<Activity>,
   skipRetry = false
-): Promise<Result<void, Error>> {
+): Promise<Result<string, Error>> {
   if (!activity.id) {
     return new Err(
       new Error("Cannot update activity - no activity ID provided")
@@ -152,11 +150,9 @@ export async function updateActivity(
       return new Ok(response.data.id);
     }
 
-    return new Err(new Error("Cannot send activity - no activity ID"));
+    return new Err(new Error("Cannot update activity - no activity ID"));
   } catch (error) {
-    return new Err(
-      error instanceof Error ? error : new Error("Failed to update activity")
-    );
+    return new Err(normalizeError(error));
   }
 }
 
