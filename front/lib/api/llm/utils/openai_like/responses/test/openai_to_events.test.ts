@@ -39,6 +39,11 @@ describe("streamLLMEvents", () => {
       result.push(event);
     }
 
-    expect(result).toEqual(reasoningLLMEvents.map((e) => ({ ...e, metadata })));
+    expect(result).toEqual(
+      reasoningLLMEvents.map((e) => ({
+        ...e,
+        metadata: { ...e.metadata, ...metadata },
+      }))
+    );
   });
 });

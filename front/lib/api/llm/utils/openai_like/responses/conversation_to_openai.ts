@@ -13,6 +13,7 @@ import type {
 } from "openai/resources/shared";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { extractIdFromMetadata } from "@app/lib/api/llm/utils";
 import type {
   ModelConversationTypeMultiActions,
   ReasoningEffort,
@@ -57,9 +58,9 @@ function toAssistantInputItem(
       };
     case "reasoning":
       assert(content.value.reasoning, "Expected non-null reasoning content");
+      const id = extractIdFromMetadata(content.value.metadata);
       return {
-        // TODO(LLM-Router 2025-10-28): Use reasoning id sent by provider
-        id: "",
+        id,
         type: "reasoning",
         summary: [{ type: "summary_text", text: content.value.reasoning }],
       };

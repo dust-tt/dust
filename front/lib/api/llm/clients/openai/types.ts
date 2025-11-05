@@ -2,10 +2,27 @@ import flatMap from "lodash/flatMap";
 
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { ModelIdType } from "@app/types";
-import { O3_MODEL_ID } from "@app/types";
+import {
+  GPT_3_5_TURBO_MODEL_ID,
+  GPT_4_1_MINI_MODEL_ID,
+  GPT_4_1_MODEL_ID,
+  GPT_4_TURBO_MODEL_ID,
+  GPT_4O_20240806_MODEL_ID,
+  GPT_4O_MINI_MODEL_ID,
+  GPT_4O_MODEL_ID,
+  GPT_5_MINI_MODEL_ID,
+  GPT_5_MODEL_ID,
+  GPT_5_NANO_MODEL_ID,
+  O1_MODEL_ID,
+  O3_MINI_MODEL_ID,
+  O3_MODEL_ID,
+  O4_MINI_MODEL_ID,
+} from "@app/types";
 
 export const OPENAI_MODEL_FAMILIES = [
   "o3",
+  "o3-no-vision",
+  "no-vision",
   "non-reasoning",
   "reasoning",
 ] as const;
@@ -22,12 +39,33 @@ export const OPENAI_MODEL_FAMILY_CONFIGS: Record<
     modelIds: [O3_MODEL_ID],
     overwrites: { temperature: null },
   },
+  "o3-no-vision": {
+    modelIds: [O3_MINI_MODEL_ID],
+    overwrites: { temperature: null },
+  },
   reasoning: {
-    modelIds: [],
+    modelIds: [
+      O1_MODEL_ID,
+      O4_MINI_MODEL_ID,
+      GPT_5_MODEL_ID,
+      GPT_5_MINI_MODEL_ID,
+      GPT_5_NANO_MODEL_ID,
+    ],
     overwrites: { temperature: null },
   },
   "non-reasoning": {
-    modelIds: [],
+    modelIds: [
+      GPT_4_TURBO_MODEL_ID,
+      GPT_4O_MODEL_ID,
+      GPT_4O_MINI_MODEL_ID,
+      GPT_4_1_MODEL_ID,
+      GPT_4_1_MINI_MODEL_ID,
+      GPT_4O_20240806_MODEL_ID,
+    ],
+    overwrites: { reasoningEffort: null },
+  },
+  "no-vision": {
+    modelIds: [GPT_3_5_TURBO_MODEL_ID],
     overwrites: { reasoningEffort: null },
   },
 } as const;

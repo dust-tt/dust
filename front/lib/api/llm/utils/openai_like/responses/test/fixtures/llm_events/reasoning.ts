@@ -65,6 +65,7 @@ export const reasoningLLMEvents = [
       text: "**Solving the Equation**\n\nWe need to solve the equation.\n\n",
     },
     metadata: {
+      id: "rs_06e2b572b276da09016901d7350ae08198ba76145524efe4b2",
       clientId: "openai_responses",
       modelId: "gpt-5",
     },
@@ -75,6 +76,7 @@ export const reasoningLLMEvents = [
       text: "**Solving the Quadratic**\n\nTo solve the equation $$x^2 + 2x + 1 = 0$$, I can factor it...",
     },
     metadata: {
+      id: "rs_06e2b572b276da09016901d7350ae08198ba76145524efe4b2",
       clientId: "openai_responses",
       modelId: "gpt-5",
     },

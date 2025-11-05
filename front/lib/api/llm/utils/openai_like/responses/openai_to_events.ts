@@ -103,7 +103,7 @@ function itemToEvents(
         content: {
           text: summary.text,
         },
-        metadata,
+        metadata: { ...metadata, id: item.id },
       }));
     default:
       // TODO(LLM-Router 2025-10-28): Send error event
