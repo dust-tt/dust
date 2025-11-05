@@ -138,12 +138,9 @@ export function useWebhookFilterGenerator({
         }
       );
 
-      try {
-        parseMatcherExpression(r.filter);
-      } catch (e: unknown) {
-        throw new Error(
-          `Error generating filter: ${normalizeError(e).message}`
-        );
+      const parseResult = parseMatcherExpression(r.filter);
+      if (parseResult.isErr()) {
+        throw new Error(`Error generating filter: ${parseResult.error.message}`);
       }
 
       return { filter: r.filter };

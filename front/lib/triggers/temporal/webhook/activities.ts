@@ -263,7 +263,6 @@ export async function runTriggerWebhookActivity({
         `workspace_id:${workspaceId}`,
         `trigger_id:${trigger.sId}`,
       ];
-      try {
         // Filter triggers by payload matching
         statsDClient.increment(
           "webhook_filter.events_processed.count",
@@ -271,23 +270,26 @@ export async function runTriggerWebhookActivity({
           tags
         );
 
-        const parsedFilter = parseMatcherExpression(filter);
+      const parsedFilterResult = parseMatcherExpression(filter);
+      if (parsedFilterResult.isErr()) {
+        logger.error(
+          {
+            triggerId: trigger.id,
+            triggerName: trigger.name,
+            filter,
+            err: parsedFilterResult.error,
+          },
+          "Invalid filter expression in webhook trigger"
+        );
+        continue;
+      }
+
         const r = matchPayload(body, parsedFilter);
         if (r) {
           statsDClient.increment("webhook_filter.events_passed.count", 1, tags);
 
           filteredTriggers.push(trigger);
         }
-      } catch (err) {
-        logger.error(
-          {
-            triggerId: trigger.id,
-            triggerName: trigger.name,
-            filter,
-            err: normalizeError(err),
-          },
-          "Invalid filter expression in webhook trigger"
-        );
       }
     }
   }
