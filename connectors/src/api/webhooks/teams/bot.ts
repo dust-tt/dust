@@ -346,7 +346,7 @@ async function streamAgentResponse({
   let chainOfThought = "";
   let agentState = "thinking";
   const actions: AgentActionPublicType[] = [];
-  const UPDATE_INTERVAL_MS = 100; // Update every 100 millisecond
+  const UPDATE_INTERVAL_MS = 1500;
 
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
@@ -395,11 +395,13 @@ async function streamAgentResponse({
             });
 
             // Send streaming update to Teams app webhook endpoint
+            // Skip retry for streaming updates - if they fail, just ignore silently
             await sendTeamsResponse(
               context,
               agentActivityId,
               streamingCard,
-              localLogger
+              localLogger,
+              true // skipRetry
             );
           }
         }
@@ -513,26 +515,38 @@ const sendTeamsResponse = async (
   context: TurnContext,
   agentActivityId: string | undefined,
   adaptiveCard: Partial<Activity>,
-  localLogger: Logger
+  localLogger: Logger,
+  skipRetry = false
 ): Promise<Result<string, Error>> => {
   // Update existing message for streaming
   if (agentActivityId) {
-    try {
-      await updateActivity(context, {
+    const updateResult = await updateActivity(
+      context,
+      {
         ...adaptiveCard,
         id: agentActivityId,
-      });
+      },
+      skipRetry
+    );
+
+    if (updateResult.isOk()) {
       return new Ok(agentActivityId);
-    } catch (updateError) {
+    }
+
+    // Only log and fallback if not skipping retry (for non-streaming updates)
+    if (!skipRetry) {
       localLogger.warn(
-        { error: updateError },
+        { error: updateResult.error },
         "Failed to update streaming message, sending new one"
       );
+    } else {
+      // For streaming updates, just silently ignore failures
+      return new Ok(agentActivityId);
     }
   }
 
-  // Send new streaming message
-  return sendActivity(context, adaptiveCard);
+  // Send new streaming message (only if not skipping or if update failed and we're not skipping)
+  return sendActivity(context, adaptiveCard, skipRetry);
 };
 
 async function makeContentFragments(
