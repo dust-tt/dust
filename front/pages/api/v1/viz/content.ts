@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { verifyVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { frameContentType } from "@app/types";
@@ -72,7 +73,7 @@ async function handler(
     });
   }
 
-  const { fileToken, contentType } = tokenPayload;
+  const { fileToken } = tokenPayload;
 
   const result = await FileResource.fetchByShareTokenWithContent(fileToken);
   if (!result) {
@@ -85,34 +86,85 @@ async function handler(
     });
   }
 
-  // Handle different content types.
-  if (contentType === frameContentType) {
-    if (!result.file.isInteractiveContent) {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Requested content is not an interactive frame.",
-        },
-      });
-    }
+  const { file, shareScope } = result;
 
-    return res.status(200).json({
-      content: result.content,
-      contentType: frameContentType,
-      metadata: {
-        conversationId: result.file.useCaseMetadata?.conversationId,
+  const workspace = await WorkspaceResource.fetchByModelId(file.workspaceId);
+  if (!workspace) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
       },
     });
-  } else {
+  }
+
+  // If current share scope differs from token scope, reject. It means share scope changed.
+  if (shareScope !== tokenPayload.shareScope) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
+
+  // Only allow conversation interactive files.
+  if (!file.isInteractiveContent || file.contentType !== frameContentType) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Unsupported content type: ${contentType}`,
+        message: `Unsupported content type: ${file.contentType}`,
       },
     });
   }
+
+  // Check if file is safe to display.
+  if (!file.isSafeToDisplay()) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "File is not safe for public display.",
+      },
+    });
+  }
+
+  // If file is shared publicly, ensure workspace allows it.
+  if (
+    shareScope === "public" &&
+    !workspace.canShareInteractiveContentPublicly
+  ) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
+
+  // Frame must have a conversation context.
+  const frameConversationId = file.useCaseMetadata?.conversationId;
+  if (!frameConversationId) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Frame missing conversation context.",
+      },
+    });
+  }
+
+  return res.status(200).json({
+    content: result.content,
+    contentType: frameContentType,
+    metadata: {
+      conversationId: result.file.useCaseMetadata?.conversationId,
+    },
+  });
 }
 
 export default withLogging(handler);
