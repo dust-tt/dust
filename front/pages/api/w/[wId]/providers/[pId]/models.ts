@@ -198,7 +198,6 @@ async function handler(
             // From https://docs.anthropic.com/en/docs/about-claude/model-deprecations#model-status.
             anthropic_models = [
               // Deprecated models.
-              { id: "claude-2.1" }, // Retired Jul 2025.
               { id: "claude-3-sonnet-20240229" }, // Retired Jul 2025.
               { id: "claude-3-5-sonnet-20240620" }, // Retired Oct 2025.
               { id: "claude-3-5-sonnet-20241022" }, // Retired Oct 2025.

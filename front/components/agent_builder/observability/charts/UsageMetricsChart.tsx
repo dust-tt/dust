@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   Area,
   AreaChart,
@@ -23,6 +22,7 @@ import { ChartTooltipCard } from "@app/components/agent_builder/observability/sh
 import {
   filterTimeSeriesByVersionWindow,
   findVersionMarkerForDate,
+  padSeriesToTimeRange,
 } from "@app/components/agent_builder/observability/utils";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import {
@@ -121,15 +121,18 @@ export function UsageMetricsChart({
     colorClassName: USAGE_METRICS_PALETTE[key],
   }));
 
-  const data = useMemo(
-    () =>
-      filterTimeSeriesByVersionWindow(
-        usageMetrics,
-        mode,
-        selectedVersion,
-        versionMarkers
-      ),
-    [usageMetrics, mode, selectedVersion, versionMarkers]
+  const filteredData = filterTimeSeriesByVersionWindow(
+    usageMetrics,
+    mode,
+    selectedVersion,
+    versionMarkers
+  );
+
+  const data = padSeriesToTimeRange<UsageMetricsData>(
+    filteredData,
+    mode,
+    period,
+    (date) => ({ date, messages: 0, conversations: 0, activeUsers: 0 })
   );
 
   return (
@@ -217,7 +220,7 @@ export function UsageMetricsChart({
           />
           {/* Areas for each usage metric */}
           <Area
-            type="natural"
+            type="monotone"
             dataKey="messages"
             name="Messages"
             className={USAGE_METRICS_PALETTE.messages}
@@ -225,7 +228,7 @@ export function UsageMetricsChart({
             stroke="currentColor"
           />
           <Area
-            type="natural"
+            type="monotone"
             dataKey="conversations"
             name="Conversations"
             className={USAGE_METRICS_PALETTE.conversations}
@@ -233,7 +236,7 @@ export function UsageMetricsChart({
             stroke="currentColor"
           />
           <Area
-            type="natural"
+            type="monotone"
             dataKey="activeUsers"
             name="Active users"
             className={USAGE_METRICS_PALETTE.activeUsers}

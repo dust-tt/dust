@@ -29,6 +29,9 @@ export type WebhookEvent = {
 
   // The JSON schema describing the payload sent by the webhook for this event.
   schema: JSONSchema;
+
+  // Sample event that will be shown to the model to help it generate a filter.
+  sample: Record<string, unknown> | null;
 };
 
 export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {

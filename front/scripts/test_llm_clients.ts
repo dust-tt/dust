@@ -3,10 +3,6 @@ import { assertNever } from "@dust-tt/sparkle";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { getLLM } from "@app/lib/api/llm";
 import {
-  ANTHROPIC_WHITELISTED_NON_REASONING_MODEL_IDS,
-  ANTHROPIC_WHITELISTED_REASONING_MODEL_IDS,
-} from "@app/lib/api/llm/clients/anthropic/types";
-import {
   GOOGLE_AI_STUDIO_WHITELISTED_NON_REASONING_MODEL_IDS,
   GOOGLE_AI_STUDIO_WHITELISTED_REASONING_MODEL_IDS,
 } from "@app/lib/api/llm/clients/google/types";
@@ -14,11 +10,6 @@ import {
   MISTRAL_GENERIC_WHITELISTED_MODEL_IDS,
   MISTRAL_WHITELISTED_MODEL_IDS_WITHOUT_IMAGE_SUPPORT,
 } from "@app/lib/api/llm/clients/mistral/types";
-import {
-  XAI_WHITELISTED_MODELS_WITHOUT_IMAGE_SUPPORT,
-  XAI_WHITELISTED_NON_REASONING_MODEL_IDS,
-  XAI_WHITELISTED_REASONING_MODEL_IDS,
-} from "@app/lib/api/llm/clients/xai/types";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
@@ -133,14 +124,6 @@ function generateNotThinkingTestConfigs(
 }
 
 const TEST_CONFIGS: TestConfig[] = [
-  // Anthropic
-  ...ANTHROPIC_WHITELISTED_REASONING_MODEL_IDS.flatMap((modelId) =>
-    generateThinkingTestConfigs("anthropic", modelId)
-  ),
-  ...ANTHROPIC_WHITELISTED_NON_REASONING_MODEL_IDS.flatMap((modelId) =>
-    generateNotThinkingTestConfigs("anthropic", modelId)
-  ),
-
   // Google AI Studio
   ...GOOGLE_AI_STUDIO_WHITELISTED_NON_REASONING_MODEL_IDS.flatMap((modelId) =>
     generateNotThinkingTestConfigs("google_ai_studio", modelId)
@@ -155,22 +138,6 @@ const TEST_CONFIGS: TestConfig[] = [
   ),
   ...MISTRAL_WHITELISTED_MODEL_IDS_WITHOUT_IMAGE_SUPPORT.flatMap((modelId) =>
     generateNotThinkingTestConfigs("mistral", modelId)
-  ).map((config) => ({
-    ...config,
-    support: {
-      imageInputs: false,
-    },
-  })),
-
-  // xAI
-  ...XAI_WHITELISTED_NON_REASONING_MODEL_IDS.flatMap((modelId) =>
-    generateNotThinkingTestConfigs("xai", modelId)
-  ),
-  ...XAI_WHITELISTED_REASONING_MODEL_IDS.flatMap((modelId) =>
-    generateThinkingTestConfigs("xai", modelId)
-  ),
-  ...XAI_WHITELISTED_MODELS_WITHOUT_IMAGE_SUPPORT.flatMap((modelId) =>
-    generateNotThinkingTestConfigs("xai", modelId)
   ).map((config) => ({
     ...config,
     support: {
@@ -421,7 +388,7 @@ async function runTest(
             break;
           case "reasoning_generated":
             fullReasoning = event.content.text;
-            const signature = event.metadata.signature ?? "";
+            const encryptedContent = event.metadata.encrypted_content ?? "";
             conversationHistory.push({
               role: "assistant",
               name: "Assistant",
@@ -430,7 +397,9 @@ async function runTest(
                   type: "reasoning",
                   value: {
                     reasoning: event.content.text,
-                    metadata: JSON.stringify({ signature: signature }),
+                    metadata: JSON.stringify({
+                      encrypted_content: encryptedContent,
+                    }),
                     tokens: 12,
                     provider: config.provider,
                   },

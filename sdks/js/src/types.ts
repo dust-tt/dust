@@ -59,8 +59,6 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "claude-4-sonnet-20250514"
   | "claude-haiku-4-5-20251001"
   | "claude-sonnet-4-5-20250929"
-  | "claude-2.1"
-  | "claude-instant-1.2"
   | "mistral-large-latest"
   | "mistral-medium"
   | "mistral-small-latest"
@@ -651,6 +649,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_management_tool"
   | "agent_to_yaml"
   | "anthropic_vertex_fallback"
+  | "ashby_tool"
   | "claude_4_opus_feature"
   | "confluence_tool"
   | "deepseek_feature"
@@ -702,7 +701,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "legacy_dust_apps"
   | "llm_router_direct_requests"
   | "mentions_v2"
-  | "dust_global_data_source_file_system"
   | "http_client_tool"
 >();
 

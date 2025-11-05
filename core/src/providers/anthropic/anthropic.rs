@@ -322,7 +322,7 @@ impl LLM for AnthropicLLM {
     }
 
     fn context_size(&self) -> usize {
-        if self.id.starts_with("claude-2.1") || self.id.starts_with("claude-3") {
+        if self.id.starts_with("claude-3") {
             200000
         } else {
             100000
@@ -641,12 +641,12 @@ impl Provider for AnthropicProvider {
 
     async fn test(&self) -> Result<()> {
         if !utils::confirm(
-            "You are about to make a request for 1 token to `claude-instant-1.2` on the Anthropic API.",
+            "You are about to make a request for 1 token to `claude-4.5-haiku` on the Anthropic API.",
         )? {
             Err(anyhow!("User aborted Anthropic test."))?;
         }
 
-        let mut llm = self.llm(String::from("claude-instant-1.2"));
+        let mut llm = self.llm(String::from("claude-4.5-haiku"));
         llm.initialize(Credentials::new()).await?;
 
         let llm_generation = llm

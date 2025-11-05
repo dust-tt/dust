@@ -130,6 +130,7 @@ function responseCompleted(
   } = response.usage;
   // even if in the types `input_tokens_details` and `output_tokens_details` are NOT optional,
   // some providers (e.g. Fireworks) return them as null
+  // NB: OpenAI API does not return the number of cache writes
   const cachedTokens = response.usage.input_tokens_details?.cached_tokens;
   const reasoningTokens =
     response.usage.output_tokens_details?.reasoning_tokens;

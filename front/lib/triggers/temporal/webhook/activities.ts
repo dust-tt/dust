@@ -16,6 +16,7 @@ import {
 } from "@app/lib/triggers/webhook";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import type { ContentFragmentInputWithFileIdType } from "@app/types";
 import { assertNever, errorToString, normalizeError } from "@app/types";
 import type { WebhookTriggerType } from "@app/types/assistant/triggers";
@@ -54,6 +55,8 @@ export async function runTriggerWebhookActivity({
     logger.error({ workspaceId, webhookRequestId }, errorMessage);
     throw new TriggerNonRetryableError(errorMessage);
   }
+
+  const provider = webhookSource.provider ?? "custom";
 
   if (webhookSource.workspaceId !== auth.getNonNullableWorkspace().id) {
     const errorMessage = "Webhook source not found in workspace.";
@@ -122,7 +125,13 @@ export async function runTriggerWebhookActivity({
   if (rateLimiterRes.isErr()) {
     const errorMessage = rateLimiterRes.error.message;
     await webhookRequest.markAsFailed(errorMessage);
+
     logger.error({ workspaceId, webhookRequestId }, errorMessage);
+    statsDClient.increment("webhook_rate_limit.hit.count", 1, [
+      `provider:${provider}`,
+      `workspace_id:${workspaceId}`,
+    ]);
+
     throw new TriggerNonRetryableError(errorMessage);
   }
 

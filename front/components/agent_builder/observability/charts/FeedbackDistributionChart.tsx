@@ -1,8 +1,8 @@
-import { useMemo } from "react";
 import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -18,7 +18,10 @@ import {
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
-import { filterTimeSeriesByVersionWindow } from "@app/components/agent_builder/observability/utils";
+import {
+  filterTimeSeriesByVersionWindow,
+  padSeriesToTimeRange,
+} from "@app/components/agent_builder/observability/utils";
 import {
   useAgentFeedbackDistribution,
   useAgentVersionMarkers,
@@ -57,16 +60,18 @@ export function FeedbackDistributionChart({
     colorClassName: FEEDBACK_DISTRIBUTION_PALETTE[key],
   }));
 
-  const data = useMemo(
-    () =>
-      filterTimeSeriesByVersionWindow(
-        feedbackDistribution,
-        mode,
-        selectedVersion,
-        versionMarkers
-      ),
-    [feedbackDistribution, mode, selectedVersion, versionMarkers]
+  const filteredData = filterTimeSeriesByVersionWindow(
+    feedbackDistribution,
+    mode,
+    selectedVersion,
+    versionMarkers
   );
+
+  const data = padSeriesToTimeRange(filteredData, mode, period, (date) => ({
+    date,
+    positive: 0,
+    negative: 0,
+  }));
 
   return (
     <ChartContainer
@@ -133,6 +138,16 @@ export function FeedbackDistributionChart({
             strokeWidth={2}
             dot={false}
           />
+          {mode === "timeRange" &&
+            versionMarkers.map((versionMarker) => (
+              <ReferenceLine
+                key={versionMarker.timestamp}
+                x={versionMarker.timestamp}
+                strokeDasharray="5 5"
+                strokeWidth={1}
+                stroke="hsl(var(--chart-5))"
+              />
+            ))}
         </LineChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />

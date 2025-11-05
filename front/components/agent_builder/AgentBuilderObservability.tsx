@@ -16,7 +16,6 @@ import { ErrorRateChart } from "@app/components/agent_builder/observability/char
 import { LatencyChart } from "@app/components/agent_builder/observability/charts/LatencyChart";
 import { ToolUsageChart } from "@app/components/agent_builder/observability/charts/ToolUsageChart";
 import { UsageMetricsChart } from "@app/components/agent_builder/observability/charts/UsageMetricsChart";
-import { ExportFeedbackCsvButton } from "@app/components/agent_builder/observability/ExportFeedbackCSVButton";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ObservabilityFilterSelector } from "@app/components/agent_builder/observability/ObservabilityFilterSelector";
 import { StartConversationWithFredButton } from "@app/components/agent_builder/observability/StartConversationWithFredButton";
@@ -170,14 +169,6 @@ export function AgentBuilderObservability({
         )}
       </TabContentChildSectionLayout>
 
-      <div className="flex gap-2">
-        <ExportFeedbackCsvButton
-          agentConfigurationSId={agentConfigurationSId}
-        />
-        <StartConversationWithFredButton
-          agentConfigurationSId={agentConfigurationSId}
-        />
-      </div>
       <TabContentChildSectionLayout title="Charts">
         {isAgentConfigurationLoading ? (
           <div className="grid grid-cols-1 gap-6">

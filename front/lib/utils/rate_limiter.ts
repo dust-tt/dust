@@ -8,7 +8,7 @@ import type {
   MaxMessagesTimeframeType,
   Result,
 } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { assertNever, Err, normalizeError, Ok } from "@app/types";
 
 export class RateLimitError extends Error {}
 
@@ -166,6 +166,6 @@ export function getTimeframeSecondsFromLiteral(
       return 60 * 60 * 24 * 30; // 30 days.
 
     default:
-      return 0;
+      assertNever(timeframeLiteral);
   }
 }

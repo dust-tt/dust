@@ -1,11 +1,5 @@
 import type { ModelConfigurationType } from "@app/types";
 
-export const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
-export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
-  "gemini-1.5-flash-latest" as const;
-export const GEMINI_2_FLASH_MODEL_ID = "gemini-2.0-flash" as const;
-export const GEMINI_2_FLASH_LITE_MODEL_ID = "gemini-2.0-flash-lite" as const;
-export const GEMINI_2_5_PRO_PREVIEW_MODEL_ID = "gemini-2.5-pro-preview-03-25";
 export const GEMINI_2_5_FLASH_MODEL_ID = "gemini-2.5-flash" as const;
 export const GEMINI_2_5_FLASH_IMAGE_MODEL_ID =
   "gemini-2.5-flash-image" as const;
@@ -13,6 +7,11 @@ export const GEMINI_2_5_FLASH_LITE_MODEL_ID = "gemini-2.5-flash-lite" as const;
 export const GEMINI_2_5_PRO_MODEL_ID = "gemini-2.5-pro" as const;
 
 // These Gemini preview models are deprecated (either replaced by a GA model or not making it to GA)
+export const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
+export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
+  "gemini-1.5-flash-latest" as const;
+export const GEMINI_2_FLASH_MODEL_ID = "gemini-2.0-flash" as const;
+export const GEMINI_2_FLASH_LITE_MODEL_ID = "gemini-2.0-flash-lite" as const;
 export const GEMINI_2_FLASH_PREVIEW_MODEL_ID = "gemini-2.0-flash-exp" as const;
 export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID =
   "gemini-2.0-flash-thinking-exp-01-21" as const;
@@ -20,6 +19,8 @@ export const GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID =
   "gemini-2.0-flash-lite-preview-02-05" as const;
 export const GEMINI_2_PRO_PREVIEW_MODEL_ID =
   "gemini-2.0-pro-exp-02-05" as const;
+export const GEMINI_2_5_PRO_PREVIEW_MODEL_ID = "gemini-2.5-pro-preview-03-25";
+
 // DEPRECATED -- Replaced by 2.5 family
 export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",

@@ -30,7 +30,7 @@ import {
   createResponseAdaptiveCard,
   createStreamingAdaptiveCard,
 } from "./adaptive_cards";
-import { sendActivity, updateActivity } from "./bot_messaging_utils";
+import { updateActivity } from "./bot_messaging_utils";
 import { validateTeamsUser } from "./user_validation";
 
 export async function botAnswerMessage(
@@ -167,15 +167,6 @@ export async function botAnswerMessage(
   let userMessage: UserMessageType | undefined = undefined;
 
   if (lastMicrosoftBotMessage?.dustConversationId) {
-    localLogger.info(
-      {
-        connectorId: connector.id,
-        teamsConversationId: conversationId,
-        dustConversationId: lastMicrosoftBotMessage.dustConversationId,
-      },
-      "Reusing existing Dust conversation for Teams conversation"
-    );
-
     // Check conversation existence (it might have been deleted between two messages).
     const conversationRes = await dustAPI.getConversation({
       conversationId: lastMicrosoftBotMessage.dustConversationId,
@@ -235,14 +226,6 @@ export async function botAnswerMessage(
 
   // If the conversation does not exist, we create a new one.
   if (!conversation || !userMessage) {
-    localLogger.info(
-      {
-        connectorId: connector.id,
-        teamsConversationId: conversationId,
-      },
-      "Creating new Dust conversation for Teams conversation"
-    );
-
     const newConversationRes = await dustAPI.createConversation({
       title: null,
       visibility: "unlisted",
@@ -261,15 +244,6 @@ export async function botAnswerMessage(
     if (!userMessage) {
       return new Err(new Error("Failed to retrieve the created message."));
     }
-
-    localLogger.info(
-      {
-        connectorId: connector.id,
-        teamsConversationId: conversationId,
-        dustConversationId: conversation.sId,
-      },
-      "Created new Dust conversation and linked to Teams conversation"
-    );
   }
 
   const m = await MicrosoftBotMessage.create({
@@ -372,7 +346,7 @@ async function streamAgentResponse({
   let chainOfThought = "";
   let agentState = "thinking";
   const actions: AgentActionPublicType[] = [];
-  const UPDATE_INTERVAL_MS = 100; // Update every 100 millisecond
+  const UPDATE_INTERVAL_MS = 1500;
 
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
@@ -421,11 +395,13 @@ async function streamAgentResponse({
             });
 
             // Send streaming update to Teams app webhook endpoint
+            // Skip retry for streaming updates - if they fail, just ignore silently
             await sendTeamsResponse(
               context,
               agentActivityId,
               streamingCard,
-              localLogger
+              localLogger,
+              true // skipRetry
             );
           }
         }
@@ -453,19 +429,6 @@ async function streamAgentResponse({
         actions.push(event.action);
         break;
       case "tool_approve_execution": {
-        localLogger.info(
-          {
-            connectorId: connector.id,
-            conversationId: conversation.sId,
-            eventConversationId: event.conversationId,
-            messageId: event.messageId,
-            actionId: event.actionId,
-            toolName: event.metadata.toolName,
-            agentName: event.metadata.agentName,
-          },
-          "Tool validation request"
-        );
-
         // Find the MicrosoftBotMessage to get the microsoftBotMessageId
         const microsoftBotMessage = await MicrosoftBotMessage.findOne({
           where: {
@@ -519,15 +482,6 @@ async function streamAgentResponse({
             id: agentActivityId,
             ...approvalCard,
           });
-          localLogger.info(
-            {
-              connectorId: connector.id,
-              conversationId: conversation.sId,
-              toolName: event.metadata.toolName,
-              agentActivityId,
-            },
-            "Sent tool approval card to user"
-          );
         } catch (error) {
           localLogger.error(
             {
@@ -559,28 +513,37 @@ async function streamAgentResponse({
 
 const sendTeamsResponse = async (
   context: TurnContext,
-  agentActivityId: string | undefined,
+  agentActivityId: string,
   adaptiveCard: Partial<Activity>,
-  localLogger: Logger
+  localLogger: Logger,
+  skipRetry = false
 ): Promise<Result<string, Error>> => {
   // Update existing message for streaming
-  if (agentActivityId) {
-    try {
-      await updateActivity(context, {
-        ...adaptiveCard,
-        id: agentActivityId,
-      });
-      return new Ok(agentActivityId);
-    } catch (updateError) {
-      localLogger.warn(
-        { error: updateError },
-        "Failed to update streaming message, sending new one"
-      );
-    }
+  const updateResult = await updateActivity(
+    context,
+    {
+      ...adaptiveCard,
+      id: agentActivityId,
+    },
+    skipRetry
+  );
+
+  if (updateResult.isOk()) {
+    return updateResult;
   }
 
-  // Send new streaming message
-  return sendActivity(context, adaptiveCard);
+  // Only log if not skipping retry (for non-streaming updates)
+  if (!skipRetry) {
+    localLogger.warn(
+      { error: updateResult.error },
+      "Failed to send response message"
+    );
+
+    return updateResult;
+  } else {
+    // For streaming updates, just silently ignore failures
+    return new Ok(agentActivityId);
+  }
 };
 
 async function makeContentFragments(
@@ -605,14 +568,6 @@ async function makeContentFragments(
   // For regular chats (non-channel), we don't need message history
   // but we still want to process file attachments from the current message
   if (!isChannelConversation) {
-    localLogger.info(
-      {
-        connectorId: connector.id,
-        teamsConversationId,
-      },
-      "Processing current message attachments for Teams chat"
-    );
-
     // Get current message attachments from the Bot Framework context
     const currentMessageAttachments = context.activity.attachments || [];
 
@@ -625,14 +580,6 @@ async function makeContentFragments(
       dustAPI,
       client,
       localLogger
-    );
-
-    localLogger.info(
-      {
-        connectorId: connector.id,
-        attachments: allContentFragments.length,
-      },
-      `Processed ${allContentFragments.length} file attachments from Teams chat message`
     );
 
     return new Ok(
@@ -816,16 +763,19 @@ export async function sendFeedback({
     }
   );
 
-  localLogger.info(
-    {
-      dustConversationId: microsoftBotMessage.dustConversationId,
-      thumbDirection,
-      feedbackRes,
-      userEmail: email,
-      userDisplayName: displayName,
-    },
-    "Feedback submitted from Teams"
-  );
+  if (feedbackRes.isErr()) {
+    localLogger.error(
+      {
+        error: feedbackRes.error,
+        dustConversationId: microsoftBotMessage.dustConversationId,
+        thumbDirection,
+        userEmail: email,
+        userDisplayName: displayName,
+      },
+      "Failed to submit feedback from Teams"
+    );
+    return;
+  }
 }
 
 export async function botValidateToolExecution({
@@ -836,8 +786,6 @@ export async function botValidateToolExecution({
   messageId,
   actionId,
   microsoftBotMessageId,
-  agentName,
-  toolName,
   localLogger,
 }: {
   context: TurnContext;
@@ -847,8 +795,6 @@ export async function botValidateToolExecution({
   messageId: string;
   actionId: string;
   microsoftBotMessageId: number;
-  agentName: string;
-  toolName: string;
   localLogger: Logger;
 }): Promise<Result<undefined, APIError | Error>> {
   // Validate user first
@@ -931,30 +877,8 @@ export async function botValidateToolExecution({
         },
         "Failed to retry blocked actions on the main conversation"
       );
-    } else {
-      localLogger.info(
-        {
-          connectorId: connector.id,
-          mainConversationId: microsoftBotMessage.dustConversationId,
-          eventConversationId: conversationId,
-          agentMessageId: messageId,
-        },
-        "Successfully retried blocked actions on the main conversation"
-      );
     }
   }
-
-  localLogger.info(
-    {
-      conversationId,
-      messageId,
-      actionId,
-      approved,
-      agentName,
-      toolName,
-    },
-    "Tool validation completed"
-  );
 
   return new Ok(undefined);
 }
