@@ -114,9 +114,12 @@ export class AshbyClient {
     const parseResult = schema.safeParse(rawData);
 
     if (!parseResult.success) {
-      logger.error("[Ashby] Invalid API response format", {
-        error: parseResult.error.message,
-      });
+      logger.error(
+        {
+          error: parseResult.error.message,
+        },
+        "[Ashby] Invalid API response format"
+      );
       return new Err(
         new Error(
           `Invalid Ashby API response format: ${parseResult.error.message}`
