@@ -130,6 +130,7 @@ export function ErrorRateChart({
   return (
     <ChartContainer
       title="Error rate"
+      description="Share of messages that failed (%). Warning at 5%, critical at 10%."
       statusChip={
         !isErrorRateLoading && !isErrorRateError && data.length > 0
           ? getStatusChip()

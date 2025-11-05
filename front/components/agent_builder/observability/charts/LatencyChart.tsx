@@ -102,6 +102,7 @@ export function LatencyChart({
   return (
     <ChartContainer
       title="Latency"
+      description="Average time to complete output (seconds). Lower is better."
       isLoading={isLatencyLoading}
       errorMessage={
         isLatencyError ? "Failed to load observability data." : undefined

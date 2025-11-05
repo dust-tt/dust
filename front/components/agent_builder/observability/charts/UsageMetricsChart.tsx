@@ -138,6 +138,7 @@ export function UsageMetricsChart({
   return (
     <ChartContainer
       title="Usage Metrics"
+      description="Daily totals of messages, conversations, and active users."
       isLoading={isUsageMetricsLoading}
       errorMessage={
         isUsageMetricsError ? "Failed to load observability data." : undefined

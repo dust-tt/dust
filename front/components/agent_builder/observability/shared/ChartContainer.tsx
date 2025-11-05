@@ -14,6 +14,7 @@ interface ChartContainerProps {
   children: ReactNode;
   additionalControls?: ReactNode;
   statusChip?: ReactNode;
+  description?: string;
 }
 
 export function ChartContainer({
@@ -24,6 +25,7 @@ export function ChartContainer({
   children,
   additionalControls,
   statusChip,
+  description,
 }: ChartContainerProps) {
   const message = isLoading ? null : errorMessage ?? emptyMessage;
 
@@ -34,13 +36,21 @@ export function ChartContainer({
         CHART_CONTAINER_HEIGHT_CLASS
       )}
     >
-      <div className="mb-4 flex items-center justify-between">
+      <div
+        className={cn(
+          "flex items-center justify-between",
+          description ? "mb-2" : "mb-4"
+        )}
+      >
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-medium text-foreground">{title}</h3>
           {statusChip}
         </div>
         <div className="flex items-center gap-3">{additionalControls}</div>
       </div>
+      {description && (
+        <div className="mb-3 text-xs text-muted-foreground">{description}</div>
+      )}
       {isLoading || message ? (
         <div
           className="flex items-center justify-center"
