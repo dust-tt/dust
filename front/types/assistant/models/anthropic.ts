@@ -19,8 +19,7 @@ export const CLAUDE_3_5_HAIKU_20241022_MODEL_ID =
   "claude-3-5-haiku-20241022" as const;
 export const CLAUDE_4_5_HAIKU_20251001_MODEL_ID =
   "claude-haiku-4-5-20251001" as const;
-export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
-export const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
+
 export const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
 
 export const CLAUDE_4_NATIVE_REASONING_META_PROMPT =
@@ -176,43 +175,7 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
 /**
  * Deprecated
  */
-export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "anthropic",
-  modelId: CLAUDE_2_1_MODEL_ID,
-  displayName: "Claude 2.1",
-  contextSize: 180_000,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 64, // 32_768
-  largeModel: true,
-  description: "Anthropic's Claude 2 model (200k context).",
-  shortDescription: "Anthropic's legacy model.",
-  isLegacy: true,
-  isLatest: false,
-  generationTokensCount: 2048,
-  supportsVision: false,
-  minimumReasoningEffort: "light",
-  maximumReasoningEffort: "light",
-  defaultReasoningEffort: "light",
-};
-export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "anthropic",
-  modelId: CLAUDE_INSTANT_1_2_MODEL_ID,
-  displayName: "Claude Instant 1.2",
-  contextSize: 90_000,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 64, // 32_768
-  largeModel: false,
-  description:
-    "Anthropic's low-latency and high throughput model (100k context)",
-  shortDescription: "Anthropic's legacy model.",
-  isLegacy: true,
-  isLatest: false,
-  generationTokensCount: 2048,
-  supportsVision: false,
-  minimumReasoningEffort: "light",
-  maximumReasoningEffort: "light",
-  defaultReasoningEffort: "light",
-};
+
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,

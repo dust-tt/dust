@@ -1,6 +1,5 @@
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
-  _getClaude2GlobalAgent,
   _getClaude3_7GlobalAgent,
   _getClaude3GlobalAgent,
   _getClaude3HaikuGlobalAgent,
@@ -8,7 +7,6 @@ import {
   _getClaude4_5HaikuGlobalAgent,
   _getClaude4_5SonnetGlobalAgent,
   _getClaude4SonnetGlobalAgent,
-  _getClaudeInstantGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
 import {
@@ -206,11 +204,6 @@ function getGlobalAgent({
         interactiveContentMCPServerView,
       });
       break;
-    case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
-      agentConfiguration = _getClaudeInstantGlobalAgent({
-        settings,
-      });
-      break;
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
       agentConfiguration = _getClaude4_5SonnetGlobalAgent({
         auth,
@@ -264,12 +257,6 @@ function getGlobalAgent({
         settings,
         webSearchBrowseMCPServerView,
         interactiveContentMCPServerView,
-      });
-      break;
-    case GLOBAL_AGENTS_SID.CLAUDE_2:
-      agentConfiguration = _getClaude2GlobalAgent({
-        auth,
-        settings,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_LARGE:
@@ -411,13 +398,11 @@ function getGlobalAgent({
 // This is the list of global agents that we want to support in past conversations but we don't want
 // to be accessible to users moving forward.
 const RETIRED_GLOBAL_AGENTS_SID = [
-  GLOBAL_AGENTS_SID.CLAUDE_2,
   GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
   GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
   GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
-  GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
   GLOBAL_AGENTS_SID.GITHUB,
   GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
   GLOBAL_AGENTS_SID.GPT35_TURBO,
