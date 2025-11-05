@@ -6,9 +6,9 @@ import {
 import { pauseAllLabsWorkflows } from "@app/lib/api/labs";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
-  SUPPORTED_REGIONS,
   config,
   isRegionType,
+  SUPPORTED_REGIONS,
 } from "@app/lib/api/regions/config";
 import {
   deleteWorkspace,
