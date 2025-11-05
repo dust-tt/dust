@@ -2774,6 +2774,8 @@ export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 const OAuthProviderSchema = FlexibleEnumSchema<
   | "confluence"
   | "confluence_tools"
+  | "discord"
+  | "fathom"
   | "freshservice"
   | "github"
   | "google_drive"
@@ -2791,7 +2793,6 @@ const OAuthProviderSchema = FlexibleEnumSchema<
   | "hubspot"
   | "mcp"
   | "mcp_static"
-  | "discord"
 >();
 
 const InternalAllowedIconSchema = FlexibleEnumSchema<
