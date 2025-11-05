@@ -146,9 +146,13 @@ export async function updateActivity(
       );
     };
 
-    skipRetry ? await operation() : await withRetry(operation);
+    const response = skipRetry ? await operation() : await withRetry(operation);
 
-    return new Ok(undefined);
+    if (response.data?.id) {
+      return new Ok(response.data.id);
+    }
+
+    return new Err(new Error("Cannot send activity - no activity ID"));
   } catch (error) {
     return new Err(
       error instanceof Error ? error : new Error("Failed to update activity")
