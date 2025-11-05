@@ -11,11 +11,13 @@ export const AshbyCandidateSchema = z
         isPrimary: z.boolean(),
       })
       .optional(),
-    primaryPhoneNumber: z.object({
-      value: z.string(),
-      type: z.string(),
-      isPrimary: z.boolean(),
-    }),
+    primaryPhoneNumber: z
+      .object({
+        value: z.string(),
+        type: z.string(),
+        isPrimary: z.boolean(),
+      })
+      .optional(),
     socialLinks: z
       .array(
         z.object({
