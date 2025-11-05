@@ -138,7 +138,7 @@ function createServer(
         if (!match?.[1]) {
           return new Err(
             new MCPError(
-              `Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/reports/.../[reportId]`
+              "Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/reports/.../[reportId]"
             )
           );
         }
