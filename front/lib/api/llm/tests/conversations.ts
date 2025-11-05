@@ -236,7 +236,7 @@ export const runConversation = async (
           break;
         case "reasoning_generated":
           fullReasoning = event.content.text;
-          const signature = event.metadata.signature ?? "";
+          const encryptedContent = event.metadata.encrypted_content ?? "";
           conversationHistory.push({
             role: "assistant",
             name: "Assistant",
@@ -245,7 +245,9 @@ export const runConversation = async (
                 type: "reasoning",
                 value: {
                   reasoning: event.content.text,
-                  metadata: JSON.stringify({ signature: signature }),
+                  metadata: JSON.stringify({
+                    encryptedContent: encryptedContent,
+                  }),
                   tokens: 12,
                   provider: config.provider,
                 },
