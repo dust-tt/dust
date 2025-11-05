@@ -187,13 +187,13 @@ const config = {
         source: "/api/v1/w/:wId/vaults",
         destination: "/api/v1/w/:wId/spaces",
       },
-      // Posthog tracking
+      // Posthog tracking - endpoint name called "subtle1"
       {
-        source: "/ingest/static/:path*",
+        source: "/subtle1/static/:path*",
         destination: "https://eu-assets.i.posthog.com/static/:path*",
       },
       {
-        source: "/ingest/:path*",
+        source: "/subtle1/:path*",
         destination: "https://eu.i.posthog.com/:path*",
       },
     ];
