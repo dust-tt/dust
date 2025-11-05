@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import React from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useExportFeedbackCsv } from "@app/lib/swr/agent_observability";
@@ -19,7 +19,7 @@ export function StartConversationWithFredButton({
   agentConfigurationSId,
   disabled = false,
 }: StartConversationWithFredButtonProps) {
-  const { period } = useObservability();
+  const { period } = useObservabilityContext();
   const [starting, setStarting] = React.useState(false);
   const router = useRouter();
 

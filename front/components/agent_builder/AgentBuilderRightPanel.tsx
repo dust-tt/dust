@@ -19,6 +19,7 @@ import { AgentBuilderObservability } from "@app/components/agent_builder/AgentBu
 import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
+import { ObservabilityProvider } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
@@ -75,7 +76,7 @@ function PanelHeader({
                 )}
                 <TabsTrigger
                   value="performance"
-                  label="Performance"
+                  label="Feedback"
                   icon={ListCheckIcon}
                   onClick={() => onTabChange("performance")}
                 />
@@ -179,20 +180,18 @@ function ExpandedContent({
           <AgentBuilderPreview />
         </div>
       )}
-      {selectedTab === "observability" && agentConfigurationSId && (
-        <div className="flex-1 overflow-y-auto p-4">
+      <ObservabilityProvider>
+        {selectedTab === "observability" && agentConfigurationSId && (
           <AgentBuilderObservability
             agentConfigurationSId={agentConfigurationSId}
           />
-        </div>
-      )}
-      {selectedTab === "performance" && (
-        <div className="flex-1 overflow-y-auto p-4">
+        )}
+        {selectedTab === "performance" && (
           <AgentBuilderPerformance
             agentConfigurationSId={agentConfigurationSId}
           />
-        </div>
-      )}
+        )}
+      </ObservabilityProvider>
     </div>
   );
 }

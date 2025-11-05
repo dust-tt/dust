@@ -47,11 +47,11 @@ export function ObservabilityProvider({
   );
 }
 
-export function useObservability() {
+export function useObservabilityContext() {
   const ctx = useContext(ObservabilityContext);
   if (!ctx) {
     throw new Error(
-      "useObservability must be used within an ObservabilityProvider"
+      "useObservabilityContext must be used within an ObservabilityProvider"
     );
   }
   return ctx;

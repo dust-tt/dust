@@ -14,7 +14,7 @@ import {
   LATENCY_LEGEND,
   LATENCY_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
@@ -63,7 +63,7 @@ export function LatencyChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const { period } = useObservability();
+  const { period } = useObservabilityContext();
   const {
     latency: data,
     isLatencyLoading,

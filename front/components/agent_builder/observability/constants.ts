@@ -25,7 +25,6 @@ export const LATENCY_LEGEND = [
 ] as const;
 
 export const CHART_HEIGHT = 260;
-export const CHART_CONTAINER_HEIGHT_CLASS = "h-100";
 
 export const VERSION_MARKER_STYLE = {
   stroke: "hsl(var(--primary))",

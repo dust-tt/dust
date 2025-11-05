@@ -1,12 +1,11 @@
 import { Button } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useExportFeedbackCsv } from "@app/lib/swr/agent_observability";
 import { normalizeError } from "@app/types";
-
-import { useAgentBuilderContext } from "../AgentBuilderContext";
-import { useObservability } from "./ObservabilityContext";
 
 export interface ExportFeedbackCsvButtonProps {
   agentConfigurationSId: string;
@@ -18,7 +17,7 @@ export function ExportFeedbackCsvButton({
   const { owner } = useAgentBuilderContext();
   const [downloading, setDownloading] = useState(false);
   const { downloadFeedbackCsv } = useExportFeedbackCsv();
-  const { period } = useObservability();
+  const { period } = useObservabilityContext();
   const sendNotification = useSendNotification();
   const handleDownload = async () => {
     setDownloading(true);

@@ -116,3 +116,27 @@ export function filterTimeSeriesByVersionWindow<T extends { date: string }>(
     return t >= start && (end === undefined || t < end);
   });
 }
+
+const WARNING_THRESHOLD = 5;
+const CRITICAL_THRESHOLD = 10;
+
+export function getErrorRateChipInfo(errorRate: number) {
+  if (errorRate < WARNING_THRESHOLD) {
+    return {
+      color: "success" as const,
+      label: "HEALTHY",
+    };
+  }
+
+  if (errorRate < CRITICAL_THRESHOLD) {
+    return {
+      color: "info" as const,
+      label: "WARNING",
+    };
+  }
+
+  return {
+    color: "warning" as const,
+    label: "CRITICAL",
+  };
+}
