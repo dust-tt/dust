@@ -116,3 +116,47 @@ export function filterTimeSeriesByVersionWindow<T extends { date: string }>(
     return t >= start && (end === undefined || t < end);
   });
 }
+
+export function formatUTCDateString(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function getTimeRangeBounds(periodDays: number): [string, string] {
+  const endUTC = Date.now();
+  const startUTC = endUTC - periodDays * 24 * 60 * 60 * 1000;
+  return [
+    formatUTCDateString(new Date(startUTC)),
+    formatUTCDateString(new Date(endUTC)),
+  ];
+}
+
+// Pads a time-series with zero-value points at the selected time-range bounds
+// so the X axis spans the full range even when there's no data.
+export function padSeriesToTimeRange<T extends { date: string }>(
+  points: T[] | undefined,
+  mode: ObservabilityMode,
+  periodDays: number,
+  zeroFactory: (date: string) => T
+): T[] {
+  const pts = points ?? [];
+  if (mode !== "timeRange") {
+    return pts;
+  }
+  const [startDate, endDate] = getTimeRangeBounds(periodDays);
+  const byDate = new Map<string, T>(pts.map((p) => [p.date, p]));
+
+  const startTime = new Date(startDate + "T00:00:00Z").getTime();
+  const endTime = new Date(endDate + "T00:00:00Z").getTime();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const numDays = Math.floor((endTime - startTime) / dayMs) + 1;
+
+  const out: T[] = [];
+  for (let i = 0; i < numDays; i++) {
+    const date = formatUTCDateString(new Date(startTime + i * dayMs));
+    out.push(byDate.get(date) ?? zeroFactory(date));
+  }
+  return out;
+}
