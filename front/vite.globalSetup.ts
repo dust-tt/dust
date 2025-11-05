@@ -31,6 +31,7 @@ export default async function setup() {
     LOG_LEVEL: process.env.TEST_LOG_LEVEL ?? "silent",
     DUST_APPS_HELPER_DATASOURCE_VIEW_ID: "dsv_xx",
     DUST_APPS_WORKSPACE_ID: "xx",
+    VIZ_JWT_SECRET: "viz-secret-for-tests",
   };
 
   // Execute the db migration script

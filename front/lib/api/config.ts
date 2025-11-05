@@ -122,6 +122,9 @@ const config = {
         EnvironmentConfig.getOptionalEnvVariable("NODE_ENV") || "development",
     };
   },
+  getVizJwtSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("VIZ_JWT_SECRET");
+  },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
