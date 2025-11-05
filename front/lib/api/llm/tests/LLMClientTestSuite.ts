@@ -59,10 +59,10 @@ export abstract class LLMClientTestSuite {
               this.getConversationsToRun(model).forEach((conversation) => {
                 it(
                   `should handle: ${conversation.name}`,
+                  { concurrent: true, timeout: TIMEOUT },
                   async () => {
                     await conversation.run(config);
-                  },
-                  TIMEOUT
+                  }
                 );
               });
             });

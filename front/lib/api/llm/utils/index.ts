@@ -21,3 +21,17 @@ export function extractEncryptedContentFromMetadata(metadata: string): string {
       : "";
   return encryptedContent;
 }
+
+export function extractIdFromMetadata(metadata: string): string {
+  const parsed = safeParseJSON(metadata);
+  if (parsed.isErr()) {
+    throw new Error(
+      `Failed to parse reasoning metadata JSON: ${parsed.error.message}`
+    );
+  }
+  const id =
+    parsed.value && "id" in parsed.value && isString(parsed.value.id)
+      ? parsed.value.id
+      : "";
+  return id;
+}

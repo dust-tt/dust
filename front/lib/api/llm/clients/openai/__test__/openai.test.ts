@@ -24,6 +24,12 @@ const OPENAI_MODEL_FAMILY_TO_TEST_CONFIGS: Record<
     { reasoningEffort: "medium" },
     { reasoningEffort: "high" },
   ],
+  "o3-no-vision": [
+    { reasoningEffort: "none" },
+    { reasoningEffort: "light" },
+    { reasoningEffort: "medium" },
+    { reasoningEffort: "high" },
+  ],
   reasoning: [
     { reasoningEffort: "none" },
     { reasoningEffort: "light", temperature: 0 },
@@ -31,7 +37,10 @@ const OPENAI_MODEL_FAMILY_TO_TEST_CONFIGS: Record<
     { reasoningEffort: "high" },
   ],
   "non-reasoning": [{ temperature: 1 }, { temperature: 0 }],
+  "no-vision": [{ temperature: 1 }, { temperature: 0 }],
 };
+
+const NO_VISION_FAMILIES: OpenAIModelFamily[] = ["no-vision", "o3-no-vision"];
 
 // Mock the openai module to inject dangerouslyAllowBrowser: true
 vi.mock("openai", async (importOriginal) => {
@@ -95,7 +104,13 @@ class OpenAiTestSuite extends LLMClientTestSuite {
   protected getSupportedConversations(
     _modelId: ModelIdType
   ): TestConversation[] {
-    // Run all conversations for all OpenAI models
+    const family = getOpenAIModelFamilyFromModelId(_modelId);
+    if (NO_VISION_FAMILIES.includes(family)) {
+      // Filter out conversations that require vision capabilities
+      return TEST_CONVERSATIONS.filter(
+        (conversation) => conversation.id !== "image-description"
+      );
+    }
     return TEST_CONVERSATIONS;
   }
 }

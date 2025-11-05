@@ -16,7 +16,7 @@ export type TestConfig = {
 export type ResponseChecker =
   | {
       type: "text_contains";
-      substring: string;
+      anyString: string[];
     }
   | {
       type: "has_tool_call";
