@@ -201,7 +201,9 @@ function createServer(
         .uuid()
         .optional()
         .describe(
-          "UUID of the feedback form definition to use. If not provided, will attempt to auto-detect. If multiple forms are available, an error will be returned with the list of available forms."
+          "UUID of the feedback form definition to use. If not provided, will attempt to " +
+            "auto-detect. If multiple forms are available, an error will be returned with the " +
+            "list of available forms."
         ),
       feedbackForm: z
         .record(z.unknown())
@@ -337,47 +339,79 @@ function createServer(
           );
         }
 
-        const applicationId = activeApplications[0].id;
+        const application = activeApplications[0];
+        const applicationId = application.id;
 
         let resolvedFeedbackFormDefinitionId = feedbackFormDefinitionId;
 
         if (!resolvedFeedbackFormDefinitionId) {
-          const formsResult = await client.listFeedbackFormDefinitions();
+          const interviewsResult = await client.listInterviews({
+            applicationId,
+          });
 
-          if (formsResult.isErr()) {
-            return new Err(
-              new MCPError(
-                `Failed to list feedback form definitions: ${formsResult.error.message}`
-              )
-            );
+          if (interviewsResult.isOk()) {
+            const interviewForms: string[] = [];
+            for (const interview of interviewsResult.value.results) {
+              if (!interview.isArchived && interview.feedbackFormDefinitionId) {
+                interviewForms.push(interview.feedbackFormDefinitionId);
+              }
+            }
+
+            const uniqueForms = Array.from(new Set(interviewForms));
+
+            if (uniqueForms.length === 1) {
+              resolvedFeedbackFormDefinitionId = uniqueForms[0];
+            } else if (uniqueForms.length > 1) {
+              const stageInfo = application.currentInterviewStage
+                ? ` in current interview stage "${application.currentInterviewStage.title}"`
+                : "";
+              return new Err(
+                new MCPError(
+                  `Multiple feedback forms found${stageInfo} (${uniqueForms.length} forms).`
+                )
+              );
+            }
           }
 
-          const activeForms = formsResult.value.results.filter(
-            (form) => !form.isArchived
-          );
+          if (!resolvedFeedbackFormDefinitionId) {
+            const formsResult = await client.listFeedbackFormDefinitions();
 
-          if (activeForms.length === 0) {
-            return new Err(
-              new MCPError(
-                "No active feedback form definitions found in the organization."
-              )
+            if (formsResult.isErr()) {
+              return new Err(
+                new MCPError(
+                  `Failed to list feedback form definitions: ${formsResult.error.message}`
+                )
+              );
+            }
+
+            const activeForms = formsResult.value.results.filter(
+              (form) => !form.isArchived
             );
-          }
 
-          if (activeForms.length > 1) {
-            const formsList = activeForms
-              .map((form) => `- ${form.title} (ID: ${form.id})`)
-              .join("\n");
-            return new Err(
-              new MCPError(
-                `Multiple feedback form definitions found (${activeForms.length}). ` +
-                  `Please specify which one to use via the feedbackFormDefinitionId parameter.\n\n` +
-                  `Available forms:\n${formsList}`
-              )
-            );
-          }
+            if (activeForms.length === 0) {
+              return new Err(
+                new MCPError(
+                  "No active feedback form definitions found in the organization."
+                )
+              );
+            }
 
-          resolvedFeedbackFormDefinitionId = activeForms[0].id;
+            if (activeForms.length > 1) {
+              const formsList = activeForms
+                .map((form) => `- ${form.title} (ID: ${form.id})`)
+                .join("\n");
+              return new Err(
+                new MCPError(
+                  `Could not determine feedback form from current interview stage. ` +
+                    `Multiple feedback form definitions found (${activeForms.length}). ` +
+                    `Please specify which one to use via the feedbackFormDefinitionId parameter.` +
+                    `\n\nAvailable forms:\n${formsList}`
+                )
+              );
+            }
+
+            resolvedFeedbackFormDefinitionId = activeForms[0].id;
+          }
         }
 
         const result = await client.submitFeedback({

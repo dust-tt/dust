@@ -1,33 +1,35 @@
 import z from "zod";
 
-export const AshbyCandidateSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  primaryEmailAddress: z
-    .object({
-      value: z.string(),
-      type: z.string(),
-    })
-    .optional(),
-  phoneNumbers: z
-    .array(
-      z.object({
+export const AshbyCandidateSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    primaryEmailAddress: z
+      .object({
         value: z.string(),
         type: z.string(),
       })
-    )
-    .optional(),
-  socialLinks: z
-    .array(
-      z.object({
-        value: z.string(),
-        type: z.string(),
-      })
-    )
-    .optional(),
-  createdAt: z.string(),
-  applicationIds: z.array(z.string()).optional(),
-});
+      .optional(),
+    phoneNumbers: z
+      .array(
+        z.object({
+          value: z.string(),
+          type: z.string(),
+        })
+      )
+      .optional(),
+    socialLinks: z
+      .array(
+        z.object({
+          value: z.string(),
+          type: z.string(),
+        })
+      )
+      .optional(),
+    createdAt: z.string(),
+    applicationIds: z.array(z.string()).optional(),
+  })
+  .passthrough();
 
 export type AshbyCandidate = z.infer<typeof AshbyCandidateSchema>;
 
@@ -120,27 +122,31 @@ export type AshbyApplicationInfoRequest = z.infer<
   typeof AshbyApplicationInfoRequestSchema
 >;
 
-export const AshbyApplicationInfoResponseSchema = z.object({
-  id: z.string(),
-  candidateId: z.string(),
-  jobId: z.string(),
-  status: z.string().optional(),
-  archiveReason: z
-    .object({
-      id: z.string(),
-      text: z.string(),
-      reasonType: z.string(),
-    })
-    .optional()
-    .nullable(),
-  currentInterviewStage: z
-    .object({
-      id: z.string(),
-      title: z.string(),
-    })
-    .optional()
-    .nullable(),
-});
+export const AshbyApplicationInfoResponseSchema = z
+  .object({
+    id: z.string(),
+    candidateId: z.string(),
+    jobId: z.string(),
+    status: z.string().optional(),
+    archiveReason: z
+      .object({
+        id: z.string(),
+        text: z.string(),
+        reasonType: z.string(),
+      })
+      .passthrough()
+      .optional()
+      .nullable(),
+    currentInterviewStage: z
+      .object({
+        id: z.string(),
+        title: z.string(),
+      })
+      .passthrough()
+      .optional()
+      .nullable(),
+  })
+  .passthrough();
 
 export type AshbyApplicationInfoResponse = z.infer<
   typeof AshbyApplicationInfoResponseSchema
@@ -163,4 +169,42 @@ export const AshbyFeedbackFormDefinitionListResponseSchema = z.object({
 
 export type AshbyFeedbackFormDefinitionListResponse = z.infer<
   typeof AshbyFeedbackFormDefinitionListResponseSchema
+>;
+
+export const AshbyInterviewInfoRequestSchema = z.object({
+  interviewId: z.string(),
+});
+
+export type AshbyInterviewInfoRequest = z.infer<
+  typeof AshbyInterviewInfoRequestSchema
+>;
+
+export const AshbyInterviewInfoResponseSchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    feedbackFormDefinitionId: z.string().optional().nullable(),
+    isArchived: z.boolean().optional(),
+  })
+  .passthrough();
+
+export type AshbyInterviewInfoResponse = z.infer<
+  typeof AshbyInterviewInfoResponseSchema
+>;
+
+export const AshbyInterviewListRequestSchema = z.object({
+  applicationId: z.string().optional(),
+});
+
+export type AshbyInterviewListRequest = z.infer<
+  typeof AshbyInterviewListRequestSchema
+>;
+
+export const AshbyInterviewListResponseSchema = z.object({
+  results: z.array(AshbyInterviewInfoResponseSchema),
+  moreDataAvailable: z.boolean().optional(),
+});
+
+export type AshbyInterviewListResponse = z.infer<
+  typeof AshbyInterviewListResponseSchema
 >;

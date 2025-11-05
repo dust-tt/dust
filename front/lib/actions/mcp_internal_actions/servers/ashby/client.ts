@@ -6,6 +6,8 @@ import type {
   AshbyCandidateInfoRequest,
   AshbyCandidateSearchRequest,
   AshbyFeedbackSubmitRequest,
+  AshbyInterviewInfoRequest,
+  AshbyInterviewListRequest,
   AshbyReportSynchronousRequest,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 import {
@@ -15,6 +17,8 @@ import {
   AshbyCandidateSearchResponseSchema,
   AshbyFeedbackFormDefinitionListResponseSchema,
   AshbyFeedbackSubmitResponseSchema,
+  AshbyInterviewInfoResponseSchema,
+  AshbyInterviewListResponseSchema,
   AshbyReportSynchronousResponseSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -185,6 +189,22 @@ export class AshbyClient {
       "feedbackFormDefinition.list",
       {},
       AshbyFeedbackFormDefinitionListResponseSchema
+    );
+  }
+
+  async getInterviewInfo(request: AshbyInterviewInfoRequest) {
+    return this.postRequest(
+      "interview.info",
+      request,
+      AshbyInterviewInfoResponseSchema
+    );
+  }
+
+  async listInterviews(request: AshbyInterviewListRequest) {
+    return this.postRequest(
+      "interview.list",
+      request,
+      AshbyInterviewListResponseSchema
     );
   }
 }
