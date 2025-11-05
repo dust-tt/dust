@@ -55,7 +55,6 @@ export async function analyzeInvitationContext(
         invitationCount: pendingInvitations.length,
         workspaces: pendingInvitations.map((i) => ({
           id: i.workspace.sId,
-          name: i.workspace.name,
         })),
       },
       "[analyzeInvitationContext] User has multiple pending invitations - creating new workspace"
