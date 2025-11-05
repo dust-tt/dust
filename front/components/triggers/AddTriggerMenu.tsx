@@ -34,7 +34,7 @@ export const AddTriggerMenu = ({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          label="Add Trigger"
+          label="Add Source"
           variant="primary"
           icon={PlusIcon}
           size="sm"
@@ -49,7 +49,7 @@ export const AddTriggerMenu = ({
           .map(([provider, preset]) => (
             <DropdownMenuItem
               key={`trigger-${provider}`}
-              label={preset.name + " Trigger"}
+              label={preset.name}
               icon={getIcon(preset.icon)}
               onClick={() =>
                 isWebhookProvider(provider) && createWebhook(provider)
