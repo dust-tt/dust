@@ -88,6 +88,19 @@ module.exports = {
     "dust/no-bulk-lodash": "error",
     "dust/enforce-client-types-in-public-api": "error",
     "no-unused-expressions": "error",
+    "dust/require-schema-validation": [
+      "warn",
+      {
+        customValidators: [
+          "validated",
+          "withValidation",
+          "safeValidation",
+          "withSchemaValidation",
+          "withValidationArray",
+          "validateBatch",
+        ],
+      },
+    ],
   },
   overrides: [
     {

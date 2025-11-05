@@ -124,6 +124,7 @@ async function handler(
           "[CheckUpsertQueue] Checked upsert queue status"
         );
 
+        // eslint-disable-next-line dust/require-schema-validation -- CheckUpsertQueueResponseSchema not yet exported from @dust-tt/client
         return res.status(200).json({ running_count: runningCount });
       } catch (error) {
         logger.error(

@@ -70,6 +70,7 @@ async function handler(
         owner
       );
       res.setHeader("Content-Type", "text/csv");
+      // eslint-disable-next-line dust/require-schema-validation -- GetWorkspaceUsageResponseSchema not yet exported from @dust-tt/client
       res.status(200).send(csvData);
       return;
 

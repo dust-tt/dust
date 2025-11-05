@@ -6,6 +6,7 @@ const tooLongIndexName = require("./rules/too-long-index-name");
 const noDirectSparkleNotification = require("./rules/no-direct-sparkle-notification");
 const noBulkLodash = require("./rules/no-bulk-lodash.js");
 const enforceClientTypesInPublicApi = require("./rules/enforce-client-types-in-public-api");
+const requireSchemaValidation = require("./rules/require-schema-validation");
 
 module.exports = {
   meta: {
@@ -19,5 +20,6 @@ module.exports = {
     "no-direct-sparkle-notification": noDirectSparkleNotification,
     "no-bulk-lodash": noBulkLodash,
     "enforce-client-types-in-public-api": enforceClientTypesInPublicApi,
+    "require-schema-validation": requireSchemaValidation,
   },
 };

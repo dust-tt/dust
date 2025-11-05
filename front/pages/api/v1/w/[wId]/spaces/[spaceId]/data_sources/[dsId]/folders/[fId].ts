@@ -230,6 +230,7 @@ async function handler(
       }
 
       res.status(200).json({
+        // eslint-disable-next-line dust/require-schema-validation -- DELETE response returns minimal folder info
         folder: {
           folder_id: fId,
         },

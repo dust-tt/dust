@@ -177,6 +177,7 @@ async function handler(
         }
       }
 
+      // eslint-disable-next-line dust/require-schema-validation -- PostTableCSVAsyncResponseSchema not yet exported from @dust-tt/client
       return res.status(200).json(upsertRes.value);
     }
 
