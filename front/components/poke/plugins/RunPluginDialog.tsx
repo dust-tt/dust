@@ -87,7 +87,10 @@ export function RunPluginDialog({
   // Scroll to feedback section when error or result appears
   useEffect(() => {
     if ((error || result) && feedbackRef.current) {
-      feedbackRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      feedbackRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
     }
   }, [error, result]);
 
@@ -98,102 +101,102 @@ export function RunPluginDialog({
           "w-auto",
           "bg-muted-background dark:bg-muted-background-night",
           "sm:min-w-[600px] sm:max-w-[1000px]",
-          "max-h-[90vh] flex flex-col overflow-hidden"
+          "flex max-h-[90vh] flex-col overflow-hidden"
         )}
       >
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Run {plugin.name} plugin</DialogTitle>
           <DialogDescription>{plugin.description}</DialogDescription>
         </DialogHeader>
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <DialogContainer>
-          {isLoading || (hasAsyncArgs && isLoadingAsyncArgs) ? (
-            <Spinner />
-          ) : !manifest ? (
-            <PokeAlert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <PokeAlertTitle>Error</PokeAlertTitle>
-              <PokeAlertDescription>
-                Plugin could not be loaded.
-              </PokeAlertDescription>
-            </PokeAlert>
-          ) : (
-            <>
-              {manifest.warning && (
-                <PokeAlert variant="destructive">
-                  <PokeAlertTitle>Warning</PokeAlertTitle>
-                  <PokeAlertDescription>
-                    {manifest.warning}
-                  </PokeAlertDescription>
-                </PokeAlert>
-              )}
-              {isLoadingAsyncArgs ? (
-                <Spinner />
-              ) : (
-                <PluginForm
-                  disabled={result !== null}
-                  manifest={manifest}
-                  asyncArgs={asyncArgs}
-                  onSubmit={onSubmit}
-                />
-              )}
-              {/* Feedback section - appears right after the form/Run button */}
-              <div ref={feedbackRef}>
-                {error && (
+            {isLoading || (hasAsyncArgs && isLoadingAsyncArgs) ? (
+              <Spinner />
+            ) : !manifest ? (
+              <PokeAlert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <PokeAlertTitle>Error</PokeAlertTitle>
+                <PokeAlertDescription>
+                  Plugin could not be loaded.
+                </PokeAlertDescription>
+              </PokeAlert>
+            ) : (
+              <>
+                {manifest.warning && (
                   <PokeAlert variant="destructive">
-                    <PokeAlertTitle>Error</PokeAlertTitle>
-                    <PokeAlertDescription>{error}</PokeAlertDescription>
-                  </PokeAlert>
-                )}
-                {result && result.display === "text" && (
-                  <PokeAlert variant="success">
-                    <PokeAlertTitle>Success</PokeAlertTitle>
+                    <PokeAlertTitle>Warning</PokeAlertTitle>
                     <PokeAlertDescription>
-                      {result.value} - Make sure to reload.
+                      {manifest.warning}
                     </PokeAlertDescription>
                   </PokeAlert>
                 )}
-                {result && result.display === "textWithLink" && (
-                  <PokeAlert variant="success">
-                    <PokeAlertTitle>Success</PokeAlertTitle>
-                    <PokeAlertDescription>
-                      <p>{result.value} - Make sure to reload.</p>
-                      <Button
-                        onClick={() => {
-                          window.open(result.link, "_blank");
-                        }}
-                        label={result.linkText}
-                        variant="highlight"
-                        className="mt-2"
-                      />
-                    </PokeAlertDescription>
-                  </PokeAlert>
+                {isLoadingAsyncArgs ? (
+                  <Spinner />
+                ) : (
+                  <PluginForm
+                    disabled={result !== null}
+                    manifest={manifest}
+                    asyncArgs={asyncArgs}
+                    onSubmit={onSubmit}
+                  />
                 )}
-                {result && result.display === "json" && (
-                  <div className="mb-4 mt-4">
-                    <div className="mb-2 font-medium">Result:</div>
-                    <div className="max-h-[400px] overflow-auto rounded-lg bg-gray-800 p-4">
-                      <pre className="copy-sm whitespace-pre-wrap break-words font-mono text-gray-200">
-                        {JSON.stringify(result.value, null, 2)}
-                      </pre>
+                {/* Feedback section - appears right after the form/Run button */}
+                <div ref={feedbackRef}>
+                  {error && (
+                    <PokeAlert variant="destructive">
+                      <PokeAlertTitle>Error</PokeAlertTitle>
+                      <PokeAlertDescription>{error}</PokeAlertDescription>
+                    </PokeAlert>
+                  )}
+                  {result && result.display === "text" && (
+                    <PokeAlert variant="success">
+                      <PokeAlertTitle>Success</PokeAlertTitle>
+                      <PokeAlertDescription>
+                        {result.value} - Make sure to reload.
+                      </PokeAlertDescription>
+                    </PokeAlert>
+                  )}
+                  {result && result.display === "textWithLink" && (
+                    <PokeAlert variant="success">
+                      <PokeAlertTitle>Success</PokeAlertTitle>
+                      <PokeAlertDescription>
+                        <p>{result.value} - Make sure to reload.</p>
+                        <Button
+                          onClick={() => {
+                            window.open(result.link, "_blank");
+                          }}
+                          label={result.linkText}
+                          variant="highlight"
+                          className="mt-2"
+                        />
+                      </PokeAlertDescription>
+                    </PokeAlert>
+                  )}
+                  {result && result.display === "json" && (
+                    <div className="mb-4 mt-4">
+                      <div className="mb-2 font-medium">Result:</div>
+                      <div className="max-h-[400px] overflow-auto rounded-lg bg-gray-800 p-4">
+                        <pre className="copy-sm whitespace-pre-wrap break-words font-mono text-gray-200">
+                          {JSON.stringify(result.value, null, 2)}
+                        </pre>
+                      </div>
                     </div>
-                  </div>
-                )}
-                {result && result.display === "markdown" && (
-                  <div className="mb-4 mt-4">
-                    <div className="mb-2 font-medium">Result:</div>
-                    <div className="max-h-[400px] overflow-auto rounded-lg bg-gray-800 p-4">
-                      <Markdown
-                        content={result.value}
-                        textColor="text-slate-500 dark:text-foreground-night"
-                      />
+                  )}
+                  {result && result.display === "markdown" && (
+                    <div className="mb-4 mt-4">
+                      <div className="mb-2 font-medium">Result:</div>
+                      <div className="max-h-[400px] overflow-auto rounded-lg bg-gray-800 p-4">
+                        <Markdown
+                          content={result.value}
+                          textColor="text-slate-500 dark:text-foreground-night"
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </DialogContainer>
+                  )}
+                </div>
+              </>
+            )}
+          </DialogContainer>
         </div>
       </DialogContent>
     </Dialog>
