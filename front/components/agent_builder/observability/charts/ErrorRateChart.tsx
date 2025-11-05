@@ -21,7 +21,7 @@ import { ChartContainer } from "@app/components/agent_builder/observability/shar
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
-import { useAgentErrorRate } from "@app/lib/swr/assistants";
+import { useAgentErrorRate, useAgentVersionMarkers } from "@app/lib/swr/assistants";
 
 const WARNING_THRESHOLD = 5;
 const CRITICAL_THRESHOLD = 10;
@@ -87,6 +87,13 @@ export function ErrorRateChart({
     isErrorRateLoading,
     isErrorRateError,
   } = useAgentErrorRate({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    disabled: !workspaceId || !agentConfigurationId,
+  });
+
+  const { versionMarkers } = useAgentVersionMarkers({
     workspaceId,
     agentConfigurationId,
     days: period,
@@ -206,6 +213,16 @@ export function ErrorRateChart({
             fill="url(#fillErrorRate)"
             stroke="hsl(var(--chart-4))"
           />
+          {mode === "timeRange" &&
+            versionMarkers.map((versionMarker) => (
+              <ReferenceLine
+                key={versionMarker.timestamp}
+                x={versionMarker.timestamp}
+                strokeDasharray="5 5"
+                strokeWidth={1}
+                stroke="hsl(var(--chart-5))"
+              />
+            ))}
         </AreaChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />
