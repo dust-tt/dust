@@ -69,7 +69,7 @@ vi.mock("@app/types", async (importOriginal) => {
  *
  * Run it with:
  * ```
- * VITE_RUN_LLM_TESTS=true NODE_ENV=test VITE_DUST_MANAGED_OPENAI_API_KEY=$DUST_MANAGED_OPENAI_API_KEY npm run test -- __test__/openai.test.ts
+ * VITE_RUN_LLM_TESTS=true NODE_ENV=test VITE_DUST_MANAGED_ANTHROPIC_API_KEY=$DUST_MANAGED_ANTHROPIC_API_KEY npm run test -- __test__/anthropic.test.ts
  * ```
  */
 class AnthropicTestSuite extends LLMClientTestSuite {
