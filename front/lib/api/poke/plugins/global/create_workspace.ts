@@ -3,7 +3,6 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { config } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
-import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Plan } from "@app/lib/models/plan";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { getRegionDisplay } from "@app/lib/poke/regions";
@@ -103,16 +102,8 @@ export const createWorkspacePlugin = createPlugin({
     if (allPendingInvitations.length > 0) {
       if (args.revokeExistingInvitations) {
         const invitationIds = allPendingInvitations.map((inv) => inv.id);
-        const [updatedCount] = await MembershipInvitationModel.update(
-          { status: "revoked" },
-          {
-            where: {
-              id: invitationIds,
-              status: "pending",
-            },
-          }
-        );
-        revokedCount = updatedCount;
+        revokedCount =
+          await MembershipInvitationResource.revokeByIds(invitationIds);
         infoMessages.push(
           `✅ Revoked ${revokedCount} existing invitation${revokedCount > 1 ? "s" : ""} for ${email}`
         );

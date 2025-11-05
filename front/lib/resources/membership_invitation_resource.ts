@@ -167,6 +167,21 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     });
   }
 
+  static async revokeByIds(invitationIds: number[]): Promise<number> {
+    const [updatedCount] = await this.model.update(
+      { status: "revoked" },
+      {
+        where: {
+          id: invitationIds,
+          status: "pending",
+        },
+        // WORKSPACE_ISOLATION_BYPASS: We're revoking invitations across workspaces
+        dangerouslyBypassWorkspaceIsolationSecurity: true,
+      }
+    );
+    return updatedCount;
+  }
+
   delete(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     auth: Authenticator,
