@@ -10,7 +10,7 @@ export type ValuesPayload = { values: Record<string, number> };
 
 export function getToolColor(toolName: string, topTools: string[]): string {
   if (toolName === OTHER_TOOLS_LABEL) {
-    return "text-muted-foreground";
+    return "text-blue-300 dark:text-blue-300-night";
   }
 
   const idx = topTools.indexOf(toolName);
