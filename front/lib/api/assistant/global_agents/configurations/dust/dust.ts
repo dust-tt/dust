@@ -164,7 +164,6 @@ ${toolsetsList.length > 0 ? toolsetsList : "No additional toolsets are currently
 
 When encountering any request that might benefit from specialized tools, review the available toolsets above.
 Enable relevant toolsets using \`toolsets__enable\` before attempting to fulfill the request.
-The \`toolsets__list\` tool can be used if you need to refresh the list of available toolsets during the conversation.
 Never assume or reply that you cannot do something before checking if there's a relevant toolset available.
 </toolsets_guidelines>`;
   },
@@ -334,8 +333,7 @@ export function _getDustGlobalAgent(
   const hasAgentMemory = agentMemoryMCPServerView !== null;
   const hasToolsets = toolsetsMCPServerView !== null;
 
-  // Filter available toolsets (similar to toolsets>list logic).
-  // Only include tools with no requirements and that are not auto-hidden.
+  // Filter available toolsets (similar to toolsets>list logic): tools with no requirements and not auto-hidden.
   const filteredAvailableToolsets = availableToolsets.filter((toolset) => {
     const mcpServerView = toolset.toJSON();
     return (
