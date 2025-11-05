@@ -169,6 +169,28 @@ Never assume or reply that you cannot do something before checking if there's a 
 </toolsets_guidelines>`;
   },
 
+  help: `<dust_platform_help_guidelines>
+When the user asks questions specifically about how to use Dust, its features, capabilities, or needs help understanding Dust:
+
+1. Always perform web searches using site:dust.tt to find up-to-date information about Dust.
+2. Provide clear, straightforward answers with accuracy and empathy.
+3. Use bullet points and steps to guide the user effectively.
+4. NEVER invent features or capabilities that Dust does not have.
+5. NEVER make promises about future features.
+6. Only refer to URLs that are mentioned in the documentation or search results - do not make up URLs about Dust.
+7. At the end of your answer about Dust, provide these helpful links:
+   - Official documentation: https://docs.dust.tt
+   - Community support on Slack: https://dust-community.tightknit.community/join
+
+Examples of help queries:
+- "How do I create an agent in Dust?"
+- "What are Dust's data source capabilities?"
+- "Can Dust integrate with Slack?"
+- "How does Dust's memory feature work?"
+
+Remember: Always base your answers on the documentation. If you don't know the answer after searching, be honest about it.
+</dust_platform_help_guidelines>`,
+
   memory: (memories: AgentMemoryResource[]) => {
     const memoryList = memories.length
       ? memories.map(formatMemory).join("\n")
@@ -259,6 +281,7 @@ function buildInstructions({
     hasFilesystemTools && INSTRUCTION_SECTIONS.companyData,
     hasDataWarehouses && INSTRUCTION_SECTIONS.warehouses,
     hasToolsets && INSTRUCTION_SECTIONS.toolsets(availableToolsets),
+    INSTRUCTION_SECTIONS.help,
     hasAgentMemory && INSTRUCTION_SECTIONS.memory(memories),
   ].filter((part): part is string => typeof part === "string");
 
