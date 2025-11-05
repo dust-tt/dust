@@ -61,7 +61,6 @@ import type {
   AgentConfigurationType,
   AgentFetchVariant,
   GlobalAgentStatus,
-  WhitelistableFeature,
 } from "@app/types";
 import {
   GLOBAL_AGENTS_SID,
@@ -89,7 +88,6 @@ function getGlobalAgent({
   agentMemoryMCPServerView,
   memories,
   availableToolsets,
-  featureFlags,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -109,7 +107,6 @@ function getGlobalAgent({
   agentMemoryMCPServerView: MCPServerViewResource | null;
   memories: AgentMemoryResource[];
   availableToolsets: MCPServerViewResource[];
-  featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -350,7 +347,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
-        searchMCPServerView,
         dataSourcesFileSystemMCPServerView,
         toolsetsMCPServerView,
         deepDiveMCPServerView,
@@ -359,7 +355,6 @@ function getGlobalAgent({
         agentMemoryMCPServerView,
         memories,
         availableToolsets,
-        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DEEP_DIVE:
@@ -630,7 +625,6 @@ export async function getGlobalAgents(
       agentMemoryMCPServerView,
       memories,
       availableToolsets,
-      featureFlags: flags,
     })
   );
 

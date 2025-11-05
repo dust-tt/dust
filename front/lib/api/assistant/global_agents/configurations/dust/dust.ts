@@ -24,7 +24,6 @@ import {
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { isIncludedInDefaultCompanyData } from "@app/lib/data_sources";
 import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -32,7 +31,6 @@ import { timeAgoFrom } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
-  WhitelistableFeature,
 } from "@app/types";
 import {
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -295,7 +293,6 @@ export function _getDustGlobalAgent(
     preFetchedDataSources,
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
-    searchMCPServerView,
     dataSourcesFileSystemMCPServerView,
     toolsetsMCPServerView,
     deepDiveMCPServerView,
@@ -305,13 +302,11 @@ export function _getDustGlobalAgent(
     agentMemoryMCPServerView,
     memories,
     availableToolsets,
-    featureFlags,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
-    searchMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
     toolsetsMCPServerView: MCPServerViewResource | null;
     deepDiveMCPServerView: MCPServerViewResource | null;
@@ -320,7 +315,6 @@ export function _getDustGlobalAgent(
     agentMemoryMCPServerView: MCPServerViewResource | null;
     memories: AgentMemoryResource[];
     availableToolsets: MCPServerViewResource[];
-    featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -350,9 +344,7 @@ export function _getDustGlobalAgent(
       }
     : dummyModelConfiguration;
 
-  const hasFilesystemTools =
-    featureFlags.includes("dust_global_data_source_file_system") &&
-    dataSourcesFileSystemMCPServerView !== null;
+  const hasFilesystemTools = dataSourcesFileSystemMCPServerView !== null;
 
   const hasAgentMemory = agentMemoryMCPServerView !== null;
   const hasToolsets = toolsetsMCPServerView !== null;
@@ -431,80 +423,6 @@ export function _getDustGlobalAgent(
   }
 
   const actions: MCPServerConfigurationType[] = [];
-
-  // To be deprecated.
-  // Add search action for all data sources.
-  // Only add the action if there are data sources and the chosen MCP server is available.
-  const dataSourceViews = preFetchedDataSources.dataSourceViews.filter(
-    (dsView) => isIncludedInDefaultCompanyData(dsView.dataSource)
-  );
-  if (
-    !hasFilesystemTools &&
-    dataSourceViews.length > 0 &&
-    searchMCPServerView
-  ) {
-    // We push one action with all data sources
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST + "-datasource-action",
-      type: "mcp_server_configuration",
-      name: hasFilesystemTools ? "company_data" : "search_all_data_sources",
-      description: hasFilesystemTools
-        ? "The user's internal company data."
-        : "The user's entire workspace data sources",
-      mcpServerViewId: searchMCPServerView.sId,
-      internalMCPServerId: searchMCPServerView.internalMCPServerId,
-      dataSources: dataSourceViews.map((dsView) => ({
-        dataSourceViewId: dsView.sId,
-        workspaceId: preFetchedDataSources.workspaceId,
-        filter: { parents: null, tags: null },
-      })),
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
-    });
-    // And then one hidden action per managed data source to improve queries like "search in <data_source>".
-    dataSourceViews.forEach((dsView) => {
-      if (
-        dsView.dataSource.connectorProvider &&
-        dsView.dataSource.connectorProvider !== "webcrawler" &&
-        dsView.isInGlobalSpace
-      ) {
-        actions.push({
-          id: -1,
-          sId:
-            GLOBAL_AGENTS_SID.DUST +
-            "-datasource-action-" +
-            dsView.dataSource.sId,
-          type: "mcp_server_configuration",
-          name: "hidden_dust_search_" + dsView.dataSource.name,
-          description: `The user's ${dsView.dataSource.connectorProvider} data source.`,
-          mcpServerViewId: searchMCPServerView.sId,
-          internalMCPServerId: searchMCPServerView.internalMCPServerId,
-          dataSources: [
-            {
-              workspaceId: preFetchedDataSources.workspaceId,
-              dataSourceViewId: dsView.sId,
-              filter: { parents: null, tags: null },
-            },
-          ],
-          tables: null,
-          childAgentId: null,
-          reasoningModel: null,
-          additionalConfiguration: {},
-          timeFrame: null,
-          dustAppConfiguration: null,
-          jsonSchema: null,
-          secretName: null,
-        });
-      }
-    });
-  }
 
   // Add the filesystem tools action with all data sources in the global space.
   if (hasFilesystemTools) {

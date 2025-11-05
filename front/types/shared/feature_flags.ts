@@ -222,11 +222,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable mentions v2, aka mention users",
     stage: "on_demand",
   },
-  dust_global_data_source_file_system: {
-    description:
-      "Use the Data Sources File System MCP server on the @dust global agent (replaces search tool server)",
-    stage: "dust_only",
-  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
