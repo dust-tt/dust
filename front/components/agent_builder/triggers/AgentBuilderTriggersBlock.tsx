@@ -69,11 +69,7 @@ export function AgentBuilderTriggersBlock({
   const [sheetMode, setSheetMode] = useState<SheetMode | null>(null);
 
   const { spaces } = useSpacesContext();
-  const { webhookSourceViews } = useWebhookSourceViewsFromSpaces(
-    owner,
-    spaces,
-    !hasFeature("hootl_webhooks")
-  );
+  const { webhookSourceViews } = useWebhookSourceViewsFromSpaces(owner, spaces);
 
   const accessibleSpaceIds = useMemo(
     () => new Set(spaces.map((space) => space.sId)),
@@ -209,7 +205,6 @@ export function AgentBuilderTriggersBlock({
           />
         )
       }
-      isBeta
     >
       <div className="flex-1">
         {isTriggersLoading ? (
