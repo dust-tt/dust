@@ -7,7 +7,10 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import { Message } from "@app/lib/models/assistant/conversation";
+import { AgentScheduledExecutionResource } from "@app/lib/resources/agent_scheduled_execution_resource";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import { Err, normalizeError, Ok } from "@app/types";
 
 const MAX_DELAY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -93,6 +96,30 @@ function createServer(
           );
         }
 
+        const owner = auth.getNonNullableWorkspace();
+        const workflowId = makeAgentLoopWorkflowId({
+          workspaceId: owner.sId,
+          conversationId,
+          agentMessageId,
+        });
+
+        const userMessage = await Message.findOne({
+          where: {
+            sId: agentMessage.parentMessageId,
+            conversationId: conversation.id,
+          },
+        });
+
+        if (!userMessage) {
+          return new Err(
+            new MCPError(
+              "Cannot schedule agent execution: user message not found."
+            )
+          );
+        }
+
+        const scheduledFor = new Date(Date.now() + delayMs);
+
         const result = await launchAgentLoopWorkflow({
           auth,
           agentLoopArgs: {
@@ -126,10 +153,21 @@ function createServer(
           );
         }
 
+        await AgentScheduledExecutionResource.makeNew(auth, {
+          conversationId: conversation.id,
+          agentMessageId: agentMessage.id,
+          userMessageId: userMessage.id,
+          workflowId,
+          delayMs,
+          scheduledFor,
+          status: "scheduled",
+          error: null,
+        });
+
         return new Ok([
           {
             type: "text",
-            text: `Agent execution scheduled successfully. The agent will start in ${delay} (${delayMs}ms).`,
+            text: `Agent execution scheduled successfully. The agent will start in ${delay} (${delayMs}ms) at ${scheduledFor.toISOString()}.`,
           },
         ]);
       }
