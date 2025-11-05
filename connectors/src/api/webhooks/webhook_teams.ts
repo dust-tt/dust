@@ -416,8 +416,6 @@ async function handleToolApproval(
     messageId,
     actionId,
     microsoftBotMessageId,
-    agentName,
-    toolName,
     localLogger,
   });
 
