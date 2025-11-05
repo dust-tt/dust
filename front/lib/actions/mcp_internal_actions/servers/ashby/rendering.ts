@@ -33,8 +33,8 @@ export function renderReportInfo(
   response: AshbyReportSynchronousResponse,
   reportId: string
 ): string {
-  const reportData = response.results.reportData;
-  const [_, ...dataRows] = reportData.data;
+  const { reportData } = response.results;
+  const [_headerRow, ...dataRows] = reportData.data;
 
   return (
     `Report data retrieved successfully!\n\n` +
