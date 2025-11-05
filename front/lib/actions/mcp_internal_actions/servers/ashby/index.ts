@@ -132,7 +132,7 @@ function createServer(
         // Expected format: https://app.ashbyhq.com/reports/.../[reportId]
         // Extract the ID from the last part of the path
         const urlPattern =
-          /https:\/\/app\.ashbyhq\.com\/reports\/.*\/([^/]+)\/?$/;
+          /https:\/\/app\.ashbyhq\.com\/reports\/[^/]+\/([^/?]+)\/?$/;
         const match = reportUrl.match(urlPattern);
 
         if (!match?.[1]) {
