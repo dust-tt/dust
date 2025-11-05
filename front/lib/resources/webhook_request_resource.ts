@@ -81,12 +81,12 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
   static async makeNew(
     blob: CreationAttributes<WebhookRequestModel>,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<WebhookRequestResource, Error>> {
+  ): Promise<WebhookRequestResource> {
     const webhookRequest = await this.model.create(blob, {
       transaction,
     });
 
-    return new Ok(new this(this.model, webhookRequest.get()));
+    return new this(this.model, webhookRequest.get());
   }
 
   private static async baseFetch(
