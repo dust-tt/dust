@@ -246,7 +246,7 @@ export const runConversation = async (
                 value: {
                   reasoning: event.content.text,
                   metadata: JSON.stringify({
-                    encryptedContent: encryptedContent,
+                    encrypted_content: encryptedContent,
                   }),
                   tokens: 12,
                   provider: config.provider,
