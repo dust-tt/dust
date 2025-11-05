@@ -110,8 +110,7 @@ function createServer(
 
   server.tool(
     "get_report_data",
-    "Retrieve report data from Ashby ATS synchronously and save as a CSV file. " +
-      "Provide the full Ashby report URL (e.g., https://app.ashbyhq.com/reports/saved/[reportId]).",
+    "Retrieve report data from Ashby ATS synchronously and save as a CSV file.",
     {
       reportUrl: z
         .string()
