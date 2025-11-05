@@ -10,6 +10,7 @@ import type {
 import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
 import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
@@ -57,20 +58,9 @@ function assistantContentToParam(
     case "reasoning":
       // TODO(LLM-Router): better typing for signature extraction
       assert(content.value.reasoning, "Reasoning content is missing reasoning");
-      const metadata = safeParseJSON(content.value.metadata);
-      if (metadata.isErr()) {
-        throw new Error(
-          `Failed to parse reasoning metadata JSON: ${metadata.error.message}`
-        );
-      }
-
-      const signature =
-        metadata.value &&
-        "signature" in metadata.value &&
-        isString(metadata.value.signature)
-          ? metadata.value.signature
-          : "";
-
+      const signature = extractEncryptedContentFromMetadata(
+        content.value.metadata
+      );
       return {
         type: "thinking",
         thinking: content.value.reasoning,

@@ -23,7 +23,7 @@ export const reasoningConversationMessages: ModelMessageTypeMultiActionsWithoutC
           value: {
             reasoning:
               "**Solving the Equation**\n\nI need to solve x^2 + 2x + 1 = 0.\n\n",
-            metadata: '{"signature":""}',
+            metadata: '{"encrypted_content":""}',
             tokens: 180,
             provider: "anthropic" as const,
           },

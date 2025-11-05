@@ -267,7 +267,7 @@ function reasoningGenerated(
     content: {
       text,
     },
-    metadata: { ...metadata, signature },
+    metadata: { ...metadata, encrypted_content: signature },
   };
 }
 
