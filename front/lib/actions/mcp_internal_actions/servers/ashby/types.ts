@@ -61,6 +61,10 @@ export const AshbyReportSynchronousResponseSchema = z.object({
   }),
 });
 
+export type AshbyReportSynchronousResponse = z.infer<
+  typeof AshbyReportSynchronousResponseSchema
+>;
+
 export const AshbyCandidateSearchRequestSchema = z.object({
   email: z.string().optional(),
   name: z.string().optional(),

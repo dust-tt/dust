@@ -1,4 +1,7 @@
-import type { AshbyCandidate } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
+import type {
+  AshbyCandidate,
+  AshbyReportSynchronousResponse,
+} from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 
 function renderCandidate(candidate: AshbyCandidate): string {
   const lines = [`ID: ${candidate.id}`, `Name: ${candidate.name}`];
@@ -24,4 +27,22 @@ function renderCandidate(candidate: AshbyCandidate): string {
 
 export function renderCandidateList(candidates: AshbyCandidate[]): string {
   return candidates.map(renderCandidate).join("\n\n---\n\n");
+}
+
+export function renderReportInfo(
+  response: AshbyReportSynchronousResponse,
+  reportId: string
+): string {
+  const reportData = response.results.reportData;
+  const [_, ...dataRows] = reportData.data;
+
+  return (
+    `Report data retrieved successfully!\n\n` +
+    `Report ID: ${reportId}\n` +
+    `Title: ${reportData.metadata.title}\n` +
+    `Updated: ${reportData.metadata.updatedAt}\n` +
+    `Rows: ${dataRows.length}\n` +
+    `Fields: ${reportData.columnNames.join(", ")}\n\n` +
+    "The data has been saved as a CSV file."
+  );
 }

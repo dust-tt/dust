@@ -6,7 +6,10 @@ import {
   AshbyClient,
   getAshbyApiKey,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/client";
-import { renderCandidateList } from "@app/lib/actions/mcp_internal_actions/servers/ashby/rendering";
+import {
+  renderCandidateList,
+  renderReportInfo,
+} from "@app/lib/actions/mcp_internal_actions/servers/ashby/rendering";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -190,19 +193,10 @@ function createServer(
         const csvContent = await toCsv(csvRows);
         const base64Content = Buffer.from(csvContent).toString("base64");
 
-        const resultText =
-          `Report data retrieved successfully!\n\n` +
-          `Report ID: ${reportId}\n` +
-          `Title: ${reportData.metadata.title}\n` +
-          `Updated: ${reportData.metadata.updatedAt}\n` +
-          `Rows: ${dataRows.length}\n` +
-          `Fields: ${fieldNames.join(", ")}\n\n` +
-          "The data has been saved as a CSV file.";
-
         return new Ok([
           {
             type: "text" as const,
-            text: resultText,
+            text: renderReportInfo(response, reportId),
           },
           {
             type: "resource" as const,
