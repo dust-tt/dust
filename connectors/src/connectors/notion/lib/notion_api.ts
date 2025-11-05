@@ -24,6 +24,7 @@ import type { Logger } from "pino";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import mainLogger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 import type {
   PageObjectProperties,
   ParsedNotionBlock,
@@ -31,7 +32,7 @@ import type {
   ParsedNotionPage,
   PropertyKeys,
 } from "@connectors/types";
-import { cacheWithRedis } from "@connectors/types";
+import { cacheWithRedis, EnvironmentConfig } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -57,6 +58,109 @@ async function wrapNotionAPITokenErrors<T>(
 
     throw err;
   }
+}
+/**
+ * Sanitizes endpoint strings for metrics/logs to avoid leaking raw identifiers
+ * and to reduce cardinality of metric tags.
+ */
+function sanitizeEndpointForMetrics(url: string): string {
+  const endpoint = new URL(url).pathname;
+  if (!endpoint) {
+    return "unknown";
+  }
+  const parts = endpoint.split("/").map((seg) => {
+    if (!seg) {
+      return "";
+    }
+    // Replace UUID-like segments
+    if (
+      /^[a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{12}$/i.test(
+        seg
+      )
+    ) {
+      return "{id}";
+    }
+    // Replace very long segments which may contain secrets or high-cardinality ids
+    if (seg.length > 20) {
+      return "{id}";
+    }
+    // Replace base64-like or very dense segments
+    if (/^[A-Za-z0-9_-]{40,}$/.test(seg)) {
+      return "{id}";
+    }
+    return seg;
+  });
+  const sanitized = parts.join("/");
+  return sanitized || "/";
+}
+
+/**
+ * Creates an instrumented fetch function for Notion API calls.
+ * Tracks metrics for all HTTP requests with tags for endpoint, status, method, region, and service.
+ */
+function createInstrumentedNotionFetch() {
+  const region = EnvironmentConfig.getOptionalEnvVariable("DUST_REGION");
+
+  return async (url: string, init?: RequestInit): Promise<Response> => {
+    const startTime = performance.now();
+    const method = init?.method || "GET";
+    let endpoint: string | undefined;
+    let collectStats = !!region;
+
+    try {
+      endpoint = sanitizeEndpointForMetrics(url);
+    } catch {
+      // Avoid logging raw URLs which may contain sensitive identifiers.
+      logger.debug(
+        "Could not normalize Notion endpoint; stats collection will be skipped"
+      );
+      collectStats = false;
+    }
+
+    const baseTags = [
+      "provider:notion",
+      "service:connectors",
+      `region:${region}`,
+      `method:${method}`,
+      `endpoint:${endpoint}`,
+    ];
+
+    let status: string = "error";
+    let httpCode: string | number = "unknown";
+
+    try {
+      const response = await fetch(url, init);
+      httpCode = response.status;
+
+      if (httpCode === 429) {
+        status = "rate_limited";
+      } else if (response.ok) {
+        status = "success";
+      } else {
+        status = "error";
+      }
+
+      return response;
+    } catch (err) {
+      if (err instanceof TypeError) {
+        status = "error";
+        httpCode = "network_error";
+      } else {
+        status = "error";
+        httpCode = "unknown";
+      }
+
+      throw err;
+    } finally {
+      if (collectStats) {
+        const duration = performance.now() - startTime;
+        const tags = [...baseTags, `status:${status}`, `http_code:${httpCode}`];
+
+        statsDClient.increment("external.api.calls", 1, tags);
+        statsDClient.distribution("external.api.duration", duration, tags);
+      }
+    }
+  };
 }
 
 function getRandomPageSize(min: number, max: number): number {
@@ -174,6 +278,7 @@ export async function getPagesAndDatabasesEditedSince({
     // Default is 60_000: https://github.com/makenotion/notion-sdk-js/blob/main/src/Client.ts#L135
     // Bumped as we observed some timeouts with the default value.
     timeoutMs: 120_000,
+    fetch: createInstrumentedNotionFetch(),
   });
   const editedPages: Record<string, number> = {};
   const editedDbs: Record<string, number> = {};
@@ -425,6 +530,7 @@ export async function isAccessibleAndUnarchived(
   const notionClient = new Client({
     auth: notionAccessToken,
     logger: notionClientLogger,
+    fetch: createInstrumentedNotionFetch(),
   });
 
   const loggerToUse = localLogger || logger;
@@ -512,6 +618,7 @@ async function getBlockParent(
   const notionClient = new Client({
     auth: notionAccessToken,
     logger: notionClientLogger,
+    fetch: createInstrumentedNotionFetch(),
   });
   let depth = 0;
 
@@ -591,6 +698,7 @@ export async function getParsedDatabase(
   const notionClient = new Client({
     auth: notionAccessToken,
     logger: notionClientLogger,
+    fetch: createInstrumentedNotionFetch(),
   });
 
   let database: GetDatabaseResponse | null = null;
@@ -699,6 +807,7 @@ export async function retrievePage({
   const notionClient = new Client({
     auth: accessToken,
     logger: notionClientLogger,
+    fetch: createInstrumentedNotionFetch(),
   });
 
   let page: GetPageResponse | null = null;
@@ -768,6 +877,7 @@ export async function retrieveBlockChildrenResultPage({
   const notionClient = new Client({
     auth: accessToken,
     logger: notionClientLogger,
+    fetch: createInstrumentedNotionFetch(),
   });
 
   try {
@@ -880,6 +990,7 @@ export async function validateAccessToken(notionAccessToken: string) {
   const notionClient = new Client({
     auth: notionAccessToken,
     logger: notionClientLogger,
+    fetch: createInstrumentedNotionFetch(),
   });
   try {
     await notionClient.users.me({});
@@ -1037,6 +1148,7 @@ export async function retrieveDatabaseChildrenResultPage({
     // Default is 60_000: https://github.com/makenotion/notion-sdk-js/blob/main/src/Client.ts#L135
     // Bumped as we observed some timeouts with the default value.
     timeoutMs: 120_000,
+    fetch: createInstrumentedNotionFetch(),
   });
 
   localLogger.info("Fetching database children result page from Notion API.");
@@ -1201,6 +1313,7 @@ export async function getUserName(
   const notionClient = new Client({
     auth: accessToken,
     logger: notionClientLogger,
+    fetch: createInstrumentedNotionFetch(),
   });
 
   try {
