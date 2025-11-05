@@ -1,4 +1,4 @@
-import type { PublicFrameResponseBodyType } from "@dust-tt/client";
+/* eslint-disable dust/enforce-client-types-in-public-api */
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { verifyVizAccessToken } from "@app/lib/api/viz/access_tokens";
@@ -17,7 +17,7 @@ import { frameContentType, isString } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PublicFrameResponseBodyType>>
+  res: NextApiResponse<WithAPIErrorResponse<never>>
 ): Promise<void> {
   if (req.method !== "GET") {
     return apiError(req, res, {
