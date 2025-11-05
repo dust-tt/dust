@@ -651,6 +651,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_management_tool"
   | "agent_to_yaml"
   | "anthropic_vertex_fallback"
+  | "ashby_tool"
   | "claude_4_opus_feature"
   | "confluence_tool"
   | "deepseek_feature"

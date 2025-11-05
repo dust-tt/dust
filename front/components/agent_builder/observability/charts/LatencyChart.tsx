@@ -18,6 +18,7 @@ import { useObservability } from "@app/components/agent_builder/observability/Ob
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
 import { useAgentLatency } from "@app/lib/swr/assistants";
 
 interface LatencyData {
@@ -63,9 +64,9 @@ export function LatencyChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const { period } = useObservability();
+  const { period, mode } = useObservability();
   const {
-    latency: data,
+    latency: rawData,
     isLatencyLoading,
     isLatencyError,
   } = useAgentLatency({
@@ -74,6 +75,12 @@ export function LatencyChart({
     days: period,
     disabled: !workspaceId || !agentConfigurationId,
   });
+
+  const data = padSeriesToTimeRange(rawData, mode, period, (date) => ({
+    date,
+    messages: 0,
+    average: 0,
+  }));
 
   const legendItems = LATENCY_LEGEND.map(({ key, label }) => ({
     key,

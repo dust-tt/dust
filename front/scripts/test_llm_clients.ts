@@ -3,10 +3,6 @@ import { assertNever } from "@dust-tt/sparkle";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { getLLM } from "@app/lib/api/llm";
 import {
-  ANTHROPIC_WHITELISTED_NON_REASONING_MODEL_IDS,
-  ANTHROPIC_WHITELISTED_REASONING_MODEL_IDS,
-} from "@app/lib/api/llm/clients/anthropic/types";
-import {
   GOOGLE_AI_STUDIO_WHITELISTED_NON_REASONING_MODEL_IDS,
   GOOGLE_AI_STUDIO_WHITELISTED_REASONING_MODEL_IDS,
 } from "@app/lib/api/llm/clients/google/types";
@@ -133,14 +129,6 @@ function generateNotThinkingTestConfigs(
 }
 
 const TEST_CONFIGS: TestConfig[] = [
-  // Anthropic
-  ...ANTHROPIC_WHITELISTED_REASONING_MODEL_IDS.flatMap((modelId) =>
-    generateThinkingTestConfigs("anthropic", modelId)
-  ),
-  ...ANTHROPIC_WHITELISTED_NON_REASONING_MODEL_IDS.flatMap((modelId) =>
-    generateNotThinkingTestConfigs("anthropic", modelId)
-  ),
-
   // Google AI Studio
   ...GOOGLE_AI_STUDIO_WHITELISTED_NON_REASONING_MODEL_IDS.flatMap((modelId) =>
     generateNotThinkingTestConfigs("google_ai_studio", modelId)

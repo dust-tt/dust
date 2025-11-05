@@ -57,6 +57,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   AgentConfigurationType,
   AgentFetchVariant,
@@ -89,6 +90,7 @@ function getGlobalAgent({
   agentMemoryMCPServerView,
   includeDataMCPServerView,
   memories,
+  availableToolsets,
   featureFlags,
 }: {
   auth: Authenticator;
@@ -109,6 +111,7 @@ function getGlobalAgent({
   agentMemoryMCPServerView: MCPServerViewResource | null;
   includeDataMCPServerView: MCPServerViewResource | null;
   memories: AgentMemoryResource[];
+  availableToolsets: MCPServerViewResource[];
   featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType | null {
   const settings =
@@ -358,6 +361,7 @@ function getGlobalAgent({
         dataWarehousesMCPServerView,
         agentMemoryMCPServerView,
         memories,
+        availableToolsets,
         featureFlags,
       });
       break;
@@ -615,6 +619,19 @@ export async function getGlobalAgents(
     );
   }
 
+  let availableToolsets: MCPServerViewResource[] = [];
+  if (
+    variant === "full" &&
+    toolsetsMCPServerView &&
+    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST)
+  ) {
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    availableToolsets = await MCPServerViewResource.listBySpace(
+      auth,
+      globalSpace
+    );
+  }
+
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
   const agentCandidates = agentsIdsToFetch.map((sId) =>
@@ -637,6 +654,7 @@ export async function getGlobalAgents(
       agentMemoryMCPServerView,
       includeDataMCPServerView,
       memories,
+      availableToolsets,
       featureFlags: flags,
     })
   );

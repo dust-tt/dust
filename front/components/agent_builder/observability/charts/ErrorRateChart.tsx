@@ -20,6 +20,7 @@ import { useObservability } from "@app/components/agent_builder/observability/Ob
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
 import { useAgentErrorRate } from "@app/lib/swr/assistants";
 
 const WARNING_THRESHOLD = 5;
@@ -80,9 +81,9 @@ export function ErrorRateChart({
   workspaceId,
   agentConfigurationId,
 }: ErrorRateChartProps) {
-  const { period } = useObservability();
+  const { period, mode } = useObservability();
   const {
-    errorRate: data,
+    errorRate: rawData,
     isErrorRateLoading,
     isErrorRateError,
   } = useAgentErrorRate({
@@ -91,6 +92,13 @@ export function ErrorRateChart({
     days: period,
     disabled: !workspaceId || !agentConfigurationId,
   });
+
+  const data = padSeriesToTimeRange(rawData, mode, period, (date) => ({
+    date,
+    total: 0,
+    failed: 0,
+    errorRate: 0,
+  }));
 
   const legendItems = ERROR_RATE_LEGEND.map(({ key, label }) => ({
     key,

@@ -50,6 +50,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
       inputTokens: 1766,
       outputTokens: 128,
       cachedTokens: 0,
+      cacheCreationTokens: 0,
       totalTokens: 1894,
     },
     metadata: {

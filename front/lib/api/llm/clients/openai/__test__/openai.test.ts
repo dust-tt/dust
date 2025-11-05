@@ -69,6 +69,16 @@ vi.mock("@app/types", async (importOriginal) => {
   };
 });
 
+/**
+ * Open AI LLM Client Test Suite.
+ *
+ * This is run conditionnally if the VITE_RUN_LLM_TESTS environment variable is set to "true".
+ *
+ * Run it with:
+ * ```
+ * VITE_RUN_LLM_TESTS=true NODE_ENV=test VITE_DUST_MANAGED_OPENAI_API_KEY=$DUST_MANAGED_OPENAI_API_KEY npm run test -- __test__/openai.test.ts
+ * ```
+ */
 class OpenAiTestSuite extends LLMClientTestSuite {
   protected provider = "openai" as const;
   protected models = OPENAI_WHITELISTED_MODEL_IDS;

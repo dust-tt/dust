@@ -55,6 +55,7 @@ export type LLMOutputItem =
 // Completion results
 
 export interface TokenUsage {
+  cacheCreationTokens?: number;
   cachedTokens?: number;
   inputTokens: number;
   outputTokens: number;
