@@ -130,29 +130,9 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     input: 0.9,
     output: 2.8,
   },
-  "gemini-1.5-pro-latest": {
-    input: 3.5,
-    output: 10.5,
-  },
-  "gemini-1.5-flash-latest": {
-    input: 0.35,
-    output: 1.05,
-  },
-  "gemini-2.0-flash-lite": {
-    input: 0.075,
-    output: 0.3,
-  },
   "gemini-2.0-flash": {
     input: 0.15,
     output: 0.6,
-  },
-  "gemini-2.0-flash-lite-preview-02-05": {
-    input: 0.075,
-    output: 0.3,
-  },
-  "gemini-2.5-pro-preview-03-25": {
-    input: 1.25,
-    output: 15.0,
   },
   "gemini-2.0-pro-exp-02-05": {
     input: 1.25,
@@ -169,10 +149,6 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
   "gemini-2.5-pro": {
     input: 1.25,
     output: 15.0,
-  },
-  "gemini-2.0-flash-thinking-exp-01-21": {
-    input: 0.15,
-    output: 0.6,
   },
   "gemini-2.0-flash-exp": {
     input: 0.15,
