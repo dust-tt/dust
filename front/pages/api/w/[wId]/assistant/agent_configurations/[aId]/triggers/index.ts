@@ -338,6 +338,10 @@ async function handler(
           customPrompt: validatedTrigger.customPrompt,
           editor: auth.getNonNullableUser().id,
           webhookSourceViewId,
+          executionPerDayLimitOverride:
+            "executionPerDayLimitOverride" in validatedTrigger
+              ? validatedTrigger.executionPerDayLimitOverride
+              : null,
         });
 
         if (newTrigger.isErr()) {

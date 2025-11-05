@@ -7,7 +7,7 @@ import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
-const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 256; // Default to 256 executions per day
+const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 2 * 24; // Default to 2 executions per hour
 
 export const checkTriggerForExecutionPerDayLimit = async (
   auth: Authenticator,
@@ -29,6 +29,14 @@ export const checkTriggerForExecutionPerDayLimit = async (
       timeframeSeconds: getTimeframeSecondsFromLiteral("day"),
       logger: logger,
     });
+
+    console.log(
+      `Trigger ${trigger.name} (${trigger.sId}) has ${remaining} executions remaining out of ${maxMessages} for today.`
+    );
+    console.log(
+      "key is ",
+      `workspace:${workspace.sId}:trigger:${trigger.sId}:day`
+    );
 
     if (remaining <= 0) {
       return new Err({

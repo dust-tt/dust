@@ -1,5 +1,7 @@
 import {
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   Checkbox,
   ContentMessage,
   DropdownMenu,
@@ -79,6 +81,52 @@ function WebhookEditionStatusToggle({
           onClick={() => setEnabled(!enabled)}
         />
       </div>
+    </div>
+  );
+}
+
+interface WebhookEditionExecutionLimitProps {
+  isEditor: boolean;
+}
+
+function WebhookEditionExecutionLimit({
+  isEditor,
+}: WebhookEditionExecutionLimitProps) {
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
+  const {
+    field: { value: executionLimit, onChange: setExecutionLimit },
+  } = useController({
+    control,
+    name: "webhook.executionPerDayLimitOverride",
+  });
+
+  const limitOptions = [
+    { label: "1/hour", value: 24 },
+    { label: "2/hour", value: 48 },
+    { label: "4/hour", value: 96 },
+  ];
+
+  return (
+    <div className="flex flex-col space-y-1">
+      <Label htmlFor="execution-limit">Execution rate limit</Label>
+      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        Maximum number of times this trigger can execute per hour. This is
+        smoothed out over a 24 hour period.
+      </p>
+      <ButtonsSwitchList
+        defaultValue={executionLimit.toString() ?? "48"}
+        className="w-fit"
+      >
+        {limitOptions.map((option) => (
+          <ButtonsSwitch
+            key={option.value}
+            value={option.value.toString()}
+            label={option.label}
+            onClick={() => setExecutionLimit(option.value)}
+            disabled={!isEditor}
+          />
+        ))}
+      </ButtonsSwitchList>
     </div>
   );
 }
@@ -261,6 +309,10 @@ export function WebhookEditionSheetContent({
           <WebhookEditionMessageInput isEditor={isEditor} />
           <WebhookEditionIncludePayload isEditor={isEditor} />
         </div>
+
+        <Separator />
+
+        <WebhookEditionExecutionLimit isEditor={isEditor} />
 
         {trigger && (
           <div className="space-y-1">

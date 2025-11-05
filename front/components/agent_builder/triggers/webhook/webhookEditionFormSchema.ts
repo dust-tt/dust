@@ -20,6 +20,7 @@ export const WebhookFormSchema = z.object({
   filter: z.string().optional(),
   includePayload: z.boolean().default(false),
   naturalDescription: z.string().optional(),
+  executionPerDayLimitOverride: z.number(),
 });
 
 export type WebhookFormValues = z.infer<typeof WebhookFormSchema>;
@@ -47,6 +48,7 @@ export function getWebhookFormDefaultValues({
     filter: trigger?.configuration.filter ?? "",
     includePayload: trigger?.configuration.includePayload ?? true,
     naturalDescription: trigger?.naturalLanguageDescription ?? "",
+    executionPerDayLimitOverride: trigger?.executionPerDayLimitOverride ?? 48,
   };
 }
 
@@ -83,5 +85,6 @@ export function formValuesToWebhookTriggerData({
       editTrigger?.kind === "webhook"
         ? editTrigger.editorName
         : user.fullName ?? undefined,
+    executionPerDayLimitOverride: webhook.executionPerDayLimitOverride,
   };
 }

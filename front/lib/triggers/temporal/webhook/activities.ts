@@ -228,6 +228,27 @@ export async function runTriggerWebhookActivity({
       continue;
     }
 
+    const rateLimiterRes = await checkTriggerForExecutionPerDayLimit(auth, {
+      trigger,
+    });
+    logger.warn(
+      { workspaceId, webhookRequestId, triggerId: trigger.sId },
+      `Trigger execution per day limit check result: ${rateLimiterRes.isOk() ? "allowed" : "rate_limited"}`
+    );
+    if (rateLimiterRes.isErr()) {
+      const errorMessage = rateLimiterRes.error.message;
+      await webhookRequest.markRelatedTrigger({
+        trigger,
+        status: "rate_limited",
+        errorMessage,
+      });
+      logger.warn(
+        { workspaceId, webhookRequestId, triggerId: trigger.sId },
+        errorMessage
+      );
+      continue;
+    }
+
     if (!filter) {
       // No filter, add the trigger
       filteredTriggers.push(trigger);
@@ -237,33 +258,7 @@ export async function runTriggerWebhookActivity({
         const parsedFilter = parseMatcherExpression(filter);
         const r = matchPayload(body, parsedFilter);
         if (r) {
-          // Filter matches, add the trigger if not rate limited
-          const rateLimiterRes = await checkTriggerForExecutionPerDayLimit(
-            auth,
-            {
-              trigger,
-            }
-          );
-          if (rateLimiterRes.isErr()) {
-            const errorMessage = rateLimiterRes.error.message;
-            await webhookRequest.markRelatedTrigger({
-              trigger,
-              status: "rate_limited",
-              errorMessage,
-            });
-            logger.warn(
-              { workspaceId, webhookRequestId, triggerId: trigger.sId },
-              errorMessage
-            );
-          } else {
-            filteredTriggers.push(trigger);
-          }
-        } else {
-          // Filter doesn't match, skip the trigger but store in the mapping list.
-          await webhookRequest.markRelatedTrigger({
-            trigger,
-            status: "not_matched",
-          });
+          filteredTriggers.push(trigger);
         }
       } catch (err) {
         logger.error(

@@ -201,6 +201,7 @@ const webhookTriggerSchema = z.object({
   editor: z.number().nullable(),
   webhookSourceViewSId: z.string().nullable().optional(),
   editorName: z.string().optional(),
+  executionPerDayLimitOverride: z.number().nullable(),
 });
 
 const scheduleTriggerSchema = z.object({

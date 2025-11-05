@@ -162,6 +162,14 @@ export async function processWebhookRequest(
       filePath: gcsPath,
     });
 
+    logger.warn(
+      {
+        webhookRequestId: webhookRequest.id,
+        gcsPath,
+      },
+      "Stored webhook request payload in GCS"
+    );
+
     await launchAgentTriggerWebhookWorkflow({
       auth,
       webhookRequest,

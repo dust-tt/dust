@@ -94,14 +94,19 @@ export const TriggerSchema = t.union([
     configuration: ScheduleConfigSchema,
     editor: t.union([t.number, t.undefined]),
   }),
-  t.type({
-    enabled: t.boolean,
-    name: t.string,
-    kind: t.literal("webhook"),
-    customPrompt: t.string,
-    naturalLanguageDescription: t.union([t.string, t.null]),
-    configuration: WebhookConfigSchema,
-    webhookSourceViewSId: t.string,
-    editor: t.union([t.number, t.undefined]),
-  }),
+  t.intersection([
+    t.type({
+      enabled: t.boolean,
+      name: t.string,
+      kind: t.literal("webhook"),
+      customPrompt: t.string,
+      naturalLanguageDescription: t.union([t.string, t.null]),
+      configuration: WebhookConfigSchema,
+      webhookSourceViewSId: t.string,
+      editor: t.union([t.number, t.undefined]),
+    }),
+    t.partial({
+      executionPerDayLimitOverride: t.union([t.number, t.null]),
+    }),
+  ]),
 ]);
