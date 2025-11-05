@@ -65,7 +65,7 @@ export async function validateTeamsUser(
   const isActiveMember = await isActiveMemberOfWorkspace(connector, email);
 
   if (!isActiveMember) {
-    localLogger.info(
+    localLogger.warn(
       {
         connectorId: connector.id,
         userEmail: email,
