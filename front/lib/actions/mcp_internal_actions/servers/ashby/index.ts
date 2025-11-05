@@ -177,12 +177,14 @@ function createServer(
           ]);
         }
 
-        const fieldNames = reportData.columnNames;
-        const [_, ...dataRows] = reportData.data;
+        const {
+          columnNames,
+          data: [_, ...dataRows],
+        } = reportData;
 
         const csvRows = dataRows.map((row) => {
           const csvRow: Record<string, string> = {};
-          fieldNames.forEach((fieldName, index) => {
+          columnNames.forEach((fieldName, index) => {
             const value = row[index];
             csvRow[fieldName] =
               value === null || value === undefined ? "" : String(value);
