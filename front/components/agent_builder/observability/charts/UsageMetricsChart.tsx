@@ -2,7 +2,6 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -17,8 +16,12 @@ import {
 } from "@app/components/agent_builder/observability/constants";
 import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
+import {
+  ChartLegend,
+  legendFromConstant,
+} from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import {
   filterTimeSeriesByVersionWindow,
   findVersionMarkerForDate,
@@ -115,11 +118,13 @@ export function UsageMetricsChart({
     disabled: !workspaceId || !agentConfigurationId,
   });
 
-  const legendItems = USAGE_METRICS_LEGEND.map(({ key, label }) => ({
-    key,
-    label,
-    colorClassName: USAGE_METRICS_PALETTE[key],
-  }));
+  const legendItems = legendFromConstant(
+    USAGE_METRICS_LEGEND,
+    USAGE_METRICS_PALETTE,
+    {
+      includeVersionMarker: mode === "timeRange" && versionMarkers.length > 0,
+    }
+  );
 
   const filteredData = filterTimeSeriesByVersionWindow(
     usageMetrics,
@@ -244,16 +249,7 @@ export function UsageMetricsChart({
             fill="url(#fillActiveUsers)"
             stroke="currentColor"
           />
-          {mode === "timeRange" &&
-            versionMarkers.map((versionMarker) => (
-              <ReferenceLine
-                key={versionMarker.timestamp}
-                x={versionMarker.timestamp}
-                strokeDasharray="5 5"
-                strokeWidth={1}
-                stroke="hsl(var(--chart-5))"
-              />
-            ))}
+          <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
         </AreaChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />
