@@ -8,15 +8,21 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { format } from "date-fns/format";
 import { useEffect } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { OBSERVABILITY_TIME_RANGE } from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
+import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 
 interface ObservabilityFilterSelectorProps {
   agentConfigurationId: string;
+}
+
+function getVersionValue(versionMarker: AgentVersionMarker) {
+  return `v${versionMarker.version}: ${format(versionMarker.timestamp, "Pp")}`;
 }
 
 export function ObservabilityFilterSelector({
@@ -47,8 +53,8 @@ export function ObservabilityFilterSelector({
       versionMarkers &&
       versionMarkers.length > 0
     ) {
-      const latest = versionMarkers[versionMarkers.length - 1];
-      setSelectedVersion(latest.version);
+      const value = getVersionValue(versionMarkers[versionMarkers.length - 1]);
+      setSelectedVersion(value);
     }
   }, [mode, selectedVersion, versionMarkers, setSelectedVersion]);
 
@@ -93,7 +99,7 @@ export function ObservabilityFilterSelector({
             <Button
               label={
                 selectedVersion
-                  ? `v${selectedVersion}`
+                  ? selectedVersion
                   : isVersionMarkersLoading
                     ? "Loading"
                     : "Select"
@@ -105,13 +111,16 @@ export function ObservabilityFilterSelector({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel label="Last 30 days" />
-            {(versionMarkers ?? []).map((m) => (
-              <DropdownMenuItem
-                key={m.version}
-                label={`v${m.version}`}
-                onClick={() => setSelectedVersion(m.version)}
-              />
-            ))}
+            {(versionMarkers ?? []).map((m) => {
+              const versionValue = getVersionValue(m);
+              return (
+                <DropdownMenuItem
+                  key={m.version}
+                  label={versionValue}
+                  onClick={() => setSelectedVersion(versionValue)}
+                />
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
       )}

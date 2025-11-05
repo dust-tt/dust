@@ -26,6 +26,7 @@ import {
   useAgentFeedbackDistribution,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
+import { format } from "date-fns/format";
 
 interface FeedbackDistributionChartProps {
   workspaceId: string;
@@ -141,7 +142,7 @@ export function FeedbackDistributionChart({
           {mode === "timeRange" &&
             versionMarkers.map((versionMarker) => (
               <ReferenceLine
-                key={versionMarker.timestamp}
+                key={format(versionMarker.timestamp, "d MMM")}
                 x={versionMarker.timestamp}
                 strokeDasharray="5 5"
                 strokeWidth={1}

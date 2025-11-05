@@ -18,7 +18,6 @@ import { ToolUsageChart } from "@app/components/agent_builder/observability/char
 import { UsageMetricsChart } from "@app/components/agent_builder/observability/charts/UsageMetricsChart";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ObservabilityFilterSelector } from "@app/components/agent_builder/observability/ObservabilityFilterSelector";
-import { StartConversationWithFredButton } from "@app/components/agent_builder/observability/StartConversationWithFredButton";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { getErrorRateChipInfo } from "@app/components/agent_builder/observability/utils";

@@ -24,6 +24,7 @@ import {
   useAgentLatency,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
+import { format } from "date-fns/format";
 
 interface LatencyData {
   messages: number;
@@ -168,8 +169,8 @@ export function LatencyChart({
           {mode === "timeRange" &&
             versionMarkers.map((versionMarker) => (
               <ReferenceLine
-                key={versionMarker.timestamp}
-                x={versionMarker.timestamp}
+                key={format(versionMarker.timestamp, "d MMM")}
+                x={format(versionMarker.timestamp, "d MMM")}
                 strokeDasharray="5 5"
                 strokeWidth={1}
                 stroke="hsl(var(--chart-5))"

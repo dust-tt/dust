@@ -29,6 +29,7 @@ import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
+import { format } from "date-fns/format";
 
 interface UsageMetricsData {
   date: string;
@@ -246,7 +247,7 @@ export function UsageMetricsChart({
           {mode === "timeRange" &&
             versionMarkers.map((versionMarker) => (
               <ReferenceLine
-                key={versionMarker.timestamp}
+                key={format(versionMarker.timestamp, "d MMM")}
                 x={versionMarker.timestamp}
                 strokeDasharray="5 5"
                 strokeWidth={1}
