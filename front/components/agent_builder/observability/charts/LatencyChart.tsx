@@ -2,6 +2,7 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -19,7 +20,10 @@ import { ChartContainer } from "@app/components/agent_builder/observability/shar
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
-import { useAgentLatency } from "@app/lib/swr/assistants";
+import {
+  useAgentLatency,
+  useAgentVersionMarkers,
+} from "@app/lib/swr/assistants";
 
 interface LatencyData {
   messages: number;
@@ -70,6 +74,13 @@ export function LatencyChart({
     isLatencyLoading,
     isLatencyError,
   } = useAgentLatency({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    disabled: !workspaceId || !agentConfigurationId,
+  });
+
+  const { versionMarkers } = useAgentVersionMarkers({
     workspaceId,
     agentConfigurationId,
     days: period,
@@ -154,6 +165,16 @@ export function LatencyChart({
             fill="url(#fillAverage)"
             stroke="currentColor"
           />
+          {mode === "timeRange" &&
+            versionMarkers.map((versionMarker) => (
+              <ReferenceLine
+                key={versionMarker.timestamp}
+                x={versionMarker.timestamp}
+                strokeDasharray="5 5"
+                strokeWidth={1}
+                stroke="hsl(var(--chart-5))"
+              />
+            ))}
         </AreaChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />

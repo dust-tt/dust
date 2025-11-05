@@ -2,6 +2,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -137,6 +138,16 @@ export function FeedbackDistributionChart({
             strokeWidth={2}
             dot={false}
           />
+          {mode === "timeRange" &&
+            versionMarkers.map((versionMarker) => (
+              <ReferenceLine
+                key={versionMarker.timestamp}
+                x={versionMarker.timestamp}
+                strokeDasharray="5 5"
+                strokeWidth={1}
+                stroke="hsl(var(--chart-5))"
+              />
+            ))}
         </LineChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />
