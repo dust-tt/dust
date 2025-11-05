@@ -71,18 +71,18 @@ export function getAnthropicModelFamilyFromModelId(
 }
 
 export function overwriteLLMParameters(
-  llMParameters: LLMParameters & {
+  llmParameters: LLMParameters & {
     modelId: AnthropicWhitelistedModelId;
   }
 ): LLMParameters & { modelId: AnthropicWhitelistedModelId } & {
   clientId: "anthropic";
 } {
   const config = Object.values(ANTHROPIC_MODEL_FAMILIES_CONFIGS).find(
-    (config) => new Set<string>(config.modelIds).has(llMParameters.modelId)
+    (config) => new Set<string>(config.modelIds).has(llmParameters.modelId)
   );
 
   return {
-    ...llMParameters,
+    ...llmParameters,
     ...config?.overwrites,
     clientId: "anthropic" as const,
   };
