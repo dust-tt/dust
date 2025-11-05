@@ -75,6 +75,7 @@ export async function storeAgentAnalyticsActivity(
     user_id: userMessage.user?.sId ?? "unknown",
     workspace_id: workspace.sId,
     feedbacks: [],
+    version: agentMessage.version.toString(),
   };
 
   await storeToElasticsearch(document);
@@ -184,14 +185,14 @@ async function collectToolUsageFromMessage(
 
 function makeAgentMessageAnalyticsDocumentId({
   messageId,
-  timestamp,
+  version,
   workspaceId,
 }: {
   messageId: string;
-  timestamp: string;
+  version: string;
   workspaceId: string;
 }): string {
-  return `${workspaceId}_${messageId}_${timestamp}`;
+  return `${workspaceId}_${messageId}_${version}`;
 }
 
 /**
@@ -202,7 +203,7 @@ async function storeToElasticsearch(
 ): Promise<void> {
   const documentId = makeAgentMessageAnalyticsDocumentId({
     messageId: document.message_id,
-    timestamp: document.timestamp,
+    version: document.version,
     workspaceId: document.workspace_id,
   });
 
@@ -271,7 +272,7 @@ export async function storeAgentMessageFeedbackActivity(
     {
       documentId: makeAgentMessageAnalyticsDocumentId({
         messageId: message.agentMessageId,
-        timestamp: new Date(agentMessageModel.createdAt).toISOString(),
+        version: agentMessageRow.version.toString(),
         workspaceId: workspace.sId,
       }),
     },
