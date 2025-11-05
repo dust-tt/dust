@@ -212,6 +212,9 @@ const config = {
   getOAuthZendeskClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_ZENDESK_CLIENT_ID");
   },
+  getOAuthAshbyClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_ASHBY_CLIENT_ID");
+  },
   getOAuthHubspotClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_HUBSPOT_CLIENT_ID");
   },

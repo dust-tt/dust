@@ -71,6 +71,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "agent_management",
   AGENT_MEMORY_SERVER_NAME,
   "agent_router",
+  "ashby",
   "confluence",
   "conversation_files",
   "data_sources_file_system",
@@ -1226,6 +1227,33 @@ The directive should be used to display a clickable version of the agent name in
       developerSecretSelectionDescription:
         "This is optional. If set, this secret will be used as a default Bearer token (Authorization header) for HTTP requests.",
       developerSecretSelection: "optional",
+    },
+  },
+  ashby: {
+    id: 40,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: {
+      // Read operations - never ask
+      search_candidates: "never_ask",
+      get_candidate: "never_ask",
+      list_jobs: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "ashby",
+      version: "1.0.0",
+      description: "Search candidates and manage recruiting workflows.",
+      authorization: {
+        provider: "ashby" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "ActionUserGroupIcon",
+      documentationUrl: "https://developers.ashbyhq.com/",
+      instructions: null,
     },
   },
   [SEARCH_SERVER_NAME]: {

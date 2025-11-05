@@ -2774,6 +2774,7 @@ export const GetSpacesResponseSchema = z.object({
 export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 
 const OAuthProviderSchema = FlexibleEnumSchema<
+  | "ashby"
   | "confluence"
   | "confluence_tools"
   | "freshservice"
