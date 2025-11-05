@@ -1,6 +1,7 @@
 import {
   ActionFrameIcon,
   ArrowPathIcon,
+  BookOpenIcon,
   Button,
   ContextItem,
   DiscordLogo,
@@ -277,6 +278,7 @@ export default function WorkspaceAdmin({
                 name="Slack Bot"
                 description="Use Dust Agents in Slack with the Dust Slack app"
                 visual={<SlackLogo className="h-6 w-6" />}
+                documentationUrl="https://docs.dust.tt/docs/slack"
               />
             )}
             <BotToggle
@@ -292,6 +294,7 @@ export default function WorkspaceAdmin({
               name="Microsoft Teams Bot"
               description="Use Dust Agents in Teams with the Dust Microsoft Teams Bot"
               visual={<MicrosoftLogo className="h-6 w-6" />}
+              documentationUrl="https://docs.dust.tt/docs/dust-in-teams"
             />
             {isDiscordBotAvailable && (
               <BotToggle
@@ -325,6 +328,7 @@ function BotToggle({
   name,
   description,
   visual,
+  documentationUrl,
 }: {
   owner: WorkspaceType;
   botDataSource: DataSourceType | null;
@@ -338,6 +342,7 @@ function BotToggle({
   name: string;
   description: string;
   visual: React.ReactNode;
+  documentationUrl?: string;
 }) {
   const { configValue } = useConnectorConfig({
     configKey: "botEnabled",
@@ -418,8 +423,23 @@ function BotToggle({
   return (
     <ContextItem
       title={name}
-      subElement={description}
+      subElement={
+        <div className="flex flex-row items-center gap-2">
+          <span>{description}</span>
+          {documentationUrl && (
+            <a
+              href={documentationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-action-400 hover:text-action-500 text-sm"
+            >
+              <BookOpenIcon className="h-4 w-4" />
+            </a>
+          )}
+        </div>
+      }
       visual={visual}
+      truncateSubElement={true}
       hasSeparatorIfLast={true}
       action={
         <div className="flex flex-row items-center gap-2">
