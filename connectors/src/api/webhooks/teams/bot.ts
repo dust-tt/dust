@@ -167,15 +167,6 @@ export async function botAnswerMessage(
   let userMessage: UserMessageType | undefined = undefined;
 
   if (lastMicrosoftBotMessage?.dustConversationId) {
-    localLogger.info(
-      {
-        connectorId: connector.id,
-        teamsConversationId: conversationId,
-        dustConversationId: lastMicrosoftBotMessage.dustConversationId,
-      },
-      "Reusing existing Dust conversation for Teams conversation"
-    );
-
     // Check conversation existence (it might have been deleted between two messages).
     const conversationRes = await dustAPI.getConversation({
       conversationId: lastMicrosoftBotMessage.dustConversationId,
@@ -235,14 +226,6 @@ export async function botAnswerMessage(
 
   // If the conversation does not exist, we create a new one.
   if (!conversation || !userMessage) {
-    localLogger.info(
-      {
-        connectorId: connector.id,
-        teamsConversationId: conversationId,
-      },
-      "Creating new Dust conversation for Teams conversation"
-    );
-
     const newConversationRes = await dustAPI.createConversation({
       title: null,
       visibility: "unlisted",
@@ -261,15 +244,6 @@ export async function botAnswerMessage(
     if (!userMessage) {
       return new Err(new Error("Failed to retrieve the created message."));
     }
-
-    localLogger.info(
-      {
-        connectorId: connector.id,
-        teamsConversationId: conversationId,
-        dustConversationId: conversation.sId,
-      },
-      "Created new Dust conversation and linked to Teams conversation"
-    );
   }
 
   const m = await MicrosoftBotMessage.create({
@@ -453,19 +427,6 @@ async function streamAgentResponse({
         actions.push(event.action);
         break;
       case "tool_approve_execution": {
-        localLogger.info(
-          {
-            connectorId: connector.id,
-            conversationId: conversation.sId,
-            eventConversationId: event.conversationId,
-            messageId: event.messageId,
-            actionId: event.actionId,
-            toolName: event.metadata.toolName,
-            agentName: event.metadata.agentName,
-          },
-          "Tool validation request"
-        );
-
         // Find the MicrosoftBotMessage to get the microsoftBotMessageId
         const microsoftBotMessage = await MicrosoftBotMessage.findOne({
           where: {
@@ -519,15 +480,6 @@ async function streamAgentResponse({
             id: agentActivityId,
             ...approvalCard,
           });
-          localLogger.info(
-            {
-              connectorId: connector.id,
-              conversationId: conversation.sId,
-              toolName: event.metadata.toolName,
-              agentActivityId,
-            },
-            "Sent tool approval card to user"
-          );
         } catch (error) {
           localLogger.error(
             {
@@ -605,14 +557,6 @@ async function makeContentFragments(
   // For regular chats (non-channel), we don't need message history
   // but we still want to process file attachments from the current message
   if (!isChannelConversation) {
-    localLogger.info(
-      {
-        connectorId: connector.id,
-        teamsConversationId,
-      },
-      "Processing current message attachments for Teams chat"
-    );
-
     // Get current message attachments from the Bot Framework context
     const currentMessageAttachments = context.activity.attachments || [];
 
@@ -625,14 +569,6 @@ async function makeContentFragments(
       dustAPI,
       client,
       localLogger
-    );
-
-    localLogger.info(
-      {
-        connectorId: connector.id,
-        attachments: allContentFragments.length,
-      },
-      `Processed ${allContentFragments.length} file attachments from Teams chat message`
     );
 
     return new Ok(
@@ -816,16 +752,19 @@ export async function sendFeedback({
     }
   );
 
-  localLogger.info(
-    {
-      dustConversationId: microsoftBotMessage.dustConversationId,
-      thumbDirection,
-      feedbackRes,
-      userEmail: email,
-      userDisplayName: displayName,
-    },
-    "Feedback submitted from Teams"
-  );
+  if (feedbackRes.isErr()) {
+    localLogger.error(
+      {
+        error: feedbackRes.error,
+        dustConversationId: microsoftBotMessage.dustConversationId,
+        thumbDirection,
+        userEmail: email,
+        userDisplayName: displayName,
+      },
+      "Failed to submit feedback from Teams"
+    );
+    return;
+  }
 }
 
 export async function botValidateToolExecution({
@@ -836,8 +775,6 @@ export async function botValidateToolExecution({
   messageId,
   actionId,
   microsoftBotMessageId,
-  agentName,
-  toolName,
   localLogger,
 }: {
   context: TurnContext;
@@ -847,8 +784,6 @@ export async function botValidateToolExecution({
   messageId: string;
   actionId: string;
   microsoftBotMessageId: number;
-  agentName: string;
-  toolName: string;
   localLogger: Logger;
 }): Promise<Result<undefined, APIError | Error>> {
   // Validate user first
@@ -931,30 +866,8 @@ export async function botValidateToolExecution({
         },
         "Failed to retry blocked actions on the main conversation"
       );
-    } else {
-      localLogger.info(
-        {
-          connectorId: connector.id,
-          mainConversationId: microsoftBotMessage.dustConversationId,
-          eventConversationId: conversationId,
-          agentMessageId: messageId,
-        },
-        "Successfully retried blocked actions on the main conversation"
-      );
     }
   }
-
-  localLogger.info(
-    {
-      conversationId,
-      messageId,
-      actionId,
-      approved,
-      agentName,
-      toolName,
-    },
-    "Tool validation completed"
-  );
 
   return new Ok(undefined);
 }
