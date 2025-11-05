@@ -30,14 +30,6 @@ export const checkTriggerForExecutionPerDayLimit = async (
       logger: logger,
     });
 
-    console.log(
-      `Trigger ${trigger.name} (${trigger.sId}) has ${remaining} executions remaining out of ${maxMessages} for today.`
-    );
-    console.log(
-      "key is ",
-      `workspace:${workspace.sId}:trigger:${trigger.sId}:day`
-    );
-
     if (remaining <= 0) {
       return new Err({
         name: "dust_error",
