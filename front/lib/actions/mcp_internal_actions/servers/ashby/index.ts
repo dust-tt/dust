@@ -107,21 +107,40 @@ function createServer(
 
   server.tool(
     "get_report_data",
-    "Retrieve report data from Ashby ATS synchronously and save as a CSV file.",
+    "Retrieve report data from Ashby ATS synchronously and save as a CSV file. " +
+      "Provide the full Ashby report URL (e.g., https://app.ashbyhq.com/reports/saved/[reportId]).",
     {
-      reportId: z
+      reportUrl: z
         .string()
-        .uuid()
-        .describe("UUID of the report to retrieve data from."),
+        .describe(
+          "Full URL of the Ashby report (e.g., https://app.ashbyhq.com/reports/saved/[reportId])."
+        ),
     },
     withToolLogging(
       auth,
       { toolNameForMonitoring: "ashby_get_report_data", agentLoopContext },
-      async ({ reportId }) => {
+      async ({ reportUrl }) => {
         const apiKeyResult = await getAshbyApiKey(auth, agentLoopContext);
         if (apiKeyResult.isErr()) {
           return new Err(apiKeyResult.error);
         }
+
+        // Parse the report ID from the URL
+        // Expected format: https://app.ashbyhq.com/reports/.../[reportId]
+        // Extract the ID from the last part of the path
+        const urlPattern =
+          /https:\/\/app\.ashbyhq\.com\/reports\/.*\/([^/]+)\/?$/;
+        const match = reportUrl.match(urlPattern);
+
+        if (!match?.[1]) {
+          return new Err(
+            new MCPError(
+              `Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/reports/.../[reportId]`
+            )
+          );
+        }
+
+        const reportId = match[1];
 
         const client = new AshbyClient(apiKeyResult.value);
         const result = await client.getReportData({ reportId });
