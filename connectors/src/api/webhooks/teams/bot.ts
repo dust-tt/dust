@@ -775,8 +775,6 @@ export async function botValidateToolExecution({
   messageId,
   actionId,
   microsoftBotMessageId,
-  agentName,
-  toolName,
   localLogger,
 }: {
   context: TurnContext;
@@ -786,8 +784,6 @@ export async function botValidateToolExecution({
   messageId: string;
   actionId: string;
   microsoftBotMessageId: number;
-  agentName: string;
-  toolName: string;
   localLogger: Logger;
 }): Promise<Result<undefined, APIError | Error>> {
   // Validate user first

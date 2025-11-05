@@ -25,8 +25,7 @@ const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
  * Used for direct Teams attachments (smba.trafficmanager.net URLs)
  */
 export async function downloadTeamsAttachment(
-  attachmentUrl: string,
-  localLogger: Logger
+  attachmentUrl: string
 ): Promise<Result<Buffer, Error>> {
   // Validate URL to prevent SSRF attacks
   const url = new URL(attachmentUrl);
@@ -144,8 +143,7 @@ export async function processFileAttachments(
     } else if (attachment.contentUrl) {
       // For direct file attachments, use Bot Framework authentication
       const downloadResult = await downloadTeamsAttachment(
-        attachment.contentUrl,
-        localLogger
+        attachment.contentUrl
       );
       if (downloadResult.isErr()) {
         localLogger.warn(
