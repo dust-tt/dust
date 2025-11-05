@@ -63,16 +63,12 @@ describe("matchPayload", () => {
 
   describe("string operators", () => {
     it("should match starts-with", () => {
-      const matcher = parse(
-        '(starts-with "user.email" "alice@")'
-      );
+      const matcher = parse('(starts-with "user.email" "alice@")');
       expect(matchPayload(samplePayload, matcher)).toBe(true);
     });
 
     it("should not match incorrect prefix", () => {
-      const matcher = parse(
-        '(starts-with "user.email" "bob@")'
-      );
+      const matcher = parse('(starts-with "user.email" "bob@")');
       expect(matchPayload(samplePayload, matcher)).toBe(false);
     });
 
@@ -94,30 +90,22 @@ describe("matchPayload", () => {
     });
 
     it("should match has-all when all values present", () => {
-      const matcher = parse(
-        '(has-all "tags" ("urgent" "bug"))'
-      );
+      const matcher = parse('(has-all "tags" ("urgent" "bug"))');
       expect(matchPayload(samplePayload, matcher)).toBe(true);
     });
 
     it("should not match has-all when one value missing", () => {
-      const matcher = parse(
-        '(has-all "tags" ("urgent" "missing"))'
-      );
+      const matcher = parse('(has-all "tags" ("urgent" "missing"))');
       expect(matchPayload(samplePayload, matcher)).toBe(false);
     });
 
     it("should match has-any when at least one value present", () => {
-      const matcher = parse(
-        '(has-any "tags" ("missing" "urgent"))'
-      );
+      const matcher = parse('(has-any "tags" ("missing" "urgent"))');
       expect(matchPayload(samplePayload, matcher)).toBe(true);
     });
 
     it("should not match has-any when no values present", () => {
-      const matcher = parse(
-        '(has-any "tags" ("missing1" "missing2"))'
-      );
+      const matcher = parse('(has-any "tags" ("missing1" "missing2"))');
       expect(matchPayload(samplePayload, matcher)).toBe(false);
     });
 
@@ -212,16 +200,12 @@ describe("matchPayload", () => {
     });
 
     it("should match OR when at least one condition true", () => {
-      const matcher = parse(
-        '(or (eq "user.name" "Bob") (eq "user.age" 30))'
-      );
+      const matcher = parse('(or (eq "user.name" "Bob") (eq "user.age" 30))');
       expect(matchPayload(samplePayload, matcher)).toBe(true);
     });
 
     it("should not match OR when all conditions false", () => {
-      const matcher = parse(
-        '(or (eq "user.name" "Bob") (eq "user.age" 25))'
-      );
+      const matcher = parse('(or (eq "user.name" "Bob") (eq "user.age" 25))');
       expect(matchPayload(samplePayload, matcher)).toBe(false);
     });
 
@@ -267,16 +251,12 @@ describe("matchPayload", () => {
     });
 
     it("should match wildcard with has-all", () => {
-      const matcher = parse(
-        '(has-all "items.*.status" ("active" "inactive"))'
-      );
+      const matcher = parse('(has-all "items.*.status" ("active" "inactive"))');
       expect(matchPayload(payloadWithArrayOfObjects, matcher)).toBe(true);
     });
 
     it("should match wildcard with has-any", () => {
-      const matcher = parse(
-        '(has-any "tags.*.label" ("urgent" "missing"))'
-      );
+      const matcher = parse('(has-any "tags.*.label" ("urgent" "missing"))');
       expect(matchPayload(payloadWithArrayOfObjects, matcher)).toBe(true);
     });
 
@@ -335,9 +315,7 @@ describe("matchPayload", () => {
     });
 
     it("should match PR with specific label", () => {
-      const matcher = parse(
-        '(has "pull_request.labels.*.name" "feature")'
-      );
+      const matcher = parse('(has "pull_request.labels.*.name" "feature")');
       expect(matchPayload(githubPRPayload, matcher)).toBe(true);
     });
 
