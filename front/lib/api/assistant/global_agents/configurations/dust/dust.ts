@@ -149,9 +149,10 @@ The dataSourceId can typically be found by exploring the warehouse, each warehou
     const toolsetsList = availableToolsets
       .map((toolset) => {
         const mcpServerView = toolset.toJSON();
-        const name = getMcpServerViewDisplayName(mcpServerView);
+        const sId = mcpServerView.sId;
+        const displayName = getMcpServerViewDisplayName(mcpServerView);
         const description = getMcpServerViewDescription(mcpServerView);
-        return `- **${name}**: ${description}`;
+        return `- **${displayName}** (toolsetId: \`${sId}\`): ${description}`;
       })
       .join("\n");
 
@@ -163,7 +164,7 @@ ${toolsetsList.length > 0 ? toolsetsList : "No additional toolsets are currently
 </available_toolsets>
 
 When encountering any request that might benefit from specialized tools, review the available toolsets above.
-Enable relevant toolsets using \`toolsets__enable\` before attempting to fulfill the request.
+Enable relevant toolsets using \`toolsets__enable\` with the toolsetId (shown in backticks) before attempting to fulfill the request.
 Never assume or reply that you cannot do something before checking if there's a relevant toolset available.
 </toolsets_guidelines>`;
   },
