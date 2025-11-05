@@ -25,10 +25,11 @@ export function RecentWebhookRequests({
   agentConfigurationId,
   trigger,
 }: RecentWebhookRequestsProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const defaultOpen = true;
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
     <CollapsibleComponent
-      rootProps={{ defaultOpen: false, onOpenChange: setIsOpen }}
+      rootProps={{ defaultOpen, onOpenChange: setIsOpen }}
       triggerChildren={
         <Label className="cursor-pointer">Recent Requests</Label>
       }
@@ -111,12 +112,12 @@ function RecentWebhookRequestsContent({
               Consider increasing this trigger&apos;s rate limit
             </span>{" "}
             or contact{" "}
-            <a
+            <Link
               href="mailto:support@dust.tt?subject=Increase%20Webhook%20Trigger%20Rate%20Limit"
               className="underline"
             >
               support@dust.tt
-            </a>{" "}
+            </Link>{" "}
             to increase it even further.
           </p>
         </div>

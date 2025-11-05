@@ -7,6 +7,7 @@ import type {
 import type { UserTypeWithWorkspaces } from "@app/types";
 import { asDisplayName } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/lib/triggers/common";
 
 export const WebhookFormSchema = z.object({
   name: z
@@ -48,7 +49,9 @@ export function getWebhookFormDefaultValues({
     filter: trigger?.configuration.filter ?? "",
     includePayload: trigger?.configuration.includePayload ?? true,
     naturalDescription: trigger?.naturalLanguageDescription ?? "",
-    executionPerDayLimitOverride: trigger?.executionPerDayLimitOverride ?? 48,
+    executionPerDayLimitOverride:
+      trigger?.executionPerDayLimitOverride ??
+      DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
   };
 }
 

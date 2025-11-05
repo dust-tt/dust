@@ -231,10 +231,6 @@ export async function runTriggerWebhookActivity({
     const rateLimiterRes = await checkTriggerForExecutionPerDayLimit(auth, {
       trigger,
     });
-    logger.warn(
-      { workspaceId, webhookRequestId, triggerId: trigger.sId },
-      `Trigger execution per day limit check result: ${rateLimiterRes.isOk() ? "allowed" : "rate_limited"}`
-    );
     if (rateLimiterRes.isErr()) {
       const errorMessage = rateLimiterRes.error.message;
       await webhookRequest.markRelatedTrigger({
