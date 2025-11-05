@@ -257,35 +257,36 @@ export async function runTriggerWebhookActivity({
     if (!filter) {
       // No filter, add the trigger
       filteredTriggers.push(trigger);
-    } else {
-      const tags = [
-        `provider:${provider}`,
-        `workspace_id:${workspaceId}`,
-        `trigger_id:${trigger.sId}`,
-      ];
-      // Filter triggers by payload matching
-      statsDClient.increment("webhook_filter.events_processed.count", 1, tags);
+      continue;
+    }
 
-      const parsedFilterResult = parseMatcherExpression(filter);
-      if (parsedFilterResult.isErr()) {
-        logger.error(
-          {
-            triggerId: trigger.id,
-            triggerName: trigger.name,
-            filter,
-            err: parsedFilterResult.error,
-          },
-          "Invalid filter expression in webhook trigger"
-        );
-        continue;
-      }
+    const tags = [
+      `provider:${provider}`,
+      `workspace_id:${workspaceId}`,
+      `trigger_id:${trigger.sId}`,
+    ];
+    // Filter triggers by payload matching
+    statsDClient.increment("webhook_filter.events_processed.count", 1, tags);
 
-      const payloadMatchesFilter = matchPayload(body, parsedFilterResult.value);
-      if (payloadMatchesFilter) {
-        statsDClient.increment("webhook_filter.events_passed.count", 1, tags);
+    const parsedFilterResult = parseMatcherExpression(filter);
+    if (parsedFilterResult.isErr()) {
+      logger.error(
+        {
+          triggerId: trigger.id,
+          triggerName: trigger.name,
+          filter,
+          err: parsedFilterResult.error,
+        },
+        "Invalid filter expression in webhook trigger"
+      );
+      continue;
+    }
 
-        filteredTriggers.push(trigger);
-      }
+    const payloadMatchesFilter = matchPayload(body, parsedFilterResult.value);
+    if (payloadMatchesFilter) {
+      statsDClient.increment("webhook_filter.events_passed.count", 1, tags);
+
+      filteredTriggers.push(trigger);
     }
   }
 
