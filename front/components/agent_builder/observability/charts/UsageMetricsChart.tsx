@@ -220,7 +220,7 @@ export function UsageMetricsChart({
           />
           {/* Areas for each usage metric */}
           <Area
-            type="natural"
+            type="monotone"
             dataKey="messages"
             name="Messages"
             className={USAGE_METRICS_PALETTE.messages}
@@ -228,7 +228,7 @@ export function UsageMetricsChart({
             stroke="currentColor"
           />
           <Area
-            type="natural"
+            type="monotone"
             dataKey="conversations"
             name="Conversations"
             className={USAGE_METRICS_PALETTE.conversations}
@@ -236,7 +236,7 @@ export function UsageMetricsChart({
             stroke="currentColor"
           />
           <Area
-            type="natural"
+            type="monotone"
             dataKey="activeUsers"
             name="Active users"
             className={USAGE_METRICS_PALETTE.activeUsers}

@@ -147,7 +147,7 @@ export function LatencyChart({
             }}
           />
           <Area
-            type="natural"
+            type="monotone"
             dataKey="average"
             name="Average time to complete output"
             className={LATENCY_PALETTE.average}

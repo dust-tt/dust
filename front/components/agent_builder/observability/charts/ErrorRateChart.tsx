@@ -200,7 +200,7 @@ export function ErrorRateChart({
             strokeWidth={1.5}
           />
           <Area
-            type="natural"
+            type="monotone"
             dataKey="errorRate"
             name="Error rate"
             fill="url(#fillErrorRate)"
