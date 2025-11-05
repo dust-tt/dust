@@ -355,6 +355,7 @@ function getGlobalAgent({
         toolsetsMCPServerView,
         deepDiveMCPServerView,
         interactiveContentMCPServerView,
+        dataWarehousesMCPServerView,
         agentMemoryMCPServerView,
         memories,
         featureFlags,
