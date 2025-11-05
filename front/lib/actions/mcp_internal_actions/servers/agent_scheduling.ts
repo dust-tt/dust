@@ -1,0 +1,142 @@
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import ms from "ms";
+import { z } from "zod";
+
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import { Err, normalizeError, Ok } from "@app/types";
+
+const MAX_DELAY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
+  const server = makeInternalMCPServer("agent_scheduling");
+
+  server.tool(
+    "schedule_agent_execution",
+    "Schedule the execution of the current agent loop after a specified delay. " +
+      "The agent will start executing after the delay has elapsed. " +
+      "Maximum delay is 7 days. Accepts human-readable time strings like '2 hours', '30 minutes', '1 day'.",
+    {
+      delay: z
+        .string()
+        .describe(
+          "The delay before starting the agent execution. " +
+            "Accepts human-readable time strings like '2 hours', '30 minutes', '1 day', etc. " +
+            "Maximum: 7 days."
+        ),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "schedule_agent_execution",
+        agentLoopContext,
+      },
+      async ({ delay }) => {
+        if (!agentLoopContext?.runContext) {
+          return new Err(
+            new MCPError(
+              "Agent scheduling is only available within an agent loop context."
+            )
+          );
+        }
+
+        const { agentMessage, conversation } = agentLoopContext.runContext;
+        const agentMessageId = agentMessage.sId;
+        const conversationId = conversation.sId;
+
+        let delayMs: number;
+        try {
+          delayMs = ms(delay);
+          if (isNaN(delayMs)) {
+            return new Err(
+              new MCPError(
+                `Invalid delay format: "${delay}". Please use a valid time string like "2 hours", "30 minutes", "1 day".`
+              )
+            );
+          }
+        } catch (e) {
+          const cause = normalizeError(e);
+          return new Err(
+            new MCPError(
+              `Invalid delay format: "${delay}". Error: ${cause.message}`,
+              { cause }
+            )
+          );
+        }
+
+        if (delayMs <= 0) {
+          return new Err(
+            new MCPError("Delay must be a positive duration greater than 0.")
+          );
+        }
+
+        if (delayMs > MAX_DELAY_MS) {
+          return new Err(
+            new MCPError(
+              `Delay exceeds maximum allowed duration of 7 days (${MAX_DELAY_MS}ms). Requested: ${delayMs}ms.`
+            )
+          );
+        }
+
+        if (!agentMessage.parentMessageId) {
+          return new Err(
+            new MCPError(
+              "Cannot schedule agent execution: agent message has no parent user message."
+            )
+          );
+        }
+
+        const result = await launchAgentLoopWorkflow({
+          auth,
+          agentLoopArgs: {
+            agentMessageId,
+            agentMessageVersion: agentMessage.version,
+            conversationId,
+            conversationTitle: conversation.title,
+            userMessageId: agentMessage.parentMessageId,
+            userMessageVersion: 0,
+          },
+          startStep: 0,
+          startDelay: delay,
+        });
+
+        if (result.isErr()) {
+          const error = result.error;
+          if (
+            typeof error === "object" &&
+            error !== null &&
+            "type" in error &&
+            error.type === "agent_loop_already_running"
+          ) {
+            return new Err(
+              new MCPError(
+                "An agent loop is already running or scheduled for this message. Cannot schedule another execution."
+              )
+            );
+          }
+          return new Err(
+            new MCPError(`Failed to schedule agent execution: ${error.message}`)
+          );
+        }
+
+        return new Ok([
+          {
+            type: "text",
+            text: `Agent execution scheduled successfully. The agent will start in ${delay} (${delayMs}ms).`,
+          },
+        ]);
+      }
+    )
+  );
+
+  return server;
+}
+
+export default createServer;

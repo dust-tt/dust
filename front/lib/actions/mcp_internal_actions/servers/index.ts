@@ -8,6 +8,7 @@ import {
 import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
+import { default as agentSchedulingServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_scheduling";
 import { default as ashbyServer } from "@app/lib/actions/mcp_internal_actions/servers/ashby";
 import { default as commonUtilitiesServer } from "@app/lib/actions/mcp_internal_actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actions/servers/confluence";
@@ -187,6 +188,8 @@ export async function getInternalMCPServer(
       return outlookCalendarServer(auth, agentLoopContext);
     case "agent_management":
       return agentManagementServer(auth, agentLoopContext);
+    case "agent_scheduling":
+      return agentSchedulingServer(auth, agentLoopContext);
     case "freshservice":
       return freshserviceServer(auth, agentLoopContext);
     case "data_warehouses":
