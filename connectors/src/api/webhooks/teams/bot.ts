@@ -30,7 +30,7 @@ import {
   createResponseAdaptiveCard,
   createStreamingAdaptiveCard,
 } from "./adaptive_cards";
-import { sendActivity, updateActivity } from "./bot_messaging_utils";
+import { updateActivity } from "./bot_messaging_utils";
 import { validateTeamsUser } from "./user_validation";
 
 export async function botAnswerMessage(
@@ -346,7 +346,7 @@ async function streamAgentResponse({
   let chainOfThought = "";
   let agentState = "thinking";
   const actions: AgentActionPublicType[] = [];
-  const UPDATE_INTERVAL_MS = 100; // Update every 100 millisecond
+  const UPDATE_INTERVAL_MS = 1500;
 
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
@@ -395,11 +395,13 @@ async function streamAgentResponse({
             });
 
             // Send streaming update to Teams app webhook endpoint
+            // Skip retry for streaming updates - if they fail, just ignore silently
             await sendTeamsResponse(
               context,
               agentActivityId,
               streamingCard,
-              localLogger
+              localLogger,
+              true // skipRetry
             );
           }
         }
@@ -511,28 +513,37 @@ async function streamAgentResponse({
 
 const sendTeamsResponse = async (
   context: TurnContext,
-  agentActivityId: string | undefined,
+  agentActivityId: string,
   adaptiveCard: Partial<Activity>,
-  localLogger: Logger
+  localLogger: Logger,
+  skipRetry = false
 ): Promise<Result<string, Error>> => {
   // Update existing message for streaming
-  if (agentActivityId) {
-    try {
-      await updateActivity(context, {
-        ...adaptiveCard,
-        id: agentActivityId,
-      });
-      return new Ok(agentActivityId);
-    } catch (updateError) {
-      localLogger.warn(
-        { error: updateError },
-        "Failed to update streaming message, sending new one"
-      );
-    }
+  const updateResult = await updateActivity(
+    context,
+    {
+      ...adaptiveCard,
+      id: agentActivityId,
+    },
+    skipRetry
+  );
+
+  if (updateResult.isOk()) {
+    return updateResult;
   }
 
-  // Send new streaming message
-  return sendActivity(context, adaptiveCard);
+  // Only log if not skipping retry (for non-streaming updates)
+  if (!skipRetry) {
+    localLogger.warn(
+      { error: updateResult.error },
+      "Failed to send response message"
+    );
+
+    return updateResult;
+  } else {
+    // For streaming updates, just silently ignore failures
+    return new Ok(agentActivityId);
+  }
 };
 
 async function makeContentFragments(
