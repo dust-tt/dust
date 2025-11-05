@@ -55,11 +55,11 @@ async function handler(
         provider,
       } = bodyValidation.data;
 
-      const eventSchema = WEBHOOK_PRESETS[provider].events.find(
+      const event = WEBHOOK_PRESETS[provider].events.find(
         (event) => event.value === eventValue
-      )?.schema;
+      );
 
-      if (!eventSchema) {
+      if (!event) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -71,7 +71,7 @@ async function handler(
 
       const r = await generateWebhookFilter(auth, {
         naturalDescription,
-        eventSchema,
+        event,
       });
 
       if (r.isErr()) {

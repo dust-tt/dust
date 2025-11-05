@@ -468,3 +468,51 @@ export const issuesSchema: JSONSchema = {
   },
   required: ["action", "issue", "repository", "sender"],
 };
+
+export const issuesExample = {
+  action: "opened",
+  issue: {
+    url: "https://api.github.com/repos/octocat/Hello-World/issues/1347",
+    id: 1234567890,
+    number: 1347,
+    title: "Bug: Application crashes on startup",
+    user: {
+      login: "octocat",
+      id: 1,
+      avatar_url: "https://avatars.githubusercontent.com/u/1?v=4",
+      type: "User",
+    },
+    labels: [
+      {
+        id: 208045946,
+        name: "bug",
+        color: "d73a4a",
+      },
+    ],
+    state: "open",
+    locked: false,
+    assignee: null,
+    assignees: [],
+    comments: 0,
+    created_at: "2023-01-20T10:30:00Z",
+    updated_at: "2023-01-20T10:30:00Z",
+    closed_at: null,
+    body: "The application crashes when starting up on Windows 11. Steps to reproduce: ...",
+  },
+  repository: {
+    id: 1296269,
+    name: "Hello-World",
+    full_name: "octocat/Hello-World",
+    owner: {
+      login: "octocat",
+      id: 1,
+    },
+    html_url: "https://github.com/octocat/Hello-World",
+    description: "My first repository on GitHub!",
+  },
+  sender: {
+    login: "octocat",
+    id: 1,
+    type: "User",
+  },
+};
