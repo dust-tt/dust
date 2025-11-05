@@ -339,6 +339,7 @@ async function runTest(
       modelId: config.modelId,
       temperature: config.temperature,
       reasoningEffort: config.reasoningEffort,
+      responseFormat: config.responseFormat,
       bypassFeatureFlag: true,
     });
     if (llm === null) {

@@ -13,6 +13,7 @@ import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
   toReasoning,
+  toResponseFormat,
   toTool,
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
@@ -58,6 +59,7 @@ export class OpenAIResponsesLLM extends LLM {
         temperature: this.temperature ?? undefined,
         reasoning: toReasoning(this.reasoningEffort),
         tools: specifications.map(toTool),
+        text: { format: toResponseFormat(this.responseFormat) },
       });
 
       yield* streamLLMEvents(events, this.metadata);

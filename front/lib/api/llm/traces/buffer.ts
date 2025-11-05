@@ -77,6 +77,7 @@ export class LLMTraceBuffer {
     modelId,
     prompt,
     reasoningEffort,
+    responseFormat,
     specifications,
     temperature,
   }: {
@@ -84,6 +85,7 @@ export class LLMTraceBuffer {
     modelId: ModelIdType;
     prompt: string;
     reasoningEffort: ReasoningEffort | null;
+    responseFormat: string | null;
     specifications: unknown[];
     temperature: number | null;
   }) {
@@ -92,6 +94,7 @@ export class LLMTraceBuffer {
       modelId,
       prompt,
       reasoningEffort,
+      responseFormat,
       specifications,
       temperature,
     };

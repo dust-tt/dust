@@ -32,6 +32,7 @@ export interface LLMTraceInput {
   modelId: ModelIdType;
   prompt: string;
   reasoningEffort: ReasoningEffort | null;
+  responseFormat: string | null;
   specifications: unknown[];
   temperature: number | null;
 }
