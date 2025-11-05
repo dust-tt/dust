@@ -265,7 +265,6 @@ export async function runTriggerWebhookActivity({
       `workspace_id:${workspaceId}`,
       `trigger_id:${trigger.sId}`,
     ];
-    // Filter triggers by payload matching
     statsDClient.increment("webhook_filter.events_processed.count", 1, tags);
 
     const parsedFilterResult = parseMatcherExpression(filter);
@@ -285,7 +284,6 @@ export async function runTriggerWebhookActivity({
     const payloadMatchesFilter = matchPayload(body, parsedFilterResult.value);
     if (payloadMatchesFilter) {
       statsDClient.increment("webhook_filter.events_passed.count", 1, tags);
-
       filteredTriggers.push(trigger);
     }
   }
