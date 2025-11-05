@@ -12,7 +12,6 @@ import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 export class FathomOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
     connection,
-    useCase,
   }: {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
@@ -37,7 +36,7 @@ export class FathomOAuthProvider implements BaseOAuthStrategyProvider {
     return getStringFromQuery(query, "state");
   }
 
-  isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
+  isExtraConfigValid(extraConfig: ExtraConfigType) {
     return Object.keys(extraConfig).length === 0;
   }
 }

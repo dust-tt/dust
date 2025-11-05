@@ -16,8 +16,7 @@ use std::env;
 
 lazy_static! {
     static ref OAUTH_FATHOM_CLIENT_ID: String = env::var("OAUTH_FATHOM_CLIENT_ID").unwrap();
-    static ref OAUTH_FATHOM_CLIENT_SECRET: String =
-        env::var("OAUTH_FATHOM_CLIENT_SECRET").unwrap();
+    static ref OAUTH_FATHOM_CLIENT_SECRET: String = env::var("OAUTH_FATHOM_CLIENT_SECRET").unwrap();
 }
 
 pub struct FathomConnectionProvider {}
@@ -44,10 +43,7 @@ impl Provider for FathomConnectionProvider {
     ) -> Result<FinalizeResult, ProviderError> {
         let body = format!(
             "grant_type=authorization_code&code={}&client_id={}&client_secret={}&redirect_uri={}",
-            code,
-            *OAUTH_FATHOM_CLIENT_ID,
-            *OAUTH_FATHOM_CLIENT_SECRET,
-            redirect_uri
+            code, *OAUTH_FATHOM_CLIENT_ID, *OAUTH_FATHOM_CLIENT_SECRET, redirect_uri
         );
 
         let req = self
