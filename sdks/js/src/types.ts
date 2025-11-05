@@ -77,8 +77,6 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
-  | "grok-3-fast-latest" // xAI
-  | "grok-3-mini-fast-latest" // xAI
   | "grok-4-latest" // xAI
   | "grok-4-fast-non-reasoning-latest"
   | "grok-4-fast-reasoning-latest"
