@@ -203,6 +203,48 @@ export class AgentScheduledExecutionResource extends BaseResource<AgentScheduled
     });
   }
 
+  static async deleteByConversationId(
+    auth: Authenticator,
+    conversationId: ModelId,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<undefined> {
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId,
+      },
+      transaction,
+    });
+  }
+
+  static async deleteByAgentMessageIds(
+    auth: Authenticator,
+    agentMessageIds: ModelId[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<undefined> {
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentMessageId: agentMessageIds,
+      },
+      transaction,
+    });
+  }
+
+  static async deleteByMessageIds(
+    auth: Authenticator,
+    messageIds: ModelId[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<undefined> {
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userMessageId: messageIds,
+      },
+      transaction,
+    });
+  }
+
   get sId(): string {
     return AgentScheduledExecutionResource.modelIdToSId({
       id: this.id,

@@ -13,6 +13,7 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentScheduledExecutionResource } from "@app/lib/resources/agent_scheduled_execution_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -47,13 +48,25 @@ async function destroyActionsRelatedResources(
   });
 }
 
-async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {
+async function destroyMessageRelatedResources(
+  auth: Authenticator,
+  messageIds: ModelId[]
+) {
   await MessageReaction.destroy({
     where: { messageId: messageIds },
   });
   await Mention.destroy({
     where: { messageId: messageIds },
   });
+
+  // Clean up scheduled executions that reference these messages
+  if (messageIds.length > 0) {
+    await AgentScheduledExecutionResource.deleteByMessageIds(
+      auth,
+      messageIds
+    );
+  }
+
   // TODO: We should also destroy the parent message
   await Message.destroy({
     where: { id: messageIds },
@@ -192,6 +205,15 @@ export async function destroyConversation(
     await AgentMessageFeedback.destroy({
       where: { agentMessageId: agentMessageIds },
     });
+
+    // Clean up scheduled executions before deleting agent messages
+    if (agentMessageIds.length > 0) {
+      await AgentScheduledExecutionResource.deleteByAgentMessageIds(
+        auth,
+        agentMessageIds
+      );
+    }
+
     await AgentMessage.destroy({
       where: { id: agentMessageIds },
     });
@@ -200,7 +222,7 @@ export async function destroyConversation(
       conversationId: conversation.sId,
     });
 
-    await destroyMessageRelatedResources(messageIds);
+    await destroyMessageRelatedResources(auth, messageIds);
   }
 
   await destroyConversationDataSource(auth, { conversation });

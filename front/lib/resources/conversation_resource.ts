@@ -15,6 +15,7 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { AgentScheduledExecutionResource } from "@app/lib/resources/agent_scheduled_execution_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -991,6 +992,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const owner = auth.getNonNullableWorkspace();
 
     try {
+      await AgentScheduledExecutionResource.deleteByConversationId(
+        auth,
+        this.id,
+        { transaction }
+      );
       await ConversationMCPServerViewModel.destroy({
         where: { workspaceId: owner.id, conversationId: this.id },
         transaction,

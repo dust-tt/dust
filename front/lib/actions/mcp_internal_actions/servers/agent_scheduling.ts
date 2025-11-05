@@ -38,7 +38,7 @@ function createServer(
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "schedule_agent_execution",
+        toolNameForMonitoring: "agent_scheduling",
         agentLoopContext,
       },
       async ({ delay }) => {
