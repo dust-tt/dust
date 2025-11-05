@@ -4,12 +4,14 @@ function renderCandidate(candidate: AshbyCandidate): string {
   const lines = [`ID: ${candidate.id}`, `Name: ${candidate.name}`];
 
   if (candidate.primaryEmailAddress) {
-    lines.push(`Email: ${candidate.primaryEmailAddress.value}`);
+    lines.push(
+      `Email: ${candidate.primaryEmailAddress.value} (${candidate.primaryEmailAddress.type})`
+    );
   }
 
-  if (candidate.phoneNumbers && candidate.phoneNumbers.length > 0) {
+  if (candidate.primaryPhoneNumber) {
     lines.push(
-      `Phone: ${candidate.phoneNumbers.map((p) => p.value).join(", ")}`
+      `Phone: ${candidate.primaryPhoneNumber.value} (${candidate.primaryPhoneNumber.type})`
     );
   }
 

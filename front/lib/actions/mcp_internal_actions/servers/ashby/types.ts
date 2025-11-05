@@ -8,16 +8,14 @@ export const AshbyCandidateSchema = z
       .object({
         value: z.string(),
         type: z.string(),
+        isPrimary: z.boolean(),
       })
       .optional(),
-    phoneNumbers: z
-      .array(
-        z.object({
-          value: z.string(),
-          type: z.string(),
-        })
-      )
-      .optional(),
+    primaryPhoneNumber: z.object({
+      value: z.string(),
+      type: z.string(),
+      isPrimary: z.boolean(),
+    }),
     socialLinks: z
       .array(
         z.object({
