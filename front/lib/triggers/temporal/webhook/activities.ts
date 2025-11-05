@@ -260,9 +260,21 @@ export async function runTriggerWebhookActivity({
     } else {
       try {
         // Filter triggers by payload matching
+        statsDClient.increment("webhook_filter.events_processed.count", 1, [
+          `provider:${provider}`,
+          `workspace_id:${workspaceId}`,
+          `trigger_id:${trigger.sId}`,
+        ]);
+
         const parsedFilter = parseMatcherExpression(filter);
         const r = matchPayload(body, parsedFilter);
         if (r) {
+          statsDClient.increment("webhook_filter.events_passed.count", 1, [
+            `provider:${provider}`,
+            `workspace_id:${workspaceId}`,
+            `trigger_id:${trigger.sId}`,
+          ]);
+
           filteredTriggers.push(trigger);
         }
       } catch (err) {
