@@ -155,6 +155,15 @@ export function ViewDataSourceTable({
                       <PokeTableCell>{isRunning ? "✅" : "❌"}</PokeTableCell>
                     </PokeTableRow>
                     <PokeTableRow>
+                      <PokeTableCell>Is Stuck?</PokeTableCell>
+                      <PokeTableCell>
+                        <CheckConnectorStuck
+                          owner={owner}
+                          dsId={dataSource.sId}
+                        />
+                      </PokeTableCell>
+                    </PokeTableRow>
+                    <PokeTableRow>
                       <PokeTableCell>Paused at</PokeTableCell>
                       <PokeTableCell>
                         {connector?.pausedAt ? (
@@ -249,14 +258,6 @@ export function ViewDataSourceTable({
                       </PokeTableCell>
                     </PokeTableRow>
                   </>
-                )}
-                {connector && (
-                  <PokeTableRow>
-                    <PokeTableCell>Is stuck?</PokeTableCell>
-                    <PokeTableCell>
-                      <CheckConnectorStuck owner={owner} dsId={dataSource.sId} />
-                    </PokeTableCell>
-                  </PokeTableRow>
                 )}
               </PokeTableBody>
             </PokeTable>
