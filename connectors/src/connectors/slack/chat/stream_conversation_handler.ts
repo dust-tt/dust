@@ -296,7 +296,7 @@ async function streamAgentAnswerToSlack(
           finalAnswer,
           actions
         );
-        
+
         const files = actions.flatMap((action) => action.generatedFiles);
         const filesUploaded = await getFilesFromDust(files, dustAPI);
 
