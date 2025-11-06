@@ -290,6 +290,33 @@ export async function getLastUserMessage(
   return new Ok(content);
 }
 
+export async function getUserMessageFromParentMessageId({
+  workspaceId,
+  conversationId,
+  parentMessageId,
+}: {
+  workspaceId: ModelId;
+  conversationId: ModelId;
+  parentMessageId: string;
+}): Promise<UserMessage | null> {
+  const message = await Message.findOne({
+    where: {
+      workspaceId,
+      conversationId,
+      sId: parentMessageId,
+    },
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+      },
+    ],
+    attributes: ["id"],
+  });
+
+  return message?.userMessage ?? null;
+}
+
 /**
  * Conversation API
  */
