@@ -142,28 +142,16 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
 
   static async fetchRecentByWebhookSourceId(
     auth: Authenticator,
-    {
-      webhookSourceId,
-      hoursAgo,
-      limit,
-    }: {
-      webhookSourceId: ModelId;
-      hoursAgo: number;
-      limit: number;
-    }
+    { webhookSourceId }: { webhookSourceId: ModelId },
+    opts: ResourceFindOptions<WebhookRequestModel> = {}
   ): Promise<WebhookRequestResource[]> {
-    const dateThreshold = new Date();
-    dateThreshold.setHours(dateThreshold.getHours() - hoursAgo);
-
     return this.baseFetch(auth, {
       where: {
+        ...opts.where,
         webhookSourceId,
-        createdAt: {
-          [Op.gte]: dateThreshold,
-        },
       },
-      order: [["createdAt", "DESC"]],
-      limit,
+      order: opts.order,
+      limit: opts.limit,
     });
   }
 

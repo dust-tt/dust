@@ -341,32 +341,23 @@ export function useTriggerEstimation({ workspaceId }: { workspaceId: string }) {
         return null;
       }
 
-      try {
-        const params = new URLSearchParams();
-        if (filter && filter.trim()) {
-          params.append("filter", filter);
-        }
-        if (selectedEvent) {
-          params.append("event", selectedEvent);
-        }
-
-        const queryString = params.toString();
-        const url = `/api/w/${workspaceId}/webhook_sources/${webhookSourceId}/trigger-estimation${
-          queryString ? `?${queryString}` : ""
-        }`;
-
-        const response: GetTriggerEstimationResponseBody = await fetcher(url);
-        return response;
-      } catch (error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to compute estimation",
-          description: `Error: ${normalizeError(error).message}`,
-        });
-        return null;
+      const params = new URLSearchParams();
+      if (filter && filter.trim()) {
+        params.append("filter", filter);
       }
+      if (selectedEvent) {
+        params.append("event", selectedEvent);
+      }
+
+      const queryString = params.toString();
+      const url = `/api/w/${workspaceId}/webhook_sources/${webhookSourceId}/trigger-estimation${
+        queryString ? `?${queryString}` : ""
+      }`;
+
+      const response: GetTriggerEstimationResponseBody = await fetcher(url);
+      return response;
     },
-    [workspaceId, sendNotification]
+    [workspaceId]
   );
 
   return computeEstimation;

@@ -82,19 +82,16 @@ export function WebhookEditionFilters({
     }
 
     setIsComputingEstimation(true);
-    try {
-      const result = await computeEstimation({
-        filter: filterField.value,
-        webhookSourceId: webhookSourceView.webhookSource.sId,
-        selectedEvent,
-      });
+    const result = await computeEstimation({
+      filter: filterField.value,
+      webhookSourceId: webhookSourceView.webhookSource.sId,
+      selectedEvent,
+    });
 
-      if (result) {
-        setEstimationData(result);
-      }
-    } finally {
-      setIsComputingEstimation(false);
+    if (result) {
+      setEstimationData(result);
     }
+    setIsComputingEstimation(false);
   };
 
   const triggerFilterGeneration = useDebounceWithAbort(
