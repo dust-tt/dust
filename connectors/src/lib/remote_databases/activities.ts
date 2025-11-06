@@ -47,7 +47,8 @@ const createDatabase = async ({
   mimeTypes:
     | typeof INTERNAL_MIME_TYPES.BIGQUERY
     | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
-    | typeof INTERNAL_MIME_TYPES.SALESFORCE;
+    | typeof INTERNAL_MIME_TYPES.SALESFORCE
+    | typeof INTERNAL_MIME_TYPES.DATABRICKS;
 }): Promise<{
   newDatabase: RemoteDatabaseModel | null;
   usedInternalIds: Set<string>;
@@ -133,7 +134,8 @@ const createSchemaAndHierarchy = async ({
   mimeTypes:
     | typeof INTERNAL_MIME_TYPES.BIGQUERY
     | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
-    | typeof INTERNAL_MIME_TYPES.SALESFORCE;
+    | typeof INTERNAL_MIME_TYPES.SALESFORCE
+    | typeof INTERNAL_MIME_TYPES.DATABRICKS;
 }): Promise<{
   newDatabase: RemoteDatabaseModel | null;
   newSchema: RemoteSchemaModel | null;
@@ -250,7 +252,8 @@ const createTableAndHierarchy = async ({
   mimeTypes:
     | typeof INTERNAL_MIME_TYPES.BIGQUERY
     | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
-    | typeof INTERNAL_MIME_TYPES.SALESFORCE;
+    | typeof INTERNAL_MIME_TYPES.SALESFORCE
+    | typeof INTERNAL_MIME_TYPES.DATABRICKS;
   internalTableIdToRemoteTableId: (internalTableId: string) => string;
   tags: string[];
 }): Promise<{
@@ -356,7 +359,8 @@ export async function sync({
   mimeTypes:
     | typeof INTERNAL_MIME_TYPES.BIGQUERY
     | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
-    | typeof INTERNAL_MIME_TYPES.SALESFORCE;
+    | typeof INTERNAL_MIME_TYPES.SALESFORCE
+    | typeof INTERNAL_MIME_TYPES.DATABRICKS;
   internalTableIdToRemoteTableId?: (internalTableId: string) => string;
   tags: string[];
 }) {

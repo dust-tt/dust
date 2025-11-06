@@ -57,6 +57,10 @@ export const INTERNAL_MIME_TYPES = {
     provider: "confluence",
     resourceTypes: ["FOLDER", "PAGE", "SPACE"],
   }),
+  DATABRICKS: generateMimeTypes({
+    provider: "databricks",
+    resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
+  }),
   GITHUB: generateMimeTypes({
     provider: "github",
     resourceTypes: [

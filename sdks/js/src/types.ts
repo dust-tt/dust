@@ -387,6 +387,7 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "bigquery"
   | "salesforce"
   | "gong"
+  | "databricks"
 >();
 export type ConnectorProvider = z.infer<typeof ConnectorProvidersSchema>;
 

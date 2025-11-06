@@ -67,6 +67,7 @@ function getSectionColumnsPrefix(
     case "bigquery":
     case "gong":
     case "discord_bot":
+    case "databricks":
     case null:
       return null;
     default:

@@ -4,6 +4,7 @@ import type { CreationAttributes, Model, Transaction } from "sequelize";
 
 import type { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import type { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
+import type { DatabricksConfigurationModel } from "@connectors/lib/models/databricks";
 import type { DiscordConfigurationModel } from "@connectors/lib/models/discord";
 import type { GithubConnectorState } from "@connectors/lib/models/github";
 import type { GongConfigurationModel } from "@connectors/lib/models/gong";
@@ -19,6 +20,7 @@ import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcra
 import type { ZendeskConfigurationModel } from "@connectors/lib/models/zendesk";
 import { BigQueryConnectorStrategy } from "@connectors/resources/connector/bigquery";
 import { ConfluenceConnectorStrategy } from "@connectors/resources/connector/confluence";
+import { DatabricksConnectorStrategy } from "@connectors/resources/connector/databricks";
 import { DiscordConnectorStrategy } from "@connectors/resources/connector/discord";
 import { GithubConnectorStrategy } from "@connectors/resources/connector/github";
 import { GongConnectorStrategy } from "@connectors/resources/connector/gong";
@@ -63,6 +65,7 @@ export interface ConnectorProviderModelM {
   bigquery: BigQueryConfigurationModel;
   salesforce: SalesforceConfigurationModel;
   gong: GongConfigurationModel;
+  databricks: DatabricksConfigurationModel;
 }
 
 export type ConnectorProviderModelMapping = {
@@ -103,6 +106,7 @@ export interface ConnectorProviderConfigurationTypeM {
   bigquery: null;
   salesforce: null;
   gong: null;
+  databricks: null;
 }
 
 export type ConnectorProviderConfigurationTypeMapping = {
@@ -139,6 +143,9 @@ export function getConnectorProviderStrategy(
   switch (type) {
     case "confluence":
       return new ConfluenceConnectorStrategy();
+
+    case "databricks":
+      return new DatabricksConnectorStrategy();
 
     case "discord_bot":
       return new DiscordConnectorStrategy();

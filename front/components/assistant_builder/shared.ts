@@ -31,6 +31,7 @@ export function getTableIdForContentNode(
     case "salesforce":
     case "snowflake":
     case "google_drive":
+    case "databricks":
       return contentNode.internalId;
 
     case "confluence":

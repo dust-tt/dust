@@ -11,6 +11,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import {
   BigQueryCredentialsWithLocationSchema,
+  DatabricksCredentialsSchema,
   NotionCredentialsSchema,
   OAuthAPI,
   SalesforceCredentialsSchema,
@@ -37,11 +38,17 @@ const PostNotionCredentialsBodySchema = t.type({
   credentials: NotionCredentialsSchema,
 });
 
+const PostDatabricksCredentialsBodySchema = t.type({
+  provider: t.literal("databricks"),
+  credentials: DatabricksCredentialsSchema,
+});
+
 const PostCredentialsBodySchema = t.union([
   PostSnowflakeCredentialsBodySchema,
   PostBigQueryCredentialsBodySchema,
   PostSalesforceCredentialsBodySchema,
   PostNotionCredentialsBodySchema,
+  PostDatabricksCredentialsBodySchema,
 ]);
 
 export type PostCredentialsBody = t.TypeOf<typeof PostCredentialsBodySchema>;

@@ -89,6 +89,7 @@ export const CREDENTIALS_PROVIDERS = [
   "bigquery",
   "salesforce",
   "notion",
+  "databricks",
   // Labs
   "modjo",
   "hubspot",
@@ -206,12 +207,22 @@ export const NotionCredentialsSchema = t.type({
 });
 export type NotionCredentials = t.TypeOf<typeof NotionCredentialsSchema>;
 
+export const DatabricksCredentialsSchema = t.type({
+  host: t.string,
+  http_path: t.string,
+  access_token: t.string,
+});
+export type DatabricksCredentials = t.TypeOf<
+  typeof DatabricksCredentialsSchema
+>;
+
 export type ConnectionCredentials =
   | SnowflakeCredentials
   | ModjoCredentials
   | BigQueryCredentialsWithLocation
   | SalesforceCredentials
-  | NotionCredentials;
+  | NotionCredentials
+  | DatabricksCredentials;
 
 export function isSnowflakeCredentials(
   credentials: ConnectionCredentials
@@ -250,6 +261,16 @@ export function isSalesforceCredentials(
   credentials: ConnectionCredentials
 ): credentials is SalesforceCredentials {
   return "client_id" in credentials && "client_secret" in credentials;
+}
+
+export function isDatabricksCredentials(
+  credentials: ConnectionCredentials
+): credentials is DatabricksCredentials {
+  return (
+    "host" in credentials &&
+    "http_path" in credentials &&
+    "access_token" in credentials
+  );
 }
 
 export type OauthAPIPostCredentialsResponse = {

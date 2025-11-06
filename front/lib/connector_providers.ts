@@ -1,6 +1,7 @@
 import {
   BigQueryLogo,
   ConfluenceLogo,
+  DatabricksLogo,
   DiscordLogo,
   DriveLogo,
   FolderIcon,
@@ -85,7 +86,6 @@ export type ConnectorProviderConfiguration = {
   guideLink: string | null;
   selectLabel?: string; // Show in the permissions modal, above the content node tree, note that a connector might not allow to select anything
   isNested: boolean;
-  isTitleFilterEnabled?: boolean;
   isResourceSelectionDisabled?: boolean; // Whether the user cannot select distinct resources (everything is synced).
   permissions: {
     selected: ConnectorPermission;
@@ -455,6 +455,27 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     isDeletable: true,
   },
+  databricks: {
+    name: "Databricks",
+    connectorProvider: "databricks",
+    status: "built",
+    hide: false,
+    description: "Query a Databricks SQL warehouse.",
+    limitations: null,
+    mismatchError:
+      "You cannot change the Databricks warehouse. Please add a new Databricks connection instead.",
+    getLogoComponent: () => {
+      return DatabricksLogo;
+    },
+    isNested: true,
+    guideLink: "https://docs.dust.tt/docs/databricks-connection",
+    selectLabel: "Select tables",
+    permissions: {
+      selected: "read",
+      unselected: "none",
+    },
+    isDeletable: true,
+  },
   salesforce: {
     name: "Salesforce",
     connectorProvider: "salesforce",
@@ -520,6 +541,7 @@ export function isBotTypeProvider(provider: ConnectorProvider): boolean {
 export const REMOTE_DATABASE_CONNECTOR_PROVIDERS: ConnectorProvider[] = [
   "snowflake",
   "bigquery",
+  "databricks",
 ];
 
 export function getConnectorProviderLogoWithFallback({
@@ -569,6 +591,7 @@ export const isConnectorProviderAllowedForPlan = (
     case "snowflake":
     case "zendesk":
     case "bigquery":
+    case "databricks":
     case "gong":
       return true;
     case "microsoft_bot":
@@ -601,6 +624,7 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "salesforce":
     case "snowflake":
     case "webcrawler":
+    case "databricks":
       return false;
     default:
       assertNever(provider);
@@ -627,6 +651,7 @@ export const isBotIntegration = (provider: ConnectorProvider): boolean => {
     case "snowflake":
     case "webcrawler":
     case "zendesk":
+    case "databricks":
       return false;
     default:
       assertNever(provider);
@@ -676,6 +701,7 @@ export function isConnectorTypeTrackable(
     case "bigquery":
     case "salesforce":
     case "gong":
+    case "databricks":
       return true;
     case "slack":
     case "slack_bot":

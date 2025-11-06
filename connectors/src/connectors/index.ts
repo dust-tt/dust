@@ -3,6 +3,7 @@ import { assertNever } from "@dust-tt/client";
 
 import { BigQueryConnectorManager } from "@connectors/connectors/bigquery";
 import { ConfluenceConnectorManager } from "@connectors/connectors/confluence";
+import { DatabricksConnectorManager } from "@connectors/connectors/databricks";
 import { DiscordBotConnectorManager } from "@connectors/connectors/discord_bot";
 import { GithubConnectorManager } from "@connectors/connectors/github";
 import { GongConnectorManager } from "@connectors/connectors/gong";
@@ -39,7 +40,8 @@ type ConnectorManager =
   | IntercomConnectorManager
   | GithubConnectorManager
   | GoogleDriveConnectorManager
-  | SnowflakeConnectorManager;
+  | SnowflakeConnectorManager
+  | DatabricksConnectorManager;
 
 export function getConnectorManager({
   connectorProvider,
@@ -51,6 +53,8 @@ export function getConnectorManager({
   switch (connectorProvider) {
     case "confluence":
       return new ConfluenceConnectorManager(connectorId);
+    case "databricks":
+      return new DatabricksConnectorManager(connectorId);
     case "github":
       return new GithubConnectorManager(connectorId);
     case "google_drive":
@@ -158,6 +162,8 @@ export function createConnector({
       return SalesforceConnectorManager.create(params);
     case "gong":
       return GongConnectorManager.create(params);
+    case "databricks":
+      return DatabricksConnectorManager.create(params);
     case "discord_bot":
       return DiscordBotConnectorManager.create(params);
     default:

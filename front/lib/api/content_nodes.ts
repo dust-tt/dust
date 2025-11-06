@@ -55,6 +55,7 @@ export function getContentNodeInternalIdFromTableId(
     case "notion":
     case "bigquery":
     case "salesforce":
+    case "databricks":
       return tableId;
 
     case "confluence":

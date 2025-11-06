@@ -18,6 +18,7 @@ import { useCallback, useState } from "react";
 
 import { CreateConnectionOAuthModal } from "@app/components/data_source/CreateConnectionOAuthModal";
 import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
+import { CreateOrUpdateConnectionDatabricksModal } from "@app/components/data_source/CreateOrUpdateConnectionDatabricksModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -379,6 +380,30 @@ export const AddConnectionMenu = ({
               return (
                 <CreateOrUpdateConnectionSnowflakeModal
                   key={`snowflake-${isOpen}`}
+                  owner={owner}
+                  connectorProviderConfiguration={CONNECTOR_CONFIGURATIONS[c]}
+                  isOpen={isOpen}
+                  onClose={handleOnClose}
+                  createDatasource={(
+                    args: Omit<
+                      Parameters<
+                        typeof handleCredentialProviderManagedDataSource
+                      >[0],
+                      "suffix"
+                    >
+                  ) =>
+                    handleCredentialProviderManagedDataSource({
+                      ...args,
+                      suffix: integration?.setupWithSuffix ?? null,
+                    })
+                  }
+                  onSuccess={onCreated}
+                />
+              );
+            case "databricks":
+              return (
+                <CreateOrUpdateConnectionDatabricksModal
+                  key={`databricks-${isOpen}`}
                   owner={owner}
                   connectorProviderConfiguration={CONNECTOR_CONFIGURATIONS[c]}
                   isOpen={isOpen}

@@ -40,6 +40,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
+import { CreateOrUpdateConnectionDatabricksModal } from "@app/components/data_source/CreateOrUpdateConnectionDatabricksModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { SetupNotionPrivateIntegrationModal } from "@app/components/data_source/SetupNotionPrivateIntegrationModal";
@@ -951,6 +952,20 @@ export function ConnectorPermissionsModal({
             return (
               <CreateOrUpdateConnectionBigQueryModal
                 key={`bigquery-${modalToShow}`}
+                owner={owner}
+                connectorProviderConfiguration={connectorConfiguration}
+                isOpen={modalToShow === "edition"}
+                onClose={() => closeModal(false)}
+                dataSourceToUpdate={dataSource}
+                onSuccess={() => {
+                  setModalToShow("selection");
+                }}
+              />
+            );
+          case "databricks":
+            return (
+              <CreateOrUpdateConnectionDatabricksModal
+                key={`databricks-${modalToShow}`}
                 owner={owner}
                 connectorProviderConfiguration={connectorConfiguration}
                 isOpen={modalToShow === "edition"}

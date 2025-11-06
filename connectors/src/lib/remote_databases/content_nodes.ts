@@ -37,6 +37,7 @@ export const getContentNodeFromInternalId = (
   mimeTypes:
     | typeof INTERNAL_MIME_TYPES.BIGQUERY
     | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
+    | typeof INTERNAL_MIME_TYPES.DATABRICKS
 ): ContentNode => {
   const type = getContentNodeTypeFromInternalId(internalId);
   const { databaseName, schemaName, tableName } = parseInternalId(internalId);

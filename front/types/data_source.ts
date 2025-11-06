@@ -17,6 +17,7 @@ export const CONNECTOR_PROVIDERS = [
   "microsoft",
   "microsoft_bot",
   "notion",
+  "databricks",
   "salesforce",
   "slack",
   "slack_bot",

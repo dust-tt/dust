@@ -309,6 +309,7 @@ export const CREDENTIALS_PROVIDERS = [
   "bigquery",
   "salesforce",
   "notion",
+  "databricks",
   // LABS
   "modjo",
 ] as const;
@@ -431,6 +432,15 @@ export const NotionCredentialsSchema = t.type({
 });
 export type NotionCredentials = t.TypeOf<typeof NotionCredentialsSchema>;
 
+export const DatabricksCredentialsSchema = t.type({
+  host: t.string,
+  http_path: t.string,
+  access_token: t.string,
+});
+export type DatabricksCredentials = t.TypeOf<
+  typeof DatabricksCredentialsSchema
+>;
+
 export type ConnectionCredentials =
   | SnowflakeCredentials
   | BigQueryCredentialsWithLocation
@@ -438,7 +448,8 @@ export type ConnectionCredentials =
   | ModjoCredentials
   | HubspotCredentials
   | LinearCredentials
-  | NotionCredentials;
+  | NotionCredentials
+  | DatabricksCredentials;
 
 export function isModjoCredentials(
   credentials: ConnectionCredentials

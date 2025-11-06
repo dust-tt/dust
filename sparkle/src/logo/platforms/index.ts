@@ -7,6 +7,7 @@ export { default as ChromeLogo } from "./Chrome";
 export { default as ClaudeLogo } from "./Claude";
 export { default as CohereLogo } from "./Cohere";
 export { default as ConfluenceLogo } from "./Confluence";
+export { default as DatabricksLogo } from "./Databricks";
 export { default as DatadogLogo } from "./Datadog";
 export { default as DeepseekLogo } from "./Deepseek";
 export { default as DiscordLogo } from "./Discord";
