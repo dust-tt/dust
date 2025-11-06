@@ -10,6 +10,9 @@ export const TOGETHERAI_DEEPSEEK_V3_MODEL_ID =
   "deepseek-ai/DeepSeek-V3" as const;
 export const TOGETHERAI_DEEPSEEK_R1_MODEL_ID =
   "deepseek-ai/DeepSeek-R1" as const;
+export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID =
+  "Qwen/Qwen2.5-Coder-32B-Instruct" as const;
+
 export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigurationType =
   {
     providerId: "togetherai",
@@ -29,8 +32,6 @@ export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigur
     maximumReasoningEffort: "none",
     defaultReasoningEffort: "none",
   };
-export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID =
-  "Qwen/Qwen2.5-Coder-32B-Instruct" as const;
 export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
   {
     providerId: "togetherai",

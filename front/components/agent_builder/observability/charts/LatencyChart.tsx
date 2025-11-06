@@ -2,7 +2,6 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -17,14 +16,17 @@ import {
 } from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
+import {
+  ChartLegend,
+  legendFromConstant,
+} from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
 import {
   useAgentLatency,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
-import { format } from "date-fns/format";
 
 interface LatencyData {
   messages: number;
@@ -94,15 +96,14 @@ export function LatencyChart({
     average: 0,
   }));
 
-  const legendItems = LATENCY_LEGEND.map(({ key, label }) => ({
-    key,
-    label,
-    colorClassName: LATENCY_PALETTE[key],
-  }));
+  const legendItems = legendFromConstant(LATENCY_LEGEND, LATENCY_PALETTE, {
+    includeVersionMarker: mode === "timeRange" && versionMarkers.length > 0,
+  });
 
   return (
     <ChartContainer
       title="Latency"
+      description="Average time to complete output (seconds). Lower is better."
       isLoading={isLatencyLoading}
       errorMessage={
         isLatencyError ? "Failed to load observability data." : undefined
@@ -166,16 +167,7 @@ export function LatencyChart({
             fill="url(#fillAverage)"
             stroke="currentColor"
           />
-          {mode === "timeRange" &&
-            versionMarkers.map((versionMarker) => (
-              <ReferenceLine
-                key={format(versionMarker.timestamp, "d MMM")}
-                x={format(versionMarker.timestamp, "d MMM")}
-                strokeDasharray="5 5"
-                strokeWidth={1}
-                stroke="hsl(var(--chart-5))"
-              />
-            ))}
+          <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
         </AreaChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />

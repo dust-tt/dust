@@ -426,7 +426,13 @@ export async function runModelActivity(
     contextId: agentConfiguration.sId,
     userId: auth.user()?.sId,
   };
-  const llm = await getLLM(auth, { modelId: model.modelId }, traceContext);
+  const llm = await getLLM(auth, {
+    modelId: model.modelId,
+    temperature: agentConfiguration.model.temperature,
+    reasoningEffort: agentConfiguration.model.reasoningEffort,
+    responseFormat: agentConfiguration.model.responseFormat,
+    context: traceContext,
+  });
   const modelInteractionStartDate = performance.now();
 
   if (llm === null) {

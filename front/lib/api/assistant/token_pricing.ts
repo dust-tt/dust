@@ -96,30 +96,6 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     cache_creation_input_tokens: 3.75,
     cache_read_input_tokens: 0.3,
   },
-  "claude-3-opus-20240229": {
-    input: 15.0,
-    output: 75.0,
-    cache_creation_input_tokens: 18.75,
-    cache_read_input_tokens: 1.5,
-  },
-  "claude-3-5-sonnet-20240620": {
-    input: 3.0,
-    output: 15.0,
-    cache_creation_input_tokens: 3.75,
-    cache_read_input_tokens: 0.3,
-  },
-  "claude-3-5-sonnet-20241022": {
-    input: 3.0,
-    output: 15.0,
-    cache_creation_input_tokens: 3.75,
-    cache_read_input_tokens: 0.3,
-  },
-  "claude-3-7-sonnet-20250219": {
-    input: 3.0,
-    output: 15.0,
-    cache_creation_input_tokens: 3.75,
-    cache_read_input_tokens: 0.3,
-  },
   "claude-3-haiku-20240307": {
     input: 0.25,
     output: 1.25,
@@ -154,34 +130,6 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     input: 0.9,
     output: 2.8,
   },
-  "gemini-1.5-pro-latest": {
-    input: 3.5,
-    output: 10.5,
-  },
-  "gemini-1.5-flash-latest": {
-    input: 0.35,
-    output: 1.05,
-  },
-  "gemini-2.0-flash-lite": {
-    input: 0.075,
-    output: 0.3,
-  },
-  "gemini-2.0-flash": {
-    input: 0.15,
-    output: 0.6,
-  },
-  "gemini-2.0-flash-lite-preview-02-05": {
-    input: 0.075,
-    output: 0.3,
-  },
-  "gemini-2.5-pro-preview-03-25": {
-    input: 1.25,
-    output: 15.0,
-  },
-  "gemini-2.0-pro-exp-02-05": {
-    input: 1.25,
-    output: 15.0,
-  },
   "gemini-2.5-flash": {
     input: 0.15,
     output: 0.6,
@@ -193,14 +141,6 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
   "gemini-2.5-pro": {
     input: 1.25,
     output: 15.0,
-  },
-  "gemini-2.0-flash-thinking-exp-01-21": {
-    input: 0.15,
-    output: 0.6,
-  },
-  "gemini-2.0-flash-exp": {
-    input: 0.15,
-    output: 0.6,
   },
   "meta-llama/Llama-3.3-70B-Instruct-Turbo": {
     input: 0.88,
@@ -247,14 +187,6 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     output: 10.0,
   },
   "grok-3-mini-latest": {
-    input: 0.2,
-    output: 1.0,
-  },
-  "grok-3-fast-latest": {
-    input: 2.0,
-    output: 10.0,
-  },
-  "grok-3-mini-fast-latest": {
     input: 0.2,
     output: 1.0,
   },
@@ -350,14 +282,6 @@ const LEGACY_MODEL_PRICING: Record<string, PricingEntry> = {
   "o1-mini-2024-09-12": {
     input: 3.0,
     output: 12.0,
-  },
-  "claude-3-sonnet-20240229": {
-    input: 3.0,
-    output: 15.0,
-  },
-  "claude-3-5-sonnet-latest": {
-    input: 3.0,
-    output: 15.0,
   },
   "claude-4-sonnet-latest": {
     input: 3.0,

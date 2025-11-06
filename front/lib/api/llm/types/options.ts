@@ -11,6 +11,7 @@ export type LLMParameters = {
   context?: LLMTraceContext;
   modelId: ModelIdType;
   reasoningEffort?: ReasoningEffort | null;
+  responseFormat?: string | null;
   temperature?: number | null;
 };
 

@@ -190,7 +190,7 @@ function WebhookSourceSheetContent({
   // Create form
   const createFormDefaultValues = useMemo<CreateWebhookSourceFormData>(
     () => ({
-      name: `${asDisplayName(mode.provider)} Trigger`,
+      name: `${asDisplayName(mode.provider)} Source`,
       secret: "",
       autoGenerate: true,
       signatureHeader: "",

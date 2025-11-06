@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { cn, Spinner } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
@@ -11,6 +11,7 @@ interface ChartContainerProps {
   children: ReactNode;
   additionalControls?: ReactNode;
   statusChip?: ReactNode;
+  description?: string;
 }
 
 export function ChartContainer({
@@ -21,13 +22,19 @@ export function ChartContainer({
   children,
   additionalControls,
   statusChip,
+  description,
 }: ChartContainerProps) {
   const message = isLoading ? null : errorMessage ?? emptyMessage;
 
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div
+          className={cn(
+            "flex items-center justify-between",
+            description ? "mb-2" : "mb-4"
+          )}
+        >
           <h3 className="text-base font-medium text-foreground dark:text-foreground-night">
             {title}
           </h3>
@@ -35,6 +42,9 @@ export function ChartContainer({
         </div>
         <div className="flex items-center gap-3">{additionalControls}</div>
       </div>
+      {description && (
+        <div className="mb-3 text-xs text-muted-foreground">{description}</div>
+      )}
       {isLoading || message ? (
         <div
           className="flex items-center justify-center"

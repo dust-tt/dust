@@ -102,6 +102,7 @@ export const TriggerSchema = t.union([
     naturalLanguageDescription: t.union([t.string, t.null]),
     configuration: WebhookConfigSchema,
     webhookSourceViewSId: t.string,
+    executionPerDayLimitOverride: t.number,
     editor: t.union([t.number, t.undefined]),
   }),
 ]);

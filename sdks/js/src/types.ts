@@ -50,11 +50,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "o3-mini"
   | "o4-mini"
   | "claude-3-5-haiku-20241022"
-  | "claude-3-5-sonnet-20240620"
-  | "claude-3-5-sonnet-20241022"
-  | "claude-3-7-sonnet-20250219"
   | "claude-3-haiku-20240307"
-  | "claude-3-opus-20240229"
   | "claude-4-opus-20250514"
   | "claude-4-sonnet-20250514"
   | "claude-haiku-4-5-20251001"
@@ -63,15 +59,6 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "mistral-medium"
   | "mistral-small-latest"
   | "codestral-latest"
-  | "gemini-1.5-pro-latest" // DEPRECATED
-  | "gemini-1.5-flash-latest" // DEPRECATED
-  | "gemini-2.0-flash" // DEPRECATED
-  | "gemini-2.0-flash-lite" // DEPRECATED
-  | "gemini-2.5-pro-preview-03-25" // DEPRECATED
-  | "gemini-2.0-flash-exp" // DEPRECATED
-  | "gemini-2.0-flash-lite-preview-02-05" // DEPRECATED
-  | "gemini-2.0-pro-exp-02-05" // DEPRECATED
-  | "gemini-2.0-flash-thinking-exp-01-21" // DEPRECATED
   | "gemini-2.5-pro"
   | "gemini-2.5-flash"
   | "gemini-2.5-flash-lite"
@@ -87,8 +74,6 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
-  | "grok-3-fast-latest" // xAI
-  | "grok-3-mini-fast-latest" // xAI
   | "grok-4-latest" // xAI
   | "grok-4-fast-non-reasoning-latest"
   | "grok-4-fast-reasoning-latest"
@@ -661,7 +646,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "elevenlabs_tool"
   | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
-  | "gemini_image_generation"
   | "google_sheets_tool"
   | "hootl_dev_webhooks"
   | "hootl_subscriptions"
@@ -2633,13 +2617,23 @@ export type FileUploadedRequestResponseType = z.infer<
 >;
 
 export const PublicFrameResponseBodySchema = z.object({
-  content: z.string().optional(),
-  file: FileTypeSchema,
+  accessToken: z.string(),
   conversationUrl: z.string().nullable(),
+  file: FileTypeSchema,
 });
 
 export type PublicFrameResponseBodyType = z.infer<
   typeof PublicFrameResponseBodySchema
+>;
+
+export const PublicVizContentResponseBodySchema = z.object({
+  content: z.string(),
+  contentType: z.string(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export type PublicVizContentResponseBodyType = z.infer<
+  typeof PublicVizContentResponseBodySchema
 >;
 
 export const MembershipOriginType = FlexibleEnumSchema<
@@ -2774,6 +2768,8 @@ export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 const OAuthProviderSchema = FlexibleEnumSchema<
   | "confluence"
   | "confluence_tools"
+  | "discord"
+  | "fathom"
   | "freshservice"
   | "github"
   | "google_drive"
@@ -2791,7 +2787,6 @@ const OAuthProviderSchema = FlexibleEnumSchema<
   | "hubspot"
   | "mcp"
   | "mcp_static"
-  | "discord"
 >();
 
 const InternalAllowedIconSchema = FlexibleEnumSchema<

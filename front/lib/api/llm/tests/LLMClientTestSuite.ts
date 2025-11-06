@@ -36,18 +36,22 @@ export abstract class LLMClientTestSuite {
 
   protected abstract getTestConfig(modelId: ModelIdType): TestConfig[];
   protected abstract getSupportedConversations(
-    modelId: ModelIdType
+    modelId: ModelIdType,
+    config: TestConfig
   ): TestConversation[];
 
   protected getConversationsToRun(
-    modelId: ModelIdType
+    modelId: ModelIdType,
+    config: TestConfig
   ): RunnableTestConversation[] {
-    return this.getSupportedConversations(modelId).map((conversation) => ({
-      name: conversation.name,
-      run: async (config: TestConfig) => {
-        await runConversation(conversation, config);
-      },
-    }));
+    return this.getSupportedConversations(modelId, config).map(
+      (conversation) => ({
+        name: conversation.name,
+        run: async (config: TestConfig) => {
+          await runConversation(conversation, config);
+        },
+      })
+    );
   }
 
   public generateTests(): void {
@@ -55,16 +59,18 @@ export abstract class LLMClientTestSuite {
       this.models.forEach((model) => {
         describe(`Model: ${model}`, () => {
           this.getTestConfig(model).forEach((config) => {
-            describe(`Config: temperature=${config.temperature}, reasoningEffort=${config.reasoningEffort}`, () => {
-              this.getConversationsToRun(model).forEach((conversation) => {
-                it(
-                  `should handle: ${conversation.name}`,
-                  async () => {
-                    await conversation.run(config);
-                  },
-                  TIMEOUT
-                );
-              });
+            describe(`Config: temperature=${config.temperature}, reasoningEffort=${config.reasoningEffort}, responseFormat=${config.testStructuredOutputKey}`, () => {
+              this.getConversationsToRun(model, config).forEach(
+                (conversation) => {
+                  it(
+                    `should handle: ${conversation.name}`,
+                    { concurrent: true, timeout: TIMEOUT },
+                    async () => {
+                      await conversation.run(config);
+                    }
+                  );
+                }
+              );
             });
           });
         });

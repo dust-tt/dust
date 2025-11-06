@@ -36,7 +36,7 @@ export function WebhookRequestStatusBadge({
   return (
     <Chip
       color={config.variant}
-      size="sm"
+      size="xs"
       label={config.label}
       className="select-none"
     />

@@ -1,6 +1,11 @@
-import { expect } from "vitest";
+import { assert, expect } from "vitest";
 
 import { getLLM } from "@app/lib/api/llm";
+import type { TestStructuredOutputKey } from "@app/lib/api/llm/tests/schemas";
+import {
+  TEST_RESPONSE_FORMATS,
+  TEST_STRUCTURED_OUTPUT_SCHEMAS,
+} from "@app/lib/api/llm/tests/schemas";
 import type {
   ResponseChecker,
   TestConfig,
@@ -11,7 +16,7 @@ import type {
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, safeParseJSON } from "@app/types";
 
 const SYSTEM_PROMPT = "You are a helpful assistant.";
 
@@ -88,10 +93,10 @@ function userToolCall(
   };
 }
 
-function containsTextChecker(substring: string): ResponseChecker {
+function containsTextChecker(anyString: string[]): ResponseChecker {
   return {
     type: "text_contains",
-    substring,
+    anyString,
   };
 }
 
@@ -106,6 +111,13 @@ function hasToolCall(
   };
 }
 
+function checkJsonResponse(key: TestStructuredOutputKey): ResponseChecker {
+  return {
+    type: "check_json_output",
+    schema: TEST_STRUCTURED_OUTPUT_SCHEMAS[key],
+  };
+}
+
 export const TEST_CONVERSATIONS: TestConversation[] = [
   {
     id: "simple-math",
@@ -114,7 +126,7 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
     conversationActions: [
       userMessage("Be concise. What is 2+2? Just give the number."),
     ],
-    expectedInResponses: [containsTextChecker("4")],
+    expectedInResponses: [containsTextChecker(["4"])],
   },
   {
     id: "yes-no-question",
@@ -123,7 +135,7 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
     conversationActions: [
       userMessage("Answer only yes or no. Is Paris the capital of France?"),
     ],
-    expectedInResponses: [containsTextChecker("yes")],
+    expectedInResponses: [containsTextChecker(["yes"])],
   },
   {
     id: "multi-step-conversation",
@@ -133,7 +145,7 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
       userMessage("Be very brief. Hello my name is Stan ! How are you?"),
       userMessage("What is my name ?"),
     ],
-    expectedInResponses: [null, containsTextChecker("Stan")],
+    expectedInResponses: [null, containsTextChecker(["Stan"])],
   },
   {
     id: "tool-usage",
@@ -145,7 +157,7 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
     ],
     expectedInResponses: [
       hasToolCall("GetUserId", "Stan"),
-      containsTextChecker("88888"),
+      containsTextChecker(["88888", "88 888"]),
     ],
     specifications: [
       {
@@ -174,7 +186,35 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
         "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/481px-Cat03.jpg"
       ),
     ],
-    expectedInResponses: [containsTextChecker("cat")],
+    expectedInResponses: [containsTextChecker(["cat"])],
+  },
+];
+
+export const TEST_STRUCTURED_OUTPUT_CONVERSATIONS: (Omit<
+  TestConversation,
+  "id"
+> & { id: TestStructuredOutputKey })[] = [
+  {
+    id: "user-profile",
+    name: "Structured output - user profile",
+    systemPrompt: SYSTEM_PROMPT,
+    conversationActions: [
+      userMessage(
+        "Extract the following user information: Name is John Doe, email is john@example.com, age is 30, and the account is active."
+      ),
+    ],
+    expectedInResponses: [checkJsonResponse("user-profile")],
+  },
+  {
+    id: "data-extraction",
+    name: "Structured output - user profile",
+    systemPrompt: SYSTEM_PROMPT,
+    conversationActions: [
+      userMessage(
+        "Extract information from this document: 'Machine Learning Basics by Dr. Sarah Johnson, published January 15, 2024. This comprehensive guide covers neural networks, decision trees, and clustering algorithms.'"
+      ),
+    ],
+    expectedInResponses: [checkJsonResponse("data-extraction")],
   },
 ];
 
@@ -187,6 +227,9 @@ export const runConversation = async (
     modelId: config.modelId,
     temperature: config.temperature,
     reasoningEffort: config.reasoningEffort,
+    responseFormat: config.testStructuredOutputKey
+      ? JSON.stringify(TEST_RESPONSE_FORMATS[config.testStructuredOutputKey])
+      : null,
     bypassFeatureFlag: true,
   });
   if (llm === null) {
@@ -237,7 +280,7 @@ export const runConversation = async (
           break;
         case "reasoning_generated":
           fullReasoning = event.content.text;
-          const encryptedContent = event.metadata.encrypted_content ?? "";
+          const { clientId: _, modelId: __, ...otherMetadata } = event.metadata;
           conversationHistory.push({
             role: "assistant",
             name: "Assistant",
@@ -246,9 +289,7 @@ export const runConversation = async (
                 type: "reasoning",
                 value: {
                   reasoning: event.content.text,
-                  metadata: JSON.stringify({
-                    encrypted_content: encryptedContent,
-                  }),
+                  metadata: JSON.stringify(otherMetadata),
                   tokens: 12,
                   provider: config.provider,
                 },
@@ -290,9 +331,11 @@ export const runConversation = async (
     expect(fullResponse, "Full response should match deltas").toBe(
       responseFromDeltas
     );
-    expect(fullReasoning, "Full reasoning should match deltas").toBe(
-      reasoningFromDeltas
-    );
+    if (reasoningFromDeltas.length > 0) {
+      // sometimes the final reasoning message is just a summary, so reasoning deltas
+      // and end message may differ: we cannot just check equality
+      expect(fullReasoning.length).toBeGreaterThan(0);
+    }
     // Google answers 0 for short answers, so let's check that we got at least 1 total token
     if (outputTokens === 0) {
       expect(totalTokens).not.toBeNull();
@@ -305,9 +348,13 @@ export const runConversation = async (
     if (expectedInResponse !== null) {
       switch (expectedInResponse.type) {
         case "text_contains":
-          expect(fullResponse.toLowerCase()).toContain(
-            expectedInResponse.substring.toLowerCase()
+          const expected = expectedInResponse.anyString.map((s) =>
+            s.toLowerCase()
           );
+          expect(
+            expected.some((str) => fullResponse.toLowerCase().includes(str)),
+            `Response should contain at least one of the expected substrings ${expected}`
+          ).toBe(true);
           break;
         case "has_tool_call":
           const { toolName, expectedArguments } = expectedInResponse;
@@ -316,6 +363,15 @@ export const runConversation = async (
               tc.name === toolName && tc.arguments.includes(expectedArguments)
           );
           expect(matchingToolCall).toBeDefined();
+          break;
+        case "check_json_output":
+          const fullResponseJson = safeParseJSON(fullResponse);
+          assert(fullResponseJson.isOk());
+
+          const schemaValidationResult = expectedInResponse.schema.safeParse(
+            fullResponseJson.value
+          );
+          expect(schemaValidationResult.success).toBe(true);
           break;
         default:
           assertNever(expectedInResponse);

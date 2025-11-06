@@ -20,6 +20,7 @@ export abstract class LLM {
   protected modelId: ModelIdType;
   protected temperature: number | null;
   protected reasoningEffort: ReasoningEffort | null;
+  protected responseFormat: string | null;
   protected bypassFeatureFlag: boolean;
   protected metadata: LLMClientMetadata;
 
@@ -36,12 +37,14 @@ export abstract class LLM {
       clientId,
       modelId,
       reasoningEffort = "none",
+      responseFormat = null,
       temperature = AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced,
     }: LLMParameters & { clientId: string }
   ) {
     this.modelId = modelId;
     this.temperature = temperature;
     this.reasoningEffort = reasoningEffort;
+    this.responseFormat = responseFormat;
     this.bypassFeatureFlag = bypassFeatureFlag;
     this.metadata = { clientId, modelId };
 
@@ -74,6 +77,7 @@ export abstract class LLM {
       modelId: this.modelId,
       prompt,
       reasoningEffort: this.reasoningEffort,
+      responseFormat: this.responseFormat,
       specifications,
       temperature: this.temperature,
     });

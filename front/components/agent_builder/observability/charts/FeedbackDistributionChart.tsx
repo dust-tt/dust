@@ -2,7 +2,6 @@ import {
   CartesianGrid,
   Line,
   LineChart,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -17,7 +16,11 @@ import {
 } from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
+import {
+  ChartLegend,
+  legendFromConstant,
+} from "@app/components/agent_builder/observability/shared/ChartLegend";
+import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import {
   filterTimeSeriesByVersionWindow,
   padSeriesToTimeRange,
@@ -26,7 +29,6 @@ import {
   useAgentFeedbackDistribution,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
-import { format } from "date-fns/format";
 
 interface FeedbackDistributionChartProps {
   workspaceId: string;
@@ -55,11 +57,13 @@ export function FeedbackDistributionChart({
     disabled: !workspaceId || !agentConfigurationId,
   });
 
-  const legendItems = FEEDBACK_DISTRIBUTION_LEGEND.map(({ key, label }) => ({
-    key,
-    label,
-    colorClassName: FEEDBACK_DISTRIBUTION_PALETTE[key],
-  }));
+  const legendItems = legendFromConstant(
+    FEEDBACK_DISTRIBUTION_LEGEND,
+    FEEDBACK_DISTRIBUTION_PALETTE,
+    {
+      includeVersionMarker: mode === "timeRange" && versionMarkers.length > 0,
+    }
+  );
 
   const filteredData = filterTimeSeriesByVersionWindow(
     feedbackDistribution,
@@ -77,6 +81,7 @@ export function FeedbackDistributionChart({
   return (
     <ChartContainer
       title="Feedback Trends"
+      description="Daily counts of positive and negative feedback."
       isLoading={isFeedbackDistributionLoading}
       errorMessage={
         isFeedbackDistributionError
@@ -139,16 +144,7 @@ export function FeedbackDistributionChart({
             strokeWidth={2}
             dot={false}
           />
-          {mode === "timeRange" &&
-            versionMarkers.map((versionMarker) => (
-              <ReferenceLine
-                key={format(versionMarker.timestamp, "d MMM")}
-                x={versionMarker.timestamp}
-                strokeDasharray="5 5"
-                strokeWidth={1}
-                stroke="hsl(var(--chart-5))"
-              />
-            ))}
+          <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
         </LineChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />

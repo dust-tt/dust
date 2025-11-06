@@ -103,14 +103,11 @@ export async function getBuilderNameSuggestions(
     operationType: "name_suggestion",
     userId: auth.user()?.sId,
   };
-  const llm = await getLLM(
-    auth,
-    {
-      modelId: "mistral-small-latest",
-      bypassFeatureFlag: true,
-    },
-    traceContext
-  );
+  const llm = await getLLM(auth, {
+    modelId: "mistral-small-latest",
+    bypassFeatureFlag: true,
+    context: traceContext,
+  });
 
   if (llm === null) {
     return new Err(new Error("Model not found"));

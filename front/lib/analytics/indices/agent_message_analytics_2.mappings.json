@@ -32,6 +32,9 @@
         "type": "text",
         "index": "false"
       },
+      "version": {
+        "type": "keyword"
+      },
       "tokens": {
         "type": "object",
         "properties": {

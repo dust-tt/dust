@@ -13,7 +13,6 @@ import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/op
 import { XaiLLM } from "@app/lib/api/llm/clients/xai";
 import { isXaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
-import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -26,8 +25,14 @@ async function hasFeatureFlag(auth: Authenticator): Promise<boolean> {
 
 export async function getLLM(
   auth: Authenticator,
-  { modelId, temperature, reasoningEffort, bypassFeatureFlag }: LLMParameters,
-  context?: LLMTraceContext
+  {
+    modelId,
+    temperature,
+    reasoningEffort,
+    responseFormat,
+    bypassFeatureFlag,
+    context,
+  }: LLMParameters
 ): Promise<LLM | null> {
   const modelConfiguration = SUPPORTED_MODEL_CONFIGS.find(
     (config) => config.modelId === modelId
@@ -66,6 +71,7 @@ export async function getLLM(
       modelId,
       temperature,
       reasoningEffort,
+      responseFormat,
       bypassFeatureFlag,
       context,
     });

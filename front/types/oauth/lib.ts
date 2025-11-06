@@ -28,6 +28,7 @@ export const OAUTH_PROVIDERS = [
   "confluence",
   "confluence_tools",
   "discord",
+  "fathom",
   "freshservice",
   "github",
   "google_drive",
@@ -51,6 +52,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   confluence_tools: "Confluence Tools",
   discord: "Discord",
+  fathom: "Fathom",
   freshservice: "Freshservice",
   github: "GitHub",
   gmail: "Gmail",
@@ -197,6 +199,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "jira":
     case "mcp":
     case "discord":
+    case "fathom":
       return null;
     case "mcp_static":
       if (useCase === "personal_actions" || useCase === "platform_actions") {

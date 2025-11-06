@@ -18,7 +18,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { ContentFragmentInputWithFileIdType } from "@app/types";
-import { assertNever, errorToString, normalizeError } from "@app/types";
+import { assertNever, errorToString } from "@app/types";
 import type { WebhookTriggerType } from "@app/types/assistant/triggers";
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
@@ -237,54 +237,54 @@ export async function runTriggerWebhookActivity({
       continue;
     }
 
+    const rateLimiterRes = await checkTriggerForExecutionPerDayLimit(auth, {
+      trigger,
+    });
+    if (rateLimiterRes.isErr()) {
+      const errorMessage = rateLimiterRes.error.message;
+      await webhookRequest.markRelatedTrigger({
+        trigger,
+        status: "rate_limited",
+        errorMessage,
+      });
+      logger.warn(
+        { workspaceId, webhookRequestId, triggerId: trigger.sId },
+        errorMessage
+      );
+      continue;
+    }
+
     if (!filter) {
       // No filter, add the trigger
       filteredTriggers.push(trigger);
-    } else {
-      try {
-        // Filter triggers by payload matching
-        const parsedFilter = parseMatcherExpression(filter);
-        const r = matchPayload(body, parsedFilter);
-        if (r) {
-          // Filter matches, add the trigger if not rate limited
-          const rateLimiterRes = await checkTriggerForExecutionPerDayLimit(
-            auth,
-            {
-              trigger,
-            }
-          );
-          if (rateLimiterRes.isErr()) {
-            const errorMessage = rateLimiterRes.error.message;
-            await webhookRequest.markRelatedTrigger({
-              trigger,
-              status: "rate_limited",
-              errorMessage,
-            });
-            logger.warn(
-              { workspaceId, webhookRequestId, triggerId: trigger.sId },
-              errorMessage
-            );
-          } else {
-            filteredTriggers.push(trigger);
-          }
-        } else {
-          // Filter doesn't match, skip the trigger but store in the mapping list.
-          await webhookRequest.markRelatedTrigger({
-            trigger,
-            status: "not_matched",
-          });
-        }
-      } catch (err) {
-        logger.error(
-          {
-            triggerId: trigger.id,
-            triggerName: trigger.name,
-            filter,
-            err: normalizeError(err),
-          },
-          "Invalid filter expression in webhook trigger"
-        );
-      }
+      continue;
+    }
+
+    const tags = [
+      `provider:${provider}`,
+      `workspace_id:${workspaceId}`,
+      `trigger_id:${trigger.sId}`,
+    ];
+    statsDClient.increment("webhook_filter.events_processed.count", 1, tags);
+
+    const parsedFilterResult = parseMatcherExpression(filter);
+    if (parsedFilterResult.isErr()) {
+      logger.error(
+        {
+          triggerId: trigger.id,
+          triggerName: trigger.name,
+          filter,
+          err: parsedFilterResult.error,
+        },
+        "Invalid filter expression in webhook trigger"
+      );
+      continue;
+    }
+
+    const payloadMatchesFilter = matchPayload(body, parsedFilterResult.value);
+    if (payloadMatchesFilter) {
+      statsDClient.increment("webhook_filter.events_passed.count", 1, tags);
+      filteredTriggers.push(trigger);
     }
   }
 

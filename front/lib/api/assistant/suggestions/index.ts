@@ -16,12 +16,12 @@ import type {
   Result,
   WorkspaceType,
 } from "@app/types";
+import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types";
 import {
   assertNever,
   BuilderEmojiSuggestionsResponseBodySchema,
   BuilderSuggestionsResponseBodySchema,
   Err,
-  GEMINI_2_FLASH_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   Ok,
@@ -43,7 +43,7 @@ function getModelForSuggestionType(
       return getLargeWhitelistedModel(owner);
 
     case "autocompletion":
-      return GEMINI_2_FLASH_MODEL_CONFIG;
+      return GEMINI_2_5_FLASH_MODEL_CONFIG;
 
     case "name":
     case "description":
