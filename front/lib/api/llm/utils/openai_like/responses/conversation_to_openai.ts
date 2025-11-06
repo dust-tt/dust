@@ -1,5 +1,3 @@
-import assert from "node:assert";
-
 import type {
   FunctionTool,
   ResponseFormatTextJSONSchemaConfig,
@@ -14,7 +12,10 @@ import type {
 } from "openai/resources/shared";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { extractIdFromMetadata } from "@app/lib/api/llm/utils";
+import {
+  extractEncryptedContentFromMetadata,
+  extractIdFromMetadata,
+} from "@app/lib/api/llm/utils";
 import type {
   ModelConversationTypeMultiActions,
   ReasoningEffort,
@@ -58,12 +59,16 @@ function toAssistantInputItem(
         arguments: content.value.arguments,
       };
     case "reasoning":
-      assert(content.value.reasoning, "Expected non-null reasoning content");
+      const reasoning = content.value.reasoning;
       const id = extractIdFromMetadata(content.value.metadata);
+      const encryptedContent = extractEncryptedContentFromMetadata(
+        content.value.metadata
+      );
       return {
         id,
         type: "reasoning",
-        summary: [{ type: "summary_text", text: content.value.reasoning }],
+        summary: reasoning ? [{ type: "summary_text", text: reasoning }] : [],
+        ...(encryptedContent ? { encrypted_content: encryptedContent } : {}),
       };
     case "error":
       return {

@@ -19,7 +19,7 @@ export const handleError = (
 // The function is private so we can't reuse it.
 function shouldRetry(error: APIError): boolean {
   // Note this is not a standard header.
-  const shouldRetryHeader = error.headers?.["x-should-retry"];
+  const shouldRetryHeader = error.headers?.get("x-should-retry");
 
   // If the server explicitly says whether or not to retry, obey.
   if (shouldRetryHeader === "true") {
