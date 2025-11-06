@@ -1,8 +1,14 @@
 import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { AshbyCandidateSearchRequest } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
-import { AshbyCandidateSearchResponseSchema } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
+import type {
+  AshbyCandidateSearchRequest,
+  AshbyReportSynchronousRequest,
+} from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
+import {
+  AshbyCandidateSearchResponseSchema,
+  AshbyReportSynchronousResponseSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
@@ -98,6 +104,7 @@ export class AshbyClient {
     if (!parseResult.success) {
       logger.error(
         {
+          rawData,
           error: parseResult.error.message,
         },
         "[Ashby] Invalid API response format"
@@ -110,6 +117,14 @@ export class AshbyClient {
     }
 
     return new Ok(parseResult.data);
+  }
+
+  async getReportData(request: AshbyReportSynchronousRequest) {
+    return this.postRequest(
+      "report.synchronous",
+      request,
+      AshbyReportSynchronousResponseSchema
+    );
   }
 
   async searchCandidates(request: AshbyCandidateSearchRequest) {
