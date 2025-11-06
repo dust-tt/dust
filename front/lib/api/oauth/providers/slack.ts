@@ -7,7 +7,6 @@ import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
-import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -94,12 +93,6 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
           // TODO: This is temporary until our Slack app scope is approved.
           if (extraConfig?.slack_bot_mcp_feature_flag) {
             scopes.push("reactions:read", "reactions:write");
-          }
-
-          // TODO: This is temporary until our Slack app scope is approved.
-          const currentRegion = regionsConfig.getCurrentRegion();
-          if (currentRegion === "europe-west1") {
-            scopes.push("files:write");
           }
 
           return {
