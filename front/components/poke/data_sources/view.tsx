@@ -160,6 +160,7 @@ export function ViewDataSourceTable({
                         <CheckConnectorStuck
                           owner={owner}
                           dsId={dataSource.sId}
+                          isRunning={isRunning}
                         />
                       </PokeTableCell>
                     </PokeTableRow>
@@ -329,9 +330,14 @@ function RawObjectsModal({
 interface CheckConnectorStuckProps {
   owner: WorkspaceType;
   dsId: string;
+  isRunning: boolean;
 }
 
-function CheckConnectorStuck({ owner, dsId }: CheckConnectorStuckProps) {
+function CheckConnectorStuck({
+  owner,
+  dsId,
+  isRunning,
+}: CheckConnectorStuckProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<CheckStuckResponseBody | null>(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -357,6 +363,10 @@ function CheckConnectorStuck({ owner, dsId }: CheckConnectorStuckProps) {
     }
   };
 
+  if (!isRunning) {
+    return <Chip label="Not Running" color="primary" size="xs" />;
+  }
+
   if (!result) {
     return (
       <Button
@@ -364,7 +374,7 @@ function CheckConnectorStuck({ owner, dsId }: CheckConnectorStuckProps) {
         label={isLoading ? "Checking..." : "Check"}
         icon={isLoading ? Spinner : MagnifyingGlassIcon}
         disabled={isLoading}
-        onClick={checkStuck}
+        onClick={!isLoading && !isRunning ? checkStuck : undefined}
         size="xs"
       />
     );
