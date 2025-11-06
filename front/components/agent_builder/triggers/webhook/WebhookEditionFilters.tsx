@@ -1,4 +1,11 @@
-import { ContentMessage, Label, Spinner, TextArea } from "@dust-tt/sparkle";
+import {
+  Button,
+  ContentMessage,
+  ContentMessageInline,
+  Label,
+  Spinner,
+  TextArea,
+} from "@dust-tt/sparkle";
 import Link from "next/link";
 import React, { useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
@@ -6,7 +13,10 @@ import { useController, useFormContext, useWatch } from "react-hook-form";
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
-import { useWebhookFilterGenerator } from "@app/lib/swr/agent_triggers";
+import {
+  useTriggerEstimation,
+  useWebhookFilterGenerator,
+} from "@app/lib/swr/agent_triggers";
 import type { LightWorkspaceType } from "@app/types";
 import { normalizeError } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
@@ -54,7 +64,38 @@ export function WebhookEditionFilters({
     null
   );
 
+  const [estimationData, setEstimationData] = useState<{
+    totalCount: number;
+    matchingCount: number;
+  } | null>(null);
+  const [isComputingEstimation, setIsComputingEstimation] = useState(false);
+
+  const computeEstimation = useTriggerEstimation({
+    workspaceId: workspace.sId,
+  });
+
   const generateFilter = useWebhookFilterGenerator({ workspace });
+
+  const handleComputeEstimation = async () => {
+    if (!webhookSourceView) {
+      return;
+    }
+
+    setIsComputingEstimation(true);
+    try {
+      const result = await computeEstimation({
+        filter: filterField.value,
+        webhookSourceId: webhookSourceView.webhookSource.sId,
+        selectedEvent,
+      });
+
+      if (result) {
+        setEstimationData(result);
+      }
+    } finally {
+      setIsComputingEstimation(false);
+    }
+  };
 
   const triggerFilterGeneration = useDebounceWithAbort(
     async (txt: string, signal: AbortSignal) => {
@@ -164,7 +205,7 @@ export function WebhookEditionFilters({
         </>
       )}
 
-      {webhookSourceView?.provider === null && (
+      {!webhookSourceView?.provider && (
         <div className="space-y-2">
           <Label htmlFor="webhook-filter-description">
             Filter Expression (optional)
@@ -208,6 +249,36 @@ export function WebhookEditionFilters({
       )}
 
       <div className="pt-2">{filterGenerationResult}</div>
+
+      {webhookSourceView && (
+        <Button
+          label="Compute stats"
+          size="sm"
+          variant="outline"
+          onClick={handleComputeEstimation}
+          disabled={isComputingEstimation || !isEditor}
+          icon={isComputingEstimation ? Spinner : undefined}
+        />
+      )}
+
+      {estimationData && (
+        <>
+          {estimationData.totalCount < 10 ? (
+            <ContentMessageInline variant="warning">
+              Not enough data to compute statistics. Only{" "}
+              {estimationData.totalCount} event
+              {estimationData.totalCount !== 1 ? "s" : ""} found in the last 24
+              hours. At least 10 events are needed for estimation.
+            </ContentMessageInline>
+          ) : (
+            <ContentMessageInline variant="info">
+              According to the most recent data, this trigger would have created{" "}
+              {estimationData.matchingCount} conversations over{" "}
+              {estimationData.totalCount} events in the last 24 hours.
+            </ContentMessageInline>
+          )}
+        </>
+      )}
     </div>
   );
 }

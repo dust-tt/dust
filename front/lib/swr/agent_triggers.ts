@@ -20,7 +20,8 @@ import type {
   PostWebhookFilterGeneratorResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/webhook_filter_generator";
 import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
-import type { LightWorkspaceType } from "@app/types";
+import type { GetTriggerEstimationResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/trigger-estimation";
+import type { LightWorkspaceType, ModelId } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 
@@ -321,4 +322,56 @@ export function useRemoveTriggerSubscriber({
   );
 
   return removeSubscriber;
+}
+
+export function useTriggerEstimation({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const computeEstimation = useCallback(
+    async ({
+      filter,
+      webhookSourceId,
+      selectedEvent,
+    }: {
+      filter?: string | null;
+      webhookSourceId?: string | null;
+      selectedEvent?: string | null;
+    }): Promise<GetTriggerEstimationResponseBody | null> => {
+      if (!webhookSourceId) {
+        return null;
+      }
+
+      try {
+        const params = new URLSearchParams();
+        if (filter && filter.trim()) {
+          params.append("filter", filter);
+        }
+        if (selectedEvent) {
+          params.append("event", selectedEvent);
+        }
+
+        const queryString = params.toString();
+        const url = `/api/w/${workspaceId}/webhook_sources/${webhookSourceId}/trigger-estimation${
+          queryString ? `?${queryString}` : ""
+        }`;
+
+        const response: GetTriggerEstimationResponseBody = await fetcher(url);
+        return response;
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to compute estimation",
+          description: `Error: ${normalizeError(error).message}`,
+        });
+        return null;
+      }
+    },
+    [workspaceId, sendNotification]
+  );
+
+  return computeEstimation;
 }

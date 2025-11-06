@@ -107,7 +107,7 @@ function WebhookEditionExecutionLimit({
   return (
     <div className="flex flex-col space-y-1">
       <Label htmlFor="execution-limit">Rate limits</Label>
-      <div className="pb-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         <p>Limits are set on a 24 hours window. </p>
         <p>
           Control how many messages this trigger can send per day. This prevents
