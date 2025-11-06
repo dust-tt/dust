@@ -116,13 +116,8 @@ const InputBarContainer = ({
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
 
   // Draft persistence
-  const {
-    saveDraft,
-    loadDraft,
-    clearDraft,
-    hasDraft,
-  } = useDraftPersistence({
-    conversationId: conversationId || null,
+  const { saveDraft, loadDraft, clearDraft } = useDraftPersistence({
+    conversationId: conversationId ?? null,
     enabled: true,
   });
 
@@ -284,19 +279,25 @@ const InputBarContainer = ({
     // Only show notification if there's actual content in the draft
     if (draft && !disableAutoFocus) {
       // Check if draft has meaningful content (not just empty paragraphs)
-      const hasContent = draft.content &&
+      const hasContent =
+        draft.content &&
         Array.isArray(draft.content) &&
         draft.content.some((node) => {
           // Check if the node has actual text content
-          if (node.type === 'paragraph' && node.content && Array.isArray(node.content) && node.content.length > 0) {
+          if (
+            node.type === "paragraph" &&
+            node.content &&
+            Array.isArray(node.content) &&
+            node.content.length > 0
+          ) {
             return true;
           }
           // Check for mentions or other content types
-          if (node.type === 'mention') {
+          if (node.type === "mention") {
             return true;
           }
           // Check for pasted attachments
-          if (node.type === 'pastedAttachment') {
+          if (node.type === "pastedAttachment") {
             return true;
           }
           return false;
@@ -312,7 +313,7 @@ const InputBarContainer = ({
         }, 100);
       }
     }
-    return draft || undefined;
+    return draft ?? undefined;
   });
 
   const { editor, editorService } = useCustomEditor({
