@@ -8,7 +8,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { format } from "date-fns/format";
 import { useEffect } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -22,7 +21,7 @@ interface ObservabilityFilterSelectorProps {
 }
 
 function getVersionValue(versionMarker: AgentVersionMarker) {
-  return `v${versionMarker.version}: ${format(versionMarker.timestamp, "Pp")}`;
+  return `v${versionMarker.version}: ${versionMarker.timestamp}`;
 }
 
 export function ObservabilityFilterSelector({

@@ -1,6 +1,10 @@
 import type { estypes } from "@elastic/elasticsearch";
 
-import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import {
+  bucketsToArray,
+  formatUTCDateFromMillis,
+  searchAnalytics,
+} from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -9,7 +13,7 @@ const DEFAULT_TIMESTAMP_MS = 0;
 
 export type AgentVersionMarker = {
   version: string;
-  timestamp: number;
+  timestamp: string;
 };
 
 type VersionBucket = {
@@ -65,10 +69,13 @@ export async function fetchVersionMarkers(
 
       return {
         version: b.key,
-        timestamp: timestampMs,
+        timestamp: formatUTCDateFromMillis(timestampMs),
       };
     })
-    .sort((a, b) => a.timestamp - b.timestamp);
+    .sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
 
   return new Ok(versionMarkers);
 }
