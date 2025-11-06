@@ -123,7 +123,7 @@ async function backfillAgentAnalytics(
                   {
                     model: UserModel,
                     as: "user",
-                    required: true,
+                    required: false,
                   },
                 ],
               },
