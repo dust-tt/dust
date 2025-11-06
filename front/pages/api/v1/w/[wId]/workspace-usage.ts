@@ -73,7 +73,6 @@ import { assertNever } from "@app/types";
  *         description: |
  *           The name of the usage table to retrieve:
  *           - "users": The list of users categorized by their activity level.
- *           - "inactive_users": The of users that didn't sent any messages
  *           - "assistant_messages": The list of messages sent by users including the mentioned agents.
  *           - "builders": The list of builders categorized by their activity level.
  *           - "assistants": The list of workspace agents and their corresponding usage.
@@ -81,7 +80,7 @@ import { assertNever } from "@app/types";
  *           - "all": A concatenation of all the above tables.
  *         schema:
  *           type: string
- *           enum: [users, inactive_users, assistant_messages, builders, assistants, feedback, all]
+ *           enum: [users, assistant_messages, builders, assistants, feedback, all]
  *       - in: query
  *         name: includeInactive
  *         required: false
