@@ -80,7 +80,7 @@ export function startServer(port: number) {
         const clientIp = req.ip;
         const remainingRequests = await rateLimiter({
           key: `rate_limit:${clientIp}`,
-          maxPerTimeframe: 1000,
+          maxPerTimeframe: req.path.endsWith("/notion") ? 3000 : 1000,
           timeframeSeconds: 60,
           logger: logger,
         });
