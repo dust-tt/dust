@@ -87,7 +87,7 @@ export async function storeAgentAnalyticsActivity(
           {
             model: UserModel,
             as: "user",
-            required: true,
+            required: false,
           },
         ],
       },
