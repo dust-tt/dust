@@ -656,7 +656,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_transcripts"
   | "legacy_dust_apps"
   | "llm_router_direct_requests"
-  | "microsoft_teams_bot"
   | "monday_tool"
   | "noop_model_feature"
   | "notion_private_integration"
