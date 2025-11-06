@@ -7,8 +7,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  MagnifyingGlassIcon,
   ScrollArea,
   ScrollBar,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import Link from "next/link";
@@ -27,22 +29,26 @@ import {
   formatTimestampToFriendlyDate,
   timeAgoFrom,
 } from "@app/lib/utils";
+import type { CheckStuckResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/check-stuck";
 import type {
   ConnectorType,
   CoreAPIDataSource,
   DataSourceType,
+  WorkspaceType,
 } from "@app/types";
 
 export function ViewDataSourceTable({
   connector,
   coreDataSource,
   dataSource,
+  owner,
   temporalWorkspace,
   temporalRunningWorkflows,
 }: {
   connector: ConnectorType | null;
   coreDataSource: CoreAPIDataSource;
   dataSource: DataSourceType;
+  owner: WorkspaceType;
   temporalWorkspace: string;
   temporalRunningWorkflows: {
     workflowId: string;
@@ -244,6 +250,14 @@ export function ViewDataSourceTable({
                     </PokeTableRow>
                   </>
                 )}
+                {connector && (
+                  <PokeTableRow>
+                    <PokeTableCell>Is stuck?</PokeTableCell>
+                    <PokeTableCell>
+                      <CheckConnectorStuck owner={owner} dsId={dataSource.sId} />
+                    </PokeTableCell>
+                  </PokeTableRow>
+                )}
               </PokeTableBody>
             </PokeTable>
           </div>
@@ -308,5 +322,106 @@ function RawObjectsModal({
         </ScrollArea>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface CheckConnectorStuckProps {
+  owner: WorkspaceType;
+  dsId: string;
+}
+
+function CheckConnectorStuck({ owner, dsId }: CheckConnectorStuckProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<CheckStuckResponseBody | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
+
+  const checkStuck = async () => {
+    setIsLoading(true);
+    setShowDetails(false);
+    try {
+      const res = await fetch(
+        `/api/poke/workspaces/${owner.sId}/data_sources/${dsId}/check-stuck`
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        alert(`Failed to check connector status: ${JSON.stringify(err)}`);
+        return;
+      }
+      const data = await res.json();
+      setResult(data);
+    } catch (error) {
+      alert(`Error checking connector: ${error}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!result) {
+    return (
+      <Button
+        variant="outline"
+        label={isLoading ? "Checking..." : "Check"}
+        icon={isLoading ? Spinner : MagnifyingGlassIcon}
+        disabled={isLoading}
+        onClick={checkStuck}
+        size="xs"
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <Chip
+          label={result.isStuck ? "Stuck!" : "Not Stuck"}
+          color={result.isStuck ? "warning" : "success"}
+          size="xs"
+        />
+        {result.isStuck && result.workflows.length > 0 && (
+          <Button
+            variant="ghost"
+            label={showDetails ? "Hide details" : "Show details"}
+            onClick={() => setShowDetails(!showDetails)}
+            size="xs"
+          />
+        )}
+      </div>
+      {showDetails && result.isStuck && (
+        <div className="mt-2 flex flex-col gap-2 text-xs">
+          {result.workflows.map((workflow) => {
+            if (workflow.stuckActivities.length === 0) {
+              return null;
+            }
+            return (
+              <div key={workflow.workflowId} className="rounded border p-2">
+                <div className="mb-1 font-semibold">{workflow.workflowId}</div>
+                <div className="text-muted-foreground">
+                  Status: {workflow.status}
+                </div>
+                <div className="mt-1 flex flex-col gap-1">
+                  {workflow.stuckActivities.map((activity, idx) => (
+                    <div
+                      key={idx}
+                      className="rounded bg-gray-50 p-2 dark:bg-gray-800"
+                    >
+                      <div>Activity: {activity.activityType}</div>
+                      <div>Attempt: {activity.attempt}</div>
+                      {activity.maximumAttempts && (
+                        <div>Max Attempts: {activity.maximumAttempts}</div>
+                      )}
+                      {activity.lastFailure && (
+                        <div className="mt-1 text-red-600 dark:text-red-400">
+                          Last Failure: {activity.lastFailure}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
