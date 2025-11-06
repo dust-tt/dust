@@ -11,7 +11,7 @@ export const GEMINI_2_5_PRO_MODEL_ID = "gemini-2.5-pro" as const;
 export const GEMINI_2_FLASH_MODEL_ID = "gemini-2.0-flash" as const;
 // 2025-11-04: Still used in 3 dust apps.
 export const GEMINI_2_FLASH_PREVIEW_MODEL_ID = "gemini-2.0-flash-exp" as const;
-// 2025-11-04: still used in 1 dust app
+// 2025-11-04: Still used in 1 dust app.
 export const GEMINI_2_PRO_PREVIEW_MODEL_ID =
   "gemini-2.0-pro-exp-02-05" as const;
 
