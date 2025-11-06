@@ -8,7 +8,6 @@ import {
   parseMatcherExpression,
 } from "@app/lib/matcher";
 import { OperationDisplayNames } from "@app/lib/matcher/types";
-import { normalizeError } from "@app/types";
 
 interface TriggerFilterRendererProps {
   data: string | undefined;

@@ -69,7 +69,12 @@ export const TriggerCard = ({
     } catch (error) {
       return "";
     }
-  }, [trigger.kind, trigger.configuration, webhookSourceView?.customName]);
+  }, [
+    trigger.kind,
+    trigger.configuration,
+    webhookSourceView?.customName,
+    webhookSourceView?.webhookSource.name,
+  ]);
 
   return (
     <Card
