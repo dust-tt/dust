@@ -65,6 +65,13 @@ export async function storeAgentAnalyticsActivity(
     throw new Error("Message not found");
   }
 
+  const { agentMessage: agentAgentMessageRow, conversation: conversationRow } =
+    agentMessageRow;
+
+  if (!agentAgentMessageRow || !conversationRow) {
+    throw new Error("Agent message or conversation not found");
+  }
+
   // Query the UserMessage row to get user.
   const userMessageRow = await Message.findOne({
     where: {
@@ -91,9 +98,17 @@ export async function storeAgentAnalyticsActivity(
     throw new Error("User message not found");
   }
 
+  const { userMessage: userUserMessageRow } = userMessageRow;
+
+  if (!userUserMessageRow) {
+    throw new Error("User message not found");
+  }
+
   await storeAgentAnalytics(auth, {
     agentMessageRow,
-    userMessageRow,
+    agentAgentMessageRow,
+    userModel: userUserMessageRow.user ?? null,
+    conversationRow,
   });
 }
 
@@ -104,20 +119,16 @@ export async function storeAgentAnalytics(
   auth: Authenticator,
   {
     agentMessageRow,
-    userMessageRow,
+    agentAgentMessageRow,
+    userModel,
+    conversationRow,
   }: {
     agentMessageRow: Message;
-    userMessageRow: Message;
+    agentAgentMessageRow: AgentMessage;
+    userModel: UserModel | null;
+    conversationRow: ConversationModel;
   }
 ): Promise<void> {
-  const { agentMessage: agentAgentMessageRow, conversation: conversationRow } =
-    agentMessageRow;
-  const { userMessage: userUserMessageRow } = userMessageRow;
-
-  if (!agentAgentMessageRow || !conversationRow || !userUserMessageRow) {
-    throw new Error("Agent message or conversation or user message not found");
-  }
-
   // Only index agent messages if there are no blocked actions awaiting approval.
   const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
     agentAgentMessageRow.id,
@@ -153,7 +164,7 @@ export async function storeAgentAnalytics(
     timestamp: new Date(agentMessageRow.createdAt).toISOString(),
     tokens,
     tools_used: toolsUsed,
-    user_id: userUserMessageRow.user?.sId ?? "unknown",
+    user_id: userModel?.sId ?? "unknown",
     workspace_id: auth.getNonNullableWorkspace().sId,
     feedbacks,
     version: agentMessageRow.version.toString(),

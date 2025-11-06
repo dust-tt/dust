@@ -142,10 +142,27 @@ async function backfillAgentAnalytics(
             return;
           }
 
+          const {
+            agentMessage: agentAgentMessageRow,
+            conversation: conversationRow,
+          } = agentMessageRow;
+
+          if (!agentAgentMessageRow || !conversationRow) {
+            throw new Error("Agent message or conversation not found");
+          }
+
+          const { userMessage: userUserMessageRow } = userMessageRow;
+
+          if (!userUserMessageRow) {
+            throw new Error("User message not found");
+          }
+
           // Store the analytics
           await storeAgentAnalytics(auth, {
             agentMessageRow,
-            userMessageRow,
+            agentAgentMessageRow,
+            userModel: userUserMessageRow.user ?? null,
+            conversationRow,
           });
 
           successCount++;
