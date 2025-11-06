@@ -1,5 +1,4 @@
 import {
-  Button,
   CollapsibleComponent,
   Label,
   Markdown,
@@ -33,7 +32,7 @@ export function RecentWebhookRequests({
     <CollapsibleComponent
       rootProps={{ defaultOpen, onOpenChange: setIsOpen }}
       triggerChildren={
-        <Label className="cursor-pointer">Recent Requests</Label>
+        <Label className="cursor-pointer">Requests history</Label>
       }
       contentChildren={
         <RecentWebhookRequestsContent
@@ -67,10 +66,6 @@ function RecentWebhookRequestsContent({
       triggerId: trigger.sId ?? null,
       disabled: !trigger || !agentConfigurationId || !isOpen,
     });
-
-  const [expandedRequestId, setExpandedRequestId] = useState<number | null>(
-    null
-  );
 
   if (isWebhookRequestsLoading || !isOpen) {
     return (
@@ -124,43 +119,40 @@ function RecentWebhookRequestsContent({
           </p>
         </div>
       )}
-      <div className="flex flex-col gap-1">
-        {webhookRequests.map((request) => (
-          <>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                {moment(new Date(request.timestamp)).fromNow()}
-                <WebhookRequestStatusBadge status={request.status} />
-              </div>
-              {request.payload && (
-                <Button
-                  onClick={() => {
-                    setExpandedRequestId(
-                      expandedRequestId === request.id ? null : request.id
-                    );
-                  }}
-                  label={
-                    expandedRequestId === request.id
-                      ? "Hide Payload"
-                      : "View Payload"
-                  }
-                  variant="outline"
-                />
-              )}
-            </div>
-
-            {expandedRequestId === request.id && request.payload && (
-              <div className="rounded">
-                <pre className="max-h-64 overflow-auto text-xs">
-                  <Markdown
-                    forcedTextSize="xs"
-                    content={`\`\`\`json\n${JSON.stringify(request.payload.body, null, 2)}\n\`\`\``}
-                  />
-                </pre>
-              </div>
-            )}
-            <Separator />
-          </>
+      <div className="flex flex-col px-4">
+        {webhookRequests.map((request, idx) => (
+          <div key={request.id}>
+            <CollapsibleComponent
+              rootProps={{ defaultOpen: false }}
+              triggerChildren={
+                <div className="my-2 flex w-full items-center justify-between gap-4">
+                  {moment(new Date(request.timestamp)).calendar(undefined, {
+                    sameDay: "[Today at] LTS",
+                    lastDay: "[Yesterday at] LTS",
+                    lastWeek: "[Last] dddd [at] LTS",
+                  })}
+                  <WebhookRequestStatusBadge status={request.status} />
+                </div>
+              }
+              contentChildren={
+                request.payload ? (
+                  <div className="rounded">
+                    <pre className="max-h-64 overflow-auto text-xs">
+                      <Markdown
+                        forcedTextSize="xs"
+                        content={`\`\`\`json\n${JSON.stringify(request.payload.body, null, 2)}\n\`\`\``}
+                      />
+                    </pre>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    No payload available.
+                  </p>
+                )
+              }
+            />
+            {idx < webhookRequests.length - 1 && <Separator />}
+          </div>
         ))}
       </div>
     </div>

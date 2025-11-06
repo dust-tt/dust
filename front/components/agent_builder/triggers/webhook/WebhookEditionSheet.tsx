@@ -101,19 +101,17 @@ function WebhookEditionExecutionLimit({
     name: "webhook.executionPerDayLimitOverride",
   });
 
-  const limitOptions = [
-    { label: "10/day", value: 10 },
-    { label: "25/day", value: 25 },
-    { label: "50/day", value: 50 },
-  ];
+  const limitOptions = [10, 50, 100];
+  const isOverridenBySupport = !limitOptions.includes(executionLimit);
 
   return (
     <div className="flex flex-col space-y-1">
-      <Label htmlFor="execution-limit">Execution limit</Label>
+      <Label htmlFor="execution-limit">Rate limits</Label>
       <div className="pb-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <p>Limits are set on a 24 hours window. </p>
         <p>
-          Maximum number of times this trigger can execute per hour. This is
-          smoothed out over a 24 hour period.
+          Control how many messages this trigger can send per day. This prevents
+          a single trigger from using up your workspace's message quota
         </p>
         <p className="font-semibold">
           <Link
@@ -127,20 +125,33 @@ function WebhookEditionExecutionLimit({
           about webhook trigger rate limiting.
         </p>
       </div>
-      <ButtonsSwitchList
-        defaultValue={executionLimit.toString()}
-        className="w-fit"
-      >
-        {limitOptions.map((option) => (
-          <ButtonsSwitch
-            key={option.value}
-            value={option.value.toString()}
-            label={option.label}
-            onClick={() => setExecutionLimit(option.value)}
+      <div className="flex flex-row items-center gap-2">
+        <ButtonsSwitchList
+          defaultValue={executionLimit.toString()}
+          className="w-fit"
+        >
+          {limitOptions.map((option) => (
+            <ButtonsSwitch
+              key={option}
+              value={option.toString()}
+              label={option + "/day"}
+              onClick={() => setExecutionLimit(option)}
+              disabled={!isEditor}
+            />
+          ))}
+        </ButtonsSwitchList>
+
+        {isOverridenBySupport && (
+          <Button
+            value={executionLimit.toString()}
+            label={`Overriden : ${executionLimit}/day`}
+            onClick={() => setExecutionLimit(executionLimit)}
             disabled={!isEditor}
+            variant="outline"
+            size="sm"
           />
-        ))}
-      </ButtonsSwitchList>
+        )}
+      </div>
     </div>
   );
 }
@@ -327,7 +338,6 @@ export function WebhookEditionSheetContent({
         <Separator />
 
         <WebhookEditionExecutionLimit isEditor={isEditor} />
-
         {trigger && (
           <div className="space-y-1">
             <RecentWebhookRequests
