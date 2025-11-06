@@ -1,4 +1,4 @@
-import { cn, Spinner } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
