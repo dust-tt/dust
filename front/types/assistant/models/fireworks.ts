@@ -40,4 +40,5 @@ export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
+  supportsResponseFormat: true,
 };

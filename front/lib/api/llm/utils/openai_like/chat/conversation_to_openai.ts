@@ -6,6 +6,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
 } from "openai/resources/chat/completions";
+import type { ResponseFormatJSONSchema } from "openai/resources/shared.mjs";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
@@ -17,7 +18,7 @@ import type {
   FunctionMessageTypeModel,
   UserMessageTypeModel,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, ResponseFormatSchema, safeParseJSON } from "@app/types";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
 type ChatCompletionContentPart =
@@ -195,4 +196,26 @@ export function toReasoningParam(
   }
 
   return effort;
+}
+
+export function toResponseFormat(
+  responseFormat: string | null
+): ResponseFormatJSONSchema | undefined {
+  if (!responseFormat) {
+    return;
+  }
+
+  const responseFormatJson = safeParseJSON(responseFormat);
+  if (responseFormatJson.isErr() || responseFormatJson.value === null) {
+    return;
+  }
+
+  const responseFormatResult = ResponseFormatSchema.safeParse(
+    responseFormatJson.value
+  );
+  if (responseFormatResult.error) {
+    return;
+  }
+
+  return responseFormatResult.data;
 }

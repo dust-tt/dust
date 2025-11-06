@@ -5,8 +5,12 @@ import {
   FIREWORKS_MODEL_FAMILY_CONFIGS,
   getFireworksModelFamilyFromModelId,
 } from "@app/lib/api/llm/clients/fireworks/types";
-import { TEST_CONVERSATIONS } from "@app/lib/api/llm/tests/conversations";
+import {
+  TEST_CONVERSATIONS,
+  TEST_STRUCTURED_OUTPUT_CONVERSATIONS,
+} from "@app/lib/api/llm/tests/conversations";
 import { LLMClientTestSuite } from "@app/lib/api/llm/tests/LLMClientTestSuite";
+import { TEST_STRUCTURED_OUTPUT_KEYS } from "@app/lib/api/llm/tests/schemas";
 import type {
   ConfigParams,
   TestConfig,
@@ -18,7 +22,13 @@ const FIREWORKS_MODEL_FAMILY_TO_TEST_CONFIGS: Record<
   FireworksModelFamily,
   ConfigParams[]
 > = {
-  kimi: [{ temperature: 0.25 }, { temperature: 1 }],
+  kimi: [
+    { temperature: 0.25 },
+    { temperature: 1 },
+    ...TEST_STRUCTURED_OUTPUT_KEYS.map((testStructuredOutputKey) => ({
+      testStructuredOutputKey,
+    })),
+  ],
 };
 
 vi.mock("openai", async (importOriginal) => {
@@ -84,8 +94,16 @@ class FireworksTestSuite extends LLMClientTestSuite {
   }
 
   protected getSupportedConversations(
-    _modelId: ModelIdType
+    _modelId: ModelIdType,
+    config: TestConfig
   ): TestConversation[] {
+    if (config.testStructuredOutputKey) {
+      // Only use specific conversation for structured output config
+      return TEST_STRUCTURED_OUTPUT_CONVERSATIONS.filter(
+        (conversation) => conversation.id === config.testStructuredOutputKey
+      );
+    }
+
     // All Fireworks models don't support vision, so filter out image conversations
     return TEST_CONVERSATIONS.filter(
       (conversation) => conversation.id !== "image-description"

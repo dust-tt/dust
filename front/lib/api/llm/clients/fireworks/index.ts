@@ -12,6 +12,7 @@ import type {
 import {
   toMessages,
   toReasoningParam,
+  toResponseFormat,
   toTools,
 } from "@app/lib/api/llm/utils/openai_like/chat/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/chat/openai_to_events";
@@ -48,6 +49,7 @@ export class FireworksLLM extends LLM {
     try {
       const tools =
         specifications.length > 0 ? toTools(specifications) : undefined;
+      const responseFormat = toResponseFormat(this.responseFormat);
 
       const events = await this.client.chat.completions.create({
         model: this.modelId,
@@ -56,6 +58,7 @@ export class FireworksLLM extends LLM {
         temperature: this.temperature ?? undefined,
         reasoning_effort: toReasoningParam(this.reasoningEffort),
         ...(tools ? { tools } : {}),
+        ...(responseFormat ? { response_format: responseFormat } : {}),
       });
 
       yield* streamLLMEvents(events, this.metadata);
