@@ -28,13 +28,8 @@ export function ChartContainer({
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <div
-          className={cn(
-            "flex items-center justify-between",
-            description ? "mb-2" : "mb-4"
-          )}
-        >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h3 className="text-base font-medium text-foreground dark:text-foreground-night">
             {title}
           </h3>
@@ -43,7 +38,7 @@ export function ChartContainer({
         <div className="flex items-center gap-3">{additionalControls}</div>
       </div>
       {description && (
-        <div className="mb-3 text-xs text-muted-foreground">{description}</div>
+        <div className="my-3 text-xs text-muted-foreground">{description}</div>
       )}
       {isLoading || message ? (
         <div
