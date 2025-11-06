@@ -7,10 +7,11 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentScheduledExecutionResource } from "@app/lib/resources/agent_scheduled_execution_resource";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
-import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
+import { makeScheduledAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import { Err, normalizeError, Ok } from "@app/types";
 
 const MAX_DELAY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -75,9 +76,7 @@ function createServer(
         }
 
         if (delayMs <= 0) {
-          return new Err(
-            new MCPError("Delay must be a positive duration greater than 0.")
-          );
+          return new Err(new MCPError("Delay must be a positive duration."));
         }
 
         if (delayMs > MAX_DELAY_MS) {
@@ -96,11 +95,14 @@ function createServer(
           );
         }
 
+        const scheduledFor = new Date(Date.now() + delayMs);
+
         const owner = auth.getNonNullableWorkspace();
-        const workflowId = makeAgentLoopWorkflowId({
+        const workflowId = makeScheduledAgentLoopWorkflowId({
           workspaceId: owner.sId,
           conversationId,
           agentMessageId,
+          scheduledFor,
         });
 
         const userMessage = await Message.findOne({
@@ -117,8 +119,6 @@ function createServer(
             )
           );
         }
-
-        const scheduledFor = new Date(Date.now() + delayMs);
 
         const result = await launchAgentLoopWorkflow({
           auth,
@@ -137,14 +137,14 @@ function createServer(
         if (result.isErr()) {
           const error = result.error;
           if (
-            typeof error === "object" &&
-            error !== null &&
-            "type" in error &&
-            error.type === "agent_loop_already_running"
+            error instanceof DustError &&
+            error.code === "agent_loop_already_running"
           ) {
             return new Err(
               new MCPError(
-                "An agent loop is already running or scheduled for this message. Cannot schedule another execution."
+                "An agent loop is already running for this message. " +
+                  "Cannot schedule another execution.",
+                { tracked: false }
               )
             );
           }
@@ -167,7 +167,9 @@ function createServer(
         return new Ok([
           {
             type: "text",
-            text: `Agent execution scheduled successfully. The agent will start in ${delay} (${delayMs}ms) at ${scheduledFor.toISOString()}.`,
+            text:
+              "Agent execution scheduled successfully. " +
+              `The agent will start in ${delay} (${delayMs}ms) at ${scheduledFor.toISOString()}.`,
           },
         ]);
       }
