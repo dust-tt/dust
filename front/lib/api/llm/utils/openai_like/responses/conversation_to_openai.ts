@@ -1,5 +1,3 @@
-import assert from "node:assert";
-
 import type {
   FunctionTool,
   ResponseFormatTextJSONSchemaConfig,
@@ -65,10 +63,6 @@ function toAssistantInputItem(
       const id = extractIdFromMetadata(content.value.metadata);
       const encryptedContent = extractEncryptedContentFromMetadata(
         content.value.metadata
-      );
-      assert(
-        reasoning ?? encryptedContent,
-        "Expected non-null reasoning content"
       );
       return {
         id,
