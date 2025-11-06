@@ -375,7 +375,7 @@ function CheckConnectorStuck({ owner, dsId }: CheckConnectorStuckProps) {
       <div className="flex items-center gap-2">
         <Chip
           label={result.isStuck ? "Stuck" : "Not Stuck"}
-          color={result.isStuck ? "warning" : "success"}
+          color={result.isStuck ? "info" : "success"}
           size="xs"
         />
         {result.isStuck && result.workflows.length > 0 && (
