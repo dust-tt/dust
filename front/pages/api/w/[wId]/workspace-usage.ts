@@ -31,7 +31,8 @@ const usageTables = [
   "assistants",
   "feedback",
   "all",
-] as const;
+];
+
 type usageTableType = (typeof usageTables)[number];
 
 function getSupportedUsageTablesCodec(): t.Mixed {
