@@ -129,12 +129,7 @@ function createServer(
 
         // Parse the report ID from the URL
         // Expected format: https://app.ashbyhq.com/reports/.../[reportId]
-        // Extract the ID from the last part of the path
-        const urlPattern =
-          /https:\/\/app\.ashbyhq\.com\/reports\/[^/]+\/([^/?]+)\/?$/;
-        const match = reportUrl.match(urlPattern);
-
-        if (!match?.[1]) {
+        if (!reportUrl.startsWith("https://app.ashbyhq.com/reports/")) {
           return new Err(
             new MCPError(
               "Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/reports/.../[reportId]"
@@ -142,7 +137,14 @@ function createServer(
           );
         }
 
-        const reportId = match[1];
+        const reportId = reportUrl.split("/").pop();
+        if (!reportId) {
+          return new Err(
+            new MCPError(
+              "Invalid Ashby report URL. Expected format: https://app.ashbyhq.com/reports/.../[reportId]"
+            )
+          );
+        }
 
         const client = new AshbyClient(apiKeyResult.value);
         const result = await client.getReportData({ reportId });
