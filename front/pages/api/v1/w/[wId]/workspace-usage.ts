@@ -82,6 +82,12 @@ import { assertNever } from "@app/types";
  *         schema:
  *           type: string
  *           enum: [users, inactive_users, assistant_messages, builders, assistants, feedback, all]
+ *       - in: query
+ *         name: includeInactive
+ *         required: false
+ *         description: Include users and assistants with zero messages in the export (defaults to false)
+ *         schema:
+ *           type: boolean
  *     responses:
  *       200:
  *         description: The usage data in CSV or JSON format, or a ZIP of multiple CSVs if table is equal to "all"
