@@ -98,7 +98,10 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
 
           // TODO: This is temporary until our Slack app scope is approved.
           const currentRegion = regionsConfig.getCurrentRegion();
-          if (currentRegion === "europe-west1" && extraConfig?.slack_files_write_scope_feature_flag === "true") {
+          if (
+            currentRegion === "europe-west1" &&
+            extraConfig?.slack_files_write_scope_feature_flag === "true"
+          ) {
             scopes.push("files:write");
           }
 
