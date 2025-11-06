@@ -5,9 +5,9 @@ import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
 import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import type { AgentMessageFeedback } from "@app/lib/models/assistant/conversation";
 import {
   AgentMessage,
-  AgentMessageFeedback,
   ConversationModel,
   Message,
   UserMessage,
@@ -96,7 +96,7 @@ export async function storeAgentAnalyticsActivity(
 
   const user = userMessage?.userMessage?.user;
 
-  await buildAnalyticsDocument(auth, {
+  await storeAgentAnalytics(auth, {
     message,
     user,
     agentMessage,
@@ -107,7 +107,7 @@ export async function storeAgentAnalyticsActivity(
 /**
  * Build the complete analytics document for an agent message.
  */
-export async function buildAnalyticsDocument(
+export async function storeAgentAnalytics(
   auth: Authenticator,
   {
     message,
@@ -133,6 +133,7 @@ export async function buildAnalyticsDocument(
   // Collect tool usage data from the agent message actions.
   const toolsUsed = await collectToolUsageFromMessage(auth, agentMessage.id);
 
+  // Collect feedbacks from the agent message.
   const feedbacks = agentMessage.feedbacks
     ? getAgentMessageFeedbacksAnalytics(agentMessage.feedbacks)
     : [];
