@@ -138,7 +138,7 @@ async function createActionForTool(
     auth,
     actionConfiguration,
     agentMessage,
-    conversation.id
+    conversation
   );
 
   const stepContent =

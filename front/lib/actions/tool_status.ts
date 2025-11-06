@@ -4,14 +4,17 @@ import { getUserMessageFromParentMessageId } from "@app/lib/api/assistant/conver
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { AgentMessageType, ModelId } from "@app/types";
+import type {
+  AgentMessageType,
+  ConversationWithoutContentType,
+} from "@app/types";
 import { assertNever } from "@app/types";
 
 export async function getExecutionStatusFromConfig(
   auth: Authenticator,
   actionConfiguration: MCPToolConfigurationType,
   agentMessage: AgentMessageType,
-  conversationId: ModelId
+  conversationWithoutContent: ConversationWithoutContentType
 ): Promise<{
   stake?: MCPToolStakeLevelType;
   status: "ready_allowed_implicitly" | "blocked_validation_required";
@@ -40,7 +43,7 @@ export async function getExecutionStatusFromConfig(
       if (!user && workspace && agentMessage.parentMessageId) {
         const userMessage = await getUserMessageFromParentMessageId({
           workspaceId: workspace.id,
-          conversationId,
+          conversationId: conversationWithoutContent.id,
           parentMessageId: agentMessage.parentMessageId,
         });
 
@@ -56,8 +59,9 @@ export async function getExecutionStatusFromConfig(
           // is actually a participant in the conversation. This prevents API callers from
           // impersonating other users by setting context.email to their email address.
           if (potentialUser) {
-            const conversation =
-              await ConversationResource.fetchByModelId(conversationId);
+            const conversation = await ConversationResource.fetchByModelId(
+              conversationWithoutContent.id
+            );
 
             if (conversation) {
               const isParticipant =

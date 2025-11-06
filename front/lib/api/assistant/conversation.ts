@@ -298,7 +298,7 @@ export async function getUserMessageFromParentMessageId({
   workspaceId: ModelId;
   conversationId: ModelId;
   parentMessageId: string;
-}) {
+}): Promise<UserMessage | null> {
   const message = await Message.findOne({
     where: {
       workspaceId,
