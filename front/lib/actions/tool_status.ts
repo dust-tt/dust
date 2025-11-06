@@ -2,7 +2,6 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { getUserMessageFromParentMessageId } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentMessageType,
@@ -53,25 +52,8 @@ export async function getExecutionStatusFromConfig(
           const users = await UserResource.listUserWithExactEmails(workspace, [
             email,
           ]);
-          const potentialUser = users[0] ?? null;
 
-          // Security: Only use the email-based user lookup for authorization if the user
-          // is actually a participant in the conversation. This prevents API callers from
-          // impersonating other users by setting context.email to their email address.
-          if (potentialUser) {
-            const conversation = await ConversationResource.fetchByModelId(
-              conversationWithoutContent.id
-            );
-
-            if (conversation) {
-              const isParticipant =
-                await conversation.isConversationParticipant(potentialUser);
-
-              if (isParticipant) {
-                user = potentialUser;
-              }
-            }
-          }
+          user = users[0] ?? null;
         }
       }
 
