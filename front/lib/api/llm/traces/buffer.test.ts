@@ -94,6 +94,7 @@ function createTestBuffer(traceId?: LLMTraceId, workspaceId?: string) {
     modelId: "gpt-4-turbo",
     prompt: faker.lorem.paragraph(),
     reasoningEffort: "medium",
+    responseFormat: null,
     specifications: [],
     temperature: 0.7,
   });

@@ -1,5 +1,9 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
+  TestStructuredOutputKey,
+  TestStructuredOutputSchema,
+} from "@app/lib/api/llm/tests/schemas";
+import type {
   ModelConversationTypeMultiActions,
   ModelIdType,
   ModelProviderIdType,
@@ -10,6 +14,7 @@ export type TestConfig = {
   modelId: ModelIdType;
   temperature?: number | undefined;
   reasoningEffort?: ReasoningEffort | undefined;
+  testStructuredOutputKey?: TestStructuredOutputKey;
   provider: ModelProviderIdType;
 };
 
@@ -22,6 +27,10 @@ export type ResponseChecker =
       type: "has_tool_call";
       toolName: string;
       expectedArguments: string;
+    }
+  | {
+      type: "check_json_output";
+      schema: TestStructuredOutputSchema;
     }
   | null;
 
@@ -43,4 +52,5 @@ export interface RunnabletestConversation {
 export interface ConfigParams {
   temperature?: number;
   reasoningEffort?: ReasoningEffort;
+  testStructuredOutputKey?: TestStructuredOutputKey;
 }

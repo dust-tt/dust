@@ -1,6 +1,11 @@
-import { expect } from "vitest";
+import { assert, expect } from "vitest";
 
 import { getLLM } from "@app/lib/api/llm";
+import type { TestStructuredOutputKey } from "@app/lib/api/llm/tests/schemas";
+import {
+  TEST_RESPONSE_FORMATS,
+  TEST_STRUCTURED_OUTPUT_SCHEMAS,
+} from "@app/lib/api/llm/tests/schemas";
 import type {
   ResponseChecker,
   TestConfig,
@@ -11,7 +16,7 @@ import type {
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, safeParseJSON } from "@app/types";
 
 const SYSTEM_PROMPT = "You are a helpful assistant.";
 
@@ -106,6 +111,13 @@ function hasToolCall(
   };
 }
 
+function checkJsonResponse(key: TestStructuredOutputKey): ResponseChecker {
+  return {
+    type: "check_json_output",
+    schema: TEST_STRUCTURED_OUTPUT_SCHEMAS[key],
+  };
+}
+
 export const TEST_CONVERSATIONS: TestConversation[] = [
   {
     id: "simple-math",
@@ -178,6 +190,34 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
   },
 ];
 
+export const TEST_STRUCTURED_OUTPUT_CONVERSATIONS: (Omit<
+  TestConversation,
+  "id"
+> & { id: TestStructuredOutputKey })[] = [
+  {
+    id: "user-profile",
+    name: "Structured output - user profile",
+    systemPrompt: SYSTEM_PROMPT,
+    conversationActions: [
+      userMessage(
+        "Extract the following user information: Name is John Doe, email is john@example.com, age is 30, and the account is active."
+      ),
+    ],
+    expectedInResponses: [checkJsonResponse("user-profile")],
+  },
+  {
+    id: "data-extraction",
+    name: "Structured output - user profile",
+    systemPrompt: SYSTEM_PROMPT,
+    conversationActions: [
+      userMessage(
+        "Extract information from this document: 'Machine Learning Basics by Dr. Sarah Johnson, published January 15, 2024. This comprehensive guide covers neural networks, decision trees, and clustering algorithms.'"
+      ),
+    ],
+    expectedInResponses: [checkJsonResponse("data-extraction")],
+  },
+];
+
 export const runConversation = async (
   conversation: TestConversation,
   config: TestConfig
@@ -187,6 +227,9 @@ export const runConversation = async (
     modelId: config.modelId,
     temperature: config.temperature,
     reasoningEffort: config.reasoningEffort,
+    responseFormat: config.testStructuredOutputKey
+      ? JSON.stringify(TEST_RESPONSE_FORMATS[config.testStructuredOutputKey])
+      : null,
     bypassFeatureFlag: true,
   });
   if (llm === null) {
@@ -320,6 +363,15 @@ export const runConversation = async (
               tc.name === toolName && tc.arguments.includes(expectedArguments)
           );
           expect(matchingToolCall).toBeDefined();
+          break;
+        case "check_json_output":
+          const fullResponseJson = safeParseJSON(fullResponse);
+          assert(fullResponseJson.isOk());
+
+          const schemaValidationResult = expectedInResponse.schema.safeParse(
+            fullResponseJson.value
+          );
+          expect(schemaValidationResult.success).toBe(true);
           break;
         default:
           assertNever(expectedInResponse);

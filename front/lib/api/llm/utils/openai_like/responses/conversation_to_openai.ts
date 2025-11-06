@@ -2,6 +2,7 @@ import assert from "node:assert";
 
 import type {
   FunctionTool,
+  ResponseFormatTextJSONSchemaConfig,
   ResponseFunctionToolCallOutputItem,
   ResponseInput,
   ResponseInputContent,
@@ -23,7 +24,7 @@ import type {
   FunctionMessageTypeModel,
   UserMessageTypeModel,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, ResponseFormatSchema, safeParseJSON } from "@app/types";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
 function toInputContent(content: Content): ResponseInputContent {
@@ -170,5 +171,33 @@ export function toReasoning(
   return {
     effort: REASONING_EFFORT_TO_OPENAI_REASONING[reasoningEffort],
     summary: "auto",
+  };
+}
+
+export function toResponseFormat(
+  responseFormat: string | null
+): ResponseFormatTextJSONSchemaConfig | undefined {
+  if (!responseFormat) {
+    return;
+  }
+
+  const responseFormatJson = safeParseJSON(responseFormat);
+  if (responseFormatJson.isErr() || responseFormatJson.value === null) {
+    return;
+  }
+
+  const responseFormatResult = ResponseFormatSchema.safeParse(
+    responseFormatJson.value
+  );
+  if (responseFormatResult.error) {
+    return;
+  }
+
+  return {
+    type: "json_schema",
+    name: responseFormatResult.data.json_schema.name,
+    schema: responseFormatResult.data.json_schema.schema,
+    description: responseFormatResult.data.json_schema.description,
+    strict: responseFormatResult.data.json_schema.strict,
   };
 }
