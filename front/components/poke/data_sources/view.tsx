@@ -374,7 +374,7 @@ function CheckConnectorStuck({ owner, dsId }: CheckConnectorStuckProps) {
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
         <Chip
-          label={result.isStuck ? "Stuck!" : "Not Stuck"}
+          label={result.isStuck ? "Stuck" : "Not Stuck"}
           color={result.isStuck ? "warning" : "success"}
           size="xs"
         />
