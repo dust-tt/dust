@@ -44,7 +44,7 @@ export async function storeAgentAnalyticsActivity(
   const { agentMessageId, userMessageId } = agentLoopArgs;
 
   // Query the Message/AgentMessage/Conversation rows.
-  const message = await Message.findOne({
+  const agentMessageRow = await Message.findOne({
     where: {
       sId: agentMessageId,
       workspaceId: workspace.id,
@@ -63,17 +63,12 @@ export async function storeAgentAnalyticsActivity(
     ],
   });
 
-  if (!message) {
+  if (!agentMessageRow) {
     throw new Error("Message not found");
-  }
-  const { agentMessage, conversation } = message;
-
-  if (!conversation || !agentMessage) {
-    throw new Error("Message or conversation not found");
   }
 
   // Query the UserMessage row to get user.
-  const userMessage = await Message.findOne({
+  const userMessageRow = await Message.findOne({
     where: {
       sId: userMessageId,
       workspaceId: workspace.id,
@@ -94,70 +89,73 @@ export async function storeAgentAnalyticsActivity(
     ],
   });
 
-  if (!userMessage) {
+  if (!userMessageRow) {
     throw new Error("User message not found");
   }
 
-  const user = userMessage?.userMessage?.user;
-
   await storeAgentAnalytics(auth, {
-    message,
-    user,
-    userMessage,
-    agentMessage,
-    conversation,
+    agentMessageRow,
+    userMessageRow,
   });
 }
 
 /**
- * Build the complete analytics document for an agent message.
+ * Build and storethe complete analytics document for an agent message.
  */
 export async function storeAgentAnalytics(
   auth: Authenticator,
   {
-    message,
-    user,
-    userMessage,
-    agentMessage,
-    conversation,
+    agentMessageRow,
+    userMessageRow,
   }: {
-    message: Message;
-    user?: UserModel;
-    userMessage: Message;
-    agentMessage: AgentMessage;
-    conversation: ConversationModel;
+    agentMessageRow: Message;
+    userMessageRow: Message;
   }
 ): Promise<void> {
+  const { agentMessage: agentAgentMessageRow, conversation: conversationRow } =
+    agentMessageRow;
+  const { userMessage: userUserMessageRow } = userMessageRow;
+
+  if (!agentAgentMessageRow || !conversationRow || !userUserMessageRow) {
+    throw new Error("Agent message or conversation or user message not found");
+  }
+
   // Only index agent messages if there are no blocked actions awaiting approval.
-  const hasBlockedActions = await checkForBlockedActions(auth, agentMessage.id);
+  const hasBlockedActions = await checkForBlockedActions(
+    auth,
+    agentAgentMessageRow.id
+  );
   if (hasBlockedActions) {
     return;
   }
 
   // Collect token usage from run data.
-  const tokens = await collectTokenUsage(auth, agentMessage);
+  const tokens = await collectTokenUsage(auth, agentAgentMessageRow);
 
   // Collect tool usage data from the agent message actions.
-  const toolsUsed = await collectToolUsageFromMessage(auth, agentMessage.id);
+  const toolsUsed = await collectToolUsageFromMessage(
+    auth,
+    agentAgentMessageRow.id
+  );
 
   // Collect feedbacks from the agent message.
-  const feedbacks = agentMessage.feedbacks
-    ? getAgentMessageFeedbacksAnalytics(agentMessage.feedbacks)
+  const feedbacks = agentAgentMessageRow.feedbacks
+    ? getAgentMessageFeedbacksAnalytics(agentAgentMessageRow.feedbacks)
     : [];
 
   // Build the complete analytics document.
   const document = {
-    agent_id: agentMessage.agentConfigurationId,
-    agent_version: agentMessage.agentConfigurationVersion.toString(),
-    conversation_id: conversation!.sId,
-    latency_ms: agentMessage.modelInteractionDurationMs ?? 0,
-    message_id: message.sId,
-    status: agentMessage.status,
+    agent_id: agentAgentMessageRow.agentConfigurationId,
+    agent_version: agentAgentMessageRow.agentConfigurationVersion.toString(),
+    conversation_id: conversationRow.sId,
+    latency_ms: agentAgentMessageRow.modelInteractionDurationMs ?? 0,
+    message_id: agentMessageRow.sId,
+    status: agentAgentMessageRow.status,
     // TODO(observability 21025-10-29): Use agentMessage.created timestamp to index documents
-    timestamp: new Date(userMessage.createdAt.getTime()).toISOString(),
+    timestamp: new Date(userMessageRow.createdAt.getTime()).toISOString(),
     tokens,
     tools_used: toolsUsed,
-    user_id: user?.sId ?? "unknown",
+    user_id: userUserMessageRow.user?.sId ?? "unknown",
     workspace_id: auth.getNonNullableWorkspace().sId,
     feedbacks,
   };

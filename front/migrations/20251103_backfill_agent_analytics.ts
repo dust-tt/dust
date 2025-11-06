@@ -95,26 +95,13 @@ async function backfillAgentAnalytics(
   if (execute) {
     await concurrentExecutor(
       allAgentMessages,
-      async (message) => {
+      async (agentMessageRow) => {
         try {
-          const { agentMessage, conversation } = message;
-
-          if (!conversation || !agentMessage) {
-            logger.warn(
-              {
-                messageId: message.sId,
-                workspaceId: workspace.sId,
-              },
-              "Skipping message without agentMessage or conversation"
-            );
-            return;
-          }
-
           // Find the parent user message
-          if (!message.parentId) {
+          if (!agentMessageRow.parentId) {
             logger.warn(
               {
-                messageId: message.sId,
+                messageId: agentMessageRow.sId,
                 workspaceId: workspace.sId,
               },
               "Skipping agent message without parent user message"
@@ -122,9 +109,9 @@ async function backfillAgentAnalytics(
             return;
           }
 
-          const userMessage = await Message.findOne({
+          const userMessageRow = await Message.findOne({
             where: {
-              id: message.parentId,
+              id: agentMessageRow.parentId,
               workspaceId: workspace.id,
             },
             include: [
@@ -144,10 +131,10 @@ async function backfillAgentAnalytics(
           });
 
           // Find the parent user message
-          if (!userMessage) {
+          if (!userMessageRow) {
             logger.warn(
               {
-                messageId: message.sId,
+                messageId: agentMessageRow.sId,
                 workspaceId: workspace.sId,
               },
               "Skipping agent message without parent user message"
@@ -155,15 +142,10 @@ async function backfillAgentAnalytics(
             return;
           }
 
-          const user = userMessage?.userMessage?.user;
-
           // Store the analytics
           await storeAgentAnalytics(auth, {
-            message,
-            user,
-            userMessage,
-            agentMessage,
-            conversation,
+            agentMessageRow,
+            userMessageRow,
           });
 
           successCount++;
@@ -171,7 +153,7 @@ async function backfillAgentAnalytics(
           errorCount++;
           logger.error(
             {
-              messageId: message.sId,
+              messageId: agentMessageRow.sId,
               workspaceId: workspace.sId,
               error: err,
             },
