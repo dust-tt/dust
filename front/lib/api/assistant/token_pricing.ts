@@ -130,14 +130,6 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     input: 0.9,
     output: 2.8,
   },
-  "gemini-2.0-flash": {
-    input: 0.15,
-    output: 0.6,
-  },
-  "gemini-2.0-pro-exp-02-05": {
-    input: 1.25,
-    output: 15.0,
-  },
   "gemini-2.5-flash": {
     input: 0.15,
     output: 0.6,
@@ -149,10 +141,6 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
   "gemini-2.5-pro": {
     input: 1.25,
     output: 15.0,
-  },
-  "gemini-2.0-flash-exp": {
-    input: 0.15,
-    output: 0.6,
   },
   "meta-llama/Llama-3.3-70B-Instruct-Turbo": {
     input: 0.88,
