@@ -41,6 +41,8 @@ import {
   timeFrameFromNow,
 } from "@app/types";
 
+const localLogger = logger.child({ module: "mcp_slack_personal" });
+
 export type SlackSearchMatch = {
   author_name?: string;
   channel_name?: string;
@@ -107,7 +109,7 @@ export const slackSearch = async (
   } catch (error) {
     // Fallback to standard search.messages API if assistant.search.context fails.
     // This typically happens when Slack AI is not enabled (local env) or the token doesn't have the required permissions.
-    logger.info(
+    localLogger.info(
       { error },
       "Failed to use assistant.search.context, falling back to search.messages"
     );
@@ -318,13 +320,6 @@ const _getSlackAIEnablementStatus = async ({
   accessToken: string;
 }): Promise<SlackAIStatus> => {
   try {
-    logger.info(
-      {
-        tokenPrefix: accessToken.substring(0, 10),
-      },
-      "[SLACK_AI_DEBUG] Calling assistant.search.info API"
-    );
-
     const assistantSearchInfo = await fetch(
       "https://slack.com/api/assistant.search.info",
       {
@@ -337,13 +332,6 @@ const _getSlackAIEnablementStatus = async ({
     );
 
     if (!assistantSearchInfo.ok) {
-      logger.warn(
-        {
-          status: assistantSearchInfo.status,
-          statusText: assistantSearchInfo.statusText,
-        },
-        "[SLACK_AI_DEBUG] assistant.search.info returned !ok"
-      );
       return "disconnected";
     }
 
@@ -353,21 +341,8 @@ const _getSlackAIEnablementStatus = async ({
       ? "enabled"
       : "disabled";
 
-    logger.info(
-      {
-        is_ai_search_enabled: assistantSearchInfoJson.is_ai_search_enabled,
-        slackResponse: assistantSearchInfoJson,
-        finalStatus: status,
-      },
-      "[SLACK_AI_DEBUG] Slack AI status determined"
-    );
-
     return status;
   } catch (e) {
-    logger.warn(
-      { error: e },
-      "[SLACK_AI_DEBUG] Error fetching Slack AI enablement status"
-    );
     return "disconnected";
   }
 };
@@ -401,14 +376,13 @@ async function createServer(
       })
     : "disconnected";
 
-  logger.info(
+  localLogger.info(
     {
       mcpServerId,
       workspaceId: auth.getNonNullableWorkspace().sId,
       slackAIStatus,
-      hasConnection: !!c,
     },
-    "[SLACK_AI_DEBUG] Slack MCP server initialization - determining tools to register"
+    "Slack MCP server initialized"
   );
 
   // If we're not connected to Slack, we arbitrarily include the first search tool, just so there is one.
