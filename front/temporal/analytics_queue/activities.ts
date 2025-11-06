@@ -7,6 +7,7 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
+  AgentMessageFeedback,
   ConversationModel,
   Message,
   UserMessage,
@@ -133,15 +134,7 @@ export async function buildAnalyticsDocument(
   const toolsUsed = await collectToolUsageFromMessage(auth, agentMessage.id);
 
   const feedbacks = agentMessage.feedbacks
-    ? agentMessage.feedbacks.map((agentMessageFeedback) => ({
-        feedback_id: agentMessageFeedback.id,
-        user_id: agentMessageFeedback.user?.sId ?? "unknown",
-        thumb_direction: agentMessageFeedback.thumbDirection,
-        content: undefined,
-        dismissed: agentMessageFeedback.dismissed,
-        is_conversation_shared: agentMessageFeedback.isConversationShared,
-        created_at: agentMessageFeedback.createdAt.toISOString(),
-      }))
+    ? getAgentMessageFeedbacksAnalytics(agentMessage.feedbacks)
     : [];
 
   // Build the complete analytics document.
@@ -292,6 +285,20 @@ async function storeToElasticsearch(
   }
 }
 
+function getAgentMessageFeedbacksAnalytics(
+  agentMessageFeedbacks: AgentMessageFeedbackResource[] | AgentMessageFeedback[]
+): AgentMessageAnalyticsFeedback[] {
+  return agentMessageFeedbacks.map((agentMessageFeedback) => ({
+    feedback_id: agentMessageFeedback.id,
+    user_id: agentMessageFeedback.user?.sId ?? "unknown",
+    thumb_direction: agentMessageFeedback.thumbDirection,
+    content: undefined,
+    dismissed: agentMessageFeedback.dismissed,
+    is_conversation_shared: agentMessageFeedback.isConversationShared,
+    created_at: agentMessageFeedback.createdAt.toISOString(),
+  }));
+}
+
 export async function storeAgentMessageFeedbackActivity(
   authType: AuthenticatorType,
   {
@@ -355,22 +362,11 @@ export async function storeAgentMessageFeedbackActivity(
       agentMessageModel.id
     );
 
-  const allFeedbacks: AgentMessageAnalyticsFeedback[] =
-    agentMessageFeedbacks.map((agentMessageFeedback) => ({
-      feedback_id: agentMessageFeedback.id,
-      user_id: agentMessageFeedback.user?.sId ?? "unknown",
-      thumb_direction: agentMessageFeedback.thumbDirection,
-      content: undefined,
-      dismissed: agentMessageFeedback.dismissed,
-      is_conversation_shared: agentMessageFeedback.isConversationShared,
-      created_at: agentMessageFeedback.createdAt.toISOString(),
-    }));
-
   await updateAnalyticsFeedback(auth, {
     message: {
       sId: agentMessageRow.sId,
     },
     createdTimestamp: userMessageRow.createdAt.getTime(),
-    feedbacks: allFeedbacks,
+    feedbacks: getAgentMessageFeedbacksAnalytics(agentMessageFeedbacks),
   });
 }
