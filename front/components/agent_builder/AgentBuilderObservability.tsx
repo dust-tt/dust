@@ -37,7 +37,7 @@ export function getAverageErrorRate(
   period: number
 ) {
   const totalErrorRate = errorRate.reduce((sum, current) => {
-    return (sum += current.errorRate);
+    return sum + current.errorRate;
   }, 0);
 
   return Math.round((totalErrorRate / period) * 10) / 10;
