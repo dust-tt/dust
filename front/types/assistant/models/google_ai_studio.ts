@@ -7,7 +7,7 @@ export const GEMINI_2_5_FLASH_LITE_MODEL_ID = "gemini-2.5-flash-lite" as const;
 export const GEMINI_2_5_PRO_MODEL_ID = "gemini-2.5-pro" as const;
 
 // These Gemini preview models are deprecated (either replaced by a GA model or not making it to GA)
-// 2025-11-04: still used in some dust apps
+// 2025-11-04: Still used in some dust apps.
 export const GEMINI_2_FLASH_MODEL_ID = "gemini-2.0-flash" as const;
 // 2025-11-04: still used in 3 dust apps
 export const GEMINI_2_FLASH_PREVIEW_MODEL_ID = "gemini-2.0-flash-exp" as const;
