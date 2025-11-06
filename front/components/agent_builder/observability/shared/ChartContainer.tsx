@@ -32,7 +32,7 @@ export function ChartContainer({
   return (
     <div
       className={cn(
-        "bg-card rounded-lg border border-border p-4",
+        "bg-card rounded-lg border border-border p-4 dark:border-border-night",
         CHART_CONTAINER_HEIGHT_CLASS
       )}
     >
@@ -43,13 +43,17 @@ export function ChartContainer({
         )}
       >
         <div className="flex items-center gap-2">
-          <h3 className="text-lg font-medium text-foreground">{title}</h3>
+          <h3 className="text-lg font-medium text-foreground dark:text-foreground-night">
+            {title}
+          </h3>
           {statusChip}
         </div>
         <div className="flex items-center gap-3">{additionalControls}</div>
       </div>
       {description && (
-        <div className="mb-3 text-xs text-muted-foreground">{description}</div>
+        <div className="mb-3 text-xs text-muted-foreground dark:text-muted-foreground-night">
+          {description}
+        </div>
       )}
       {isLoading || message ? (
         <div
@@ -59,7 +63,9 @@ export function ChartContainer({
           {isLoading ? (
             <Spinner size="lg" />
           ) : (
-            <span className="text-sm text-muted-foreground">{message}</span>
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {message}
+            </span>
           )}
         </div>
       ) : (
