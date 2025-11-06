@@ -202,14 +202,6 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     input: 0.2,
     output: 1.0,
   },
-  "grok-3-fast-latest": {
-    input: 2.0,
-    output: 10.0,
-  },
-  "grok-3-mini-fast-latest": {
-    input: 0.2,
-    output: 1.0,
-  },
   "grok-4-latest": {
     input: 2.0,
     output: 15.0,
