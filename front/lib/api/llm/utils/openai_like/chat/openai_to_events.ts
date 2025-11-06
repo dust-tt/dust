@@ -3,6 +3,7 @@ import type { ChatCompletionChunk } from "openai/resources/chat/completions";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import { assertNever } from "@app/types";
 
 export async function* streamLLMEvents(
@@ -101,7 +102,7 @@ export async function* streamLLMEvents(
                 content: {
                   id: toolCall.id,
                   name: toolCall.name,
-                  arguments: toolCall.arguments,
+                  arguments: parseToolArguments(toolCall.arguments),
                 },
                 metadata,
               };

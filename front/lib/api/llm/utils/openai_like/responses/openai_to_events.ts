@@ -1,15 +1,16 @@
 import flatMap from "lodash/flatMap";
 import type {
+  Response,
   ResponseOutputItem,
   ResponseOutputRefusal,
   ResponseOutputText,
   ResponseStreamEvent,
 } from "openai/resources/responses/responses";
-import type { Response } from "openai/resources/responses/responses";
 
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import { assertNever } from "@app/types";
 
 export async function* streamLLMEvents(
@@ -85,18 +86,19 @@ function itemToEvents(
         responseOutputToEvent(responseOutput, metadata)
       );
     // TODO(LLM-Router 2025-10-29): Check tool call validity when parsing events
-    case "function_call":
+    case "function_call": {
       return [
         {
           type: "tool_call",
           content: {
             id: item.call_id,
             name: item.name,
-            arguments: item.arguments,
+            arguments: parseToolArguments(item.arguments),
           },
           metadata,
         },
       ];
+    }
     case "reasoning":
       const encrypted_content = item.encrypted_content ?? undefined;
       // OpenAI sometimes sends multiple summary blocks in a single reasoning item.

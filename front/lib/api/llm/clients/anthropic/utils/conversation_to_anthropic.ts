@@ -11,6 +11,7 @@ import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
+import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
@@ -19,7 +20,7 @@ import type {
   ModelMessageTypeMultiActionsWithoutContentFragment,
   UserMessageTypeModel,
 } from "@app/types";
-import { assertNever, isString, safeParseJSON } from "@app/types";
+import { assertNever, isString } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
@@ -67,17 +68,11 @@ function assistantContentToParam(
         signature: signature,
       };
     case "function_call": {
-      const argsRes = safeParseJSON(content.value.arguments);
-      if (argsRes.isErr()) {
-        throw new Error(
-          `Failed to parse function call arguments JSON: ${argsRes.error.message}`
-        );
-      }
       return {
         type: "tool_use",
         id: content.value.id,
         name: content.value.name,
-        input: argsRes.value,
+        input: parseToolArguments(content.value.arguments),
       };
     }
   }
