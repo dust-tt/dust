@@ -37,10 +37,12 @@ const STUCK_THRESHOLD = 5; // Consider an activity stuck if it has 5+ attempts
 
 async function checkWorkflowStuck(
   client: Client,
-  workflowId: string,
-  visitedWorkflowIds: Set<string> = new Set()
+  {
+    workflowId,
+    visitedWorkflowIds = new Set(),
+  }: { workflowId: string; visitedWorkflowIds?: Set<string> }
 ): Promise<StuckWorkflowInfo | null> {
-  // Prevent infinite loops if there are circular child workflows
+  // Prevent infinite loops if there are circular child workflows.
   if (visitedWorkflowIds.has(workflowId)) {
     return null;
   }
@@ -79,11 +81,10 @@ async function checkWorkflowStuck(
     if (description.raw.pendingChildren) {
       for (const child of description.raw.pendingChildren) {
         if (child.workflowId) {
-          const childInfo = await checkWorkflowStuck(
-            client,
-            child.workflowId,
-            visitedWorkflowIds
-          );
+          const childInfo = await checkWorkflowStuck(client, {
+            workflowId: child.workflowId,
+            visitedWorkflowIds,
+          });
           if (childInfo) {
             childWorkflows.push(childInfo);
           }
@@ -174,7 +175,7 @@ async function handler(
       let hasStuckActivities = false;
 
       for (const workflowId of workflowIds) {
-        const workflowInfo = await checkWorkflowStuck(client, workflowId);
+        const workflowInfo = await checkWorkflowStuck(client, { workflowId });
         if (workflowInfo) {
           workflows.push(workflowInfo);
 
