@@ -48,6 +48,7 @@ import {
   isSupportedFileContentType,
   removeNulls,
   stripNullBytes,
+  toWellFormed,
 } from "@app/types";
 
 export async function processToolNotification(
@@ -172,7 +173,7 @@ export async function processToolResults(
           return {
             content: {
               type: block.type,
-              text: stripNullBytes(block.text),
+              text: toWellFormed(stripNullBytes(block.text)),
             },
             file: null,
           };
@@ -215,7 +216,7 @@ export async function processToolResults(
                 type: block.type,
                 resource: {
                   ...block.resource,
-                  text: stripNullBytes(block.resource.text),
+                  text: toWellFormed(stripNullBytes(block.resource.text)),
                 },
               },
               file,
@@ -279,7 +280,7 @@ export async function processToolResults(
             const text =
               "text" in block.resource &&
               typeof block.resource.text === "string"
-                ? stripNullBytes(block.resource.text)
+                ? toWellFormed(stripNullBytes(block.resource.text))
                 : null;
 
             // If the resource text is too large, we create a file and return a resource block that references the file.
